@@ -83,7 +83,7 @@ bitflags::bitflags! {
         const AS_INDEX_BUFFER = 0x0040;
         // buffer
         const AS_INDIRECT_BUFFER  = 0x0080;
-        // texture
+        // buffer/texture
         const AS_TRANSFERABLE = 0x0100;
         // meta
         const BUFFER_ONLY_USAGE_FLAGS =
@@ -92,8 +92,15 @@ bitflags::bitflags! {
             Self::AS_INDEX_BUFFER.bits|
             Self::AS_INDIRECT_BUFFER.bits;
         const TEXTURE_ONLY_USAGE_FLAGS =
-            Self::AS_DEPTH_STENCIL.bits|
-            Self::AS_TRANSFERABLE.bits;
+            Self::AS_DEPTH_STENCIL.bits;
+    }
+}
+
+bitflags::bitflags! {
+    pub struct ResourceCreation: u16 {
+        const SPARSE_BINDING = 0x0001;
+        const SPARSE_RESIDENCY = 0x0002;
+        const SPARSE_ALIASED = 0x0004;
     }
 }
 

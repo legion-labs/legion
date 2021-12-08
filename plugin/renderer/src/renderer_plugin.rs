@@ -8,6 +8,7 @@ use lgn_transform::components::Transform;
 use crate::{
     components::{RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
+    resources::{EntityTransforms, UniformGPUDataUpdater},
     RenderContext, Renderer,
 };
 
@@ -79,15 +80,35 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
-    for (mut transform, rotation) in query.iter_mut() {
+fn update_rotation(
+    mut renderer: ResMut<'_, Renderer>,
+    mut query: Query<'_, '_, (Entity, &mut Transform, &RotationComponent, &mut StaticMesh)>,
+) {
+    let _first_alloc = renderer.transient_buffer().allocate_page(64 * 1024);
+
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let mut gpu_data = renderer.aquire_transform_data();
+
+    for (entity, mut transform, rotation, mut mesh) in query.iter_mut() {
+        mesh.offset = gpu_data.ensure_index_allocated(entity.id());
+
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
             rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
             rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
             rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
         ));
+
+        let world = EntityTransforms {
+            world: transform.compute_matrix(),
+        };
+
+        updater.add_update_jobs(&[world], mesh.offset);
     }
+
+    renderer.test_add_update_jobs(updater.job_blocks());
+
+    renderer.release_transform_data(gpu_data);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -105,6 +126,8 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &StaticMesh)>>();
     let graphics_queue = renderer.queue(QueueType::Graphics);
+
+    renderer.flush_update_jobs(&mut render_context, &graphics_queue);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {

@@ -9,11 +9,14 @@ pub use api::*;
 mod format;
 pub use format::*;
 
-mod buffer_view;
-pub use buffer_view::*;
-
 mod buffer;
 pub use buffer::*;
+
+mod buffer_allocation;
+pub use buffer_allocation::*;
+
+mod buffer_view;
+pub use buffer_view::*;
 
 mod command_buffer;
 pub use command_buffer::*;
@@ -40,6 +43,9 @@ pub use device_context::*;
 
 mod fence;
 pub use fence::*;
+
+mod memory_allocation;
+pub use memory_allocation::*;
 
 mod misc;
 pub use misc::*;

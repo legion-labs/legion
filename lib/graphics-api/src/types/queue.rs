@@ -2,7 +2,7 @@
 use crate::backends::vulkan::VulkanQueue;
 use crate::{
     CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence, GfxResult,
-    PresentSuccessResult, QueueType, Semaphore, Swapchain,
+    PagedBufferAllocation, PresentSuccessResult, QueueType, Semaphore, Swapchain,
 };
 
 struct QueueInner {
@@ -103,5 +103,23 @@ impl Queue {
 
         #[cfg(any(feature = "vulkan"))]
         self.inner.platform_queue.wait_for_queue_idle()
+    }
+
+    pub fn commmit_sparse_bindings<'a>(
+        &self,
+        prev_frame_semaphore: &'a Semaphore,
+        unbind_pages: &[PagedBufferAllocation],
+        unbind_semaphore: &'a Semaphore,
+        bind_pages: &[PagedBufferAllocation],
+        bind_semaphore: &'a Semaphore,
+    ) -> &'a Semaphore {
+        #[cfg(any(feature = "vulkan"))]
+        self.inner.platform_queue.commmit_sparse_bindings(
+            prev_frame_semaphore,
+            unbind_pages,
+            unbind_semaphore,
+            bind_pages,
+            bind_semaphore,
+        )
     }
 }

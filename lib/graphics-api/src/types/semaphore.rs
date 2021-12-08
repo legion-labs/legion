@@ -1,8 +1,7 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSemaphore;
-use crate::{deferred_drop::Drc, DeviceContext, GfxResult};
+use crate::{deferred_drop::Drc, DeviceContext};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,
@@ -27,21 +26,18 @@ impl Drop for SemaphoreInner {
 }
 
 impl Semaphore {
-    pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext) -> Self {
         #[cfg(feature = "vulkan")]
-        let platform_semaphore = VulkanSemaphore::new(device_context).map_err(|e| {
-            log::error!("Error creating semaphore {:?}", e);
-            ash::vk::Result::ERROR_UNKNOWN
-        })?;
+        let platform_semaphore = VulkanSemaphore::new(device_context);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(SemaphoreInner {
                 device_context: device_context.clone(),
                 signal_available: AtomicBool::new(false),
                 #[cfg(any(feature = "vulkan"))]
                 platform_semaphore,
             }),
-        })
+        }
     }
 
     pub fn signal_available(&self) -> bool {

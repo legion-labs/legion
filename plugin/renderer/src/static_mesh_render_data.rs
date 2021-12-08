@@ -1,30 +1,13 @@
-use lgn_graphics_api::prelude::*;
 use lgn_math::Vec3;
-
-use crate::Renderer;
 
 pub struct StaticMeshRenderData {
     pub vertices: Vec<f32>,
-    pub vertex_buffers: Vec<Buffer>,
 }
 
 impl StaticMeshRenderData {
-    fn from_vertex_data(vertex_data: &[f32], renderer: &Renderer) -> Self {
-        let mut vertex_buffers = Vec::with_capacity(renderer.num_render_frames() as usize);
-        for _ in 0..renderer.num_render_frames() {
-            let vertex_buffer = renderer
-                .device_context()
-                .create_buffer(&BufferDef::for_staging_vertex_buffer_data(vertex_data))
-                .unwrap();
-            vertex_buffer
-                .copy_to_host_visible_buffer(vertex_data)
-                .unwrap();
-            vertex_buffers.push(vertex_buffer);
-        }
-
+    fn from_vertex_data(vertex_data: &[f32]) -> Self {
         Self {
             vertices: vertex_data.to_vec(),
-            vertex_buffers,
         }
     }
 
@@ -32,7 +15,7 @@ impl StaticMeshRenderData {
         self.vertices.len() / 6
     }
 
-    pub fn new_cube(size: f32, renderer: &Renderer) -> Self {
+    pub fn new_cube(size: f32) -> Self {
         let half_size = size / 2.0;
         #[rustfmt::skip]
         let vertex_data = [
@@ -79,10 +62,10 @@ impl StaticMeshRenderData {
             -half_size, half_size, -half_size, 0.0, 0.0, -1.0,
             half_size, half_size, -half_size, 0.0, 0.0, -1.0,
         ];
-        Self::from_vertex_data(&vertex_data, renderer)
+        Self::from_vertex_data(&vertex_data)
     }
 
-    pub fn new_pyramid(base_size: f32, height: f32, renderer: &Renderer) -> Self {
+    pub fn new_pyramid(base_size: f32, height: f32) -> Self {
         let half_size = base_size / 2.0;
         let top_y = -half_size + height;
 
@@ -121,10 +104,10 @@ impl StaticMeshRenderData {
             half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z,
             0.0, top_y, 0.0, normal4.x, normal4.y, normal4.z,
         ];
-        Self::from_vertex_data(&vertex_data, renderer)
+        Self::from_vertex_data(&vertex_data)
     }
 
-    pub fn new_plane(size: f32, renderer: &Renderer) -> Self {
+    pub fn new_plane(size: f32) -> Self {
         let half_size = size / 2.0;
         #[rustfmt::skip]
         let vertex_data = [
@@ -135,6 +118,6 @@ impl StaticMeshRenderData {
             -half_size, 0.0,  half_size, 0.0, 1.0, 0.0,
              half_size, 0.0,  half_size, 0.0, 1.0, 0.0,
         ];
-        Self::from_vertex_data(&vertex_data, renderer)
+        Self::from_vertex_data(&vertex_data)
     }
 }

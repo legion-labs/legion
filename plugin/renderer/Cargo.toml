@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
-lgn-graphics-utils = { path = "../../lib/graphics-utils", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }

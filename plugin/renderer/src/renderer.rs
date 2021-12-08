@@ -4,7 +4,6 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_graphics_utils::TransientPagedBuffer;
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_transform::components::Transform;
@@ -14,7 +13,8 @@ use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
-    GpuSafePool,
+    EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
+    UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
@@ -23,11 +23,17 @@ pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,
     num_render_frames: usize,
+    prev_frame_sems: Vec<Semaphore>,
+    sparse_unbind_sems: Vec<Semaphore>,
+    sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
+    static_buffer: UnifiedStaticBuffer,
+    // Temp for testing
+    test_transform_data: TestStaticBuffer,
     bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -44,17 +50,34 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
 
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
+            &static_buffer,
+            64 * 1024,
+        ));
+
         Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
+            prev_frame_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
+            sparse_unbind_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
+            sparse_bind_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 128),
+            transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
+            static_buffer,
+            test_transform_data,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })
@@ -80,9 +103,45 @@ impl Renderer {
     }
 
     // TMP: change that.
-    pub fn transient_buffer(&self) -> TransientPagedBuffer {
+    pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
     }
+
+    pub fn aquire_transform_data(&mut self) -> TestStaticBuffer {
+        self.test_transform_data.transfer()
+    }
+
+    pub fn release_transform_data(&mut self, test: TestStaticBuffer) {
+        self.test_transform_data = test;
+    }
+
+    pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+        self.static_buffer.add_update_job_block(job_blocks);
+    }
+
+    pub fn flush_update_jobs(
+        &self,
+        render_context: &mut RenderContext<'_>,
+        graphics_queue: &RwLockReadGuard<'_, Queue>,
+    ) {
+        let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
+        let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
+        let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
+
+        self.static_buffer.flush_updater(
+            prev_frame_semaphore,
+            unbind_semaphore,
+            bind_semaphore,
+            render_context,
+            graphics_queue,
+        );
+    }
+
+    pub fn static_buffer_ro_view(&self) -> BufferView {
+        self.static_buffer.read_only_view()
+    }
+
+    //    pub fn prev_frame_semaphore(&self)
 
     pub(crate) fn acquire_command_buffer_pool(
         &self,
@@ -159,12 +218,13 @@ impl Renderer {
         }
 
         // TMP: todo
-        self.transient_buffer.begin_frame(self.device_context());
+        self.transient_buffer.begin_frame();
     }
 
     pub(crate) fn end_frame(&mut self) {
         let graphics_queue = self.graphics_queue.write();
         let frame_fence = &self.frame_fences[self.render_frame_idx];
+
         graphics_queue
             .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
@@ -172,7 +232,6 @@ impl Renderer {
         //
         // Broadcast end frame event
         //
-        self.transient_buffer.end_frame(&graphics_queue);
 
         {
             let mut pool = self.command_buffer_pools.write();
@@ -379,9 +438,9 @@ impl TmpRenderPass {
         // Per frame resources
         //
         let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0, renderer),
-            StaticMeshRenderData::new_cube(0.5, renderer),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0, renderer),
+            StaticMeshRenderData::new_plane(1.0),
+            StaticMeshRenderData::new_cube(0.5),
+            StaticMeshRenderData::new_pyramid(0.5, 1.0),
         ];
 
         Self {
@@ -460,7 +519,7 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
-        let transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
@@ -470,12 +529,10 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
-            let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
+            let mut sub_allocation =
+                transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            render_context
-                .renderer()
-                .transient_buffer()
-                .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
+            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
 
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
@@ -495,23 +552,31 @@ impl TmpRenderPass {
             push_constant_data[51] = 1.0;
 
             sub_allocation =
-                transient_allocator.copy_data(Some(sub_allocation), &push_constant_data, 64);
+                transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
 
-            let const_buffer_view = render_context
-                .renderer()
-                .transient_buffer()
-                .const_buffer_view_for_allocation(&sub_allocation);
+            let const_buffer_view = sub_allocation.const_buffer_view();
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
                 .set_descriptors(
-                    "uniform_data",
+                    "const_data",
                     0,
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors(
+                    "static_buffer",
+                    0,
+                    &[DescriptorRef::BufferView(
+                        &render_context.renderer().static_buffer_ro_view(),
+                    )],
+                )
+                .unwrap();
+
             let descriptor_set_handle =
                 descriptor_set_writer.flush(render_context.renderer().device_context());
 
@@ -521,6 +586,10 @@ impl TmpRenderPass {
                     descriptor_set_layout.definition().frequency,
                     descriptor_set_handle,
                 )
+                .unwrap();
+
+            cmd_buffer
+                .cmd_push_constants(&self.root_signature, &(static_mesh_component.offset))
                 .unwrap();
 
             cmd_buffer

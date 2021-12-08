@@ -1,9 +1,7 @@
-use super::{
-    deferred_drop::Drc, BufferViewDef, DeviceContext, MemoryUsage, QueueType, ResourceUsage,
-};
+use super::{deferred_drop::Drc, BufferViewDef, DeviceContext, QueueType, ResourceUsage};
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanBuffer;
-use crate::{BufferView, GfxResult};
+use crate::{BufferView, GfxResult, ResourceCreation};
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {
@@ -17,20 +15,18 @@ pub struct BufferElementData {
 #[derive(Clone, Copy, Debug)]
 pub struct BufferDef {
     pub size: u64,
-    pub memory_usage: MemoryUsage,
     pub queue_type: QueueType,
-    pub always_mapped: bool,
     pub usage_flags: ResourceUsage,
+    pub creation_flags: ResourceCreation,
 }
 
 impl Default for BufferDef {
     fn default() -> Self {
         Self {
             size: 0,
-            memory_usage: MemoryUsage::Unknown,
             queue_type: QueueType::Graphics,
-            always_mapped: false,
             usage_flags: ResourceUsage::empty(),
+            creation_flags: ResourceCreation::empty(),
         }
     }
 }
@@ -46,10 +42,9 @@ impl BufferDef {
     pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
             size: size as u64,
-            memory_usage: MemoryUsage::CpuToGpu,
             queue_type: QueueType::Graphics,
-            always_mapped: false,
             usage_flags,
+            creation_flags: ResourceCreation::empty(),
         }
     }
 
@@ -85,6 +80,7 @@ impl BufferDef {
 pub(crate) struct BufferInner {
     pub(crate) buffer_def: BufferDef,
     pub(crate) device_context: DeviceContext,
+    pub(crate) required_alignment: u64,
 
     #[cfg(feature = "vulkan")]
     pub(crate) platform_buffer: VulkanBuffer,
@@ -104,21 +100,19 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
         #[cfg(feature = "vulkan")]
-        let platform_buffer = VulkanBuffer::new(device_context, buffer_def).map_err(|e| {
-            log::error!("Error creating buffer {:?}", e);
-            ash::vk::Result::ERROR_UNKNOWN
-        })?;
+        let (platform_buffer, required_alignment) = VulkanBuffer::new(device_context, buffer_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
                 buffer_def: *buffer_def,
+                required_alignment,
                 #[cfg(any(feature = "vulkan"))]
                 platform_buffer,
             }),
-        })
+        }
     }
 
     pub fn definition(&self) -> &BufferDef {
@@ -128,54 +122,8 @@ impl Buffer {
     pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
-
-    pub fn map_buffer(&self) -> GfxResult<BufferMappingInfo> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        {
-            let ptr = self.map_buffer_platform()?;
-
-            Ok(BufferMappingInfo {
-                buffer: self.clone(),
-                data_ptr: ptr,
-            })
-        }
-    }
-
-    pub fn unmap_buffer(&self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.unmap_buffer_platform();
-    }
-
-    pub fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {
-        // Cannot check size of data == buffer because buffer size might be rounded up
-        self.copy_to_host_visible_buffer_with_offset(data, 0)
-    }
-
-    pub fn copy_to_host_visible_buffer_with_offset<T: Copy>(
-        &self,
-        data: &[T],
-        buffer_byte_offset: u64,
-    ) -> GfxResult<()> {
-        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
-        assert!(buffer_byte_offset + data_size_in_bytes <= self.inner.buffer_def.size);
-
-        let src = data.as_ptr().cast::<u8>();
-
-        let required_alignment = std::mem::align_of::<T>();
-
-        let mapping_info = self.map_buffer()?;
-
-        #[allow(unsafe_code)]
-        unsafe {
-            let dst = mapping_info.data_ptr().add(buffer_byte_offset as usize);
-            assert_eq!(((dst as usize) % required_alignment), 0);
-            std::ptr::copy_nonoverlapping(src, dst, data_size_in_bytes as usize);
-        }
-
-        Ok(())
+    pub fn required_alignment(&self) -> u64 {
+        self.inner.required_alignment
     }
 
     pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferView> {
@@ -183,19 +131,8 @@ impl Buffer {
     }
 }
 
-pub struct BufferMappingInfo {
-    buffer: Buffer,
-    data_ptr: *mut u8,
-}
+#[cfg(feature = "vulkan")]
+pub type BufferCopy = ash::vk::BufferCopy;
 
-impl BufferMappingInfo {
-    pub fn data_ptr(&self) -> *mut u8 {
-        self.data_ptr
-    }
-}
-
-impl Drop for BufferMappingInfo {
-    fn drop(&mut self) {
-        self.buffer.unmap_buffer();
-    }
-}
+#[cfg(not(any(feature = "vulkan")))]
+struct BufferCopy {}

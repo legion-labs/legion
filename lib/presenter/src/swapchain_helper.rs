@@ -50,8 +50,8 @@ impl SwapchainHelperSharedState {
         let mut in_flight_fences = Vec::with_capacity(image_count);
 
         for _ in 0..image_count {
-            image_available_semaphores.push(device_context.create_semaphore()?);
-            render_finished_semaphores.push(device_context.create_semaphore()?);
+            image_available_semaphores.push(device_context.create_semaphore());
+            render_finished_semaphores.push(device_context.create_semaphore());
             in_flight_fences.push(device_context.create_fence()?);
         }
 

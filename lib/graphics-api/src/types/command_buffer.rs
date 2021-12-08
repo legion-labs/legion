@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
-use crate::{Buffer, CommandPool, DescriptorSetHandle, Pipeline, Texture};
+use crate::{Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, Texture};
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
     ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,
@@ -259,15 +259,10 @@ impl CommandBuffer {
         &self,
         src_buffer: &Buffer,
         dst_buffer: &Buffer,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
-    ) -> GfxResult<()> {
+        copy_data: &[BufferCopy],
+    ) {
         #[cfg(any(feature = "vulkan"))]
-        self.cmd_copy_buffer_to_buffer_platform(
-            src_buffer, dst_buffer, src_offset, dst_offset, size,
-        );
-        Ok(())
+        self.cmd_copy_buffer_to_buffer_platform(src_buffer, dst_buffer, copy_data);
     }
 
     pub fn cmd_copy_buffer_to_texture(

@@ -40,7 +40,7 @@ pub enum PhysicalDeviceType {
 
 pub(crate) struct DeviceContextInner {
     #[cfg(any(feature = "vulkan"))]
-    _device_info: DeviceInfo,
+    device_info: DeviceInfo,
     deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
 
@@ -111,7 +111,7 @@ impl DeviceContextInner {
 
         Ok(Self {
             #[cfg(any(feature = "vulkan"))]
-            _device_info: device_info,
+            device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
@@ -208,7 +208,7 @@ impl DeviceContext {
         Fence::new(self)
     }
 
-    pub fn create_semaphore(&self) -> GfxResult<Semaphore> {
+    pub fn create_semaphore(&self) -> Semaphore {
         Semaphore::new(self)
     }
 
@@ -228,7 +228,7 @@ impl DeviceContext {
         Texture::new(self, texture_def)
     }
 
-    pub fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<Buffer> {
+    pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
         Buffer::new(self, buffer_def)
     }
 
@@ -286,5 +286,9 @@ impl DeviceContext {
     pub fn free_gpu_memory(&self) -> GfxResult<()> {
         self.inner.deferred_dropper.flush();
         Ok(())
+    }
+
+    pub fn device_info(&self) -> &DeviceInfo {
+        &self.inner.device_info
     }
 }

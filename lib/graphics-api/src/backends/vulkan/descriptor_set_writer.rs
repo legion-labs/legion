@@ -75,7 +75,7 @@ impl VulkanDescriptorSetBufWriter {
                 for update_data in update_datas {
                     if let DescriptorRef::Sampler(sampler) = update_data {
                         let image_info = &mut self.vk_descriptors.image_infos[next_index as usize];
-                        image_info.sampler = sampler.platform_sampler().vk_sampler();
+                        image_info.sampler = sampler.vk_sampler();
                         image_info.image_view = vk::ImageView::null();
                         image_info.image_layout = vk::ImageLayout::UNDEFINED;
                     } else {

@@ -8,6 +8,7 @@ use crate::{Buffer, BufferView, Sampler, Texture, TextureView};
 
 /// Information about the device, mostly limits, requirements (like memory alignment), and flags to
 /// indicate whether certain features are supported
+#[derive(Clone, Copy)]
 pub struct DeviceInfo {
     pub supports_multithreaded_usage: bool,
 

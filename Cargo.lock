@@ -4008,14 +4008,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-graphics-utils"
-version = "0.1.0"
-dependencies = [
- "lgn-graphics-api",
- "lgn-utils",
-]
-
-[[package]]
 name = "lgn-grpc"
 version = "0.1.0"
 dependencies = [
@@ -4178,7 +4170,6 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-graphics-data",
- "lgn-graphics-utils",
  "lgn-input",
  "lgn-math",
  "lgn-pso-compiler",

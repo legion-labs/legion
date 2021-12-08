@@ -624,20 +624,14 @@ impl CommandBuffer {
 
         src_buffer: &Buffer,
         dst_buffer: &Buffer,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
+        copy_data: &[ash::vk::BufferCopy],
     ) {
         unsafe {
             self.inner.device_context.vk_device().cmd_copy_buffer(
                 self.inner.platform_command_buffer.vk_command_buffer,
                 src_buffer.vk_buffer(),
                 dst_buffer.vk_buffer(),
-                &[ash::vk::BufferCopy {
-                    src_offset,
-                    dst_offset,
-                    size,
-                }],
+                copy_data,
             );
         }
     }

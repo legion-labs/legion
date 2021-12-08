@@ -7,7 +7,7 @@ pub(crate) struct SamplerInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
-    platform_sampler: VulkanSampler,
+    pub(crate) platform_sampler: VulkanSampler,
 }
 
 impl Drop for SamplerInner {
@@ -19,7 +19,7 @@ impl Drop for SamplerInner {
 
 #[derive(Clone)]
 pub struct Sampler {
-    inner: Drc<SamplerInner>,
+    pub(crate) inner: Drc<SamplerInner>,
 }
 
 impl Sampler {
@@ -39,10 +39,5 @@ impl Sampler {
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(inner),
         })
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_sampler(&self) -> &VulkanSampler {
-        &self.inner.platform_sampler
     }
 }

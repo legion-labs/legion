@@ -75,6 +75,7 @@ impl AssetToECS for runtime_data::Entity {
                 entity.insert(StaticMesh {
                     mesh_id: static_mesh.mesh_id,
                     color: (255, 0, 0).into(),
+                    offset: 0,
                 });
             }
             //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
@@ -144,6 +145,7 @@ impl AssetToECS for generic_data_runtime::DebugCube {
         entity.insert(StaticMesh {
             mesh_id: instance.mesh_id,
             color: instance.color,
+            offset: 0,
         });
 
         entity.insert(RotationComponent {
