@@ -198,7 +198,7 @@ mod tests {
 
         assert_eq!(
             lgn_tauri_command_impl(standard_result_return_value).to_string(),
-            "fn __f_impl (x : u32 , i : usize) -> Result < u32 , Box < dyn Error + 'static > > { Ok (42) } # [tauri :: command] fn f (x : u32 , i : usize) -> std :: result :: Result < u32 , String > { return match __f_impl (x , i) { Ok (v) => Ok (v) , Err (e) => Err (format ! (\"{}\" , e)) , } ; }"
+            "fn __f_impl (x : u32 , i : usize) -> Result < u32 , Box < dyn Error + 'static > > { Ok (42) } # [tauri :: command] fn f (x : u32 , i : usize) -> std :: result :: Result < u32 , String > { return match __f_impl (x , i) { Ok (v) => Ok (v) , Err (e) => Err (e . to_string ()) , } ; }"
         );
 
         let async_standard_result_return_value = parse_quote! {
@@ -207,7 +207,7 @@ mod tests {
 
         assert_eq!(
             lgn_tauri_command_impl(async_standard_result_return_value).to_string(),
-            "async fn __f_impl () -> Result < String , Box < dyn Error + 'static > > { Ok (\"foo\" . into ()) } # [tauri :: command] async fn f () -> std :: result :: Result < String , String > { return match __f_impl () . await { Ok (v) => Ok (v) , Err (e) => Err (format ! (\"{}\" , e)) , } ; }"
+            "async fn __f_impl () -> Result < String , Box < dyn Error + 'static > > { Ok (\"foo\" . into ()) } # [tauri :: command] async fn f () -> std :: result :: Result < String , String > { return match __f_impl () . await { Ok (v) => Ok (v) , Err (e) => Err (e . to_string ()) , } ; }"
         );
     }
 
