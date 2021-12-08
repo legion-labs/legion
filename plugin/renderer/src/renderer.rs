@@ -250,6 +250,8 @@ impl Renderer {
 
 impl Drop for Renderer {
     fn drop(&mut self) {
+        std::mem::drop(self.test_transform_data.take());
+
         let graphics_queue = self.queue(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
