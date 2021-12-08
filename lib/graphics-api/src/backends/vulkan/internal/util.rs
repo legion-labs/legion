@@ -2,8 +2,8 @@ use ash::vk;
 
 use crate::{
     BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, DeviceContext,
-    Format, PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage,
-    ShaderResourceType, ResourceCreation,
+    Format, PipelineType, QueueType, RasterizerState, ResourceCreation, ResourceState,
+    ResourceUsage, ShaderResourceType,
 };
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
