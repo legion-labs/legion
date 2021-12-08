@@ -8,12 +8,13 @@
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
+  import PanelList from "@/components/PanelList.svelte";
 
   const { run: runGetAllResources } = asyncData(getAllResources);
 
   let currentResourceDescription: ResourceDescription | null = null;
   let fetchAllResources = runGetAllResources();
-  let desiredVideoResolution: Resolution | undefined;
+  let desiredVideoResolution: Resolution | null;
 
   $: if (currentResourceDescription) {
     getResourceProperties(currentResourceDescription).then((resource) => {
@@ -42,21 +43,23 @@
         <div class="resources">
           <Panel>
             <span slot="header">Resources</span>
-            <div class="resource-content" slot="content">
+            <div class="resources-content" slot="content">
               {#await fetchAllResources}
                 <div class="resources-loading">Loading...</div>
-              {:then data}
-                <!-- TODO: Add `resource.id` key when fixed on the server side -->
-                {#each data as resource}
-                  <div
-                    class="resource-item"
-                    class:active-resource-item={currentResourceDescription?.id ===
-                      resource.id}
-                    on:click={() => setCurrentResourceDescription(resource)}
-                  >
+              {:then resources}
+                <PanelList
+                  key="id"
+                  items={resources}
+                  activeItem={currentResourceDescription}
+                  on:click={({ detail: resource }) =>
+                    setCurrentResourceDescription(resource)}
+                  on:itemChange={({ detail: { newItem: resource } }) =>
+                    setCurrentResourceDescription(resource)}
+                >
+                  <div slot="default" let:item={resource}>
                     {resource.path}
                   </div>
-                {/each}
+                </PanelList>
               {:catch}
                 <div class="resources-error">
                   An error occured while fetching the resources <span
@@ -143,7 +146,7 @@
   }
 
   .resources {
-    @apply h-full flex-shrink overflow-auto;
+    @apply h-1/2;
   }
 
   .resources-loading {
@@ -158,23 +161,15 @@
     @apply underline text-blue-300 cursor-pointer;
   }
 
-  .resource-content {
-    @apply pb-2 break-all;
-  }
-
-  .resource-item {
-    @apply cursor-pointer hover:bg-gray-500 py-1 px-2;
-  }
-
-  .active-resource-item {
-    @apply bg-gray-500;
+  .resources-content {
+    @apply h-full break-all;
   }
 
   .file-system {
-    @apply h-full flex-shrink overflow-auto;
+    @apply h-1/2;
   }
 
   .properties {
-    @apply h-full flex-shrink overflow-auto;
+    @apply h-full;
   }
 </style>

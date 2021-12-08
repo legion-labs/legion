@@ -177,11 +177,9 @@ It also supports manual RGBA edition with 4 different inputs.
           />
           <div
             class="sv-selector-cursor"
-            style="--color-block-top: {`${
-              svPickerTop - 6
-            }px`}; --color-block-left: {`${
-              svPickerLeft - 6
-            }px`}; --current-rgba-color: {hsvToColorString(colors.hsv, true)}"
+            style="--color-block-top: {svPickerTop -
+              6}px; --color-block-left: {svPickerLeft -
+              6}px; --current-rgba-color: {hsvToColorString(colors.hsv, true)}"
           />
         </div>
       </div>

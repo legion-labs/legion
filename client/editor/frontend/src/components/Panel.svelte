@@ -1,4 +1,22 @@
-<div class="root">
+<script context="module" lang="ts">
+  export const panelIsFocusedContext = "panelIsFocused";
+</script>
+
+<script lang="ts">
+  import { setContext } from "svelte";
+  import clickOutside from "@/actions/clickOutside";
+  import { writable } from "svelte/store";
+
+  export let isFocused = writable(false);
+
+  setContext(panelIsFocusedContext, isFocused);
+</script>
+
+<div
+  class="root"
+  on:click={() => ($isFocused = true)}
+  use:clickOutside={() => ($isFocused = false)}
+>
   <div class="tabs">
     <div class="header">
       <div class="header-container">
@@ -20,7 +38,7 @@
   }
 
   .tabs {
-    @apply flex flex-row h-8;
+    @apply flex flex-row flex-shrink-0 h-8;
   }
 
   .header {
@@ -40,6 +58,6 @@
   }
 
   .content {
-    @apply bg-gray-700 overflow-auto h-full w-full rounded-b-lg;
+    @apply bg-gray-700 flex-1 w-full rounded-b-lg overflow-hidden;
   }
 </style>
