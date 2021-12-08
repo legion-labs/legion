@@ -37,9 +37,9 @@ impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
         // TODO: remove dependency on window
         if self.has_window {
-            app.add_startup_system(on_window_created.system());
+            app.add_startup_system(on_window_created);
         } else {
-            app.add_startup_system(on_windowless_created.system());
+            app.add_startup_system(on_windowless_created);
         }
 
         app.insert_resource(Egui {
@@ -49,13 +49,12 @@ impl Plugin for EguiPlugin {
         app.insert_resource(RawInput::default());
         app.add_system_to_stage(
             CoreStage::PreUpdate,
-            gather_input.system().label(EguiLabels::GatherInput),
+            gather_input.label(EguiLabels::GatherInput),
         );
         if self.has_window {
             app.add_system_to_stage(
                 CoreStage::PreUpdate,
                 gather_input_window
-                    .system()
                     .after(EguiLabels::GatherInput)
                     .before(EguiLabels::BeginFrame),
             );
@@ -63,7 +62,6 @@ impl Plugin for EguiPlugin {
         app.add_system_to_stage(
             CoreStage::PreUpdate,
             begin_frame
-                .system()
                 .label(EguiLabels::BeginFrame)
                 .after(EguiLabels::GatherInput),
         );
