@@ -18,7 +18,10 @@ use lgn_telemetry::prelude::*;
 use lgn_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
 use serde::Serialize;
-use webrtc::data::data_channel::RTCDataChannel;
+use webrtc::{
+    media::track::track_local::track_local_static_sample::TrackLocalStaticSample,
+    webrtc_media::Sample,
+};
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
@@ -32,7 +35,7 @@ fn record_frame_time_metric(microseconds: u64) {
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
-    video_data_channel: Arc<RTCDataChannel>,
+    video_track: Arc<TrackLocalStaticSample>,
     frame_id: i32,
     encoder: VideoStreamEncoder,
     offscreen_helper: offscreen_helper::OffscreenHelper,
@@ -42,7 +45,7 @@ impl VideoStream {
     pub fn new(
         renderer: &Renderer,
         resolution: Resolution,
-        video_data_channel: Arc<RTCDataChannel>,
+        video_track: Arc<TrackLocalStaticSample>,
     ) -> anyhow::Result<Self> {
         trace_scope!();
 
@@ -53,7 +56,7 @@ impl VideoStream {
             offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
 
         Ok(Self {
-            video_data_channel,
+            video_track,
             frame_id: 0,
             encoder,
             offscreen_helper,
@@ -80,6 +83,49 @@ impl VideoStream {
             unit: "",
         };
         record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
+    }
+
+    pub(crate) async fn write_video_to_track(
+        video_file: &str,
+        t: Arc<TrackLocalStaticSample>,
+    ) -> anyhow::Result<()> {
+        println!("play video from disk file {}", video_file);
+
+        let file = std::fs::File::open(video_file)?;
+        let reader = std::io::BufReader::new(file);
+        let mut h264 = webrtc_media::io::h264_reader::H264Reader::new(reader);
+
+        let mut ticker = tokio::time::interval(tokio::time::Duration::from_millis(33));
+
+        loop {
+            let nal = match h264.next_nal() {
+                Ok(nal) => nal,
+                Err(err) => {
+                    println!("All video frames parsed and sent: {}", err);
+                    break;
+                }
+            };
+
+            println!(
+                "PictureOrderCount={}, ForbiddenZeroBit={}, RefIdc={}, UnitType={}, data={}",
+                nal.picture_order_count,
+                nal.forbidden_zero_bit,
+                nal.ref_idc,
+                nal.unit_type,
+                nal.data.len()
+            );
+
+            t.write_sample(&Sample {
+                data: nal.data.freeze(),
+                duration: tokio::time::Duration::from_secs(1),
+                ..Sample::default()
+            })
+            .await?;
+
+            let _ = ticker.tick().await;
+        }
+
+        anyhow::Result::<()>::Ok(())
     }
 
     pub(crate) fn present<'renderer>(
@@ -120,27 +166,34 @@ impl VideoStream {
             );
         }
 
-        let video_data_channel = Arc::clone(&self.video_data_channel);
+        let video_track = Arc::clone(&self.video_track);
         let frame_id = self.frame_id;
 
         self.frame_id += 1;
 
         async move {
-            for (i, data) in chunks.iter().enumerate() {
-                #[allow(clippy::redundant_else)]
-                if let Err(err) = video_data_channel.send(data).await {
+            for (i, data) in chunks.into_iter().enumerate() {
+                let data_len = data.len();
+
+                let frame_sample = Sample {
+                    data,
+                    duration: tokio::time::Duration::from_millis(16),
+                    ..Sample::default()
+                };
+
+                if let Err(err) = video_track.write_sample(&frame_sample).await {
                     warn!(
                         "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
                         frame_id,
                         i,
-                        data.len(),
+                        data_len,
                         err.to_string(),
                     );
 
                     return;
-                } else {
-                    debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
                 }
+
+                debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data_len);
             }
         }
     }

@@ -4,11 +4,34 @@ package streaming;
 service Streamer {
   rpc InitializeStream(InitializeStreamRequest)
       returns (InitializeStreamResponse);
+
+  rpc AddIceCandidates(AddIceCandidatesRequest)
+      returns (AddIceCandidatesResponse);
+
+  rpc IceCandidates(IceCandidateRequest) returns (stream IceCandidateResponse);
 }
 
 message InitializeStreamRequest { bytes rtcSessionDescription = 1; }
 
 message InitializeStreamResponse {
-  bytes rtcSessionDescription = 1;
-  string error = 2;
+  message Ok {
+    bytes rtcSessionDescription = 1;
+    string stream_id = 2;
+  }
+
+  oneof Response {
+    Ok ok = 3;
+    string error = 4;
+  }
 }
+
+message AddIceCandidatesRequest {
+  string stream_id = 1;
+  repeated bytes iceCandidates = 2;
+}
+
+message AddIceCandidatesResponse { bool ok = 1; }
+
+message IceCandidateRequest { string stream_id = 1; }
+
+message IceCandidateResponse { bytes iceCandidate = 1; }

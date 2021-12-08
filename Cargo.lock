@@ -522,6 +522,7 @@ dependencies = [
  "serde_json",
  "simple_logger",
  "tokio",
+ "tokio-stream",
  "tonic",
  "tonic-web",
 ]
@@ -4292,8 +4293,10 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-stream",
  "tonic",
  "webrtc",
+ "webrtc-media",
 ]
 
 [[package]]

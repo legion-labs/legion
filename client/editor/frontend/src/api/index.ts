@@ -6,22 +6,26 @@ import {
 } from "@lgn/proto-editor/codegen/editor";
 import {
   GrpcWebImpl as StreamingGrpcWebImpl,
+  InitializeStreamResponse,
   StreamerClientImpl,
 } from "@lgn/proto-streaming/codegen/streaming";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 // TODO: Move to config
 const serverUrl = "http://[::1]:50051";
 
 // Some functions useful when dealing with the api
 
-const stringToBytes = (s: string) => new TextEncoder().encode(s);
+const stringToBytes = (str: string) => new TextEncoder().encode(str);
 
-const jsonToBytes = (j: Record<string, unknown>) =>
-  stringToBytes(JSON.stringify(j));
+const jsonToBytes = (json: Record<string, unknown>) =>
+  stringToBytes(JSON.stringify(json));
 
-const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
+const bytesToString = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
-const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
+const bytesToJson = <T>(bytes: Uint8Array): T =>
+  JSON.parse(bytesToString(bytes));
 
 export const editorClient = new EditorClientImpl(
   new EditorGrpcWebImpl(serverUrl, {
@@ -41,13 +45,58 @@ export const streamerClient = new StreamerClientImpl(
  * @returns a valid RTC sessions description to use with an RTCPeerConnection
  */
 export async function initializeStream(
-  localSessionDescription: RTCSessionDescription
-) {
+  localDescription: RTCSessionDescription
+): Promise<
+  | { type: "ok"; sessionDescription: RTCSessionDescription; streamId: string }
+  | { type: "error"; error?: string }
+> {
   const response = await streamerClient.initializeStream({
-    rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
+    rtcSessionDescription: jsonToBytes(localDescription.toJSON()),
   });
 
-  return new RTCSessionDescription(bytesToJson(response.rtcSessionDescription));
+  if (response.ok) {
+    return {
+      type: "ok",
+      sessionDescription: new RTCSessionDescription(
+        bytesToJson(response.ok.rtcSessionDescription)
+      ),
+      streamId: response.ok.streamId,
+    };
+  } else {
+    return {
+      type: "error",
+      error: response.error,
+    };
+  }
+}
+
+export function iceCandidates(streamId: string): Observable<RTCIceCandidate[]> {
+  return streamerClient
+    .iceCandidates({ streamId })
+    .pipe(
+      map(({ iceCandidate }) =>
+        JSON.parse(new TextDecoder().decode(iceCandidate))
+      )
+    );
+}
+
+export function addIceCandidates(
+  streamId: string,
+  iceCandidates: RTCIceCandidate[]
+) {
+  return streamerClient.addIceCandidates({
+    streamId,
+    iceCandidates: iceCandidates.map((iceCandidate) =>
+      new TextEncoder().encode(
+        JSON.stringify({
+          candidate: iceCandidate.candidate,
+          sdp_mid: iceCandidate.sdpMid,
+          sdp_mline_index: iceCandidate.sdpMLineIndex,
+          username_fragment: iceCandidate.usernameFragment,
+        })
+      )
+    ),
+  });
 }
 
 /**

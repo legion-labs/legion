@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { statusStore } from "@/stores/statusBarData";
+  import statusBar from "@/stores/statusBar";
 </script>
 
 <div class="root">
   <div class="status-bar">
     <span class="status">
-      {#if $statusStore}
-        {$statusStore}
+      {#if $statusBar}
+        {$statusBar}
       {/if}
     </span>
   </div>

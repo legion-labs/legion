@@ -45,8 +45,6 @@ export async function retry<T>(
       throw error;
     }
 
-    n--;
-
-    return retry(f, n);
+    return retry(f, n - 1);
   }
 }

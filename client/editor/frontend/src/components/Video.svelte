@@ -3,15 +3,11 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import resize from "@/actions/resize";
-  import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
-  import { debounce, retry } from "@/lib/promises";
-  import { initializeStream, onReceiveControlMessage } from "@/api";
-  import { statusStore } from "@/stores/statusBarData";
-  import log from "@/lib/log";
-
-  const reconnectionTimeout = 600;
+  import { debounce } from "@/lib/promises";
+  import { addIceCandidates, initializeStream, iceCandidates } from "@/api";
+  import statusBar from "@/stores/statusBar";
 
   const resizeVideoTimeout = 300;
 
@@ -27,161 +23,139 @@
 
   let peerConnection: RTCPeerConnection | null;
 
+  let streamId: string | undefined;
+
   let videoAlreadyRendered = false;
 
-  let loading = false;
+  $statusBar = "Connecting...";
 
-  $statusStore = "Connecting...";
-
-  onMount(async () => {
+  onMount(() => {
     initialize();
   });
 
-  // Destroys all peer connection related resources when possible
-  const destroyResources = () => {
-    if (videoChannel !== null) {
-      videoChannel.close();
-      videoChannel = null;
-    }
+  onDestroy(() => {
+    destroy();
+  });
 
-    if (controlChannel !== null) {
-      controlChannel.close();
-      controlChannel = null;
-    }
+  async function onIceCandidate(event: RTCPeerConnectionIceEvent) {
+    console.log("icecandidate", event.candidate);
+  }
 
-    if (peerConnection !== null) {
-      peerConnection.close();
-      peerConnection = null;
-    }
-  };
+  function onIceConnectionStateChange(event: any) {
+    console.log("iceconnectinstatechange", peerConnection?.iceConnectionState);
+  }
 
-  const initialize = () => {
+  function onNegociationNeeded(event: any) {
+    console.log("negotiationneeded");
+  }
+
+  async function onTrack(event: RTCTrackEvent) {
+    console.log("ontrack", event);
+
     if (!videoElement) {
-      log.error("video", "Video element couldn't be found");
       return;
     }
 
-    log.debug("video", "Initializing WebRTC");
+    let mediaStream: MediaStream;
 
+    if (event.streams[0]) {
+      mediaStream = event.streams[0];
+    } else {
+      mediaStream = new MediaStream([event.track]);
+    }
+
+    console.log("set video src", mediaStream);
+
+    videoElement.srcObject = mediaStream;
+
+    videoElement.play();
+
+    setTimeout(() => {
+      videoElement.play();
+    }, 1000);
+  }
+
+  // async function onVideoChannelMessage(
+  //   event: MessageEvent<ArrayBuffer | Blob>
+  // ) {
+  //   let data: ArrayBuffer;
+
+  //   if (event.data instanceof ArrayBuffer) {
+  //     data = event.data;
+  //   } else if (event.data instanceof Blob) {
+  //     data = await event.data.arrayBuffer();
+  //   }
+  // }
+
+  function destroy() {
+    if (!peerConnection || !videoChannel) {
+      // Peer Connection and related channels aren't initialized
+      // so it's likely no event listeners have been added, skip the destroy.
+      return;
+    }
+
+    peerConnection.removeEventListener("icecandidate", onIceCandidate);
+    peerConnection.removeEventListener(
+      "iceconnectionstatechange",
+      onIceConnectionStateChange
+    );
+    peerConnection.removeEventListener(
+      "negotiationneeded",
+      onNegociationNeeded
+    );
+    peerConnection.removeEventListener("track", onTrack);
+    // videoChannel.removeEventListener("message", onVideoChannelMessage);
+  }
+
+  async function initialize() {
+    // Peer Connection
     peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
     });
 
-    peerConnection.onnegotiationneeded = async () => {
-      if (peerConnection) {
-        peerConnection.setLocalDescription(await peerConnection.createOffer());
-      }
-    };
+    // Peer Connection event listeners
+    peerConnection.addEventListener("icecandidate", onIceCandidate);
 
-    peerConnection.onicecandidate = async (iceEvent) => {
-      log.debug("video", iceEvent);
+    peerConnection.addEventListener(
+      "iceconnectionstatechange",
+      onIceConnectionStateChange
+    );
 
-      if (peerConnection && iceEvent.candidate === null) {
-        const remoteDescription = await retry(() => {
-          if (peerConnection && peerConnection.localDescription) {
-            return initializeStream(peerConnection.localDescription);
-          }
+    peerConnection.addEventListener("negotiationneeded", onNegociationNeeded);
 
-          return Promise.resolve(null);
-        });
+    peerConnection.addEventListener("track", onTrack);
 
-        if (remoteDescription) {
-          peerConnection.setRemoteDescription(remoteDescription);
-        }
-      }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      if (
-        peerConnection &&
-        peerConnection.iceConnectionState === "disconnected"
-      ) {
-        log.debug("video", "Disconnected");
-
-        window.setTimeout(() => {
-          if (videoElement) {
-            videoElement.pause();
-            videoElement.removeAttribute("src");
-            videoElement.load();
-          }
-
-          $statusStore = "Reconnecting...";
-
-          destroyResources();
-
-          initialize();
-        }, reconnectionTimeout);
-      }
-    };
-
+    // Video Channel
     videoChannel = peerConnection.createDataChannel("video");
 
+    // Video Channel event listeners
+    // videoChannel.addEventListener("message", onVideoChannelMessage);
+
+    // Control Channel
     controlChannel = peerConnection.createDataChannel("control");
 
-    videoElement.addEventListener("loadedmetadata", (event) => {
-      if (videoElement && event.target instanceof HTMLVideoElement) {
-        if (!videoAlreadyRendered) {
-          videoAlreadyRendered = true;
-        }
-        const { videoWidth, videoHeight } = event.target;
+    // Control Channel event listeners
 
-        log.debug(
-          "video",
-          `Video resolution is now: ${videoWidth}x${videoHeight}.`
-        );
+    // Set transceiver
+    peerConnection.addTransceiver("video");
 
-        loading = false;
-        $statusStore = null;
-        resolution = desiredResolution;
-      }
-    });
+    // Init code
+    const localDescription = await peerConnection.createOffer();
 
-    videoChannel.onerror = (error: unknown) => {
-      log.error("video", error);
-    };
+    await peerConnection.setLocalDescription(localDescription);
 
-    videoChannel.onopen = () => {
-      log.debug("video", "Video channel is now open.");
-    };
+    const response = await initializeStream(peerConnection.localDescription!);
 
-    videoChannel.onclose = () => {
-      log.debug("video", "Video channel is now closed.");
-    };
+    if (response.type === "ok") {
+      await peerConnection.setRemoteDescription(response.sessionDescription);
 
-    videoChannel.onmessage = async (message) => {
-      // videoElement is augmented with the `videoPlayer` action and will
-      // provide a `push` function.
-      (videoElement as PushableHTMLVideoElement).push(
-        // In Tauri message.data is an ArrayBuffer
-        // while it's a Blob in browser
-        message.data instanceof ArrayBuffer
-          ? message.data
-          : await message.data.arrayBuffer()
-      );
-    };
+      streamId = response.streamId;
 
-    controlChannel.onopen = (event) => {
-      log.debug("video", log.json`Control channel is now open: ${event}`);
-    };
-
-    controlChannel.onclose = (event) => {
-      log.debug("video", log.json`Control channel is now closed: ${event}`);
-    };
-
-    controlChannel.onmessage = async (
-      message: MessageEvent<ArrayBuffer | Blob>
-    ) => {
-      const jsonMsg = new TextDecoder().decode(
-        // In Tauri message.data is an ArrayBuffer
-        // while it's a Blob in browser
-        message.data instanceof ArrayBuffer
-          ? message.data
-          : await message.data.arrayBuffer()
-      );
-
-      onReceiveControlMessage(jsonMsg);
-    };
-  };
+      $statusBar = null;
+    } else {
+      console.log("An error occured:", response.error);
+    }
+  }
 
   const resizeVideo = debounce((desiredResolution: Resolution) => {
     if (!videoAlreadyRendered) {
@@ -196,11 +170,9 @@
       return;
     }
 
-    log.debug("video", `Desired resolution is now: ${width}x${height}`);
-
-    if (videoChannel && videoChannel.readyState === "open") {
-      videoChannel.send(JSON.stringify({ event: "resize", width, height }));
-    }
+    // if (videoChannel && videoChannel.readyState === "open") {
+    //   videoChannel.send(JSON.stringify({ event: "resize", width, height }));
+    // }
   }, resizeVideoTimeout);
 
   const onVideoResize = ({ width, height }: DOMRectReadOnly) => {
@@ -217,35 +189,27 @@
       resolution.width !== desiredResolution.width)
   ) {
     resizeVideo(desiredResolution);
-    $statusStore = "Resizing...";
-    loading = true;
+
+    $statusBar = "Resizing...";
   }
 </script>
 
 <div class="video-container" use:resize={onVideoResize}>
-  <video
-    class="video"
-    class:opacity-0={loading}
-    class:opacity-100={!loading}
-    use:videoPlayer
-    bind:this={videoElement}
-  >
-    <track kind="captions" />
-  </video>
-  {#if $statusStore}
+  <video class="video" bind:this={videoElement} autoplay playsInline muted />
+  {#if $statusBar}
     <h3 class="status">
-      <span>{$statusStore}</span>
+      <span>{$statusBar}</span>
     </h3>
   {/if}
 </div>
 
 <style lang="postcss">
   .video-container {
-    @apply h-full w-full overflow-hidden relative text-white;
+    @apply h-full w-full overflow-hidden text-white;
   }
 
   .video {
-    @apply absolute object-cover inset-0 w-full h-full m-auto transition duration-200;
+    @apply inset-0 w-full h-full m-auto transition duration-200;
   }
 
   .status {

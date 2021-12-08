@@ -74,7 +74,7 @@ pub struct StreamerPlugin;
 
 impl Plugin for StreamerPlugin {
     fn build(&self, app: &mut App) {
-        // This channel is used a communication mechanism between the async server threads and the game-loop.
+        // This channel is used as a communication mechanism between the async server threads and the game-loop.
         let (stream_events_sender, stream_events_receiver) = crossbeam::channel::unbounded();
 
         // The streamer is the game-loop representative of the whole streaming system.
@@ -82,6 +82,7 @@ impl Plugin for StreamerPlugin {
 
         let time = Time::default();
 
+        // TODO: Add the other streamer? What for?
         app.insert_resource(streamer)
             .insert_resource(time)
             .add_event::<streamer::VideoStreamEvent>()
@@ -89,7 +90,7 @@ impl Plugin for StreamerPlugin {
             .add_system(streamer::update_streams);
 
         let webrtc_server =
-            webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
+            webrtc::WebRTCServer::new().expect("failed to instantiate a WebRTC server");
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world

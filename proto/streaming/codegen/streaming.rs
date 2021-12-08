@@ -5,10 +5,47 @@ pub struct InitializeStreamRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InitializeStreamResponse {
+    #[prost(oneof = "initialize_stream_response::Response", tags = "3, 4")]
+    pub response: ::core::option::Option<initialize_stream_response::Response>,
+}
+/// Nested message and enum types in `InitializeStreamResponse`.
+pub mod initialize_stream_response {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Ok {
+        #[prost(bytes = "vec", tag = "1")]
+        pub rtc_session_description: ::prost::alloc::vec::Vec<u8>,
+        #[prost(string, tag = "2")]
+        pub stream_id: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Response {
+        #[prost(message, tag = "3")]
+        Ok(Ok),
+        #[prost(string, tag = "4")]
+        Error(::prost::alloc::string::String),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddIceCandidatesRequest {
+    #[prost(string, tag = "1")]
+    pub stream_id: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", repeated, tag = "2")]
+    pub ice_candidates: ::prost::alloc::vec::Vec<::prost::alloc::vec::Vec<u8>>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddIceCandidatesResponse {
+    #[prost(bool, tag = "1")]
+    pub ok: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IceCandidateRequest {
+    #[prost(string, tag = "1")]
+    pub stream_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IceCandidateResponse {
     #[prost(bytes = "vec", tag = "1")]
-    pub rtc_session_description: ::prost::alloc::vec::Vec<u8>,
-    #[prost(string, tag = "2")]
-    pub error: ::prost::alloc::string::String,
+    pub ice_candidate: ::prost::alloc::vec::Vec<u8>,
 }
 #[doc = r" Generated client implementations."]
 pub mod streamer_client {
@@ -84,6 +121,39 @@ pub mod streamer_client {
             let path = http::uri::PathAndQuery::from_static("/streaming.Streamer/InitializeStream");
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn add_ice_candidates(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AddIceCandidatesRequest>,
+        ) -> Result<tonic::Response<super::AddIceCandidatesResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/streaming.Streamer/AddIceCandidates");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn ice_candidates(
+            &mut self,
+            request: impl tonic::IntoRequest<super::IceCandidateRequest>,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::IceCandidateResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/streaming.Streamer/IceCandidates");
+            self.inner
+                .server_streaming(request.into_request(), path, codec)
+                .await
+        }
     }
 }
 #[doc = r" Generated server implementations."]
@@ -97,6 +167,18 @@ pub mod streamer_server {
             &self,
             request: tonic::Request<super::InitializeStreamRequest>,
         ) -> Result<tonic::Response<super::InitializeStreamResponse>, tonic::Status>;
+        async fn add_ice_candidates(
+            &self,
+            request: tonic::Request<super::AddIceCandidatesRequest>,
+        ) -> Result<tonic::Response<super::AddIceCandidatesResponse>, tonic::Status>;
+        #[doc = "Server streaming response type for the IceCandidates method."]
+        type IceCandidatesStream: futures_core::Stream<Item = Result<super::IceCandidateResponse, tonic::Status>>
+            + Send
+            + 'static;
+        async fn ice_candidates(
+            &self,
+            request: tonic::Request<super::IceCandidateRequest>,
+        ) -> Result<tonic::Response<Self::IceCandidatesStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct StreamerServer<T: Streamer> {
@@ -166,6 +248,75 @@ pub mod streamer_server {
                             send_compression_encodings,
                         );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/streaming.Streamer/AddIceCandidates" => {
+                    #[allow(non_camel_case_types)]
+                    struct AddIceCandidatesSvc<T: Streamer>(pub Arc<T>);
+                    impl<T: Streamer> tonic::server::UnaryService<super::AddIceCandidatesRequest>
+                        for AddIceCandidatesSvc<T>
+                    {
+                        type Response = super::AddIceCandidatesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AddIceCandidatesRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).add_ice_candidates(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = AddIceCandidatesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/streaming.Streamer/IceCandidates" => {
+                    #[allow(non_camel_case_types)]
+                    struct IceCandidatesSvc<T: Streamer>(pub Arc<T>);
+                    impl<T: Streamer>
+                        tonic::server::ServerStreamingService<super::IceCandidateRequest>
+                        for IceCandidatesSvc<T>
+                    {
+                        type Response = super::IceCandidateResponse;
+                        type ResponseStream = T::IceCandidatesStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::IceCandidateRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).ice_candidates(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = IceCandidatesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

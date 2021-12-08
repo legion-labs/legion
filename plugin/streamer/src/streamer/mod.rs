@@ -9,21 +9,30 @@ use lgn_renderer::{
 use log::{error, info, warn};
 use webrtc::{
     data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    media::track::track_local::track_local_static_sample::TrackLocalStaticSample,
     peer::peer_connection::RTCPeerConnection,
 };
 
 mod control_stream;
 mod events;
-mod video_stream;
+pub(crate) mod video_stream;
 
 use control_stream::ControlStream;
 pub(crate) use events::*;
-use video_stream::VideoStream;
+pub(crate) use video_stream::VideoStream;
 
 // Streamer provides interaction with the async network components (gRPC &
 // WebRTC) from the synchronous game-loop.
 pub(crate) struct Streamer {
     stream_events_receiver: crossbeam::channel::Receiver<StreamEvent>,
+}
+
+impl Streamer {
+    pub(crate) fn new(stream_events_receiver: crossbeam::channel::Receiver<StreamEvent>) -> Self {
+        Self {
+            stream_events_receiver,
+        }
+    }
 }
 
 // StreamID represents a stream unique identifier.
@@ -39,7 +48,7 @@ pub(crate) enum StreamEvent {
         tokio::sync::oneshot::Sender<StreamID>,
     ),
     ConnectionClosed(StreamID, Arc<RTCPeerConnection>),
-    VideoChannelOpened(StreamID, Arc<RTCDataChannel>),
+    VideoChannelOpened(StreamID, Arc<TrackLocalStaticSample>),
     VideoChannelClosed(StreamID, Arc<RTCDataChannel>),
     VideoChannelMessageReceived(StreamID, Arc<RTCDataChannel>, DataChannelMessage),
     ControlChannelOpened(StreamID, Arc<RTCDataChannel>),
@@ -56,14 +65,6 @@ impl StreamID {
 impl Display for StreamID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.entity)
-    }
-}
-
-impl Streamer {
-    pub(crate) fn new(stream_events_receiver: crossbeam::channel::Receiver<StreamEvent>) -> Self {
-        Self {
-            stream_events_receiver,
-        }
     }
 }
 
@@ -97,14 +98,14 @@ pub(crate) fn handle_stream_events(
                     stream_id,
                 );
             }
-            StreamEvent::VideoChannelOpened(stream_id, data_channel) => {
+            StreamEvent::VideoChannelOpened(stream_id, video_track) => {
                 let resolution = Resolution::new(1024, 768);
                 let mut render_surface = RenderSurface::new(
                     &renderer,
                     RenderSurfaceExtents::new(resolution.width(), resolution.height()),
                 );
                 render_surface.register_presenter(|| {
-                    VideoStream::new(&renderer, resolution, data_channel).unwrap()
+                    VideoStream::new(&renderer, resolution, video_track).unwrap()
                 });
                 commands.entity(stream_id.entity).insert(render_surface);
 

@@ -21,10 +21,15 @@ export default function videoPlayer(
   videoElement: HTMLVideoElement,
   options?: { onFatal?: () => void }
 ) {
+  videoElement.muted = true;
+  videoElement.autoplay = true;
+  videoElement.playsInline = true;
+
   let videoSource: SourceBuffer | null = null;
   let mediaSource: MediaSource | null = null;
   let waitingForKeyFrame = true;
   let listeners: Listener[] = [];
+
   const queue: Uint8Array[] = [];
 
   const addListener = (source: Source, name: string, f: () => void) => {
@@ -50,8 +55,6 @@ export default function videoPlayer(
       if (videoSource) {
         addListener(videoSource, "update", submit);
       }
-
-      videoElement.play();
     });
   };
 
@@ -75,7 +78,6 @@ export default function videoPlayer(
     onVideoClose();
 
     waitingForKeyFrame = true;
-    videoElement.pause();
 
     for (const { source, name, f } of listeners) {
       source.removeEventListener(name, f);
