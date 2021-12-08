@@ -246,16 +246,22 @@ impl EguiPass {
             .map(|i| f32::from(i) / 255.0)
             .collect::<Vec<f32>>();
 
-        let staging_buffer = render_context
-            .renderer()
-            .device_context()
-            .create_buffer(&BufferDef::for_staging_buffer_data(
-                &pixels,
-                ResourceUsage::empty(),
-            ))
-            .unwrap();
+        let staging_buffer = render_context.renderer().device_context().create_buffer(
+            &BufferDef::for_staging_buffer_data(&pixels, ResourceUsage::empty()),
+        );
 
-        staging_buffer.copy_to_host_visible_buffer(&pixels).unwrap();
+        let alloc_def = MemoryAllocationDef {
+            memory_usage: MemoryUsage::CpuToGpu,
+            always_mapped: true,
+        };
+
+        let buffer_memory = MemoryAllocation::from_buffer(
+            render_context.renderer().device_context(),
+            &staging_buffer,
+            &alloc_def,
+        );
+
+        buffer_memory.copy_to_host_visible_buffer(&pixels);
 
         cmd_buffer
             .cmd_resource_barrier(
@@ -341,7 +347,7 @@ impl EguiPass {
             .unwrap();
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 
-        let transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
             if mesh.is_empty() {
@@ -364,18 +370,13 @@ impl EguiPass {
                 })
                 .collect();
 
-            let sub_allocation = transient_allocator.copy_data(None, &vertex_data, 0);
+            let sub_allocation =
+                transient_allocator.copy_data(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
 
-            render_context
-                .renderer()
-                .transient_buffer()
-                .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
-
-            let sub_allocation = transient_allocator.copy_data(None, &mesh.indices, 0);
-            render_context
-                .renderer()
-                .transient_buffer()
-                .bind_allocation_as_index_buffer(cmd_buffer, &sub_allocation, IndexType::Uint32);
+            let sub_allocation =
+                transient_allocator.copy_data(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
+            sub_allocation.bind_as_index_buffer(cmd_buffer, IndexType::Uint32);
 
             let scale = 1.0;
             let push_constant_data: [f32; 6] = [
