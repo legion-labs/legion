@@ -15,9 +15,9 @@
 
   const resizeVideoTimeout = 300;
 
-  export let desiredResolution: Resolution | undefined;
+  export let desiredResolution: Resolution | null = null;
 
-  let resolution: Resolution | undefined;
+  let resolution: Resolution | null = null;
 
   let videoElement: HTMLVideoElement;
 
