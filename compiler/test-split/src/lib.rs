@@ -62,7 +62,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_offline::resource::ResourceProcessor;
+use lgn_data_offline::{resource::ResourceProcessor, Transform};
 use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -70,7 +70,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(
+    transform: &Transform::new(
         multitext_resource::MultiTextResource::TYPE,
         text_resource::TextResource::TYPE,
     ),

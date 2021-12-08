@@ -1,5 +1,6 @@
 use std::{env, path::PathBuf};
 
+use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use tempfile::TempDir;
 
 pub fn target_dir() -> PathBuf {
@@ -26,4 +27,12 @@ pub fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     std::fs::create_dir(&resource_dir).unwrap();
     std::fs::create_dir(&output_dir).unwrap();
     (resource_dir, output_dir)
+}
+
+pub fn test_env() -> CompilationEnv {
+    CompilationEnv {
+        target: Target::Game,
+        platform: Platform::Windows,
+        locale: Locale::new("en"),
+    }
 }

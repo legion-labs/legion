@@ -60,7 +60,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::{hash_code_and_data, path_id_to_binary},
 };
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -68,7 +68,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(
+    transform: &Transform::new(
         lgn_graphics_offline::Material::TYPE,
         lgn_graphics_runtime::Material::TYPE,
     ),

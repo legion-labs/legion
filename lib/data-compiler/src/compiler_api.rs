@@ -16,8 +16,8 @@
 //!
 //! ```no_run
 //! # use lgn_data_compiler::{CompilerHash, Locale, Platform, Target};
-//! # use lgn_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use lgn_data_offline::ResourcePathId;
+//! # use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
+//! # use lgn_data_offline::{ResourcePathId, Transform};
 //! # use lgn_data_runtime::ResourceType;
 //! # use lgn_content_store::ContentStoreAddr;
 //! # use std::path::Path;
@@ -28,7 +28,7 @@
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    transform: &(INPUT_TYPE, OUTPUT_TYPE),
+//!    transform: &Transform::new(INPUT_TYPE, OUTPUT_TYPE),
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -36,9 +36,7 @@
 //! fn compiler_hash(
 //!    code: &'static str,
 //!    data: &'static str,
-//!    target: Target,
-//!    platform: Platform,
-//!    locale: &Locale,
+//!    env: &CompilationEnv,
 //!) -> CompilerHash {
 //!    todo!()
 //!}
@@ -72,8 +70,8 @@ use std::{
 
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
+use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::AssetRegistryOptions;
 
 use crate::{
     compiler_cmd::{
@@ -109,6 +107,16 @@ pub struct CompilationOutput {
     pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
 }
 
+/// The compilation environment - the context in which compilation runs.
+pub struct CompilationEnv {
+    /// Output build target type.
+    pub target: Target,
+    /// Output platform.
+    pub platform: Platform,
+    /// Output language/region.
+    pub locale: Locale,
+}
+
 /// Context of the current compilation process.
 pub struct CompilerContext<'a> {
     /// Compilation input - direct dependency of target.
@@ -119,12 +127,8 @@ pub struct CompilerContext<'a> {
     pub dependencies: &'a [ResourcePathId],
     /// Pre-configures asset registry builder.
     resources: Option<AssetRegistryOptions>,
-    /// Compilation target.
-    pub target: Target,
-    /// Compilation platform.
-    pub platform: Platform,
-    /// Compilation locale.
-    pub locale: &'a Locale,
+    /// Compilation environment.
+    pub env: CompilationEnv,
     /// Content-addressable storage of compilation output.
     output_store: &'a mut dyn ContentStore,
 }
@@ -166,15 +170,10 @@ pub struct CompilerDescriptor {
     /// Version of resource data formats.
     pub data_version: &'static str,
     /// Compiler supported resource transformation `f(.0)->.1`.
-    pub transform: &'static (ResourceType, ResourceType),
+    pub transform: &'static Transform,
     /// Function returning a list of `CompilerHash` for a given context.
-    pub compiler_hash_func: fn(
-        code: &'static str,
-        data: &'static str,
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
-    ) -> CompilerHash,
+    pub compiler_hash_func:
+        fn(code: &'static str, data: &'static str, env: &CompilationEnv) -> CompilerHash,
     /// Data compilation function.
     #[allow(clippy::type_complexity)]
     pub compile_func: fn(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError>,
@@ -251,12 +250,16 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(locale);
 
+            let env = CompilationEnv {
+                target,
+                platform,
+                locale,
+            };
+
             let compiler_hash = (descriptor.compiler_hash_func)(
                 descriptor.code_version,
                 descriptor.data_version,
-                target,
-                platform,
-                &locale,
+                &env,
             );
             let output = CompilerHashCmdOutput { compiler_hash };
             serde_json::to_writer_pretty(stdout(), &output)
@@ -344,10 +347,12 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 target_unnamed: derived,
                 dependencies: &dependencies,
                 resources: Some(registry),
-                target,
-                platform,
+                env: CompilationEnv {
+                    target,
+                    platform,
+                    locale,
+                },
                 output_store: &mut output_store,
-                locale: &locale,
             };
 
             let compilation_output = (descriptor.compile_func)(context)?;

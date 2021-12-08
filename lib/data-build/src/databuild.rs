@@ -7,16 +7,16 @@ use std::time::SystemTime;
 use std::{env, io};
 
 use lgn_content_store::{ContentStore, HddContentStore};
-use lgn_data_compiler::compiler_api::DATA_BUILD_VERSION;
+use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION};
 use lgn_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
-use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -45,7 +45,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    transform: (ResourceType, ResourceType),
+    transform: Transform,
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -68,7 +68,7 @@ fn compute_context_hash(
 /// ```no_run
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::{Locale, Platform, Target};
+/// # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 /// # use std::str::FromStr;
@@ -83,12 +83,16 @@ fn compute_context_hash(
 /// let manifest_file = &DataBuild::default_output_file();
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
+/// let env = CompilationEnv {
+///            target: Target::Game,
+///            platform: Platform::Windows,
+///            locale: Locale::new("en"),
+/// };
+///
 /// let manifest = build.compile(
 ///                         compile_path,
 ///                         Some(manifest_file.to_path_buf()),
-///                         Target::Game,
-///                         Platform::Windows,
-///                         &Locale::new("en"),
+///                         &env,
 ///                      ).expect("compilation output");
 /// ```
 pub struct DataBuild {
@@ -227,9 +231,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         manifest_file: Option<PathBuf>,
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
+        env: &CompilationEnv,
     ) -> Result<Manifest, Error> {
         let source = compile_path.source_resource();
         if !self.project.exists(source) {
@@ -270,7 +272,7 @@ impl DataBuild {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(compile_path, target, platform, locale)?;
+        } = self.compile_path(compile_path, env)?;
 
         let assets = self.link(&resources, &references)?;
 
@@ -305,9 +307,7 @@ impl DataBuild {
         source_hash: u64,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
+        env: &CompilationEnv,
         compiler_path: &Path,
     ) -> Result<
         (
@@ -345,9 +345,7 @@ impl DataBuild {
                     derived_deps,
                     &self.content_store.address(),
                     &self.project.resource_dir(),
-                    target,
-                    platform,
-                    locale,
+                    env,
                 );
 
                 let CompilerCompileCmdOutput {
@@ -433,9 +431,7 @@ impl DataBuild {
     fn compile_path(
         &mut self,
         compile_path: ResourcePathId,
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
+        env: &CompilationEnv,
     ) -> Result<CompileOutput, Error> {
         self.build_index.record_pathid(&compile_path);
 
@@ -478,7 +474,7 @@ impl DataBuild {
                 transforms
             };
 
-            let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
+            let compiler_hash_cmd = CompilerHashCmd::new(env);
 
             unique_transforms
                 .into_iter()
@@ -607,9 +603,7 @@ impl DataBuild {
                     source_hash,
                     &dependencies,
                     &accumulated_dependencies,
-                    target,
-                    platform,
-                    locale,
+                    env,
                     compiler_path,
                 )?;
 

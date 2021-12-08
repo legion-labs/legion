@@ -59,7 +59,7 @@ use std::{path::PathBuf, str::FromStr};
 use clap::{AppSettings, Arg, SubCommand};
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 
@@ -231,7 +231,15 @@ fn main() -> Result<(), String> {
             .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
         let output = build
-            .compile(derived, manifest_file, target, platform, &locale)
+            .compile(
+                derived,
+                manifest_file,
+                &CompilationEnv {
+                    target,
+                    platform,
+                    locale,
+                },
+            )
             .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
         if runtime_flag {

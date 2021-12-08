@@ -6,7 +6,7 @@ use std::{
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::Resource;
 use sample_data_runtime as runtime_data;
@@ -59,9 +59,11 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
             .compile(
                 asset_path,
                 Some(offline_manifest_path),
-                Target::Server,
-                platform,
-                &locale,
+                &CompilationEnv {
+                    target: Target::Server,
+                    platform,
+                    locale,
+                },
             )
             .expect("valid manifest");
 
