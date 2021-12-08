@@ -95,7 +95,7 @@ pub fn generate(
             compiler_utils::hash_code_and_data,
         };
 
-        use lgn_data_offline::ResourcePathId;
+        use lgn_data_offline::{ResourcePathId, Transform};
         use lgn_data_runtime::{Resource};
         type OfflineType = #offline_crate_name::#type_name;
         type RuntimeType = #runtime_crate_name::#type_name;
@@ -105,7 +105,7 @@ pub fn generate(
             build_version: DATA_BUILD_VERSION,
             code_version: "1",
             data_version: #signature_hash,
-            transform: &(OfflineType::TYPE, RuntimeType::TYPE),
+            transform: &Transform::new(OfflineType::TYPE, RuntimeType::TYPE),
             compiler_hash_func: hash_code_and_data,
             compile_func: compile,
         };

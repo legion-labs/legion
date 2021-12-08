@@ -14,6 +14,7 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
 lgn-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }

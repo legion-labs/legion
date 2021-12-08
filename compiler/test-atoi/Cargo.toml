@@ -15,6 +15,7 @@ doc = false
 
 [dependencies]
 lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }
 integer-asset = { path = "../../lib/data-runtime/test-integer-asset" }

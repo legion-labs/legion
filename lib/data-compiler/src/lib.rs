@@ -235,6 +235,12 @@ impl Locale {
     }
 }
 
+impl fmt::Display for Locale {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 pub mod compiler_api;
 pub mod compiler_cmd;
 pub mod compiler_utils;

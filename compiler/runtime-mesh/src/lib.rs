@@ -62,7 +62,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::Resource;
 use sample_data_compiler::offline_to_runtime::FromOffline;
 use sample_data_offline as offline_data;
@@ -73,7 +73,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
+    transform: &Transform::new(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };

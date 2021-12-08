@@ -2,7 +2,7 @@ use std::fs;
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
     ResourcePathId,
@@ -79,9 +79,11 @@ fn build_device() {
         .compile(
             derived.clone(),
             None,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &CompilationEnv {
+                target: Target::Game,
+                platform: Platform::Windows,
+                locale: Locale::new("en"),
+            },
         )
         .expect("successful compilation");
 
