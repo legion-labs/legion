@@ -126,7 +126,7 @@ Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    float4 uniform_color = uniform_data.color; 
+    float4 uniform_color = const_data.color; 
     float3 ambient_color = uniform_color.xyz / 5.0;
     float3 diffuse_color = uniform_color.xyz;
     float3 spec_color = diffuse_color + float3(0.5, 0.5, 0.5);

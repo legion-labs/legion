@@ -280,8 +280,6 @@ impl Renderer {
             pool.end_frame();
         }
     }
-        std::mem::drop(self.test_transform_data.take());
-
 
         (shader, root_signature)
     }
@@ -289,6 +287,8 @@ impl Renderer {
 
 impl Drop for Renderer {
     fn drop(&mut self) {
+        std::mem::drop(self.test_transform_data.take());
+
         let graphics_queue = self.queue(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
@@ -341,20 +341,17 @@ impl TmpRenderPass {
                 LightType::Spotlight { .. } => unimplemented!(),
             }
         }
-        let mut sub_allocation = transient_allocator.copy_data(None, &directional_lights_data, 64);
+        let mut sub_allocation = transient_allocator
+            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE);
 
-        let directional_lights_buffer_view = render_context
-            .renderer()
-            .transient_buffer()
-            .structured_buffer_view_for_allocation(&sub_allocation, 8 * 4, true);
+        let directional_lights_buffer_view = sub_allocation.structured_buffer_view(8 * 4, true);
 
-        sub_allocation =
-            transient_allocator.copy_data(Some(sub_allocation), &omnidirectional_lights_data, 64);
+        sub_allocation = transient_allocator.copy_data(
+            &omnidirectional_lights_data,
+            ResourceUsage::AS_SHADER_RESOURCE,
+        );
 
-        let omnidirectional_lights_buffer_view = render_context
-            .renderer()
-            .transient_buffer()
-            .structured_buffer_view_for_allocation(&sub_allocation, 8 * 4, true);
+        let omnidirectional_lights_buffer_view = sub_allocation.structured_buffer_view(8 * 4, true);
 
                 )
                 .unwrap();
