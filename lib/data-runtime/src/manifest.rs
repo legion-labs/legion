@@ -23,7 +23,7 @@ pub struct CompiledAsset {
 pub struct Manifest(HashMap<ResourceTypeAndId, (Checksum, usize)>);
 
 impl Manifest {
-    /// Retrieve information about `Asset` identified by a given [`ResourceId`], if available.
+    /// Retrieve information about `Asset` identified by a given [`crate::ResourceId`], if available.
     pub fn find(&self, type_id: ResourceTypeAndId) -> Option<(Checksum, usize)> {
         self.0.get(&type_id).copied()
     }

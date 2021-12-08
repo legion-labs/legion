@@ -217,7 +217,7 @@ struct Inner {
 
 /// Registry of all loaded [`Resource`]s.
 ///
-/// Provides an API to load assets by their [`ResourceId`]. The lifetime of an [`Resource`] is determined
+/// Provides an API to load assets by their [`crate::ResourceId`]. The lifetime of an [`Resource`] is determined
 /// by the reference counted [`HandleUntyped`] and [`Handle`].
 ///
 /// # Safety:
