@@ -164,11 +164,13 @@ impl TransientBufferAllocator {
         paged_buffer: &TransientPagedBuffer,
         min_alloc_size: u64,
     ) -> Self {
+        let allocation = paged_buffer.allocate_page(min_alloc_size);
+        let offset = allocation.offset();
         Self {
             paged_buffer: paged_buffer.clone(),
-            allocation: paged_buffer.allocate_page(min_alloc_size),
+            allocation,
             device_info: *device_context.device_info(),
-            offset: 0,
+            offset,
         }
     }
 
@@ -183,24 +185,37 @@ impl TransientBufferAllocator {
             self.device_info.min_storage_buffer_offset_alignment
         };
 
-        let old_offset =
+        let mut aligned_offset =
             lgn_utils::memory::round_size_up_to_alignment_u64(self.offset, u64::from(alignment));
-        self.offset += lgn_utils::memory::round_size_up_to_alignment_u64(
+        let aligned_size = lgn_utils::memory::round_size_up_to_alignment_u64(
             data_size_in_bytes,
             u64::from(alignment),
         );
+        let mut new_offset = aligned_offset + aligned_size;
 
-        if self.offset > self.allocation.size() {
+        if new_offset > self.allocation.size() {
             self.allocation = self.paged_buffer.allocate_page(data_size_in_bytes);
-            self.offset = 0;
+
+            aligned_offset = self.allocation.offset();
+            new_offset = aligned_offset + aligned_size;
+
+            assert!(
+                aligned_offset
+                    == lgn_utils::memory::round_size_up_to_alignment_u64(
+                        aligned_offset,
+                        u64::from(alignment)
+                    )
+            );
         }
+
+        self.offset = new_offset;
 
         BufferAllocation {
             buffer: self.allocation.buffer.clone(),
             memory: self.allocation.memory.clone(),
             range: Range {
-                first: old_offset,
-                last: self.offset,
+                first: aligned_offset,
+                last: new_offset,
             },
         }
     }
