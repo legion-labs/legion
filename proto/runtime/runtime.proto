@@ -1,0 +1,8 @@
+syntax = "proto3";
+package runtime;
+
+service Runtime { rpc Pause(PauseRequest) returns (PauseResponse); }
+
+message PauseRequest {}
+
+message PauseResponse {}

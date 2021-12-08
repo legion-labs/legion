@@ -1,0 +1,58 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 12px;
+}
+
+body {
+  @apply select-none bg-gray-800 text-white font-default;
+}
+
+/* Customize scrollbar on Chrome, Safari, Edge */
+*::-webkit-scrollbar {
+  @apply w-3;
+}
+
+*::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+*::-webkit-scrollbar-thumb {
+  @apply bg-gray-500 hover:bg-gray-400 transition-all;
+}
+
+/* Firefox doesn't seem to allow scrollbar customization */
+
+/* Conditionally remove arrows in input number on Chrome, Safari, Edge */
+.no-arrow.input::-webkit-outer-spin-button,
+.no-arrow.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* Conditionally remove arrows in input number on Firefox */
+.no-arrow.input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Remove border from input color on Chrome, Safari, Edge */
+input[type="color"] {
+  -webkit-appearance: none;
+  @apply border-none;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  @apply p-0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  @apply border-none;
+}
+
+/* Remove border from input color on Firefox */
+::-moz-color-swatch {
+  @apply border-none;
+}
