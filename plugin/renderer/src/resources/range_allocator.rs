@@ -62,6 +62,8 @@ impl RangeAllocator {
             }
         }
         self.available += free_range.last - free_range.first;
-        self.free_list.insert(insert_index, free_range);
+        if insert_index != self.free_list.len() {
+            self.free_list.insert(insert_index, free_range);
+        }
     }
 }
