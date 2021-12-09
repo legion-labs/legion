@@ -6,6 +6,7 @@
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { onMount } from "svelte";
+  import { zoomHorizontalViewRange } from "@/lib/zoom";
 
   export let id: string;
 
@@ -144,20 +145,7 @@
     if (!canvas) {
       throw new Error("Canvas can't be found");
     }
-
-    const speed = 0.75;
-    const factor = event.deltaY > 0 ? 1.0 / speed : speed;
-    const oldRange = getViewRange();
-    const length = oldRange[1] - oldRange[0];
-    const newLength = length * factor;
-    const pctCursor = event.offsetX / canvas.width;
-    const pivot = oldRange[0] + length * pctCursor;
-
-    viewRange = [
-      pivot - newLength * pctCursor,
-      pivot + newLength * (1 - pctCursor),
-    ];
-
+    viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
     drawCanvas();
   }
 </script>
