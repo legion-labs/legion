@@ -36,7 +36,7 @@
     }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx){
+    if (!ctx) {
       throw new Error("Couldn't get context for canvas");
     }
     renderingContext = ctx;
@@ -46,17 +46,17 @@
   });
 
   async function fetchProcessInfo() {
-    const reply = await client.list_process_metrics( {processId: id });
+    const reply = await client.list_process_metrics({ processId: id });
     metrics = reply.metrics;
     minMs = reply.minTimeMs;
     maxMs = reply.maxTimeMs;
   }
 
-  function drawTrack( points: MetricDataPoint[] ){
-    if (points.length == 0){
+  function drawTrack(points: MetricDataPoint[]) {
+    if (points.length == 0) {
       return;
     }
-    if (!canvas || !renderingContext){
+    if (!canvas || !renderingContext) {
       return;
     }
     let minValue = Infinity;
@@ -67,9 +67,9 @@
 
     let beginIndex = points.length;
     let endIndex = 0;
-    for( let i = 0; i < points.length; ++i ){
+    for (let i = 0; i < points.length; ++i) {
       const pt = points[i];
-      if (pt.timeMs >= beginView && pt.timeMs <= endView){
+      if (pt.timeMs >= beginView && pt.timeMs <= endView) {
         minValue = Math.min(minValue, pt.value);
         maxValue = Math.max(maxValue, pt.value);
         beginIndex = Math.min(beginIndex, i);
@@ -77,8 +77,8 @@
       }
     }
 
-    beginIndex = Math.max( 0, beginIndex-1 );
-    endIndex = Math.min( endIndex+1, points.length );
+    beginIndex = Math.max(0, beginIndex - 1);
+    endIndex = Math.min(endIndex + 1, points.length);
 
     const timeSpan = endView - beginView;
     const valueSpan = maxValue - minValue;
@@ -89,14 +89,14 @@
     {
       let p = points[beginIndex];
       let x = ((p.timeMs - beginView) / timeSpan) * widthPixels;
-      let y = heightPixels - ((p.value - minValue) * heightPixels / valueSpan);
-      renderingContext.moveTo(x,y);
+      let y = heightPixels - ((p.value - minValue) * heightPixels) / valueSpan;
+      renderingContext.moveTo(x, y);
     }
-    for( let i = beginIndex+1; i < endIndex; ++i ){
+    for (let i = beginIndex + 1; i < endIndex; ++i) {
       let p = points[i];
       let x = ((p.timeMs - beginView) / timeSpan) * widthPixels;
-      let y = heightPixels - ((p.value - minValue) * heightPixels / valueSpan);
-      renderingContext.lineTo(x,y);
+      let y = heightPixels - ((p.value - minValue) * heightPixels) / valueSpan;
+      renderingContext.lineTo(x, y);
     }
     renderingContext.lineWidth = 2;
     renderingContext.stroke();
@@ -111,22 +111,27 @@
       window.innerHeight - canvas.getBoundingClientRect().top - 20;
 
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
-    for( let key in dataTracks ){
+    for (let key in dataTracks) {
       drawTrack(dataTracks[key]);
     }
   }
 
-  async function onMetricSelectionChanged(metricName: string, evt: Event & { currentTarget: EventTarget & HTMLInputElement; }) {
+  async function onMetricSelectionChanged(
+    metricName: string,
+    evt: Event & { currentTarget: EventTarget & HTMLInputElement }
+  ) {
     const selected = evt.currentTarget.checked;
-    if ( !selected ){
+    if (!selected) {
       delete dataTracks[metricName];
       drawCanvas();
       return;
     }
-    const reply = await client.fetch_process_metric( {processId: id,
-                                                      metricName: metricName,
-                                                      beginMs: minMs,
-                                                      endMs: maxMs} );
+    const reply = await client.fetch_process_metric({
+      processId: id,
+      metricName: metricName,
+      beginMs: minMs,
+      endMs: maxMs,
+    });
     dataTracks[metricName] = reply.points;
     drawCanvas();
   }
@@ -151,17 +156,18 @@
 
     drawCanvas();
   }
-
 </script>
 
 <div>
   <div id="metric-selection-div">
     {#each metrics as metric (metric.name)}
       <div class="metric-checkbox-div">
-        <input type="checkbox" id={metric.name+'_select'}
-               on:click={evt => onMetricSelectionChanged(metric.name, evt)}
+        <input
+          type="checkbox"
+          id={metric.name + "_select"}
+          on:click={(evt) => onMetricSelectionChanged(metric.name, evt)}
         />
-        <label for={metric.name+'_select'}> {metric.name}</label>
+        <label for={metric.name + "_select"}> {metric.name}</label>
       </div>
     {/each}
   </div>
@@ -170,11 +176,10 @@
     id="canvas_plot"
     width="1024px"
     on:wheel|preventDefault={onZoom}
-    />
+  />
 </div>
 
 <style lang="postcss">
-
   #metric-selection-div {
     display: inline-block;
   }
@@ -182,10 +187,9 @@
   .metric-checkbox-div {
     text-align: left;
   }
-  
+
   #canvas_plot {
     display: inline-block;
     margin: auto;
   }
-  
 </style>
