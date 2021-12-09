@@ -50,7 +50,7 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
 
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
