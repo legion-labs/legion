@@ -22,7 +22,7 @@ crossbeam-channel = "0.5"
 
 # vulkan backend
 ash = { version = ">= 0.33", optional = true }
-vk-mem = { version = "0.2.3", optional = true }
+vk-mem = { version = "0.2.2", optional = true }
 ash-window = { version = ">= 0.7", optional = true }
 
 [package.metadata.docs.rs]
