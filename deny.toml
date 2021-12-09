@@ -125,39 +125,9 @@ license-files = [
 ]
 
 [[licenses.clarify]]
-name = "aws-config"
-version = "*"
-expression = "Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-name = "smithy-async"
-version = "*"
-expression = "Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-name = "smithy-query"
-version = "*"
-expression = "Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-name = "smithy-eventstream"
-version = "*"
-expression = "Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-name = "smithy-json"
-version = "*"
-expression = "Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-name = "smithy-xml"
-version = "*"
-expression = "Apache-2.0"
+name = "encoding_rs"
+version = "0.8.30"
+expression = "MIT OR Apache-2.0"
 license-files = []
 
 [licenses.private]
