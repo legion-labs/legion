@@ -69,16 +69,20 @@
     let endIndex = 0;
     for (let i = 0; i < points.length; ++i) {
       const pt = points[i];
-      if (pt.timeMs >= beginView && pt.timeMs <= endView) {
+      if (pt.timeMs < beginView) {
+        continue;
+      } else if (pt.timeMs <= endView) {
         minValue = Math.min(minValue, pt.value);
         maxValue = Math.max(maxValue, pt.value);
         beginIndex = Math.min(beginIndex, i);
         endIndex = Math.max(endIndex, i);
+      } else {
+        break;
       }
     }
 
     beginIndex = Math.max(0, beginIndex - 1);
-    endIndex = Math.min(endIndex + 1, points.length);
+    endIndex = Math.min(endIndex + 2, points.length);
 
     const timeSpan = endView - beginView;
     const valueSpan = maxValue - minValue;
