@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{AssetRegistry, ResourceId, ResourceType};
+use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
 use tokio::sync::MutexGuard;
 
 use crate::DataManager;
@@ -19,7 +19,7 @@ pub struct LockContext<'a> {
     /// Reference to the Asset Registry
     pub asset_registry: Arc<AssetRegistry>,
     // List of Resouce changed during the lock (that need saving)
-    pub(crate) changed_resources: HashSet<ResourceId>,
+    pub(crate) changed_resources: HashSet<ResourceTypeAndId>,
 }
 
 impl<'a> LockContext<'a> {

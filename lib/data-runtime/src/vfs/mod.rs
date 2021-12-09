@@ -1,9 +1,9 @@
-use crate::ResourceId;
+use crate::ResourceTypeAndId;
 
 // todo: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
 pub(crate) trait Device: Send {
-    fn load(&self, id: ResourceId) -> Option<Vec<u8>>;
-    fn reload(&self, _id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
+    fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {
         None
     }
 }

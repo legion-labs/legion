@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use sample_data_offline as offline_data;
 
 use super::raw_data;
 
 pub trait FromRaw<T> {
-    fn from_raw(raw: T, references: &HashMap<ResourcePathName, ResourceId>) -> Self;
+    fn from_raw(raw: T, references: &HashMap<ResourcePathName, ResourceTypeAndId>) -> Self;
 }
 
 fn lookup_reference(
-    references: &HashMap<ResourcePathName, ResourceId>,
+    references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     path: &str,
-) -> Option<ResourceId> {
+) -> Option<ResourceTypeAndId> {
     let path = ResourcePathName::new(path);
     references.get(&path).copied()
 }
@@ -75,9 +75,9 @@ fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
 }
 
 // Resolved a raw representation of asset_path such as "runtime_texture(offline_texture(image/ground.psd, 'albedo'))"
-// into a offline ResourcePathId such as "Some(0x13b5a84e000000007f8d831386fd3fef|1960578643_albedo)"
+// into a offline ResourcePathId such as "Some((13b5a84e,000000007f8d831386fd3fef)|1960578643_albedo)"
 fn lookup_asset_path(
-    references: &HashMap<ResourcePathName, ResourceId>,
+    references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     path: &str,
 ) -> Option<ResourcePathId> {
     let source = source_resource(path);
@@ -97,7 +97,10 @@ fn lookup_asset_path(
 // ----- Entity conversions -----
 
 impl FromRaw<raw_data::Entity> for offline_data::Entity {
-    fn from_raw(raw: raw_data::Entity, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
+    fn from_raw(
+        raw: raw_data::Entity,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
+    ) -> Self {
         let children: Vec<ResourcePathId> = raw
             .children
             .iter()
@@ -159,7 +162,10 @@ impl From<raw_data::Transform> for offline_data::Transform {
 }
 
 impl FromRaw<raw_data::Visual> for offline_data::Visual {
-    fn from_raw(raw: raw_data::Visual, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
+    fn from_raw(
+        raw: raw_data::Visual,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
+    ) -> Self {
         Self {
             renderable_geometry: lookup_asset_path(references, &raw.renderable_geometry),
             shadow_receiver: raw.shadow_receiver,
@@ -240,7 +246,7 @@ impl From<raw_data::Light> for offline_data::Light {
 impl FromRaw<raw_data::Physics> for offline_data::Physics {
     fn from_raw(
         raw: raw_data::Physics,
-        references: &HashMap<ResourcePathName, ResourceId>,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
             dynamic: raw.dynamic,
@@ -262,7 +268,7 @@ impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
 impl FromRaw<raw_data::Instance> for offline_data::Instance {
     fn from_raw(
         raw: raw_data::Instance,
-        references: &HashMap<ResourcePathName, ResourceId>,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
             original: lookup_asset_path(references, &raw.original),
@@ -275,7 +281,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
 impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
     fn from_raw(
         raw: raw_data::Material,
-        references: &HashMap<ResourcePathName, ResourceId>,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
             albedo: lookup_asset_path(references, &raw.albedo),
@@ -289,7 +295,10 @@ impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
 // ----- Mesh conversions -----
 
 impl FromRaw<raw_data::Mesh> for offline_data::Mesh {
-    fn from_raw(raw: raw_data::Mesh, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
+    fn from_raw(
+        raw: raw_data::Mesh,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
+    ) -> Self {
         Self {
             sub_meshes: raw
                 .sub_meshes
@@ -303,7 +312,7 @@ impl FromRaw<raw_data::Mesh> for offline_data::Mesh {
 impl FromRaw<&raw_data::SubMesh> for offline_data::SubMesh {
     fn from_raw(
         raw: &raw_data::SubMesh,
-        references: &HashMap<ResourcePathName, ResourceId>,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
             positions: raw.positions.clone(),

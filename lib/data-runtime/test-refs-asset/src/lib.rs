@@ -6,7 +6,8 @@ use std::{any::Any, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
+    resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
+    ResourceTypeAndId,
 };
 /// Asset temporarily used for testing.
 ///
@@ -59,15 +60,16 @@ fn read_maybe_reference<T>(
 where
     T: Any + Resource,
 {
-    let underlying = reader.read_u128::<LittleEndian>()?;
-    if underlying == 0 {
+    let underlying_type = reader.read_u32::<LittleEndian>()?;
+    if underlying_type == 0 {
         return Ok(None);
     }
-    match ResourceId::try_from(underlying) {
-        Ok(resource_id) => Ok(Some(Reference::Passive(resource_id))),
-        Err(_err) => Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "failed to read asset id",
-        )),
+    let underlying_id = reader.read_u128::<LittleEndian>()?;
+    if underlying_id == 0 {
+        return Ok(None);
     }
+    Ok(Some(Reference::Passive(ResourceTypeAndId {
+        t: ResourceType::from_raw(underlying_type),
+        id: ResourceId::from_raw(underlying_id),
+    })))
 }

@@ -14,9 +14,8 @@ use generic_data_offline::{DebugCube, TestEntity};
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use lgn_data_runtime::{Resource, ResourceId, ResourceType};
+use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_offline::PsdFile;
-use lgn_utils::DefaultHash;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 
@@ -143,8 +142,8 @@ fn create_or_find_default(
     resource_names: &[ResourcePathName],
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> HashMap<ResourcePathName, ResourceId> {
-    let mut ids: HashMap<ResourcePathName, ResourceId> = HashMap::default();
+) -> HashMap<ResourcePathName, ResourceTypeAndId> {
+    let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
 
     for (i, path) in file_paths.iter().enumerate() {
         let name = &resource_names[i];
@@ -154,8 +153,10 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(name) {
                 id
             } else {
-                let resource_hash = name.default_hash();
-                let id = ResourceId::new(kind, resource_hash);
+                let id = ResourceTypeAndId {
+                    t: kind,
+                    id: ResourceId::new(),
+                };
                 project
                     .add_resource_with_id(
                         name.clone(),
@@ -177,9 +178,11 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(&name) {
                 id
             } else {
-                let resource_hash = name.default_hash();
                 let kind = TestEntity::TYPE;
-                let id = ResourceId::new(kind, resource_hash);
+                let id = ResourceTypeAndId {
+                    t: kind,
+                    id: ResourceId::new(),
+                };
                 let test_entity_handle = resources.new_resource(kind).unwrap();
                 let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
                 test_entity.test_string = "Editable String Value".into();
@@ -200,7 +203,10 @@ fn create_or_find_default(
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
         let id = project.find_resource(&name).unwrap_or_else(|_err| {
             let kind = DebugCube::TYPE;
-            let id = ResourceId::new(kind, name.default_hash());
+            let id = ResourceTypeAndId {
+                t: kind,
+                id: ResourceId::new(),
+            };
             let cube_entity_handle = resources.new_resource(kind).unwrap();
             let cube_entity = cube_entity_handle.get_mut::<DebugCube>(resources).unwrap();
 
@@ -291,12 +297,12 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
 }
 
 fn load_ron_resource<RawType, OfflineType>(
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     file: &Path,
-    references: &HashMap<ResourcePathName, ResourceId>,
+    references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> Option<ResourceId>
+) -> Option<ResourceTypeAndId>
 where
     RawType: DeserializeOwned,
     OfflineType: Resource + FromRaw<RawType> + 'static,
@@ -324,11 +330,11 @@ where
 }
 
 fn load_psd_resource(
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> Option<ResourceId> {
+) -> Option<ResourceTypeAndId> {
     let raw_data = fs::read(file).ok()?;
     let loaded_psd = PsdFile::from_bytes(&raw_data)?;
 

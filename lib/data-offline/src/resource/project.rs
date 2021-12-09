@@ -6,7 +6,7 @@ use std::{
 };
 
 use lgn_content_store::content_checksum_from_read;
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
 use crate::resource::{
@@ -23,8 +23,8 @@ const PROJECT_INDEX_FILENAME: &str = "project.index";
 
 #[derive(Serialize, Deserialize, Default)]
 struct ResourceDb {
-    remote_resources: Vec<ResourceId>,
-    local_resources: Vec<ResourceId>,
+    remote_resources: Vec<ResourceTypeAndId>,
+    local_resources: Vec<ResourceTypeAndId>,
 }
 
 impl ResourceDb {
@@ -189,7 +189,7 @@ impl Project {
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub fn resource_list(&self) -> impl Iterator<Item = ResourceId> + '_ {
+    pub fn resource_list(&self) -> impl Iterator<Item = ResourceTypeAndId> + '_ {
         self.db
             .remote_resources
             .iter()
@@ -197,8 +197,8 @@ impl Project {
             .copied()
     }
 
-    /// Finds resource by its name and returns its `ResourceId`.
-    pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceId, Error> {
+    /// Finds resource by its name and returns its `ResourceTypeAndId`.
+    pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
         // this below would be better expressed as try_map (still experimental).
         let res = self
             .resource_list()
@@ -225,7 +225,7 @@ impl Project {
     }
 
     /// Checks if a resource is part of the project.
-    pub fn exists(&self, id: ResourceId) -> bool {
+    pub fn exists(&self, id: ResourceTypeAndId) -> bool {
         self.resource_list().any(|v| v == id)
     }
 
@@ -242,9 +242,12 @@ impl Project {
         kind: ResourceType,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
-    ) -> Result<ResourceId, Error> {
-        let id = ResourceId::new_random_id(kind);
-        self.add_resource_with_id(name, kind, id, handle, registry)
+    ) -> Result<ResourceTypeAndId, Error> {
+        let type_id = ResourceTypeAndId {
+            t: kind,
+            id: ResourceId::new(),
+        };
+        self.add_resource_with_id(name, kind, type_id, handle, registry)
     }
 
     /// Add a given resource of a given type and id with an associated `.meta`.
@@ -258,12 +261,12 @@ impl Project {
         &mut self,
         name: ResourcePathName,
         kind: ResourceType,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
-    ) -> Result<ResourceId, Error> {
-        let meta_path = self.metadata_path(id);
-        let resource_path = self.resource_path(id);
+    ) -> Result<ResourceTypeAndId, Error> {
+        let meta_path = self.metadata_path(type_id);
+        let resource_path = self.resource_path(type_id);
 
         let build_dependencies = {
             let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
@@ -287,32 +290,32 @@ impl Project {
         let metadata = Metadata::new_with_dependencies(name, content_checksum, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
-        self.db.local_resources.push(id);
-        Ok(id)
+        self.db.local_resources.push(type_id);
+        Ok(type_id)
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
+    pub fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+        let resource_path = self.resource_path(type_id);
+        let metadata_path = self.metadata_path(type_id);
 
         std::fs::remove_file(resource_path).map_err(Error::IOError)?;
         std::fs::remove_file(metadata_path).map_err(Error::IOError)?;
 
-        self.db.local_resources.retain(|x| *x != id);
-        self.db.remote_resources.retain(|x| *x != id);
+        self.db.local_resources.retain(|x| *x != type_id);
+        self.db.remote_resources.retain(|x| *x != type_id);
         Ok(())
     }
 
     /// Writes the resource behind `handle` from memory to disk and updates the corresponding .meta file.
     pub fn save_resource(
         &mut self,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
         resources: &mut ResourceRegistry,
     ) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
+        let resource_path = self.resource_path(type_id);
+        let metadata_path = self.metadata_path(type_id);
 
         let mut meta_file = OpenOptions::new()
             .read(true)
@@ -330,7 +333,7 @@ impl Project {
                 .map_err(Error::IOError)?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(id.ty(), handle, &mut resource_file)
+                .serialize_resource(type_id.t, handle, &mut resource_file)
                 .map_err(Error::IOError)?;
             build_deps
         };
@@ -355,14 +358,14 @@ impl Project {
     /// In order to update the resource on disk see [`Self::save_resource()`].
     pub fn load_resource(
         &self,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, Error> {
-        let resource_path = self.resource_path(id);
+        let resource_path = self.resource_path(type_id);
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
         let handle = resources
-            .deserialize_resource(id.ty(), &mut resource_file)
+            .deserialize_resource(type_id.t, &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
     }
@@ -370,9 +373,9 @@ impl Project {
     /// Returns information about a given resource from its `.meta` file.
     pub fn resource_info(
         &self,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
     ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(id)?;
+        let meta = self.read_meta(type_id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
 
@@ -380,8 +383,8 @@ impl Project {
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(id)?;
+    pub fn resource_name(&self, type_id: ResourceTypeAndId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(type_id)?;
         Ok(meta.name)
     }
 
@@ -390,24 +393,29 @@ impl Project {
         self.resource_dir.clone()
     }
 
-    fn metadata_path(&self, id: ResourceId) -> PathBuf {
+    fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(format!("{:x}", id));
+        path.push(type_id.to_string());
         path.set_extension(METADATA_EXT);
         path
     }
 
-    fn resource_path(&self, id: ResourceId) -> PathBuf {
-        self.resource_dir().join(format!("{:x}", id))
+    fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
+        self.resource_dir().join(type_id.to_string())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
-    pub fn checkout(&mut self, id: ResourceId) -> Result<(), Error> {
-        if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == id) {
+    pub fn checkout(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+        if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == type_id) {
             return Ok(()); // already checked out
         }
 
-        if let Some(index) = self.db.remote_resources.iter().position(|res| *res == id) {
+        if let Some(index) = self
+            .db
+            .remote_resources
+            .iter()
+            .position(|res| *res == type_id)
+        {
             let resource = self.db.remote_resources.remove(index);
             self.db.local_resources.push(resource);
             return Ok(());
@@ -416,8 +424,8 @@ impl Project {
         Err(Error::NotFound)
     }
 
-    fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
-        let path = self.metadata_path(id);
+    fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
+        let path = self.metadata_path(type_id);
 
         let file = File::open(path).map_err(Error::IOError)?;
 
@@ -425,11 +433,11 @@ impl Project {
         Ok(result)
     }
 
-    fn update_meta<F>(&self, id: ResourceId, mut func: F)
+    fn update_meta<F>(&self, type_id: ResourceTypeAndId, mut func: F)
     where
         F: FnMut(&mut Metadata),
     {
-        let path = self.metadata_path(id);
+        let path = self.metadata_path(type_id);
 
         let mut file = OpenOptions::new()
             .read(true)
@@ -452,13 +460,13 @@ impl Project {
     /// nor it invalidates any build using that asset.
     pub fn rename_resource(
         &mut self,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        self.checkout(id)?;
+        self.checkout(type_id)?;
 
         let mut old_name: Option<ResourcePathName> = None;
-        self.update_meta(id, |data| {
+        self.update_meta(type_id, |data| {
             old_name = Some(data.rename(new_name));
         });
         Ok(old_name.unwrap())
@@ -573,7 +581,7 @@ mod tests {
             writer.write_all(&bytes)?;
 
             for dep in &resource.dependencies {
-                let str = format!("{}", dep);
+                let str = dep.to_string();
                 let str = str.as_bytes();
                 let bytes = str.len().to_ne_bytes();
                 writer.write_all(&bytes)?;

@@ -1,16 +1,16 @@
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct CreateResourceOperation {
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
 }
 
 impl CreateResourceOperation {
-    pub fn new(resource_id: ResourceId, resource_path: ResourcePathName) -> Self {
+    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Self {
         Self {
             resource_id,
             resource_path,
@@ -23,8 +23,8 @@ impl TransactionOperation for CreateResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         let handle = ctx
             .resource_registry
-            .new_resource(self.resource_id.ty())
-            .ok_or_else(|| Error::ResourceCreationFailed(self.resource_id.ty()))?;
+            .new_resource(self.resource_id.t)
+            .ok_or(Error::ResourceCreationFailed(self.resource_id.t))?;
 
         // Validate duplicate id/name
         if ctx.project.exists(self.resource_id) {
@@ -36,7 +36,7 @@ impl TransactionOperation for CreateResourceOperation {
 
         ctx.project.add_resource_with_id(
             self.resource_path.clone(),
-            self.resource_id.ty(),
+            self.resource_id.t,
             self.resource_id,
             &handle,
             &mut ctx.resource_registry,

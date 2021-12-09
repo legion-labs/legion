@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use log::{info, warn};
 
 use crate::create_resource_operation::CreateResourceOperation;
@@ -108,8 +108,11 @@ impl Transaction {
         &mut self,
         resource_path: ResourcePathName,
         resource_type: ResourceType,
-    ) -> anyhow::Result<ResourceId> {
-        let resource_id = ResourceId::new_random_id(resource_type);
+    ) -> anyhow::Result<ResourceTypeAndId> {
+        let resource_id = ResourceTypeAndId {
+            t: resource_type,
+            id: ResourceId::new(),
+        };
         self.operations.push(Box::new(CreateResourceOperation::new(
             resource_id,
             resource_path,
@@ -118,7 +121,7 @@ impl Transaction {
     }
 
     /// Queue the Delete of the Resources
-    pub fn delete_resource(&mut self, resource_id: ResourceId) -> anyhow::Result<()> {
+    pub fn delete_resource(&mut self, resource_id: ResourceTypeAndId) -> anyhow::Result<()> {
         self.operations
             .push(Box::new(DeleteResourceOperation::new(resource_id)));
         Ok(())
@@ -127,7 +130,7 @@ impl Transaction {
     /// Queue Update of the Property of a Resource using Reflection
     pub fn update_property(
         &mut self,
-        resource_id: ResourceId,
+        resource_id: ResourceTypeAndId,
         property_name: &str,
         new_value: &str,
     ) -> anyhow::Result<()> {

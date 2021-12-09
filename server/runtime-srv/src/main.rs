@@ -61,14 +61,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::str::FromStr;
-
 use clap::Arg;
 use instant::Duration;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_telemetry::prelude::*;
@@ -135,18 +133,15 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample-data/runtime/game.manifest");
 
-    let mut assets_to_load: Vec<ResourceId> = Vec::new();
+    let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     // default root object is in sample data
     // /world/sample_1.ent
-    // resource-id: 97b0740f00000000fcd3242ec9691beb
-    // asset-id: aad8904500000000ab5fe63eda1e1c4f
-    // checksum: 3aba5061a97aa89bb522050b16081f67
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("aad8904500000000ab5fe63eda1e1c4f");
-    if let Ok(asset_id) = ResourceId::from_str(root_asset) {
+        .unwrap_or("(97b0740f,6f9c3cba-b1f1-468a-a109-e71b0ac0e9fa)");
+    if let Ok(asset_id) = root_asset.parse::<ResourceTypeAndId>() {
         assets_to_load.push(asset_id);
     }
 

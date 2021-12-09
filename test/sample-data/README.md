@@ -12,3 +12,8 @@ What the data currently contains:
 * A world (sample 1), a ground entity which is original to the world, instanced cubes
 * The ground entity which depends on an explicit mesh (a non imported mesh),
 * A Cube which depends on an exported geometry (from an obj file)
+
+To update:
+1. clean (delete folders offline/, runtime/, temp/, project.index)
+2. cargo build at root folder
+3. cargo run --bin sample-data-compiler

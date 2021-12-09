@@ -210,8 +210,7 @@ impl AssetRegistryPlugin {
                         ) {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
-                                asset_id.ty(),
-                                asset_id
+                                asset_id.t, asset_id
                             );
                         }
 

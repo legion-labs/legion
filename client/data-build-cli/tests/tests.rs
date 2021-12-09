@@ -201,7 +201,7 @@ fn no_intermediate_resource() {
         let locale = "en";
         let mut command = std::process::Command::new(DATABUILD_EXE);
         command.arg("compile");
-        command.arg(format!("{}", compile_path));
+        command.arg(compile_path.to_string());
         command.arg(format!("--cas={}", cas.to_str().unwrap()));
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
@@ -284,7 +284,7 @@ fn with_intermediate_resource() {
         let locale = "en";
         let mut command = std::process::Command::new(DATABUILD_EXE);
         command.arg("compile");
-        command.arg(format!("{}", compile_path));
+        command.arg(compile_path.to_string());
         command.arg(format!("--cas={}", cas.to_str().unwrap()));
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));

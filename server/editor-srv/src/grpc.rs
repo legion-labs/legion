@@ -1,6 +1,4 @@
-use std::{str::FromStr, sync::Arc};
-
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::{DataManager, LockContext, Transaction};
 use lgn_editor_proto::{
     editor_server::{Editor, EditorServer},
@@ -10,6 +8,7 @@ use lgn_editor_proto::{
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
 use log::info;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
@@ -46,7 +45,7 @@ impl Editor for GRPCServer {
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
-                    id: resource_id.to_string(),
+                    id: ResourceTypeAndId::to_string(&resource_id),
                     path: name.to_string(),
                     version: 1,
                 }
@@ -92,8 +91,9 @@ impl Editor for GRPCServer {
         &self,
         request: Request<GetResourcePropertiesRequest>,
     ) -> Result<Response<GetResourcePropertiesResponse>, Status> {
-        let resource_id: ResourceId =
-            ResourceId::from_str(request.get_ref().id.as_str()).map_err(|_err| {
+        let resource_id: ResourceTypeAndId = (request.get_ref().id.as_str())
+            .parse::<ResourceTypeAndId>()
+            .map_err(|_err| {
                 Status::internal(format!(
                     "Invalid ResourceID format: {}",
                     request.get_ref().id
@@ -109,7 +109,7 @@ impl Editor for GRPCServer {
 
         let mut response = GetResourcePropertiesResponse {
             description: Some(ResourceDescription {
-                id: resource_id.to_string(),
+                id: ResourceTypeAndId::to_string(&resource_id),
                 path: ctx
                     .project
                     .resource_name(resource_id)
@@ -123,7 +123,7 @@ impl Editor for GRPCServer {
         // Refresh for Reflection interface. Might not be present for type with no properties
         if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.ty(), handle)
+            .get_resource_reflection(resource_id.t, handle)
         {
             let descriptors = reflection.get_property_descriptors().ok_or_else(|| {
                 Status::internal(format!(
@@ -165,8 +165,11 @@ impl Editor for GRPCServer {
 
         info!("updating resource properties for entity {}", request.id);
 
-        let resource_id: ResourceId =
-            ResourceId::from_str(request.id.as_str()).map_err(|_err| {
+        let resource_id: ResourceTypeAndId = request
+            .id
+            .as_str()
+            .parse::<ResourceTypeAndId>()
+            .map_err(|_err| {
                 Status::internal(format!("Invalid ResourceID format: {}", request.id))
             })?;
 
@@ -195,7 +198,7 @@ impl Editor for GRPCServer {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.ty(), handle)
+            .get_resource_reflection(resource_id.t, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request

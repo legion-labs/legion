@@ -5,7 +5,7 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
 use lgn_async::AsyncPlugin;
 use lgn_core::CorePlugin;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
@@ -136,7 +136,7 @@ fn main() {
         Some(DataBuildSettings::new(build_bin, buildindex))
     };
 
-    let assets_to_load: Vec<ResourceId> = Vec::new();
+    let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
