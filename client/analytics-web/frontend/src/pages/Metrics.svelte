@@ -7,27 +7,29 @@
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
+  import {
+    DrawSelectedRange,
+    NewSelectionState,
+    RangeSelectionOnMouseDown,
+    RangeSelectionOnMouseMove,
+    SelectionState,
+  } from "@/lib/time_range_selection";
 
   type BeginPan = {
     beginMouseX: number;
     viewRange: [number, number];
   };
 
-  type BeginSelect = {
-    beginMouseX: number;
-  };
-
   export let id: string;
 
   let beginPan: BeginPan | undefined;
-  let beginSelect: BeginSelect | undefined;
   let canvas: HTMLCanvasElement | undefined;
   let dataTracks: Record<string, MetricDataPoint[]> = {};
   let maxMs = -Infinity;
   let metrics: MetricDesc[] = [];
   let minMs = Infinity;
   let renderingContext: CanvasRenderingContext2D | undefined;
-  let selectedRange: [number, number] | undefined;
+  let selectionState: SelectionState = NewSelectionState();
   let viewRange: [number, number] | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
@@ -119,34 +121,6 @@
     renderingContext.stroke();
   }
 
-  //todo: factor out, change timeline
-  function drawSelectedRange() {
-    if (!canvas || !renderingContext) {
-      return;
-    }
-
-    if (!selectedRange) {
-      return;
-    }
-
-    const [begin, end] = getViewRange();
-    const invTimeSpan = 1.0 / (end - begin);
-    const canvasWidth = canvas.clientWidth;
-    const canvasHeight = canvas.clientHeight;
-    const msToPixelsFactor = invTimeSpan * canvasWidth;
-    const [beginSelection, endSelection] = selectedRange;
-    const beginPixels = (beginSelection - begin) * msToPixelsFactor;
-    const endPixels = (endSelection - begin) * msToPixelsFactor;
-
-    renderingContext.fillStyle = "rgba(64, 64, 200, 0.2)";
-    renderingContext.fillRect(
-      beginPixels,
-      0,
-      endPixels - beginPixels,
-      canvasHeight
-    );
-  }
-
   function drawCanvas() {
     if (!canvas || !renderingContext) {
       return;
@@ -159,7 +133,7 @@
     for (let key in dataTracks) {
       drawTrack(dataTracks[key]);
     }
-    drawSelectedRange();
+    DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
   }
 
   async function onMetricSelectionChanged(
@@ -210,50 +184,44 @@
       beginPan.viewRange[0] + offsetMs,
       beginPan.viewRange[1] + offsetMs,
     ];
-    drawCanvas();
   }
 
   function onMouseDown(event: MouseEvent) {
-    if (event.shiftKey) {
-      beginSelect = undefined;
-      selectedRange = undefined;
+    if (RangeSelectionOnMouseDown(event, selectionState)) {
       drawCanvas();
     }
   }
 
-  function onMouseMove(event: MouseEvent) {
+  // returns if the view should be updated
+  function PanOnMouseMove(event: MouseEvent): boolean {
     if (event.buttons !== 1) {
       beginPan = undefined;
-      beginSelect = undefined;
+      return false;
+    }
+
+    if (!event.shiftKey) {
+      onPan(event);
+      return true;
+    }
+    return false;
+  }
+
+  function onMouseMove(event: MouseEvent) {
+    if (!canvas) {
       return;
     }
 
-    if (event.shiftKey) {
-      onSelectRange(event);
-    } else {
-      onPan(event);
+    if (
+      RangeSelectionOnMouseMove(
+        event,
+        selectionState,
+        canvas,
+        getViewRange()
+      ) ||
+      PanOnMouseMove(event)
+    ) {
+      drawCanvas();
     }
-  }
-
-  //todo: factor out
-  function onSelectRange(event: MouseEvent) {
-    if (!canvas) {
-      throw new Error("Canvas can't be found");
-    }
-
-    if (!beginSelect) {
-      beginSelect = {
-        beginMouseX: event.offsetX,
-      };
-    }
-
-    const viewRange = getViewRange();
-    const factor = (viewRange[1] - viewRange[0]) / canvas.width;
-    const beginTime = viewRange[0] + factor * beginSelect.beginMouseX;
-    const endTime = viewRange[0] + factor * event.offsetX;
-
-    selectedRange = [beginTime, endTime];
-    drawCanvas();
   }
 </script>
 
@@ -275,8 +243,8 @@
     id="canvas_plot"
     width="1024px"
     on:wheel|preventDefault={onZoom}
-    on:mousemove={onMouseMove}
-    on:mousedown={onMouseDown}
+    on:mousemove|preventDefault={onMouseMove}
+    on:mousedown|preventDefault={onMouseDown}
   />
 </div>
 
