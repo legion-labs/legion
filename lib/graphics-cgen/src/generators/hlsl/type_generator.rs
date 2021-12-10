@@ -11,8 +11,7 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    let cgen_types = model.object_iter::<CGenType>().unwrap_or_default();
-    for cgen_type in cgen_types {
+    for cgen_type in model.object_iter::<CGenType>() {
         match cgen_type {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => Some(generate_hlsl_struct(&ctx, cgen_type)),
@@ -21,7 +20,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             products.push(Product::new(
                 CGenVariant::Hlsl,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Hlsl),
-                content,
+                content.into_bytes(),
             ))
         });
     }
@@ -29,7 +28,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 }
 
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
-    let typestring = get_hlsl_typestring(model, member.type_key);
+    let typestring = get_hlsl_typestring(model, member.object_id);
 
     format!("{} {};", typestring, member.name)
 }
@@ -54,8 +53,8 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     // dependencies
     let deps = GeneratorContext::get_type_dependencies(ty);
     if !deps.is_empty() {
-        for key in &deps {
-            let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
+        for object_id in &deps {
+            let dep_ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
             match dep_ty {
                 CGenType::Native(_) => (),
                 CGenType::Struct(_) => {

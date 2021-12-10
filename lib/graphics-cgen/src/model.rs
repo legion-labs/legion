@@ -134,7 +134,7 @@ pub trait ModelObject: 'static + Clone + Sized {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct ModelObjectId {
     type_index: u32,
     object_index: u32,
@@ -147,7 +147,40 @@ impl ModelObjectId {
             object_index,
         }
     }
+
+    pub fn object_id(&self) -> u32 {
+        self.object_index
+    }
 }
+
+// #[derive(Debug, PartialEq, Clone, Copy)]
+// pub struct ModelHandle<T: ModelObject> {
+//     id: ModelObjectId,
+//     _phantom: PhantomData<T>,
+// }
+
+// impl<T: ModelObject> Eq for ModelHandle<T> {
+    
+// }
+
+// impl<T: ModelObject> Hash for ModelHandle<T> {
+//     fn hash<H: Hasher>(&self, mut state: &mut H) {
+//         self.id.hash(state)
+//     }
+// }
+
+// impl<T: ModelObject> ModelHandle<T> {
+//     fn new(type_index: u32, object_index: u32) -> Self {
+//         Self {
+//             id: ModelObjectId::new(type_index, object_index),
+//             _phantom: PhantomData::default(),
+//         }
+//     }
+
+//     pub fn object_id(&self) -> u32 {
+//         self.id.object_index
+//     }
+// }
 
 #[derive(Debug, Default)]
 pub struct Model {
@@ -173,13 +206,17 @@ impl<'a, T: ModelObject> Default for ModelVecIter<'a, T> {
 }
 
 impl<'a, T: ModelObject> ModelVecIter<'a, T> {
-    fn new(model_vec: &'a ModelVec) -> Self {
+    fn new(model_vec: Option<&'a ModelVec>) -> Self {
+        if let Some(model_vec) = model_vec {
         let cur_ptr = model_vec.data().cast::<T>().as_ptr();
         let end_ptr = unsafe { cur_ptr.add(model_vec.size()) };
         Self {
             cur_ptr,
             end_ptr,
             _marker: PhantomData::default(),
+        }
+        } else {
+            Self::default()
         }
     }
 }
@@ -234,16 +271,25 @@ impl Model {
         Ok(object_id)
     }
 
-    pub fn object_iter<T: ModelObject>(&self) -> Option<ModelVecIter<'_, T>> {
-        let container = self.get_container::<T>()?;
-        Some(ModelVecIter::new(container))
+    pub fn object_iter<T: ModelObject>(&self) -> ModelVecIter<'_, T> {
+        let container = self.get_container::<T>();
+        ModelVecIter::new(container)
     }
 
-    pub fn get<T: ModelObject>(&self, key: ModelKey) -> Option<&T> {
-        let id = self.key_map.get(&key).copied()?;
+    pub fn get_object_id<T: ModelObject>(&self, key: ModelKey) -> Option<ModelObjectId> {
         let container_index = self.get_container_index::<T>()?;
+        let id = self.key_map.get(&key).copied()?;
         assert!(id.type_index as usize == container_index);
-        let container = self.get_container_by_index(container_index);
+        Some(id)
+    }
+
+    pub fn get_from_key<T: ModelObject>(&self, key: ModelKey) -> Option<&T> {
+        self.get_object_id::<T>(key)
+            .and_then(|x| self.get_from_objectid(x))
+    }
+
+    pub fn get_from_objectid<T: ModelObject>(&self, id: ModelObjectId) -> Option<&T> {
+        let container = self.get_container::<T>()?;
         let ptr = container.get_object_ref(id.object_index as usize) as *const T;
         unsafe { ptr.as_ref() }
     }
@@ -330,18 +376,21 @@ pub enum NativeType {
     Float4x4,
 }
 
+// pub type CGenTypeHandle = ModelHandle<CGenType>;
+
 #[derive(Debug, Clone)]
 pub struct StructMember {
     pub name: String,
-    pub type_key: ModelKey,
+    pub object_id: ModelObjectId,
+    // pub type_handle: CGenTypeHandle,
     pub array_len: Option<u32>,
 }
 
 impl StructMember {
-    pub fn new(name: &str, type_key: ModelKey, array_len: Option<u32>) -> Self {
+    pub fn new(name: &str, object_id: ModelObjectId, array_len: Option<u32>) -> Self {
         StructMember {
             name: name.to_owned(),
-            type_key,
+            object_id,
             array_len,
         }
     }
@@ -397,7 +446,7 @@ pub enum TextureFormat {
 
 #[derive(Debug, Clone, Copy)]
 pub struct TextureDef {
-    pub type_key: ModelKey,
+    pub object_id: ModelObjectId,
 }
 
 #[derive(Debug)]
@@ -417,12 +466,12 @@ pub enum DescriptorType {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ConstantBufferDef {
-    pub type_key: ModelKey,
+    pub object_id: ModelObjectId,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct StructuredBufferDef {
-    pub type_key: ModelKey,
+    pub object_id: ModelObjectId,
 }
 
 #[derive(Debug, Clone)]
@@ -482,29 +531,28 @@ impl ModelObject for DescriptorSet {
 #[derive(Debug, Clone)]
 pub struct PushConstant {
     pub name: String,
-    pub type_key: ModelKey,
+    pub object_id: ModelObjectId,
 }
 
 impl PushConstant {
-    pub fn new(name: &str, type_key: ModelKey) -> Self {
+    pub fn new(name: &str, object_id: ModelObjectId) -> Self {
         PushConstant {
             name: name.to_owned(),
-            type_key,
+            object_id,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum PipelineLayoutContent {
-    DescriptorSet(ModelKey),
-    Pushconstant(ModelKey),
+    DescriptorSet(ModelObjectId),
+    Pushconstant(ModelObjectId),
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct PipelineLayout {
     pub name: String,
     pub members: Vec<(String, PipelineLayoutContent)>,
-    // pub pushconstants: Vec<PushConstant>,
 }
 
 impl PipelineLayout {
@@ -512,8 +560,15 @@ impl PipelineLayout {
         PipelineLayout {
             name: name.to_owned(),
             members: Vec::new(),
-            // pushconstants: Vec::new(),
         }
+        }
+
+    pub fn descriptor_sets(&self) -> impl Iterator<Item = ModelObjectId> + '_ {
+        let x = self.members.iter().filter_map(|m| match m.1 {
+            PipelineLayoutContent::DescriptorSet(ds) => Some(ds),
+            PipelineLayoutContent::Pushconstant(_) => None,
+        });
+        x
     }
 }
 

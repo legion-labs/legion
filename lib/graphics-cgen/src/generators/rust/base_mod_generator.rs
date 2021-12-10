@@ -12,7 +12,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products.push(Product::new(
         CGenVariant::Rust,
         RelativePath::new("mod.rs").to_relative_path_buf(),
-        content,
+        content.into_bytes(),
     ));
 
     products
@@ -44,7 +44,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     writer.new_line();    
     writer.add_line( "pub struct CodeGen {".to_string() );
     writer.indent();
-        for descriptor_set in model.object_iter::<DescriptorSet>().unwrap_or_default() {
+        for descriptor_set in model.object_iter::<DescriptorSet>() {
             writer.add_line( format!("{}: {},", descriptor_set.name.to_snake_case(), descriptor_set.name));    
         }
     writer.unindent();
@@ -58,7 +58,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             writer.indent();
             writer.add_line( "Self{".to_string());
                 writer.indent();
-                for descriptor_set in model.object_iter::<DescriptorSet>().unwrap_or_default() {
+                for descriptor_set in model.object_iter::<DescriptorSet>() {
                     writer.add_line( format!("{}: {}::new(device_context), ", descriptor_set.name.to_snake_case(), descriptor_set.name));    
                 }
                 writer.unindent();
@@ -66,7 +66,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             writer.unindent();
         writer.add_line( "}".to_string());
         // write accessors
-        for descriptor_set in model.object_iter::<DescriptorSet>().unwrap_or_default() { 
+        for descriptor_set in model.object_iter::<DescriptorSet>() { 
             writer.add_line( format!("pub fn {}(&self) -> &{} {{ &self.{}  }}", descriptor_set.name.to_snake_case(), descriptor_set.name, descriptor_set.name.to_snake_case()));    
         }
         //...
@@ -86,5 +86,5 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
 // }
 
 // struct FrameDescriptorSetLayout {
-//     layout_def: DescriptorSetLayoutDef,    
+//     layout_def: DescriptorSetLayoutDef,
 // }

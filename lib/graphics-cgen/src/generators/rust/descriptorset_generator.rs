@@ -8,13 +8,12 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    let descriptor_sets = model.object_iter::<DescriptorSet>().unwrap_or_default();
-    for descriptor_set in descriptor_sets {
+    for descriptor_set in model.object_iter::<DescriptorSet>() {
         let content = generate_rust_descriptorset(&ctx, descriptor_set);
         products.push(Product::new(
             CGenVariant::Rust,
             GeneratorContext::get_object_rel_path(descriptor_set, CGenVariant::Rust),
-            content,
+            content.into_bytes(),
         ));
     }
 
@@ -31,7 +30,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Rust,
             mod_path,
-            writer.to_string(),
+            writer.to_string().into_bytes(),
         ));
     }
 
@@ -89,8 +88,8 @@ fn generate_rust_descriptorset(
     let deps = GeneratorContext::get_descriptorset_dependencies(descriptor_set);
 
     if !deps.is_empty() {
-        for key in &deps {
-            let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
+        for object_id in &deps {
+            let dep_ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
             match dep_ty {
                 CGenType::Native(_) => {}
                 CGenType::Struct(e) => {
@@ -121,7 +120,10 @@ fn generate_rust_descriptorset(
     ));
     writer.indent();
     writer.add_line("let mut layout_def = DescriptorSetLayoutDef::default();".to_string());
-    writer.add_line(format!("layout_def.frequency = {};", descriptor_set.frequency));
+    writer.add_line(format!(
+        "layout_def.frequency = {};",
+        descriptor_set.frequency
+    ));
     for _descriptor_def in &descriptor_set.descriptors {}
     writer.add_line(
         "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();"

@@ -27,7 +27,7 @@ pub struct VulkanDescriptorSetBufWriter {
 
 impl VulkanDescriptorSetBufWriter {
     pub fn new(descriptor_set_layout: &DescriptorSetLayout) -> GfxResult<Self> {
-        if descriptor_set_layout.platform_layout().vk_layout() == vk::DescriptorSetLayout::null() {
+        if descriptor_set_layout.vk_layout() == vk::DescriptorSetLayout::null() {
             return Err("Descriptor set layout does not exist in this root signature".into());
         }
 

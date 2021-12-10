@@ -1,12 +1,11 @@
 use std::{
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, RwLock},
 };
 
 use anyhow::{anyhow, Result};
 use hassle_rs::DxcIncludeHandler;
-use normpath::{BasePath, BasePathBuf, PathExt};
-use relative_path::RelativePath;
+use normpath::BasePathBuf;
 
 struct MountPoint {
     name: String,
@@ -91,14 +90,6 @@ impl FileSystem {
         Ok(())
     }
 
-    // pub fn get_file_content_from_rel_path(
-    //     &self,
-    //     path: &RelativePath,
-    // ) -> Result<(BasePathBuf, String)> {
-    //     let abs_path = self.get_absolute_path(path)?;
-    //     self.get_file_content_from_abs_path(&abs_path)
-    // }
-
     pub fn translate_path(&self, path: &str) -> Result<BasePathBuf> {
         let protocol = "crate://";
         if !path.starts_with(protocol) {
@@ -143,38 +134,6 @@ impl FileSystem {
         std::io::Read::read_to_string(&mut std::fs::File::open(&abs_path)?, &mut shader_code)?;
         Ok(shader_code)
     }
-
-    fn get_absolute_path(&self, rel_path: &RelativePath) -> Result<BasePathBuf> {
-        let mut abs_path = PathBuf::new();
-        let reader = self.inner.mount_points.read().unwrap();
-        for src_folder in &*reader {
-            // let candidate_path = rel_path.to_logical_path(&src_folder);
-            // if candidate_path.exists() && !abs_path.exists() {
-            //     abs_path = candidate_path;
-            // } else if candidate_path.exists() && abs_path.exists() {
-            //     return Err(anyhow!("Multiple occurences of the file {}", rel_path));
-            // }
-        }
-        if !abs_path.exists() {
-            return Err(anyhow!(
-                "File {} does not exist in the specified folders",
-                rel_path
-            ));
-        }
-        let mut result = BasePathBuf::new(&abs_path).map_err(|e| anyhow!(e))?;
-        result.canonicalize().map_err(|e| anyhow!(e))
-    }
-
-    fn to_abs_path(path: &str) -> Result<BasePathBuf> {
-        let outdir_path = Path::new(path).normalize().unwrap();
-        if outdir_path.is_relative() {
-            let cur_dir = std::env::current_dir()?;
-            BasePathBuf::new(RelativePath::new(path).to_logical_path(cur_dir))
-                .map_err(|e| anyhow!(e))
-        } else {
-            Ok(outdir_path)
-        }
-    }
 }
 
 pub struct FileServerIncludeHandler(pub FileSystem); // stack
@@ -193,18 +152,5 @@ impl DxcIncludeHandler for FileServerIncludeHandler {
             Ok(r) => Some(r),
             Err(_) => None,
         }
-
-        // let file_path = BasePath::new(Path::new(&filename)).unwrap();
-        // let result = if file_path.is_absolute() {
-        //     self.0.get_file_content(&file_path)
-        // } else {
-        //     self.0.get_file_content_from_rel_path(
-        //         RelativePath::from_path(file_path.as_path()).unwrap(),
-        //     )
-        // };
-        // match result {
-        //     Ok(r) => Some(r.1),
-        //     Err(_) => None,
-        // }
     }
 }

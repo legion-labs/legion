@@ -1,24 +1,18 @@
 use crate::{
-    generators::{
-        file_writer::FileWriter, product::Product,
-        GeneratorContext,
-    },
-    model::{
-        CGenType, DescriptorSet, ModelObject, PipelineLayout,
-    },
+    generators::{file_writer::FileWriter, product::Product, GeneratorContext},
+    model::{CGenType, DescriptorSet, ModelObject, PipelineLayout},
     run::CGenVariant,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    let pipeline_layouts = model.object_iter::<PipelineLayout>().unwrap_or_default();
-    for pipeline_layout in pipeline_layouts {
+    for pipeline_layout in model.object_iter::<PipelineLayout>() {
         let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
         products.push(Product::new(
             CGenVariant::Hlsl,
             GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Hlsl),
-            content,
+            content.into_bytes(),
         ))
     }
     products
@@ -40,8 +34,8 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line(format!("// DescriptorSets"));
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::DescriptorSet(def) => {
-                let ds = ctx.model.get::<DescriptorSet>(*def).unwrap();
+            crate::model::PipelineLayoutContent::DescriptorSet(object_id) => {
+                let ds = ctx.model.get_from_objectid::<DescriptorSet>(*object_id).unwrap();
                 let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ds_path);
                 writer.add_line(format!("// - name: {}", name));
@@ -55,8 +49,8 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line(format!("// PushConstant"));
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::Pushconstant(def) => {
-                let ty = ctx.model.get::<CGenType>(*def).unwrap();
+            crate::model::PipelineLayoutContent::Pushconstant(object_id) => {
+                let ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
                 let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ty_path);
                 writer.add_line(format!("// - name: {}", name));

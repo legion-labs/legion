@@ -4,14 +4,13 @@ use std::{
 };
 
 use lgn_utils::decimal::DecimalF32;
-#[cfg(feature = "serde-support")]
+
 use serde::{Deserialize, Serialize};
 
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
-    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
-    VertexAttributeRate,
+    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PrimitiveTopology,
+    SampleCount, ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
@@ -426,7 +425,7 @@ pub struct ShaderStageDef {
     pub shader_module: ShaderModule,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,
@@ -486,7 +485,7 @@ pub struct PushConstantDef {
 }
 
 pub struct RootSignatureDef {
-    pub pipeline_type: PipelineType,
+    // pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -494,7 +493,7 @@ pub struct RootSignatureDef {
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
         Self {
-            pipeline_type: self.pipeline_type,
+            // pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
         }
@@ -504,7 +503,7 @@ impl Clone for RootSignatureDef {
 impl Default for RootSignatureDef {
     fn default() -> Self {
         Self {
-            pipeline_type: PipelineType::Graphics,
+            // pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: Vec::new(),
             push_constant_def: None,
         }

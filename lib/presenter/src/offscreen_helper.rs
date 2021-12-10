@@ -204,7 +204,6 @@ impl OffscreenHelper {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: None,
         };
@@ -367,6 +366,7 @@ impl OffscreenHelper {
 
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
+                PipelineType::Graphics,
                 &self.root_signature,
                 descriptor_set_layout.definition().frequency,
                 descriptor_set_handle,

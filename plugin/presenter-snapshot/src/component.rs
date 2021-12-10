@@ -1,6 +1,6 @@
 #![allow(clippy::pedantic)]
 
-use graphics_api::prelude::*;
+use lgn_graphics_api::prelude::*;
 use lgn_ecs::prelude::Component;
 use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{

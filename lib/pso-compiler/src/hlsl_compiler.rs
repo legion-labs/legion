@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use hassle_rs::{Dxc, DxcIncludeHandler};
@@ -6,8 +6,6 @@ use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
 
-use normpath::BasePathBuf;
-use relative_path::RelativePath;
 use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
 };
@@ -334,7 +332,7 @@ impl HlslCompiler {
                 )
             })?;
 
-        let result = compiler.preprocess(
+        let _result = compiler.preprocess(
             &blob,
             &shader_path,
             args,
@@ -344,7 +342,7 @@ impl HlslCompiler {
             defines,
         );
 
-        match result {
+        match _result {
             Err(result) => {
                 let error_blob = result.0.get_error_buffer().unwrap();
                 println!("{}", library.get_blob_as_string(&error_blob));

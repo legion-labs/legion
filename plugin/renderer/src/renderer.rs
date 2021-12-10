@@ -1,17 +1,17 @@
 #![allow(unsafe_code)]
 
-use std::ascii::AsciiExt;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use lgn_graphics_cgen_runtime::CGenRuntime;
 use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, FileSystem};
+use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
 use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::cgen::CodeGen;
+use crate::cgen::DefaultDescriptorSet;
 use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
@@ -34,7 +34,7 @@ pub struct Renderer {
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-	 cgen: CodeGen,
+    cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
@@ -59,7 +59,12 @@ impl Renderer {
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
-        let cgen = CodeGen::new(&device_context);
+        // let cgen = CodeGen::new(&device_context);
+        let cgen_def = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/cgen/rust/cgen_def.bin"
+        ));
+        let cgen_runtime = CGenRuntime::new(cgen_def, &device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
@@ -85,7 +90,7 @@ impl Renderer {
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-				cgen,
+            cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
@@ -117,7 +122,7 @@ impl Renderer {
     pub fn shader_compiler(&self) -> HlslCompiler {
         self.shader_compiler.clone()
     }
-    
+
     // TMP: change that.
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
@@ -181,9 +186,9 @@ impl Renderer {
         pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
     }
 
-    pub(crate) fn cgen(&self) -> &CodeGen {
-        &self.cgen
-	 }
+    pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
+        &self.cgen_runtime
+    }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
         let mut pool = self.descriptor_pools.write();
@@ -383,7 +388,6 @@ impl TmpRenderPass {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
@@ -521,32 +525,6 @@ impl TmpRenderPass {
             )
             .unwrap();
 
-        // <<<<< NEW CODE
-
-        //
-        // let frame_descriptor_set = renderer.cgen().frame_descriptor_set_layout().new_descriptor_set(heap);
-        // frame_descriptor_set.set_uniform_data(uniform_buffer_cbv);
-        // let pipeline_data = renderer.cgen().default_pl().new_pipeline_data();
-        // pipeline_data.set_frame_descriptor_set(frame_descriptor_set);
-        // pipeline_data.set_toto(1.f);
-        // pipeline_data.draw
-
-        // let frame_descriptor_set = renderer
-        //     .cgen()
-        //     .frame_descriptor_set();            
-        // let mut descriptor_set_writer =
-        //     heap.allocate_descriptor_set(frame_descriptor_set.api_layout()).unwrap();
-        
-        // helper
-        // frame_descriptor_set.set_uniform_data(uniform_buffer_cbv);\
-        // frame_descriptor_set.set_constant_buffer_view(FrameDescriptorSet::UNIFORM_DATA, uniform_buffer_cbv);
-
-        // generic
-        // frame_descriptor_set
-        // .set_constant_buffer_view(FrameDescriptorSet::UNIFORM_DATA, uniform_buffer_cbv);
-
-        // >>>> NEW CODE
-
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
         let descriptor_set_layout = &self
             .pipeline
@@ -604,6 +582,18 @@ impl TmpRenderPass {
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
+            { /*
+                 let cgen_runtime = render_context.renderer().cgen_runtime();
+                 let bump_allocator = render_context.acquire_bump_allocator();
+                 // let ds_data = DefaultDescriptorSetData::new(bump_allocator);
+                 let ds_data = FakeDescriptorSetData::new(bump_allocator.bumpalo());
+
+                 ds_data.set_constant_buffer(FakeDescriptorID::A, const_buffer_view);
+                 let descriptor_set_handle = ds_data.build();
+                 render_context.release_bump_allocator(bump_allocator);
+                 */
+            }
+
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
@@ -630,6 +620,7 @@ impl TmpRenderPass {
 
             cmd_buffer
                 .cmd_bind_descriptor_set_handle(
+                    PipelineType::Graphics,
                     &self.root_signature,
                     descriptor_set_layout.definition().frequency,
                     descriptor_set_handle,

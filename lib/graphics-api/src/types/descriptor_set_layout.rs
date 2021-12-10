@@ -4,7 +4,6 @@ use crate::backends::vulkan::VulkanDescriptorSetLayout;
 use crate::GfxError;
 use crate::{deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult};
 
-#[derive(Clone)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
@@ -15,7 +14,7 @@ pub(crate) struct DescriptorSetLayoutInner {
     descriptors: Vec<Descriptor>,
 
     #[cfg(feature = "vulkan")]
-    platform_layout: VulkanDescriptorSetLayout,
+    pub(crate) platform_layout: VulkanDescriptorSetLayout,
 }
 
 impl Drop for DescriptorSetLayoutInner {
@@ -27,7 +26,7 @@ impl Drop for DescriptorSetLayoutInner {
 
 #[derive(Clone)]
 pub struct DescriptorSetLayout {
-    inner: Drc<DescriptorSetLayoutInner>,
+    pub(crate) inner: Drc<DescriptorSetLayoutInner>,
 }
 
 impl DescriptorSetLayout {
@@ -45,12 +44,7 @@ impl DescriptorSetLayout {
 
     pub fn update_data_count(&self) -> u32 {
         self.inner.update_data_count
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_layout(&self) -> &VulkanDescriptorSetLayout {
-        &self.inner.platform_layout
-    }
+    }    
 
     pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
         #[cfg(not(any(feature = "vulkan")))]

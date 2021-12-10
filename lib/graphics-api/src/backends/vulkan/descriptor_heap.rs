@@ -123,7 +123,7 @@ impl VulkanDescriptorHeap {
     ) -> GfxResult<DescriptorSetBufWriter> {
         let device = device_context.vk_device();
         let allocate_info = vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set_layout.platform_layout().vk_layout()])
+            .set_layouts(&[descriptor_set_layout.vk_layout()])
             .descriptor_pool(self.vk_pool)
             .build();
 

@@ -2853,9 +2853,12 @@ name = "graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "clap",
  "fxhash",
  "heck",
+ "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
  "log",
  "proc-macro2",
  "relative-path",
@@ -4035,7 +4038,11 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
+ "bincode",
+ "bumpalo",
  "glam",
+ "lgn-graphics-api",
+ "serde",
 ]
 
 [[package]]

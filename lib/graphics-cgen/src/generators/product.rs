@@ -11,11 +11,11 @@ use super::CGenVariant;
 pub struct Product {
     variant: CGenVariant,
     path: RelativePathBuf,
-    content: String,
+    content: Vec<u8>,
 }
 
 impl Product {
-    pub fn new(variant: CGenVariant, path: RelativePathBuf, content: String) -> Self {
+    pub fn new(variant: CGenVariant, path: RelativePathBuf, content: Vec<u8>) -> Self {
         Self {
             variant,
             path,
@@ -27,7 +27,7 @@ impl Product {
         &self.path
     }
 
-    pub fn content(&self) -> &String {
+    pub fn content(&self) -> &Vec<u8> {
         &self.content
     }
 
@@ -37,12 +37,10 @@ impl Product {
         dir_builder.recursive(true);
         dir_builder.create(final_path.parent().unwrap())?;
 
-        let file_content = self.content.to_string();
-
         trace!("Writing {}", final_path.display());
         let mut output = std::fs::File::create(&final_path)?;
         trace!("Created!");
-        output.write(&file_content.as_bytes())?;
+        output.write(&self.content)?;
         trace!("Done!");
 
         Ok(())

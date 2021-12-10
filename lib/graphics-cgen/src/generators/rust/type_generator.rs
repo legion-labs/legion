@@ -11,8 +11,7 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    let cgen_types = model.object_iter::<CGenType>().unwrap_or_default();
-    for cgen_type in cgen_types {
+    for cgen_type in model.object_iter::<CGenType>() {
         match cgen_type {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => Some(generate_rust_struct(&ctx, cgen_type)),
@@ -20,15 +19,15 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
-                content,
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),                
+                content.into_bytes(),
             ))
         });
     }
 
     if !products.is_empty() {
         let mut mod_path = GeneratorContext::get_object_folder::<CGenType>();
-        mod_path.push("mod.rs");
+        mod_path.push("mod.rs");        
 
         let mut writer = FileWriter::new();
         for product in &products {
@@ -39,7 +38,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Rust,
             mod_path,
-            writer.to_string(),
+            writer.to_string().into_bytes(),
         ));
     }
 
@@ -47,7 +46,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 }
 
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
-    let typestring = get_rust_typestring(model, member.type_key);
+    let typestring = get_rust_typestring(model, member.object_id);
 
     format!("pub(crate) {}: {},", member.name, typestring)
 }
@@ -61,8 +60,8 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
 
     if !deps.is_empty() {
         let mut has_native_types = false;
-        for key in &deps {
-            let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
+        for object_id in &deps {
+            let dep_ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
             match dep_ty {
                 CGenType::Native(_) => {
                     has_native_types = true;

@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 use std::convert::TryFrom;
 
-use graphics_api::prelude::*;
+use lgn_graphics_api::prelude::*;
 use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
