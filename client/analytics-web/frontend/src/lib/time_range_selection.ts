@@ -46,9 +46,12 @@ function UpdateSelectedRange(
   }
 
   const factor = (currentViewRange[1] - currentViewRange[0]) / windowWidthPx;
-  const beginTime = currentViewRange[0] + factor * selectionState.beginMouseX;
-  const endTime = currentViewRange[0] + factor * event.offsetX;
-  selectionState.selectedRange = [beginTime, endTime];
+  const first = currentViewRange[0] + factor * selectionState.beginMouseX;
+  const second = currentViewRange[0] + factor * event.offsetX;
+  selectionState.selectedRange = [
+    Math.min(first, second),
+    Math.max(first, second),
+  ];
 }
 
 // RangeSelectionOnMouseMove returns the selected range has been updated

@@ -7,6 +7,7 @@
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
+  import { formatExecutionTime } from "@/lib/format";
   import {
     DrawSelectedRange,
     NewSelectionState,
@@ -24,6 +25,7 @@
 
   let beginPan: BeginPan | undefined;
   let canvas: HTMLCanvasElement | undefined;
+  let currentSelection: [number, number] | undefined;
   let dataTracks: Record<string, MetricDataPoint[]> = {};
   let maxMs = -Infinity;
   let metrics: MetricDesc[] = [];
@@ -188,6 +190,7 @@
 
   function onMouseDown(event: MouseEvent) {
     if (RangeSelectionOnMouseDown(event, selectionState)) {
+      currentSelection = selectionState.selectedRange;
       drawCanvas();
     }
   }
@@ -219,6 +222,7 @@
       ) ||
       PanOnMouseMove(event)
     ) {
+      currentSelection = selectionState.selectedRange;
       drawCanvas();
     }
   }
@@ -245,11 +249,41 @@
     on:mousemove|preventDefault={onMouseMove}
     on:mousedown|preventDefault={onMouseDown}
   />
+  <div id="selected-time-range-div">
+    {#if currentSelection}
+      <h3>Selected time range</h3>
+      <div>
+        <span>beginning: </span>
+        <span>{formatExecutionTime(currentSelection[0])}<span /></span>
+      </div>
+      <div>
+        <span>end: </span>
+        <span>{formatExecutionTime(currentSelection[1])}<span /></span>
+      </div>
+      <div>
+        <span>duration: </span>
+        <span
+          >{formatExecutionTime(currentSelection[1] - currentSelection[0])}<span
+          /></span
+        >
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style lang="postcss">
   #metric-selection-div {
     display: inline-block;
+  }
+
+  #canvas_plot {
+    display: inline-block;
+  }
+
+  #selected-time-range-div {
+    display: inline-block;
+    width: 200px;
+    text-align: left;
   }
 
   .metric-checkbox-div {
