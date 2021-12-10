@@ -4,12 +4,17 @@ use lgn_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSetti
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
+use lgn_input::keyboard::{KeyCode, KeyboardInput};
+use lgn_input::mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_input::InputPlugin;
+use lgn_math::Mat3;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
-use lgn_renderer::components::{RotationComponent, StaticMesh};
+use lgn_renderer::components::{
+    CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
+    StaticMesh,
+};
 use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
 use lgn_transform::components::Transform;
 use lgn_window::{
@@ -153,6 +158,7 @@ fn main() {
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
+            .add_system(camera_control.system())
             .insert_resource(RenderSurfaces::new());
     }
     if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {
@@ -305,6 +311,9 @@ fn init_scene(mut commands: Commands) {
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.0, 0.4),
         });
+
+    // camera
+    commands.spawn().insert(CameraComponent::default());
 }
 
 fn on_snapshot_app_exit(
@@ -315,6 +324,73 @@ fn on_snapshot_app_exit(
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+#[derive(Default)]
+struct CameraMoving(bool);
+
+fn camera_control(
+    mut q_cameras: Query<'_, '_, &mut CameraComponent>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
+    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
+    mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
+    mut camera_moving: Local<CameraMoving>,
+) {
+    let mut q_cameras = q_cameras
+        .iter_mut()
+        .map(|v| v.into_inner())
+        .collect::<Vec<&mut CameraComponent>>();
+
+    for mouse_button_input_event in mouse_button_input_events.iter() {
+        if mouse_button_input_event.button == MouseButton::Right {
+            camera_moving.0 = mouse_button_input_event.state.is_pressed();
+        }
+    }
+
+    if q_cameras.is_empty() || !camera_moving.0 {
+        return;
+    }
+
+    for camera in q_cameras.iter_mut() {
+        for keyboard_input_event in keyboard_input_events.iter() {
+            if let Some(key_code) = keyboard_input_event.key_code {
+                match key_code {
+                    KeyCode::W => {
+                        camera.pos += camera.dir * camera.speed / 60.0;
+                    }
+                    KeyCode::S => {
+                        camera.pos -= camera.dir * camera.speed / 60.0;
+                    }
+                    KeyCode::D => {
+                        let cross = camera.up.cross(camera.dir).normalize();
+                        camera.pos += cross * camera.speed / 60.0;
+                    }
+                    KeyCode::A => {
+                        let cross = camera.up.cross(camera.dir).normalize();
+                        camera.pos -= cross * camera.speed / 60.0;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        for mouse_motion_event in mouse_motion_events.iter() {
+            let rotation_x = Mat3::from_axis_angle(
+                camera.up,
+                mouse_motion_event.delta.x * camera.rotation_speed / 60.0,
+            );
+            let rotation_y = Mat3::from_axis_angle(
+                camera.up.cross(camera.dir).normalize(),
+                mouse_motion_event.delta.y * camera.rotation_speed / 60.0,
+            );
+            camera.dir = rotation_x * rotation_y * camera.dir;
+        }
+
+        for mouse_wheel_event in mouse_wheel_events.iter() {
+            camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
         }
     }
 }
