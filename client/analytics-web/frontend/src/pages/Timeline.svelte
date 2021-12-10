@@ -10,10 +10,6 @@
     viewRange: [number, number];
     beginYOffset: number;
   };
-
-  type BeginSelect = {
-    beginMouseX: number;
-  };
 </script>
 
 <script lang="ts">
@@ -30,6 +26,13 @@
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
+  import {
+    DrawSelectedRange,
+    NewSelectionState,
+    RangeSelectionOnMouseDown,
+    RangeSelectionOnMouseMove,
+    SelectionState,
+  } from "@/lib/time_range_selection";
 
   export let id: string;
 
@@ -43,10 +46,10 @@
   let threads: Record<string, Thread> = {};
   let blockList: Block[] = [];
   let scopes: Record<number, ScopeDesc> = {};
-  let selectedRange: [number, number] | undefined;
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
-  let beginSelect: BeginSelect | undefined;
+  let selectionState: SelectionState = NewSelectionState();
+  let currentSelection: [number, number] | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -219,34 +222,7 @@
       }
     }
 
-    drawSelectedRange();
-  }
-
-  function drawSelectedRange() {
-    if (!canvas || !renderingContext) {
-      return;
-    }
-
-    if (!selectedRange) {
-      return;
-    }
-
-    const [begin, end] = getViewRange();
-    const invTimeSpan = 1.0 / (end - begin);
-    const canvasWidth = canvas.clientWidth;
-    const canvasHeight = canvas.clientHeight;
-    const msToPixelsFactor = invTimeSpan * canvasWidth;
-    const [beginSelection, endSelection] = selectedRange;
-    const beginPixels = (beginSelection - begin) * msToPixelsFactor;
-    const endPixels = (endSelection - begin) * msToPixelsFactor;
-
-    renderingContext.fillStyle = "rgba(64, 64, 200, 0.2)";
-    renderingContext.fillRect(
-      beginPixels,
-      0,
-      endPixels - beginPixels,
-      canvasHeight
-    );
+    DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
   }
 
   function drawThread(
@@ -353,47 +329,42 @@
     drawCanvas();
   }
 
-  function onSelectRange(event: MouseEvent) {
-    if (!canvas) {
-      throw new Error("Canvas can't be found");
-    }
-
-    if (!beginSelect) {
-      beginSelect = {
-        beginMouseX: event.offsetX,
-      };
-    }
-
-    const viewRange = getViewRange();
-    const factor = (viewRange[1] - viewRange[0]) / canvas.width;
-    const beginTime = viewRange[0] + factor * beginSelect.beginMouseX;
-    const endTime = viewRange[0] + factor * event.offsetX;
-
-    selectedRange = [beginTime, endTime];
-
-    drawCanvas();
-  }
-
   function onMouseDown(event: MouseEvent) {
-    if (event.shiftKey) {
-      beginSelect = undefined;
-      selectedRange = undefined;
+    if (RangeSelectionOnMouseDown(event, selectionState)) {
+      currentSelection = selectionState.selectedRange;
       drawCanvas();
     }
   }
 
-  function onMouseMove(event: MouseEvent) {
+  // returns if the view should be updated
+  function PanOnMouseMove(event: MouseEvent): boolean {
     if (event.buttons !== 1) {
       beginPan = undefined;
-      beginSelect = undefined;
-
-      return;
+      return false;
     }
 
-    if (event.shiftKey) {
-      onSelectRange(event);
-    } else {
+    if (!event.shiftKey) {
       onPan(event);
+      return true;
+    }
+    return false;
+  }
+
+  function onMouseMove(event: MouseEvent) {
+    if (!canvas) {
+      return;
+    }
+    if (
+      RangeSelectionOnMouseMove(
+        event,
+        selectionState,
+        canvas,
+        getViewRange()
+      ) ||
+      PanOnMouseMove(event)
+    ) {
+      currentSelection = selectionState.selectedRange;
+      drawCanvas();
     }
   }
 
@@ -417,10 +388,10 @@
           </a>
         </div>
       {/if}
-      {#if selectedRange}
+      {#if currentSelection}
         <button class="call-graph-button">
           <a
-            href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${selectedRange[0]}&end=${selectedRange[1]}`}
+            href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
             use:link
           >
             Cumulative Call Graph

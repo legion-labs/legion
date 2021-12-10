@@ -210,7 +210,6 @@
     if (!canvas) {
       return;
     }
-
     if (
       RangeSelectionOnMouseMove(
         event,
