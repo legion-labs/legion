@@ -12,8 +12,8 @@ use lgn_transform::components::Transform;
 use crate::{
     components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
-use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 use crate::debug_display::DebugDisplay;
+use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 use crate::{labels::RendererSystemLabel, RenderContext, Renderer};
 
 #[derive(Default)]
@@ -52,6 +52,7 @@ impl Plugin for RendererPlugin {
             app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
             app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
         }
+        app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
@@ -116,6 +117,14 @@ fn update_ui(
             });
         }
     });
+}
+
+fn update_debug(
+    mut renderer: ResMut<'_, Renderer>,
+    mut debug_display: ResMut<'_, DebugDisplay<'_>>,
+    mut lights: Query<'_, '_, &LightComponent>,
+) {
+    let display_list = debug_display.create_display_list(renderer);
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
