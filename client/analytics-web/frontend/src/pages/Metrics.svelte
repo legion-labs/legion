@@ -8,15 +8,21 @@
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
 
+  type BeginPan = {
+    beginMouseX: number;
+    viewRange: [number, number];
+  };
+
   export let id: string;
 
-  let metrics: MetricDesc[] = [];
+  let beginPan: BeginPan | undefined;
   let canvas: HTMLCanvasElement | undefined;
-  let renderingContext: CanvasRenderingContext2D | undefined;
-  let minMs = Infinity;
-  let maxMs = -Infinity;
-  let viewRange: [number, number] | undefined;
   let dataTracks: Record<string, MetricDataPoint[]> = {};
+  let maxMs = -Infinity;
+  let metrics: MetricDesc[] = [];
+  let minMs = Infinity;
+  let renderingContext: CanvasRenderingContext2D | undefined;
+  let viewRange: [number, number] | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -148,6 +154,43 @@
     viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
     drawCanvas();
   }
+
+  function onPan(event: MouseEvent) {
+    if (!canvas) {
+      throw new Error("Canvas can't be found");
+    }
+
+    if (!beginPan) {
+      beginPan = {
+        beginMouseX: event.offsetX,
+        viewRange: getViewRange(),
+      };
+    }
+
+    const factor =
+      (beginPan.viewRange[1] - beginPan.viewRange[0]) / canvas.width;
+    const offsetMs = factor * (beginPan.beginMouseX - event.offsetX);
+
+    viewRange = [
+      beginPan.viewRange[0] + offsetMs,
+      beginPan.viewRange[1] + offsetMs,
+    ];
+    drawCanvas();
+  }
+
+  function onMouseMove(event: MouseEvent) {
+    if (event.buttons !== 1) {
+      beginPan = undefined;
+      // beginSelect = undefined;
+      return;
+    }
+
+    if (event.shiftKey) {
+      // onSelectRange(event);
+    } else {
+      onPan(event);
+    }
+  }
 </script>
 
 <div>
@@ -168,6 +211,7 @@
     id="canvas_plot"
     width="1024px"
     on:wheel|preventDefault={onZoom}
+    on:mousemove={onMouseMove}
   />
 </div>
 
