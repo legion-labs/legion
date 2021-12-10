@@ -62,14 +62,7 @@ impl<'a> RenderContext<'a> {
         {
             writer
         } else {
-            self.renderer
-                .release_descriptor_pool(self.descriptor_pool.transfer());
-            self.descriptor_pool = self
-                .renderer
-                .acquire_descriptor_pool(&default_descriptor_heap_size());
-            self.descriptor_pool
-                .allocate_descriptor_set(descriptor_set_layout)
-                .unwrap()
+            todo!("Descriptor OOM! ")
         }
     }
 
@@ -107,7 +100,6 @@ impl<'a> Drop for RenderContext<'a> {
 
 fn default_descriptor_heap_size() -> DescriptorHeapDef {
     DescriptorHeapDef {
-        transient: true,
         max_descriptor_sets: 4096,
         sampler_count: 128,
         constant_buffer_count: 1024,

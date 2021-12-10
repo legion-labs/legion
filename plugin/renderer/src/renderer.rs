@@ -31,6 +31,7 @@ pub struct Renderer {
     sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
+    descriptor_heap: DescriptorHeap,
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
@@ -71,6 +72,16 @@ impl Renderer {
             64 * 1024,
         ));
 
+        let descriptor_heap_def = DescriptorHeapDef {
+            max_descriptor_sets: 32 * 4096,
+            sampler_count: 32 * 128,
+            constant_buffer_count: 32 * 1024,
+            buffer_count: 32 * 1024,
+            rw_buffer_count: 32 * 1024,
+            texture_count: 32 * 1024,
+            rw_texture_count: 32 * 1024,
+        };
+
         Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
@@ -88,6 +99,9 @@ impl Renderer {
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
+            descriptor_heap: device_context
+                .create_descriptor_heap(&descriptor_heap_def)
+                .unwrap(),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             cgen_runtime,
@@ -183,7 +197,7 @@ impl Renderer {
         heap_def: &DescriptorHeapDef,
     ) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.write();
-        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
+        pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
     }
 
     pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {

@@ -15,15 +15,15 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut descriptor_set_layout_defs = Vec::with_capacity(ctx.model.size::<DescriptorSet>());
     let mut root_signature_defs = Vec::with_capacity(ctx.model.size::<PipelineLayout>());
 
-    for (i, cgen_type) in ctx.model.object_iter::<CGenType>().enumerate() {
+    for (_, cgen_type) in ctx.model.object_iter::<CGenType>().enumerate() {
         type_defs.push(cgen_type.into());
     }
 
-    for (i, descriptor_set) in ctx.model.object_iter::<DescriptorSet>().enumerate() {
+    for (_, descriptor_set) in ctx.model.object_iter::<DescriptorSet>().enumerate() {
         descriptor_set_layout_defs.push(descriptor_set.into());
     }
 
-    for (i, pipeline_layout) in ctx.model.object_iter::<PipelineLayout>().enumerate() {
+    for (_, pipeline_layout) in ctx.model.object_iter::<PipelineLayout>().enumerate() {
         root_signature_defs.push(pipeline_layout.into());
     }
 

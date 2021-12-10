@@ -1,8 +1,8 @@
 use ash::vk;
 
 use crate::{
-    DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetHandle, DescriptorSetLayout,
-    DeviceContext, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetBufWriter,
+    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxResult,
 };
 
 struct DescriptorHeapPoolConfig {
@@ -87,12 +87,18 @@ impl DescriptorHeapPoolConfig {
     }
 }
 
+//
+// VulkanDescriptorHeap
+//
 pub(crate) struct VulkanDescriptorHeap {
     vk_pool: vk::DescriptorPool,
 }
 
 impl VulkanDescriptorHeap {
-    pub fn new(device_context: &DeviceContext, definition: &DescriptorHeapDef) -> GfxResult<Self> {
+    pub(crate) fn new(
+        device_context: &DeviceContext,
+        definition: &DescriptorHeapDef,
+    ) -> GfxResult<Self> {
         let device = device_context.vk_device();
         let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         let vk_pool = heap_pool_config.create_pool(device)?;
@@ -100,31 +106,93 @@ impl VulkanDescriptorHeap {
         Ok(Self { vk_pool })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContext) {
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         let device = device_context.vk_device();
         unsafe {
             device.destroy_descriptor_pool(self.vk_pool, None);
         }
     }
+}
 
-    pub fn reset(&self, device_context: &DeviceContext) -> GfxResult<()> {
+impl DescriptorHeap {
+    // pub(crate) fn reset_platform(&self) -> GfxResult<()> {
+    // self.inner.partitions.iter().for_each(|x| x.reset());
+
+    // let device = device_context.vk_device();
+    // unsafe {
+    //     device
+    //         .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
+    //         .map_err(|x| x.into())
+    // }
+    // }
+
+    // pub(crate) fn alloc_partition_platform(
+    //     &self,
+    //     transient: bool,
+    //     definition: &DescriptorHeapDef,
+    // ) -> GfxResult<DescriptorHeapPartition> {
+    //     DescriptorHeapPartition::new(self.clone(), transient, definition)
+    // }
+
+    // pub(crate) fn free_partition_platform(&self, partition: DescriptorHeapPartition) {
+
+    // }
+}
+
+//
+// VulkanDescriptorHeapPartition
+//
+
+pub(crate) struct VulkanDescriptorHeapPartition {
+    vk_pool: vk::DescriptorPool,
+}
+
+impl VulkanDescriptorHeapPartition {
+    pub(crate) fn new(
+        device_context: &DeviceContext,
+        transient: bool,
+        definition: &DescriptorHeapDef,
+    ) -> GfxResult<Self> {
+        let device = device_context.vk_device();
+        let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();
+        if !transient {
+            heap_pool_config.pool_flags = vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
+        }
+
+        let vk_pool = heap_pool_config.create_pool(device)?;
+
+        Ok(Self { vk_pool })
+    }
+
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         let device = device_context.vk_device();
         unsafe {
+            device.destroy_descriptor_pool(self.vk_pool, None);
+        }
+    }
+}
+
+impl DescriptorHeapPartition {
+    pub(crate) fn reset_platform(&self) -> GfxResult<()> {
+        let device = self.inner.heap.inner.device_context.vk_device();
+        unsafe {
             device
-                .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
+                .reset_descriptor_pool(
+                    self.inner.platform_descriptor_heap_partition.vk_pool,
+                    vk::DescriptorPoolResetFlags::default(),
+                )
                 .map_err(Into::into)
         }
     }
 
-    pub fn allocate_descriptor_set(
+    pub(crate) fn allocate_descriptor_set_platform(
         &self,
-        device_context: &DeviceContext,
         descriptor_set_layout: &DescriptorSetLayout,
     ) -> GfxResult<DescriptorSetBufWriter> {
-        let device = device_context.vk_device();
+        let device = self.inner.heap.inner.device_context.vk_device();
         let allocate_info = vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[descriptor_set_layout.vk_layout()])
-            .descriptor_pool(self.vk_pool)
+            .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };

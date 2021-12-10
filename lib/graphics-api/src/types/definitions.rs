@@ -824,7 +824,6 @@ pub struct ComputePipelineDef<'a> {
 /// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
-    pub transient: bool,
     pub max_descriptor_sets: u32,
     pub sampler_count: u32,
     pub constant_buffer_count: u32,
@@ -836,12 +835,10 @@ pub struct DescriptorHeapDef {
 
 impl DescriptorHeapDef {
     pub fn from_descriptor_set_layout_def(
-        definition: &DescriptorSetLayoutDef,
-        transient: bool,
+        definition: &DescriptorSetLayoutDef,        
         max_descriptor_sets: u32,
     ) -> Self {
         let mut result = Self {
-            transient,
             max_descriptor_sets,
             ..Self::default()
         };
