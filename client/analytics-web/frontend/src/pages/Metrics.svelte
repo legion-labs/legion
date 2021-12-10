@@ -13,15 +13,21 @@
     viewRange: [number, number];
   };
 
+  type BeginSelect = {
+    beginMouseX: number;
+  };
+
   export let id: string;
 
   let beginPan: BeginPan | undefined;
+  let beginSelect: BeginSelect | undefined;
   let canvas: HTMLCanvasElement | undefined;
   let dataTracks: Record<string, MetricDataPoint[]> = {};
   let maxMs = -Infinity;
   let metrics: MetricDesc[] = [];
   let minMs = Infinity;
   let renderingContext: CanvasRenderingContext2D | undefined;
+  let selectedRange: [number, number] | undefined;
   let viewRange: [number, number] | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
@@ -113,6 +119,34 @@
     renderingContext.stroke();
   }
 
+  //todo: factor out, change timeline
+  function drawSelectedRange() {
+    if (!canvas || !renderingContext) {
+      return;
+    }
+
+    if (!selectedRange) {
+      return;
+    }
+
+    const [begin, end] = getViewRange();
+    const invTimeSpan = 1.0 / (end - begin);
+    const canvasWidth = canvas.clientWidth;
+    const canvasHeight = canvas.clientHeight;
+    const msToPixelsFactor = invTimeSpan * canvasWidth;
+    const [beginSelection, endSelection] = selectedRange;
+    const beginPixels = (beginSelection - begin) * msToPixelsFactor;
+    const endPixels = (endSelection - begin) * msToPixelsFactor;
+
+    renderingContext.fillStyle = "rgba(64, 64, 200, 0.2)";
+    renderingContext.fillRect(
+      beginPixels,
+      0,
+      endPixels - beginPixels,
+      canvasHeight
+    );
+  }
+
   function drawCanvas() {
     if (!canvas || !renderingContext) {
       return;
@@ -125,6 +159,7 @@
     for (let key in dataTracks) {
       drawTrack(dataTracks[key]);
     }
+    drawSelectedRange();
   }
 
   async function onMetricSelectionChanged(
@@ -178,18 +213,47 @@
     drawCanvas();
   }
 
+  function onMouseDown(event: MouseEvent) {
+    if (event.shiftKey) {
+      beginSelect = undefined;
+      selectedRange = undefined;
+      drawCanvas();
+    }
+  }
+
   function onMouseMove(event: MouseEvent) {
     if (event.buttons !== 1) {
       beginPan = undefined;
-      // beginSelect = undefined;
+      beginSelect = undefined;
       return;
     }
 
     if (event.shiftKey) {
-      // onSelectRange(event);
+      onSelectRange(event);
     } else {
       onPan(event);
     }
+  }
+
+  //todo: factor out
+  function onSelectRange(event: MouseEvent) {
+    if (!canvas) {
+      throw new Error("Canvas can't be found");
+    }
+
+    if (!beginSelect) {
+      beginSelect = {
+        beginMouseX: event.offsetX,
+      };
+    }
+
+    const viewRange = getViewRange();
+    const factor = (viewRange[1] - viewRange[0]) / canvas.width;
+    const beginTime = viewRange[0] + factor * beginSelect.beginMouseX;
+    const endTime = viewRange[0] + factor * event.offsetX;
+
+    selectedRange = [beginTime, endTime];
+    drawCanvas();
   }
 </script>
 
@@ -212,6 +276,7 @@
     width="1024px"
     on:wheel|preventDefault={onZoom}
     on:mousemove={onMouseMove}
+    on:mousedown={onMouseDown}
   />
 </div>
 
