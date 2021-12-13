@@ -92,4 +92,6 @@ pub struct Block {
     pub end_ticks: i64,
     #[prost(message, optional, tag = "7")]
     pub payload: ::core::option::Option<BlockPayload>,
+    #[prost(int32, tag = "8")]
+    pub nb_objects: i32,
 }

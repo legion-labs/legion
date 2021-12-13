@@ -3,9 +3,10 @@ use std::collections::HashSet;
 use anyhow::Result;
 use lgn_transit::prelude::*;
 
+use crate::event_block::{EventBlock, TelemetryBlock};
 use crate::{
-    compress, event_block::EventBlock, BeginScopeEvent, EncodedBlock, EndScopeEvent, EventStream,
-    ReferencedScope, ScopeEvent, StreamBlock,
+    compress, BeginScopeEvent, EncodedBlock, EndScopeEvent, EventStream, ReferencedScope,
+    ScopeEvent, StreamBlock,
 };
 
 declare_queue_struct!(
@@ -45,6 +46,7 @@ fn record_scope_event_dependencies<T: ScopeEvent>(
 }
 
 impl StreamBlock for ThreadBlock {
+    #[allow(clippy::cast_possible_wrap)]
     fn encode(&self) -> Result<EncodedBlock> {
         let block_id = uuid::Uuid::new_v4().to_string();
         let end = self.end.as_ref().unwrap();
@@ -80,6 +82,7 @@ impl StreamBlock for ThreadBlock {
                 .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
             end_ticks: end.ticks,
             payload: Some(payload),
+            nb_objects: self.nb_objects() as i32,
         })
     }
 }

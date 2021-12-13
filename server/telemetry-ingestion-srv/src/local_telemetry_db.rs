@@ -68,7 +68,8 @@ async fn create_blocks_table(connection: &mut sqlx::AnyConnection) -> Result<()>
                   begin_time VARCHAR(255),
                   begin_ticks BIGINT,
                   end_time VARCHAR(255),
-                  end_ticks BIGINT
+                  end_ticks BIGINT,
+                  nb_objects INT
                   );
          CREATE UNIQUE INDEX block_id on blocks(block_id);
          CREATE INDEX block_stream_id on blocks(stream_id);";

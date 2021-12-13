@@ -172,13 +172,14 @@ impl TelemetryIngestion for LocalIngestionService {
         }
 
         #[allow(clippy::cast_possible_wrap)]
-        if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")
+        if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?,?);")
             .bind(block.block_id.clone())
             .bind(block.stream_id)
             .bind(block.begin_time)
             .bind(block.begin_ticks as i64)
             .bind(block.end_time)
             .bind(block.end_ticks as i64)
+            .bind(block.nb_objects)
             .execute(&mut connection)
             .await
         {

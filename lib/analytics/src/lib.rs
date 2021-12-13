@@ -410,7 +410,7 @@ pub async fn find_block(
     block_id: &str,
 ) -> Result<lgn_telemetry::EncodedBlock> {
     let row = sqlx::query(
-        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -428,6 +428,7 @@ pub async fn find_block(
         end_time: row.get("end_time"),
         end_ticks: row.get("end_ticks"),
         payload: None,
+        nb_objects: row.get("nb_objects"),
     };
     Ok(block)
 }
@@ -437,7 +438,7 @@ pub async fn find_stream_blocks(
     stream_id: &str,
 ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -455,6 +456,7 @@ pub async fn find_stream_blocks(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         payload: None,
+        nb_objects: r.get("nb_objects"),
     })
     .collect();
     Ok(blocks)
@@ -467,7 +469,7 @@ pub async fn find_stream_blocks_in_range(
     end_time: &str,
 ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -489,6 +491,7 @@ pub async fn find_stream_blocks_in_range(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         payload: None,
+        nb_objects: r.get("nb_objects"),
     })
     .collect();
     Ok(blocks)

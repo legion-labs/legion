@@ -21,6 +21,7 @@ pub trait TelemetryBlock {
     type Queue;
     fn new(buffer_size: usize, stream_id: String) -> Self;
     fn len_bytes(&self) -> usize;
+    fn nb_objects(&self) -> usize;
     fn events_mut(&mut self) -> &mut Self::Queue;
 }
 
@@ -40,6 +41,10 @@ where
 
     fn len_bytes(&self) -> usize {
         self.events.len_bytes()
+    }
+
+    fn nb_objects(&self) -> usize {
+        self.events.nb_objects()
     }
 
     fn events_mut(&mut self) -> &mut Self::Queue {
