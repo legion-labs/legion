@@ -21,12 +21,20 @@
       <span>end: </span>
       <span>{formatExecutionTime(timeRange[1])}<span /></span>
     </div>
-    <div class="call-graph-link">
+    <div class="nav-link">
       <a
         href={`/cumulative-call-graph?process=${processId}&begin=${timeRange[0]}&end=${timeRange[1]}`}
         use:link
       >
         Cumulative Call Graph
+      </a>
+    </div>
+    <div class="nav-link">
+      <a
+        href={`/timeline/${processId}?timelineStart=${timeRange[0]}&timelineEnd=${timeRange[1]}`}
+        use:link
+      >
+        Timeline
       </a>
     </div>
   {/if}
@@ -39,7 +47,7 @@
     text-align: left;
   }
 
-  .call-graph-link {
+  .nav-link {
     @apply text-[#42b983] underline;
   }
 </style>

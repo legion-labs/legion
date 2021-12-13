@@ -37,6 +37,9 @@
 
   export let processId: string;
 
+  let timelineStart: number | undefined;
+  let timelineEnd: number | undefined;
+
   let canvas: HTMLCanvasElement | undefined;
   let processList: Process[] = [];
   let currentProcess: Process | undefined;
@@ -57,8 +60,17 @@
   );
 
   onMount(() => {
-    const canvas = document.getElementById("canvas_timeline");
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get("timelineStart");
+    if (startParam) {
+      timelineStart = Number.parseFloat(startParam);
+    }
+    const endParam = urlParams.get("timelineEnd");
+    if (endParam) {
+      timelineEnd = Number.parseFloat(endParam);
+    }
 
+    const canvas = document.getElementById("canvas_timeline");
     if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
       throw new Error("Canvas can't be found or is invalid");
     }
@@ -234,6 +246,9 @@
     if (!canvas || !renderingContext) {
       return;
     }
+    if (threadVerticalOffset > canvas.clientHeight) {
+      return;
+    }
 
     const [begin, end] = getViewRange();
     const invTimeSpan = 1.0 / (end - begin);
@@ -251,6 +266,12 @@
 
     thread.spanBlocks.forEach((blockSpans) => {
       maxDepth = Math.max(maxDepth, blockSpans.maxDepth);
+      if (
+        blockSpans.beginMs + offsetMs > end ||
+        blockSpans.endMs + offsetMs < begin
+      ) {
+        return;
+      }
 
       blockSpans.spans.forEach(({ beginMs, endMs, depth, scopeHash }) => {
         if (!renderingContext) {
@@ -259,9 +280,17 @@
 
         const beginSpan = beginMs + offsetMs;
         const endSpan = endMs + offsetMs;
+
+        if (beginSpan > end || endSpan < begin) {
+          return;
+        }
+
         const beginPixels = (beginSpan - begin) * msToPixelsFactor;
         const endPixels = (endSpan - begin) * msToPixelsFactor;
         const callWidth = endPixels - beginPixels;
+        if (callWidth < 0.1) {
+          return;
+        }
 
         const offsetY = threadVerticalOffset + depth * 20;
 
@@ -301,7 +330,15 @@
       return viewRange;
     }
 
-    return [minMs, maxMs];
+    let start = minMs;
+    if (timelineStart) {
+      start = timelineStart;
+    }
+    let end = maxMs;
+    if (timelineEnd) {
+      end = timelineEnd;
+    }
+    return [start, end];
   }
 
   function onPan(event: MouseEvent) {
@@ -326,8 +363,8 @@
       beginPan.viewRange[0] + offsetMs,
       beginPan.viewRange[1] + offsetMs,
     ];
+
     yOffset = beginPan.beginYOffset + event.offsetY - beginPan.beginMouseY;
-    drawCanvas();
   }
 
   function onMouseDown(event: MouseEvent) {
@@ -402,7 +439,7 @@
     on:mousedown|preventDefault={onMouseDown}
   />
 
-  <TimeRangeDetails timeRange={currentSelection} processId={processId} />
+  <TimeRangeDetails timeRange={currentSelection} {processId} />
 </div>
 
 <style lang="postcss">
