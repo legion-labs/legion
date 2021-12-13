@@ -569,6 +569,7 @@ impl TmpRenderPass {
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
+
             descriptor_set_writer
                 .set_descriptors(
                     "static_buffer",
