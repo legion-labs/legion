@@ -468,6 +468,7 @@ impl TmpRenderPass {
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
+        camera_transform: &Transform,
     ) {
         {
             let bump = render_context.acquire_bump_allocator();
@@ -516,11 +517,11 @@ impl TmpRenderPass {
         let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
-        let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::new(0.0, 0.0, 0.0);
-        let up = Vec3::new(0.0, 1.0, 0.0);
-        let view_matrix = Mat4::look_at_lh(eye, center, up);
-
+        let view_matrix = Mat4::look_at_lh(
+            camera_transform.translation,
+            camera_transform.translation + camera_transform.forward(),
+            Vec3::new(0.0, 1.0, 0.0),
+        );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {

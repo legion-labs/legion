@@ -2859,6 +2859,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-input",
+ "lgn-math",
  "lgn-presenter",
  "lgn-presenter-snapshot",
  "lgn-presenter-window",
