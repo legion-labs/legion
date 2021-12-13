@@ -35,7 +35,7 @@
     SelectionState,
   } from "@/lib/time_range_selection";
 
-  export let id: string;
+  export let processId: string;
 
   let canvas: HTMLCanvasElement | undefined;
   let processList: Process[] = [];
@@ -76,10 +76,10 @@
 
   async function fetchProcessInfo() {
     try {
-      const { process } = await client.find_process({ processId: id });
+      const { process } = await client.find_process({ processId: processId });
 
       if (!process) {
-        throw new Error(`Process ${id} not found`);
+        throw new Error(`Process ${processId} not found`);
       }
 
       processList.push(process);
@@ -117,7 +117,7 @@
   async function fetchChildren() {
     try {
       const { processes } = await client.list_process_children({
-        processId: id,
+        processId: processId,
       });
 
       processes.forEach((process) => {
@@ -402,7 +402,7 @@
     on:mousedown|preventDefault={onMouseDown}
   />
 
-  <TimeRangeDetails timeRange={currentSelection} processId={id} />
+  <TimeRangeDetails timeRange={currentSelection} processId={processId} />
 </div>
 
 <style lang="postcss">

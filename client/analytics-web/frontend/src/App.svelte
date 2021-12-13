@@ -37,7 +37,7 @@
     </Route>
     <Route path="/timeline/:id" let:params primary={false}>
       {#key params.id}
-        <Timeline id={params.id} />
+        <Timeline processId={params.id} />
       {/key}
     </Route>
     <Route path="/metrics/:id" let:params primary={false}>
