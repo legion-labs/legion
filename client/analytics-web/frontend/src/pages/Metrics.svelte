@@ -6,6 +6,7 @@
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { onMount } from "svelte";
+  import { link } from "svelte-navigator";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import { formatExecutionTime } from "@/lib/format";
   import {
@@ -267,6 +268,14 @@
           /></span
         >
       </div>
+      <div class="call-graph-link">
+        <a
+          href={`/cumulative-call-graph?process=${id}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
+          use:link
+        >
+          Cumulative Call Graph
+        </a>
+      </div>
     {/if}
   </div>
 </div>
@@ -293,5 +302,9 @@
   #canvas_plot {
     display: inline-block;
     margin: auto;
+  }
+
+  .call-graph-link {
+    @apply text-[#42b983] underline;
   }
 </style>

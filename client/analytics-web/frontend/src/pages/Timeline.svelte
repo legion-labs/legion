@@ -388,27 +388,47 @@
           </a>
         </div>
       {/if}
-      {#if currentSelection}
-        <button class="call-graph-button">
-          <a
-            href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
-            use:link
-          >
-            Cumulative Call Graph
-          </a>
-        </button>
-      {/if}
     </div>
   {/if}
+
   <canvas
     class="timeline-canvas"
     bind:this={canvas}
     id="canvas_timeline"
     width="1024px"
     on:wheel|preventDefault={onZoom}
-    on:mousemove={onMouseMove}
-    on:mousedown={onMouseDown}
+    on:mousemove|preventDefault={onMouseMove}
+    on:mousedown|preventDefault={onMouseDown}
   />
+
+  <div id="selected-time-range-div">
+    {#if currentSelection}
+      <h3>Selected time range</h3>
+      <div>
+        <span>beginning: </span>
+        <span>{formatExecutionTime(currentSelection[0])}<span /></span>
+      </div>
+      <div>
+        <span>end: </span>
+        <span>{formatExecutionTime(currentSelection[1])}<span /></span>
+      </div>
+      <div>
+        <span>duration: </span>
+        <span
+          >{formatExecutionTime(currentSelection[1] - currentSelection[0])}<span
+          /></span
+        >
+      </div>
+      <div class="call-graph-link">
+        <a
+          href={`/cumulative-call-graph?process=${id}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
+          use:link
+        >
+          Cumulative Call Graph
+        </a>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style lang="postcss">
@@ -418,18 +438,16 @@
 
   .timeline-canvas {
     margin: auto;
+    display: inline-block;
   }
 
-  .call-graph-button {
-    background-color: rgba(64, 64, 200, 0.2);
-    border: 1px solid;
-    transition-duration: 0.4s;
-    border-radius: 4px;
+  .call-graph-link {
+    @apply text-[#42b983] underline;
   }
 
-  .call-graph-button:hover {
-    background-color: rgba(64, 64, 200, 1);
-    color: white;
-    border: 1px solid;
+  #selected-time-range-div {
+    display: inline-block;
+    width: 200px;
+    text-align: left;
   }
 </style>
