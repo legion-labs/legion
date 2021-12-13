@@ -1,26 +1,34 @@
 use lgn_ecs::prelude::*;
-use lgn_math::Vec3;
+use lgn_math::{Mat4, Quat, Vec3};
+use lgn_transform::components::Transform;
 
 #[derive(Component)]
 pub struct CameraComponent {
-    pub pos: Vec3,
-    pub up: Vec3,
-    pub dir: Vec3,
     pub speed: f32,
     pub rotation_speed: f32,
 }
 
+impl CameraComponent {
+    pub fn default_transform() -> Transform {
+        let eye = Vec3::new(0.0, 1.0, -2.0);
+        let center = Vec3::new(0.0, 0.0, 0.0);
+        //let up = Vec3::new(0.0, 1.0, 0.0);
+
+        Transform {
+            translation: eye,
+            rotation: Quat::from_rotation_arc(
+                Vec3::new(0.0, 0.0, -1.0),
+                (center - eye).normalize(),
+            ),
+            scale: Vec3::new(1.0, 1.0, 1.0),
+        }
+    }
+}
+
 impl Default for CameraComponent {
     fn default() -> Self {
-        let pos = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::new(0.0, 0.0, 0.0);
-        let up = Vec3::new(0.0, 1.0, 0.0);
-
         Self {
-            pos,
-            up,
-            dir: center - pos,
-            speed: 0.5,
+            speed: 2.0,
             rotation_speed: 0.5,
         }
     }

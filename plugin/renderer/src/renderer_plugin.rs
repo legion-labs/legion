@@ -116,7 +116,7 @@ fn render_update(
     q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
-    q_cameras: Query<'_, '_, &CameraComponent>,
+    q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
@@ -124,8 +124,10 @@ fn render_update(
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(&Transform, &StaticMesh)>>();
-    let default_camera = CameraComponent::default();
-    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+    let default_camera = CameraComponent::default_transform();
+    let q_cameras = q_cameras
+        .iter()
+        .collect::<Vec<(&CameraComponent, &Transform)>>();
     let graphics_queue = renderer.queue(QueueType::Graphics);
 
     renderer.flush_update_jobs(&mut render_context, &graphics_queue);
@@ -145,7 +147,7 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0]
+                q_cameras[0].1
             } else {
                 &default_camera
             },

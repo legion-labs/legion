@@ -7,7 +7,7 @@ use lgn_ecs::prelude::*;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_input::mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_input::InputPlugin;
-use lgn_math::Mat3;
+use lgn_math::{EulerRot, Mat3, Mat4, Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
@@ -313,7 +313,10 @@ fn init_scene(mut commands: Commands) {
         });
 
     // camera
-    commands.spawn().insert(CameraComponent::default());
+    commands
+        .spawn()
+        .insert(CameraComponent::default())
+        .insert(CameraComponent::default_transform());
 }
 
 fn on_snapshot_app_exit(
@@ -332,18 +335,13 @@ fn on_snapshot_app_exit(
 struct CameraMoving(bool);
 
 fn camera_control(
-    mut q_cameras: Query<'_, '_, &mut CameraComponent>,
+    mut q_cameras: Query<'_, '_, (&mut CameraComponent, &mut Transform)>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
     mut camera_moving: Local<CameraMoving>,
 ) {
-    let mut q_cameras = q_cameras
-        .iter_mut()
-        .map(|v| v.into_inner())
-        .collect::<Vec<&mut CameraComponent>>();
-
     for mouse_button_input_event in mouse_button_input_events.iter() {
         if mouse_button_input_event.button == MouseButton::Right {
             camera_moving.0 = mouse_button_input_event.state.is_pressed();
@@ -354,40 +352,43 @@ fn camera_control(
         return;
     }
 
-    for camera in q_cameras.iter_mut() {
+    let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
+    {
+        let mut translation = Vec3::default();
         for keyboard_input_event in keyboard_input_events.iter() {
             if let Some(key_code) = keyboard_input_event.key_code {
                 match key_code {
                     KeyCode::W => {
-                        camera.pos += camera.dir * camera.speed / 60.0;
+                        let dir = transform.forward();
+                        translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::S => {
-                        camera.pos -= camera.dir * camera.speed / 60.0;
+                        let dir = transform.back();
+                        translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::D => {
-                        let cross = camera.up.cross(camera.dir).normalize();
-                        camera.pos += cross * camera.speed / 60.0;
+                        let dir = transform.right();
+                        translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::A => {
-                        let cross = camera.up.cross(camera.dir).normalize();
-                        camera.pos -= cross * camera.speed / 60.0;
+                        let dir = transform.left();
+                        translation += dir * camera.speed / 60.0;
                     }
                     _ => {}
                 }
             }
         }
 
+        let mut rotation = Quat::default();
         for mouse_motion_event in mouse_motion_events.iter() {
-            let rotation_x = Mat3::from_axis_angle(
-                camera.up,
-                mouse_motion_event.delta.x * camera.rotation_speed / 60.0,
-            );
-            let rotation_y = Mat3::from_axis_angle(
-                camera.up.cross(camera.dir).normalize(),
-                mouse_motion_event.delta.y * camera.rotation_speed / 60.0,
-            );
-            camera.dir = rotation_x * rotation_y * camera.dir;
+            rotation *=
+                Quat::from_rotation_y(mouse_motion_event.delta.x * camera.rotation_speed / 60.0);
+            rotation *=
+                Quat::from_rotation_x(mouse_motion_event.delta.y * camera.rotation_speed / 60.0);
         }
+
+        transform.translation += translation;
+        transform.rotation = rotation * transform.rotation;
 
         for mouse_wheel_event in mouse_wheel_events.iter() {
             camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);

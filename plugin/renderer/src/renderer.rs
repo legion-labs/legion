@@ -4,7 +4,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_math::Mat4;
+use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
@@ -468,7 +468,7 @@ impl TmpRenderPass {
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
-        camera: &CameraComponent,
+        camera_transform: &Transform,
     ) {
         {
             let bump = render_context.acquire_bump_allocator();
@@ -517,8 +517,11 @@ impl TmpRenderPass {
         let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
-        let view_matrix = Mat4::look_at_lh(camera.pos, camera.pos + camera.dir, camera.up);
-
+        let view_matrix = Mat4::look_at_lh(
+            camera_transform.translation,
+            camera_transform.translation + camera_transform.forward(),
+            Vec3::new(0.0, 1.0, 0.0),
+        );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
