@@ -80,6 +80,7 @@ async fn authenticate(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow:
 
     token_cache
         .authenticator()
+        .await
         .get_user_info(&access_token)
         .await
         .map_err(Into::into)
