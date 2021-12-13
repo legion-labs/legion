@@ -10,7 +10,7 @@
             apply_to_children: true,
         )),
         Visual((
-            renderable_geometry: "offline_mesh(source/prefab/props/cube.obj)",
+            renderable_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
@@ -21,7 +21,7 @@
         )),
         Physics((
             dynamic: false,
-            collision_geometry: "offline_mesh(source/prefab/props/cube.obj)",
+            collision_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
         )),
     ],
 )
