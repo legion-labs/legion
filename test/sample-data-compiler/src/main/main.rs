@@ -61,6 +61,8 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::{fs, path::PathBuf};
+
 use clap::{App, Arg};
 use lgn_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
@@ -68,6 +70,7 @@ use sample_data_compiler::{offline_compiler, raw_loader};
 fn main() {
     const ARG_PROJECT_DIR: &str = "root";
     const ARG_RESOURCE_NAME: &str = "resource";
+    const ARG_CLEAN_NAME: &str = "clean";
 
     let args = App::new("Sample data compiler")
         .version(clap::crate_version!())
@@ -77,19 +80,62 @@ fn main() {
             .takes_value(true)
             .help("Folder containing raw/ directory"))
         .arg(Arg::with_name(ARG_RESOURCE_NAME)
-                .long(ARG_RESOURCE_NAME)
-                .takes_value(true)
-                .help("Path name of the resource to compile"))
+            .long(ARG_RESOURCE_NAME)
+            .takes_value(true)
+            .help("Path name of the resource to compile"))
+        .arg(Arg::with_name(ARG_CLEAN_NAME)
+            .long(ARG_CLEAN_NAME)
+            .help("Clean old folders from the target folder."))
         .get_matches();
 
     let project_dir = args.value_of(ARG_PROJECT_DIR).unwrap_or("test/sample-data");
     let root_resource = args
         .value_of(ARG_RESOURCE_NAME)
         .unwrap_or("/world/sample_1.ent");
+    let clean = args.is_present(ARG_CLEAN_NAME);
+
+    if clean {
+        clean_folders(project_dir);
+    }
 
     // generate contents of offline folder, from raw RON content
     raw_loader::build_offline(project_dir);
 
     // compile offline resources to runtime assets
     offline_compiler::build(project_dir, &ResourcePathName::from(root_resource));
+}
+
+fn clean_folders(project_dir: &str) {
+    let mut can_clean = true;
+    let mut path = PathBuf::from(project_dir);
+
+    let mut test = |sub_path| {
+        path.push(sub_path);
+        can_clean &= path.exists();
+        path.pop();
+    };
+    test("offline");
+    test("runtime");
+    test("temp");
+    test("project.index");
+
+    if !can_clean {
+        println!("Cannot clean folders in path {}", project_dir);
+    } else {
+        let mut delete = |sub_path, as_dir| {
+            path.push(sub_path);
+            let remove: fn(_) -> std::result::Result<_, _>;
+            if as_dir {
+                remove = fs::remove_dir_all;
+            } else {
+                remove = fs::remove_file;
+            }
+            remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+            path.pop();
+        };
+        delete("offline", true);
+        delete("runtime", true);
+        delete("temp", true);
+        delete("project.index", false);
+    }
 }
