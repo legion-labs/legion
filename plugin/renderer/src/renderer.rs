@@ -9,7 +9,7 @@ use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::components::{CameraComponent, RenderSurface, StaticMesh};
+use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,

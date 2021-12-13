@@ -7,7 +7,7 @@ use lgn_ecs::prelude::*;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_input::mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_input::InputPlugin;
-use lgn_math::{EulerRot, Mat3, Mat4, Quat, Vec3};
+use lgn_math::{Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
