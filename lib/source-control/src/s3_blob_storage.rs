@@ -1,9 +1,9 @@
-use std::io::Write;
-use std::path::{Path, PathBuf};
-
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use http::Uri;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use crate::{compute_file_hash, lz4_decompress, lz4_read, BlobStorage};
 
@@ -15,7 +15,7 @@ pub struct S3BlobStorage {
 }
 
 impl S3BlobStorage {
-    pub async fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
+    pub async fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self> {
         let uri = s3uri.parse::<Uri>().unwrap();
         let bucket_name = String::from(uri.host().unwrap());
         let root = PathBuf::from(uri.path().strip_prefix('/').unwrap());
@@ -23,9 +23,11 @@ impl S3BlobStorage {
         let client = aws_sdk_s3::Client::new(&config);
 
         let req = client.get_bucket_location().bucket(&bucket_name);
-        if let Err(e) = req.send().await {
-            return Err(format!("Error connecting to bucket {}: {}", s3uri, e));
-        }
+
+        req.send()
+            .await
+            .context(format!("failed to connect to bucket: {}", s3uri))?;
+
         Ok(Self {
             bucket_name,
             root,
@@ -34,7 +36,7 @@ impl S3BlobStorage {
         })
     }
 
-    async fn blob_exists(&self, hash: &str) -> Result<bool, String> {
+    async fn blob_exists(&self, hash: &str) -> Result<bool> {
         let path = self.root.join(hash);
         let key = path.to_str().unwrap();
         //we fetch the acl to know if the object exists
@@ -43,21 +45,21 @@ impl S3BlobStorage {
             .get_object_acl()
             .bucket(&self.bucket_name)
             .key(key);
+
         match req_acl.send().await {
             Ok(_acl) => Ok(true),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw }) => {
+            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
                     Ok(false)
                 } else {
-                    let _dummy = raw;
-                    Err(format!("error fetching acl for {:?}: {}", key, err))
+                    anyhow::bail!("error fetching acl for {:?}: {}", key, err);
                 }
             }
-            Err(e) => Err(format!("error fetching acl for {:?}: {:?}", key, e)),
+            Err(e) => anyhow::bail!("error fetching acl for {:?}: {:?}", key, e),
         }
     }
 
-    async fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf, String> {
+    async fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf> {
         let cache_path = self.compressed_blob_cache.join(hash);
         if cache_path.exists() {
             //todo: validate the compressed file checksum
@@ -70,91 +72,79 @@ impl S3BlobStorage {
             .get_object()
             .bucket(&self.bucket_name)
             .key(s3key);
-        match req.send().await {
-            Ok(mut obj_output) => match std::fs::File::create(&cache_path) {
-                Ok(mut output_file) => loop {
-                    match obj_output.body.try_next().await {
-                        Ok(Some(bytes)) => {
-                            if let Err(e) = output_file.write(&bytes) {
-                                return Err(format!("Error writing to temp buffer: {}", e));
-                            }
-                        }
-                        Ok(None) => {
-                            break;
-                        }
-                        Err(e) => {
-                            return Err(format!("Error reading blob stream: {}", e));
-                        }
-                    }
-                },
-                Err(e) => {
-                    return Err(format!(
-                        "Error creating file {}: {}",
-                        cache_path.display(),
-                        e
-                    ));
-                }
-            },
-            Err(e) => {
-                return Err(format!("Error downloading blob: {}", e));
-            }
+
+        let mut obj_output = req.send().await.context("error downloading blob")?;
+        let mut output_file = std::fs::File::create(&cache_path)
+            .context(format!("error creating file: {}", cache_path.display()))?;
+
+        while let Some(bytes) = obj_output
+            .body
+            .try_next()
+            .await
+            .context("error reading blob stream")?
+        {
+            output_file
+                .write(&bytes)
+                .context("failed to write to temp buffer")?;
         }
+
         Ok(cache_path)
     }
 }
 
 #[async_trait]
 impl BlobStorage for S3BlobStorage {
-    async fn read_blob(&self, hash: &str) -> Result<String, String> {
+    async fn read_blob(&self, hash: &str) -> Result<String> {
         let cache_path = self.download_blob_to_cache(hash).await?;
         lz4_read(&cache_path)
     }
 
-    async fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
+    async fn download_blob(&self, local_path: &Path, hash: &str) -> Result<()> {
         assert!(!hash.is_empty());
         let cache_path = self.download_blob_to_cache(hash).await?;
         lz4_decompress(&cache_path, local_path)?;
         let downloaded_hash = compute_file_hash(local_path)?;
         if hash != downloaded_hash {
-            return Err(format!(
-                "Downloaded blob hash does not match for {}",
+            anyhow::bail!(
+                "downloaded blob hash does not match for {}",
                 local_path.display()
-            ));
+            );
         }
+
         Ok(())
     }
 
-    async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
+    async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<()> {
         let path = self.root.join(hash);
         let key = path.to_str().unwrap();
+
         if self.blob_exists(hash).await? {
             return Ok(());
         }
 
         let req = self.client.put_object().bucket(&self.bucket_name).key(key);
         let mut buffer: Vec<u8> = Vec::new();
-        match lz4::EncoderBuilder::new().level(10).build(&mut buffer) {
-            Ok(mut encoder) => {
-                if let Err(e) = encoder.write(contents) {
-                    return Err(format!("Error writing to lz4 encoder: {}", e));
-                }
-                if let (_w, Err(e)) = encoder.finish() {
-                    return Err(format!("Error closing lz4 encoder: {}", e));
-                }
-            }
-            Err(e) => {
-                return Err(format!("Error making lz4 encoder: {}", e));
-            }
-        }
-        if let Err(e) = req.body(aws_sdk_s3::ByteStream::from(buffer)).send().await {
-            return Err(format!("Error writing to bucket {}", e));
-        }
+
+        let mut encoder = lz4::EncoderBuilder::new()
+            .level(10)
+            .build(&mut buffer)
+            .context("error building encoder")?;
+        encoder
+            .write(contents)
+            .context("error writing to encoder")?;
+
+        encoder.finish().1.context("error finishing encoder")?;
+
+        req.body(aws_sdk_s3::ByteStream::from(buffer))
+            .send()
+            .await
+            .context("error writing to bucket")?;
 
         Ok(())
     }
 }
 
-pub async fn validate_connection_to_bucket(s3uri: &str) -> Result<(), String> {
+pub async fn validate_connection_to_bucket(s3uri: &str) -> Result<()> {
     let bogus_blob_cache = std::path::PathBuf::new();
     let _storage = S3BlobStorage::new(s3uri, bogus_blob_cache).await?;
     Ok(())

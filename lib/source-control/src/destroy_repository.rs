@@ -1,16 +1,16 @@
+use anyhow::Result;
 use url::Url;
 
 use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::sql;
 
-pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
+pub async fn destroy_repository_command(uri: &str) -> Result<()> {
     lgn_telemetry::trace_scope!();
     let repo_uri = Url::parse(uri).unwrap();
+
     match repo_uri.scheme() {
         "file" => {
-            return Err(String::from(
-                "file:// scheme not implemented, remove the directory manually",
-            ));
+            anyhow::bail!("file:// scheme not implemented, remove the directory manually");
         }
         "mysql" => {
             sql::drop_database(uri).await?;
@@ -27,8 +27,9 @@ pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
             println!("{}", resp);
         }
         unknown => {
-            return Err(format!("Unknown repository scheme {}", unknown));
+            anyhow::bail!("unknown repository scheme: {}", unknown);
         }
     }
+
     Ok(())
 }

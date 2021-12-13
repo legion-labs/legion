@@ -1,10 +1,9 @@
+use anyhow::{Context, Result};
+use sqlx::Row;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-
-use futures::executor::block_on;
-use sqlx::Row;
 
 use crate::{
     connect_to_server, download_temp_file, fetch_tree_subdir, find_workspace_root,
@@ -36,59 +35,57 @@ impl ResolvePending {
 
 pub async fn init_resolve_pending_database(
     workspace_connection: &mut LocalWorkspaceConnection,
-) -> Result<(), String> {
+) -> Result<()> {
     let sql_connection = workspace_connection.sql();
     let sql = "CREATE TABLE resolves_pending(relative_path VARCHAR(512) NOT NULL PRIMARY KEY, base_commit_id VARCHAR(255), theirs_commit_id VARCHAR(255));";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
-        return Err(format!("Error creating resolves_pending table: {}", e));
-    }
-    Ok(())
+
+    execute_sql(sql_connection, sql)
+        .await
+        .context("error creating resolves_pending table")
 }
 
 pub async fn save_resolve_pending(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     resolve_pending: &ResolvePending,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query("INSERT OR REPLACE into resolves_pending VALUES(?,?,?);")
+) -> Result<()> {
+    sqlx::query("INSERT OR REPLACE into resolves_pending VALUES(?,?,?);")
         .bind(resolve_pending.relative_path.clone())
         .bind(resolve_pending.base_commit_id.clone())
         .bind(resolve_pending.theirs_commit_id.clone())
         .execute(workspace_transaction)
         .await
-    {
-        return Err(format!(
-            "Error updating resolve pending {}: {}",
-            resolve_pending.relative_path, e
-        ));
-    }
+        .context(format!(
+            "error saving resolve pending for {}",
+            resolve_pending.relative_path
+        ))?;
+
     Ok(())
 }
 
 pub async fn clear_resolve_pending(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     resolve_pending: &ResolvePending,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query(
+) -> Result<()> {
+    sqlx::query(
         "DELETE from resolves_pending
              WHERE relative_path=?;",
     )
     .bind(resolve_pending.relative_path.clone())
     .execute(workspace_transaction)
     .await
-    {
-        return Err(format!(
-            "Error clearing resolve pending {}: {}",
-            resolve_pending.relative_path, e
-        ));
-    }
+    .context(format!(
+        "error clearing resolve pending for {}",
+        resolve_pending.relative_path
+    ))?;
+
     Ok(())
 }
 
 pub async fn find_resolve_pending(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     canonical_relative_path: &str,
-) -> Result<Option<ResolvePending>, String> {
-    match sqlx::query(
+) -> Result<Option<ResolvePending>> {
+    Ok(sqlx::query(
         "SELECT base_commit_id, theirs_commit_id 
              FROM resolves_pending
              WHERE relative_path = ?;",
@@ -96,63 +93,55 @@ pub async fn find_resolve_pending(
     .bind(canonical_relative_path)
     .fetch_optional(workspace_transaction)
     .await
-    {
-        Ok(None) => Ok(None),
-        Ok(Some(row)) => {
-            let resolve_pending = ResolvePending::new(
-                String::from(canonical_relative_path),
-                row.get("base_commit_id"),
-                row.get("theirs_commit_id"),
-            );
-            Ok(Some(resolve_pending))
-        }
-        Err(e) => Err(format!(
-            "Error fetching resolve pending {}: {}",
-            canonical_relative_path, e
-        )),
-    }
-}
-
-fn read_resolves_pending(
-    workspace_connection: &mut LocalWorkspaceConnection,
-) -> Result<Vec<ResolvePending>, String> {
-    let sql_connection = workspace_connection.sql();
-    let mut res = Vec::new();
-    match block_on(
-        sqlx::query(
-            "SELECT relative_path, base_commit_id, theirs_commit_id 
-             FROM resolves_pending;",
+    .context(format!(
+        "error finding resolve pending for {}",
+        canonical_relative_path
+    ))?
+    .map(|row| {
+        ResolvePending::new(
+            String::from(canonical_relative_path),
+            row.get("base_commit_id"),
+            row.get("theirs_commit_id"),
         )
-        .fetch_all(&mut *sql_connection),
-    ) {
-        Ok(rows) => {
-            for row in rows {
-                let resolve_pending = ResolvePending::new(
-                    row.get("relative_path"),
-                    row.get("base_commit_id"),
-                    row.get("theirs_commit_id"),
-                );
-                res.push(resolve_pending);
-            }
-            Ok(res)
-        }
-        Err(e) => Err(format!("Error fetching resolves pending: {}", e)),
-    }
+    }))
 }
 
-pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
+async fn read_resolves_pending(
+    workspace_connection: &mut LocalWorkspaceConnection,
+) -> Result<Vec<ResolvePending>> {
+    let sql_connection = workspace_connection.sql();
+
+    Ok(sqlx::query(
+        "SELECT relative_path, base_commit_id, theirs_commit_id 
+             FROM resolves_pending;",
+    )
+    .fetch_all(&mut *sql_connection)
+    .await
+    .context("error fetching resolves pending")?
+    .into_iter()
+    .map(|row| {
+        ResolvePending::new(
+            row.get("relative_path"),
+            row.get("base_commit_id"),
+            row.get("theirs_commit_id"),
+        )
+    })
+    .collect())
+}
+
+pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    read_resolves_pending(&mut workspace_connection)
+    read_resolves_pending(&mut workspace_connection).await
 }
 
 pub async fn find_file_hash_at_commit(
     connection: &RepositoryConnection,
     relative_path: &Path,
     commit_id: &str,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>> {
     let query = connection.query();
     let commit = query.read_commit(commit_id).await?;
     let root_tree = query.read_tree(&commit.root_hash).await?;
@@ -176,51 +165,42 @@ fn run_merge_program(
     theirs_path: &str,
     base_path: &str,
     output_path: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     trace_scope!();
     let config = Config::read_config()?;
-    match config.find_merge_command(relative_path) {
-        Some(mut external_command_vec) => {
-            for item in &mut external_command_vec[..] {
-                *item = item.replace("%local", abs_path);
-                *item = item.replace("%theirs", theirs_path);
-                *item = item.replace("%base", base_path);
-                *item = item.replace("%output", output_path);
-            }
+    let external_command_vec: Vec<_> = config
+        .find_merge_command(relative_path)
+        .context(format!(
+            "error finding merge command for {} in {}",
+            relative_path.display(),
+            Config::config_file_path().unwrap().display()
+        ))?
+        .into_iter()
+        .map(|item| {
+            item.replace("%local", abs_path)
+                .replace("%theirs", theirs_path)
+                .replace("%base", base_path)
+                .replace("%output", output_path)
+        })
+        .collect();
 
-            match Command::new(&external_command_vec[0])
-                .args(&external_command_vec[1..])
-                .output()
-            {
-                Ok(output) => {
-                    let mut out = std::io::stdout();
-                    out.write_all(&output.stdout).unwrap();
-                    out.flush().unwrap();
+    let output = Command::new(&external_command_vec[0])
+        .args(&external_command_vec[1..])
+        .output()
+        .context("error running external merge program")?;
 
-                    let mut err = std::io::stderr();
-                    err.write_all(&output.stderr).unwrap();
-                    err.flush().unwrap();
-                }
-                Err(e) => {
-                    return Err(format!(
-                        "Error executing external command {:?}: {}",
-                        external_command_vec, e
-                    ));
-                }
-            }
-        }
-        None => {
-            return Err(format!(
-                "No merge command corresponding to {} was found in {}",
-                relative_path.display(),
-                Config::config_file_path().unwrap().display()
-            ));
-        }
-    }
+    let mut out = std::io::stdout();
+    out.write_all(&output.stdout).unwrap();
+    out.flush().unwrap();
+
+    let mut err = std::io::stderr();
+    err.write_all(&output.stderr).unwrap();
+    err.flush().unwrap();
+
     Ok(())
 }
 
-fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> Result<(), String> {
+fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> Result<()> {
     let yours = read_bin_file(yours_path)?;
     let theirs = read_bin_file(theirs_path)?;
     let base = read_bin_file(base_path)?;
@@ -240,7 +220,7 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
     Ok(())
 }
 
-pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
+pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<()> {
     trace_scope!();
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
@@ -249,79 +229,63 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, p)?;
-    match find_resolve_pending(&mut workspace_transaction, &relative_path).await {
-        Err(e) => {
-            return Err(format!(
-                "Error finding resolve pending for file {}: {}",
-                p.display(),
-                e
-            ));
-        }
-        Ok(None) => {
-            return Err(format!(
-                "Pending resolve for file {} not found",
-                p.display()
-            ));
-        }
-        Ok(Some(resolve_pending)) => {
-            let base_file_hash = find_file_hash_at_commit(
-                &connection,
-                Path::new(&relative_path),
-                &resolve_pending.base_commit_id,
-            )
-            .await?
-            .unwrap();
-            let base_temp_file =
-                download_temp_file(&connection, &workspace_root, &base_file_hash).await?;
-            let theirs_file_hash = find_file_hash_at_commit(
-                &connection,
-                Path::new(&relative_path),
-                &resolve_pending.theirs_commit_id,
-            )
-            .await?
-            .unwrap();
-            let theirs_temp_file =
-                download_temp_file(&connection, &workspace_root, &theirs_file_hash).await?;
-            let tmp_dir = workspace_root.join(".lsc/tmp");
-            let output_temp_file = TempPath {
-                path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
-            };
-            if !allow_tools {
-                run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
-                clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
-                if let Err(e) = workspace_transaction.commit().await {
-                    return Err(format!(
-                        "Error in transaction commit for resolve_file_command: {}",
-                        e
-                    ));
-                }
-                return Ok(());
-            }
 
-            run_merge_program(
-                Path::new(&relative_path),
-                abs_path.to_str().unwrap(),
-                theirs_temp_file.path.to_str().unwrap(),
-                base_temp_file.path.to_str().unwrap(),
-                output_temp_file.path.to_str().unwrap(),
-            )?;
-            if let Err(e) = fs::copy(&output_temp_file.path, &abs_path) {
-                return Err(format!(
-                    "Error copying {} to {}: {}",
-                    output_temp_file.path.display(),
-                    abs_path.display(),
-                    e
-                ));
-            }
-            println!("Merge accepted, {} updated", abs_path.display());
-            clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
-        }
+    let resolve_pending = find_resolve_pending(&mut workspace_transaction, &relative_path)
+        .await
+        .context(format!("error finding resolve pending for {}", p.display()))?
+        .ok_or_else(|| anyhow::anyhow!("no resolve pending found for {}", p.display(),))?;
+
+    let base_file_hash = find_file_hash_at_commit(
+        &connection,
+        Path::new(&relative_path),
+        &resolve_pending.base_commit_id,
+    )
+    .await?
+    .unwrap();
+    let base_temp_file = download_temp_file(&connection, &workspace_root, &base_file_hash).await?;
+    let theirs_file_hash = find_file_hash_at_commit(
+        &connection,
+        Path::new(&relative_path),
+        &resolve_pending.theirs_commit_id,
+    )
+    .await?
+    .unwrap();
+    let theirs_temp_file =
+        download_temp_file(&connection, &workspace_root, &theirs_file_hash).await?;
+    let tmp_dir = workspace_root.join(".lsc/tmp");
+    let output_temp_file = TempPath {
+        path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
+    };
+
+    if !allow_tools {
+        run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
+        clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
+
+        return workspace_transaction
+            .commit()
+            .await
+            .context("error in transaction commit for resolve_file_command");
     }
-    if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
-            "Error in transaction commit for resolve_file_command: {}",
-            e
-        ));
-    }
-    Ok(())
+
+    run_merge_program(
+        Path::new(&relative_path),
+        abs_path.to_str().unwrap(),
+        theirs_temp_file.path.to_str().unwrap(),
+        base_temp_file.path.to_str().unwrap(),
+        output_temp_file.path.to_str().unwrap(),
+    )?;
+
+    fs::copy(&output_temp_file.path, &abs_path).context(format!(
+        "error copying {} to {}",
+        output_temp_file.path.display(),
+        abs_path.display()
+    ))?;
+
+    println!("Merge accepted, {} updated", abs_path.display());
+    clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("eroor in transaction commit for resolve_file_command")
 }

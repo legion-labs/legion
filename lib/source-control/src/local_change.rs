@@ -1,8 +1,8 @@
-use std::fs;
-use std::path::Path;
-
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::fs;
+use std::path::Path;
 
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,
@@ -19,12 +19,12 @@ pub enum ChangeType {
 }
 
 impl ChangeType {
-    pub fn from_int(i: i64) -> Result<Self, String> {
+    pub fn from_int(i: i64) -> Result<Self> {
         match i {
             1 => Ok(Self::Edit),
             2 => Ok(Self::Add),
             3 => Ok(Self::Delete),
-            _ => Err(format!("Invalid change type {}", i)),
+            _ => anyhow::bail!("invalid change type {}", i),
         }
     }
 }
@@ -44,42 +44,39 @@ impl LocalChange {
     }
 }
 
-pub async fn init_local_changes_database(
-    connection: &mut LocalWorkspaceConnection,
-) -> Result<(), String> {
+pub async fn init_local_changes_database(connection: &mut LocalWorkspaceConnection) -> Result<()> {
     let sql_connection = connection.sql();
     let sql = "CREATE TABLE changes(relative_path TEXT NOT NULL PRIMARY KEY, change_type INTEGER);";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
-        return Err(format!("Error creating change table: {}", e));
-    }
-    Ok(())
+
+    execute_sql(sql_connection, sql)
+        .await
+        .context("failed to create changes table")
 }
 
 pub async fn save_local_change(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     change_spec: &LocalChange,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query("REPLACE INTO changes VALUES(?, ?);")
+) -> Result<()> {
+    sqlx::query("REPLACE INTO changes VALUES(?, ?);")
         .bind(change_spec.relative_path.clone())
         .bind(change_spec.change_type.clone() as i64)
         .execute(transaction)
         .await
-    {
-        return Err(format!(
-            "Error saving local change to {}: {}",
-            change_spec.relative_path, e
-        ));
-    }
+        .context(format!(
+            "failed to save local change to: {}",
+            change_spec.relative_path,
+        ))?;
+
     Ok(())
 }
 
 pub async fn find_local_change(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     canonical_relative_path: &str,
-) -> Result<Option<LocalChange>, String> {
+) -> Result<Option<LocalChange>> {
     let path = canonical_relative_path.to_lowercase();
 
-    match sqlx::query(
+    Ok(sqlx::query(
         "SELECT change_type
              FROM changes
              WHERE relative_path = ?;",
@@ -87,46 +84,41 @@ pub async fn find_local_change(
     .bind(path.clone())
     .fetch_optional(transaction)
     .await
-    {
-        Ok(None) => Ok(None),
-        Err(e) => Err(format!("Error fetching local change: {}", e)),
-        Ok(Some(row)) => {
-            let change_type_int: i64 = row.get("change_type");
-            Ok(Some(LocalChange::new(
-                &path,
-                ChangeType::from_int(change_type_int).unwrap(),
-            )))
-        }
-    }
+    .context("error fetching local change")?
+    .map(|row| {
+        let change_type_int: i64 = row.get("change_type");
+
+        LocalChange::new(&path, ChangeType::from_int(change_type_int).unwrap())
+    }))
 }
 
 pub async fn read_local_changes(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-) -> Result<Vec<LocalChange>, String> {
+) -> Result<Vec<LocalChange>> {
     trace_scope!();
-    match sqlx::query(
+    let rows = sqlx::query(
         "SELECT relative_path, change_type
              FROM changes",
     )
     .fetch_all(transaction)
     .await
-    {
-        Ok(rows) => {
-            let mut res = Vec::new();
-            for row in rows {
-                let change_type_int: i64 = row.get("change_type");
-                res.push(LocalChange::new(
-                    row.get("relative_path"),
-                    ChangeType::from_int(change_type_int).unwrap(),
-                ));
-            }
-            Ok(res)
-        }
-        Err(e) => Err(format!("Error reading local changes: {}", e)),
+    .context("error reading local changes")?;
+
+    let mut res = vec![];
+
+    for row in rows {
+        let change_type_int: i64 = row.get("change_type");
+
+        res.push(LocalChange::new(
+            row.get("relative_path"),
+            ChangeType::from_int(change_type_int).unwrap(),
+        ));
     }
+
+    Ok(res)
 }
 
-pub async fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
+pub async fn find_local_changes_command() -> Result<Vec<LocalChange>> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -138,17 +130,13 @@ pub async fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
 pub async fn clear_local_change(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     change: &LocalChange,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query("DELETE from changes where relative_path=?;")
+) -> Result<()> {
+    sqlx::query("DELETE from changes where relative_path=?;")
         .bind(change.relative_path.clone())
         .execute(workspace_transaction)
         .await
-    {
-        return Err(format!(
-            "Error clearing local change {}: {}",
-            change.relative_path, e
-        ));
-    }
+        .context("error clearing local change")?;
+
     Ok(())
 }
 
@@ -171,26 +159,24 @@ pub async fn track_new_file(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     repo_connection: &RepositoryConnection,
     path_specified: &Path,
-) -> Result<(), String> {
+) -> Result<()> {
     let abs_path = make_path_absolute(path_specified);
+
     if !abs_path.exists() {
-        return Err(format!("Error: file {} not found", &abs_path.display(),));
+        anyhow::bail!("Error: file {} not found", abs_path.display());
     }
     //todo: make sure the file does not exist in the current tree hierarchy
 
     let relative_path = make_canonical_relative_path(workspace_root, &abs_path)?;
-    match find_local_change(workspace_transaction, &relative_path).await {
-        Ok(Some(change)) => {
-            return Err(format!(
-                "Error: {} already tracked for {:?}",
-                change.relative_path, change.change_type
-            ));
-        }
-        Err(e) => {
-            return Err(format!("Error searching in local changes: {}", e));
-        }
-        Ok(None) => { //all is good
-        }
+    if let Some(change) = find_local_change(workspace_transaction, &relative_path)
+        .await
+        .context("error searching in local changes")?
+    {
+        anyhow::bail!(
+            "{} already tracked for {:?}",
+            change.relative_path,
+            change.change_type
+        );
     }
 
     let (_branch_name, current_commit) = read_current_branch(workspace_transaction).await?;
@@ -199,7 +185,7 @@ pub async fn track_new_file(
         find_file_hash_at_commit(repo_connection, Path::new(&relative_path), &current_commit)
             .await?
     {
-        return Err(String::from("file already exists in tree"));
+        anyhow::bail!("file already exists in tree");
     }
 
     assert_not_locked(
@@ -214,7 +200,7 @@ pub async fn track_new_file(
     save_local_change(workspace_transaction, &local_change).await
 }
 
-pub async fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn track_new_file_command(path_specified: &Path) -> Result<()> {
     trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -228,13 +214,11 @@ pub async fn track_new_file_command(path_specified: &Path) -> Result<(), String>
         path_specified,
     )
     .await?;
-    if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
-            "Error in transaction commit for track_new_file_command: {}",
-            e
-        ));
-    }
-    Ok(())
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("error committing transaction for track_new_file_command")
 }
 
 pub async fn edit_file(
@@ -242,32 +226,25 @@ pub async fn edit_file(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     query: &dyn RepositoryQuery,
     path_specified: &Path,
-) -> Result<(), String> {
+) -> Result<()> {
     let abs_path = make_path_absolute(path_specified);
-    if let Err(e) = fs::metadata(&abs_path) {
-        return Err(format!(
-            "Error reading file metadata {}: {}",
-            &abs_path.display(),
-            e
-        ));
-    }
+    fs::metadata(&abs_path)
+        .context(format!("error reading metadata for {}", abs_path.display()))?;
 
     //todo: make sure file is tracked by finding it in the current tree hierarchy
     assert_not_locked(query, workspace_root, workspace_transaction, &abs_path).await?;
 
     let relative_path = make_canonical_relative_path(workspace_root, &abs_path)?;
-    match find_local_change(workspace_transaction, &relative_path).await {
-        Ok(Some(change)) => {
-            return Err(format!(
-                "Error: {} already tracked for {:?}",
-                change.relative_path, change.change_type
-            ));
-        }
-        Err(e) => {
-            return Err(format!("Error searching in local changes: {}", e));
-        }
-        Ok(None) => { //all is good
-        }
+
+    if let Some(change) = find_local_change(workspace_transaction, &relative_path)
+        .await
+        .context("error searching in local changes")?
+    {
+        anyhow::bail!(
+            "{} already tracked for {:?}",
+            change.relative_path,
+            change.change_type
+        );
     }
 
     let local_change = LocalChange::new(&relative_path, ChangeType::Edit);
@@ -275,13 +252,14 @@ pub async fn edit_file(
     make_file_read_only(&abs_path, false)
 }
 
-pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn edit_file_command(path_specified: &Path) -> Result<()> {
     trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
+
     edit_file(
         &workspace_root,
         &mut workspace_transaction,
@@ -289,11 +267,9 @@ pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
         path_specified,
     )
     .await?;
-    if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
-            "Error in transaction commit for edit_file_command: {}",
-            e
-        ));
-    }
-    Ok(())
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("error in transaction commit for edit_file_command")
 }

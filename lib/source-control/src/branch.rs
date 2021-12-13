@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
@@ -40,81 +41,71 @@ impl Branch {
     }
 }
 
-pub async fn create_branches_table(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+pub async fn create_branches_table(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql = "CREATE TABLE branches(name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64));
          CREATE UNIQUE INDEX branch_name on branches(name);
         ";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
-        return Err(format!("Error creating branch table and index: {}", e));
-    }
-    Ok(())
+
+    execute_sql(sql_connection, sql)
+        .await
+        .context("error creating branch table and index")
 }
 
-pub async fn create_workspace_branch_table(
-    sql_connection: &mut sqlx::AnyConnection,
-) -> Result<(), String> {
+pub async fn create_workspace_branch_table(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql = "CREATE TABLE current_branch(name VARCHAR(255), commit_id VARCHAR(255));
         ";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
-        return Err(format!("Error creating current_branch table: {}", e));
-    }
-    Ok(())
+
+    execute_sql(sql_connection, sql)
+        .await
+        .context("error creating current branch table")
 }
 
 pub async fn insert_current_branch(
     connection: &mut sqlx::AnyConnection,
     branch_name: &str,
     commit_id: &str,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query("INSERT INTO current_branch VALUES(?, ?);")
+) -> Result<()> {
+    sqlx::query("INSERT INTO current_branch VALUES(?, ?);")
         .bind(branch_name)
         .bind(commit_id)
         .execute(connection)
         .await
-    {
-        Err(format!("Error inserting into current_branch: {}", e))
-    } else {
-        Ok(())
-    }
+        .context("error inserting current branch")?;
+
+    Ok(())
 }
 
 pub async fn update_current_branch(
     connection: &mut sqlx::AnyConnection,
     branch_name: &str,
     commit_id: &str,
-) -> Result<(), String> {
-    if let Err(e) = sqlx::query("UPDATE current_branch SET name=?, commit_id=?;")
+) -> Result<()> {
+    sqlx::query("UPDATE current_branch SET name=?, commit_id=?;")
         .bind(branch_name)
         .bind(commit_id)
         .execute(connection)
         .await
-    {
-        Err(format!("Error updating current_branch: {}", e))
-    } else {
-        Ok(())
-    }
+        .context("error updating current branch")?;
+
+    Ok(())
 }
 
-pub async fn read_current_branch(
-    connection: &mut sqlx::AnyConnection,
-) -> Result<(String, String), String> {
-    match sqlx::query(
+pub async fn read_current_branch(connection: &mut sqlx::AnyConnection) -> Result<(String, String)> {
+    let row = sqlx::query(
         "SELECT name, commit_id 
              FROM current_branch;",
     )
     .fetch_one(connection)
     .await
-    {
-        Ok(row) => {
-            let name = row.get("name");
-            let commit_id = row.get("commit_id");
-            Ok((name, commit_id))
-        }
-        Err(e) => Err(format!("Error fetching current_branch: {}", e)),
-    }
+    .context("error fetching current branch")?;
+
+    let name = row.get("name");
+    let commit_id = row.get("commit_id");
+
+    Ok((name, commit_id))
 }
 
-pub async fn create_branch_command(name: &str) -> Result<(), String> {
+pub async fn create_branch_command(name: &str) -> Result<()> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -140,7 +131,7 @@ pub async fn create_branch_command(name: &str) -> Result<(), String> {
     .await
 }
 
-pub async fn list_branches_command() -> Result<(), String> {
+pub async fn list_branches_command() -> Result<()> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

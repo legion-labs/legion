@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 use sqlx::Connection;
@@ -8,25 +9,24 @@ pub struct LocalWorkspaceConnection {
 }
 
 impl LocalWorkspaceConnection {
-    pub async fn new(workspace_path: &Path) -> Result<Self, String> {
+    pub async fn new(workspace_path: &Path) -> Result<Self> {
         let db_path = workspace_path.join(".lsc/workspace.db3");
         let url = format!("sqlite://{}", db_path.display());
-        match sqlx::AnyConnection::connect(&url).await {
-            Err(e) => Err(format!("Error opening database {}: {}", url, e)),
-            Ok(c) => Ok(Self {
+
+        sqlx::AnyConnection::connect(&url)
+            .await
+            .context(format!("failed to open database at {}", url))
+            .map(|conn| Self {
                 workspace_path: workspace_path.to_path_buf(),
-                sql_connection: c,
-            }),
-        }
+                sql_connection: conn,
+            })
     }
 
-    pub async fn begin(&mut self) -> Result<sqlx::Transaction<'_, sqlx::Any>, String> {
-        match self.sql_connection.begin().await {
-            Ok(t) => Ok(t),
-            Err(e) => {
-                return Err(format!("Error beginning transaction on workspace: {}", e));
-            }
-        }
+    pub async fn begin(&mut self) -> Result<sqlx::Transaction<'_, sqlx::Any>> {
+        self.sql_connection
+            .begin()
+            .await
+            .context("error beginning transaction on workspace")
     }
 
     pub fn sql(&mut self) -> &mut sqlx::AnyConnection {

@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,26 +34,23 @@ impl BlobStorageSpec {
         serde_json::to_string(&self).unwrap()
     }
 
-    pub fn from_json(contents: &str) -> Result<Self, String> {
-        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
-        match parsed {
-            Ok(spec) => Ok(spec),
-            Err(e) => Err(format!("Error parsing blob storage spec: {}", e)),
-        }
+    pub fn from_json(contents: &str) -> Result<Self> {
+        serde_json::from_str(contents).context("parsing blob storage spec")
     }
 
-    pub fn from_uri(uri: &str) -> Result<Self, String> {
-        match Url::parse(uri) {
-            Ok(parsed) => {
-                let mut bogus_path = String::from(parsed.path());
-                let path = bogus_path.split_off(1); //remove leading /
-                match parsed.scheme() {
-                    "file" => Ok(Self::LocalDirectory(PathBuf::from(path))),
-                    "s3" => Ok(Self::S3Uri(String::from(uri))),
-                    unknown => Err(format!("unknown blob storage scheme {}", unknown)),
-                }
-            }
-            Err(e) => Err(format!("Error parsing blob uri {}: {}", uri, e)),
+    pub fn from_uri(uri: &str) -> Result<Self> {
+        let parsed = Url::parse(uri).context("parsing blob storage spec")?;
+
+        let mut bogus_path = String::from(parsed.path());
+        let path = bogus_path.split_off(1); //remove leading /
+
+        match parsed.scheme() {
+            "file" => Ok(Self::LocalDirectory(PathBuf::from(path))),
+            "s3" => Ok(Self::S3Uri(String::from(uri))),
+            unknown => Err(anyhow::format_err!(
+                "unknown blob storage scheme {}",
+                unknown
+            )),
         }
     }
 }

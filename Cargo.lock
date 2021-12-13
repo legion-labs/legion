@@ -4235,6 +4235,7 @@ name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
@@ -4569,6 +4570,7 @@ dependencies = [
 name = "lsc"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "lgn-logger",
  "lgn-source-control",

@@ -1,7 +1,7 @@
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-use serde::{Deserialize, Serialize};
 
 use crate::{read_text_file, trace_scope};
 
@@ -13,31 +13,20 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn config_file_path() -> Result<PathBuf, String> {
-        match dirs::config_dir() {
-            Some(dir) => Ok(dir.join(".lsc")),
-            None => Err(String::from("Error: no config directory")),
+    pub fn config_file_path() -> Result<PathBuf> {
+        if let Some(dir) = dirs::config_dir() {
+            Ok(dir.join(".lsc"))
+        } else {
+            anyhow::bail!("no config directory");
         }
     }
 
-    pub fn read_config() -> Result<Self, String> {
+    pub fn read_config() -> Result<Self> {
         let path = Self::config_file_path()?;
-        match read_text_file(&path) {
-            Ok(contents) => {
-                let parsed: serde_json::Result<Self> = serde_json::from_str(&contents);
-                match parsed {
-                    Ok(config) => Ok(config),
-                    Err(e) => Err(format!("Error parsing config file: {}", e)),
-                }
-            }
-            Err(e) => {
-                return Err(format!(
-                    "Error reading config file {}: {}",
-                    path.display(),
-                    e
-                ));
-            }
-        }
+        let contents =
+            read_text_file(&path).context(format!("read config file {}", path.display()))?;
+
+        serde_json::from_str(&contents).context("failed to parse config file")
     }
 
     fn find_command_impl(&self, command_spec_vec: &[Vec<String>], p: &Path) -> Option<Vec<String>> {
@@ -71,7 +60,7 @@ impl Config {
     }
 }
 
-pub fn print_config_command() -> Result<(), String> {
+pub fn print_config_command() -> Result<()> {
     trace_scope!();
     let path = Config::config_file_path()?;
     println!("config file path is {}", path.display());
