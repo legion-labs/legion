@@ -26,6 +26,7 @@
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
+  import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
   import {
     DrawSelectedRange,
     NewSelectionState,
@@ -401,34 +402,7 @@
     on:mousedown|preventDefault={onMouseDown}
   />
 
-  <div id="selected-time-range-div">
-    {#if currentSelection}
-      <h3>Selected time range</h3>
-      <div>
-        <span>beginning: </span>
-        <span>{formatExecutionTime(currentSelection[0])}<span /></span>
-      </div>
-      <div>
-        <span>end: </span>
-        <span>{formatExecutionTime(currentSelection[1])}<span /></span>
-      </div>
-      <div>
-        <span>duration: </span>
-        <span
-          >{formatExecutionTime(currentSelection[1] - currentSelection[0])}<span
-          /></span
-        >
-      </div>
-      <div class="call-graph-link">
-        <a
-          href={`/cumulative-call-graph?process=${id}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
-          use:link
-        >
-          Cumulative Call Graph
-        </a>
-      </div>
-    {/if}
-  </div>
+  <TimeRangeDetails timeRange={currentSelection} processId={id} />
 </div>
 
 <style lang="postcss">
@@ -439,15 +413,5 @@
   .timeline-canvas {
     margin: auto;
     display: inline-block;
-  }
-
-  .call-graph-link {
-    @apply text-[#42b983] underline;
-  }
-
-  #selected-time-range-div {
-    display: inline-block;
-    width: 200px;
-    text-align: left;
   }
 </style>

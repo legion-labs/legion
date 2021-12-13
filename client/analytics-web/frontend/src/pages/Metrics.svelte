@@ -6,9 +6,8 @@
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { onMount } from "svelte";
-  import { link } from "svelte-navigator";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
-  import { formatExecutionTime } from "@/lib/format";
+  import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
   import {
     DrawSelectedRange,
     NewSelectionState,
@@ -250,34 +249,7 @@
     on:mousemove|preventDefault={onMouseMove}
     on:mousedown|preventDefault={onMouseDown}
   />
-  <div id="selected-time-range-div">
-    {#if currentSelection}
-      <h3>Selected time range</h3>
-      <div>
-        <span>beginning: </span>
-        <span>{formatExecutionTime(currentSelection[0])}<span /></span>
-      </div>
-      <div>
-        <span>end: </span>
-        <span>{formatExecutionTime(currentSelection[1])}<span /></span>
-      </div>
-      <div>
-        <span>duration: </span>
-        <span
-          >{formatExecutionTime(currentSelection[1] - currentSelection[0])}<span
-          /></span
-        >
-      </div>
-      <div class="call-graph-link">
-        <a
-          href={`/cumulative-call-graph?process=${id}&begin=${currentSelection[0]}&end=${currentSelection[1]}`}
-          use:link
-        >
-          Cumulative Call Graph
-        </a>
-      </div>
-    {/if}
-  </div>
+  <TimeRangeDetails timeRange={currentSelection} processId={id} />
 </div>
 
 <style lang="postcss">
@@ -289,12 +261,6 @@
     display: inline-block;
   }
 
-  #selected-time-range-div {
-    display: inline-block;
-    width: 200px;
-    text-align: left;
-  }
-
   .metric-checkbox-div {
     text-align: left;
   }
@@ -302,9 +268,5 @@
   #canvas_plot {
     display: inline-block;
     margin: auto;
-  }
-
-  .call-graph-link {
-    @apply text-[#42b983] underline;
   }
 </style>
