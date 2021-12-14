@@ -1,6 +1,7 @@
 use anyhow::Result;
 use reqwest::Url;
 use std::{
+    cell::RefCell,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -20,21 +21,36 @@ impl FromStr for RepositoryUrl {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        match Url::parse(s) {
-            Ok(url) => match url.scheme() {
+        let validation = RefCell::new(None);
+
+        let violation_cb = |violation| {
+            *validation.borrow_mut() = Some(violation);
+        };
+
+        let options = Url::options().syntax_violation_callback(Some(&violation_cb));
+
+        let result = options.parse(s);
+        let validation = *validation.borrow();
+
+        match (result, validation) {
+            (_, Some(url::SyntaxViolation::ExpectedFileDoubleSlash)) => {
+                Err(anyhow::anyhow!("expected file://"))
+            }
+            (Ok(url), _) => match url.scheme() {
                 "file" => Ok(Self::Local(url.to_file_path().unwrap())),
                 "mysql" => Ok(Self::MySQL(url)),
                 "lsc" => Ok(Self::Lsc(url)),
                 _ => Ok(Self::Local(s.into())),
             },
-            Err(_) => Ok(Self::Local(s.into())),
+            (Err(_), Some(validation)) => Err(anyhow::anyhow!("{}", validation)),
+            (Err(_), None) => Ok(Self::Local(s.into())),
         }
     }
 }
 
 impl RepositoryUrl {
-    /// Make the repository URL absolte, possibly using the specified path if the URL is a local
-    /// relative repository URL.
+    /// Make the repository URL absolute, possibly using the specified path if
+    /// the URL is a local relative repository URL.
     ///
     /// In any other case, the URL is returned as is.
     pub fn make_absolute(self, base: impl AsRef<Path>) -> Self {
@@ -54,7 +70,7 @@ mod tests {
     fn test_from_str_file() {
         #[cfg(not(windows))]
         assert_eq!(
-            RepositoryUrl::from_str("file://home/user/repo").unwrap(),
+            RepositoryUrl::from_str("file:///home/user/repo").unwrap(),
             RepositoryUrl::Local(PathBuf::from("/home/user/repo"))
         );
         #[cfg(windows)]
