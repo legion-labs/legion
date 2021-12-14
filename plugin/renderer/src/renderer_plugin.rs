@@ -16,13 +16,15 @@ use crate::{
 pub struct RendererPlugin {
     has_window: bool,
     enable_egui: bool,
+    runs_dynamic_systems: bool,
 }
 
 impl RendererPlugin {
-    pub fn new(has_window: bool, enable_egui: bool) -> Self {
+    pub fn new(has_window: bool, enable_egui: bool, runs_dynamic_systems: bool) -> Self {
         Self {
             has_window,
             enable_egui,
+            runs_dynamic_systems,
         }
     }
 }
@@ -35,9 +37,13 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+
         // Update
-        app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+        if self.runs_dynamic_systems {
+            app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
+            app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+        }
+        app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
             SystemSet::new()
@@ -80,22 +86,26 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(
-    mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, '_, (Entity, &mut Transform, &RotationComponent, &mut StaticMesh)>,
-) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut gpu_data = renderer.aquire_transform_data();
-
-    for (entity, mut transform, rotation, mut mesh) in query.iter_mut() {
-        mesh.offset = gpu_data.ensure_index_allocated(entity.id());
-
+fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
+    for (mut transform, rotation) in query.iter_mut() {
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
             rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
             rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
             rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
         ));
+    }
+}
+
+fn update_transform(
+    mut renderer: ResMut<'_, Renderer>,
+    mut query: Query<'_, '_, (Entity, &Transform, &mut StaticMesh)>,
+) {
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let mut gpu_data = renderer.aquire_transform_data();
+
+    for (entity, transform, mut mesh) in query.iter_mut() {
+        mesh.offset = gpu_data.ensure_index_allocated(entity.id());
 
         let world = EntityTransforms {
             world: transform.compute_matrix(),

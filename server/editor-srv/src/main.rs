@@ -154,7 +154,11 @@ fn main() {
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(false, args.is_present(ARG_NAME_EGUI)))
+        .add_plugin(RendererPlugin::new(
+            false,
+            args.is_present(ARG_NAME_EGUI),
+            false,
+        ))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())

@@ -197,6 +197,7 @@ fn main() {
         .add_plugin(RendererPlugin::new(
             standalone,
             args.is_present(ARG_NAME_EGUI),
+            true,
         ));
 
     #[cfg(feature = "standalone")]
