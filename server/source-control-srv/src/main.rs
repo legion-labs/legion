@@ -58,16 +58,15 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-
+use anyhow::{Context, Result};
 use http::response::Response;
 use hyper::body::Body;
 use lgn_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
 #[allow(clippy::wildcard_imports)]
 use lgn_source_control::{sql::SqlConnectionPool, *};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use warp::Filter;
-use Result::Ok;
 
 #[macro_use]
 extern crate lazy_static;
@@ -76,7 +75,7 @@ lazy_static! {
     static ref POOLS: RwLock<HashMap<String, Arc<SqlConnectionPool>>> = RwLock::new(HashMap::new());
 }
 
-async fn init_remote_repository_req(name: &str) -> Result<String, String> {
+async fn init_remote_repository_req(name: &str) -> Result<String> {
     let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
     let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
     let db_server_uri = get_sql_uri();
@@ -86,7 +85,7 @@ async fn init_remote_repository_req(name: &str) -> Result<String, String> {
     Ok(format!("Created repository {}", name))
 }
 
-async fn destroy_repository_req(name: &str) -> Result<String, String> {
+async fn destroy_repository_req(name: &str) -> Result<String> {
     let db_server_uri = get_sql_uri();
     let db_uri = format!("{}/{}", db_server_uri, name);
     POOLS.write().unwrap().remove(name);
@@ -95,13 +94,13 @@ async fn destroy_repository_req(name: &str) -> Result<String, String> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn read_blob_storage_spec_req(_name: &str) -> Result<String, String> {
+fn read_blob_storage_spec_req(_name: &str) -> Result<String> {
     let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
     let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
     Ok(blob_spec.to_json())
 }
 
-async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>, String> {
+async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>> {
     {
         let pool_read = POOLS.read().unwrap();
         if let Some(p) = pool_read.get(repo_name) {
@@ -119,134 +118,115 @@ async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>, 
     Ok(p)
 }
 
-async fn get_sql_query_interface(repo_name: &str) -> Result<SqlRepositoryQuery, String> {
+async fn get_sql_query_interface(repo_name: &str) -> Result<SqlRepositoryQuery> {
     Ok(SqlRepositoryQuery::new(
         get_connection_pool(repo_name).await?,
         Databases::Mysql,
     ))
 }
 
-async fn insert_workspace_req(args: &InsertWorkspaceRequest) -> Result<String, String> {
+async fn insert_workspace_req(args: &InsertWorkspaceRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.insert_workspace(&args.spec).await?;
     Ok(String::from(""))
 }
 
-async fn find_branch_req(args: &FindBranchRequest) -> Result<String, String> {
+async fn find_branch_req(args: &FindBranchRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.find_branch(&args.branch_name).await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting find_branch_req result: {}", e)),
-    }
+
+    serde_json::to_string(&res).context("error formatting find_branch_req result")
 }
 
-async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String, String> {
+async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.read_branches().await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting read_branches_req result: {}", e)),
-    }
+
+    serde_json::to_string(&res).context("error formatting read_branches_req result")
 }
 
-async fn find_branches_in_lock_domain(
-    args: &FindBranchesInLockDomainRequest,
-) -> Result<String, String> {
+async fn find_branches_in_lock_domain(args: &FindBranchesInLockDomainRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query
         .find_branches_in_lock_domain(&args.lock_domain_id)
         .await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!(
-            "Error formatting find_branches_in_lock_domain result: {}",
-            e
-        )),
-    }
+
+    serde_json::to_string(&res).context("error formatting find_branches_in_lock_domain result")
 }
 
-async fn read_commit_req(args: &ReadCommitRequest) -> Result<String, String> {
+async fn read_commit_req(args: &ReadCommitRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let commit = query.read_commit(&args.commit_id).await?;
     commit.to_json()
 }
 
-async fn read_tree_req(args: &ReadTreeRequest) -> Result<String, String> {
+async fn read_tree_req(args: &ReadTreeRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let tree = query.read_tree(&args.tree_hash).await?;
     tree.to_json()
 }
 
-async fn insert_lock_req(args: &InsertLockRequest) -> Result<String, String> {
+async fn insert_lock_req(args: &InsertLockRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.insert_lock(&args.lock).await?;
     Ok(String::from(""))
 }
 
-async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
+async fn find_lock_req(args: &FindLockRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query
         .find_lock(&args.lock_domain_id, &args.canonical_relative_path)
         .await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting find_lock result: {}", e)),
-    }
+
+    serde_json::to_string(&res).context("error formatting find_lock result")
 }
 
-async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String, String> {
+async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.find_locks_in_domain(&args.lock_domain_id).await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!(
-            "Error formatting find_locks_in_domain result: {}",
-            e
-        )),
-    }
+
+    serde_json::to_string(&res).context("error formatting find_locks_in_domain result")
 }
 
-async fn save_tree_req(args: &SaveTreeRequest) -> Result<String, String> {
+async fn save_tree_req(args: &SaveTreeRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.save_tree(&args.tree, &args.hash).await?;
+
     Ok(String::from(""))
 }
 
-async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String, String> {
+async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.insert_commit(&args.commit).await?;
     Ok(String::from(""))
 }
 
-async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String, String> {
+async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.commit_to_branch(&args.commit, &args.branch).await?;
     Ok(String::from(""))
 }
 
-async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String, String> {
+async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.commit_exists(&args.commit_id).await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting commit_exists_req result: {}", e)),
-    }
+
+    serde_json::to_string(&res).context("error formatting commit_exists result")
 }
 
-async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String, String> {
+async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.update_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
-async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String, String> {
+async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query.insert_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
-async fn clear_lock_req(args: &ClearLockRequest) -> Result<String, String> {
+async fn clear_lock_req(args: &ClearLockRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     query
         .clear_lock(&args.lock_domain_id, &args.canonical_relative_path)
@@ -254,19 +234,14 @@ async fn clear_lock_req(args: &ClearLockRequest) -> Result<String, String> {
     Ok(String::from(""))
 }
 
-async fn count_locks_in_domain_req(args: &ClountLocksInDomainRequest) -> Result<String, String> {
+async fn count_locks_in_domain_req(args: &ClountLocksInDomainRequest) -> Result<String> {
     let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.count_locks_in_domain(&args.lock_domain_id).await?;
-    match serde_json::to_string(&res) {
-        Ok(json) => Ok(json),
-        Err(e) => Err(format!(
-            "Error formatting count_locks_in_domain_req result: {}",
-            e
-        )),
-    }
+
+    serde_json::to_string(&res).context("error formatting count_locks_in_domain_req result")
 }
 
-async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
+async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
     match req {

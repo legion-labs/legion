@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
@@ -12,7 +13,7 @@ async fn reference_version_name_as_commit_id(
     repo_query: &dyn RepositoryQuery,
     workspace_connection: &mut LocalWorkspaceConnection,
     reference_version_name: &str,
-) -> Result<String, String> {
+) -> Result<String> {
     match reference_version_name {
         "base" => {
             let (_branch_name, commit_id) = read_current_branch(workspace_connection.sql()).await?;
@@ -31,7 +32,7 @@ async fn print_diff(
     connection: &RepositoryConnection,
     local_path: &Path,
     ref_file_hash: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     let base_version_contents = connection
         .blob_storage()
         .await?
@@ -47,7 +48,7 @@ pub async fn diff_file_command(
     path: &Path,
     reference_version_name: &str,
     allow_tools: bool,
-) -> Result<(), String> {
+) -> Result<()> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -60,6 +61,7 @@ pub async fn diff_file_command(
         reference_version_name,
     )
     .await?;
+
     let ref_file_hash = find_file_hash_at_commit(&connection, &relative_path, &ref_commit_id)
         .await?
         .unwrap();
@@ -69,6 +71,7 @@ pub async fn diff_file_command(
     }
 
     let config = Config::read_config()?;
+
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
             let ref_temp_file =
@@ -79,26 +82,21 @@ pub async fn diff_file_command(
                 *item = item.replace("%ref", ref_path_str);
                 *item = item.replace("%local", local_file);
             }
-            match Command::new(&external_command_vec[0])
+            let output = Command::new(&external_command_vec[0])
                 .args(&external_command_vec[1..])
                 .output()
-            {
-                Ok(output) => {
-                    let mut out = std::io::stdout();
-                    out.write_all(&output.stdout).unwrap();
-                    out.flush().unwrap();
+                .context(format!(
+                    "Failed to execute external diff command: {:?}",
+                    external_command_vec
+                ))?;
 
-                    let mut err = std::io::stderr();
-                    err.write_all(&output.stderr).unwrap();
-                    err.flush().unwrap();
-                }
-                Err(e) => {
-                    return Err(format!(
-                        "Error executing external command {:?}: {}",
-                        external_command_vec, e
-                    ));
-                }
-            }
+            let mut out = std::io::stdout();
+            out.write_all(&output.stdout).unwrap();
+            out.flush().unwrap();
+
+            let mut err = std::io::stderr();
+            err.write_all(&output.stderr).unwrap();
+            err.flush().unwrap();
         }
         None => {
             return print_diff(&connection, &abs_path, &ref_file_hash).await;

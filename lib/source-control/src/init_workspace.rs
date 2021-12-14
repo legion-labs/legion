@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
@@ -13,7 +14,7 @@ use crate::{
 pub async fn init_workspace_command(
     specified_workspace_directory: &Path,
     repo_location: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     trace_scope!();
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
@@ -24,15 +25,9 @@ pub async fn init_workspace_command(
     let repo_addr = if Path::new(repo_location).exists() {
         RepositoryAddr::Local(make_path_absolute(Path::new(repo_location)))
     } else {
-        match Url::parse(repo_location) {
-            Ok(_uri) => RepositoryAddr::Remote(String::from(repo_location)),
-            Err(e) => {
-                return Err(format!(
-                    "invalid repository location {}: {}",
-                    repo_location, e
-                ));
-            }
-        }
+        Url::parse(repo_location).context(format!("invalid repo location: {}", repo_location))?;
+
+        RepositoryAddr::Remote(String::from(repo_location))
     };
 
     let spec = Workspace {
@@ -44,9 +39,7 @@ pub async fn init_workspace_command(
 
     let connection = connect_to_server(&spec).await?;
 
-    if let Err(e) = fs::create_dir_all(&lsc_dir) {
-        return Err(format!("Error creating .lsc directory: {}", e));
-    }
+    fs::create_dir_all(&lsc_dir).context("failed to create `.lsc` directory")?;
     create_database(&db_uri).await?;
 
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory).await?;
@@ -55,13 +48,10 @@ pub async fn init_workspace_command(
     init_resolve_pending_database(&mut workspace_connection).await?;
     init_branch_merge_pending_database(&mut workspace_connection).await?;
 
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/tmp")) {
-        return Err(format!("Error creating .lsc/tmp directory: {}", e));
-    }
-
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/blob_cache")) {
-        return Err(format!("Error creating .lsc/blob_cache directory: {}", e));
-    }
+    fs::create_dir_all(workspace_directory.join(".lsc/tmp"))
+        .context("failed to create `.lsc/tmp` directory")?;
+    fs::create_dir_all(workspace_directory.join(".lsc/blob_cache"))
+        .context("failed to create `.lsc/blob_cache` directory")?;
 
     write_workspace_spec(
         workspace_directory.join(".lsc/workspace.json").as_path(),

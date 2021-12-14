@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 
 use crate::{
@@ -5,7 +6,7 @@ use crate::{
     read_workspace_spec, trace_scope, LocalWorkspaceConnection,
 };
 
-pub async fn log_command() -> Result<(), String> {
+pub async fn log_command() -> Result<()> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -20,30 +21,28 @@ pub async fn log_command() -> Result<(), String> {
 
     let repo_branch = connection.query().read_branch(&branch_name).await?;
 
-    match find_branch_commits(&connection, &repo_branch).await {
-        Ok(commits) => {
-            for c in commits {
-                let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)
-                    .expect("Error reading commit date");
-                let local_time: DateTime<Local> = DateTime::from(utc);
-                let branch_id;
-                if c.id == current_commit {
-                    branch_id = format!("*{}", &c.id);
-                } else {
-                    branch_id = format!(" {}", &c.id);
-                }
-                println!(
-                    "{} {} {} {}",
-                    branch_id,
-                    local_time.format("%Y-%m-%d %H:%M:%S").to_string(),
-                    c.owner,
-                    c.message
-                );
-            }
+    let commits = find_branch_commits(&connection, &repo_branch)
+        .await
+        .context("error fetching commits")?;
+
+    for c in commits {
+        let utc =
+            DateTime::parse_from_rfc3339(&c.date_time_utc).expect("Error reading commit date");
+        let local_time: DateTime<Local> = DateTime::from(utc);
+        let branch_id;
+        if c.id == current_commit {
+            branch_id = format!("*{}", &c.id);
+        } else {
+            branch_id = format!(" {}", &c.id);
         }
-        Err(e) => {
-            return Err(format!("Error fetching commits: {}", e));
-        }
+        println!(
+            "{} {} {} {}",
+            branch_id,
+            local_time.format("%Y-%m-%d %H:%M:%S").to_string(),
+            c.owner,
+            c.message
+        );
     }
+
     Ok(())
 }

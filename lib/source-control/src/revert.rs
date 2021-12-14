@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::path::Path;
 
 use crate::{
@@ -7,44 +8,40 @@ use crate::{
     read_workspace_spec, trace_scope, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
 };
 
-pub async fn revert_glob_command(pattern: &str) -> Result<(), String> {
+pub async fn revert_glob_command(pattern: &str) -> Result<()> {
     trace_scope!();
     let mut nb_errors = 0;
-    match glob::Pattern::new(pattern) {
-        Ok(matcher) => {
-            let current_dir = std::env::current_dir().unwrap();
-            let workspace_root = find_workspace_root(&current_dir)?;
-            let workspace_spec = read_workspace_spec(&workspace_root)?;
-            let connection = connect_to_server(&workspace_spec).await?;
-            let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-            let mut workspace_transaction = workspace_connection.begin().await?;
-            for change in read_local_changes(&mut workspace_transaction).await? {
-                if matcher.matches(&change.relative_path) {
-                    println!("reverting {}", change.relative_path);
-                    let local_file_path = workspace_root.join(change.relative_path);
-                    if let Err(e) =
-                        revert_file(&mut workspace_transaction, &connection, &local_file_path).await
-                    {
-                        println!("{}", e);
-                        nb_errors += 1;
-                    }
-                }
+
+    let matcher = glob::Pattern::new(pattern).context("error parsing glob pattern")?;
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let connection = connect_to_server(&workspace_spec).await?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
+
+    for change in read_local_changes(&mut workspace_transaction).await? {
+        if matcher.matches(&change.relative_path) {
+            println!("reverting {}", change.relative_path);
+            let local_file_path = workspace_root.join(change.relative_path);
+            if let Err(e) =
+                revert_file(&mut workspace_transaction, &connection, &local_file_path).await
+            {
+                println!("{}", e);
+                nb_errors += 1;
             }
-            if let Err(e) = workspace_transaction.commit().await {
-                return Err(format!(
-                    "Error in transaction commit for revert_glob_command: {}",
-                    e
-                ));
-            }
-        }
-        Err(e) => {
-            return Err(format!("Error parsing glob pattern: {}", e));
         }
     }
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("error in transaction commit for revert_glob_command")?;
+
     if nb_errors == 0 {
         Ok(())
     } else {
-        Err(format!("{} errors", nb_errors))
+        anyhow::bail!("{} errors", nb_errors)
     }
 }
 
@@ -52,22 +49,19 @@ pub async fn revert_file(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     repo_connection: &RepositoryConnection,
     path: &Path,
-) -> Result<(), String> {
+) -> Result<()> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
-    let local_change = match find_local_change(workspace_transaction, &relative_path).await {
-        Ok(Some(change)) => change,
-        Err(e) => {
-            return Err(format!("Error searching in local changes: {}", e));
-        }
-        Ok(None) => {
-            return Err(format!("Error local change {} not found", relative_path));
-        }
-    };
+    let local_change = find_local_change(workspace_transaction, &relative_path)
+        .await
+        .context("error searching in local changes")?
+        .ok_or_else(|| anyhow::anyhow!("{} not found in local changes", relative_path))?;
+
     let parent_dir = Path::new(&relative_path)
         .parent()
-        .expect("no parent to path provided");
+        .ok_or(anyhow::anyhow!("no parent to path provided"))?;
+
     let (_branch_name, current_commit) = read_current_branch(workspace_transaction).await?;
     let query = repo_connection.query();
     let current_commit = query.read_commit(&current_commit).await?;
@@ -75,21 +69,16 @@ pub async fn revert_file(
     let dir_tree = fetch_tree_subdir(query, &root_tree, parent_dir).await?;
 
     if local_change.change_type != ChangeType::Add {
-        let file_node;
-        match dir_tree.find_file_node(
-            abs_path
-                .file_name()
-                .expect("no file name in path specified")
-                .to_str()
-                .expect("invalid file name"),
-        ) {
-            Some(node) => {
-                file_node = node;
-            }
-            None => {
-                return Err(String::from("Original file not found in tree"));
-            }
-        }
+        let file_node = dir_tree
+            .find_file_node(
+                abs_path
+                    .file_name()
+                    .expect("no file name in path specified")
+                    .to_str()
+                    .expect("invalid file name"),
+            )
+            .ok_or(anyhow::anyhow!("file not found in tree"))?;
+
         repo_connection
             .blob_storage()
             .await?
@@ -98,19 +87,20 @@ pub async fn revert_file(
         make_file_read_only(&abs_path, true)?;
     }
     clear_local_change(workspace_transaction, &local_change).await?;
-    match find_resolve_pending(workspace_transaction, &relative_path).await {
-        Ok(Some(resolve_pending)) => {
+    match find_resolve_pending(workspace_transaction, &relative_path)
+        .await
+        .context(format!(
+            "error searching in resolve pending for {}",
+            relative_path
+        ))? {
+        Some(resolve_pending) => {
             clear_resolve_pending(workspace_transaction, &resolve_pending).await
         }
-        Err(e) => Err(format!(
-            "Error finding resolve pending for file {}: {}",
-            relative_path, e
-        )),
-        Ok(None) => Ok(()),
+        None => Ok(()),
     }
 }
 
-pub async fn revert_file_command(path: &Path) -> Result<(), String> {
+pub async fn revert_file_command(path: &Path) -> Result<()> {
     trace_scope!();
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
@@ -118,12 +108,11 @@ pub async fn revert_file_command(path: &Path) -> Result<(), String> {
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo_connection = connect_to_server(&workspace_spec).await?;
+
     revert_file(&mut workspace_transaction, &repo_connection, path).await?;
-    if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
-            "Error in transaction commit for revert_file_command: {}",
-            e
-        ));
-    }
-    Ok(())
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("error in transaction commit for revert_file_command")
 }

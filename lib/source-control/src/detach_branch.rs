@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::collections::BTreeSet;
 
 use crate::{
@@ -9,11 +10,12 @@ use crate::{
 async fn find_branch_descendants(
     query: &dyn RepositoryQuery,
     root_branch_name: &str,
-) -> Result<BTreeSet<String>, String> {
+) -> Result<BTreeSet<String>> {
     let mut set = BTreeSet::new();
     set.insert(String::from(root_branch_name));
     let branches = query.read_branches().await?;
     let mut keep_going = true;
+
     while keep_going {
         keep_going = false;
         for branch in &branches {
@@ -23,10 +25,11 @@ async fn find_branch_descendants(
             }
         }
     }
+
     Ok(set)
 }
 
-pub async fn detach_branch_command() -> Result<(), String> {
+pub async fn detach_branch_command() -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -45,12 +48,10 @@ pub async fn detach_branch_command() -> Result<(), String> {
 
     let descendants = find_branch_descendants(query, &current_branch_name).await?;
 
-    if let Err(e) = query.update_branch(&repo_branch).await {
-        return Err(format!(
-            "Error saving {} to clear its parent: {}",
-            repo_branch.name, e
-        ));
-    }
+    query.update_branch(&repo_branch).await.context(format!(
+        "error saving branch `{}` to clear its parent",
+        repo_branch.name
+    ))?;
 
     let mut errors = Vec::new();
 
@@ -92,8 +93,10 @@ pub async fn detach_branch_command() -> Result<(), String> {
             }
         }
     }
+
     if !errors.is_empty() {
-        return Err(errors.join("\n"));
+        anyhow::bail!("{}", errors.join("\n"));
     }
+
     Ok(())
 }

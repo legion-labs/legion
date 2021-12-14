@@ -1,8 +1,8 @@
-use std::path::Path;
-
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::path::Path;
 
 use crate::{
     assert_not_locked, clear_local_changes, clear_pending_branch_merges, connect_to_server,
@@ -53,25 +53,20 @@ impl Commit {
         }
     }
 
-    pub fn from_json(contents: &str) -> Result<Self, String> {
+    pub fn from_json(contents: &str) -> Result<Self> {
         trace_scope!();
-        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
-        match parsed {
-            Ok(obj) => Ok(obj),
-            Err(e) => Err(format!("Error parsing commit: {}", e)),
-        }
+
+        serde_json::from_str(contents).context("parsing commit")
     }
 
-    pub fn to_json(&self) -> Result<String, String> {
+    pub fn to_json(&self) -> Result<String> {
         trace_scope!();
-        match serde_json::to_string(&self) {
-            Ok(json) => Ok(json),
-            Err(e) => Err(format!("Error formatting commit {:?}: {}", self.id, e)),
-        }
+
+        serde_json::to_string(&self).context(format!("serializing commit {}", self.id))
     }
 }
 
-pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE UNIQUE INDEX commit_id on commits(id);
          CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
@@ -79,17 +74,17 @@ pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> R
          CREATE TABLE commit_changes(commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
          CREATE INDEX commit_changes_commit on commit_changes(commit_id);
         ";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
-        return Err(format!("Error creating commit tables and indices: {}", e));
-    }
-    Ok(())
+
+    execute_sql(sql_connection, sql)
+        .await
+        .context("error creating commit table and indices")
 }
 
 async fn upload_localy_edited_blobs(
     workspace_root: &Path,
     repo_connection: &RepositoryConnection,
     local_changes: &[LocalChange],
-) -> Result<Vec<HashedChange>, String> {
+) -> Result<Vec<HashedChange>> {
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
         if local_change.change_type == ChangeType::Delete {
@@ -117,10 +112,7 @@ async fn upload_localy_edited_blobs(
     Ok(res)
 }
 
-fn make_local_files_read_only(
-    workspace_root: &Path,
-    changes: &[HashedChange],
-) -> Result<(), String> {
+fn make_local_files_read_only(workspace_root: &Path, changes: &[HashedChange]) -> Result<()> {
     trace_scope!();
     for change in changes {
         if change.change_type != ChangeType::Delete {
@@ -136,7 +128,7 @@ pub async fn commit_local_changes(
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     commit_id: &str,
     message: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let (current_branch_name, current_workspace_commit) =
         read_current_branch(workspace_transaction).await?;
@@ -147,8 +139,9 @@ pub async fn commit_local_changes(
     if repo_branch.head != current_workspace_commit {
         // Check early to save work, but the real transaction lock will happen later.
         // Don't want to lock too early because a slow client would block everyone.
-        return Err(String::from("Workspace is not up to date, aborting commit"));
+        anyhow::bail!("workspace is not up to date, aborting commit");
     }
+
     let local_changes = read_local_changes(workspace_transaction).await?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
@@ -192,26 +185,25 @@ pub async fn commit_local_changes(
     Ok(())
 }
 
-pub async fn commit_command(message: &str) -> Result<(), String> {
+pub async fn commit_command(message: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let id = uuid::Uuid::new_v4().to_string();
+
     commit_local_changes(&workspace_root, &mut workspace_transaction, &id, message).await?;
-    if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
-            "Error in transaction commit for commit_command: {}",
-            e
-        ));
-    }
-    Ok(())
+
+    workspace_transaction
+        .commit()
+        .await
+        .context("error in transaction commit for commit_command")
 }
 
 pub async fn find_branch_commits(
     connection: &RepositoryConnection,
     branch: &Branch,
-) -> Result<Vec<Commit>, String> {
+) -> Result<Vec<Commit>> {
     let mut commits = Vec::new();
     let query = connection.query();
     let mut c = query.read_commit(&branch.head).await?;
