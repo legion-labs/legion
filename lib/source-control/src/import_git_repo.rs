@@ -218,7 +218,6 @@ async fn import_commit_diff(
 // and is significantly more complex.
 // One alternative would be to find the shortest path between the last integrated commit and the
 // top of the branch.
-#[allow(clippy::too_many_lines)]
 async fn import_commit_sequence(
     repo_connection: &RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,
@@ -246,13 +245,15 @@ async fn import_commit_sequence(
             break;
         }
 
-        let parent = commit.parent(0).context(format!(
-            "fetching commit parent for {}",
-            format_commit(&commit)
-        ))?;
+        if commit.parent_count() > 0 {
+            let parent = commit.parent(0).context(format!(
+                "fetching commit parent for {}",
+                format_commit(&commit)
+            ))?;
 
-        stack.push(commit);
-        stack.push(parent);
+            stack.push(commit);
+            stack.push(parent);
+        }
     }
 
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
