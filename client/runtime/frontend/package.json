@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check:all": "echo fix check:all:broken command",
-    "check:all:broken": "yarn eslint:check && yarn prettier:check && yarn svelte:check",
+    "check:all": "yarn eslint:check && yarn prettier:check && yarn svelte:check",
     "eslint:check": "eslint --ext .ts,.svelte .",
     "eslint:fix": "eslint --ext .ts,.svelte --fix .",
     "prettier:check": "prettier --check .",

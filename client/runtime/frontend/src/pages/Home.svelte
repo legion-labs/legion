@@ -4,7 +4,7 @@
   import StatusBar from "@/components/StatusBar.svelte";
   import Video, { Resolution } from "@/components/Video.svelte";
   
-  let desiredVideoResolution: Resolution | undefined;
+  let desiredVideoResolution: Resolution | null;
 </script>
 
 <div class="root">
