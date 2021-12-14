@@ -137,7 +137,7 @@ fn main() {
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("(97b0740f,6f9c3cba-b1f1-468a-a109-e71b0ac0e9fa)");
+        .unwrap_or("(97b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)");
     if let Ok(asset_id) = root_asset.parse::<ResourceTypeAndId>() {
         assets_to_load.push(asset_id);
     }

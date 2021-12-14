@@ -1,8 +1,0 @@
-{
-  "name": "/world/sample_1/ground.ent",
-  "dependencies": [
-    "(e2e9edca,bfd33074-6e1b-4b79-8616-87598702e7bb)|84935d1f",
-    "(e2e9edca,bfd33074-6e1b-4b79-8616-87598702e7bb)|84935d1f"
-  ],
-  "content_checksum": "e7efe841bef5db4e125ef14a19802d95"
-}
