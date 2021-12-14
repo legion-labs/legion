@@ -234,7 +234,7 @@ fn build_debug_cubes(
     let cube_ids = [
         "DB051B98-6FF5-4BAC-BEA8-50B5A13C3F1B",
         "202E3AA6-F158-4C77-890B-3F59B183B6BD",
-        "7483C534-FE2A-4F16-B655-E9AFE39A93BA"
+        "7483C534-FE2A-4F16-B655-E9AFE39A93BA",
     ];
 
     // Create DebugCube DataContainer
