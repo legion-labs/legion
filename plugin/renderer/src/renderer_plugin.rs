@@ -10,11 +10,12 @@ use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::{
-    components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh},
-    labels::RendererSystemLabel,
+    components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh, LightComponent, LightType},
+    labels::RendererSystemLabel, RenderContext, Renderer
+};
+
 use crate::debug_display::DebugDisplay;
 use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
-use crate::{labels::RendererSystemLabel, RenderContext, Renderer};
 
 #[derive(Default)]
 pub struct RendererPlugin {
@@ -119,6 +120,7 @@ fn update_ui(
     });
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn update_debug(
     mut renderer: ResMut<'_, Renderer>,
     mut debug_display: ResMut<'_, DebugDisplay>,
@@ -231,11 +233,6 @@ fn render_update(
                 &default_camera
             },
             q_lights.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
@@ -261,7 +258,7 @@ fn render_update(
             render_surface.as_mut(),
             debug_display.as_mut(),
             if !q_cameras.is_empty() {
-                q_cameras[0]
+                q_cameras[0].1
             } else {
                 &default_camera
             },

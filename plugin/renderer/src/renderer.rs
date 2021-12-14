@@ -12,7 +12,6 @@ use lgn_pso_compiler::{FileSystem, HlslCompiler};
 
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::debug_display::DebugDisplay;
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -313,7 +312,6 @@ impl TmpRenderPass {
         );
 
         lights: &[(&Transform, &LightComponent)],
-        camera: &CameraComponent,
         // Lights
         let mut directional_lights_data = Vec::<f32>::new();
         let mut omnidirectional_lights_data = Vec::<f32>::new();

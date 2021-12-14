@@ -16,7 +16,7 @@ use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
         CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
-        StaticMesh,
+        StaticMesh, LightComponent, LightType
     },
     resources::DefaultMeshes,
     {Renderer, RendererPlugin, RendererSystemLabel},

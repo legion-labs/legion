@@ -18,3 +18,6 @@ pub use static_mesh::*;
 
 mod camera_component;
 pub use camera_component::*;
+
+mod light_component;
+pub use light_component::*;

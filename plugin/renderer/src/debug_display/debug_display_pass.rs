@@ -1,9 +1,10 @@
-use crate::components::{CameraComponent, RenderSurface};
+use crate::components::RenderSurface;
 use crate::debug_display::DebugDisplay;
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::{RenderContext, Renderer};
 use lgn_graphics_api::prelude::*;
-use lgn_math::Mat4;
+use lgn_math::{Mat4, Vec3};
+use lgn_transform::components::Transform;
 
 pub struct DebugDisplayPass {
     root_signature: RootSignature,
@@ -82,7 +83,7 @@ impl DebugDisplayPass {
         cmd_buffer: &CommandBuffer,
         render_surface: &RenderSurface,
         debug_display: &mut DebugDisplay,
-        camera: &CameraComponent,
+        camera_transform: &Transform,
     ) {
         cmd_buffer
             .cmd_begin_render_pass(
@@ -122,8 +123,11 @@ impl DebugDisplayPass {
         let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
-        let view_matrix = Mat4::look_at_lh(camera.pos, camera.pos + camera.dir, camera.up);
-
+        let view_matrix = Mat4::look_at_lh(
+            camera_transform.translation,
+            camera_transform.translation + camera_transform.forward(),
+            Vec3::new(0.0, 1.0, 0.0),
+        );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for cube in debug_display.cubes() {
