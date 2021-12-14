@@ -547,7 +547,7 @@ impl AssetLoaderIO {
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
             let asset_ref = ResourceTypeAndId {
-                t: ResourceType::from_raw(reader.read_u32::<LittleEndian>()?),
+                t: ResourceType::from_raw(reader.read_u64::<LittleEndian>()?),
                 id: ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
             };
             reference_list.push(AssetReference {
@@ -558,8 +558,8 @@ impl AssetLoaderIO {
 
         // section header
         let asset_type = unsafe {
-            std::mem::transmute::<u32, ResourceType>(
-                reader.read_u32::<LittleEndian>().expect("valid data"),
+            std::mem::transmute::<u64, ResourceType>(
+                reader.read_u64::<LittleEndian>().expect("valid data"),
             )
         };
         assert_eq!(

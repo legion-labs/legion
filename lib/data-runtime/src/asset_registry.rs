@@ -457,7 +457,7 @@ mod tests {
         where
             T: Any + Resource,
         {
-            let underlying_type = reader.read_u32::<LittleEndian>()?;
+            let underlying_type = reader.read_u64::<LittleEndian>()?;
             if underlying_type == 0 {
                 return Ok(None);
             }
@@ -505,23 +505,25 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        const BINARY_PARENT_ASSETFILE: [u8; 88] = [
+        const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
             1, 0, // version
             1, 0, 0, 0, 0, 0, 0, 0, // references count
-            156, 68, 217, 83, // first reference (ResourceType)
+            0x9c, 0x44, 0xd9, 0x53, 0x0e, 0x17, 0x63, 0xf0, // first reference (ResourceType)
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0, 0, 0, 0, 0, 0, // fist reference (ResourceId)
-            156, 68, 217, 83, // first asset type (RessourceType)
+            0x9c, 0x44, 0xd9, 0x53, 0x0e, 0x17, 0x63,
+            0xf0, // first asset type (RessourceType)
             1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
-            34, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
-            6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116, 156, 68, 217, 83, 1, 0, 0, 0, 0,
-            0, 0, 0, 0, 0xf0, 0, 0, 0, 0, 0, 0, // asset data
+            38, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
+            6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116, 0x9c, 0x44, 0xd9, 0x53, 0x0e,
+            0x17, 0x63, 0xf0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0, 0, 0, 0, 0, 0, // asset data
         ];
-        const BINARY_CHILD_ASSETFILE: [u8; 63] = [
+        const BINARY_CHILD_ASSETFILE: [u8; 67] = [
             97, 115, 102, 116, // header (asft)
             1, 0, // version
             0, 0, 0, 0, 0, 0, 0, 0, // references count (none here)
-            156, 68, 217, 83, // first asset type (RessourceType)
+            0x9c, 0x44, 0xd9, 0x53, 0x0e, 0x17, 0x63,
+            0xf0, // first asset type (RessourceType)
             1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
             29, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
             5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

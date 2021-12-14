@@ -1,0 +1,10 @@
+{
+  "name": "/world/sample_1/ground.mat",
+  "dependencies": [
+    "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_albedo|0659c0b6c23b950d",
+    "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_normal|0659c0b6c23b950d",
+    "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_roughness|0659c0b6c23b950d",
+    "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_metalness|0659c0b6c23b950d"
+  ],
+  "content_checksum": "8b8d78ca63d68facb027e7a3b7e03ba9"
+}

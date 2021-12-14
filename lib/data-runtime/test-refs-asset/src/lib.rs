@@ -60,7 +60,7 @@ fn read_maybe_reference<T>(
 where
     T: Any + Resource,
 {
-    let underlying_type = reader.read_u32::<LittleEndian>()?;
+    let underlying_type = reader.read_u64::<LittleEndian>()?;
     if underlying_type == 0 {
         return Ok(None);
     }

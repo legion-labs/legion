@@ -112,13 +112,13 @@ impl FromStr for ResourcePathId {
             let end = s.find('|').unwrap_or(s.len());
 
             let transform = if name < end {
-                let err = "Z".parse::<i32>().expect_err("ParseIntError");
-                let t = u32::from_str_radix(&s[0..name], 16)?;
-                let p = String::from_str(&s[name + 1..end]).map_err(|_e| err)?;
-                (ResourceType::from_raw(t), Some(p))
+                let t = ResourceType::from_str(&s[0..name])?;
+                let p = String::from_str(&s[name + 1..end])
+                    .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))?;
+                (t, Some(p))
             } else {
-                let t = u32::from_str_radix(&s[0..end], 16)?;
-                (ResourceType::from_raw(t), None)
+                let t = ResourceType::from_str(&s[0..end])?;
+                (t, None)
             };
             transforms.push(transform);
             s = &s[end..];

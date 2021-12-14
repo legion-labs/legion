@@ -372,8 +372,7 @@ fn main() -> Result<(), String> {
             }
             ("decode", Some(cmd_args)) => {
                 let searched_ty = cmd_args.value_of("ty").unwrap();
-                let searched_ty =
-                    ResourceType::from_raw(u32::from_str_radix(searched_ty, 16).unwrap());
+                let searched_ty = ResourceType::from_str(searched_ty).unwrap();
                 if let Some((name, ty)) = ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
                     .find(|(_, ty)| ty == &searched_ty)
                 {
@@ -624,9 +623,13 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
     types
 }
 
-// Finds all #[resource="name"] attributes in a file and returns (name, hashed name) tuple.
+// Finds all #[resource("name")] attributes in a file and returns (name, hashed name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
+    // Quickly bail out without parsing the file
+    if src.find("#[resource(") == None {
+        return vec![];
+    }
     proc_macro2::fallback::force(); // prevent panic, if panic = abort is set
     let tokens = proc_macro2::TokenStream::from_str(&src).expect("Tokenize source file");
     let ast: syn::File = syn::parse2(tokens).expect("Unable to parse file");
@@ -672,7 +675,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
         println!("\treference count: {}", reference_count);
         for _ in 0..reference_count {
             let asset_ref_type =
-                ResourceType::from_raw(f.read_u32::<LittleEndian>().expect("valid data"));
+                ResourceType::from_raw(f.read_u64::<LittleEndian>().expect("valid data"));
             let asset_ref_id =
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
@@ -697,7 +700,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
         }
     }
 
-    let asset_type = ResourceType::from_raw(f.read_u32::<LittleEndian>().expect("valid data"));
+    let asset_type = ResourceType::from_raw(f.read_u64::<LittleEndian>().expect("valid data"));
     if let Some(config) = config {
         if let Some(asset_type_name) = config.type_map.get(&asset_type).cloned() {
             println!("\tasset type: {} ({})", asset_type, asset_type_name);

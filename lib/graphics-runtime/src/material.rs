@@ -37,7 +37,7 @@ fn read_asset_id<T>(reader: &mut dyn std::io::Read) -> Result<Reference<T>, std:
 where
     T: Any + Resource,
 {
-    let underlying_type = reader.read_u32::<LittleEndian>()?;
+    let underlying_type = reader.read_u64::<LittleEndian>()?;
     let underlying_id = reader.read_u128::<LittleEndian>()?;
     Ok(Reference::Passive(ResourceTypeAndId {
         t: ResourceType::from_raw(underlying_type),

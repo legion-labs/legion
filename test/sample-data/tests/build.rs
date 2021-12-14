@@ -83,7 +83,7 @@ fn incremental_build() {
 
     // default root object in sample data
     // /world/sample_1.ent (offline_entity) => runtime_entity
-    let root_entity = "(97b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)|aad89045";
+    let root_entity = "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)|1d9ddd99aad89045";
 
     //
     // first data build
