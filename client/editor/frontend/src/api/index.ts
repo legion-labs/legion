@@ -10,11 +10,6 @@ import {
 } from "@lgn/proto-streaming/codegen/streaming";
 import {} from "@lgn/proto-runtime/codegen/runtime";
 
-export enum ServerType {
-  Editor = 0,
-  Runtime = 1,
-}
-
 // TODO: Move to config
 const editorServerURL = "http://[::1]:50051";
 const runtimeServerURL = "http://[::1]:50052";
@@ -30,23 +25,26 @@ const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
 
 const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
 
-export const editorClient = new EditorClientImpl(
+const editorClient = new EditorClientImpl(
   new EditorGrpcWebImpl(editorServerURL, {
     debug: false,
   })
 );
 
-export const editorStreamerClient = new StreamerClientImpl(
-  new StreamingGrpcWebImpl(editorServerURL, {
-    debug: false,
-  })
-);
+const streamerClients = {
+  editor: new StreamerClientImpl(
+    new StreamingGrpcWebImpl(editorServerURL, {
+      debug: false,
+    })
+  ),
+  runtime: new StreamerClientImpl(
+    new StreamingGrpcWebImpl(runtimeServerURL, {
+      debug: false,
+    })
+  ),
+};
 
-export const runtimeStreamerClient = new StreamerClientImpl(
-  new StreamingGrpcWebImpl(runtimeServerURL, {
-    debug: false,
-  })
-);
+export type ServerType = keyof typeof streamerClients;
 
 /**
  * Initialize the video player stream
@@ -58,12 +56,8 @@ export async function initializeStream(
   serverType: ServerType,
   localSessionDescription: RTCSessionDescription
 ) {
-  let client;
-  if (serverType == ServerType.Editor) {
-    client = editorStreamerClient;
-  } else {
-    client = runtimeStreamerClient;
-  }
+  const client = streamerClients[serverType];
+
   const response = await client.initializeStream({
     rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
   });

@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import resize from "@/actions/resize";
   import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
@@ -15,13 +15,15 @@
 
   const resizeVideoTimeout = 300;
 
+  const connectionRetry = 5;
+
   export let desiredResolution: Resolution | null = null;
 
   export let serverType: ServerType;
 
   let resolution: Resolution | null = null;
 
-  let videoElement: HTMLVideoElement;
+  let videoElement: HTMLVideoElement | undefined;
 
   let videoChannel: RTCDataChannel | null;
 
@@ -35,8 +37,12 @@
 
   $statusStore = "Connecting...";
 
-  onMount(async () => {
+  onMount(() => {
     initialize();
+  });
+
+  onDestroy(() => {
+    destroyResources();
   });
 
   // Destroys all peer connection related resources when possible
@@ -81,11 +87,14 @@
       if (peerConnection && iceEvent.candidate === null) {
         const remoteDescription = await retry(() => {
           if (peerConnection && peerConnection.localDescription) {
-            return initializeStream(serverType, peerConnection.localDescription);
+            return initializeStream(
+              serverType,
+              peerConnection.localDescription
+            );
           }
 
           return Promise.resolve(null);
-        });
+        }, connectionRetry);
 
         if (remoteDescription) {
           peerConnection.setRemoteDescription(remoteDescription);
@@ -151,6 +160,10 @@
     };
 
     videoChannel.onmessage = async (message) => {
+      if (!videoElement) {
+        return;
+      }
+
       // videoElement is augmented with the `videoPlayer` action and will
       // provide a `push` function.
       (videoElement as PushableHTMLVideoElement).push(

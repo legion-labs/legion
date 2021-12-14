@@ -422,11 +422,11 @@ export const ProcessInstance = {
         ? Process.toJSON(message.processInfo)
         : undefined);
     message.nbCpuBlocks !== undefined &&
-      (obj.nbCpuBlocks = message.nbCpuBlocks);
+      (obj.nbCpuBlocks = Math.round(message.nbCpuBlocks));
     message.nbLogBlocks !== undefined &&
-      (obj.nbLogBlocks = message.nbLogBlocks);
+      (obj.nbLogBlocks = Math.round(message.nbLogBlocks));
     message.nbMetricBlocks !== undefined &&
-      (obj.nbMetricBlocks = message.nbMetricBlocks);
+      (obj.nbMetricBlocks = Math.round(message.nbMetricBlocks));
     return obj;
   },
 
@@ -885,8 +885,9 @@ export const Span = {
 
   toJSON(message: Span): unknown {
     const obj: any = {};
-    message.scopeHash !== undefined && (obj.scopeHash = message.scopeHash);
-    message.depth !== undefined && (obj.depth = message.depth);
+    message.scopeHash !== undefined &&
+      (obj.scopeHash = Math.round(message.scopeHash));
+    message.depth !== undefined && (obj.depth = Math.round(message.depth));
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
     return obj;
@@ -976,8 +977,8 @@ export const ScopeDesc = {
     const obj: any = {};
     message.name !== undefined && (obj.name = message.name);
     message.filename !== undefined && (obj.filename = message.filename);
-    message.line !== undefined && (obj.line = message.line);
-    message.hash !== undefined && (obj.hash = message.hash);
+    message.line !== undefined && (obj.line = Math.round(message.line));
+    message.hash !== undefined && (obj.hash = Math.round(message.hash));
     return obj;
   },
 
@@ -1192,7 +1193,8 @@ export const BlockSpansReply = {
     message.blockId !== undefined && (obj.blockId = message.blockId);
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
-    message.maxDepth !== undefined && (obj.maxDepth = message.maxDepth);
+    message.maxDepth !== undefined &&
+      (obj.maxDepth = Math.round(message.maxDepth));
     return obj;
   },
 
@@ -1400,7 +1402,7 @@ export const NodeStats = {
     message.max !== undefined && (obj.max = message.max);
     message.avg !== undefined && (obj.avg = message.avg);
     message.median !== undefined && (obj.median = message.median);
-    message.count !== undefined && (obj.count = message.count);
+    message.count !== undefined && (obj.count = Math.round(message.count));
     return obj;
   },
 
@@ -1470,7 +1472,7 @@ export const CallGraphEdge = {
 
   toJSON(message: CallGraphEdge): unknown {
     const obj: any = {};
-    message.hash !== undefined && (obj.hash = message.hash);
+    message.hash !== undefined && (obj.hash = Math.round(message.hash));
     message.weight !== undefined && (obj.weight = message.weight);
     return obj;
   },
@@ -1564,7 +1566,7 @@ export const CumulativeCallGraphNode = {
 
   toJSON(message: CumulativeCallGraphNode): unknown {
     const obj: any = {};
-    message.hash !== undefined && (obj.hash = message.hash);
+    message.hash !== undefined && (obj.hash = Math.round(message.hash));
     message.stats !== undefined &&
       (obj.stats = message.stats ? NodeStats.toJSON(message.stats) : undefined);
     if (message.callers) {
