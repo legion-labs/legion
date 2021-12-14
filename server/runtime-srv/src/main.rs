@@ -61,28 +61,36 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::{net::SocketAddr, path::PathBuf};
+
 use clap::Arg;
 use instant::Duration;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_async::AsyncPlugin;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
+use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
+use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
 use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]
 mod standalone;
+use lgn_utils::Settings;
 #[cfg(feature = "standalone")]
 use standalone::build_standalone;
 
+#[allow(clippy::too_many_lines)]
 fn main() {
     lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
     let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 
+    const ARG_NAME_ADDR: &str = "addr";
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_ROOT: &str = "root";
@@ -95,6 +103,10 @@ fn main() {
         .author(clap::crate_authors!())
         .version(clap::crate_version!())
         .about("Server that will run with runtime data, and execute world simulation, ready to be streamed to a runtime client.")
+        .arg(Arg::with_name(ARG_NAME_ADDR)
+            .long(ARG_NAME_ADDR)
+            .takes_value(true)
+            .help("The address to listen on"))
         .arg(Arg::with_name(ARG_NAME_CAS)
             .long(ARG_NAME_CAS)
             .takes_value(true)
@@ -122,9 +134,25 @@ fn main() {
 
     let args = args.get_matches();
 
-    let content_store_addr = args
-        .value_of(ARG_NAME_CAS)
-        .unwrap_or("test/sample-data/temp");
+    let settings = Settings::new();
+
+    let server_addr = {
+        let url = args
+            .value_of(ARG_NAME_ADDR)
+            .unwrap_or_else(|| settings.get_or("runtime_srv.server_addr", "[::1]:50052"));
+        url.parse::<SocketAddr>()
+            .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
+    };
+
+    let content_store_addr = {
+        if let Some(params) = args.value_of(ARG_NAME_CAS) {
+            PathBuf::from(params)
+        } else {
+            settings
+                .get_absolute_path("runtime_srv.cas")
+                .unwrap_or_else(|| PathBuf::from("test/sample-data/temp"))
+        }
+    };
 
     let game_manifest = args
         .value_of(ARG_NAME_MANIFEST)
@@ -174,6 +202,13 @@ fn main() {
     #[cfg(feature = "standalone")]
     if standalone {
         build_standalone(&mut app);
+    }
+
+    if !standalone {
+        app.add_plugin(AsyncPlugin::default())
+            .insert_resource(GRPCPluginSettings::new(server_addr))
+            .add_plugin(GRPCPlugin::default())
+            .add_plugin(StreamerPlugin::default());
     }
 
     app.run();

@@ -2,6 +2,10 @@
 project_dir = "test/sample-data"
 server_addr = "[::1]:50051"
 
+[runtime_srv]
+cas = "test/sample-data/temp"
+server_addr = "[::1]:50052"
+
 [streamer]
 max_frame_time = 16_000 #microsec
 

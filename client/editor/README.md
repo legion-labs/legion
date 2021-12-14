@@ -9,7 +9,7 @@ The Editor client is a native web-app application based on
 Because of its hybrid nature, building the Editor client requires a bit more
 steps than running the usual `cargo build` command.
 
-## Lauching the application
+## Launching the application
 
 To simply build and launch the editor client, you can just type:
 

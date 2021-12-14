@@ -4231,6 +4231,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-runtime-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "lgn-build-utils",
+ "prost",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
 name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
@@ -6369,6 +6380,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "directories",
+ "lgn-app",
+ "lgn-async",
+ "lgn-build-utils",
+ "lgn-online",
+ "lgn-tauri",
+ "tauri",
+ "tauri-build",
+ "url",
+]
+
+[[package]]
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
@@ -6376,13 +6404,16 @@ dependencies = [
  "instant",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-async",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-grpc",
  "lgn-input",
  "lgn-logger",
  "lgn-presenter-window",
  "lgn-renderer",
+ "lgn-streamer",
  "lgn-telemetry",
  "lgn-transform",
  "lgn-utils",
