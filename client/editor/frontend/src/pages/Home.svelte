@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getAllResources, getResourceProperties } from "@/api";
+  import { getAllResources, getResourceProperties, ServerType } from "@/api";
   import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
   import Panel from "@/components/Panel.svelte";
   import TopBar from "@/components/TopBar.svelte";
@@ -92,7 +92,21 @@
             {/if}
           </span>
           <div class="video-container" slot="content">
-            <Video bind:desiredResolution={desiredVideoResolution} />
+            <Video serverType={ServerType.Editor} bind:desiredResolution={desiredVideoResolution} />
+          </div>
+        </Panel>
+        <div class="v-separator" />
+        <Panel>
+          <span slot="header">
+            <span>Runtime Stream</span>
+            {#if desiredVideoResolution}
+              <span>
+                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+              </span>
+            {/if}
+          </span>
+          <div class="video-container" slot="content">
+            <Video serverType={ServerType.Runtime} bind:desiredResolution={desiredVideoResolution} />
           </div>
         </Panel>
       </div>
