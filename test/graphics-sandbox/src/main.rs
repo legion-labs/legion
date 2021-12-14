@@ -132,7 +132,7 @@ fn main() {
         .add_plugin(RendererPlugin::new(
             true,
             matches.is_present(ARG_NAME_EGUI),
-            false,
+            true,
         ))
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default());
