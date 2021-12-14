@@ -7,7 +7,7 @@
   import resize from "@/actions/resize";
   import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
-  import { initializeStream, onReceiveControlMessage } from "@/api";
+  import { initializeStream, onReceiveControlMessage, ServerType } from "@/api";
   import { statusStore } from "@/stores/statusBarData";
   import log from "@/lib/log";
 
@@ -16,6 +16,8 @@
   const resizeVideoTimeout = 300;
 
   export let desiredResolution: Resolution | null = null;
+
+  export let serverType: ServerType;
 
   let resolution: Resolution | null = null;
 
@@ -79,7 +81,7 @@
       if (peerConnection && iceEvent.candidate === null) {
         const remoteDescription = await retry(() => {
           if (peerConnection && peerConnection.localDescription) {
-            return initializeStream(peerConnection.localDescription);
+            return initializeStream(serverType, peerConnection.localDescription);
           }
 
           return Promise.resolve(null);

@@ -8,9 +8,16 @@ import {
   GrpcWebImpl as StreamingGrpcWebImpl,
   StreamerClientImpl,
 } from "@lgn/proto-streaming/codegen/streaming";
+import {} from "@lgn/proto-runtime/codegen/runtime";
+
+export enum ServerType {
+  Editor = 0,
+  Runtime = 1,
+}
 
 // TODO: Move to config
-const serverUrl = "http://[::1]:50051";
+const editorServerURL = "http://[::1]:50051";
+const runtimeServerURL = "http://[::1]:50052";
 
 // Some functions useful when dealing with the api
 
@@ -24,26 +31,40 @@ const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
 const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
 
 export const editorClient = new EditorClientImpl(
-  new EditorGrpcWebImpl(serverUrl, {
+  new EditorGrpcWebImpl(editorServerURL, {
     debug: false,
   })
 );
 
-export const streamerClient = new StreamerClientImpl(
-  new StreamingGrpcWebImpl(serverUrl, {
+export const editorStreamerClient = new StreamerClientImpl(
+  new StreamingGrpcWebImpl(editorServerURL, {
+    debug: false,
+  })
+);
+
+export const runtimeStreamerClient = new StreamerClientImpl(
+  new StreamingGrpcWebImpl(runtimeServerURL, {
     debug: false,
   })
 );
 
 /**
  * Initialize the video player stream
+ * @param serverType
  * @param localSessionDescription
  * @returns a valid RTC sessions description to use with an RTCPeerConnection
  */
 export async function initializeStream(
+  serverType: ServerType,
   localSessionDescription: RTCSessionDescription
 ) {
-  const response = await streamerClient.initializeStream({
+  let client;
+  if (serverType == ServerType.Editor) {
+    client = editorStreamerClient;
+  } else {
+    client = runtimeStreamerClient;
+  }
+  const response = await client.initializeStream({
     rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
   });
 
