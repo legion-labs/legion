@@ -71,8 +71,6 @@ use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_telemetry::prelude::*;
 use lgn_transform::prelude::*;
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
 
 #[cfg(feature = "standalone")]
 mod standalone;
@@ -80,9 +78,8 @@ mod standalone;
 use standalone::build_standalone;
 
 fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
-        SimpleLogger::new().with_level(LevelFilter::Info),
-    )));
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 

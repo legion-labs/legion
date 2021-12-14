@@ -67,7 +67,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use lgn_analytics::alloc_sql_pool;
-use lgn_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
+use lgn_telemetry::{init_thread_stream, log_static_str, LogLevel, TelemetrySystemGuard};
 use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
 use process_search::print_process_tree;
@@ -81,7 +81,7 @@ use crate::{
 #[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _telemetry_guard = TelemetrySystemGuard::new(None);
+    let _telemetry_guard = TelemetrySystemGuard::new();
     init_thread_stream();
     let matches = App::new("Legion Telemetry Dump")
         .setting(AppSettings::ArgRequiredElseHelp)
@@ -189,7 +189,7 @@ async fn main() -> Result<()> {
             print_process_metrics(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
-            log_str(LogLevel::Info, "unknown subcommand match");
+            log_static_str(LogLevel::Info, "unknown subcommand match");
             bail!("unknown subcommand match: {:?}", &command_name);
         }
     }

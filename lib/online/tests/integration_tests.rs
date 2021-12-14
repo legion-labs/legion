@@ -17,8 +17,7 @@ use lgn_online::{
     authentication::{self, Authenticator, ClientTokenSet},
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
-use log::{error, info, LevelFilter};
-use simple_logger::SimpleLogger;
+use log::{error, info};
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
@@ -58,10 +57,7 @@ static INIT: std::sync::Once = std::sync::Once::new();
 #[cfg(test)]
 fn setup_test_logger() {
     INIT.call_once(|| {
-        SimpleLogger::new()
-            .with_level(LevelFilter::Debug)
-            .init()
-            .unwrap();
+        lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
     });
 }
 
@@ -89,7 +85,6 @@ impl Authenticator for MockAuthenticator {
     }
 }
 
-#[ignore = "while looking at fix"]
 #[tokio::test]
 #[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
@@ -176,7 +171,6 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore = "while looking at fix"]
 #[tokio::test]
 #[serial_test::serial]
 async fn test_http2_client_and_server() -> anyhow::Result<()> {
@@ -232,7 +226,6 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore = "while looking at fix"]
 #[tokio::test]
 #[serial_test::serial]
 async fn test_http1_client_and_server() -> anyhow::Result<()> {

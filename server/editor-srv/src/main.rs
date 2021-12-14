@@ -14,8 +14,6 @@ use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
 use lgn_transform::TransformPlugin;
 use lgn_utils::Settings;
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
 
 mod grpc;
 mod plugin;
@@ -23,9 +21,8 @@ mod plugin;
 use plugin::EditorPlugin;
 
 fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
-        SimpleLogger::new().with_level(LevelFilter::Info),
-    )));
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 

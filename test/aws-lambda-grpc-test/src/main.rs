@@ -1,13 +1,13 @@
 mod handler;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use handler::MyStreamer;
 use lgn_online::grpc::Server;
 use lgn_streaming_proto::streamer_server::StreamerServer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    simple_logger::init_with_level(log::Level::Info).map_err::<Error, _>(Into::into)?;
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
 
     let service = StreamerServer::new(MyStreamer);
 

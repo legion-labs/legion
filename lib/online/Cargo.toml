@@ -42,6 +42,6 @@ tonic-build = "0.6"
 
 [dev-dependencies]
 prost = "0.9"
-simple_logger = "1.13"
+lgn-logger = { path = "../logger", version = "0.1.0" }
 serial_test = "0.5"
 backoff = { version = "0.3.0", features = ["tokio"] }

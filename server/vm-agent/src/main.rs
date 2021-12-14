@@ -68,7 +68,6 @@ use anyhow::Context;
 use config::{CommandConfig, Config};
 use lgn_cli::termination_handler::AsyncTerminationHandler;
 use log::{debug, info};
-use simple_logger::SimpleLogger;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -78,9 +77,7 @@ use tokio::{
 async fn main() -> anyhow::Result<()> {
     let config = Config::new().context("failed to read configuration")?;
 
-    SimpleLogger::new()
-        .with_level(config.log_level)
-        .init()
+    lgn_logger::Logger::init(lgn_logger::Config::default())
         .context("failed to initialize the logging system")?;
 
     debug!("Setting log level to {}.", config.log_level);

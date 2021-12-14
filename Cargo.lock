@@ -154,12 +154,12 @@ dependencies = [
  "chrono",
  "crc",
  "lgn-analytics",
+ "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-transit",
  "log",
  "prost",
- "simple_logger",
  "sqlx",
  "tokio",
  "tonic",
@@ -515,12 +515,12 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
+ "lgn-logger",
  "lgn-online",
  "lgn-streaming-proto",
  "log",
  "serde",
  "serde_json",
- "simple_logger",
  "tokio",
  "tonic",
  "tonic-web",
@@ -1151,17 +1151,6 @@ dependencies = [
  "foreign-types",
  "libc",
  "objc",
-]
-
-[[package]]
-name = "colored"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -2043,6 +2032,7 @@ dependencies = [
  "lgn-editor-proto",
  "lgn-grpc",
  "lgn-input",
+ "lgn-logger",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
@@ -2051,7 +2041,6 @@ dependencies = [
  "lgn-transform",
  "lgn-utils",
  "log",
- "simple_logger",
  "tokio",
  "tonic",
 ]
@@ -2859,6 +2848,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-input",
+ "lgn-logger",
  "lgn-math",
  "lgn-presenter",
  "lgn-presenter-snapshot",
@@ -2870,7 +2860,6 @@ dependencies = [
  "lgn-winit",
  "log",
  "png 0.17.2",
- "simple_logger",
 ]
 
 [[package]]
@@ -4068,6 +4057,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-logger"
+version = "0.1.0"
+dependencies = [
+ "lgn-telemetry",
+ "log",
+ "simplelog",
+]
+
+[[package]]
 name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
@@ -4113,6 +4111,7 @@ dependencies = [
  "hyper-rustls",
  "lambda_http",
  "lambda_runtime",
+ "lgn-logger",
  "log",
  "pin-project",
  "prost",
@@ -4123,7 +4122,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "simple_asn1",
- "simple_logger",
  "strum 0.23.0",
  "strum_macros 0.23.1",
  "thiserror",
@@ -5613,9 +5611,9 @@ dependencies = [
 
 [[package]]
 name = "phf"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9fc3db1018c4b59d7d582a739436478b6035138b6aecbce989fc91c3e98409f"
+checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
 dependencies = [
  "phf_macros 0.10.0",
  "phf_shared 0.10.0",
@@ -6381,6 +6379,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-input",
+ "lgn-logger",
  "lgn-presenter-window",
  "lgn-renderer",
  "lgn-telemetry",
@@ -6389,7 +6388,6 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "log",
- "simple_logger",
 ]
 
 [[package]]
@@ -6775,12 +6773,12 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.21"
+version = "0.8.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8c608a35705a5d3cdc9fbe403147647ff34b921f8e833e49306df898f9b20af"
+checksum = "a4a521f2940385c165a24ee286aa8599633d162077a54bdcae2a6fd5a7bfa7a0"
 dependencies = [
- "dtoa",
  "indexmap",
+ "ryu",
  "serde",
  "yaml-rust",
 ]
@@ -6911,16 +6909,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "simple_logger"
-version = "1.15.1"
+name = "simplelog"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12413e3c006deb4f16b9f43192d419c462e21134d0a4e63532fbd050f546a561"
+checksum = "ecabc0118918611790b8615670ab79296272cbe09496b6884b02b1e929c20886"
 dependencies = [
- "atty",
- "colored",
+ "chrono",
  "log",
- "time 0.3.5",
- "winapi 0.3.9",
+ "termcolor",
 ]
 
 [[package]]
@@ -7577,7 +7573,7 @@ checksum = "fcb9b79594f22b6ed0cc8362e0dfde5b7969962de3cd8ca683de702e59e8221b"
 dependencies = [
  "html5ever",
  "kuchiki",
- "phf 0.10.0",
+ "phf 0.10.1",
  "proc-macro2",
  "quote",
  "serde",
@@ -7611,12 +7607,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "log",
  "prost",
  "serde_json",
- "simple_logger",
  "sqlx",
  "tokio",
  "tonic",
@@ -7647,6 +7643,15 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -7741,16 +7746,8 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
 dependencies = [
- "itoa",
  "libc",
- "time-macros",
 ]
-
-[[package]]
-name = "time-macros"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tinycom"
@@ -8309,8 +8306,8 @@ dependencies = [
  "anyhow",
  "clap",
  "lgn-cli",
+ "lgn-logger",
  "log",
- "simple_logger",
  "tokio",
 ]
 

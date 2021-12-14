@@ -22,8 +22,6 @@ use lgn_window::{
     Windows,
 };
 use lgn_winit::{WinitPlugin, WinitWindows};
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
 
 struct RenderSurfaces {
     window_id_mapper: HashMap<WindowId, RenderSurfaceId>,
@@ -115,10 +113,7 @@ fn main() {
         )
         .get_matches();
 
-    SimpleLogger::new()
-        .with_level(LevelFilter::Warn)
-        .init()
-        .unwrap();
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
 
     let width = matches
         .value_of(ARG_NAME_WIDTH)

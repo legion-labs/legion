@@ -21,10 +21,10 @@ lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
 
 clap = "2.33"
 log = "0.4"
-simple_logger = "1.13"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../../plugin/winit", features = ["x11"] }

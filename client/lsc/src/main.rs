@@ -64,7 +64,7 @@ use lgn_source_control::*;
 use lgn_telemetry::*;
 
 fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new(None);
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     if let Err(e) = main_impl() {
         println!("{}", e);
@@ -306,7 +306,7 @@ fn main_impl() -> Result<(), String> {
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-local-repository");
+            log_static_str(LogLevel::Info, "init-local-repository");
             let path = command_match.value_of("directory").unwrap();
             if let Err(e) = tokio_runtime.block_on(
                 lgn_source_control::init_local_repository_command(Path::new(&path)),
@@ -316,7 +316,7 @@ fn main_impl() -> Result<(), String> {
             Ok(())
         }
         ("init-remote-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-remote-repository");
+            log_static_str(LogLevel::Info, "init-remote-repository");
             let repo_uri = command_match.value_of("uri").unwrap();
             let blob_uri = command_match.value_of("blob-storage");
             tokio_runtime.block_on(lgn_source_control::init_remote_repository_command(
@@ -324,14 +324,14 @@ fn main_impl() -> Result<(), String> {
             ))
         }
         ("destroy-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "destroy-repository");
+            log_static_str(LogLevel::Info, "destroy-repository");
             let repo_uri = command_match.value_of("uri").unwrap();
             tokio_runtime.block_on(
                 lgn_source_control::destroy_repository::destroy_repository_command(repo_uri),
             )
         }
         ("init-workspace", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-workspace");
+            log_static_str(LogLevel::Info, "init-workspace");
             tokio_runtime.block_on(init_workspace_command(
                 Path::new(command_match.value_of("workspace-directory").unwrap()),
                 command_match.value_of("repository-uri").unwrap(),
@@ -343,35 +343,35 @@ fn main_impl() -> Result<(), String> {
             tokio_runtime.block_on(track_new_file_command(Path::new(path_arg)))
         }
         ("edit", Some(command_match)) => {
-            log_str(LogLevel::Info, "edit");
+            log_static_str(LogLevel::Info, "edit");
             tokio_runtime.block_on(edit_file_command(Path::new(
                 command_match.value_of("path").unwrap(),
             )))
         }
         ("delete", Some(command_match)) => {
-            log_str(LogLevel::Info, "delete");
+            log_static_str(LogLevel::Info, "delete");
             tokio_runtime.block_on(delete_file_command(Path::new(
                 command_match.value_of("path").unwrap(),
             )))
         }
         ("lock", Some(command_match)) => {
-            log_str(LogLevel::Info, "lock");
+            log_static_str(LogLevel::Info, "lock");
             tokio_runtime.block_on(lock_file_command(Path::new(
                 command_match.value_of("path").unwrap(),
             )))
         }
         ("unlock", Some(command_match)) => {
-            log_str(LogLevel::Info, "unlock");
+            log_static_str(LogLevel::Info, "unlock");
             tokio_runtime.block_on(unlock_file_command(Path::new(
                 command_match.value_of("path").unwrap(),
             )))
         }
         ("list-locks", Some(_command_match)) => {
-            log_str(LogLevel::Info, "list-locks");
+            log_static_str(LogLevel::Info, "list-locks");
             tokio_runtime.block_on(list_locks_command())
         }
         ("diff", Some(command_match)) => {
-            log_str(LogLevel::Info, "diff");
+            log_static_str(LogLevel::Info, "diff");
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
             tokio_runtime.block_on(diff_file_command(
@@ -381,28 +381,28 @@ fn main_impl() -> Result<(), String> {
             ))
         }
         ("resolve", Some(command_match)) => {
-            log_str(LogLevel::Info, "resolve");
+            log_static_str(LogLevel::Info, "resolve");
             let notool = command_match.is_present("notool");
             let path = Path::new(command_match.value_of("path").unwrap());
             tokio_runtime.block_on(resolve_file_command(path, !notool))
         }
         ("create-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "create-branch");
+            log_static_str(LogLevel::Info, "create-branch");
             let name = command_match.value_of("name").unwrap();
             tokio_runtime.block_on(create_branch_command(name))
         }
         ("merge-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "merge-branch");
+            log_static_str(LogLevel::Info, "merge-branch");
             let name = command_match.value_of("name").unwrap();
             merge_branch_command(&tokio_runtime, name)
         }
         ("switch-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "switch-branch");
+            log_static_str(LogLevel::Info, "switch-branch");
             let name = command_match.value_of("name").unwrap();
             switch_branch_command(&tokio_runtime, name)
         }
         ("detach-branch", Some(_command_match)) => {
-            log_str(LogLevel::Info, "detach-branch");
+            log_static_str(LogLevel::Info, "detach-branch");
             tokio_runtime.block_on(detach_branch_command())
         }
         ("attach-branch", Some(command_match)) => {
@@ -414,7 +414,7 @@ fn main_impl() -> Result<(), String> {
             tokio_runtime.block_on(attach_branch_command(parent_branch_name))
         }
         ("list-branches", Some(_command_match)) => {
-            log_str(LogLevel::Info, "list-branches");
+            log_static_str(LogLevel::Info, "list-branches");
             tokio_runtime.block_on(list_branches_command())
         }
         ("revert", Some(command_match)) => {
@@ -435,7 +435,7 @@ fn main_impl() -> Result<(), String> {
             tokio_runtime.block_on(commit_command(&message))
         }
         ("local-changes", Some(_command_match)) => {
-            log_str(LogLevel::Info, "local-changes");
+            log_static_str(LogLevel::Info, "local-changes");
             match tokio_runtime.block_on(find_local_changes_command()) {
                 Ok(changes) => {
                     if changes.is_empty() {
@@ -450,7 +450,7 @@ fn main_impl() -> Result<(), String> {
             }
         }
         ("resolves-pending", Some(_command_match)) => {
-            log_str(LogLevel::Info, "resolves-pending");
+            log_static_str(LogLevel::Info, "resolves-pending");
             match tokio_runtime.block_on(find_resolves_pending_command()) {
                 Ok(resolves_pending) => {
                     if resolves_pending.is_empty() {
@@ -468,18 +468,18 @@ fn main_impl() -> Result<(), String> {
             }
         }
         ("sync", Some(command_match)) => {
-            log_str(LogLevel::Info, "sync");
+            log_static_str(LogLevel::Info, "sync");
             match command_match.value_of("commit-id") {
                 Some(commit_id) => tokio_runtime.block_on(sync_to_command(commit_id)),
                 None => tokio_runtime.block_on(sync_command()),
             }
         }
         ("log", Some(_command_match)) => {
-            log_str(LogLevel::Info, "log");
+            log_static_str(LogLevel::Info, "log");
             tokio_runtime.block_on(log_command())
         }
         ("config", Some(_command_match)) => {
-            log_str(LogLevel::Info, "config");
+            log_static_str(LogLevel::Info, "config");
             print_config_command()
         }
         ("import-git-branch", Some(command_match)) => {
@@ -497,7 +497,7 @@ fn main_impl() -> Result<(), String> {
             tokio_runtime.block_on(ping_console_command(server_uri))
         }
         other_match => {
-            log_str(LogLevel::Info, "unknown subcommand match");
+            log_static_str(LogLevel::Info, "unknown subcommand match");
             Err(format!("unknown subcommand match: {:?}", &other_match))
         }
     }

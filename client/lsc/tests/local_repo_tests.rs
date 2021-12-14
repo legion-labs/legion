@@ -78,7 +78,7 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 
 #[test]
 fn local_repo_suite() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_repo_suite");
@@ -188,7 +188,7 @@ fn local_repo_suite() {
 
 #[test]
 fn local_single_branch_merge_flow() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_single_branch_merge_flow");
@@ -241,7 +241,7 @@ fn local_single_branch_merge_flow() {
 
 #[test]
 fn test_print_config() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -256,7 +256,7 @@ fn test_print_config() {
 
 #[test]
 fn test_branch() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_branch");
@@ -356,7 +356,7 @@ fn test_branch() {
 
 #[test]
 fn test_locks() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_locks");
@@ -482,7 +482,7 @@ fn get_root_git_directory() -> PathBuf {
 #[test]
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
-    init_telemetry(None);
+    init_telemetry();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_import_git");
