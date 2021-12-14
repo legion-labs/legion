@@ -239,6 +239,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
+use lgn_content_store::Checksum;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
@@ -639,13 +640,13 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let mut f = File::open(path).expect("unable to open asset file");
 
     let file_name = path.file_name().unwrap().to_string_lossy();
-    let file_guid = file_name.parse::<ResourceTypeAndId>();
-    if let Err(_e) = file_guid {
+    let checksum = file_name.parse::<Checksum>();
+    if let Err(_e) = checksum {
         // not an asset file, just ignore it
         return;
     }
-    let file_guid = file_guid.unwrap();
-    println!("\nasset {}", file_guid);
+    let checksum = checksum.unwrap();
+    println!("\nasset {}", checksum);
 
     let mut typename: [u8; 4] = [0; 4];
     let typename_result = f.read_exact(&mut typename);
