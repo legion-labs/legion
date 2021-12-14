@@ -6383,9 +6383,13 @@ dependencies = [
 name = "runtime-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
+ "directories",
  "lgn-app",
+ "lgn-async",
  "lgn-build-utils",
+ "lgn-online",
  "lgn-tauri",
  "tauri",
  "tauri-build",
