@@ -35,8 +35,8 @@
         <Log id={params.id} />
       {/key}
     </Route>
-    <Route path="/timeline/:id" let:params primary={false}>
-      {#key params.id}
+    <Route path="/timeline/:id" let:params let:location primary={false}>
+      {#key params.id + location.search}
         <Timeline processId={params.id} />
       {/key}
     </Route>
