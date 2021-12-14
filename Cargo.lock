@@ -4025,6 +4025,7 @@ dependencies = [
  "ash",
  "ash-window",
  "bitflags",
+ "bumpalo",
  "crossbeam-channel 0.5.1",
  "fnv",
  "lgn-utils",

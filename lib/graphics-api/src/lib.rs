@@ -291,6 +291,7 @@ pub use types::*;
 
 /// The maximum descriptor set layout index allowed. Vulkan only guarantees up to 4 are available
 pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
+pub const MAX_DESCRIPTOR_BINDINGS: usize = 64;
 /// The maximum number of simultaneously attached render targets
 // In sync with BlendStateTargets
 pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;

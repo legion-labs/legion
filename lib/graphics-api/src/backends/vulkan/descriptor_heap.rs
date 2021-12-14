@@ -1,12 +1,10 @@
-use ash::vk;
-
 use crate::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetBufWriter,
-    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxResult,
+    DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetHandle, DescriptorSetLayout,
+    DescriptorSetWriter, DeviceContext, GfxResult,
 };
 
 struct DescriptorHeapPoolConfig {
-    pool_flags: vk::DescriptorPoolCreateFlags,
+    pool_flags: ash::vk::DescriptorPoolCreateFlags,
     descriptor_sets: u32,
     samplers: u32,
     combined_image_samplers: u32,
@@ -24,7 +22,7 @@ struct DescriptorHeapPoolConfig {
 impl From<&DescriptorHeapDef> for DescriptorHeapPoolConfig {
     fn from(definition: &DescriptorHeapDef) -> Self {
         Self {
-            pool_flags: vk::DescriptorPoolCreateFlags::empty(),
+            pool_flags: ash::vk::DescriptorPoolCreateFlags::empty(),
             descriptor_sets: definition.max_descriptor_sets,
             samplers: definition.sampler_count,
             combined_image_samplers: 0,
@@ -42,16 +40,16 @@ impl From<&DescriptorHeapDef> for DescriptorHeapPoolConfig {
 }
 
 impl DescriptorHeapPoolConfig {
-    fn create_pool(&self, device: &ash::Device) -> GfxResult<vk::DescriptorPool> {
+    fn create_pool(&self, device: &ash::Device) -> GfxResult<ash::vk::DescriptorPool> {
         let mut pool_sizes = Vec::with_capacity(16);
 
         fn add_if_not_zero(
-            pool_sizes: &mut Vec<vk::DescriptorPoolSize>,
-            ty: vk::DescriptorType,
+            pool_sizes: &mut Vec<ash::vk::DescriptorPoolSize>,
+            ty: ash::vk::DescriptorType,
             descriptor_count: u32,
         ) {
             if descriptor_count != 0 {
-                pool_sizes.push(vk::DescriptorPoolSize {
+                pool_sizes.push(ash::vk::DescriptorPoolSize {
                     ty,
                     descriptor_count,
                 });
@@ -60,22 +58,22 @@ impl DescriptorHeapPoolConfig {
 
         #[rustfmt::skip]
         {
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::SAMPLER, self.samplers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::COMBINED_IMAGE_SAMPLER, self.combined_image_samplers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::SAMPLED_IMAGE, self.sampled_images);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::STORAGE_IMAGE, self.storage_images);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::UNIFORM_TEXEL_BUFFER, self.uniform_texel_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::STORAGE_TEXEL_BUFFER, self.storage_texel_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::UNIFORM_BUFFER, self.uniform_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::STORAGE_BUFFER, self.storage_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, self.dynamic_uniform_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::STORAGE_BUFFER_DYNAMIC, self.dynamic_storage_buffers);
-            add_if_not_zero(&mut pool_sizes, vk::DescriptorType::INPUT_ATTACHMENT, self.input_attachments);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::SAMPLER, self.samplers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, self.combined_image_samplers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::SAMPLED_IMAGE, self.sampled_images);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::STORAGE_IMAGE, self.storage_images);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::UNIFORM_TEXEL_BUFFER, self.uniform_texel_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::STORAGE_TEXEL_BUFFER, self.storage_texel_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::UNIFORM_BUFFER, self.uniform_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::STORAGE_BUFFER, self.storage_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, self.dynamic_uniform_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::STORAGE_BUFFER_DYNAMIC, self.dynamic_storage_buffers);
+            add_if_not_zero(&mut pool_sizes, ash::vk::DescriptorType::INPUT_ATTACHMENT, self.input_attachments);
         };
 
         let vk_pool = unsafe {
             device.create_descriptor_pool(
-                &*vk::DescriptorPoolCreateInfo::builder()
+                &*ash::vk::DescriptorPoolCreateInfo::builder()
                     .flags(self.pool_flags)
                     .max_sets(self.descriptor_sets)
                     .pool_sizes(&pool_sizes),
@@ -86,12 +84,109 @@ impl DescriptorHeapPoolConfig {
         Ok(vk_pool)
     }
 }
+/*
+//
+// VukanDescriptor
+//
 
+#[derive(Default)]
+pub struct VulkanBufferDescriptor {
+    vk_buffer_info: ash::vk::DescriptorBufferInfo,
+}
+
+impl BufferDescriptor {
+
+    pub fn set_constant_buffer_platform(&mut self, buffer_view: &BufferView) {
+        assert_eq!(
+            std::alloc::Layout::new::<Self>(),
+            std::alloc::Layout::new::<ash::vk::DescriptorBufferInfo>()
+        );
+        self.inner.vk_buffer_info.buffer = buffer_view.buffer().vk_buffer();
+        self.inner.vk_buffer_info.offset = buffer_view.offset();
+        self.inner.vk_buffer_info.range = buffer_view.size();
+    }
+}
+
+#[derive(Default)]
+pub struct VulkanTextureDescriptor {
+    vk_image_info: ash::vk::DescriptorImageInfo,
+}
+
+#[derive(Default)]
+pub struct VulkanSamplerDescriptor {
+    vk_image_info: ash::vk::DescriptorImageInfo,
+}
+
+#[derive(Default)]
+pub(crate) struct VulkanDescriptor {
+    vk_write: ash::vk::WriteDescriptorSet,
+}
+
+impl VulkanDescriptor {
+    pub(crate) fn new(
+        descriptor_set_handle: DescriptorSetHandle,
+        descriptor_def: &Descriptor,
+        descriptor_array: &DescriptorArray,
+    ) -> Self {
+        let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
+            descriptor_def.shader_resource_type,
+        );
+
+        let mut write_descriptor_builder = ash::vk::WriteDescriptorSet::builder()
+            .dst_set(descriptor_set_handle.vk_type)
+            .dst_binding(descriptor_def.binding)
+            .dst_array_element(0)
+            .descriptor_type(vk_descriptor_type);
+
+        match descriptor_def.shader_resource_type {
+            crate::ShaderResourceType::Sampler => match descriptor_array {
+                DescriptorArray::Sampler(arr) => {
+                    write_descriptor_builder.image_info(arr.as_slice())
+                }
+                DescriptorArray::Undefined(_)
+                | DescriptorArray::Texture(_)
+                | DescriptorArray::Buffer(_) => unreachable!(),
+            },
+            crate::ShaderResourceType::ConstantBuffer
+            | crate::ShaderResourceType::StructuredBuffer
+            | crate::ShaderResourceType::RWStructuredBuffer
+            | crate::ShaderResourceType::ByteAdressBuffer
+            | crate::ShaderResourceType::RWByteAdressBuffer => match descriptor_array {
+                DescriptorArray::Buffer(arr) => {
+                    write_descriptor_builder.buffer_info(arr.as_slice())
+                }
+                DescriptorArray::Undefined(_)
+                | DescriptorArray::Texture(_)
+                | DescriptorArray::Sampler(_) => unreachable!(),
+            },
+            crate::ShaderResourceType::Texture2D
+            | crate::ShaderResourceType::RWTexture2D
+            | crate::ShaderResourceType::Texture2DArray
+            | crate::ShaderResourceType::RWTexture2DArray
+            | crate::ShaderResourceType::Texture3D
+            | crate::ShaderResourceType::RWTexture3D
+            | crate::ShaderResourceType::TextureCube
+            | crate::ShaderResourceType::TextureCubeArray => match descriptor_array {
+                DescriptorArray::Texture(arr) => {
+                    write_descriptor_builder.image_info(arr.as_slice())
+                }
+                DescriptorArray::Undefined(_)
+                | DescriptorArray::Sampler(_)
+                | DescriptorArray::Buffer(_) => unreachable!(),
+            },
+        }
+
+        Self {
+            vk_write: write_descriptor_builder.build(),
+        }
+    }
+}
+*/
 //
 // VulkanDescriptorHeap
 //
 pub(crate) struct VulkanDescriptorHeap {
-    vk_pool: vk::DescriptorPool,
+    vk_pool: ash::vk::DescriptorPool,
 }
 
 impl VulkanDescriptorHeap {
@@ -114,37 +209,12 @@ impl VulkanDescriptorHeap {
     }
 }
 
-impl DescriptorHeap {
-    // pub(crate) fn reset_platform(&self) -> GfxResult<()> {
-    // self.inner.partitions.iter().for_each(|x| x.reset());
-
-    // let device = device_context.vk_device();
-    // unsafe {
-    //     device
-    //         .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
-    //         .map_err(|x| x.into())
-    // }
-    // }
-
-    // pub(crate) fn alloc_partition_platform(
-    //     &self,
-    //     transient: bool,
-    //     definition: &DescriptorHeapDef,
-    // ) -> GfxResult<DescriptorHeapPartition> {
-    //     DescriptorHeapPartition::new(self.clone(), transient, definition)
-    // }
-
-    // pub(crate) fn free_partition_platform(&self, partition: DescriptorHeapPartition) {
-
-    // }
-}
-
 //
 // VulkanDescriptorHeapPartition
 //
 
 pub(crate) struct VulkanDescriptorHeapPartition {
-    vk_pool: vk::DescriptorPool,
+    vk_pool: ash::vk::DescriptorPool,
 }
 
 impl VulkanDescriptorHeapPartition {
@@ -156,7 +226,7 @@ impl VulkanDescriptorHeapPartition {
         let device = device_context.vk_device();
         let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         if !transient {
-            heap_pool_config.pool_flags = vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
+            heap_pool_config.pool_flags = ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
         }
 
         let vk_pool = heap_pool_config.create_pool(device)?;
@@ -179,27 +249,47 @@ impl DescriptorHeapPartition {
             device
                 .reset_descriptor_pool(
                     self.inner.platform_descriptor_heap_partition.vk_pool,
-                    vk::DescriptorPoolResetFlags::default(),
+                    ash::vk::DescriptorPoolResetFlags::default(),
                 )
                 .map_err(Into::into)
         }
     }
 
-    pub(crate) fn allocate_descriptor_set_platform(
+    pub(crate) fn write_descriptor_set_platform<'frame>(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
-    ) -> GfxResult<DescriptorSetBufWriter> {
+        bump: &'frame bumpalo::Bump,
+    ) -> GfxResult<DescriptorSetWriter<'frame>> {
         let device = self.inner.heap.inner.device_context.vk_device();
-        let allocate_info = vk::DescriptorSetAllocateInfo::builder()
+        let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[descriptor_set_layout.vk_layout()])
             .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
-        DescriptorSetBufWriter::new(
+        DescriptorSetWriter::new(
             DescriptorSetHandle { vk_type: result[0] },
             descriptor_set_layout,
+            bump,
         )
     }
+
+    // pub(crate) fn write_descriptor_set_platform(
+    //     &self,
+    //     descriptor_set_layout: &DescriptorSetLayout,
+    //     descriptors: &[Descriptor_],
+    // ) -> GfxResult<DescriptorSetHandle> {
+    //     let device = self.inner.heap.inner.device_context.vk_device();
+    //     let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
+    //         .set_layouts(&[descriptor_set_layout.vk_layout()])
+    //         .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
+    //         .build();
+
+    //     let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
+
+    //     let descriptor_set_handle = DescriptorSetHandle { vk_type: result[0] };
+
+    //     Ok(descriptor_set_handle)
+    // }
 }

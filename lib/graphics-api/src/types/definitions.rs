@@ -200,13 +200,17 @@ bitflags::bitflags! {
 
 #[derive(Clone, Debug)]
 pub struct Descriptor {
-    pub(crate) name: String,
-    pub(crate) binding: u32,
-    pub(crate) shader_resource_type: ShaderResourceType,
-    #[cfg(feature = "vulkan")]
-    pub(crate) vk_type: ash::vk::DescriptorType,
-    pub(crate) element_count: u32,
-    pub(crate) update_data_offset: u32,
+    pub name: String,
+    pub binding: u32,
+    pub shader_resource_type: ShaderResourceType,
+    pub element_count: u32,
+    pub update_data_offset: u32,
+}
+
+impl Descriptor {
+    pub fn element_count_normalized(&self) -> u32 {
+        self.element_count.max(1)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -835,7 +839,7 @@ pub struct DescriptorHeapDef {
 
 impl DescriptorHeapDef {
     pub fn from_descriptor_set_layout_def(
-        definition: &DescriptorSetLayoutDef,        
+        definition: &DescriptorSetLayoutDef,
         max_descriptor_sets: u32,
     ) -> Self {
         let mut result = Self {

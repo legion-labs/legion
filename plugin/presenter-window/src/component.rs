@@ -45,9 +45,9 @@ impl PresenterWindow {
         }
     }
 
-    pub fn present<'renderer>(
+    pub fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
     ) {
         //
@@ -154,9 +154,9 @@ impl Presenter for PresenterWindow {
         self.extents = extents;
     }
 
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

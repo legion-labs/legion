@@ -1,9 +1,11 @@
+#![allow(unsafe_code)]
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanDescriptorHeap, VulkanDescriptorHeapPartition};
 
 use crate::{
-    deferred_drop::Drc, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout,
-    DeviceContext, GfxResult,
+    deferred_drop::Drc, DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext,
+    GfxResult,
 };
 
 //
@@ -56,28 +58,15 @@ impl DescriptorHeap {
         })
     }
 
-    // pub fn reset(&self) -> GfxResult<()> {
-    //     self.inner
-    //         .partitions
-    //         .iter()
-    //         .for_each(|x| x.reset().unwrap());
-    //     Ok(())
-    // }
-
     pub fn alloc_partition(
         &self,
         transient: bool,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<DescriptorHeapPartition> {
-        // #[cfg(any(feature = "vulkan"))]
-        // self.alloc_partition_platform(transient, definition)
         DescriptorHeapPartition::new(self.clone(), transient, definition)
     }
 
-    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
-        // #[cfg(any(feature = "vulkan"))]
-        // self.free_partition_platform(partition)
-    }
+    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {}
 }
 
 //
@@ -99,6 +88,15 @@ impl Drop for DescriptorHeapPartitionInner {
             .destroy(&self.heap.inner.device_context);
     }
 }
+
+//
+// DescriptorSetWriter
+//
+
+// pub trait DescriptorSetWriter {
+//     fn descriptor_set_layout(&self) -> &DescriptorSetLayout;
+//     fn descriptors(&self) -> &[Descriptor_];
+// }
 
 //
 // DescriptorHeapPartition
@@ -132,16 +130,29 @@ impl DescriptorHeapPartition {
         })
     }
 
-    pub fn allocate_descriptor_set(
+    pub fn write_descriptor_set<'frame>(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
-    ) -> GfxResult<DescriptorSetBufWriter> {
+        bump: &'frame bumpalo::Bump,
+    ) -> GfxResult<DescriptorSetWriter<'frame>> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.allocate_descriptor_set_platform(descriptor_set_layout)
+        self.write_descriptor_set_platform(descriptor_set_layout, bump)
     }
+
+    // pub fn write_descriptor_set(
+    //     &self,
+    //     descriptor_set_layout: &DescriptorSetLayout,
+    //     descriptors: &[Descriptor_],
+    // ) -> GfxResult<DescriptorSetHandle> {
+    //     #[cfg(not(any(feature = "vulkan")))]
+    //     unimplemented!();
+
+    //     #[cfg(any(feature = "vulkan"))]
+    //     self.write_descriptor_set_platform(descriptor_set_layout, descriptors)
+    // }
 
     pub fn reset(&self) -> GfxResult<()> {
         assert_eq!(self.inner.transient, true);

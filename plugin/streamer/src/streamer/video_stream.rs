@@ -82,9 +82,9 @@ impl VideoStream {
         record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
     }
 
-    pub(crate) fn present<'renderer>(
+    pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -150,9 +150,9 @@ impl Presenter for VideoStream {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
         self.resize(renderer, extents).unwrap();
     }
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     ) {

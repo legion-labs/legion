@@ -288,9 +288,9 @@ impl OffscreenHelper {
         }
     }
 
-    pub fn present<'renderer, F: FnOnce(&[u8], usize)>(
+    pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
@@ -345,18 +345,16 @@ impl OffscreenHelper {
             .descriptor_set_layouts[0];
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "hdr_image",
-                0,
                 &[DescriptorRef::TextureView(
                     render_surface.shader_resource_view(),
                 )],
             )
             .unwrap();
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "hdr_sampler",
-                0,
                 &[DescriptorRef::Sampler(&self.bilinear_sampler)],
             )
             .unwrap();

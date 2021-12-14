@@ -1,12 +1,13 @@
+use bumpalo::Bump;
 use lgn_graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetBufWriter,
-    DescriptorSetLayout, DeviceContext, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetLayout,
+    DescriptorSetWriter, GfxResult,
 };
 
 use super::OnFrameEventHandler;
 use crate::RenderHandle;
 
-pub(crate) struct DescriptorPool {
+pub struct DescriptorPool {
     descriptor_heap: DescriptorHeap,
     descriptor_heap_partition: RenderHandle<DescriptorHeapPartition>,
 }
@@ -27,12 +28,17 @@ impl DescriptorPool {
         }
     }
 
-    pub(crate) fn allocate_descriptor_set(
-        &mut self,
+    pub fn descriptor_heap_partition_mut(&self) -> &DescriptorHeapPartition {
+        &self.descriptor_heap_partition
+    }
+
+    pub fn allocate_descriptor_set<'frame>(
+        &self,
         descriptor_set_layout: &DescriptorSetLayout,
-    ) -> GfxResult<DescriptorSetBufWriter> {
+        bump: &'frame Bump,
+    ) -> GfxResult<DescriptorSetWriter<'frame>> {
         self.descriptor_heap_partition
-            .allocate_descriptor_set(descriptor_set_layout)
+            .write_descriptor_set(descriptor_set_layout, bump)
     }
 
     fn reset(&self) {
@@ -55,4 +61,4 @@ impl OnFrameEventHandler for DescriptorPool {
     fn on_end_frame(&mut self) {}
 }
 
-pub(crate) type DescriptorPoolHandle = RenderHandle<DescriptorPool>;
+pub type DescriptorPoolHandle = RenderHandle<DescriptorPool>;

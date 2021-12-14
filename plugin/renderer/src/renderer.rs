@@ -1,17 +1,69 @@
 #![allow(unsafe_code)]
 
+use std::cell::Cell;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use anyhow::Result;
-use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_graphics_cgen_runtime::CGenRuntime;
-use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
-use lgn_transform::components::Transform;
+use lgn_graphics_api::ApiDef;
+use lgn_graphics_api::BlendState;
+use lgn_graphics_api::BufferView;
+use lgn_graphics_api::ColorClearValue;
+use lgn_graphics_api::ColorRenderTargetBinding;
+use lgn_graphics_api::CommandBuffer;
+use lgn_graphics_api::CompareOp;
+use lgn_graphics_api::DepthState;
+use lgn_graphics_api::DepthStencilClearValue;
+use lgn_graphics_api::DepthStencilRenderTargetBinding;
+use lgn_graphics_api::DescriptorDef;
+use lgn_graphics_api::DescriptorHeap;
+use lgn_graphics_api::DescriptorHeapDef;
+use lgn_graphics_api::DescriptorRef;
+use lgn_graphics_api::DescriptorSetLayoutDef;
+use lgn_graphics_api::DeviceContext;
+use lgn_graphics_api::Fence;
+use lgn_graphics_api::FenceStatus;
+use lgn_graphics_api::Format;
+use lgn_graphics_api::GfxApi;
+use lgn_graphics_api::GraphicsPipelineDef;
+use lgn_graphics_api::LoadOp;
+use lgn_graphics_api::Pipeline;
+use lgn_graphics_api::PipelineType;
+use lgn_graphics_api::PrimitiveTopology;
+use lgn_graphics_api::PushConstantDef;
+use lgn_graphics_api::Queue;
+use lgn_graphics_api::QueueType;
+use lgn_graphics_api::RasterizerState;
+use lgn_graphics_api::ResourceState;
+use lgn_graphics_api::ResourceUsage;
+use lgn_graphics_api::RootSignature;
+use lgn_graphics_api::RootSignatureDef;
+use lgn_graphics_api::SampleCount;
+use lgn_graphics_api::Semaphore;
+use lgn_graphics_api::ShaderPackage;
+use lgn_graphics_api::ShaderStageDef;
+use lgn_graphics_api::ShaderStageFlags;
+use lgn_graphics_api::StencilOp;
+use lgn_graphics_api::StoreOp;
+use lgn_graphics_api::VertexAttributeRate;
+use lgn_graphics_api::VertexLayout;
+use lgn_graphics_api::VertexLayoutAttribute;
+use lgn_graphics_api::VertexLayoutBuffer;
+use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
+use lgn_graphics_cgen_runtime::Fake::FakeDescriptorID;
+use lgn_graphics_cgen_runtime::Fake::FakeDescriptorSetData;
+use lgn_graphics_cgen_runtime::{CGenRuntime, DescriptorSetData};
+
+use lgn_math::Mat4;
+use lgn_math::Vec3;
+use lgn_pso_compiler::CompileParams;
+use lgn_pso_compiler::EntryPoint;
+use lgn_pso_compiler::FileSystem;
+use lgn_pso_compiler::HlslCompiler;
+use lgn_pso_compiler::ShaderSource;
+use lgn_transform::prelude::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::cgen::DefaultDescriptorSet;
 use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
@@ -21,6 +73,12 @@ use crate::resources::{
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
+
+#[derive(Default, Clone, Copy)]
+struct RendererEpoch {
+    frame_idx: usize,
+    render_frame_idx: usize,
+}
 
 pub struct Renderer {
     frame_idx: usize,
@@ -45,6 +103,11 @@ pub struct Renderer {
     api: GfxApi,
 }
 
+// #[derive(Clone)]
+// pub struct Renderer {
+//     inner: Arc<RendererInner>,
+// }
+
 unsafe impl Send for Renderer {}
 
 unsafe impl Sync for Renderer {}
@@ -66,7 +129,7 @@ impl Renderer {
             "/cgen/rust/cgen_def.bin"
         ));
         let cgen_runtime = CGenRuntime::new(cgen_def, &device_context);
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
+        let static_buffer = UnifiedStaticBuffer::new(&device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
@@ -105,7 +168,7 @@ impl Renderer {
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             cgen_runtime,
-            transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
+            transient_buffer: TransientPagedBuffer::new(&device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
@@ -502,19 +565,12 @@ impl TmpRenderPass {
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &mut RenderContext,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
         camera_transform: &Transform,
     ) {
-        {
-            let bump = render_context.acquire_bump_allocator();
-            let x = bump.alloc(3);
-            *x += 1;
-            render_context.release_bump_allocator(bump);
-        }
-
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer
@@ -596,36 +652,42 @@ impl TmpRenderPass {
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
-            { /*
-                 let cgen_runtime = render_context.renderer().cgen_runtime();
-                 let bump_allocator = render_context.acquire_bump_allocator();
-                 // let ds_data = DefaultDescriptorSetData::new(bump_allocator);
-                 let ds_data = FakeDescriptorSetData::new(bump_allocator.bumpalo());
+            /* WIP
+            {
+                let bump_allocator = render_context.bump_allocator();
 
-                 ds_data.set_constant_buffer(FakeDescriptorID::A, const_buffer_view);
-                 let descriptor_set_handle = ds_data.build();
-                 render_context.release_bump_allocator(bump_allocator);
-                 */
+                let descriptor_heap_partition = render_context
+                    .descriptor_pool()
+                    .descriptor_heap_partition_mut();
+
+              let mut ds_data = FakeDescriptorSetData::new(
+                    render_context.cgen_runtime(),
+                    bump_allocator.bumpalo(),
+                    descriptor_heap_partition,
+                );
+
+
+                ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
+
+                let descriptor_handle = ds_data.build(render_context.renderer().device_context());
             }
+            */
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "const_data",
-                    0,
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
 
+            let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "static_buffer",
-                    0,
-                    &[DescriptorRef::BufferView(
-                        &render_context.renderer().static_buffer_ro_view(),
-                    )],
+                    &[DescriptorRef::BufferView(&static_buffer_ro_view)],
                 )
                 .unwrap();
 

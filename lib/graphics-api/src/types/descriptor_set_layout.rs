@@ -1,14 +1,16 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
-#[cfg(any(feature = "vulkan"))]
-use crate::GfxError;
-use crate::{deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult};
+
+use crate::{
+    deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult,
+    MAX_DESCRIPTOR_BINDINGS, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
     set_index: u32,
-    update_data_count: u32,
+    binding_mask: u64,
 
     #[cfg(any(feature = "vulkan"))]
     descriptors: Vec<Descriptor>,
@@ -42,11 +44,11 @@ impl DescriptorSetLayout {
         self.inner.set_index
     }
 
-    pub fn update_data_count(&self) -> u32 {
-        self.inner.update_data_count
-    }    
+    pub fn binding_mask(&self) -> u64 {
+        self.inner.binding_mask
+    }
 
-    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
+    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<usize> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
@@ -55,32 +57,34 @@ impl DescriptorSetLayout {
             .descriptors
             .iter()
             .position(|descriptor| name == descriptor.name)
-            .map(|opt| opt as u32)
     }
 
-    pub fn descriptor(&self, index: u32) -> GfxResult<&Descriptor> {
+    pub fn descriptor(&self, index: usize) -> &Descriptor {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .descriptors
-            .get(index as usize)
-            .ok_or_else(|| GfxError::from("Invalid descriptor index"))
+        &self.inner.descriptors[index]
     }
 
     pub fn new(
         device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
+        let mut binding_mask = 0;
+        for descriptor_def in &definition.descriptor_defs {
+            assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
+            let mask = 1u64 << descriptor_def.binding;
+            assert!((binding_mask & mask) == 0, "Binding already in use");
+            binding_mask |= mask;
+        }
+
         #[cfg(feature = "vulkan")]
-        let (platform_layout, descriptors, update_data_count) =
+        let (platform_layout, descriptors) =
             VulkanDescriptorSetLayout::new(device_context, definition).map_err(|e| {
                 log::error!("Error creating platform descriptor set layout {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
-        #[cfg(not(any(feature = "vulkan")))]
-        let update_data_count = 0;
 
         let result = Self {
             inner: device_context
@@ -89,7 +93,7 @@ impl DescriptorSetLayout {
                     device_context: device_context.clone(),
                     definition: definition.clone(),
                     set_index: definition.frequency,
-                    update_data_count,
+                    binding_mask,
                     #[cfg(any(feature = "vulkan"))]
                     descriptors,
                     #[cfg(any(feature = "vulkan"))]

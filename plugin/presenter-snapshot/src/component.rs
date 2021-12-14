@@ -50,9 +50,9 @@ impl PresenterSnapshot {
         })
     }
 
-    pub(crate) fn present<'renderer>(
+    pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -103,9 +103,9 @@ impl Presenter for PresenterSnapshot {
         unreachable!();
     }
 
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

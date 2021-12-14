@@ -323,16 +323,15 @@ impl EguiPass {
             .descriptor_set_layouts[0];
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "font_texture",
-                0,
                 &[DescriptorRef::TextureView(
                     &self.texture_data.as_ref().unwrap().2,
                 )],
             )
             .unwrap();
         descriptor_set_writer
-            .set_descriptors("font_sampler", 0, &[DescriptorRef::Sampler(&self.sampler)])
+            .set_descriptors_by_name("font_sampler", &[DescriptorRef::Sampler(&self.sampler)])
             .unwrap();
         let descriptor_set_handle =
             descriptor_set_writer.flush(render_context.renderer().device_context());
