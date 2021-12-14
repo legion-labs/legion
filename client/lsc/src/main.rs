@@ -73,7 +73,7 @@ const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new(None);
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     trace_scope!();
@@ -323,7 +323,7 @@ async fn main() -> anyhow::Result<()> {
         (SUB_COMMAND_INIT_REPOSITORY, Some(command_match)) => {
             info!("{}", SUB_COMMAND_INIT_REPOSITORY);
 
-            let repository_url: RepositoryUrl = command_match
+            let _repository_url: RepositoryUrl = command_match
                 .value_of(ARG_REPOSITORY_URL)
                 .unwrap()
                 .parse()?;
@@ -515,7 +515,7 @@ async fn main() -> anyhow::Result<()> {
             let branch_name = command_match.value_of("branch").unwrap();
             info!("import-git-branch {} {} ", path_arg, branch_name);
 
-            import_git_branch_command(Path::new(path_arg), branch_name)
+            import_git_branch_command(Path::new(path_arg), branch_name).await
         }
         ("ping", Some(command_match)) => {
             let server_uri = command_match.value_of("server_uri").unwrap();
@@ -526,7 +526,7 @@ async fn main() -> anyhow::Result<()> {
         other_match => {
             info!("unknown subcommand match");
 
-            Err(format!("unknown subcommand match: {:?}", &other_match))
+            anyhow::bail!("unknown subcommand match: {:?}", &other_match)
         }
     }
 }
