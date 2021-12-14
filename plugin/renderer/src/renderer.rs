@@ -12,6 +12,7 @@ use lgn_pso_compiler::{FileSystem, HlslCompiler};
 
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
+use crate::debug_display::DebugDisplay;
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -329,9 +330,11 @@ impl TmpRenderPass {
                     directional_lights_data.push(0.0);
                 }
                 LightType::Omnidirectional { attenuation } => {
-                    omnidirectional_lights_data.push(transform.translation.x);
-                    omnidirectional_lights_data.push(transform.translation.y);
-                    omnidirectional_lights_data.push(transform.translation.z);
+                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+
+                    omnidirectional_lights_data.push(transform_in_view.x);
+                    omnidirectional_lights_data.push(transform_in_view.y);
+                    omnidirectional_lights_data.push(transform_in_view.z);
                     omnidirectional_lights_data.push(light.radiance);
                     omnidirectional_lights_data.push(attenuation);
                     omnidirectional_lights_data.push(light.color.0);

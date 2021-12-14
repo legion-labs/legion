@@ -24,6 +24,10 @@ impl BumpAllocator {
     pub fn alloc<T>(&self, val: T) -> &mut T {
         self.bump_allocator.alloc(val)
     }
+
+    pub fn bump(&self) -> &bumpalo::Bump {
+        &self.bump_allocator
+    }
 }
 
 impl OnFrameEventHandler for BumpAllocator {

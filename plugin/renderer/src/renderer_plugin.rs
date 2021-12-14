@@ -121,10 +121,13 @@ fn update_ui(
 
 fn update_debug(
     mut renderer: ResMut<'_, Renderer>,
-    mut debug_display: ResMut<'_, DebugDisplay<'_>>,
-    mut lights: Query<'_, '_, &LightComponent>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
+    mut lights: Query<'_, '_, (&LightComponent, &Transform)>,
 ) {
-    let display_list = debug_display.create_display_list(renderer);
+    let display_list = debug_display.create_display_list();
+    for (light, transform) in lights.iter() {
+        display_list.add_cube(transform.translation);
+    }
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
@@ -175,6 +178,7 @@ fn render_update(
     q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
@@ -251,7 +255,17 @@ fn render_update(
 
         let debug_display_pass = render_surface.debug_display_renderpass();
         let debug_display_pass = debug_display_pass.write();
-        debug_display_pass.render(&mut render_context, &cmd_buffer, render_surface.as_mut());
+        debug_display_pass.render(
+            &mut render_context,
+            &cmd_buffer,
+            render_surface.as_mut(),
+            debug_display.as_mut(),
+            if !q_cameras.is_empty() {
+                q_cameras[0]
+            } else {
+                &default_camera
+            },
+        );
 
         let egui_pass = render_surface.egui_renderpass();
         let mut egui_pass = egui_pass.write();
