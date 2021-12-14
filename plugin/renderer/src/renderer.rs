@@ -316,11 +316,16 @@ impl TmpRenderPass {
         let mut directional_lights_data = Vec::<f32>::new();
         let mut omnidirectional_lights_data = Vec::<f32>::new();
         for (transform, light) in lights {
+            if !light.enabled {
+                continue;
+            }
             match light.light_type {
                 LightType::Directional { direction } => {
-                    directional_lights_data.push(direction.0);
-                    directional_lights_data.push(direction.1);
-                    directional_lights_data.push(direction.2);
+                    let direction_in_view = view_matrix.mul_vec4(direction.extend(1.0));
+
+                    directional_lights_data.push(direction_in_view.x);
+                    directional_lights_data.push(direction_in_view.y);
+                    directional_lights_data.push(direction_in_view.z);
                     directional_lights_data.push(light.radiance);
                     directional_lights_data.push(light.color.0);
                     directional_lights_data.push(light.color.1);
@@ -342,31 +347,37 @@ impl TmpRenderPass {
                 LightType::Spotlight { .. } => unimplemented!(),
             }
         }
-        let mut sub_allocation = transient_allocator
-            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE);
 
-        let directional_lights_buffer_view = sub_allocation.structured_buffer_view(8 * 4, true);
+        let directional_lights_buffer_view = if directional_lights_data.len() > 0 {
+            let sub_allocation = transient_allocator
+                .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE);
+            Some(sub_allocation.structured_buffer_view(8 * 4, true))
+        } else {
+            None
+        };
 
-        sub_allocation = transient_allocator.copy_data(
-            &omnidirectional_lights_data,
-            ResourceUsage::AS_SHADER_RESOURCE,
-        );
-
-        let omnidirectional_lights_buffer_view = sub_allocation.structured_buffer_view(8 * 4, true);
+        let omnidirectional_lights_buffer_view = if omnidirectional_lights_data.len() > 0 {
+            let sub_allocation = transient_allocator.copy_data(
+                &omnidirectional_lights_data,
+                ResourceUsage::AS_SHADER_RESOURCE,
+            );
+            Some(sub_allocation.structured_buffer_view(8 * 4, true))
+        } else {
+            None
+        };
 
                 )
                 .unwrap();
-            descriptor_set_writer
-                .set_descriptors(
-                    "directional_lights",
-                    0,
-                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
-                )
-                .unwrap();
-            descriptor_set_writer
-                .set_descriptors(
-                    "omnidirectional_lights",
-                    0,
-                    &[DescriptorRef::BufferView(
-                        &omnidirectional_lights_buffer_view,
-                    )],
+            if let Some(ref view) = directional_lights_buffer_view {
+                descriptor_set_writer
+                    .set_descriptors("directional_lights", 0, &[DescriptorRef::BufferView(view)])
+                    .unwrap();
+            }
+
+            if let Some(ref view) = omnidirectional_lights_buffer_view {
+                descriptor_set_writer
+                    .set_descriptors(
+                        "omnidirectional_lights",
+                        0,
+                        &[DescriptorRef::BufferView(view)],
+            }

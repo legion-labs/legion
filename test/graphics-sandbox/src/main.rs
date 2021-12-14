@@ -332,10 +332,11 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
         .insert(LightComponent {
             light_type: LightType::Directional {
-                direction: (0.0, 1.0, 0.0),
+                direction: Vec3::new(0.0, 1.0, 0.0),
             },
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
+            ..LightComponent::default()
         });
 
     // omnidirectional light
@@ -346,6 +347,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             light_type: LightType::Omnidirectional { attenuation: 1.0 },
             radiance: 40.0,
             color: (1.0, 0.1, 0.1),
+            ..LightComponent::default()
         });
 
     // omnidirectional light
@@ -356,6 +358,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             light_type: LightType::Omnidirectional { attenuation: 1.0 },
             radiance: 40.0,
             color: (0.1, 0.1, 1.0),
+            ..LightComponent::default()
         });
 
     // camera

@@ -437,4 +437,14 @@ impl StaticMeshRenderData {
 
         Self::from_vertex_data(&vertex_data)
     }
+
+    pub fn new_arrow(start: Vec3, end: Vec3) -> Self {
+        #[rustfmt::skip]
+        let vertex_data = [
+            start.x, start.y, start.z, 0.0, 1.0, 0.0,
+            end.x, end.y, end.z, 0.0, 1.0, 0.0,
+            start.x, start.y, start.z, 0.0, 1.0, 0.0,
+        ];
+        Self::from_vertex_data(&vertex_data)
+    }
 }

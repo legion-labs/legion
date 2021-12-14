@@ -10,8 +10,11 @@ use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::{
-    components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh, LightComponent, LightType},
-    labels::RendererSystemLabel, RenderContext, Renderer
+    components::{
+        CameraComponent, LightComponent, LightType, RenderSurface, RotationComponent, StaticMesh,
+    },
+    labels::RendererSystemLabel,
+    RenderContext, Renderer,
 };
 
 use crate::debug_display::DebugDisplay;
@@ -98,23 +101,34 @@ fn update_ui(
 
         ui.label("Lights");
         for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
-            ui.horizontal(|ui| match light.light_type {
-                LightType::Directional { ref mut direction } => {
-                    ui.label(format!("Light {} (dir): ", i));
-                    ui.add(egui::Slider::new(&mut direction.0, -1.0..=1.0).text("x"));
-                    ui.add(egui::Slider::new(&mut direction.1, -1.0..=1.0).text("y"));
-                    ui.add(egui::Slider::new(&mut direction.2, -1.0..=1.0).text("z"));
+            ui.horizontal(|ui| {
+                ui.add(egui::Checkbox::new(&mut light.enabled, "Enabled"));
+                match light.light_type {
+                    LightType::Directional { ref mut direction } => {
+                        ui.label(format!("Light {} (dir): ", i));
+                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
+                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
+                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
+                    }
+                    LightType::Omnidirectional {
+                        ref mut attenuation,
+                    } => {
+                        ui.label(format!("Light {} (omni): ", i));
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
+                        );
+                    }
+                    LightType::Spotlight { .. } => unimplemented!(),
                 }
-                LightType::Omnidirectional {
-                    ref mut attenuation,
-                } => {
-                    ui.label(format!("Light {} (omni): ", i));
-                    ui.add(egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"));
-                    ui.add(egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"));
-                    ui.add(egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"));
-                    ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
-                }
-                LightType::Spotlight { .. } => unimplemented!(),
             });
         }
     });
@@ -129,6 +143,12 @@ fn update_debug(
     let display_list = debug_display.create_display_list();
     for (light, transform) in lights.iter() {
         display_list.add_cube(transform.translation);
+        if let LightType::Directional { direction } = light.light_type {
+            display_list.add_arrow(
+                transform.translation,
+                transform.translation + direction.normalize(),
+            );
+        }
     }
 }
 

@@ -138,7 +138,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     {
         DirectionalLight light = directional_lights[i];
         Lighting lighting = CalculateIncidentDirectionalLight(light, vertex_out.normal, vertex_out.pos);
-        //color += diffuse_color * lighting.diffuse + spec_color * lighting.specular;
+        color += diffuse_color * lighting.diffuse + spec_color * lighting.specular;
     }
 
     omnidirectional_lights.GetDimensions(num_lights, stride_lights);

@@ -1,5 +1,5 @@
 use crate::components::RenderSurface;
-use crate::debug_display::DebugDisplay;
+use crate::debug_display::{DebugDisplay, DebugPrimitiveType};
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::{RenderContext, Renderer};
 use lgn_graphics_api::prelude::*;
@@ -130,11 +130,16 @@ impl DebugDisplayPass {
         );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for cube in debug_display.cubes() {
-            let cube_data = StaticMeshRenderData::new_cube(0.1);
+        for primitive in debug_display.primitives() {
+            let mesh_data = match primitive.primitive_type {
+                DebugPrimitiveType::Cube => StaticMeshRenderData::new_cube(0.1),
+                DebugPrimitiveType::Arrow { dir } => {
+                    StaticMeshRenderData::new_arrow(Vec3::new(0.0, 0.0, 0.0), dir)
+                }
+            };
 
             let mut sub_allocation = transient_allocator.copy_data(
-                &cube_data
+                &mesh_data
                     .vertices
                     .iter()
                     .enumerate()
@@ -148,7 +153,7 @@ impl DebugDisplayPass {
 
             let color: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
-            let world = Mat4::from_translation(cube.pos).transpose();
+            let world = Mat4::from_translation(primitive.pos).transpose();
             let mut push_constant_data: [f32; 52] = [0.0; 52];
             world.write_cols_to_slice(&mut push_constant_data[0..]);
             view_matrix.write_cols_to_slice(&mut push_constant_data[16..]);
@@ -186,7 +191,7 @@ impl DebugDisplayPass {
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((cube_data.num_vertices()) as u32, 0)
+                .cmd_draw((mesh_data.num_vertices()) as u32, 0)
                 .unwrap();
         }
 

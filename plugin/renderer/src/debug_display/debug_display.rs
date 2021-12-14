@@ -11,12 +11,12 @@ impl DebugDisplay {
         self.display_lists.last_mut().unwrap()
     }
 
-    pub fn cubes(&mut self) -> Vec<Cube> {
-        let mut cubes = Vec::new();
+    pub fn primitives(&mut self) -> Vec<DebugPrimitive> {
+        let mut primitives = Vec::new();
         for display_list in &mut self.display_lists {
-            cubes.append(&mut display_list.cubes);
+            primitives.append(&mut display_list.primitives);
         }
-        cubes
+        primitives
     }
 
     pub fn clear_display_lists(&mut self) {
@@ -24,18 +24,31 @@ impl DebugDisplay {
     }
 }
 
-pub struct Cube {
+pub enum DebugPrimitiveType {
+    Cube,
+    Arrow { dir: Vec3 },
+}
+pub struct DebugPrimitive {
+    pub primitive_type: DebugPrimitiveType,
     pub pos: Vec3,
 }
 
 #[derive(Default)]
 pub struct DisplayList {
-    cubes: Vec<Cube>,
+    primitives: Vec<DebugPrimitive>,
 }
 
 impl DisplayList {
     pub fn add_cube(&mut self, pos: Vec3) {
-        self.cubes.push(Cube { pos });
+        self.primitives.push(DebugPrimitive {
+            primitive_type: DebugPrimitiveType::Cube,
+            pos,
+        });
     }
-    pub fn add_sphere(&mut self) {}
+    pub fn add_arrow(&mut self, start: Vec3, end: Vec3) {
+        self.primitives.push(DebugPrimitive {
+            primitive_type: DebugPrimitiveType::Arrow { dir: end - start },
+            pos: start,
+        });
+    }
 }

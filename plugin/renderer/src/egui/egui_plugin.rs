@@ -209,11 +209,6 @@ fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
         return;
     }
     egui.ctx.begin_frame(raw_input.to_owned());
-
-    egui::Window::new("Debug").show(&egui.ctx, |ui| {
-        egui.ctx.settings_ui(ui);
-        ui.label(egui.ctx.texture().version);
-    });
 }
 
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {
