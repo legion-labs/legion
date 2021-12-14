@@ -4571,9 +4571,11 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "lgn-logger",
  "lgn-source-control",
  "lgn-telemetry",
  "lgn-test-utils",
+ "log",
  "tokio",
 ]
 
