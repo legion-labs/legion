@@ -70,12 +70,12 @@ use simplelog::{ColorChoice, TermLogger, TerminalMode};
 // todo: add hashmap for config per category
 pub struct Config {
     /// global maximum log filter
-    level_filter: LevelFilter,
+    pub level_filter: LevelFilter,
     /// enable the default terminal logger
-    terminal_logger: bool,
+    pub terminal_logger: bool,
     /// any additional loggers implementing the `log::Log` trait
     /// these will be moved to the `Logger`
-    additional_loggers: Vec<Box<dyn Log>>,
+    pub additional_loggers: Vec<Box<dyn Log>>,
 }
 
 impl Default for Config {
