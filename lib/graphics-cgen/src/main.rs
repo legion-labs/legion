@@ -56,24 +56,30 @@
 // crate-specific exceptions:
 
 use anyhow::Result;
-use graphics_cgen::run::{run, CGenContextBuilder};
+use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
 fn main() -> Result<()> {
     let res = main_internal();
+
     match &res {
-        Ok(_) => {}
-        Err(e) => {
-            for i in e.chain() {
+        Ok(result) => {
+            println!("Input dependencies:");
+            for dep in &result.input_dependencies {
+                println!("{}", dep.display());
+            }
+        }
+        Err(err) => {
+            for i in err.chain() {
                 eprintln!("{}", i);
             }
         }
     }
-    res
+    res.map(|_| ())
 }
 
-fn main_internal() -> Result<()> {
+fn main_internal() -> Result<CGenBuildResult> {
     // read command line arguments
     let matches = clap::App::new("graphics-cgen")
         .version(env!("CARGO_PKG_VERSION"))
@@ -94,16 +100,9 @@ fn main_internal() -> Result<()> {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("outdir_hlsl")
-                .help("Sets the output folder to use for hlsl files")
-                .long("Oh")
-                .required(true)
-                .takes_value(true),
-        )
-        .arg(
-            clap::Arg::with_name("outdir_rust")
-                .help("Sets the output folder to use for rust files")
-                .long("Or")
+            clap::Arg::with_name("outdir")
+                .help("Sets the output folder for code generation")
+                .short("o")
                 .required(true)
                 .takes_value(true),
         )
@@ -119,15 +118,11 @@ fn main_internal() -> Result<()> {
 
     // initialize context
     let root_file = matches.value_of("input").unwrap();
-    let outdir_hlsl = matches.value_of("outdir_hlsl").unwrap();
-    let outdir_rust = matches.value_of("outdir_rust").unwrap();
+    let outdir = matches.value_of("outdir").unwrap();
     let mut ctx_builder = CGenContextBuilder::new();
     ctx_builder.set_root_file(&root_file)?;
-    ctx_builder.set_outdir_hlsl(&outdir_hlsl)?;
-    ctx_builder.set_outdir_rust(&outdir_rust)?;
+    ctx_builder.set_outdir(&outdir)?;
 
     // run the generation
-    let ctx = ctx_builder.build();
-
-    run(&ctx)
+    run(ctx_builder.build())
 }

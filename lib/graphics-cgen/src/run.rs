@@ -21,8 +21,7 @@ pub enum CGenVariant {
 
 pub struct CGenContext {
     pub(super) root_file: PathBuf,
-    pub(super) outdir_hlsl: PathBuf,
-    pub(super) outdir_rust: PathBuf,
+    pub(super) outdir: PathBuf,
 }
 
 impl Default for CGenContext {
@@ -30,19 +29,22 @@ impl Default for CGenContext {
         let cur_dir = env::current_dir().unwrap();
         Self {
             root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
-            outdir_hlsl: RelativePath::new("generated_hlsl").to_path(&cur_dir),
-            outdir_rust: RelativePath::new("generated_rust").to_path(&cur_dir),
+            outdir: RelativePath::new("cgen_out").to_path(&cur_dir),
         }
     }
 }
 
 impl CGenContext {
-    pub fn out_dir(&self, variant: CGenVariant) -> &Path {
+    pub fn out_dir(&self, variant: CGenVariant) -> PathBuf {
         match variant {
-            CGenVariant::Hlsl => &self.outdir_hlsl,
-            CGenVariant::Rust => &self.outdir_rust,
+            CGenVariant::Hlsl => RelativePath::new("hlsl").to_path(&self.outdir),
+            CGenVariant::Rust => RelativePath::new("rust").to_path(&self.outdir),
         }
     }
+}
+
+pub struct CGenBuildResult {
+    pub input_dependencies: Vec<PathBuf>,
 }
 
 pub struct CGenContextBuilder {
@@ -56,26 +58,23 @@ impl CGenContextBuilder {
         }
     }
 
-    pub fn set_root_file(&mut self, root_file: &str) -> Result<&mut Self> {
+    pub fn set_root_file(&mut self, root_file: &impl AsRef<Path>) -> Result<()> {
         let abs_path = to_abs_path(root_file)?;
         if !abs_path.exists() || !abs_path.is_file() {
-            return Err(anyhow!("File {} does not exist ", root_file));
+            return Err(anyhow!(
+                "File {} does not exist ",
+                root_file.as_ref().display()
+            ));
         }
         self.context.root_file = abs_path;
 
-        Ok(self)
+        Ok(())
     }
 
-    pub fn set_outdir_hlsl(&mut self, outdir: &str) -> Result<&mut Self> {
-        self.context.outdir_hlsl = to_abs_path(outdir)?;
+    pub fn set_outdir(&mut self, outdir: &impl AsRef<Path>) -> Result<()> {
+        self.context.outdir = to_abs_path(outdir)?;
 
-        Ok(self)
-    }
-
-    pub fn set_outdir_rust(&mut self, outdir: &str) -> Result<&mut Self> {
-        self.context.outdir_rust = to_abs_path(outdir)?;
-
-        Ok(self)
+        Ok(())
     }
 
     pub fn build(self) -> CGenContext {
@@ -83,23 +82,22 @@ impl CGenContextBuilder {
     }
 }
 
-pub fn run(context: &CGenContext) -> Result<()> {
+pub fn run(context: CGenContext) -> Result<CGenBuildResult> {
     // timing
     run_internal(context)
 }
 
-fn to_abs_path(path: &str) -> Result<PathBuf> {
-    let outdir_path = Path::new(path);
-
-    Ok(if outdir_path.is_relative() {
+fn to_abs_path(path: &impl AsRef<Path>) -> Result<PathBuf> {
+    let path = path.as_ref();
+    Ok(if path.is_relative() {
         let cur_dir = env::current_dir()?;
-        RelativePath::new(path).to_logical_path(cur_dir)
+        RelativePath::from_path(path)?.to_logical_path(cur_dir)
     } else {
-        outdir_path.to_path_buf()
+        path.to_path_buf()
     })
 }
 
-fn run_internal(context: &CGenContext) -> Result<()> {
+fn run_internal(context: CGenContext) -> Result<CGenBuildResult> {
     //
     // Load model
     //
@@ -110,11 +108,11 @@ fn run_internal(context: &CGenContext) -> Result<()> {
         context.root_file.display()
     ))?;
 
-    let model = match root_file_ext.to_str().unwrap() {
-        // "yaml" => Arc::new(from_yaml(&context.root_file)?),
-        "cgen" => Arc::new(from_syn(&context.root_file)?),
+    let parsing_result = match root_file_ext.to_str().unwrap() {
+        "cgen" => from_syn(&context.root_file)?,
         _ => return Err(anyhow!("Unknown extension")),
     };
+    let model = &parsing_result.model;
 
     //
     // generation step
@@ -140,8 +138,11 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     // write to disk
     //
     for product in &products {
-        product.write_to_disk(context)?;
+        product.write_to_disk(&context)?;
     }
 
-    Ok(())
+    // done
+    Ok(CGenBuildResult {
+        input_dependencies: parsing_result.input_dependencies,
+    })
 }

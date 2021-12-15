@@ -14,29 +14,42 @@ use crate::{
     model::{CGenType, Model},
 };
 
-pub fn from_syn(file_path: &Path) -> anyhow::Result<Model> {
-    assert!(file_path.is_absolute());
+use super::ParsingResult;
 
-    let mut model = Model::new();
+pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {
+    assert!(file_path.is_absolute());
 
     proc_macro2::fallback::force();
 
-    process_syn_model(&mut model, &file_path, true)?;
+    let mut input_dependencies = Vec::new();
+    let mut model = Model::new();
 
-    Ok(model)
+    process_syn_model(&mut model, &mut input_dependencies, &file_path, true)?;
+
+    Ok(ParsingResult {
+        input_dependencies,
+        model,
+    })
 }
 
-fn process_syn_model(model: &mut Model, file_path: &Path, is_root: bool) -> Result<()> {
+fn process_syn_model(
+    model: &mut Model,
+    input_dependencies: &mut Vec<PathBuf>,
+    file_path: &Path,
+    is_root: bool,
+) -> Result<()> {
     assert!(file_path.is_absolute());
 
     trace!("Parsing model in {}", file_path.display());
 
     let ast = load_syn_file(file_path)?;
 
+    input_dependencies.push(file_path.to_owned());
+
     for item in &ast.items {
         match item {
             Item::Mod(e) => {
-                process_syn_mod(model, file_path, e, is_root)
+                process_syn_mod(model, input_dependencies, file_path, e, is_root)
                     .context(format!("Cannot parse mod from {}", file_path.display()))?;
             }
             Item::Struct(e) => {
@@ -69,10 +82,11 @@ fn process_syn_model(model: &mut Model, file_path: &Path, is_root: bool) -> Resu
 
 fn process_syn_mod(
     model: &mut Model,
+    input_dependencies: &mut Vec<PathBuf>,
     file_path: &Path,
     item_mod: &ItemMod,
     is_root: bool,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mod_name = item_mod.ident.to_string();
     let file_folder = file_path.parent().unwrap();
     trace!("Parsing mod {}", &mod_name);
@@ -107,7 +121,7 @@ fn process_syn_mod(
         ));
     }
 
-    process_syn_model(model, &final_path, false)
+    process_syn_model(model, input_dependencies, &final_path, false)
 }
 
 fn expect<T>(lit: &syn::Lit) -> Result<T>
@@ -424,7 +438,7 @@ impl PropertyBag {
     }
 }
 
-fn process_syn_struct(model: &mut Model, prop_bag: &PropertyBag) -> anyhow::Result<()> {
+fn process_syn_struct(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     trace!("Parsing struct {}", &prop_bag.nam);
 
     let name = prop_bag.nam.as_str();
@@ -443,7 +457,7 @@ fn process_syn_struct(model: &mut Model, prop_bag: &PropertyBag) -> anyhow::Resu
     Ok(())
 }
 
-fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> anyhow::Result<()> {
+fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     trace!("Parsing descriptorset {}", &prop_bag.nam);
 
     let name = prop_bag.nam.as_str();
@@ -518,7 +532,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> anyho
     Ok(())
 }
 
-fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> anyhow::Result<()> {
+fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     trace!("Parsing pipelinelayout {}", &prop_bag.nam);
 
     let name = prop_bag.nam.as_str();

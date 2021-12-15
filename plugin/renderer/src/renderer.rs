@@ -50,8 +50,8 @@ use lgn_graphics_api::VertexLayout;
 use lgn_graphics_api::VertexLayoutAttribute;
 use lgn_graphics_api::VertexLayoutBuffer;
 use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
-use lgn_graphics_cgen_runtime::Fake::FakeDescriptorID;
-use lgn_graphics_cgen_runtime::Fake::FakeDescriptorSetData;
+use lgn_graphics_cgen_runtime::fake::FakeDescriptorID;
+use lgn_graphics_cgen_runtime::fake::FakeDescriptorSetData;
 use lgn_graphics_cgen_runtime::{CGenRuntime, DescriptorSetData};
 
 use lgn_math::Mat4;
@@ -125,7 +125,7 @@ impl Renderer {
 
         // let cgen = CodeGen::new(&device_context);
         let cgen_def = include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
+            env!("OUT_DIR"),
             "/cgen/rust/cgen_def.bin"
         ));
         let cgen_runtime = CGenRuntime::new(cgen_def, &device_context);

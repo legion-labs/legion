@@ -52,6 +52,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
+#[allow(unreachable_code)]
 
 use std::{marker::PhantomData, sync::Arc};
 
@@ -330,7 +331,7 @@ where
 //     }
 // }
 
-pub mod Fake {
+pub mod fake {
 
     use crate::{DescriptorSetData, DescriptorSetLayoutStaticInfo, ToIndex};
 

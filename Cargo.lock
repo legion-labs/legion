@@ -2849,50 +2849,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics-cgen"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "clap",
- "fxhash",
- "heck",
- "lgn-graphics-api",
- "lgn-graphics-cgen-runtime",
- "log",
- "proc-macro2",
- "relative-path",
- "simple_logger",
- "strum 0.21.0",
- "syn",
-]
-
-[[package]]
-name = "graphics-sandbox"
-version = "0.1.0"
-dependencies = [
- "clap",
- "lgn-app",
- "lgn-asset-registry",
- "lgn-core",
- "lgn-ecs",
- "lgn-graphics-api",
- "lgn-input",
- "lgn-logger",
- "lgn-math",
- "lgn-presenter",
- "lgn-presenter-snapshot",
- "lgn-presenter-window",
- "lgn-renderer",
- "lgn-test-utils",
- "lgn-transform",
- "lgn-window",
- "lgn-winit",
- "log",
- "png 0.17.2",
-]
-
-[[package]]
 name = "group"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3579,6 +3535,7 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "lgn-graphics-cgen",
  "named-lock",
  "thiserror",
  "tonic-build",
@@ -4036,6 +3993,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-graphics-cgen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "clap",
+ "fxhash",
+ "heck",
+ "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
+ "log",
+ "proc-macro2",
+ "relative-path",
+ "simple_logger",
+ "strum 0.21.0",
+ "syn",
+]
+
+[[package]]
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
@@ -4070,6 +4046,31 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-graphics-sandbox"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-input",
+ "lgn-logger",
+ "lgn-math",
+ "lgn-presenter",
+ "lgn-presenter-snapshot",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-test-utils",
+ "lgn-transform",
+ "lgn-window",
+ "lgn-winit",
+ "log",
+ "png 0.17.2",
 ]
 
 [[package]]
@@ -4242,8 +4243,8 @@ dependencies = [
  "bumpalo",
  "egui",
  "epaint",
- "graphics-cgen",
  "lgn-app",
+ "lgn-build-utils",
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-graphics-cgen-runtime",
