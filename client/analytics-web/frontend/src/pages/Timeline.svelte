@@ -10,6 +10,11 @@
     viewRange: [number, number];
     beginYOffset: number;
   };
+
+  type LoadingState = {
+    requested: number;
+    completed: number;
+  };
 </script>
 
 <script lang="ts">
@@ -54,6 +59,7 @@
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
+  let loadingProgression: LoadingState | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -82,78 +88,58 @@
     }
 
     renderingContext = context;
-
     fetchProcessInfo();
   });
 
   async function fetchProcessInfo() {
-    try {
-      const { process } = await client.find_process({ processId: processId });
+    const { process } = await client.find_process({ processId: processId });
 
-      if (!process) {
-        throw new Error(`Process ${processId} not found`);
-      }
-
-      processList.push(process);
-      fetchStreams(process);
-      currentProcess = process;
-      fetchChildren();
-    } catch (error) {
-      console.error(error);
-      throw error;
+    if (!process) {
+      throw new Error(`Process ${processId} not found`);
     }
+
+    processList.push(process);
+    await fetchStreams(process);
+    currentProcess = process;
+    await fetchChildren();
+    loadingProgression = { requested: blockList.length, completed: 0 };
+    blockList.forEach((block) => fetchBlockSpans(block));
   }
 
   async function fetchStreams(process: Process) {
-    try {
-      const { streams } = await client.list_process_streams({
-        processId: process.processId,
-      });
+    const { streams } = await client.list_process_streams({
+      processId: process.processId,
+    });
 
-      streams.forEach((stream) => {
-        if (stream.tags.includes("cpu")) {
-          threads[stream.streamId] = {
-            streamInfo: stream,
-            spanBlocks: [],
-          };
+    let promises: Promise<void>[] = [];
+    streams.forEach((stream) => {
+      if (stream.tags.includes("cpu")) {
+        threads[stream.streamId] = {
+          streamInfo: stream,
+          spanBlocks: [],
+        };
 
-          fetchBlocks(stream.streamId);
-        }
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+        promises.push(fetchBlocks(stream.streamId));
+      }
+    });
+    await Promise.all(promises);
   }
 
   async function fetchChildren() {
-    try {
-      const { processes } = await client.list_process_children({
-        processId: processId,
-      });
+    const { processes } = await client.list_process_children({
+      processId: processId,
+    });
 
-      processes.forEach((process) => {
-        processList.push(process);
-
-        fetchStreams(process);
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    let promises = processes.map((process) => {
+      processList.push(process);
+      return fetchStreams(process);
+    });
+    await Promise.all(promises);
   }
 
   async function fetchBlocks(streamId: string) {
-    try {
-      const { blocks } = await client.list_stream_blocks({ streamId });
-
-      blockList = blockList.concat(blocks);
-
-      blocks.forEach(fetchBlockSpans);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    const { blocks } = await client.list_stream_blocks({ streamId });
+    blockList = blockList.concat(blocks);
   }
 
   async function fetchBlockSpans(block: Block) {
@@ -178,14 +164,11 @@
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 
-    threads = {
-      ...threads,
-      [streamId]: {
-        ...threads[streamId],
-        spanBlocks: [...threads[streamId].spanBlocks, response],
-      },
-    };
-
+    threads[streamId].spanBlocks.push(response);
+    if (loadingProgression) {
+      loadingProgression.completed += 1;
+    }
+    updateProgess();
     drawCanvas();
   }
 
@@ -413,6 +396,21 @@
     viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
     drawCanvas();
   }
+
+  function updateProgess() {
+    if (!loadingProgression) {
+      return;
+    }
+    var elem = document.getElementById("loadedProgress");
+    if (elem) {
+      elem.style.width =
+        (loadingProgression.completed * 100) / loadingProgression.requested +
+        "%";
+    }
+    if (loadingProgression.completed == loadingProgression.requested) {
+      loadingProgression = undefined;
+    }
+  }
 </script>
 
 <div>
@@ -426,6 +424,12 @@
           </a>
         </div>
       {/if}
+    </div>
+  {/if}
+
+  {#if loadingProgression}
+    <div id="totalLoadingProgress">
+      <div id="loadedProgress">Loading</div>
     </div>
   {/if}
 
@@ -450,5 +454,16 @@
   .timeline-canvas {
     margin: auto;
     display: inline-block;
+  }
+
+  #totalLoadingProgress {
+    margin: auto;
+    width: 90%;
+    background-color: grey;
+  }
+
+  #loadedProgress {
+    width: 0px;
+    background-color: #42b983;
   }
 </style>
