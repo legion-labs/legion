@@ -1,3 +1,4 @@
+#[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocation};
 use crate::deferred_drop::Drc;
 use crate::{Buffer, DeviceContext, MemoryUsage};

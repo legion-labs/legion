@@ -29,6 +29,7 @@ impl<'a> GeneratorContext<'a> {
         match cgen_variant {
             CGenVariant::Hlsl => "hlsl",
             CGenVariant::Rust => "rs",
+            CGenVariant::Blob => "blob",
         }
     }
 

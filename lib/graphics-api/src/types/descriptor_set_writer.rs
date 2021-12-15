@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use log::error;
 
 use crate::{
@@ -16,6 +18,8 @@ pub struct DescriptorSetWriter<'frame> {
     pub(crate) platform_write: VulkanDescriptorSetWriter<'frame>,
 
     write_mask: u64, // max number of bindings: 64
+
+    _phantom: PhantomData<&'frame usize>,
 }
 
 impl<'frame> DescriptorSetWriter<'frame> {
@@ -33,6 +37,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
             #[cfg(any(feature = "vulkan"))]
             platform_write,
             write_mask: descriptor_set_layout.binding_mask(),
+            _phantom: PhantomData,
         })
     }
 

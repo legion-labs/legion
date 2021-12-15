@@ -111,7 +111,7 @@ impl FileSystem {
     }
 
     pub fn get_file_content(&self, path: &str) -> Result<String> {
-        let abs_path = self.translate_path(path).unwrap();        
+        let abs_path = self.translate_path(path).unwrap();
         if !abs_path.is_absolute() {
             return Err(anyhow!(
                 "Should be an absolute path {}",

@@ -208,7 +208,8 @@ impl Model {
         let mut ret = Self::default();
 
         for native_type in NativeType::iter() {
-            ret.add(native_type.as_static(), CGenType::Native(native_type)).unwrap();
+            ret.add(native_type.as_static(), CGenType::Native(native_type))
+                .unwrap();
         }
 
         ret

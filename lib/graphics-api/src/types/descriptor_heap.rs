@@ -66,6 +66,8 @@ impl DescriptorHeap {
         DescriptorHeapPartition::new(self.clone(), transient, definition)
     }
 
+    #[allow(clippy::unused_self)]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn free_partition(&self, _partition: DescriptorHeapPartition) {}
 }
 
@@ -88,15 +90,6 @@ impl Drop for DescriptorHeapPartitionInner {
             .destroy(&self.heap.inner.device_context);
     }
 }
-
-//
-// DescriptorSetWriter
-//
-
-// pub trait DescriptorSetWriter {
-//     fn descriptor_set_layout(&self) -> &DescriptorSetLayout;
-//     fn descriptors(&self) -> &[Descriptor_];
-// }
 
 //
 // DescriptorHeapPartition
@@ -142,20 +135,8 @@ impl DescriptorHeapPartition {
         self.write_descriptor_set_platform(descriptor_set_layout, bump)
     }
 
-    // pub fn write_descriptor_set(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    //     descriptors: &[Descriptor_],
-    // ) -> GfxResult<DescriptorSetHandle> {
-    //     #[cfg(not(any(feature = "vulkan")))]
-    //     unimplemented!();
-
-    //     #[cfg(any(feature = "vulkan"))]
-    //     self.write_descriptor_set_platform(descriptor_set_layout, descriptors)
-    // }
-
     pub fn reset(&self) -> GfxResult<()> {
-        assert_eq!(self.inner.transient, true);
+        assert!(self.inner.transient);
 
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();

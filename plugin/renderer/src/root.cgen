@@ -11,13 +11,13 @@ struct LayoutB {
     c: LayoutA,
 }
 
-
 struct ConstData {
     world: Float4x4,
     view: Float4x4,
     projection: Float4x4,
     color: Float4,
 }
+
 
 #[DescriptorSet(frequency = 0)]
 struct DefaultDescriptorSet {

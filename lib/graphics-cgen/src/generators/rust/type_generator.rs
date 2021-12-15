@@ -31,7 +31,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
         let mut writer = FileWriter::new();
         for product in &products {
-            let filename = product.path().file_stem().unwrap();   
+            let filename = product.path().file_stem().unwrap();
             writer.add_line(format!("pub(crate) mod {};", &filename));
             writer.add_line("#[allow(unused_imports)]");
             writer.add_line(format!("pub(crate) use {}::*;", &filename));

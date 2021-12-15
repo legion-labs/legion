@@ -16,6 +16,7 @@ use crate::{
 pub enum CGenVariant {
     Hlsl,
     Rust,
+    Blob,
 }
 
 pub struct CGenContext {
@@ -38,6 +39,7 @@ impl CGenContext {
         match variant {
             CGenVariant::Hlsl => RelativePath::new("hlsl").to_path(&self.outdir),
             CGenVariant::Rust => RelativePath::new("rust").to_path(&self.outdir),
+            CGenVariant::Blob => RelativePath::new("blob").to_path(&self.outdir),
         }
     }
 }

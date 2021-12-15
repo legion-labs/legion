@@ -125,14 +125,17 @@ pub struct CGenRuntime {
 }
 
 impl CGenRuntime {
+    #[allow(clippy::todo)]
     pub fn new(cgen_def: &[u8], device_context: &lgn_graphics_api::DeviceContext) -> Self {
         let definition: CGenDef = bincode::deserialize(cgen_def).unwrap();
 
         let mut descriptor_set_layouts =
             Vec::with_capacity(definition.descriptor_set_layout_defs.len());
-        for cgen_layout_def in definition.descriptor_set_layout_defs.iter() {
-            let mut layout_def = lgn_graphics_api::DescriptorSetLayoutDef::default();
-            layout_def.frequency = cgen_layout_def.frequency;
+        for cgen_layout_def in &definition.descriptor_set_layout_defs {
+            let mut layout_def = lgn_graphics_api::DescriptorSetLayoutDef {
+                frequency: cgen_layout_def.frequency,
+                ..lgn_graphics_api::DescriptorSetLayoutDef::default()
+            };
             layout_def
                 .descriptor_defs
                 .reserve_exact(cgen_layout_def.descriptor_defs.len());

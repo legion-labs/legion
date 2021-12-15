@@ -34,8 +34,8 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     };
 
     vec![Product::new(
-        CGenVariant::Rust,
-        RelativePath::new("cgen_def.bin").to_owned(),
+        CGenVariant::Blob,
+        RelativePath::new("cgen_def.blob").to_owned(),
         bincode::serialize(&cgen_def).unwrap(),
     )]
 }
@@ -48,9 +48,6 @@ impl From<&CGenType> for CGenTypeDef {
 
 impl From<&DescriptorSet> for CGenDescriptorSetDef {
     fn from(descriptor_set: &DescriptorSet) -> Self {
-        let mut flat_sampler_index = 0u32;
-        let mut flat_buffer_index = 0u32;
-        let mut flat_texture_index = 0u32;
         let descriptor_defs = descriptor_set
             .descriptors
             .iter()
@@ -88,32 +85,9 @@ impl From<&DescriptorSet> for CGenDescriptorSetDef {
                     }
                 };
 
-                let array_size = d.array_len.unwrap_or(0);
-
-                match shader_resource_type {
-                    ShaderResourceType::Sampler => flat_sampler_index += u32::max(1, array_size),
-                    ShaderResourceType::ConstantBuffer
-                    | ShaderResourceType::StructuredBuffer
-                    | ShaderResourceType::RWStructuredBuffer
-                    | ShaderResourceType::ByteAdressBuffer
-                    | ShaderResourceType::RWByteAdressBuffer => {
-                        flat_buffer_index += u32::max(1, array_size)
-                    }
-                    ShaderResourceType::Texture2D
-                    | ShaderResourceType::RWTexture2D
-                    | ShaderResourceType::Texture2DArray
-                    | ShaderResourceType::RWTexture2DArray
-                    | ShaderResourceType::Texture3D
-                    | ShaderResourceType::RWTexture3D
-                    | ShaderResourceType::TextureCube
-                    | ShaderResourceType::TextureCubeArray => {
-                        flat_texture_index += u32::max(1, array_size)
-                    }
-                };
-
                 CGenDescriptorDef {
                     name: d.name.clone(),
-                    array_size,
+                    array_size: d.array_len.unwrap_or(0),
                     shader_resource_type,
                 }
             })
@@ -123,9 +97,6 @@ impl From<&DescriptorSet> for CGenDescriptorSetDef {
             name: descriptor_set.name.clone(),
             frequency: descriptor_set.frequency,
             descriptor_defs,
-            // flat_sampler_count: flat_sampler_index,
-            // flat_texture_count: flat_texture_index,
-            // flat_buffer_count: flat_buffer_index,
         }
     }
 }

@@ -31,15 +31,12 @@ impl<'mdl> StructBuilder<'mdl> {
 
         // get cgen type and check its existence if necessary
         // let type_key = typ.into();
-        let object_id = self
-            .mdl
-            .get_object_id::<CGenType>(typ)
-            .context(anyhow!(
-                "Member '{}' in struct '{}' has an unknown type '{}'",
-                name,
-                self.product.name,
-                typ
-            ))?;
+        let object_id = self.mdl.get_object_id::<CGenType>(typ).context(anyhow!(
+            "Member '{}' in struct '{}' has an unknown type '{}'",
+            name,
+            self.product.name,
+            typ
+        ))?;
         // done
         self.product
             .members
