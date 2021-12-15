@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{manifest::Manifest, ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
 
 /// Builds necessary derived resources based on source resources chnaged.
 pub struct BuildManager {
@@ -34,7 +34,10 @@ impl BuildManager {
     }
 
     /// Builds derived resources based on changed source resoure.
-    pub fn build_all_derived(&mut self, resource_id: ResourceTypeAndId) -> anyhow::Result<Manifest> {
+    pub fn build_all_derived(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> anyhow::Result<Manifest> {
         // TODO HACK. Assume DebugCube until proper mapping is exposed
         let derived_id =
             ResourcePathId::from(resource_id).push(ResourceType::new(b"runtime_debugcube"));
