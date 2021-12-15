@@ -11,7 +11,8 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightType, RenderSurface, RotationComponent, StaticMesh,
+        CameraComponent, LightComponent, LightSettings, LightType, RenderSurface,
+        RotationComponent, StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
@@ -46,7 +47,8 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin::new(self.has_window));
         app.insert_resource(renderer);
         app.insert_resource(default_meshes);
-        app.insert_resource(DebugDisplay::default());
+        app.init_resource::<DebugDisplay>();
+        app.init_resource::<LightSettings>();
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
@@ -78,6 +80,7 @@ fn update_ui(
     egui_ctx: Res<'_, Egui>,
     mut rotations: Query<'_, '_, &mut RotationComponent>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
+    mut light_settings: ResMut<'_, LightSettings>,
 ) {
     egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
         ui.label("Objects");
@@ -99,6 +102,8 @@ fn update_ui(
             });
         }
 
+        ui.checkbox(&mut light_settings.diffuse, "Diffuse");
+        ui.checkbox(&mut light_settings.specular, "Specular");
         ui.label("Lights");
         for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -110,9 +115,7 @@ fn update_ui(
                         ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
                         ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
                     }
-                    LightType::Omnidirectional {
-                        ref mut attenuation,
-                    } => {
+                    LightType::Omnidirectional { .. } => {
                         ui.label(format!("Light {} (omni): ", i));
                         ui.add(
                             egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
@@ -127,7 +130,35 @@ fn update_ui(
                             egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
                         );
                     }
-                    LightType::Spotlight { .. } => unimplemented!(),
+                    LightType::Spotlight {
+                        ref mut direction,
+                        ref mut cone_angle,
+                        ..
+                    } => {
+                        ui.label(format!("Light {} (spot): ", i));
+                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
+                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
+                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
+                        );
+                        ui.add(
+                            egui::Slider::new(cone_angle, -0.0..=std::f32::consts::PI)
+                                .text("angle"),
+                        );
+                    }
+                }
+                let mut rgb = [light.color.0, light.color.1, light.color.2];
+                if ui.color_edit_button_rgb(&mut rgb).changed() {
+                    light.color.0 = rgb[0];
+                    light.color.1 = rgb[1];
+                    light.color.2 = rgb[2];
                 }
             });
         }
@@ -143,11 +174,16 @@ fn update_debug(
     let display_list = debug_display.create_display_list();
     for (light, transform) in lights.iter() {
         display_list.add_cube(transform.translation);
-        if let LightType::Directional { direction } = light.light_type {
-            display_list.add_arrow(
+        match light.light_type {
+            LightType::Directional { direction } => display_list.add_arrow(
                 transform.translation,
-                transform.translation + direction.normalize(),
-            );
+                transform.translation - direction.normalize(),
+            ),
+            LightType::Spotlight { direction, .. } => display_list.add_arrow(
+                transform.translation,
+                transform.translation - direction.normalize(),
+            ),
+            _ => (),
         }
     }
 }
@@ -202,6 +238,7 @@ fn render_update(
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
+    light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
@@ -253,6 +290,7 @@ fn render_update(
                 &default_camera
             },
             q_lights.as_slice(),
+            &light_settings,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();

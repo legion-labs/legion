@@ -447,4 +447,77 @@ impl StaticMeshRenderData {
         ];
         Self::from_vertex_data(&vertex_data)
     }
+
+    pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {
+        let mut vertex_data = Vec::new();
+        let slice_size = 2.0 * radius / slices as f32;
+        let angle = 2.0 * std::f32::consts::PI / sails as f32;
+        for slice in 0..slices {
+            let y0 = -radius + slice as f32 * slice_size;
+            let y1 = -radius + (slice + 1) as f32 * slice_size;
+            for sail in 0..sails {
+                if slice == 0 {
+                    let pole = Vec3::new(0.0, y0, 0.0);
+                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let langle = angle * (sail as f32);
+                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let n1 = p1.normalize();
+                    let langle = angle * (sail + 1) as f32;
+                    let p2 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let n2 = p2.normalize();
+                    vertex_data.append(&mut pole.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, -1.0, 0.0]);
+                    vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                } else if slice == slices - 1 {
+                    let pole = Vec3::new(0.0, y1, 0.0);
+                    let lr = (radius * radius - y0 * y0).sqrt();
+                    let langle = angle * (sail as f32);
+                    let p1 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let n1 = p1.normalize();
+                    let langle = angle * (sail + 1) as f32;
+                    let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let n2 = p2.normalize();
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut pole.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
+                } else {
+                    let lr = (radius * radius - y0 * y0).sqrt();
+                    let langle = angle * (sail as f32);
+                    let p1 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let n1 = p1.normalize();
+                    let langle = angle * (sail + 1) as f32;
+                    let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let n2 = p2.normalize();
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.append(&mut n2.to_array().to_vec());
+                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let langle = angle * (sail as f32);
+                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let n1 = p1.normalize();
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.append(&mut n2.to_array().to_vec());
+                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let langle = angle * ((sail + 1) as f32);
+                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let n1 = p1.normalize();
+                    vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.append(&mut n1.to_array().to_vec());
+                }
+            }
+        }
+
+        Self::from_vertex_data(&vertex_data)
+    }
 }

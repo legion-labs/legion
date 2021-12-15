@@ -283,8 +283,8 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
         .insert(StaticMesh {
-            mesh_id: 1,
-            color: (128, 128, 128).into(),
+            mesh_id: 3,
+            color: (255, 0, 0).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(0),
             num_verticies: default_meshes.mesh_from_id(0).num_vertices() as u32,
             world_offset: 0,
@@ -299,8 +299,8 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh {
-            mesh_id: 1,
-            color: (128, 128, 128).into(),
+            mesh_id: 3,
+            color: (0, 255, 0).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(1),
             num_verticies: default_meshes.mesh_from_id(1).num_vertices() as u32,
             world_offset: 0,
@@ -315,8 +315,8 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(StaticMesh {
-            mesh_id: 1,
-            color: (128, 128, 128).into(),
+            mesh_id: 3,
+            color: (0, 0, 255).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(2),
             num_verticies: default_meshes.mesh_from_id(2).num_vertices() as u32,
             world_offset: 0,
@@ -336,7 +336,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             },
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
-            ..LightComponent::default()
+            enabled: false,
         });
 
     // omnidirectional light
@@ -346,8 +346,8 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional { attenuation: 1.0 },
             radiance: 40.0,
-            color: (1.0, 0.1, 0.1),
-            ..LightComponent::default()
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
         });
 
     // omnidirectional light
@@ -357,8 +357,23 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional { attenuation: 1.0 },
             radiance: 40.0,
-            color: (0.1, 0.1, 1.0),
-            ..LightComponent::default()
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // spotlight
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Spotlight {
+                direction: Vec3::new(0.0, 1.0, 0.0),
+                cone_angle: std::f32::consts::PI / 4.0,
+                attenuation: 1.0,
+            },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
         });
 
     // camera

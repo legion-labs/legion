@@ -15,6 +15,20 @@ pub enum LightType {
     },
 }
 
+pub struct LightSettings {
+    pub specular: bool,
+    pub diffuse: bool,
+}
+
+impl Default for LightSettings {
+    fn default() -> Self {
+        Self {
+            specular: true,
+            diffuse: true,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct LightComponent {
     pub light_type: LightType,

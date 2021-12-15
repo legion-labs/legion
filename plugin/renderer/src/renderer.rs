@@ -311,17 +311,28 @@ impl TmpRenderPass {
             String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap(),
         );
 
+                    cull_mode: CullMode::Back,
+                    ..RasterizerState::default()
+                },
+            StaticMeshRenderData::new_sphere(0.25, 20, 20),
         lights: &[(&Transform, &LightComponent)],
+        light_settings: &LightSettings,
+        const NUM_LIGHTS: usize = 8;
+
         // Lights
-        let mut directional_lights_data = Vec::<f32>::new();
-        let mut omnidirectional_lights_data = Vec::<f32>::new();
+        let mut directional_lights_data = Vec::<f32>::with_capacity(32 * NUM_LIGHTS);
+        let mut omnidirectional_lights_data = Vec::<f32>::with_capacity(32 * NUM_LIGHTS);
+        let mut spotlights_data = Vec::<f32>::with_capacity(64 * NUM_LIGHTS);
+        let mut num_directional_lights = 0;
+        let mut num_omnidirectional_lights = 0;
+        let mut num_spotlights = 0;
         for (transform, light) in lights {
             if !light.enabled {
                 continue;
             }
             match light.light_type {
                 LightType::Directional { direction } => {
-                    let direction_in_view = view_matrix.mul_vec4(direction.extend(1.0));
+                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
 
                     directional_lights_data.push(direction_in_view.x);
                     directional_lights_data.push(direction_in_view.y);
@@ -331,6 +342,7 @@ impl TmpRenderPass {
                     directional_lights_data.push(light.color.1);
                     directional_lights_data.push(light.color.2);
                     directional_lights_data.push(0.0);
+                    num_directional_lights += 1;
                 }
                 LightType::Omnidirectional { attenuation } => {
                     let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
@@ -343,41 +355,84 @@ impl TmpRenderPass {
                     omnidirectional_lights_data.push(light.color.0);
                     omnidirectional_lights_data.push(light.color.1);
                     omnidirectional_lights_data.push(light.color.2);
+                    num_omnidirectional_lights += 1;
                 }
-                LightType::Spotlight { .. } => unimplemented!(),
+                LightType::Spotlight {
+                    direction,
+                    cone_angle,
+                    attenuation,
+                } => {
+                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
+
+                    spotlights_data.push(transform_in_view.x);
+                    spotlights_data.push(transform_in_view.y);
+                    spotlights_data.push(transform_in_view.z);
+                    spotlights_data.push(light.radiance);
+                    spotlights_data.push(direction_in_view.x);
+                    spotlights_data.push(direction_in_view.y);
+                    spotlights_data.push(direction_in_view.z);
+                    spotlights_data.push(cone_angle);
+                    spotlights_data.push(attenuation);
+                    spotlights_data.push(light.color.0);
+                    spotlights_data.push(light.color.1);
+                    spotlights_data.push(light.color.2);
+                    num_spotlights += 1;
+                    unsafe {
+                        spotlights_data.set_len(64 * num_spotlights as usize);
+                    }
+                }
             }
         }
+        unsafe {
+            directional_lights_data.set_len(32 * NUM_LIGHTS);
+            omnidirectional_lights_data.set_len(32 * NUM_LIGHTS);
+            spotlights_data.set_len(64 * NUM_LIGHTS);
+        }
 
-        let directional_lights_buffer_view = if directional_lights_data.len() > 0 {
-            let sub_allocation = transient_allocator
-                .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE);
-            Some(sub_allocation.structured_buffer_view(8 * 4, true))
-        } else {
-            None
-        };
+        let directional_lights_buffer_view = transient_allocator
+            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .structured_buffer_view(32, true);
 
-        let omnidirectional_lights_buffer_view = if omnidirectional_lights_data.len() > 0 {
-            let sub_allocation = transient_allocator.copy_data(
+        let omnidirectional_lights_buffer_view = transient_allocator
+            .copy_data(
                 &omnidirectional_lights_data,
                 ResourceUsage::AS_SHADER_RESOURCE,
-            );
-            Some(sub_allocation.structured_buffer_view(8 * 4, true))
-        } else {
-            None
-        };
+            )
+            .structured_buffer_view(32, true);
 
+        let spotlights_buffer_view = transient_allocator
+            .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .structured_buffer_view(64, true);
+
+            push_constant_data[36] = f32::from_bits(num_directional_lights);
+            push_constant_data[37] = f32::from_bits(num_omnidirectional_lights);
+            push_constant_data[38] = f32::from_bits(num_spotlights);
+            push_constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
+            push_constant_data[40] = f32::from_bits(light_settings.specular as u32);
                 )
                 .unwrap();
-            if let Some(ref view) = directional_lights_buffer_view {
-                descriptor_set_writer
-                    .set_descriptors("directional_lights", 0, &[DescriptorRef::BufferView(view)])
-                    .unwrap();
-            }
+            descriptor_set_writer
+                .set_descriptors(
+                    "directional_lights",
+                    0,
+                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
+                )
+                .unwrap();
 
-            if let Some(ref view) = omnidirectional_lights_buffer_view {
-                descriptor_set_writer
-                    .set_descriptors(
-                        "omnidirectional_lights",
-                        0,
-                        &[DescriptorRef::BufferView(view)],
+            descriptor_set_writer
+                .set_descriptors(
+                    "omnidirectional_lights",
+                    0,
+                    &[DescriptorRef::BufferView(
+                        &omnidirectional_lights_buffer_view,
+                    )],
+                )
+                .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors(
+                    "spotlights",
+                    0,
+                    &[DescriptorRef::BufferView(&spotlights_buffer_view)],
             }
