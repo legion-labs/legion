@@ -211,9 +211,7 @@ impl Attributes {
                                     }
                                 };
                             }
-                            NestedMeta::Lit(lit) => {
-                                dbg!(&lit);
-                            }
+                            NestedMeta::Lit(_) => {}
                         }
                     }
                 }
@@ -451,8 +449,9 @@ fn process_syn_struct(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
         builder =
             builder.add_member(prop.name.as_str(), prop.ty.name.as_str(), prop.ty.array_len)?;
     }
-    let product = builder.build()?;
-    model.add(CGenType::Struct(product))?;
+
+    let struct_type = builder.build()?;
+    model.add(name, CGenType::Struct(struct_type))?;
 
     Ok(())
 }
@@ -525,9 +524,8 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
         }
     }
 
-    let product = builder.build()?;
-
-    model.add(product)?;
+    let descriptor_set = builder.build()?;
+    model.add(name, descriptor_set)?;
 
     Ok(())
 }
@@ -558,9 +556,8 @@ fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Resu
         }
     }
 
-    let product = builder.build()?;
-
-    model.add(product)?;
+    let pipeline_layout = builder.build()?;
+    model.add(name, pipeline_layout)?;
 
     Ok(())
 }

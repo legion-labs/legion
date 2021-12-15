@@ -33,7 +33,7 @@ impl<'mdl> StructBuilder<'mdl> {
         // let type_key = typ.into();
         let object_id = self
             .mdl
-            .get_object_id::<CGenType>(typ.into())
+            .get_object_id::<CGenType>(typ)
             .context(anyhow!(
                 "Member '{}' in struct '{}' has an unknown type '{}'",
                 name,
@@ -75,7 +75,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let object_id = self
             .mdl
-            .get_object_id::<CGenType>(inner_type.into())
+            .get_object_id::<CGenType>(inner_type)
             .context(anyhow!(
                 "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,

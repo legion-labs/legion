@@ -52,12 +52,13 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#[allow(unreachable_code)]
+#![allow(unreachable_code)]
+
 use std::{marker::PhantomData, sync::Arc};
 
 use lgn_graphics_api::{
     BufferView, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext,
+    DescriptorSetWriter, DeviceContext, ShaderResourceType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,7 +87,6 @@ pub struct CGenDescriptorDef {
     pub name: String,
     pub shader_resource_type: lgn_graphics_api::ShaderResourceType,
     pub array_size: u32,
-    pub flat_index: u32,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
@@ -94,9 +94,9 @@ pub struct CGenDescriptorSetDef {
     pub name: String,
     pub frequency: u32,
     pub descriptor_defs: Vec<CGenDescriptorDef>,
-    pub flat_sampler_count: u32,
-    pub flat_texture_count: u32,
-    pub flat_buffer_count: u32,
+    // pub flat_sampler_count: u32,
+    // pub flat_texture_count: u32,
+    // pub flat_buffer_count: u32,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
@@ -116,7 +116,7 @@ pub struct CGenDef {
 struct CGenRuntimeInner {
     definition: CGenDef,
     descriptor_set_layouts: Vec<lgn_graphics_api::DescriptorSetLayout>,
-    root_signatures: Vec<lgn_graphics_api::RootSignature>,
+    _root_signatures: Vec<lgn_graphics_api::RootSignature>,
 }
 
 #[derive(Clone)]
@@ -180,7 +180,7 @@ impl CGenRuntime {
             inner: Arc::new(CGenRuntimeInner {
                 definition,
                 descriptor_set_layouts,
-                root_signatures,
+                _root_signatures: root_signatures,
             }),
         }
     }
@@ -219,9 +219,7 @@ where
     T::DescriptorID: ToIndex + Copy,
 {
     cgen_descriptor_set_def: &'renderer CGenDescriptorSetDef,
-    descriptor_set_layout: &'renderer DescriptorSetLayout,
     writer: DescriptorSetWriter<'frame>,
-    // descriptors: RefCell<&'frame mut [Descriptor_<'frame>]>,
     _phantom: PhantomData<T>,
 }
 
@@ -242,57 +240,9 @@ where
             cgen_runtime.get_descriptor_set_def(T::descriptor_set_layout_id());
         let descriptor_set_layout =
             cgen_runtime.get_descriptor_set_layout(T::descriptor_set_layout_id());
-        // let buffer_descriptors = bump.alloc_slice_fill_default::<BufferDescriptor>(
-        //     cgen_descriptor_set_def.flat_buffer_count as usize,
-        // );
-        // let texture_descriptors = bump.alloc_slice_fill_default::<TextureDescriptor>(
-        //     cgen_descriptor_set_def.flat_texture_count as usize,
-        // );
-        // let sampler_descriptors = bump.alloc_slice_fill_default::<SamplerDescriptor>(
-        //     cgen_descriptor_set_def.flat_sampler_count as usize,
-        // );
-        // let descriptors = bump
-        //     .alloc_slice_fill_default::<Descriptor_>(cgen_descriptor_set_def.descriptor_defs.len());
-
-        // for (i, cgen_descriptor_def) in cgen_descriptor_set_def.descriptor_defs.iter().enumerate() {
-        //     let first_index = cgen_descriptor_def.flat_index as usize;
-        //     let count = usize::max(1, cgen_descriptor_def.array_size as usize);
-        //     let descriptor_def = descriptor_set_layout.descriptor(i).unwrap();
-        //     let descriptor_array = match descriptor_def.shader_resource_type {
-        //         ShaderResourceType::Sampler => {
-        //             // DescriptorArray::Sampler(sampler_descriptors [first_index..count].as_mut_ptr())
-        //             DescriptorArray::Sampler(unsafe {
-        //                 sampler_descriptors.as_mut_ptr().add(first_index)
-        //             })
-        //         }
-        //         ShaderResourceType::ConstantBuffer
-        //         | ShaderResourceType::StructuredBuffer
-        //         | ShaderResourceType::RWStructuredBuffer
-        //         | ShaderResourceType::ByteAdressBuffer
-        //         | ShaderResourceType::RWByteAdressBuffer => {
-        //             // DescriptorArray::Buffer(&buffer_descriptors[first_index..count].as_mut_ptr())
-        //             DescriptorArray::Buffer(unsafe {
-        //                 buffer_descriptors.as_mut_ptr().add(first_index)
-        //             })
-        //         }
-        //         ShaderResourceType::Texture2D
-        //         | ShaderResourceType::RWTexture2D
-        //         | ShaderResourceType::Texture2DArray
-        //         | ShaderResourceType::RWTexture2DArray
-        //         | ShaderResourceType::Texture3D
-        //         | ShaderResourceType::RWTexture3D
-        //         | ShaderResourceType::TextureCube
-        //         | ShaderResourceType::TextureCubeArray => DescriptorArray::Texture(unsafe {
-        //             texture_descriptors.as_mut_ptr().add(first_index)
-        //         }),
-        //     };
-        //     descriptors[i] = Descriptor_::new(descriptor_def, descriptor_array);
-        // }
 
         Self {
-            descriptor_set_layout,
             cgen_descriptor_set_def,
-            // descriptors: RefCell::new(descriptors),
             writer: descriptor_heap_partition
                 .write_descriptor_set(descriptor_set_layout, bump)
                 .unwrap(),
@@ -302,33 +252,21 @@ where
 
     pub fn set_constant_buffer(&mut self, id: T::DescriptorID, cbv: &'frame BufferView) {
         let descriptor_index = id.to_index();
-        // let descriptor_def = &self.cgen_descriptor_set_def.descriptor_defs[descriptor_index];
-        // let mut descriptor = &mut self.descriptors.borrow_mut()[descriptor_index];
-        // descriptor.set_constant_buffer(cbv);
+        let descriptor_def = &self.cgen_descriptor_set_def.descriptor_defs[descriptor_index];
+        assert_eq!(
+            descriptor_def.shader_resource_type,
+            ShaderResourceType::ConstantBuffer
+        );
+
         self.writer
-            .set_descriptors_by_index(descriptor_index, &[DescriptorRef::BufferView(cbv)]);
+            .set_descriptors_by_index(descriptor_index, &[DescriptorRef::BufferView(cbv)])
+            .unwrap();
     }
 
     pub fn build(self, device_context: &DeviceContext) -> DescriptorSetHandle {
-        // descriptor_heap_partition
-        //     .write_descriptor_set(self.descriptor_set_layout, &*self.descriptors.borrow())
-        //     .unwrap()
         self.writer.flush(device_context)
     }
 }
-
-// impl<'renderer, 'frame, T: DescriptorSetLayoutStaticInfo> DescriptorSetWriter
-//     for DescriptorSetData<'renderer, 'frame, T>
-// {
-//     fn descriptor_set_layout(&self) -> &DescriptorSetLayout {
-//         self.descriptor_set_layout
-//     }
-
-//     fn descriptors(&self) -> &[Descriptor_] {
-//         let x = self.descriptors.borrow();
-
-//     }
-// }
 
 pub mod fake {
 

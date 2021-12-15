@@ -23,8 +23,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
         let mut writer = FileWriter::new();
         for product in &products {
-            let filename = product.path().file_stem().unwrap();
+            let filename = product.path().file_stem().unwrap();            
             writer.add_line(format!("pub(crate) mod {};", &filename));
+            writer.add_line("#[allow(unused_imports)]");
             writer.add_line(format!("pub(crate) use {}::*;", &filename));
         }
         products.push(Product::new(
@@ -36,42 +37,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
     products
 }
-
-// fn from_descriptor(index: usize, descriptor: &Descriptor) -> graphics_api::DescriptorDef {
-//     let shader_resource_type = match descriptor.def {
-//         crate::model::DescriptorDef::Sampler => ShaderResourceType::Sampler,
-//         crate::model::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
-//         crate::model::DescriptorDef::StructuredBuffer(_) => ShaderResourceType::StructuredBuffer,
-//         crate::model::DescriptorDef::RWStructuredBuffer(_) => {
-//             ShaderResourceType::RWStructuredBuffer
-//         }
-//         crate::model::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAdressBuffer,
-//         crate::model::DescriptorDef::RWByteAddressBuffer => ShaderResourceType::RWByteAdressBuffer,
-//         crate::model::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
-//         crate::model::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
-//         crate::model::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,
-//         crate::model::DescriptorDef::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
-//         crate::model::DescriptorDef::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
-//         crate::model::DescriptorDef::RWTexture2DArray(_) => ShaderResourceType::RWTexture2DArray,
-//         crate::model::DescriptorDef::TextureCube(_) => ShaderResourceType::TextureCube,
-//         crate::model::DescriptorDef::TextureCubeArray(_) => ShaderResourceType::TextureCubeArray,
-//     };
-
-//     let array_size = if let Some(array_size) = descriptor.array_len {
-//         array_size
-//     } else {
-//         0
-//     };
-
-//     let binding = u32::try_from(index).unwrap();
-
-//     graphics_api::DescriptorDef {
-//         name: descriptor.name.clone(),
-//         binding,
-//         shader_resource_type,
-//         array_size,
-//     }
-// }
 
 fn generate_rust_descriptorset(
     ctx: &GeneratorContext<'_>,
@@ -93,6 +58,7 @@ fn generate_rust_descriptorset(
             match dep_ty {
                 CGenType::Native(_) => {}
                 CGenType::Struct(e) => {
+                    writer.add_line("#[allow(unused_imports)]");
                     writer.add_line(format!(
                         "use super::super::c_gen_type::{}::{};",
                         e.name.to_snake_case(),
@@ -126,8 +92,7 @@ fn generate_rust_descriptorset(
     ));
     for _descriptor_def in &descriptor_set.descriptors {}
     writer.add_line(
-        "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();"
-            ,
+        "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();",
     );
     writer.add_line(format!("Self {{ api_layout }}"));
     writer.unindent();

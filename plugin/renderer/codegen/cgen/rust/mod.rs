@@ -1,13 +1,14 @@
 // This is generated file. Do not edit manually
 
-#[rustfmt::skip]
-
 use lgn_graphics_api::DeviceContext;
 pub(crate) mod c_gen_type;
+#[allow(unused_imports)]
 pub(crate) use c_gen_type::*;
 pub(crate) mod descriptor_set;
+#[allow(unused_imports)]
 pub(crate) use descriptor_set::*;
 pub(crate) mod pipeline_layout;
+#[allow(unused_imports)]
 pub(crate) use pipeline_layout::*;
 
 pub struct CodeGen {

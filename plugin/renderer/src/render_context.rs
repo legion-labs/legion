@@ -1,12 +1,10 @@
-use lgn_graphics_api::{
-    DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetLayout, DescriptorSetWriter, QueueType,
-};
+use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWriter, QueueType};
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
 use crate::{
     memory::BumpAllocatorHandle,
     resources::{
-        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
+        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
         TransientBufferAllocator,
     },
     RenderHandle, Renderer,
@@ -65,19 +63,11 @@ impl<'frame> RenderContext<'frame> {
         &self.descriptor_pool
     }
 
-    // pub fn acquire_descriptor_pool(&mut self) -> DescriptorPoolHandle {
-    //     self.descriptor_pool.transfer()
-    // }
-
-    // pub fn release_descriptor_pool(&mut self, handle: DescriptorPoolHandle) {
-    //     self.descriptor_pool = handle;
-    // }
-
     #[allow(unreachable_code)]
     pub fn alloc_descriptor_set(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
-    ) -> DescriptorSetWriter {
+    ) -> DescriptorSetWriter<'_> {
         let bump = self.bump_allocator().bumpalo();
         if let Ok(writer) = self
             .descriptor_pool

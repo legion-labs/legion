@@ -1,58 +1,19 @@
 #![allow(unsafe_code)]
 
-use std::cell::Cell;
 use std::num::NonZeroU32;
-use std::sync::Arc;
 
 use anyhow::Result;
-use lgn_graphics_api::ApiDef;
-use lgn_graphics_api::BlendState;
-use lgn_graphics_api::BufferView;
-use lgn_graphics_api::ColorClearValue;
-use lgn_graphics_api::ColorRenderTargetBinding;
-use lgn_graphics_api::CommandBuffer;
-use lgn_graphics_api::CompareOp;
-use lgn_graphics_api::DepthState;
-use lgn_graphics_api::DepthStencilClearValue;
-use lgn_graphics_api::DepthStencilRenderTargetBinding;
-use lgn_graphics_api::DescriptorDef;
-use lgn_graphics_api::DescriptorHeap;
-use lgn_graphics_api::DescriptorHeapDef;
-use lgn_graphics_api::DescriptorRef;
-use lgn_graphics_api::DescriptorSetLayoutDef;
-use lgn_graphics_api::DeviceContext;
-use lgn_graphics_api::Fence;
-use lgn_graphics_api::FenceStatus;
-use lgn_graphics_api::Format;
-use lgn_graphics_api::GfxApi;
-use lgn_graphics_api::GraphicsPipelineDef;
-use lgn_graphics_api::LoadOp;
-use lgn_graphics_api::Pipeline;
-use lgn_graphics_api::PipelineType;
-use lgn_graphics_api::PrimitiveTopology;
-use lgn_graphics_api::PushConstantDef;
-use lgn_graphics_api::Queue;
-use lgn_graphics_api::QueueType;
-use lgn_graphics_api::RasterizerState;
-use lgn_graphics_api::ResourceState;
-use lgn_graphics_api::ResourceUsage;
-use lgn_graphics_api::RootSignature;
-use lgn_graphics_api::RootSignatureDef;
-use lgn_graphics_api::SampleCount;
-use lgn_graphics_api::Semaphore;
-use lgn_graphics_api::ShaderPackage;
-use lgn_graphics_api::ShaderStageDef;
-use lgn_graphics_api::ShaderStageFlags;
-use lgn_graphics_api::StencilOp;
-use lgn_graphics_api::StoreOp;
-use lgn_graphics_api::VertexAttributeRate;
-use lgn_graphics_api::VertexLayout;
-use lgn_graphics_api::VertexLayoutAttribute;
-use lgn_graphics_api::VertexLayoutBuffer;
-use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
-use lgn_graphics_cgen_runtime::fake::FakeDescriptorID;
-use lgn_graphics_cgen_runtime::fake::FakeDescriptorSetData;
-use lgn_graphics_cgen_runtime::{CGenRuntime, DescriptorSetData};
+use lgn_graphics_api::{
+    ApiDef, BlendState, BufferView, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
+    CompareOp, DepthState, DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef,
+    DescriptorHeap, DescriptorHeapDef, DescriptorRef, DescriptorSetLayoutDef, DeviceContext, Fence,
+    FenceStatus, Format, GfxApi, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
+    PrimitiveTopology, PushConstantDef, Queue, QueueType, RasterizerState, ResourceState,
+    ResourceUsage, RootSignature, RootSignatureDef, SampleCount, Semaphore, ShaderPackage,
+    ShaderStageDef, ShaderStageFlags, StencilOp, StoreOp, VertexAttributeRate, VertexLayout,
+    VertexLayoutAttribute, VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
+use lgn_graphics_cgen_runtime::CGenRuntime;
 
 use lgn_math::Mat4;
 use lgn_math::Vec3;
@@ -73,12 +34,6 @@ use crate::resources::{
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
-
-#[derive(Default, Clone, Copy)]
-struct RendererEpoch {
-    frame_idx: usize,
-    render_frame_idx: usize,
-}
 
 pub struct Renderer {
     frame_idx: usize,
@@ -118,7 +73,7 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
-        let mut filesystem = FileSystem::new("d:\\")?;
+        let filesystem = FileSystem::new("d:\\")?;
         filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
@@ -562,7 +517,7 @@ impl TmpRenderPass {
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],

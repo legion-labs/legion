@@ -17,7 +17,7 @@ pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
     fn present(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     );
@@ -211,7 +211,7 @@ impl RenderSurface {
         }
     }
 
-    pub fn present(&mut self, render_context: &mut RenderContext, task_pool: &TaskPool) {
+    pub fn present(&mut self, render_context: &mut RenderContext<'_>, task_pool: &TaskPool) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {

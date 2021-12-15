@@ -1,7 +1,8 @@
 // This is generated file. Do not edit manually
 
-#[rustfmt::skip]
-
+#[allow(unused_imports)]
 use lgn_graphics_api::DeviceContext;
+#[allow(unused_imports)]
 use lgn_graphics_api::DescriptorSetLayoutDef;
+#[allow(unused_imports)]
 use lgn_graphics_api::DescriptorSetLayout;

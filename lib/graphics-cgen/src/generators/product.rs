@@ -1,5 +1,4 @@
 use anyhow::Result;
-use log::trace;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::io::Write;
 
@@ -41,14 +40,11 @@ impl Product {
         // create file
         let mut output = std::fs::File::create(&final_path)?;
 
-        // write file footer        
-        writeln!(output, "// This is generated file. Do not edit manually");
-        writeln!(output, "");
+        // write file footer
+        writeln!(output, "// This is generated file. Do not edit manually")?;
+        writeln!(output, "")?;
         match self.variant {
-            CGenVariant::Rust => {
-                writeln!(output, "#[rustfmt::skip]");
-                writeln!(output, "");
-            }
+            CGenVariant::Rust => (),
             CGenVariant::Hlsl => (),
         };
 

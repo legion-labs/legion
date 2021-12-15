@@ -23,6 +23,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         for product in &products {
             let filename = product.path().file_stem().unwrap();
             writer.add_line(format!("pub(crate) mod {};", &filename));
+            writer.add_line("#[allow(unused_imports)]");
             writer.add_line(format!("pub(crate) use {}::*;", &filename));
         }
         products.push(Product::new(
@@ -42,9 +43,12 @@ fn generate_rust_pipeline_layout(
     let mut writer = FileWriter::new();
 
     // global dependencies
+    writer.add_line("#[allow(unused_imports)]");
     writer.add_line("use lgn_graphics_api::DeviceContext;");
+    writer.add_line("#[allow(unused_imports)]");
     writer.add_line("use lgn_graphics_api::DescriptorSetLayoutDef;");
-    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");    
+    writer.add_line("#[allow(unused_imports)]");
+    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
 
     // finalize
     writer.to_string()

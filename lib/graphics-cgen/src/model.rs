@@ -14,10 +14,10 @@ use std::ptr::{null, NonNull};
 use strum::*;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub struct ModelKey(u64);
+struct ModelKey(u64);
 
-impl From<&str> for ModelKey {
-    fn from(s: &str) -> Self {
+impl ModelKey {
+    fn new(s: &str) -> Self {
         let mut hasher = DefaultHasher::default();
         s.hash(&mut hasher);
         Self(hasher.finish())
@@ -25,7 +25,7 @@ impl From<&str> for ModelKey {
 }
 
 #[derive(Debug)]
-pub struct ModelVec {
+struct ModelVec {
     item_layout: Layout,
     capacity: usize,
     len: usize,
@@ -129,9 +129,6 @@ fn array_layout(item_layout: &Layout, capacity: usize) -> Layout {
 pub trait ModelObject: 'static + Clone + Sized {
     fn typename() -> &'static str;
     fn name(&self) -> &str;
-    fn key(&self) -> ModelKey {
-        ModelKey::from(self.name())
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -152,35 +149,6 @@ impl ModelObjectId {
         self.object_index
     }
 }
-
-// #[derive(Debug, PartialEq, Clone, Copy)]
-// pub struct ModelHandle<T: ModelObject> {
-//     id: ModelObjectId,
-//     _phantom: PhantomData<T>,
-// }
-
-// impl<T: ModelObject> Eq for ModelHandle<T> {
-
-// }
-
-// impl<T: ModelObject> Hash for ModelHandle<T> {
-//     fn hash<H: Hasher>(&self, mut state: &mut H) {
-//         self.id.hash(state)
-//     }
-// }
-
-// impl<T: ModelObject> ModelHandle<T> {
-//     fn new(type_index: u32, object_index: u32) -> Self {
-//         Self {
-//             id: ModelObjectId::new(type_index, object_index),
-//             _phantom: PhantomData::default(),
-//         }
-//     }
-
-//     pub fn object_id(&self) -> u32 {
-//         self.id.object_index
-//     }
-// }
 
 #[derive(Debug, Default)]
 pub struct Model {
@@ -240,7 +208,7 @@ impl Model {
         let mut ret = Self::default();
 
         for native_type in NativeType::iter() {
-            ret.add(CGenType::Native(native_type)).unwrap();
+            ret.add(native_type.as_static(), CGenType::Native(native_type)).unwrap();
         }
 
         ret
@@ -253,8 +221,8 @@ impl Model {
         }
     }
 
-    pub fn add<T: ModelObject>(&mut self, value: T) -> Result<ModelObjectId> {
-        let key = value.key();
+    pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelObjectId> {
+        let key = ModelKey::new(key);
         if self.key_map.contains_key(&key) {
             return Err(anyhow!("Object not unique"));
         }
@@ -276,16 +244,12 @@ impl Model {
         ModelVecIter::new(container)
     }
 
-    pub fn get_object_id<T: ModelObject>(&self, key: ModelKey) -> Option<ModelObjectId> {
+    pub fn get_object_id<T: ModelObject>(&self, key: &str) -> Option<ModelObjectId> {
         let container_index = self.get_container_index::<T>()?;
+        let key = ModelKey::new(key);
         let id = self.key_map.get(&key).copied()?;
         assert!(id.type_index as usize == container_index);
         Some(id)
-    }
-
-    pub fn get_from_key<T: ModelObject>(&self, key: ModelKey) -> Option<&T> {
-        self.get_object_id::<T>(key)
-            .and_then(|x| self.get_from_objectid(x))
     }
 
     pub fn get_from_objectid<T: ModelObject>(&self, id: ModelObjectId) -> Option<&T> {

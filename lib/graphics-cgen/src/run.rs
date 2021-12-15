@@ -1,7 +1,6 @@
 use std::{
     env::{self},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use anyhow::{anyhow, Result};

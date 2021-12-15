@@ -3,7 +3,7 @@ use crate::egui::egui_plugin::Egui;
 use crate::RenderContext;
 use crate::Renderer;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
