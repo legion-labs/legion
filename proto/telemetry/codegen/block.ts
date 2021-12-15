@@ -221,14 +221,17 @@ export const Block = {
     message.blockId !== undefined && (obj.blockId = message.blockId);
     message.streamId !== undefined && (obj.streamId = message.streamId);
     message.beginTime !== undefined && (obj.beginTime = message.beginTime);
-    message.beginTicks !== undefined && (obj.beginTicks = message.beginTicks);
+    message.beginTicks !== undefined &&
+      (obj.beginTicks = Math.round(message.beginTicks));
     message.endTime !== undefined && (obj.endTime = message.endTime);
-    message.endTicks !== undefined && (obj.endTicks = message.endTicks);
+    message.endTicks !== undefined &&
+      (obj.endTicks = Math.round(message.endTicks));
     message.payload !== undefined &&
       (obj.payload = message.payload
         ? BlockPayload.toJSON(message.payload)
         : undefined);
-    message.nbObjects !== undefined && (obj.nbObjects = message.nbObjects);
+    message.nbObjects !== undefined &&
+      (obj.nbObjects = Math.round(message.nbObjects));
     return obj;
   },
 

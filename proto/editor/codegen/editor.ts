@@ -114,7 +114,7 @@ export const UndoTransactionRequest = {
 
   toJSON(message: UndoTransactionRequest): unknown {
     const obj: any = {};
-    message.id !== undefined && (obj.id = message.id);
+    message.id !== undefined && (obj.id = Math.round(message.id));
     return obj;
   },
 
@@ -174,7 +174,7 @@ export const UndoTransactionResponse = {
 
   toJSON(message: UndoTransactionResponse): unknown {
     const obj: any = {};
-    message.id !== undefined && (obj.id = message.id);
+    message.id !== undefined && (obj.id = Math.round(message.id));
     return obj;
   },
 
@@ -232,7 +232,7 @@ export const RedoTransactionRequest = {
 
   toJSON(message: RedoTransactionRequest): unknown {
     const obj: any = {};
-    message.id !== undefined && (obj.id = message.id);
+    message.id !== undefined && (obj.id = Math.round(message.id));
     return obj;
   },
 
@@ -292,7 +292,7 @@ export const RedoTransactionResponse = {
 
   toJSON(message: RedoTransactionResponse): unknown {
     const obj: any = {};
-    message.id !== undefined && (obj.id = message.id);
+    message.id !== undefined && (obj.id = Math.round(message.id));
     return obj;
   },
 
@@ -439,7 +439,7 @@ export const SearchResourcesResponse = {
     const obj: any = {};
     message.nextSearchToken !== undefined &&
       (obj.nextSearchToken = message.nextSearchToken);
-    message.total !== undefined && (obj.total = message.total);
+    message.total !== undefined && (obj.total = Math.round(message.total));
     if (message.resourceDescriptions) {
       obj.resourceDescriptions = message.resourceDescriptions.map((e) =>
         e ? ResourceDescription.toJSON(e) : undefined
@@ -528,7 +528,8 @@ export const ResourceDescription = {
     const obj: any = {};
     message.id !== undefined && (obj.id = message.id);
     message.path !== undefined && (obj.path = message.path);
-    message.version !== undefined && (obj.version = message.version);
+    message.version !== undefined &&
+      (obj.version = Math.round(message.version));
     return obj;
   },
 
@@ -885,7 +886,8 @@ export const UpdateResourcePropertiesRequest = {
   toJSON(message: UpdateResourcePropertiesRequest): unknown {
     const obj: any = {};
     message.id !== undefined && (obj.id = message.id);
-    message.version !== undefined && (obj.version = message.version);
+    message.version !== undefined &&
+      (obj.version = Math.round(message.version));
     if (message.propertyUpdates) {
       obj.propertyUpdates = message.propertyUpdates.map((e) =>
         e ? ResourcePropertyUpdate.toJSON(e) : undefined
@@ -973,7 +975,8 @@ export const UpdateResourcePropertiesResponse = {
 
   toJSON(message: UpdateResourcePropertiesResponse): unknown {
     const obj: any = {};
-    message.version !== undefined && (obj.version = message.version);
+    message.version !== undefined &&
+      (obj.version = Math.round(message.version));
     if (message.updatedProperties) {
       obj.updatedProperties = message.updatedProperties.map((e) =>
         e ? ResourcePropertyUpdate.toJSON(e) : undefined

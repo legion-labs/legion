@@ -140,7 +140,7 @@
   }
 
   .menu-dropdown-items {
-    @apply bg-gray-800 py-1 bg-opacity-90;
+    @apply bg-gray-800 py-1;
   }
 
   .menu-dropdown-item {

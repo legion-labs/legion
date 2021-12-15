@@ -1,8 +1,6 @@
 <script lang="ts">
   import { keepElementVisible } from "@/lib/html";
-  import { createEventDispatcher, getContext } from "svelte";
-  import { Writable } from "svelte/store";
-  import { panelIsFocusedContext } from "./Panel.svelte";
+  import { createEventDispatcher } from "svelte";
 
   type Item = $$Generic;
 
@@ -23,8 +21,6 @@
     itemChange: ItemChangeEventDetail;
   }>();
 
-  const panelIsFocused = getContext<Writable<boolean>>(panelIsFocusedContext);
-
   /**
    * The key attribute used to index the items during the iteration:
    * https://svelte.dev/tutorial/keyed-each-blocks
@@ -35,18 +31,20 @@
 
   export let activeItem: Item | null;
 
+  export let panelIsFocused: boolean;
+
   let activeIndex = -1;
 
   let rootElement: HTMLDivElement | undefined;
 
   let itemElements: HTMLDivElement[] = [];
 
-  $: if ($panelIsFocused) {
+  $: if (panelIsFocused) {
     activeIndex = activeItem ? items.indexOf(activeItem) : -1;
   }
 
   function handleWindowKeyword(event: KeyboardEvent) {
-    if (!$panelIsFocused) {
+    if (!panelIsFocused) {
       return;
     }
 
@@ -103,7 +101,7 @@
     <div
       class="item"
       class:active-item={index === activeIndex}
-      class:item-panel-is-focused={$panelIsFocused}
+      class:item-panel-is-focused={panelIsFocused}
       on:click={() => dispatch("click", item)}
       bind:this={itemElements[index]}
     >
