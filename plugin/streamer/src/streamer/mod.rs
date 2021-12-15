@@ -173,23 +173,32 @@ pub(crate) fn update_streams(
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
 ) {
     for event in video_stream_events.iter() {
-        let mut render_surface = query.get_mut(event.stream_id.entity).unwrap();
-        let render_pass = render_surface.test_renderpass();
-        match &event.info {
-            VideoStreamEventInfo::Color { id, color } => {
-                log::info!("received color command id={}", id);
-                render_pass.write().set_color(color.0);
+        match query.get_mut(event.stream_id.entity) {
+            Ok(mut render_surface) => {
+                let render_pass = render_surface.test_renderpass();
+                match &event.info {
+                    VideoStreamEventInfo::Color { id, color } => {
+                        log::info!("received color command id={}", id);
+                        render_pass.write().set_color(color.0);
+                    }
+                    VideoStreamEventInfo::Resize { width, height } => {
+                        let resolution = Resolution::new(*width, *height);
+                        render_surface.resize(
+                            &renderer,
+                            RenderSurfaceExtents::new(resolution.width(), resolution.height()),
+                        );
+                    }
+                    VideoStreamEventInfo::Speed { id, speed } => {
+                        log::info!("received speed command id={}", id);
+                        render_pass.write().set_speed(*speed);
+                    }
+                }
             }
-            VideoStreamEventInfo::Resize { width, height } => {
-                let resolution = Resolution::new(*width, *height);
-                render_surface.resize(
-                    &renderer,
-                    RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                );
-            }
-            VideoStreamEventInfo::Speed { id, speed } => {
-                log::info!("received speed command id={}", id);
-                render_pass.write().set_speed(*speed);
+            Err(query_err) => {
+                // TODO
+                // Most likely: "The given entity does not have the requested component"
+                // i.e. the entity associated with the stream-id does not have a RenderSurface
+                eprintln!("{}", query_err);
             }
         }
     }
