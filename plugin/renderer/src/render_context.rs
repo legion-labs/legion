@@ -43,7 +43,7 @@ impl<'frame> RenderContext<'frame> {
     }
 
     pub fn renderer(&self) -> &Renderer {
-        &self.renderer
+        self.renderer
     }
 
     pub fn cgen_runtime(&self) -> &CGenRuntime {

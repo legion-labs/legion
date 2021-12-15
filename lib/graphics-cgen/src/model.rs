@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 
 use std::mem::forget;
 use std::ptr::{null, NonNull};
-use strum::*;
+use strum::{AsRefStr, AsStaticRef, AsStaticStr, EnumIter, EnumString, IntoEnumIterator};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct ModelKey(u64);
@@ -228,7 +228,7 @@ impl Model {
             return Err(anyhow!("Object not unique"));
         }
         let type_index = self.get_or_create_container::<T>();
-        let value_ptr = &value as *const T as *const u8;
+        let value_ptr = (&value as *const T).cast::<u8>();
         let object_index = self.get_container_by_index_mut(type_index).add(value_ptr);
         forget(value);
         let object_id = ModelObjectId::new(
@@ -255,7 +255,7 @@ impl Model {
 
     pub fn get_from_objectid<T: ModelObject>(&self, id: ModelObjectId) -> Option<&T> {
         let container = self.get_container::<T>()?;
-        let ptr = container.get_object_ref(id.object_index as usize) as *const T;
+        let ptr = container.get_object_ref(id.object_index as usize).cast::<T>();
         unsafe { ptr.as_ref() }
     }
 
@@ -270,8 +270,8 @@ impl Model {
                 .push(ModelVec::new(Layout::new::<T>(), drop_ptr::<T>));
             index
         });
-        let type_index = *type_index;
-        type_index
+        
+        *type_index
     }
 
     fn get_container_index<T: ModelObject>(&self) -> Option<usize> {
@@ -353,7 +353,7 @@ pub struct StructMember {
 
 impl StructMember {
     pub fn new(name: &str, object_id: ModelObjectId, array_len: Option<u32>) -> Self {
-        StructMember {
+        Self {
             name: name.to_owned(),
             object_id,
             array_len,
@@ -476,7 +476,7 @@ pub struct DescriptorSet {
 
 impl DescriptorSet {
     pub fn new(name: &str, frequency: u32) -> Self {
-        DescriptorSet {
+        Self {
             name: name.to_owned(),
             frequency,
             descriptors: Vec::new(),
@@ -501,7 +501,7 @@ pub struct PushConstant {
 
 impl PushConstant {
     pub fn new(name: &str, object_id: ModelObjectId) -> Self {
-        PushConstant {
+        Self {
             name: name.to_owned(),
             object_id,
         }
@@ -521,8 +521,8 @@ pub struct PipelineLayout {
 }
 
 impl PipelineLayout {
-    pub fn new(name: &str) -> PipelineLayout {
-        PipelineLayout {
+    pub fn new(name: &str) -> Self {
+        Self {
             name: name.to_owned(),
             members: Vec::new(),
         }

@@ -102,7 +102,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     if !deps.is_empty() {
         let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
         cur_folder.pop();
-        for object_id in deps.iter() {
+        for object_id in &deps {
             let ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
             let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
             let rel_path = cur_folder.relative(ty_path);

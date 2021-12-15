@@ -9,7 +9,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
     for descriptor_set in model.object_iter::<DescriptorSet>() {
-        let content = generate_rust_descriptorset(&ctx, descriptor_set);
+        let content = generate_rust_descriptorset(ctx, descriptor_set);
         products.push(Product::new(
             CGenVariant::Rust,
             GeneratorContext::get_object_rel_path(descriptor_set, CGenVariant::Rust),
@@ -75,15 +75,13 @@ fn generate_rust_descriptorset(
     writer.indent();
     writer.add_line("api_layout : DescriptorSetLayout,");
     writer.unindent();
-    writer.add_line(format!("}}"));
+    writer.add_line("}".to_string());
     writer.new_line();
     // trait
     writer.add_line(format!("impl {} {{", descriptor_set.name));
     writer.indent();
     // new
-    writer.add_line(format!(
-        "pub fn new(device_context: &DeviceContext) -> Self {{"
-    ));
+    writer.add_line("pub fn new(device_context: &DeviceContext) -> Self {".to_string());
     writer.indent();
     writer.add_line("let mut layout_def = DescriptorSetLayoutDef::default();");
     writer.add_line(format!(
@@ -94,15 +92,13 @@ fn generate_rust_descriptorset(
     writer.add_line(
         "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();",
     );
-    writer.add_line(format!("Self {{ api_layout }}"));
+    writer.add_line("Self { api_layout }".to_string());
     writer.unindent();
-    writer.add_line(format!("}}"));
+    writer.add_line("}".to_string());
     // api_layout
-    writer.add_line(format!(
-        "pub fn api_layout(&self) -> &DescriptorSetLayout {{ &self.api_layout }}"
-    ));
+    writer.add_line("pub fn api_layout(&self) -> &DescriptorSetLayout { &self.api_layout }".to_string());
     writer.unindent();
-    writer.add_line(format!("}}"));
+    writer.add_line("}".to_string());
 
     // finalize
     writer.to_string()

@@ -63,7 +63,7 @@ impl<'a> GeneratorContext<'a> {
         match ty {
             CGenType::Native(_) => {}
             CGenType::Struct(inner_ty) => {
-                for mb in inner_ty.members.iter() {
+                for mb in &inner_ty.members {
                     set.insert(mb.object_id);
                 }
             }

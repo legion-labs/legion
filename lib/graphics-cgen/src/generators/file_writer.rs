@@ -11,7 +11,7 @@ pub struct FileWriter {
 
 impl FileWriter {
     pub fn new() -> Self {
-        FileWriter {
+        Self {
             lines: Vec::new(),
             indent: 0,
         }

@@ -24,7 +24,7 @@ pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {
     let mut input_dependencies = Vec::new();
     let mut model = Model::new();
 
-    process_syn_model(&mut model, &mut input_dependencies, &file_path, true)?;
+    process_syn_model(&mut model, &mut input_dependencies, file_path, true)?;
 
     Ok(ParsingResult {
         input_dependencies,
@@ -423,7 +423,7 @@ impl PropertyBag {
         let props: Result<Vec<_>> = item
             .fields
             .iter()
-            .map(|field| Property::from_field(field))
+            .map(Property::from_field)
             .collect();
         let props = props?;
 
@@ -461,7 +461,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
 
     let name = prop_bag.nam.as_str();
     let frequency = prop_bag.attribs.expect("frequency")?;
-    let mut builder = DescriptorSetBuilder::new(model, &name, frequency);
+    let mut builder = DescriptorSetBuilder::new(model, name, frequency);
 
     for prop in &prop_bag.props {
         let prop_name = prop.name.as_str();
@@ -534,7 +534,7 @@ fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Resu
     trace!("Parsing pipelinelayout {}", &prop_bag.nam);
 
     let name = prop_bag.nam.as_str();
-    let mut builder = PipelineLayoutBuilder::new(model, &name);
+    let mut builder = PipelineLayoutBuilder::new(model, name);
 
     for prop in &prop_bag.props {
         match prop.ty.name.as_str() {

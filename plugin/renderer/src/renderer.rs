@@ -78,8 +78,8 @@ impl Renderer {
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
         let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/cgen/blob/cgen_def.blob"));
-        let cgen_runtime = CGenRuntime::new(cgen_def, &device_context);
-        let static_buffer = UnifiedStaticBuffer::new(&device_context, 64 * 1024 * 1024, true);
+        let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
@@ -118,7 +118,7 @@ impl Renderer {
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             cgen_runtime,
-            transient_buffer: TransientPagedBuffer::new(&device_context, 128, 64 * 1024),
+            transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
             bump_allocator_pool: RwLock::new(CpuPool::new()),

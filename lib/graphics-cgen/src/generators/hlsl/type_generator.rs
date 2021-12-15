@@ -12,17 +12,14 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
     for cgen_type in model.object_iter::<CGenType>() {
-        match cgen_type {
+        if let Some(content) = match cgen_type {
             CGenType::Native(_) => None,
-            CGenType::Struct(_) => Some(generate_hlsl_struct(&ctx, cgen_type)),
-        }
-        .map(|content| {
-            products.push(Product::new(
+            CGenType::Struct(_) => Some(generate_hlsl_struct(ctx, cgen_type)),
+        } { products.push(Product::new(
                 CGenVariant::Hlsl,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Hlsl),
                 content.into_bytes(),
-            ))
-        });
+            )) }
     }
     products
 }

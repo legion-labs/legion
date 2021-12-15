@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::model::*;
+use crate::model::{CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, ModelObject, NativeType, PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef, TextureDef};
 use anyhow::{anyhow, Context, Result};
 
 pub struct StructBuilder<'mdl> {
@@ -93,7 +93,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let object_id = self
             .mdl
-            .get_object_id::<CGenType>(inner_ty.into())
+            .get_object_id::<CGenType>(inner_ty)
             .context(anyhow!(
                 "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
@@ -136,7 +136,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         //
         let ty_id = self
             .mdl
-            .get_object_id::<CGenType>(fmt.into())
+            .get_object_id::<CGenType>(fmt)
             .context(anyhow!(
                 "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
@@ -271,7 +271,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
 
     pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
         // check descriptorset exists
-        let ds_id = self.mdl.get_object_id::<DescriptorSet>(ty.into());
+        let ds_id = self.mdl.get_object_id::<DescriptorSet>(ty);
         if ds_id.is_none() {
             return Err(anyhow!(
                 "Unknown DescriptorSet '{}' added to PipelineLayout '{}'",
@@ -307,7 +307,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let object_id = self
             .mdl
-            .get_object_id::<CGenType>(typename.into())
+            .get_object_id::<CGenType>(typename)
             .context(anyhow!(
                 "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
                 typename,

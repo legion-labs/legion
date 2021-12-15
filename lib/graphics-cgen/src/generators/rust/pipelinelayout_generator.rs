@@ -7,7 +7,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
     for pipeline_layout in model.object_iter::<PipelineLayout>() {
-        let content = generate_rust_pipeline_layout(&ctx, pipeline_layout);
+        let content = generate_rust_pipeline_layout(ctx, pipeline_layout);
         products.push(Product::new(
             CGenVariant::Rust,
             GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Rust),

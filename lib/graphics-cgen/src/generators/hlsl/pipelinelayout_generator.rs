@@ -49,7 +49,7 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
             crate::model::PipelineLayoutContent::Pushconstant(_) => (),
         }
     }
-    writer.add_line(format!("// PushConstant"));
+    writer.add_line("// PushConstant".to_string());
     for (name, ty) in &pl.members {
         match ty {
             crate::model::PipelineLayoutContent::Pushconstant(object_id) => {

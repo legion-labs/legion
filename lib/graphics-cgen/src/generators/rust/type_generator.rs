@@ -12,17 +12,14 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
     for cgen_type in model.object_iter::<CGenType>() {
-        match cgen_type {
+        if let Some(content) = match cgen_type {
             CGenType::Native(_) => None,
-            CGenType::Struct(_) => Some(generate_rust_struct(&ctx, cgen_type)),
-        }
-        .map(|content| {
-            products.push(Product::new(
+            CGenType::Struct(_) => Some(generate_rust_struct(ctx, cgen_type)),
+        } { products.push(Product::new(
                 CGenVariant::Rust,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
                 content.into_bytes(),
-            ))
-        });
+            )) }
     }
 
     if !products.is_empty() {
@@ -77,7 +74,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
             }
         }
         if has_native_types {
-            writer.add_line(format!("use lgn_graphics_cgen_runtime::prelude::*;"));
+            writer.add_line("use lgn_graphics_cgen_runtime::prelude::*;".to_string());
         }
         writer.new_line();
     }
