@@ -15,11 +15,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         if let Some(content) = match cgen_type {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => Some(generate_rust_struct(ctx, cgen_type)),
-        } { products.push(Product::new(
+        } {
+            products.push(Product::new(
                 CGenVariant::Rust,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
                 content.into_bytes(),
-            )) }
+            ))
+        }
     }
 
     if !products.is_empty() {

@@ -96,7 +96,9 @@ fn generate_rust_descriptorset(
     writer.unindent();
     writer.add_line("}".to_string());
     // api_layout
-    writer.add_line("pub fn api_layout(&self) -> &DescriptorSetLayout { &self.api_layout }".to_string());
+    writer.add_line(
+        "pub fn api_layout(&self) -> &DescriptorSetLayout { &self.api_layout }".to_string(),
+    );
     writer.unindent();
     writer.add_line("}".to_string());
 

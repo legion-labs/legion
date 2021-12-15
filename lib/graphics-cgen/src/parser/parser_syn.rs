@@ -420,11 +420,7 @@ impl PropertyBag {
         //
         // Extract properties
         //
-        let props: Result<Vec<_>> = item
-            .fields
-            .iter()
-            .map(Property::from_field)
-            .collect();
+        let props: Result<Vec<_>> = item.fields.iter().map(Property::from_field).collect();
         let props = props?;
 
         Ok(Self {

@@ -255,7 +255,9 @@ impl Model {
 
     pub fn get_from_objectid<T: ModelObject>(&self, id: ModelObjectId) -> Option<&T> {
         let container = self.get_container::<T>()?;
-        let ptr = container.get_object_ref(id.object_index as usize).cast::<T>();
+        let ptr = container
+            .get_object_ref(id.object_index as usize)
+            .cast::<T>();
         unsafe { ptr.as_ref() }
     }
 
@@ -270,7 +272,7 @@ impl Model {
                 .push(ModelVec::new(Layout::new::<T>(), drop_ptr::<T>));
             index
         });
-        
+
         *type_index
     }
 

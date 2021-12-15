@@ -1,6 +1,10 @@
 use std::collections::HashSet;
 
-use crate::model::{CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType, PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef, TextureDef};
+use crate::model::{
+    CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType,
+    PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef,
+    TextureDef,
+};
 use anyhow::{anyhow, Context, Result};
 
 pub struct StructBuilder<'mdl> {
@@ -134,15 +138,12 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         //
         // Texture format
         //
-        let ty_id = self
-            .mdl
-            .get_object_id::<CGenType>(fmt)
-            .context(anyhow!(
-                "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
-                name,
-                self.product.name,
-                fmt
-            ))?;
+        let ty_id = self.mdl.get_object_id::<CGenType>(fmt).context(anyhow!(
+            "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
+            name,
+            self.product.name,
+            fmt
+        ))?;
         let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_id).unwrap();
         let valid_type = {
             match fmt_ty {

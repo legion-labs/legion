@@ -15,11 +15,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         if let Some(content) = match cgen_type {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => Some(generate_hlsl_struct(ctx, cgen_type)),
-        } { products.push(Product::new(
+        } {
+            products.push(Product::new(
                 CGenVariant::Hlsl,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Hlsl),
                 content.into_bytes(),
-            )) }
+            ))
+        }
     }
     products
 }
