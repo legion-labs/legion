@@ -4,6 +4,7 @@ import log, { Level } from "@/lib/log";
 import userInfo from "@/stores/userInfo";
 import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "@/lib/auth";
 import App from "@/App.svelte";
+import "@/workers/editorWorker";
 
 const target = document.querySelector("#root");
 

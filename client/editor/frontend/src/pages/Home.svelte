@@ -8,6 +8,7 @@
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
+  import ScriptEditor from "@/components/ScriptEditor.svelte";
 
   const { run: runGetAllResources } = asyncData(getAllResources);
 
@@ -86,22 +87,33 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <Panel tabs={["editor", "runtime"]} bind:activeTab={editorActiveTab}>
+        <Panel
+          tabs={["editor", "runtime", "script"]}
+          bind:activeTab={editorActiveTab}
+        >
           <div slot="tab" let:tab>
-            <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
+            {#if tab === "editor" || tab === "runtime"}
+              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
+              {#if desiredVideoResolution}
+                <span>
+                  - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+                </span>
+              {/if}
+            {:else if tab === "script"}
+              Script
             {/if}
           </div>
           <div class="video-container" slot="content">
-            {#key editorActiveTab}
-              <Video
-                serverType={editorActiveTab}
-                bind:desiredResolution={desiredVideoResolution}
-              />
-            {/key}
+            {#if editorActiveTab === "editor" || editorActiveTab === "runtime"}
+              {#key editorActiveTab}
+                <Video
+                  serverType={editorActiveTab}
+                  bind:desiredResolution={desiredVideoResolution}
+                />
+              {/key}
+            {:else if editorActiveTab === "script"}
+              <ScriptEditor theme="vs-dark" />
+            {/if}
           </div>
         </Panel>
       </div>
