@@ -3,7 +3,7 @@
   import TopBar from "@/components/TopBar.svelte";
   import StatusBar from "@/components/StatusBar.svelte";
   import Video, { Resolution } from "@/components/Video.svelte";
-  
+
   let desiredVideoResolution: Resolution | null;
 </script>
 
@@ -22,7 +22,10 @@
             {/if}
           </span>
           <div class="video-container" slot="content">
-            <Video bind:desiredResolution={desiredVideoResolution} />
+            <Video
+              color="#112211"
+              bind:desiredResolution={desiredVideoResolution}
+            />
           </div>
         </Panel>
       </div>
