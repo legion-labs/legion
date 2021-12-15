@@ -19,7 +19,7 @@ pub struct CompiledAsset {
 }
 
 /// `Manifest` contains storage information about assets - their checksums and sizes.
-/// 
+///
 /// It can be safely shared between threads.
 #[derive(Debug, Default, Clone)]
 pub struct Manifest(Arc<flurry::HashMap<ResourceTypeAndId, (Checksum, usize)>>);
