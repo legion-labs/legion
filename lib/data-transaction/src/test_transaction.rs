@@ -1,19 +1,21 @@
 use std::sync::Arc;
 
-use generic_data::offline::TestEntity;
+use generic_data::TestEntity;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
 use tokio::sync::Mutex;
 
-use crate::{DataManager, Transaction};
+use crate::{build_manager::BuildManager, DataManager, Transaction};
 
 #[tokio::test]
 async fn test_transaction_system() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
-    let project_dir = project_dir.path().join("temp");
-    std::fs::create_dir(&project_dir).unwrap();
+    let build_dir = project_dir.path().join("temp");
+    std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_new(project_dir).unwrap();
+    let project = Project::create_new(&project_dir).unwrap();
     let project = Arc::new(Mutex::new(project));
 
     let mut registry = ResourceRegistryOptions::new();
@@ -24,8 +26,17 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     //asset_registry = generic_data_offline::add_loader(asset_registry);
     let asset_registry = asset_registry.create();
 
+    let mut options = DataBuildOptions::new(&build_dir);
+    options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
+    let build_manager = BuildManager::new(&options, &project_dir, build_dir.join("test.manifest"));
+
     {
-        let mut data_manager = DataManager::new(project.clone(), registry.clone(), asset_registry);
+        let mut data_manager = DataManager::new(
+            project.clone(),
+            registry.clone(),
+            asset_registry,
+            build_manager,
+        );
         let resource_path: ResourcePathName = "/entity/create_test.dc".into();
 
         // Create a new Resource, Edit some properties and Commit it

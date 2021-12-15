@@ -61,6 +61,9 @@
 mod data_manager;
 pub use data_manager::*;
 
+mod build_manager;
+pub use build_manager::*;
+
 mod transaction;
 pub use transaction::Transaction;
 pub(crate) use transaction::TransactionOperation;

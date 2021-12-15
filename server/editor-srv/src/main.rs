@@ -2,7 +2,7 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::Arg;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -111,7 +111,8 @@ fn main() {
         PathBuf::from,
     );
 
-    let databuild_settings = {
+    let databuild_settings = None;
+    /*{
         let build_bin = {
             args.value_of(ARG_NAME_DATABUILD_CLI).map_or_else(
                 || {
@@ -131,7 +132,7 @@ fn main() {
             .map_or_else(|| content_store_path.clone(), PathBuf::from);
 
         Some(DataBuildSettings::new(build_bin, buildindex))
-    };
+    };*/
 
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
@@ -144,12 +145,15 @@ fn main() {
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_path,
-            game_manifest_path,
+            &game_manifest_path,
             assets_to_load,
             databuild_settings,
         ))
         .add_plugin(AssetRegistryPlugin::default())
-        .insert_resource(ResourceRegistrySettings::new(project_folder))
+        .insert_resource(ResourceRegistrySettings::new(
+            project_folder,
+            &game_manifest_path,
+        ))
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())

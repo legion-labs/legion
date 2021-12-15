@@ -9,6 +9,9 @@ license = "MIT OR Apache-2.0"
 # Legion engine
 lgn-data-runtime = { path = "../data-runtime", version = "0.1.0" }
 lgn-data-offline = { path = "../data-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../data-compiler", version = "0.1.0" }
+lgn-data-build = { path = "../data-build", version = "0.1.0" }
+lgn-content-store = { path = "../content-store", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
 lgn-data-model = { path = "../data-model" }
 

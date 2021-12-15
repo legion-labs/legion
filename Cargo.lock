@@ -3908,6 +3908,9 @@ dependencies = [
  "anyhow",
  "async-trait",
  "generic-data",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4285,6 +4288,8 @@ version = "0.1.0"
 dependencies = [
  "generic-data",
  "lgn-app",
+ "lgn-content-store",
+ "lgn-data-build",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",

@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// Interface allowing to support multiple types of compilers - in-process, external executables, shared objects.
-pub trait CompilerStub {
+pub trait CompilerStub: Send + Sync {
     /// Returns information about the compiler.
     fn info(&self) -> io::Result<CompilerInfo>;
 
