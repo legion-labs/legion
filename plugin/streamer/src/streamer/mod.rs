@@ -200,6 +200,12 @@ pub(crate) fn update_streams(
                 // i.e. the entity associated with the stream-id does not have a RenderSurface
                 eprintln!("{}", query_err);
             }
+            VideoStreamEventInfo::Input(InputPayload::Click { position }) => {
+                log::info!("Got a click at {:?}", position);
+            }
+            VideoStreamEventInfo::Input(InputPayload::MouseMove { from, to }) => {
+                log::info!("Got a mouse move from {:?} to {:?}", from, to);
+            }
         }
     }
 }

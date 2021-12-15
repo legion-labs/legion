@@ -49,7 +49,8 @@
   }
 
   .header {
-    @apply flex flex-row flex-shrink-0 h-8;
+    /* TODO: Instead of hiding the overflow we should display it properly */
+    @apply flex flex-row flex-shrink-0 h-8 overflow-hidden;
   }
 
   .tabs {

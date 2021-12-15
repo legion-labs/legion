@@ -5,6 +5,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import resize from "@/actions/resize";
+  import remoteWindowEvents, {
+    Event as RemoteWindowEvent,
+  } from "@/actions/remoteWindowEvents";
   import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage, ServerType } from "@/api";
@@ -52,17 +55,17 @@
 
   // Destroys all peer connection related resources when possible
   const destroyResources = () => {
-    if (videoChannel !== null) {
+    if (videoChannel) {
       videoChannel.close();
       videoChannel = null;
     }
 
-    if (controlChannel !== null) {
+    if (controlChannel) {
       controlChannel.close();
       controlChannel = null;
     }
 
-    if (peerConnection !== null) {
+    if (peerConnection) {
       peerConnection.close();
       peerConnection = null;
     }
@@ -70,7 +73,9 @@
 
   const initialize = () => {
     if (!videoElement) {
+      console.log("no video???");
       log.error("video", "Video element couldn't be found");
+
       return;
     }
 
@@ -139,6 +144,7 @@
         if (!videoAlreadyRendered) {
           videoAlreadyRendered = true;
         }
+
         const { videoWidth, videoHeight } = event.target;
 
         log.debug(
@@ -239,6 +245,19 @@
     };
   };
 
+  function onRemoveWindowEvent(event: RemoteWindowEvent) {
+    if (!videoChannel || videoChannel.readyState !== "open") {
+      log.debug(
+        "video remote window",
+        "Received an event while the vide channel wasn't available"
+      );
+
+      return;
+    }
+
+    videoChannel.send(JSON.stringify({ event: "input", ...event }));
+  }
+
   $: if (
     resolution &&
     desiredResolution &&
@@ -251,7 +270,11 @@
   }
 </script>
 
-<div class="video-container" use:resize={onVideoResize}>
+<div
+  class="video-container"
+  use:resize={onVideoResize}
+  use:remoteWindowEvents={onRemoveWindowEvent}
+>
   <video
     class="video"
     class:opacity-0={loading}

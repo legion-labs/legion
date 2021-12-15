@@ -9,7 +9,11 @@
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
 
   onMount(() => {
-    editor = monaco.editor.create(editorContainer!, {
+    if (!editorContainer) {
+      return;
+    }
+
+    editor = monaco.editor.create(editorContainer, {
       value: 'function hello(): void {\n\talert("Hello Legion");\n}\n',
       language: "typescript",
       automaticLayout: true,

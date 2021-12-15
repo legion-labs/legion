@@ -10,7 +10,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "jest", "vite/client", "monaco-editor/monaco"],
+    "types": ["svelte", "jest", "vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

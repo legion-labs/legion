@@ -62,6 +62,21 @@ impl TryFrom<String> for Color {
 }
 
 #[derive(Debug, Deserialize)]
+pub(crate) struct Position {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+pub(crate) enum InputPayload {
+    #[serde(rename = "click")]
+    Click { position: Position },
+    #[serde(rename = "mousemove")]
+    MouseMove { from: Position, to: Position },
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "event")]
 pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "resize")]
@@ -70,4 +85,6 @@ pub(crate) enum VideoStreamEventInfo {
     Color { id: String, color: Color },
     #[serde(rename = "speed")]
     Speed { id: String, speed: f32 },
+    #[serde(rename = "input")]
+    Input(InputPayload),
 }
