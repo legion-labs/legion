@@ -53,7 +53,6 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #[allow(unreachable_code)]
-
 use std::{marker::PhantomData, sync::Arc};
 
 use lgn_graphics_api::{

@@ -70,10 +70,7 @@ impl FileSystem {
         let mut writer = self.inner.mount_points.write().unwrap();
         {
             let mount_points = &*writer;
-            if mount_points
-                .iter()
-                .any(|x| x.name == mount_point)
-            {
+            if mount_points.iter().any(|x| x.name == mount_point) {
                 return Err(anyhow!(
                     "Mount point {} pointing to directory ({}) already exists",
                     mount_point,
