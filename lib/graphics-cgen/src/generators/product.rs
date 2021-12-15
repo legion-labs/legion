@@ -32,16 +32,28 @@ impl Product {
     }
 
     pub fn write_to_disk(&self, context: &CGenContext) -> Result<()> {
+        // create output folder if needed
         let final_path = self.path.to_path(context.out_dir(self.variant));
         let mut dir_builder = std::fs::DirBuilder::new();
         dir_builder.recursive(true);
         dir_builder.create(final_path.parent().unwrap())?;
 
-        trace!("Writing {}", final_path.display());
+        // create file
         let mut output = std::fs::File::create(&final_path)?;
-        trace!("Created!");
+
+        // write file footer        
+        writeln!(output, "// This is generated file. Do not edit manually");
+        writeln!(output, "");
+        match self.variant {
+            CGenVariant::Rust => {
+                writeln!(output, "#[rustfmt::skip]");
+                writeln!(output, "");
+            }
+            CGenVariant::Hlsl => (),
+        };
+
+        // write file content
         output.write(&self.content)?;
-        trace!("Done!");
 
         Ok(())
     }

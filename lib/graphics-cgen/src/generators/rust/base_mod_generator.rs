@@ -35,43 +35,43 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
 
     // write dependencies
     let model = ctx.model;
-    writer.add_line("use lgn_graphics_api::DeviceContext;".to_string());
+    writer.add_line("use lgn_graphics_api::DeviceContext;");
     write_mod::<CGenType>(model, &mut writer);
     write_mod::<DescriptorSet>(model, &mut writer);
     write_mod::<PipelineLayout>(model, &mut writer);
 
     // write struct
     writer.new_line();    
-    writer.add_line( "pub struct CodeGen {".to_string() );
+    writer.add_line( "pub struct CodeGen {" );
     writer.indent();
         for descriptor_set in model.object_iter::<DescriptorSet>() {
             writer.add_line( format!("{}: {},", descriptor_set.name.to_snake_case(), descriptor_set.name));    
         }
     writer.unindent();
-    writer.add_line( "}".to_string() );
+    writer.add_line( "}" );
     writer.new_line();    
     // write trait
-    writer.add_line( "impl CodeGen {".to_string()) ;
+    writer.add_line( "impl CodeGen {") ;
         writer.indent();
         // write new
-        writer.add_line( "pub fn new(device_context: &DeviceContext) -> Self {".to_string() );    
+        writer.add_line( "pub fn new(device_context: &DeviceContext) -> Self {" );    
             writer.indent();
-            writer.add_line( "Self{".to_string());
+            writer.add_line( "Self{");
                 writer.indent();
                 for descriptor_set in model.object_iter::<DescriptorSet>() {
                     writer.add_line( format!("{}: {}::new(device_context), ", descriptor_set.name.to_snake_case(), descriptor_set.name));    
                 }
                 writer.unindent();
-            writer.add_line( "}".to_string());
+            writer.add_line( "}");
             writer.unindent();
-        writer.add_line( "}".to_string());
+        writer.add_line( "}");
         // write accessors
         for descriptor_set in model.object_iter::<DescriptorSet>() { 
             writer.add_line( format!("pub fn {}(&self) -> &{} {{ &self.{}  }}", descriptor_set.name.to_snake_case(), descriptor_set.name, descriptor_set.name.to_snake_case()));    
         }
         //...
         writer.unindent();
-    writer.add_line( "}".to_string());
+    writer.add_line( "}");
     writer.new_line();
 
     writer.to_string()

@@ -1,3 +1,7 @@
+// This is generated file. Do not edit manually
+
+#[rustfmt::skip]
+
 use lgn_graphics_api::DeviceContext;
 pub(crate) mod c_gen_type;
 pub(crate) use c_gen_type::*;

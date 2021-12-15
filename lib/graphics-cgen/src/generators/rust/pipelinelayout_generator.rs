@@ -39,5 +39,13 @@ fn generate_rust_pipeline_layout(
     _ctx: &GeneratorContext<'_>,
     _pipeline_layout: &PipelineLayout,
 ) -> String {
-    String::new()
+    let mut writer = FileWriter::new();
+
+    // global dependencies
+    writer.add_line("use lgn_graphics_api::DeviceContext;");
+    writer.add_line("use lgn_graphics_api::DescriptorSetLayoutDef;");
+    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");    
+
+    // finalize
+    writer.to_string()
 }

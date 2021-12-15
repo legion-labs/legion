@@ -53,9 +53,7 @@ fn get_member_declaration(model: &Model, member: &StructMember) -> String {
 
 fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String {
     let struct_def = ty.struct_type();
-    let mut writer = FileWriter::new();
-
-    writer.add_line( "#[rustfmt::skip]".to_string() );
+    let mut writer = FileWriter::new();    
 
     // dependencies
     let deps = GeneratorContext::get_type_dependencies(ty);

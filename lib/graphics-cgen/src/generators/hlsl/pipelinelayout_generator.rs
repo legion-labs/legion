@@ -31,7 +31,7 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     // include all type dependencies
     let mut pl_folder = GeneratorContext::get_object_rel_path(pl, CGenVariant::Hlsl);
     pl_folder.pop();
-    writer.add_line(format!("// DescriptorSets"));
+    writer.add_line("// DescriptorSets");
     for (name, ty) in &pl.members {
         match ty {
             crate::model::PipelineLayoutContent::DescriptorSet(object_id) => {
@@ -59,7 +59,7 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
                 writer.add_line(format!("// - name: {}", name));
                 writer.add_line(format!("#include \"{}\"", rel_path));
                 writer.new_line();
-                writer.add_line(format!("[[vk::push_constant]]"));
+                writer.add_line("[[vk::push_constant]]");
                 writer.add_line(format!("ConstantBuffer<{}> {}; ", ty.name(), name));
                 writer.new_line();
             }
@@ -71,7 +71,7 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.unindent();
 
     // footer
-    writer.add_line("#endif".to_string());
+    writer.add_line("#endif");
 
     // finalize
     writer.to_string()

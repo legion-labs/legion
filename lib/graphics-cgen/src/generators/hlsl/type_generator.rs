@@ -83,7 +83,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     writer.unindent();
 
     // footer
-    writer.add_line("#endif".to_string());
+    writer.add_line("#endif");
 
     // finalize
     writer.to_string()

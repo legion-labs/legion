@@ -1,7 +1,7 @@
 #[derive(Debug)]
 struct Line {
     indent: u32,
-    content: String,
+    content: Option<String>,
 }
 
 pub struct FileWriter {
@@ -18,13 +18,16 @@ impl FileWriter {
     }
 
     pub fn new_line(&mut self) {
-        self.add_line("".to_owned());
-    }
-
-    pub fn add_line(&mut self, line: String) {
         self.lines.push(Line {
             indent: self.indent,
-            content: line,
+            content: None,
+        });
+    }
+
+    pub fn add_line<S: Into<String>>(&mut self, line: S) {
+        self.lines.push(Line {
+            indent: self.indent,
+            content: Some(line.into()),
         });
     }
 
@@ -37,14 +40,19 @@ impl FileWriter {
         self.indent -= 1;
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_string(self) -> String {
+        assert_eq!(self.indent, 0);
+
         let mut result = String::new();
 
         for line in &self.lines {
             for _ in 0..line.indent {
                 result.push('\t');
             }
-            result.push_str(&line.content);
+            match &line.content {
+                Some(line_content) => result.push_str(line_content),
+                None => (),
+            }
             result.push('\n');
         }
 

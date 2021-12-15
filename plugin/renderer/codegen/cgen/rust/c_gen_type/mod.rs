@@ -1,3 +1,7 @@
+// This is generated file. Do not edit manually
+
+#[rustfmt::skip]
+
 pub(crate) mod layout_d;
 pub(crate) use layout_d::*;
 pub(crate) mod layout_c;

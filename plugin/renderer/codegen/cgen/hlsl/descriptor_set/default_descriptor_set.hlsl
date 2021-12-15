@@ -1,3 +1,5 @@
+// This is generated file. Do not edit manually
+
 #ifndef DESCRIPTORSET_DEFAULTDESCRIPTORSET
 #define DESCRIPTORSET_DEFAULTDESCRIPTORSET
 

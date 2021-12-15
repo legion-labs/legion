@@ -120,7 +120,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     writer.unindent();
 
     // footer
-    writer.add_line("#endif".to_string());
+    writer.add_line("#endif");
 
     // finalize
     writer.to_string()

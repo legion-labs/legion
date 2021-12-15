@@ -80,9 +80,9 @@ fn generate_rust_descriptorset(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    writer.add_line("use lgn_graphics_api::DeviceContext;".to_string());
-    writer.add_line("use lgn_graphics_api::DescriptorSetLayoutDef;".to_string());
-    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;".to_string());
+    writer.add_line("use lgn_graphics_api::DeviceContext;");
+    writer.add_line("use lgn_graphics_api::DescriptorSetLayoutDef;");
+    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
 
     // local dependencies
     let deps = GeneratorContext::get_descriptorset_dependencies(descriptor_set);
@@ -107,7 +107,7 @@ fn generate_rust_descriptorset(
     // struct
     writer.add_line(format!("pub struct {} {{", descriptor_set.name));
     writer.indent();
-    writer.add_line("api_layout : DescriptorSetLayout,".to_string());
+    writer.add_line("api_layout : DescriptorSetLayout,");
     writer.unindent();
     writer.add_line(format!("}}"));
     writer.new_line();
@@ -119,7 +119,7 @@ fn generate_rust_descriptorset(
         "pub fn new(device_context: &DeviceContext) -> Self {{"
     ));
     writer.indent();
-    writer.add_line("let mut layout_def = DescriptorSetLayoutDef::default();".to_string());
+    writer.add_line("let mut layout_def = DescriptorSetLayoutDef::default();");
     writer.add_line(format!(
         "layout_def.frequency = {};",
         descriptor_set.frequency
@@ -127,7 +127,7 @@ fn generate_rust_descriptorset(
     for _descriptor_def in &descriptor_set.descriptors {}
     writer.add_line(
         "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();"
-            .to_string(),
+            ,
     );
     writer.add_line(format!("Self {{ api_layout }}"));
     writer.unindent();

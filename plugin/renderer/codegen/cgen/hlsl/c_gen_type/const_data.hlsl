@@ -1,3 +1,5 @@
+// This is generated file. Do not edit manually
+
 #ifndef TYPE_CONST_DATA
 #define TYPE_CONST_DATA
 

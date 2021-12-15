@@ -1,3 +1,5 @@
+// This is generated file. Do not edit manually
+
 #ifndef PIPELINELAYOUT_DEFAULTPIPELINELAYOUT
 #define PIPELINELAYOUT_DEFAULTPIPELINELAYOUT
 

@@ -1,3 +1,5 @@
+// This is generated file. Do not edit manually
+
 #ifndef DESCRIPTORSET_FRAMEDESCRIPTORSET
 #define DESCRIPTORSET_FRAMEDESCRIPTORSET
 
