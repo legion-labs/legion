@@ -42,8 +42,6 @@
     runtime: "#112211",
   };
 
-  type ServerType = keyof typeof backgroundColors;
-
   onMount(() => {
     initialize();
   });
