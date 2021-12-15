@@ -44,7 +44,7 @@ impl Product {
         match self.variant {
             CGenVariant::Rust | CGenVariant::Hlsl => {
                 writeln!(output, "// This is generated file. Do not edit manually")?;
-                writeln!(output, "")?;
+                writeln!(output)?;
             }
             CGenVariant::Blob => (),
         };
