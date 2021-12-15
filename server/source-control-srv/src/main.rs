@@ -76,8 +76,9 @@ lazy_static! {
 }
 
 async fn init_remote_repository_req(name: &str) -> Result<String> {
-    let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
-    let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
+    let blob_spec = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
+        .unwrap()
+        .parse()?;
     let db_server_uri = get_sql_uri();
     let db_uri = format!("{}/{}", db_server_uri, name);
     let pool = init_mysql_repo_db(&blob_spec, &db_uri).await?;
@@ -95,9 +96,11 @@ async fn destroy_repository_req(name: &str) -> Result<String> {
 
 #[allow(clippy::unnecessary_wraps)]
 fn read_blob_storage_spec_req(_name: &str) -> Result<String> {
-    let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
-    let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
-    Ok(blob_spec.to_json())
+    let blob_spec: BlobStorageUrl = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
+        .unwrap()
+        .parse()?;
+
+    serde_json::to_string(&blob_spec).context("error serializing blob storage spec")
 }
 
 async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>> {

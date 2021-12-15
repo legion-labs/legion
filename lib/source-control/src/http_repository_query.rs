@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 
 use crate::{
-    execute_request, BlobStorageSpec, Branch, ClearLockRequest, ClountLocksInDomainRequest, Commit,
+    execute_request, BlobStorageUrl, Branch, ClearLockRequest, ClountLocksInDomainRequest, Commit,
     CommitExistsRequest, CommitToBranchRequest, FindBranchRequest, FindBranchesInLockDomainRequest,
     FindLockRequest, FindLocksInDomainRequest, InsertBranchRequest, InsertCommitRequest,
     InsertLockRequest, InsertWorkspaceRequest, Lock, ReadBlobStorageSpecRequest,
@@ -205,11 +205,12 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         serde_json::from_str(&resp).context("parsing response")
     }
 
-    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec> {
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageUrl> {
         let request = ServerRequest::ReadBlobStorageSpec(ReadBlobStorageSpecRequest {
             repo_name: self.repo_name.clone(),
         });
         let resp = execute_request(&self.client, &self.url, &request).await?;
-        Ok(BlobStorageSpec::from_json(&resp)?)
+
+        serde_json::from_str(&resp).context("parsing response")
     }
 }

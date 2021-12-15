@@ -57,7 +57,7 @@
 // crate-specific exceptions:
 #![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
 
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 
 use ::log::info;
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -65,7 +65,8 @@ use clap::{App, AppSettings, Arg, SubCommand};
 use lgn_source_control::*;
 use lgn_telemetry::*;
 
-const SUB_COMMAND_INIT_REPOSITORY: &str = "init-repository";
+const SUB_COMMAND_CREATE_REPOSITORY: &str = "create-repository";
+const SUB_COMMAND_CREATE_REMOTE_REPOSITORY: &str = "create-remote-repository";
 
 const ARG_REPOSITORY_URL: &str = "repository-url";
 const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
@@ -83,39 +84,28 @@ async fn main() -> anyhow::Result<()> {
         .version(env!("CARGO_PKG_VERSION"))
         .about("CLI to interact with Legion Source Control")
         .subcommand(
-            SubCommand::with_name(SUB_COMMAND_INIT_REPOSITORY)
-                .about("Initializes a repository.")
+            SubCommand::with_name(SUB_COMMAND_CREATE_REPOSITORY)
+                .about("Create a new local repository that uses the filesystem as its storage backend")
                 .arg(
                     Arg::with_name(ARG_REPOSITORY_URL)
-                        .required(true)
-                        .help("The repository URL"),
+                        .help("The local path to the repository. If not specified, uses the current directory")
                 )
                 .arg(
                     Arg::with_name(ARG_BLOB_STORAGE_URL)
-                        .help("The blob storage URL. If not specified and the repository URL is a local file, the blob storage URL will be relative to the repository URL. Otherwise it will fail"),
+                        .help("The blob storage URL. If not specified and no default blob storage can be determined, an error will be reported. Example: file://somepath, s3://bucket/root")
                 )
         )
         .subcommand(
-            SubCommand::with_name("init-local-repository")
-                .about("Initializes a repository stored on a local or remote system")
+            SubCommand::with_name(SUB_COMMAND_CREATE_REMOTE_REPOSITORY)
+                .about("Create a repository on a remote server or database")
                 .arg(
-                    Arg::with_name("directory")
+                    Arg::with_name(ARG_REPOSITORY_URL)
                         .required(true)
-                        .help("local path")
-                )
-        )
-        .subcommand(
-            SubCommand::with_name("init-remote-repository")
-                .about("Initializes a repository stored on a local or remote system")
-                .arg(
-                    Arg::with_name("uri")
-                        .required(true)
-                        .help("mysql://user:pass@host:port/database, lsc://host:port/database")
+                        .help("The remote repository URL. Example: mysql://user:pass@host:port/database, lsc://host:port/database")
                 )
                 .arg(
-                    Arg::with_name("blob-storage")
-                        .required(false)
-                        .help("file://somepath, s3://bucket/root")
+                    Arg::with_name(ARG_BLOB_STORAGE_URL)
+                        .help("The blob storage URL. If not specified and no default blob storage can be determined, an error will be reported. Example: file://somepath, s3://bucket/root")
                 )
         )
         .subcommand(
@@ -320,28 +310,29 @@ async fn main() -> anyhow::Result<()> {
         .get_matches();
 
     match matches.subcommand() {
-        (SUB_COMMAND_INIT_REPOSITORY, Some(command_match)) => {
-            info!("{}", SUB_COMMAND_INIT_REPOSITORY);
-
-            let _repository_url: RepositoryUrl = command_match
+        (SUB_COMMAND_CREATE_REPOSITORY, Some(command_match)) => {
+            let repository_url = command_match
                 .value_of(ARG_REPOSITORY_URL)
-                .unwrap()
-                .parse()?;
+                .map(RepositoryUrl::from_str)
+                .transpose()?
+                .unwrap_or_else(RepositoryUrl::from_current_dir)
+                .make_absolute(std::env::current_dir()?);
 
-            Ok(())
+            let blob_storage_url = command_match
+                .value_of(ARG_BLOB_STORAGE_URL)
+                .map(BlobStorageUrl::from_str)
+                .transpose()?
+                .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
+                .transpose()?;
+
+            lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
+                .await
         }
-        ("init-local-repository", Some(command_match)) => {
-            info!("init-local-repository");
-            let path = command_match.value_of("directory").unwrap();
+        (SUB_COMMAND_CREATE_REMOTE_REPOSITORY, Some(command_match)) => {
+            let repo_uri = command_match.value_of(ARG_REPOSITORY_URL).unwrap();
+            let blob_uri = command_match.value_of(ARG_BLOB_STORAGE_URL);
 
-            lgn_source_control::init_local_repository_command(Path::new(&path)).await
-        }
-        ("init-remote-repository", Some(command_match)) => {
-            info!("init-remote-repository");
-            let repo_uri = command_match.value_of("uri").unwrap();
-            let blob_uri = command_match.value_of("blob-storage");
-
-            lgn_source_control::init_remote_repository_command(repo_uri, blob_uri).await
+            lgn_source_control::commands::create_remote_repository_command(repo_uri, blob_uri).await
         }
         ("destroy-repository", Some(command_match)) => {
             info!("destroy-repository");

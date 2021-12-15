@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::{BlobStorageSpec, Branch, Commit, Lock, Tree, Workspace};
+use crate::{BlobStorageUrl, Branch, Commit, Lock, Tree, Workspace};
 
 #[async_trait]
 pub trait RepositoryQuery {
@@ -27,5 +27,5 @@ pub trait RepositoryQuery {
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>>;
     async fn clear_lock(&self, lock_domain_id: &str, canonical_relative_path: &str) -> Result<()>;
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32>;
-    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec>;
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageUrl>;
 }

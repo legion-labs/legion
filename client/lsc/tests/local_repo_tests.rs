@@ -1,17 +1,28 @@
+use anyhow::Result;
+use lgn_telemetry::*;
+use lgn_test_utils::*;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use lgn_telemetry::*;
-use lgn_test_utils::*;
+fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
+    let path = path.as_ref();
+    let contents = contents.as_ref();
+
+    fs::create_dir_all(path.parent().unwrap())?;
+
+    fs::File::create(path)?
+        .write_all(contents)
+        .map_err(Into::into)
+}
 
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
 
 Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacinia lacus ut urna pellentesque, euismod auctor risus volutpat. Sed et congue dolor, et bibendum dolor. Nam sit amet ante id eros aliquet luctus. Donec pulvinar mauris turpis, a ullamcorper mi fermentum ac. Morbi a volutpat turpis. Nulla facilisi. Sed rutrum placerat nisl vitae condimentum. Nunc et lacus ut lacus aliquet tempor et volutpat mi. Maecenas pretium ultricies mi id vestibulum. Sed turpis justo, semper eu nisl ac, hendrerit mattis turpis. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Praesent condimentum pellentesque vestibulum. Fusce at hendrerit lorem.\n";
 
-    lgn_source_control::write_file(p, contents.as_bytes()).expect("write failed");
+    write_file(p, contents.as_bytes()).expect("write failed");
 }
 
 fn append_text_to_file(p: &Path, contents: &str) {
@@ -50,7 +61,7 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
             match std::env::var("lgn_source_control_TEST_BLOB_STORAGE") {
                 Ok(blob_storage_uri) => lsc_cli_sys(
                     test_dir,
-                    &["init-remote-repository", &repo_uri, &blob_storage_uri],
+                    &["create-remote-repository", &repo_uri, &blob_storage_uri],
                 ),
                 Err(_) => lsc_cli_sys(test_dir, &["init-remote-repository", &repo_uri]),
             }
@@ -58,10 +69,7 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
         }
         Err(_) => {
             let repo_dir = test_dir.join("repo");
-            lsc_cli_sys(
-                test_dir,
-                &["init-local-repository", repo_dir.to_str().unwrap()],
-            );
+            lsc_cli_sys(test_dir, &["create-repository", repo_dir.to_str().unwrap()]);
             String::from(repo_dir.to_str().unwrap())
         }
     }
@@ -203,7 +211,7 @@ fn local_single_branch_merge_flow() {
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    lgn_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
 
@@ -276,10 +284,10 @@ fn test_branch() {
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    lgn_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
 
-    lgn_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
 
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
@@ -289,11 +297,11 @@ fn test_branch() {
 
     lsc_cli_sys(&work1, &["delete", "file2.txt"]);
 
-    lgn_source_control::write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file3.txt"]);
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
-    lgn_source_control::write_file(
+    write_file(
         &work1.join("dir0/deep/inner_task.txt"),
         "line1\n".as_bytes(),
     )
@@ -378,8 +386,7 @@ fn test_locks() {
     );
 
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
-    lgn_source_control::write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes())
-        .unwrap();
+    write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes()).unwrap();
 
     lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
@@ -395,7 +402,7 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["commit", r#"-m"non-edit file1 in task branch""#]);
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
-    lgn_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file2 in task main""#]);
     lsc_cli_sys(&work1, &["switch-branch", "task"]);

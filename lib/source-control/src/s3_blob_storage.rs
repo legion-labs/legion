@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use http::Uri;
+use reqwest::Url;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -15,8 +16,8 @@ pub struct S3BlobStorage {
 }
 
 impl S3BlobStorage {
-    pub async fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self> {
-        let uri = s3uri.parse::<Uri>().unwrap();
+    pub async fn new(s3uri: &Url, compressed_blob_cache: PathBuf) -> Result<Self> {
+        let uri = s3uri.to_string().parse::<Uri>().unwrap();
         let bucket_name = String::from(uri.host().unwrap());
         let root = PathBuf::from(uri.path().strip_prefix('/').unwrap());
         let config = aws_config::load_from_env().await;
@@ -144,7 +145,7 @@ impl BlobStorage for S3BlobStorage {
     }
 }
 
-pub async fn validate_connection_to_bucket(s3uri: &str) -> Result<()> {
+pub async fn validate_connection_to_bucket(s3uri: &Url) -> Result<()> {
     let bogus_blob_cache = std::path::PathBuf::new();
     let _storage = S3BlobStorage::new(s3uri, bogus_blob_cache).await?;
     Ok(())

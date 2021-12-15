@@ -1,10 +1,13 @@
 use anyhow::Result;
 use reqwest::Url;
+use serde::{Deserialize, Serialize};
 use std::{
-    cell::RefCell,
+    fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
 };
+
+use crate::{parse_url_or_path, UrlOrPath};
 
 /// A repository URL.
 ///
@@ -21,34 +24,26 @@ impl FromStr for RepositoryUrl {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        let validation = RefCell::new(None);
-
-        let violation_cb = |violation| {
-            *validation.borrow_mut() = Some(violation);
-        };
-
-        let options = Url::options().syntax_violation_callback(Some(&violation_cb));
-
-        let result = options.parse(s);
-        let validation = *validation.borrow();
-
-        match (result, validation) {
-            (_, Some(url::SyntaxViolation::ExpectedFileDoubleSlash)) => {
-                Err(anyhow::anyhow!("expected file://"))
-            }
-            (Ok(url), _) => match url.scheme() {
-                "file" => Ok(Self::Local(url.to_file_path().unwrap())),
+        match parse_url_or_path(s)? {
+            UrlOrPath::Path(path) => Ok(Self::Local(path)),
+            UrlOrPath::Url(url) => match url.scheme() {
                 "mysql" => Ok(Self::MySQL(url)),
                 "lsc" => Ok(Self::Lsc(url)),
-                _ => Ok(Self::Local(s.into())),
+                scheme => Err(anyhow::anyhow!(
+                    "unsupported repository URL scheme: {}",
+                    scheme
+                )),
             },
-            (Err(_), Some(validation)) => Err(anyhow::anyhow!("{}", validation)),
-            (Err(_), None) => Ok(Self::Local(s.into())),
         }
     }
 }
 
 impl RepositoryUrl {
+    /// Create a repository URL from the current directory.
+    pub fn from_current_dir() -> Self {
+        Self::Local(".".into())
+    }
+
     /// Make the repository URL absolute, possibly using the specified path if
     /// the URL is a local relative repository URL.
     ///
@@ -59,6 +54,35 @@ impl RepositoryUrl {
         } else {
             self
         }
+    }
+}
+
+impl Display for RepositoryUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Local(p) => write!(f, "{}", p.display()),
+            Self::MySQL(u) | Self::Lsc(u) => write!(f, "{}", u),
+        }
+    }
+}
+
+impl Serialize for RepositoryUrl {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RepositoryUrl {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -140,5 +164,22 @@ mod tests {
         let url = url.make_absolute("/home/user");
 
         assert_eq!(url, RepositoryUrl::Local(PathBuf::from("/home/user/repo")));
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(
+            RepositoryUrl::Local("my/path".into()).to_string(),
+            "my/path"
+        );
+        assert_eq!(
+            RepositoryUrl::MySQL("mysql://user:pass@localhost:3306/db".try_into().unwrap())
+                .to_string(),
+            "mysql://user:pass@localhost:3306/db"
+        );
+        assert_eq!(
+            RepositoryUrl::Lsc("lsc://user:pass@localhost:3306/db".try_into().unwrap()).to_string(),
+            "lsc://user:pass@localhost:3306/db"
+        );
     }
 }

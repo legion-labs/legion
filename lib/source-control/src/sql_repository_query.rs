@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use sqlx::Row;
 
 use crate::{
-    sql::SqlConnectionPool, BlobStorageSpec, Branch, ChangeType, Commit, HashedChange, Lock,
+    sql::SqlConnectionPool, BlobStorageUrl, Branch, ChangeType, Commit, HashedChange, Lock,
     RepositoryQuery, Tree, TreeNode, TreeNodeType, Workspace,
 };
 
@@ -437,7 +437,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         Ok(row.get("count"))
     }
 
-    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec> {
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageUrl> {
         let mut sql_connection = self.pool.acquire().await?;
         let row = sqlx::query(
             "SELECT blob_storage_spec 
@@ -447,7 +447,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         .await
         .context("error fetching blob storage spec")?;
 
-        BlobStorageSpec::from_json(row.get("blob_storage_spec"))
+        row.get::<&str, _>("blob_storage_spec").parse()
     }
 }
 

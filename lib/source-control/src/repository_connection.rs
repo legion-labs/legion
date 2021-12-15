@@ -6,12 +6,12 @@ use crate::{
     http_repository_query::HTTPRepositoryQuery,
     sql::SqlConnectionPool,
     sql_repository_query::{Databases, SqlRepositoryQuery},
-    BlobStorage, BlobStorageSpec, DiskBlobStorage, RepositoryAddr, RepositoryQuery, S3BlobStorage,
+    BlobStorage, BlobStorageUrl, DiskBlobStorage, RepositoryAddr, RepositoryQuery, S3BlobStorage,
     Workspace,
 };
 
 pub struct RepositoryConnection {
-    blob_storage_spec: BlobStorageSpec,
+    blob_storage_spec: BlobStorageUrl,
     compressed_blob_cache: PathBuf,
     repo_query: Box<dyn RepositoryQuery + Send + Sync>,
 }
@@ -63,10 +63,10 @@ impl RepositoryConnection {
 
     pub async fn blob_storage(&self) -> Result<Box<dyn BlobStorage + Send + Sync>> {
         match &self.blob_storage_spec {
-            BlobStorageSpec::LocalDirectory(blob_directory) => Ok(Box::new(DiskBlobStorage {
+            BlobStorageUrl::Local(blob_directory) => Ok(Box::new(DiskBlobStorage {
                 blob_directory: blob_directory.clone(),
             })),
-            BlobStorageSpec::S3Uri(s3uri) => Ok(Box::new(
+            BlobStorageUrl::AwsS3(s3uri) => Ok(Box::new(
                 S3BlobStorage::new(s3uri, self.compressed_blob_cache.clone()).await?,
             )),
         }
