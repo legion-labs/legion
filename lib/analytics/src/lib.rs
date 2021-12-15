@@ -622,6 +622,38 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
     Ok(found_entry)
 }
 
+// for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log entry until fun returns false
+//mad
+pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    stream: &lgn_telemetry::StreamInfo,
+    block: &lgn_telemetry::EncodedBlock,
+    mut fun: Predicate,
+) -> Result<()> {
+    let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+    parse_block(stream, &payload, |val| {
+        if let Value::Object(obj) = val {
+            match obj.type_name.as_str() {
+                "LogMsgEvent" | "LogDynMsgEvent" => {
+                    let time = obj.get::<i64>("time").unwrap();
+                    let entry = format!(
+                        "[{}] {}",
+                        format_log_level(obj.get::<u8>("level").unwrap()),
+                        obj.get::<String>("msg").unwrap()
+                    );
+                    if !fun(time, entry) {
+                        return false; //do not continue
+                    }
+                }
+                _ => {}
+            }
+        }
+        true //continue
+    })?;
+    Ok(())
+}
+
 pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -687,11 +719,13 @@ pub mod prelude {
     pub use crate::find_block;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;
     pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
     pub use crate::find_stream_blocks_in_range;
+    pub use crate::for_each_log_entry_in_block;
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;

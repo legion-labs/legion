@@ -125,6 +125,10 @@ export interface CumulativeCallGraphReply {
 /** list_process_log_entries */
 export interface ProcessLogRequest {
   process: Process | undefined;
+  /** included */
+  begin: number;
+  /** excluded */
+  end: number;
 }
 
 export interface LogEntry {
@@ -134,6 +138,19 @@ export interface LogEntry {
 
 export interface ProcessLogReply {
   entries: LogEntry[];
+  /** included */
+  begin: number;
+  /** excluded */
+  end: number;
+}
+
+/** nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply); */
+export interface ProcessNbLogEntriesRequest {
+  processId: string;
+}
+
+export interface ProcessNbLogEntriesReply {
+  count: number;
 }
 
 /** list_process_children */
@@ -1696,7 +1713,7 @@ export const CumulativeCallGraphReply = {
   },
 };
 
-const baseProcessLogRequest: object = {};
+const baseProcessLogRequest: object = { begin: 0, end: 0 };
 
 export const ProcessLogRequest = {
   encode(
@@ -1705,6 +1722,12 @@ export const ProcessLogRequest = {
   ): _m0.Writer {
     if (message.process !== undefined) {
       Process.encode(message.process, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.begin !== 0) {
+      writer.uint32(16).uint64(message.begin);
+    }
+    if (message.end !== 0) {
+      writer.uint32(24).uint64(message.end);
     }
     return writer;
   },
@@ -1718,6 +1741,12 @@ export const ProcessLogRequest = {
       switch (tag >>> 3) {
         case 1:
           message.process = Process.decode(reader, reader.uint32());
+          break;
+        case 2:
+          message.begin = longToNumber(reader.uint64() as Long);
+          break;
+        case 3:
+          message.end = longToNumber(reader.uint64() as Long);
           break;
         default:
           reader.skipType(tag & 7);
@@ -1733,6 +1762,12 @@ export const ProcessLogRequest = {
       object.process !== undefined && object.process !== null
         ? Process.fromJSON(object.process)
         : undefined;
+    message.begin =
+      object.begin !== undefined && object.begin !== null
+        ? Number(object.begin)
+        : 0;
+    message.end =
+      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
     return message;
   },
 
@@ -1742,6 +1777,8 @@ export const ProcessLogRequest = {
       (obj.process = message.process
         ? Process.toJSON(message.process)
         : undefined);
+    message.begin !== undefined && (obj.begin = Math.round(message.begin));
+    message.end !== undefined && (obj.end = Math.round(message.end));
     return obj;
   },
 
@@ -1753,6 +1790,8 @@ export const ProcessLogRequest = {
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
         : undefined;
+    message.begin = object.begin ?? 0;
+    message.end = object.end ?? 0;
     return message;
   },
 };
@@ -1820,7 +1859,7 @@ export const LogEntry = {
   },
 };
 
-const baseProcessLogReply: object = {};
+const baseProcessLogReply: object = { begin: 0, end: 0 };
 
 export const ProcessLogReply = {
   encode(
@@ -1829,6 +1868,12 @@ export const ProcessLogReply = {
   ): _m0.Writer {
     for (const v of message.entries) {
       LogEntry.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.begin !== 0) {
+      writer.uint32(16).uint64(message.begin);
+    }
+    if (message.end !== 0) {
+      writer.uint32(24).uint64(message.end);
     }
     return writer;
   },
@@ -1844,6 +1889,12 @@ export const ProcessLogReply = {
         case 1:
           message.entries.push(LogEntry.decode(reader, reader.uint32()));
           break;
+        case 2:
+          message.begin = longToNumber(reader.uint64() as Long);
+          break;
+        case 3:
+          message.end = longToNumber(reader.uint64() as Long);
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1857,6 +1908,12 @@ export const ProcessLogReply = {
     message.entries = (object.entries ?? []).map((e: any) =>
       LogEntry.fromJSON(e)
     );
+    message.begin =
+      object.begin !== undefined && object.begin !== null
+        ? Number(object.begin)
+        : 0;
+    message.end =
+      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
     return message;
   },
 
@@ -1869,6 +1926,8 @@ export const ProcessLogReply = {
     } else {
       obj.entries = [];
     }
+    message.begin !== undefined && (obj.begin = Math.round(message.begin));
+    message.end !== undefined && (obj.end = Math.round(message.end));
     return obj;
   },
 
@@ -1877,6 +1936,136 @@ export const ProcessLogReply = {
   ): ProcessLogReply {
     const message = { ...baseProcessLogReply } as ProcessLogReply;
     message.entries = object.entries?.map((e) => LogEntry.fromPartial(e)) || [];
+    message.begin = object.begin ?? 0;
+    message.end = object.end ?? 0;
+    return message;
+  },
+};
+
+const baseProcessNbLogEntriesRequest: object = { processId: "" };
+
+export const ProcessNbLogEntriesRequest = {
+  encode(
+    message: ProcessNbLogEntriesRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ProcessNbLogEntriesRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessNbLogEntriesRequest {
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    return message;
+  },
+
+  toJSON(message: ProcessNbLogEntriesRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesRequest>, I>>(
+    object: I
+  ): ProcessNbLogEntriesRequest {
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    message.processId = object.processId ?? "";
+    return message;
+  },
+};
+
+const baseProcessNbLogEntriesReply: object = { count: 0 };
+
+export const ProcessNbLogEntriesReply = {
+  encode(
+    message: ProcessNbLogEntriesReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.count !== 0) {
+      writer.uint32(8).uint64(message.count);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ProcessNbLogEntriesReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.count = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessNbLogEntriesReply {
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    message.count =
+      object.count !== undefined && object.count !== null
+        ? Number(object.count)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: ProcessNbLogEntriesReply): unknown {
+    const obj: any = {};
+    message.count !== undefined && (obj.count = Math.round(message.count));
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesReply>, I>>(
+    object: I
+  ): ProcessNbLogEntriesReply {
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    message.count = object.count ?? 0;
     return message;
   },
 };
@@ -2495,6 +2684,10 @@ export interface PerformanceAnalytics {
     request: DeepPartial<ProcessLogRequest>,
     metadata?: grpc.Metadata
   ): Promise<ProcessLogReply>;
+  nb_process_log_entries(
+    request: DeepPartial<ProcessNbLogEntriesRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessNbLogEntriesReply>;
   list_process_streams(
     request: DeepPartial<ListProcessStreamsRequest>,
     metadata?: grpc.Metadata
@@ -2532,6 +2725,7 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     this.find_process = this.find_process.bind(this);
     this.list_process_children = this.list_process_children.bind(this);
     this.list_process_log_entries = this.list_process_log_entries.bind(this);
+    this.nb_process_log_entries = this.nb_process_log_entries.bind(this);
     this.list_process_streams = this.list_process_streams.bind(this);
     this.list_recent_processes = this.list_recent_processes.bind(this);
     this.search_processes = this.search_processes.bind(this);
@@ -2591,6 +2785,17 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticslist_process_log_entriesDesc,
       ProcessLogRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  nb_process_log_entries(
+    request: DeepPartial<ProcessNbLogEntriesRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessNbLogEntriesReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticsnb_process_log_entriesDesc,
+      ProcessNbLogEntriesRequest.fromPartial(request),
       metadata
     );
   }
@@ -2771,6 +2976,29 @@ export const PerformanceAnalyticslist_process_log_entriesDesc: UnaryMethodDefini
       deserializeBinary(data: Uint8Array) {
         return {
           ...ProcessLogReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticsnb_process_log_entriesDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "nb_process_log_entries",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return ProcessNbLogEntriesRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessNbLogEntriesReply.decode(data),
           toObject() {
             return this;
           },

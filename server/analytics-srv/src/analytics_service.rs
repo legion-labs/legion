@@ -24,6 +24,8 @@ use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
 use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_telemetry_proto::analytics::ProcessMetricsReply;
+use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
+use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -137,25 +139,64 @@ impl AnalyticsService {
     async fn process_log_impl(
         &self,
         process: &lgn_telemetry::ProcessInfo,
+        begin: u64,
+        end: u64,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
         let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64; // factor out
         let ts_offset = process.start_ticks;
-        for_each_process_log_entry(
-            &mut connection,
-            &self.data_dir,
-            &process.process_id,
-            |ts, entry| {
-                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
-                entries.push(LogEntry {
-                    msg: entry,
-                    time_ms,
-                });
-            },
-        )
-        .await?;
-        Ok(ProcessLogReply { entries })
+        let mut entry_index: u64 = 0;
+        for stream in find_process_log_streams(&mut connection, &process.process_id).await? {
+            for block in find_stream_blocks(&mut connection, &stream.stream_id).await? {
+                if (entry_index + block.nb_objects as u64) < begin {
+                    entry_index += block.nb_objects as u64;
+                } else {
+                    for_each_log_entry_in_block(
+                        &mut connection,
+                        &self.data_dir,
+                        &stream,
+                        &block,
+                        |ts, entry| {
+                            if entry_index >= end {
+                                return false;
+                            }
+                            if entry_index >= begin {
+                                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
+                                entries.push(LogEntry {
+                                    msg: entry,
+                                    time_ms,
+                                });
+                            }
+                            entry_index += 1;
+
+                            true
+                        },
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        Ok(ProcessLogReply {
+            entries,
+            begin,
+            end: entry_index,
+        })
+    }
+
+    async fn nb_process_log_entries_impl(
+        &self,
+        process_id: &str,
+    ) -> Result<ProcessNbLogEntriesReply> {
+        let mut connection = self.pool.acquire().await?;
+        let mut count: u64 = 0;
+        for stream in find_process_log_streams(&mut connection, process_id).await? {
+            for b in find_stream_blocks(&mut connection, &stream.stream_id).await? {
+                count += b.nb_objects as u64;
+            }
+        }
+        Ok(ProcessNbLogEntriesReply { count })
     }
 
     async fn list_process_children_impl(&self, process_id: &str) -> Result<ProcessChildrenReply> {
@@ -383,10 +424,40 @@ impl PerformanceAnalytics for AnalyticsService {
                 "Missing process in list_process_log_entries",
             )));
         }
-        match self.process_log_impl(&inner_request.process.unwrap()).await {
+        match self
+            .process_log_impl(
+                &inner_request.process.unwrap(),
+                inner_request.begin,
+                inner_request.end,
+            )
+            .await
+        {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in list_process_log_entries: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn nb_process_log_entries(
+        &self,
+        request: Request<ProcessNbLogEntriesRequest>,
+    ) -> Result<Response<ProcessNbLogEntriesReply>, Status> {
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        if inner_request.process_id.is_empty() {
+            return Err(Status::internal(String::from(
+                "Missing process_id in nb_process_log_entries",
+            )));
+        }
+        match self
+            .nb_process_log_entries_impl(&inner_request.process_id)
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in nb_process_log_entries: {}",
                 e
             ))),
         }
