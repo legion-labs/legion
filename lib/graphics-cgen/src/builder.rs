@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::model::{CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, ModelObject, NativeType, PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef, TextureDef};
+use crate::model::{CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType, PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef, TextureDef};
 use anyhow::{anyhow, Context, Result};
 
 pub struct StructBuilder<'mdl> {
