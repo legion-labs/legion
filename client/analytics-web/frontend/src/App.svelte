@@ -30,8 +30,8 @@
     </div>
     <Route path="/" primary={false}><Home /></Route>
     <Route path="/about"><About /></Route>
-    <Route path="/log/:id" let:params primary={false}>
-      {#key params.id}
+    <Route path="/log/:id" let:params let:location primary={false}>
+      {#key params.id + location.search}
         <Log id={params.id} />
       {/key}
     </Route>

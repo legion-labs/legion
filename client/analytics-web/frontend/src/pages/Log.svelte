@@ -92,27 +92,63 @@
       {/if}
     </div>
   {/if}
-  {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
-    navigation here...
-    {#if viewRange[1] < nbEntries}
-      <div class="nav-link">
-        <a
-          href={`/log/${id}?begin=${
-            nbEntries - MAX_NB_ENTRIES_IN_PAGE
-          }&end=${nbEntries}`}
-          use:link
-        >
-          Last
-        </a>
-      </div>
-    {/if}
-  {/if}
   {#each logEntries as entry, index (index)}
     <div class="logentry">
       <span class="logentrytime">{formatTime(entry.timeMs)}</span>
       <span>{entry.msg}</span>
     </div>
   {/each}
+
+  {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+    <div class="page-nav">
+      {#if viewRange[0] > 0}
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=0&end=${Math.min(
+              MAX_NB_ENTRIES_IN_PAGE,
+              nbEntries
+            )}`}
+            use:link
+          >
+            First
+          </a>
+        </span>
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${Math.max(
+              0,
+              viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
+            )}&end=${viewRange[0]}`}
+            use:link
+          >
+            Previous
+          </a>
+        </span>
+      {/if}
+      {#if viewRange[1] < nbEntries}
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${viewRange[1]}&end=${
+              viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
+            }`}
+            use:link
+          >
+            Next
+          </a>
+        </span>
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${
+              nbEntries - MAX_NB_ENTRIES_IN_PAGE
+            }&end=${nbEntries}`}
+            use:link
+          >
+            Last
+          </a>
+        </span>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style lang="postcss">
@@ -140,5 +176,10 @@
 
   .nav-link {
     @apply text-[#42b983] underline;
+  }
+
+  .page-nav {
+    text-align: left;
+    margin: 0px 0px 5px 5px;
   }
 </style>
