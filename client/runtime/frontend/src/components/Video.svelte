@@ -17,7 +17,7 @@
 
   export let desiredResolution: Resolution | null = null;
 
-  export let color: string | null = null;
+  export let backgroundColor: string | null = null;
 
   let resolution: Resolution | null = null;
 
@@ -144,9 +144,13 @@
 
     videoChannel.onopen = () => {
       log.debug("video", "Video channel is now open.");
-      if (videoChannel && color) {
+      if (videoChannel && backgroundColor) {
         videoChannel.send(
-          JSON.stringify({ event: "color", id: "background", color })
+          JSON.stringify({
+            event: "color",
+            id: "background",
+            color: backgroundColor,
+          })
         );
       }
     };

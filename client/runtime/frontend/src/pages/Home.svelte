@@ -23,7 +23,7 @@
           </span>
           <div class="video-container" slot="content">
             <Video
-              color="#112211"
+              backgroundColor="#112211"
               bind:desiredResolution={desiredVideoResolution}
             />
           </div>
