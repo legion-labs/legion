@@ -77,9 +77,7 @@ impl App {
     ///
     /// See [`Schedule::run_once`] for more details.
     pub fn update(&mut self) {
-        trace_scope!();
-        // let legion_frame_update_span = info_span!("frame");
-        // let _legion_frame_update_guard = legion_frame_update_span.enter();
+        trace_scope!("frame");
         self.schedule.run(&mut self.world);
     }
 
@@ -88,9 +86,7 @@ impl App {
     /// Finalizes the [`App`] configuration. For general usage, see the example on the item
     /// level documentation.
     pub fn run(&mut self) {
-        trace_scope!();
-        // let legion_app_run_span = info_span!("legion_app");
-        // let _legion_app_run_guard = legion_app_run_span.enter();
+        trace_scope!("legion_app");
 
         let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
