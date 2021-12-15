@@ -2,7 +2,9 @@ use std::cmp;
 
 use ash::vk;
 
-use crate::{DeviceContext, GfxResult, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS, RootSignature};
+use crate::{
+    DeviceContext, GfxResult, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

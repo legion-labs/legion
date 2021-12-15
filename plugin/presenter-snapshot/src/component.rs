@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 
-use lgn_graphics_api::prelude::*;
 use lgn_ecs::prelude::Component;
+use lgn_graphics_api::prelude::*;
 use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceId},
@@ -52,7 +52,7 @@ impl PresenterSnapshot {
 
     pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -105,7 +105,7 @@ impl Presenter for PresenterSnapshot {
 
     fn present(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

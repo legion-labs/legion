@@ -3,7 +3,7 @@ use crate::backends::vulkan::VulkanDescriptorSetLayout;
 
 use crate::{
     deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult,
-    MAX_DESCRIPTOR_BINDINGS, MAX_DESCRIPTOR_SET_LAYOUTS,
+    MAX_DESCRIPTOR_BINDINGS,
 };
 
 pub(crate) struct DescriptorSetLayoutInner {

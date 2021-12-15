@@ -488,6 +488,7 @@ pub struct PushConstantDef {
     pub size: NonZeroU32,
 }
 
+#[derive(Default)]
 pub struct RootSignatureDef {
     // pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
@@ -500,16 +501,6 @@ impl Clone for RootSignatureDef {
             // pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
-        }
-    }
-}
-
-impl Default for RootSignatureDef {
-    fn default() -> Self {
-        Self {
-            // pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: Vec::new(),
-            push_constant_def: None,
         }
     }
 }

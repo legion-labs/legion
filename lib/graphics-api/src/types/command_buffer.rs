@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
-use crate::{Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, Texture, PipelineType};
+use crate::{
+    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
+};
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
     ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,

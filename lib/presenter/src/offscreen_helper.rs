@@ -290,7 +290,7 @@ impl OffscreenHelper {
 
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {

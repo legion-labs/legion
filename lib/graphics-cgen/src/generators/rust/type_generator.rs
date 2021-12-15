@@ -19,7 +19,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),                
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
                 content.into_bytes(),
             ))
         });
@@ -27,7 +27,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
     if !products.is_empty() {
         let mut mod_path = GeneratorContext::get_object_folder::<CGenType>();
-        mod_path.push("mod.rs");        
+        mod_path.push("mod.rs");
 
         let mut writer = FileWriter::new();
         for product in &products {

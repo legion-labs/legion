@@ -1,15 +1,63 @@
-use std::{
-    borrow::BorrowMut,
-    cell::RefCell,
-    marker::PhantomData,
-    ops::{Index, Range},
-    slice::SliceIndex,
-    sync::Arc,
-};
+// BEGIN - Legion Labs lints v0.6
+// do not change or add/remove here, but one can add exceptions after this section
+#![deny(unsafe_code)]
+#![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
+// Rustdoc lints
+#![warn(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_intra_doc_links
+)]
+// Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list
+#![warn(clippy::pedantic)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::if_not_else,
+    clippy::items_after_statements,
+    clippy::missing_panics_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::similar_names,
+    clippy::shadow_unrelated,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix
+)]
+// Clippy nursery lints, still under development
+#![warn(
+    clippy::debug_assert_with_mut_call,
+    clippy::disallowed_method,
+    clippy::disallowed_type,
+    clippy::fallible_impl_from,
+    clippy::imprecise_flops,
+    clippy::mutex_integer,
+    clippy::path_buf_push_overwrite,
+    clippy::string_lit_as_bytes,
+    clippy::use_self,
+    clippy::useless_transmute
+)]
+// Clippy restriction lints, usually not considered bad, but useful in specific cases
+#![warn(
+    clippy::dbg_macro,
+    clippy::exit,
+    clippy::float_cmp_const,
+    clippy::map_err_ignore,
+    clippy::mem_forget,
+    clippy::missing_enforced_import_renames,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::string_to_string,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::verbose_file_reads
+)]
+// END - Legion Labs lints v0.6
+// crate-specific exceptions:
+
+use std::{marker::PhantomData, sync::Arc};
 
 use lgn_graphics_api::{
     BufferView, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext, ShaderResourceType,
+    DescriptorSetWriter, DeviceContext,
 };
 use serde::{Deserialize, Serialize};
 
@@ -51,151 +99,6 @@ pub struct CGenDescriptorSetDef {
     pub flat_buffer_count: u32,
 }
 
-impl CGenDescriptorSetDef {
-    // pub fn flat_start_index(&self, descriptor_index: usize) -> usize {
-    //     let descriptor_def = &self.descriptor_defs[descriptor_index];
-    //     let index = match descriptor_def.shader_resource_type {
-    //         graphics_api::ShaderResourceType::Sampler => {
-    //             self.flat_sampler_count_with_range(0..descriptor_index)
-    //         }
-
-    //         graphics_api::ShaderResourceType::ConstantBuffer
-    //         | graphics_api::ShaderResourceType::StructuredBuffer
-    //         | graphics_api::ShaderResourceType::RWStructuredBuffer
-    //         | graphics_api::ShaderResourceType::ByteAdressBuffer
-    //         | graphics_api::ShaderResourceType::RWByteAdressBuffer => {
-    //             self.flat_sampler_count_with_range(0..descriptor_index)
-    //         }
-
-    //         graphics_api::ShaderResourceType::Texture2D
-    //         | graphics_api::ShaderResourceType::RWTexture2D
-    //         | graphics_api::ShaderResourceType::Texture2DArray
-    //         | graphics_api::ShaderResourceType::RWTexture2DArray
-    //         | graphics_api::ShaderResourceType::Texture3D
-    //         | graphics_api::ShaderResourceType::RWTexture3D
-    //         | graphics_api::ShaderResourceType::TextureCube
-    //         | graphics_api::ShaderResourceType::TextureCubeArray => {
-    //             self.flat_sampler_count_with_range(0..descriptor_index)
-    //         }
-    //     };
-    //     index
-    // }
-
-    // pub fn flat_buffer_count(&self) -> usize {
-    //     self.flat_buffer_count_with_range(0..self.descriptor_defs.len())
-    // }
-
-    // pub fn flat_buffer_count_with_range(&self, range: Range<usize>) -> usize {
-    //     let mut count = 0;
-    //     for descriptor_def in &self.descriptor_defs {
-    //         count += usize::max(1, descriptor_def.array_size as usize)
-    //             * match descriptor_def.shader_resource_type {
-    //                 graphics_api::ShaderResourceType::Sampler => 0,
-
-    //                 graphics_api::ShaderResourceType::ConstantBuffer
-    //                 | graphics_api::ShaderResourceType::StructuredBuffer
-    //                 | graphics_api::ShaderResourceType::RWStructuredBuffer
-    //                 | graphics_api::ShaderResourceType::ByteAdressBuffer
-    //                 | graphics_api::ShaderResourceType::RWByteAdressBuffer => 1,
-
-    //                 graphics_api::ShaderResourceType::Texture2D
-    //                 | graphics_api::ShaderResourceType::RWTexture2D
-    //                 | graphics_api::ShaderResourceType::Texture2DArray
-    //                 | graphics_api::ShaderResourceType::RWTexture2DArray
-    //                 | graphics_api::ShaderResourceType::Texture3D
-    //                 | graphics_api::ShaderResourceType::RWTexture3D
-    //                 | graphics_api::ShaderResourceType::TextureCube
-    //                 | graphics_api::ShaderResourceType::TextureCubeArray => 0,
-    //             };
-    //     }
-    //     count
-    // }
-
-    // pub fn flat_texture_count(&self) -> usize {
-    //     self.flat_texture_count_with_range(0..self.descriptor_defs.len())
-    // }
-
-    // pub fn flat_texture_count_with_range(&self, range: Range<usize>) -> usize {
-    //     let mut count = 0;
-    //     for descriptor_def in &self.descriptor_defs {
-    //         count += usize::max(1, descriptor_def.array_size as usize)
-    //             * match descriptor_def.shader_resource_type {
-    //                 graphics_api::ShaderResourceType::Sampler => 0,
-
-    //                 graphics_api::ShaderResourceType::ConstantBuffer
-    //                 | graphics_api::ShaderResourceType::StructuredBuffer
-    //                 | graphics_api::ShaderResourceType::RWStructuredBuffer
-    //                 | graphics_api::ShaderResourceType::ByteAdressBuffer
-    //                 | graphics_api::ShaderResourceType::RWByteAdressBuffer => 0,
-
-    //                 graphics_api::ShaderResourceType::Texture2D
-    //                 | graphics_api::ShaderResourceType::RWTexture2D
-    //                 | graphics_api::ShaderResourceType::Texture2DArray
-    //                 | graphics_api::ShaderResourceType::RWTexture2DArray
-    //                 | graphics_api::ShaderResourceType::Texture3D
-    //                 | graphics_api::ShaderResourceType::RWTexture3D
-    //                 | graphics_api::ShaderResourceType::TextureCube
-    //                 | graphics_api::ShaderResourceType::TextureCubeArray => 1,
-    //             };
-    //     }
-    //     count
-    // }
-
-    // pub fn flat_sampler_count(&self) -> usize {
-    //     self.flat_sampler_count_with_range(0..self.descriptor_defs.len())
-    // }
-
-    // pub fn flat_sampler_count_with_range(&self, range: Range<usize>) -> usize {
-    //     let mut count = 0;
-    //     for descriptor_def in &self.descriptor_defs {
-    //         count += usize::max(1, descriptor_def.array_size as usize)
-    //             * match descriptor_def.shader_resource_type {
-    //                 graphics_api::ShaderResourceType::Sampler => 1,
-
-    //                 graphics_api::ShaderResourceType::ConstantBuffer
-    //                 | graphics_api::ShaderResourceType::StructuredBuffer
-    //                 | graphics_api::ShaderResourceType::RWStructuredBuffer
-    //                 | graphics_api::ShaderResourceType::ByteAdressBuffer
-    //                 | graphics_api::ShaderResourceType::RWByteAdressBuffer => 0,
-
-    //                 graphics_api::ShaderResourceType::Texture2D
-    //                 | graphics_api::ShaderResourceType::RWTexture2D
-    //                 | graphics_api::ShaderResourceType::Texture2DArray
-    //                 | graphics_api::ShaderResourceType::RWTexture2DArray
-    //                 | graphics_api::ShaderResourceType::Texture3D
-    //                 | graphics_api::ShaderResourceType::RWTexture3D
-    //                 | graphics_api::ShaderResourceType::TextureCube
-    //                 | graphics_api::ShaderResourceType::TextureCubeArray => 0,
-    //             };
-    //     }
-    //     count
-    // }
-
-    // pub fn flat_descriptor_count(&self) -> usize {
-    //     let mut count = 0;
-    //     for descriptor_def in &self.descriptor_defs {
-    //         count += usize::max(1, descriptor_def.array_size as usize);
-    //     }
-    //     count
-    // }
-
-    // fn flat_descriptor_count_(&self, shader_resource_type_mask: ShaderResourceType) -> usize {
-    //     let mut count = 0;
-    //     for descriptor_def in &self.descriptor_defs {
-    //         let mult = if (shader_resource_type_mask & descriptor_def.shader_resource_type)
-    //             == descriptor_def.shader_resource_type
-    //         {
-    //             1
-    //         } else {
-    //             0
-    //         };
-
-    //         count += usize::max(1, descriptor_def.array_size as usize) * mult;
-    //     }
-    //     count
-    // }
-}
-
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CGenPipelineLayoutDef {
     pub name: String,
@@ -223,7 +126,7 @@ pub struct CGenRuntime {
 
 impl CGenRuntime {
     pub fn new(cgen_def: &[u8], device_context: &lgn_graphics_api::DeviceContext) -> Self {
-        let definition: CGenDef = bincode::deserialize(&cgen_def).unwrap();
+        let definition: CGenDef = bincode::deserialize(cgen_def).unwrap();
 
         let mut descriptor_set_layouts =
             Vec::with_capacity(definition.descriptor_set_layout_defs.len());
@@ -258,7 +161,7 @@ impl CGenRuntime {
                     .iter()
                     .map(|id| descriptor_set_layouts[*id as usize].clone())
                     .collect::<Vec<_>>(),
-                push_constant_def: cgen_signature_def.push_constant_type.map(|pc| {
+                push_constant_def: cgen_signature_def.push_constant_type.map(|_pc| {
                     lgn_graphics_api::PushConstantDef {
                         used_in_shader_stages: todo!(),
                         size: todo!(),
@@ -428,7 +331,6 @@ where
 // }
 
 pub mod Fake {
-    use std::{ops::Index, slice::SliceIndex};
 
     use crate::{DescriptorSetData, DescriptorSetLayoutStaticInfo, ToIndex};
 

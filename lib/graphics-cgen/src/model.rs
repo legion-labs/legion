@@ -160,7 +160,7 @@ impl ModelObjectId {
 // }
 
 // impl<T: ModelObject> Eq for ModelHandle<T> {
-    
+
 // }
 
 // impl<T: ModelObject> Hash for ModelHandle<T> {
@@ -208,13 +208,13 @@ impl<'a, T: ModelObject> Default for ModelVecIter<'a, T> {
 impl<'a, T: ModelObject> ModelVecIter<'a, T> {
     fn new(model_vec: Option<&'a ModelVec>) -> Self {
         if let Some(model_vec) = model_vec {
-        let cur_ptr = model_vec.data().cast::<T>().as_ptr();
-        let end_ptr = unsafe { cur_ptr.add(model_vec.size()) };
-        Self {
-            cur_ptr,
-            end_ptr,
-            _marker: PhantomData::default(),
-        }
+            let cur_ptr = model_vec.data().cast::<T>().as_ptr();
+            let end_ptr = unsafe { cur_ptr.add(model_vec.size()) };
+            Self {
+                cur_ptr,
+                end_ptr,
+                _marker: PhantomData::default(),
+            }
         } else {
             Self::default()
         }
@@ -561,7 +561,7 @@ impl PipelineLayout {
             name: name.to_owned(),
             members: Vec::new(),
         }
-        }
+    }
 
     pub fn descriptor_sets(&self) -> impl Iterator<Item = ModelObjectId> + '_ {
         let x = self.members.iter().filter_map(|m| match m.1 {

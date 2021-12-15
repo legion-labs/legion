@@ -72,8 +72,7 @@ impl FileSystem {
             let mount_points = &*writer;
             if mount_points
                 .iter()
-                .find(|x| x.name == mount_point)
-                .is_some()
+                .any(|x| x.name == mount_point)
             {
                 return Err(anyhow!(
                     "Mount point {} pointing to directory ({}) already exists",
@@ -96,7 +95,7 @@ impl FileSystem {
             return Err(anyhow!("Invalid path"));
         }
         let path = &path[protocol.len()..];
-        let path_parts: Vec<&str> = path.split("/").collect();
+        let path_parts: Vec<&str> = path.split('/').collect();
         if path_parts.is_empty() {
             return Err(anyhow!("Invalid path"));
         }

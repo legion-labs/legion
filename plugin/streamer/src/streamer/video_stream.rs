@@ -49,8 +49,12 @@ impl VideoStream {
         let device_context = renderer.device_context();
         let graphics_queue = renderer.queue(QueueType::Graphics);
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(renderer.shader_compiler(), device_context, &graphics_queue, resolution)?;
+        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
+            renderer.shader_compiler(),
+            device_context,
+            &graphics_queue,
+            resolution,
+        )?;
 
         Ok(Self {
             video_data_channel,
@@ -84,7 +88,7 @@ impl VideoStream {
 
     pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -152,7 +156,7 @@ impl Presenter for VideoStream {
     }
     fn present(
         &mut self,
-        render_context: &mut RenderContext,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     ) {

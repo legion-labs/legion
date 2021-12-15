@@ -35,11 +35,11 @@ impl<'mdl> StructBuilder<'mdl> {
             .mdl
             .get_object_id::<CGenType>(typ.into())
             .context(anyhow!(
-            "Member '{}' in struct '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            typ
-        ))?;
+                "Member '{}' in struct '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                typ
+            ))?;
         // done
         self.product
             .members
@@ -77,11 +77,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             .mdl
             .get_object_id::<CGenType>(inner_type.into())
             .context(anyhow!(
-            "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            inner_type
-        ))?;
+                "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                inner_type
+            ))?;
         let def = ConstantBufferDef { object_id };
         self.add_descriptor(name, None, DescriptorDef::ConstantBuffer(def))
     }
@@ -98,11 +98,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             .mdl
             .get_object_id::<CGenType>(inner_ty.into())
             .context(anyhow!(
-            "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            inner_ty
-        ))?;
+                "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                inner_ty
+            ))?;
         let def = StructuredBufferDef { object_id };
         let def = if read_write {
             DescriptorDef::RWStructuredBuffer(def)
@@ -141,11 +141,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             .mdl
             .get_object_id::<CGenType>(fmt.into())
             .context(anyhow!(
-            "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            fmt
-        ))?;
+                "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                fmt
+            ))?;
         let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_id).unwrap();
         let valid_type = {
             match fmt_ty {
@@ -321,11 +321,11 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             .mdl
             .get_from_objectid::<CGenType>(object_id)
             .context(anyhow!(
-            "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
-            typename,
-            name,
-            self.product.name
-        ))?;
+                "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
+                typename,
+                name,
+                self.product.name
+            ))?;
         // Only struct types allowed for now
         if let CGenType::Struct(_def) = cgen_type {
         } else {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use hassle_rs::{Dxc, DxcIncludeHandler};
+use hassle_rs::{Dxc};
 use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
@@ -59,7 +59,7 @@ impl HlslCompiler {
         Ok(Self {
             inner: Arc::new(HlslCompilerInner {
                 dxc: Dxc::new(None)?,
-                filesystem: filesystem.clone(),
+                filesystem,
             }),
         })
     }
@@ -315,11 +315,11 @@ impl HlslCompiler {
             ShaderSource::Path(path) => (
                 self.inner
                     .filesystem
-                    .translate_path(&path)?
+                    .translate_path(path)?
                     .as_path()
                     .display()
                     .to_string(),
-                self.inner.filesystem.get_file_content(&path)?,
+                self.inner.filesystem.get_file_content(path)?,
             ),
         };
 
@@ -347,7 +347,7 @@ impl HlslCompiler {
                 let error_blob = result.0.get_error_buffer().unwrap();
                 println!("{}", library.get_blob_as_string(&error_blob));
             }
-            Ok(result) => {}
+            Ok(_result) => {}
         }
 
         let result = compiler.compile(

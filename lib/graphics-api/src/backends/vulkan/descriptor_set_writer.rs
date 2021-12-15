@@ -157,7 +157,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
         unsafe {
             device_context
                 .vk_device()
-                .update_descriptor_sets(&self.platform_write.vk_pending_writes, &[]);
+                .update_descriptor_sets(self.platform_write.vk_pending_writes, &[]);
         }
     }
 }

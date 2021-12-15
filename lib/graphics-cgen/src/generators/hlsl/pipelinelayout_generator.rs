@@ -35,7 +35,10 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     for (name, ty) in &pl.members {
         match ty {
             crate::model::PipelineLayoutContent::DescriptorSet(object_id) => {
-                let ds = ctx.model.get_from_objectid::<DescriptorSet>(*object_id).unwrap();
+                let ds = ctx
+                    .model
+                    .get_from_objectid::<DescriptorSet>(*object_id)
+                    .unwrap();
                 let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ds_path);
                 writer.add_line(format!("// - name: {}", name));
