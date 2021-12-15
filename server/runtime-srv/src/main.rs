@@ -91,6 +91,7 @@ fn main() {
     trace_scope!();
 
     const ARG_NAME_ADDR: &str = "addr";
+    const ARG_NAME_PROJECT: &str = "project";
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_ROOT: &str = "root";
@@ -107,6 +108,10 @@ fn main() {
             .long(ARG_NAME_ADDR)
             .takes_value(true)
             .help("The address to listen on"))
+        .arg(Arg::with_name(ARG_NAME_PROJECT)
+            .long(ARG_NAME_PROJECT)
+            .takes_value(true)
+            .help("Path to folder containing the project index"))
         .arg(Arg::with_name(ARG_NAME_CAS)
             .long(ARG_NAME_CAS)
             .takes_value(true)
@@ -144,19 +149,24 @@ fn main() {
             .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
     };
 
-    let content_store_addr = {
-        if let Some(params) = args.value_of(ARG_NAME_CAS) {
+    let project_dir = {
+        if let Some(params) = args.value_of(ARG_NAME_PROJECT) {
             PathBuf::from(params)
         } else {
             settings
-                .get_absolute_path("runtime_srv.cas")
-                .unwrap_or_else(|| PathBuf::from("test/sample-data/temp"))
+                .get_absolute_path("runtime_srv.project_dir")
+                .unwrap_or_else(|| PathBuf::from("test/sample-data"))
         }
     };
 
-    let game_manifest = args
-        .value_of(ARG_NAME_MANIFEST)
-        .unwrap_or("test/sample-data/runtime/game.manifest");
+    let content_store_addr = args
+        .value_of(ARG_NAME_CAS)
+        .map_or_else(|| project_dir.join("temp"), PathBuf::from);
+
+    let game_manifest = args.value_of(ARG_NAME_MANIFEST).map_or_else(
+        || project_dir.join("runtime").join("game.manifest"),
+        PathBuf::from,
+    );
 
     let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
 
