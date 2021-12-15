@@ -129,7 +129,11 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(true, matches.is_present(ARG_NAME_EGUI)))
+        .add_plugin(RendererPlugin::new(
+            true,
+            matches.is_present(ARG_NAME_EGUI),
+            true,
+        ))
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default());
 
