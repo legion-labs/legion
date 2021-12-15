@@ -138,7 +138,7 @@ impl Manifest {
         self,
         filter: fn(&ResourcePathId) -> bool,
     ) -> lgn_data_runtime::manifest::Manifest {
-        let mut output = lgn_data_runtime::manifest::Manifest::default();
+        let output = lgn_data_runtime::manifest::Manifest::default();
 
         let runtime_resources = self
             .compiled_resources

@@ -615,7 +615,7 @@ mod tests {
 
     fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {
@@ -689,7 +689,7 @@ mod tests {
     #[test]
     fn load_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {
@@ -752,7 +752,7 @@ mod tests {
     #[test]
     fn load_failed_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let parent_id = ResourceTypeAndId {
             t: test_asset::TestAsset::TYPE,
@@ -808,7 +808,7 @@ mod tests {
     #[test]
     fn load_with_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let parent_content = "parent";
 
@@ -917,7 +917,7 @@ mod tests {
     #[test]
     fn reload_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {

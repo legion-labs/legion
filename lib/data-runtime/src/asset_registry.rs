@@ -481,7 +481,7 @@ mod tests {
 
     fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -503,7 +503,7 @@ mod tests {
 
     fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
