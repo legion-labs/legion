@@ -37,6 +37,11 @@
 
   $statusStore = "Connecting...";
 
+  const backgroundColors = {
+    editor: "#000066",
+    runtime: "#112211",
+  };
+
   onMount(() => {
     initialize();
   });
@@ -153,6 +158,15 @@
 
     videoChannel.onopen = () => {
       log.debug("video", "Video channel is now open.");
+      if (videoChannel) {
+        videoChannel.send(
+          JSON.stringify({
+            event: "color",
+            id: "background",
+            color: backgroundColors[serverType],
+          })
+        );
+      }
     };
 
     videoChannel.onclose = () => {

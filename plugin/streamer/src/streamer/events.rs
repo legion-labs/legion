@@ -25,7 +25,7 @@ pub struct Color(pub [f32; 4]);
 impl Default for Color {
     fn default() -> Self {
         // This is red.
-        Self([1.0f32, 0.0f32, 0.0f32, 1.0f32])
+        Self([1.0_f32, 0.0_f32, 0.0_f32, 1.0_f32])
     }
 }
 
@@ -37,7 +37,11 @@ impl TryFrom<String> for Color {
             bail!("color values must start with #");
         }
 
-        let bytes = hex::decode(value[1..].as_bytes())?;
+        let mut bytes = hex::decode(value[1..].as_bytes())?;
+        if bytes.len() == 3 {
+            // append alpha if not specified
+            bytes.push(0xff_u8);
+        }
 
         if bytes.len() != 4 {
             bail!("expected `#RGBA` but got `{}`", value);
