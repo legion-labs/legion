@@ -61,9 +61,9 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
             match std::env::var("lgn_source_control_TEST_BLOB_STORAGE") {
                 Ok(blob_storage_uri) => lsc_cli_sys(
                     test_dir,
-                    &["create-remote-repository", &repo_uri, &blob_storage_uri],
+                    &["create-repository", &repo_uri, &blob_storage_uri],
                 ),
-                Err(_) => lsc_cli_sys(test_dir, &["init-remote-repository", &repo_uri]),
+                Err(_) => lsc_cli_sys(test_dir, &["create-repository", &repo_uri]),
             }
             repo_uri
         }

@@ -66,7 +66,6 @@ use lgn_source_control::*;
 use lgn_telemetry::*;
 
 const SUB_COMMAND_CREATE_REPOSITORY: &str = "create-repository";
-const SUB_COMMAND_CREATE_REMOTE_REPOSITORY: &str = "create-remote-repository";
 
 const ARG_REPOSITORY_URL: &str = "repository-url";
 const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
@@ -89,19 +88,6 @@ async fn main() -> anyhow::Result<()> {
                 .arg(
                     Arg::with_name(ARG_REPOSITORY_URL)
                         .help("The local path to the repository. If not specified, uses the current directory")
-                )
-                .arg(
-                    Arg::with_name(ARG_BLOB_STORAGE_URL)
-                        .help("The blob storage URL. If not specified and no default blob storage can be determined, an error will be reported. Example: file://somepath, s3://bucket/root")
-                )
-        )
-        .subcommand(
-            SubCommand::with_name(SUB_COMMAND_CREATE_REMOTE_REPOSITORY)
-                .about("Create a repository on a remote server or database")
-                .arg(
-                    Arg::with_name(ARG_REPOSITORY_URL)
-                        .required(true)
-                        .help("The remote repository URL. Example: mysql://user:pass@host:port/database, lsc://host:port/database")
                 )
                 .arg(
                     Arg::with_name(ARG_BLOB_STORAGE_URL)
@@ -327,12 +313,6 @@ async fn main() -> anyhow::Result<()> {
 
             lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
                 .await
-        }
-        (SUB_COMMAND_CREATE_REMOTE_REPOSITORY, Some(command_match)) => {
-            let repo_uri = command_match.value_of(ARG_REPOSITORY_URL).unwrap();
-            let blob_uri = command_match.value_of(ARG_BLOB_STORAGE_URL);
-
-            lgn_source_control::commands::create_remote_repository_command(repo_uri, blob_uri).await
         }
         ("destroy-repository", Some(command_match)) => {
             info!("destroy-repository");

@@ -5,14 +5,14 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use url::Url;
 
-use crate::{parse_url_or_path, UrlOrPath};
+use super::{BlobStorage, DiskBlobStorage, S3BlobStorage};
+use crate::{parse_url_or_path, AwsS3Url, UrlOrPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BlobStorageUrl {
     Local(PathBuf),
-    AwsS3(Url),
+    AwsS3(AwsS3Url),
 }
 
 impl BlobStorageUrl {
@@ -27,6 +27,13 @@ impl BlobStorageUrl {
             self
         }
     }
+
+    pub async fn into_blob_storage(self) -> Result<Box<dyn BlobStorage>> {
+        match self {
+            BlobStorageUrl::Local(path) => Ok(Box::new(DiskBlobStorage::new(path).await?)),
+            BlobStorageUrl::AwsS3(url) => Ok(Box::new(S3BlobStorage::new(url).await)),
+        }
+    }
 }
 
 impl FromStr for BlobStorageUrl {
@@ -36,7 +43,7 @@ impl FromStr for BlobStorageUrl {
         match parse_url_or_path(s)? {
             UrlOrPath::Path(path) => Ok(Self::Local(path)),
             UrlOrPath::Url(url) => match url.scheme() {
-                "s3" => Ok(Self::AwsS3(url)),
+                "s3" => Ok(Self::AwsS3(url.try_into()?)),
                 scheme => Err(anyhow::anyhow!(
                     "unsupported repository URL scheme: {}",
                     scheme
@@ -77,6 +84,8 @@ impl<'de> Deserialize<'de> for BlobStorageUrl {
 
 #[cfg(test)]
 mod tests {
+    use crate::AwsS3Url;
+
     use super::*;
 
     #[test]
@@ -129,7 +138,10 @@ mod tests {
     fn test_from_str_aws_s3() {
         assert_eq!(
             BlobStorageUrl::from_str("s3://bucket/path").unwrap(),
-            BlobStorageUrl::AwsS3(Url::parse("s3://bucket/path").unwrap())
+            BlobStorageUrl::AwsS3(AwsS3Url {
+                bucket_name: "bucket".to_owned(),
+                root: PathBuf::from("path"),
+            })
         );
     }
 
@@ -154,7 +166,11 @@ mod tests {
             "my/path"
         );
         assert_eq!(
-            BlobStorageUrl::AwsS3("s3://bucket/path".try_into().unwrap()).to_string(),
+            BlobStorageUrl::AwsS3(AwsS3Url {
+                bucket_name: "bucket".to_owned(),
+                root: PathBuf::from("path"),
+            })
+            .to_string(),
             "s3://bucket/path"
         );
     }

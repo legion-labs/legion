@@ -33,11 +33,10 @@ async fn print_diff(
     local_path: &Path,
     ref_file_hash: &str,
 ) -> Result<()> {
-    let base_version_contents = connection
-        .blob_storage()
-        .await?
-        .read_blob(ref_file_hash)
-        .await?;
+    let base_version_contents = connection.blob_storage().read_blob(ref_file_hash).await?;
+    let base_version_contents =
+        String::from_utf8(base_version_contents).context("error reading base version contents")?;
+
     let local_version_contents = read_text_file(local_path)?;
     let patch = diffy::create_patch(&base_version_contents, &local_version_contents);
     println!("{}", patch);

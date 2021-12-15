@@ -3,6 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use log::info;
 use reqwest::Url;
 
 use crate::sql_repository_query::{Databases, SqlRepositoryQuery};
@@ -13,10 +14,7 @@ use crate::{
     sql::{create_database, SqlConnectionPool},
     trace_scope, BlobStorageUrl, Branch, Commit, RepositoryQuery, Tree,
 };
-use crate::{
-    execute_request, validate_connection_to_bucket, InitRepositoryRequest, RepositoryUrl,
-    ServerRequest,
-};
+use crate::{execute_request, InitRepositoryRequest, RepositoryUrl, ServerRequest};
 
 /// Create a repository at the specified URL.
 ///
@@ -26,13 +24,20 @@ pub async fn create_repository(
     repo_url: &RepositoryUrl,
     blob_storage_url: &Option<BlobStorageUrl>,
 ) -> Result<()> {
+    info!("Creating repository at {}", repo_url);
+
+    if let Some(blob_storage_url) = blob_storage_url {
+        info!("Using blob storage at {}", blob_storage_url);
+    } else {
+        info!("No blob storage specified, using default blob storage for the repository type");
+    }
+
     match repo_url {
         RepositoryUrl::Local(directory) => {
             create_local_repository(directory, blob_storage_url).await
         }
-        _ => {
-            anyhow::bail!("unsupported repository URL: {}", repo_url)
-        }
+        RepositoryUrl::MySQL(url) => create_mysql_repository(url, blob_storage_url).await,
+        RepositoryUrl::Lsc(url) => create_lsc_repository(url).await,
     }
 }
 
@@ -45,11 +50,20 @@ async fn create_local_repository(
     let directory = directory.as_ref();
 
     check_directory_does_not_exist_or_is_empty(directory)?;
+
+    info!("Creating repository root at {}", directory.display());
+
     fs::create_dir_all(directory).context("could not create repository directory")?;
 
     let directory = make_path_absolute(directory);
     let db_path = directory.join("repo.db3");
+
+    info!("SQLite database lives at {}", db_path.display());
+
     let repo_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+
+    info!("Creating SQLite database at {}", &repo_uri);
+
     create_database(&repo_uri).await?;
 
     let default_blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
@@ -57,27 +71,52 @@ async fn create_local_repository(
         .as_ref()
         .unwrap_or(default_blob_storage_url);
 
-    // TODO: Implement a blob storage backend for the local filesystem.
-
-    if let BlobStorageUrl::Local(blobs_dir) = &blob_storage_url {
-        fs::create_dir_all(blobs_dir).context("could not create blobs directory")?;
-    }
-
-    let pool = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
-
+    let pool = Arc::new(SqlConnectionPool::new(repo_uri.clone()).await?);
     let mut sql_connection = pool.acquire().await?;
 
-    init_repo_database(&mut sql_connection, &repo_uri, blob_storage_url).await?;
-
+    init_repo_database(&mut sql_connection, repo_uri.as_str(), blob_storage_url).await?;
     push_init_repo_data(pool, Databases::Sqlite).await?;
 
     Ok(())
 }
 
+async fn create_mysql_repository(
+    url: &Url,
+    blob_storage_url: &Option<BlobStorageUrl>,
+) -> Result<()> {
+    trace_scope!();
+
+    let blob_storage_url = blob_storage_url.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "refusing to create a MySQL repository as no blob storage URL was specified"
+        )
+    })?;
+
+    create_database(url.as_str()).await?;
+
+    let pool = Arc::new(SqlConnectionPool::new(url.to_string()).await?);
+    let mut sql_connection = pool.acquire().await?;
+
+    init_repo_database(&mut sql_connection, url.as_str(), blob_storage_url).await?;
+    push_init_repo_data(pool.clone(), Databases::Mysql).await?;
+
+    Ok(())
+}
+
+async fn create_lsc_repository(url: &Url) -> Result<()> {
+    trace_scope!();
+
+    let path = url.path().trim_start_matches('/');
+    let host = url.host().unwrap();
+    let port = url.port().unwrap_or(80);
+
+    init_http_repository_command(&host.to_string(), port, path).await
+}
+
 async fn init_repo_database(
     sql_connection: &mut sqlx::AnyConnection,
     self_uri: &str,
-    blob_storage: &BlobStorageUrl,
+    blob_storage_url: &BlobStorageUrl,
 ) -> Result<()> {
     init_config_database(sql_connection).await?;
     init_commit_database(sql_connection).await?;
@@ -85,7 +124,7 @@ async fn init_repo_database(
     create_branches_table(sql_connection).await?;
     init_workspace_database(sql_connection).await?;
     init_lock_database(sql_connection).await?;
-    insert_config(sql_connection, self_uri, blob_storage).await?;
+    insert_config(sql_connection, self_uri, blob_storage_url).await?;
 
     Ok(())
 }
@@ -118,35 +157,6 @@ async fn push_init_repo_data(pool: Arc<SqlConnectionPool>, database_kind: Databa
     Ok(())
 }
 
-async fn init_mysql_repo_db(
-    blob_storage: &BlobStorageUrl,
-    db_uri: &str,
-) -> Result<Arc<SqlConnectionPool>> {
-    match blob_storage {
-        BlobStorageUrl::Local(blob_dir) => {
-            fs::create_dir_all(blob_dir).context(format!(
-                "failed to create blobs dir: {}",
-                blob_dir.display()
-            ))?;
-        }
-        BlobStorageUrl::AwsS3(s3uri) => {
-            validate_connection_to_bucket(s3uri)
-                .await
-                .context(format!("failed to connect to AWS S3 bucket: {}", s3uri))?;
-        }
-    }
-
-    create_database(db_uri).await?;
-
-    let pool = Arc::new(SqlConnectionPool::new(db_uri).await?);
-    let mut sql_connection = pool.acquire().await?;
-
-    init_repo_database(&mut sql_connection, db_uri, blob_storage).await?;
-    push_init_repo_data(pool.clone(), Databases::Mysql).await?;
-
-    Ok(pool)
-}
-
 async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Result<()> {
     trace_scope!();
     let request = ServerRequest::InitRepo(InitRepositoryRequest {
@@ -156,32 +166,5 @@ async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Resu
     let client = reqwest::Client::new();
     let resp = execute_request(&client, &http_url, &request).await?;
     println!("{}", resp);
-    Ok(())
-}
-
-pub async fn create_remote_repository_command(repo: &str, blob: Option<&str>) -> Result<()> {
-    trace_scope!();
-    let repo_uri = Url::parse(repo).unwrap();
-    let mut uri_path = String::from(repo_uri.path());
-    let path = uri_path.split_off(1); //remove leading /
-    match repo_uri.scheme() {
-        "mysql" => {
-            if let Some(blob_uri) = blob {
-                let blob_spec = blob_uri.parse()?;
-                let _pool = init_mysql_repo_db(&blob_spec, repo).await?;
-            } else {
-                anyhow::bail!("missing blob storage spec");
-            }
-        }
-        "lsc" => {
-            let host = repo_uri.host().unwrap();
-            let port = repo_uri.port().unwrap_or(80);
-            return init_http_repository_command(&host.to_string(), port, &path).await;
-        }
-        unknown => {
-            anyhow::bail!("unknown repository scheme: {}", unknown);
-        }
-    }
-
     Ok(())
 }

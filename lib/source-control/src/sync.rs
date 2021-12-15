@@ -97,7 +97,6 @@ pub async fn sync_file(
         }
         connection
             .blob_storage()
-            .await?
             .download_blob(&local_path, hash_to_sync)
             .await
             .context(format!(
@@ -123,7 +122,6 @@ pub async fn sync_file(
 
     connection
         .blob_storage()
-        .await?
         .download_blob(&local_path, hash_to_sync)
         .await
         .context(format!(

@@ -113,7 +113,7 @@ async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>> 
 
     let db_server_uri = get_sql_uri();
     let repo_uri = format!("{}/{}", db_server_uri, repo_name);
-    let p = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+    let p = Arc::new(SqlConnectionPool::new(repo_uri).await?);
     POOLS
         .write()
         .unwrap()

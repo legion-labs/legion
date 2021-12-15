@@ -81,7 +81,6 @@ pub async fn revert_file(
 
         repo_connection
             .blob_storage()
-            .await?
             .download_blob(&abs_path, &file_node.hash)
             .await?;
         make_file_read_only(&abs_path, true)?;

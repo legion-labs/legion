@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use crate::{BlobStorageUrl, Branch, Commit, Lock, Tree, Workspace};
 
 #[async_trait]
-pub trait RepositoryQuery {
+pub trait RepositoryQuery: Send + Sync {
     async fn insert_workspace(&self, spec: &Workspace) -> Result<()>;
     async fn read_branch(&self, name: &str) -> Result<Branch>;
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;

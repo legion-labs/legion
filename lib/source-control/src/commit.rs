@@ -99,7 +99,6 @@ async fn upload_localy_edited_blobs(
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
             repo_connection
                 .blob_storage()
-                .await?
                 .write_blob(&hash, &local_file_contents)
                 .await?;
             res.push(HashedChange {

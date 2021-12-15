@@ -133,7 +133,6 @@ async fn change_file_to(
 
         repo_connection
             .blob_storage()
-            .await?
             .download_blob(&local_path, hash_to_sync)
             .await
             .context(format!(
@@ -153,7 +152,6 @@ async fn change_file_to(
     }
     repo_connection
         .blob_storage()
-        .await?
         .download_blob(&local_path, hash_to_sync)
         .await
         .context(format!(
