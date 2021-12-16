@@ -3,10 +3,26 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
-use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use lgn_transform::components::Transform;
+use lgn_graphics_api::{
+    ApiDef, BlendState, BufferView, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
+    CompareOp, DepthState, DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef,
+    DescriptorHeap, DescriptorHeapDef, DescriptorRef, DescriptorSetLayoutDef, DeviceContext, Fence,
+    FenceStatus, Format, GfxApi, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
+    PrimitiveTopology, PushConstantDef, Queue, QueueType, RasterizerState, ResourceState,
+    ResourceUsage, RootSignature, RootSignatureDef, SampleCount, Semaphore, ShaderPackage,
+    ShaderStageDef, ShaderStageFlags, StencilOp, StoreOp, VertexAttributeRate, VertexLayout,
+    VertexLayoutAttribute, VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
+use lgn_graphics_cgen_runtime::CGenRuntime;
+
+use lgn_math::Mat4;
+use lgn_math::Vec3;
+use lgn_pso_compiler::CompileParams;
+use lgn_pso_compiler::EntryPoint;
+use lgn_pso_compiler::FileSystem;
+use lgn_pso_compiler::HlslCompiler;
+use lgn_pso_compiler::ShaderSource;
+use lgn_transform::prelude::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
@@ -28,16 +44,24 @@ pub struct Renderer {
     sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
+    descriptor_heap: DescriptorHeap,
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
+    cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
     bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
+    shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
+
+// #[derive(Clone)]
+// pub struct Renderer {
+//     inner: Arc<RendererInner>,
+// }
 
 unsafe impl Send for Renderer {}
 
@@ -49,12 +73,27 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
+        let filesystem = FileSystem::new("d:\\")?;
+        filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
+        let shader_compiler = HlslCompiler::new(filesystem).unwrap();
+        let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/cgen/blob/cgen_def.blob"));
+        let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
         ));
+
+        let descriptor_heap_def = DescriptorHeapDef {
+            max_descriptor_sets: 32 * 4096,
+            sampler_count: 32 * 128,
+            constant_buffer_count: 32 * 1024,
+            buffer_count: 32 * 1024,
+            rw_buffer_count: 32 * 1024,
+            texture_count: 32 * 1024,
+            rw_texture_count: 32 * 1024,
+        };
 
         Ok(Self {
             frame_idx: 0,
@@ -73,12 +112,17 @@ impl Renderer {
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
+            descriptor_heap: device_context
+                .create_descriptor_heap(&descriptor_heap_def)
+                .unwrap(),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
+            shader_compiler,
             api,
         })
     }
@@ -100,6 +144,10 @@ impl Renderer {
             QueueType::Graphics => self.graphics_queue.read(),
             _ => unreachable!(),
         }
+    }
+
+    pub fn shader_compiler(&self) -> HlslCompiler {
+        self.shader_compiler.clone()
     }
 
     // TMP: change that.
@@ -162,7 +210,11 @@ impl Renderer {
         heap_def: &DescriptorHeapDef,
     ) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.write();
-        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
+        pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
+    }
+
+    pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
+        &self.cgen_runtime
     }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
@@ -272,14 +324,14 @@ impl TmpRenderPass {
         //
         // Shaders
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
 
-        let shader_source =
-            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
+        let shader_compiler = renderer.shader_compiler();
 
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
+                shader_source: ShaderSource::Path(
+                    "crate://renderer/shaders/shader.hlsl".to_owned(),
+                ),
                 glob_defines: Vec::new(),
                 entry_points: vec![
                     EntryPoint {
@@ -363,7 +415,6 @@ impl TmpRenderPass {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
@@ -470,13 +521,6 @@ impl TmpRenderPass {
         static_meshes: &[(&Transform, &StaticMesh)],
         camera_transform: &Transform,
     ) {
-        {
-            let bump = render_context.acquire_bump_allocator();
-            let x = bump.alloc(3);
-            *x += 1;
-            render_context.release_bump_allocator(bump);
-        }
-
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer
@@ -502,7 +546,6 @@ impl TmpRenderPass {
             .unwrap();
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
-
         let descriptor_set_layout = &self
             .pipeline
             .root_signature()
@@ -559,24 +602,42 @@ impl TmpRenderPass {
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
+            /* WIP
+            {
+                let bump_allocator = render_context.bump_allocator();
+
+                let descriptor_heap_partition = render_context
+                    .descriptor_pool()
+                    .descriptor_heap_partition_mut();
+
+              let mut ds_data = FakeDescriptorSetData::new(
+                    render_context.cgen_runtime(),
+                    bump_allocator.bumpalo(),
+                    descriptor_heap_partition,
+                );
+
+
+                ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
+
+                let descriptor_handle = ds_data.build(render_context.renderer().device_context());
+            }
+            */
+
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "const_data",
-                    0,
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
 
+            let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "static_buffer",
-                    0,
-                    &[DescriptorRef::BufferView(
-                        &render_context.renderer().static_buffer_ro_view(),
-                    )],
+                    &[DescriptorRef::BufferView(&static_buffer_ro_view)],
                 )
                 .unwrap();
 
@@ -585,6 +646,7 @@ impl TmpRenderPass {
 
             cmd_buffer
                 .cmd_bind_descriptor_set_handle(
+                    PipelineType::Graphics,
                     &self.root_signature,
                     descriptor_set_layout.definition().frequency,
                     descriptor_set_handle,

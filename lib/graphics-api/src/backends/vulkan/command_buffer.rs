@@ -1,13 +1,13 @@
 #![allow(clippy::too_many_lines)]
 use std::{mem, ptr};
 
-use super::{internal, VulkanRootSignature};
+use super::internal;
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContext, GfxResult,
-    IndexBufferBinding, Pipeline, ResourceState, ResourceUsage, RootSignature, Texture,
-    TextureBarrier, VertexBufferBinding,
+    IndexBufferBinding, Pipeline, PipelineType, ResourceState, ResourceUsage, RootSignature,
+    Texture, TextureBarrier, VertexBufferBinding,
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
@@ -310,22 +310,19 @@ impl CommandBuffer {
 
     pub(crate) fn cmd_bind_descriptor_set_handle_platform(
         &self,
+        pipeline_type: PipelineType,
         root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) {
-        let bind_point = root_signature.pipeline_type();
-
         unsafe {
             self.inner
                 .device_context
                 .vk_device()
                 .cmd_bind_descriptor_sets(
                     self.inner.platform_command_buffer.vk_command_buffer,
-                    super::internal::pipeline_type_pipeline_bind_point(bind_point),
-                    root_signature
-                        .platform_root_signature()
-                        .vk_pipeline_layout(),
+                    super::internal::pipeline_type_pipeline_bind_point(pipeline_type),
+                    root_signature.vk_pipeline_layout(),
                     set_index,
                     &[descriptor_set_handle.vk_type],
                     &[],
@@ -335,7 +332,7 @@ impl CommandBuffer {
 
     pub(crate) fn cmd_push_constants_platform<T: Sized>(
         &self,
-        root_signature: &VulkanRootSignature,
+        root_signature: &RootSignature,
         constants: &T,
     ) {
         let constants_size = mem::size_of::<T>();

@@ -15,6 +15,10 @@ impl BumpAllocator {
         }
     }
 
+    pub fn bumpalo(&self) -> &bumpalo::Bump {
+        &self.bump_allocator
+    }
+
     #[inline(always)]
     #[allow(clippy::mut_from_ref)]
     pub fn alloc<T>(&self, val: T) -> &mut T {

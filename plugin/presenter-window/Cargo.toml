@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "lgn-graphics-api", version = "0.1.0" }
+lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
@@ -18,4 +18,4 @@ raw-window-handle = "0.4"
 
 [features]
 default = []
-vulkan = ["graphics-api/vulkan", "lgn-presenter/vulkan"]
+vulkan = ["lgn-graphics-api/vulkan", "lgn-presenter/vulkan"]

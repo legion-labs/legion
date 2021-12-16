@@ -114,20 +114,22 @@ pub struct OffscreenHelper {
 
 impl OffscreenHelper {
     pub fn new(
+        shader_compiler: &HlslCompiler,
         device_context: &DeviceContext,
         graphics_queue: &Queue,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
+        shader_compiler
+            .filesystem()
+            .add_mount_point("presenter", env!("CARGO_MANIFEST_DIR"))?;
+
         //
         // Immutable resources
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
-
         let shader_build_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Code(shader_source),
+            shader_source: ShaderSource::Path(
+                "crate://presenter/data/display_mapper.hlsl".to_string(),
+            ),
             glob_defines: Vec::new(),
             entry_points: vec![
                 EntryPoint {
@@ -202,7 +204,6 @@ impl OffscreenHelper {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: None,
         };
@@ -287,9 +288,9 @@ impl OffscreenHelper {
         }
     }
 
-    pub fn present<'renderer, F: FnOnce(&[u8], usize)>(
+    pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
@@ -344,18 +345,16 @@ impl OffscreenHelper {
             .descriptor_set_layouts[0];
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "hdr_image",
-                0,
                 &[DescriptorRef::TextureView(
                     render_surface.shader_resource_view(),
                 )],
             )
             .unwrap();
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "hdr_sampler",
-                0,
                 &[DescriptorRef::Sampler(&self.bilinear_sampler)],
             )
             .unwrap();
@@ -365,6 +364,7 @@ impl OffscreenHelper {
 
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
+                PipelineType::Graphics,
                 &self.root_signature,
                 descriptor_set_layout.definition().frequency,
                 descriptor_set_handle,

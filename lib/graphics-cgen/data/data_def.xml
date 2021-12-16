@@ -1,0 +1,167 @@
+------------------------------------------------------------------------------------------------------------------------------
+Version 0
+------------------------------------------------------------------------------------------------------------------------------
+
+<Struct Name="LayoutA" >
+    <Field Name="a" Layout="float" />
+    <Field Name="b" Layout="float4" />
+</Struct>
+
+<Struct Name="LayoutB" >
+    <Field Name="a" Layout="LayoutA" />
+    <Field Name="b" Layout="float2" />
+</Struct>
+
+<DescriptorSet Name="A" Frequency="0">
+    <Descriptor Name="a" Type="ConstantBuffer" Layout="LayoutA" />
+    <Descriptor Name="b" Type="StructuredBuffer" Layout="LayoutB" />
+    <Descriptor Name="c" Type="Texture2D" Layout="R8G8B8A8" />
+    <Descriptor Name="d" Type="Texture2D" Layout="R8G8B8A8" />
+</DescriptorSet>
+
+<PipelineLayout Name="toto">
+
+    <DescriptorSets>
+        <DescriptorSetRef Name="A" />
+
+        <DescriptorSet Name="B" Frequency="1">
+            <Descriptor Name="a" Type="ConstantBuffer" Layout="LayoutA" />
+            <Descriptor Name="b" Type="StructuredBuffer" Layout="LayoutB" />
+            <Descriptor Name="c" Type="Texture2D" Layout="R8G8B8A8" />
+            <Descriptor Name="d" Type="StructuredBuffer" Layout="LayoutB" />
+        </DescriptorSet>
+
+    </DescriptorSets>
+
+    <PushConstants>
+        <PushConstant Name="a" Layout="float" />
+    </PushConstants>
+
+</PipelineLayout>
+
+------------------------------------------------------------------------------------------------------------------------------
+Version 1
+------------------------------------------------------------------------------------------------------------------------------
+
+<Struct Name="LayoutA" >
+    <Field Name="a" Layout="float" />
+    <Field Name="b" Layout="float4" />
+</Struct>
+
+<Struct Name="LayoutB" >
+    <Field Name="a" Layout="LayoutA" />
+    <Field Name="b" Layout="float2" />
+</Struct>
+
+<DescriptorSet Name="A" Frequency="0">
+    <ConstantBuffer Name="a" Layout="LayoutA" />
+    <StructuredBuffer Name="b" Layout="LayoutB" />
+    <Texture2D Name="c" Format="R8G8B8A8" />
+    <Texture2D Name="d" Format="R8G8B8A8" />
+</DescriptorSet>
+
+<PipelineLayout Name="toto">
+
+    <DescriptorSets>
+
+        <DescriptorSet Name="A" />
+
+        <DescriptorSet Name="B" Frequency="1">
+            <ConstantBuffer Name="a" Layout="LayoutA" />
+            <StructuredBuffer Name="b" Layout="LayoutB" />
+            <Texture2D Name="c" Format="R8G8B8A8" />
+            <StructuredBuffer Name="d" Layout="LayoutB" />
+        </DescriptorSet>
+
+    </DescriptorSets>
+
+    <PushConstants>
+        <PushConstant Name="a" Layout="float" />
+    </PushConstants>
+
+</PipelineLayout>
+
+------------------------------------------------------------------------------------------------------------------------------
+Version 2
+------------------------------------------------------------------------------------------------------------------------------
+
+<StructDef Name="LayoutA" >
+    <Float Name="a"  />
+    <Float4 Name="b" />
+</StructDef>
+
+<StructDef Name="LayoutB" >
+    <Struct Name="a" Def="LayoutA" />
+    <Float2 Name="b" />
+</Struct>
+
+<DescriptorSet Name="A" Frequency="0">
+    <ConstantBuffer Name="a" Layout="LayoutA" />
+    <StructuredBuffer Name="b" Layout="LayoutB" />
+    <Texture2D Name="c" Format="R8G8B8A8" />
+    <Texture2D Name="d" Format="R8G8B8A8" />
+</DescriptorSet>
+
+<PipelineLayout Name="toto">
+
+    <DescriptorSets>
+
+        <DescriptorSet Name="A" />
+
+        <DescriptorSet Name="B" Frequency="1">
+            <ConstantBuffer Name="a" Layout="LayoutA" />
+            <StructuredBuffer Name="b" Layout="LayoutB" />
+            <Texture2D Name="c" Format="R8G8B8A8" />
+            <StructuredBuffer Name="d" Layout="LayoutB" />
+        </DescriptorSet>
+
+    </DescriptorSets>
+
+    <PushConstants>
+        <PushConstant Name="a" Layout="float" />
+    </PushConstants>
+
+</PipelineLayout>
+
+------------------------------------------------------------------------------------------------------------------------------
+Version 3
+------------------------------------------------------------------------------------------------------------------------------
+
+<StructDef Name="LayoutA" >
+    <Float Name="a" />
+    <Float4 Name="b" />
+</StructDef>
+
+<StructDef Name="LayoutB" >
+    <Struct Name="a" Def="LayoutA" />
+    <Float2 Name="b" />
+</Struct>
+
+<DescriptorSet Name="A" Frequency="0">
+    <ConstantBuffer Name="a" Layout="LayoutA" />
+    <StructuredBuffer Name="b" Layout="LayoutB" />
+    <Texture2D Name="c" Format="R8G8B8A8" />
+    <Texture2D Name="d" Format="R8G8B8A8" />
+</DescriptorSet>
+
+<PipelineLayout Name="toto">
+
+    <DescriptorSets>
+
+        <DescriptorSet Name="A" />
+
+        <DescriptorSet Name="B" Frequency="1">
+            <ConstantBuffer Name="a" Layout="LayoutA" />
+            <StructuredBuffer Name="b" Layout="LayoutB" />
+            <Texture2D Name="c" Format="R8G8B8A8" />
+            <StructuredBuffer Name="d" Layout="LayoutB" />
+        </DescriptorSet>
+
+    </DescriptorSets>
+
+    <PushConstants>
+        <PushConstant Name="a" Layout="float" />
+    </PushConstants>
+
+</PipelineLayout>
+

@@ -1,6 +1,7 @@
-use super::{deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, GPUViewType, ResourceUsage};
-#[cfg(any(feature = "vulkan"))]
-use super::{Descriptor, ShaderResourceType};
+use super::{
+    deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, Descriptor, GPUViewType, ResourceUsage,
+    ShaderResourceType,
+};
 use crate::GfxResult;
 
 #[derive(Clone, Copy, Debug)]
@@ -11,9 +12,6 @@ pub struct BufferViewDef {
     pub element_size: u64,
     pub buffer_view_flags: BufferViewFlags,
 }
-
-// const buffer : offset, size
-// structbuffer
 
 impl BufferViewDef {
     pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {

@@ -1,0 +1,10 @@
+<CGen xmlns="cgen">
+
+    <Include Path="..\..\inc2.xml" />
+
+    <StructDef Name="LayoutA" >
+        <Member Name="a" Type="float"/>
+        <Member Name="b" Type="float4"/>
+    </StructDef>
+
+</CGen>

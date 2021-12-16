@@ -159,11 +159,7 @@ impl VulkanPipeline {
             .depth_stencil_state(&depth_state)
             .color_blend_state(blend_state.blend_state())
             .dynamic_state(&dynamic_states_create_info)
-            .layout(
-                vk_root_signature
-                    .platform_root_signature()
-                    .vk_pipeline_layout(),
-            )
+            .layout(vk_root_signature.vk_pipeline_layout())
             .render_pass(renderpass.vk_renderpass())
             .subpass(0)
             .base_pipeline_handle(vk::Pipeline::null())
@@ -223,11 +219,7 @@ impl VulkanPipeline {
 
         let pipeline_create_info = vk::ComputePipelineCreateInfo::builder()
             .stage(*stage)
-            .layout(
-                vk_root_signature
-                    .platform_root_signature()
-                    .vk_pipeline_layout(),
-            )
+            .layout(vk_root_signature.vk_pipeline_layout())
             .base_pipeline_handle(vk::Pipeline::null())
             .base_pipeline_index(-1)
             .build();

@@ -1,5 +1,5 @@
 [package]
-name = "graphics-sandbox"
+name = "lgn-graphics-sandbox"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -7,21 +7,21 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
 lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-input = { path = "../../plugin/input", version = "0.1.0" }
-lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
-lgn-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
-lgn-presenter-snapshot = { path = "../../plugin/presenter-snapshot", version = "0.1.0" }
-lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
-lgn-window = { path = "../../plugin/window", version = "0.1.0" }
-lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
-lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
+lgn-presenter-snapshot = { path = "../../plugin/presenter-snapshot", version = "0.1.0" }
+lgn-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
+lgn-window = { path = "../../plugin/window", version = "0.1.0" }
+lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 
 clap = "2.33"
 log = "0.4"

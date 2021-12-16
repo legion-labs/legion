@@ -1154,6 +1154,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "colored"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "com"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2838,31 +2849,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics-sandbox"
-version = "0.1.0"
-dependencies = [
- "clap",
- "lgn-app",
- "lgn-asset-registry",
- "lgn-core",
- "lgn-ecs",
- "lgn-graphics-api",
- "lgn-input",
- "lgn-logger",
- "lgn-math",
- "lgn-presenter",
- "lgn-presenter-snapshot",
- "lgn-presenter-window",
- "lgn-renderer",
- "lgn-test-utils",
- "lgn-transform",
- "lgn-window",
- "lgn-winit",
- "log",
- "png 0.17.2",
-]
-
-[[package]]
 name = "group"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3549,6 +3535,7 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "lgn-graphics-cgen",
  "named-lock",
  "thiserror",
  "tonic-build",
@@ -3995,6 +3982,7 @@ dependencies = [
  "ash",
  "ash-window",
  "bitflags",
+ "bumpalo",
  "crossbeam-channel 0.5.1",
  "fnv",
  "lgn-utils",
@@ -4002,6 +3990,36 @@ dependencies = [
  "raw-window-handle 0.4.2",
  "serde",
  "vk-mem",
+]
+
+[[package]]
+name = "lgn-graphics-cgen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "clap",
+ "fxhash",
+ "heck",
+ "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
+ "log",
+ "proc-macro2",
+ "relative-path",
+ "simple_logger",
+ "strum 0.21.0",
+ "syn",
+]
+
+[[package]]
+name = "lgn-graphics-cgen-runtime"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bumpalo",
+ "glam",
+ "lgn-graphics-api",
+ "serde",
 ]
 
 [[package]]
@@ -4028,6 +4046,31 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-graphics-sandbox"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-input",
+ "lgn-logger",
+ "lgn-math",
+ "lgn-presenter",
+ "lgn-presenter-snapshot",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-test-utils",
+ "lgn-transform",
+ "lgn-window",
+ "lgn-winit",
+ "log",
+ "png 0.17.2",
 ]
 
 [[package]]
@@ -4186,6 +4229,8 @@ dependencies = [
  "anyhow",
  "hassle-rs",
  "lgn-graphics-api",
+ "normpath",
+ "relative-path",
  "spirv-reflect",
  "spirv-tools",
 ]
@@ -4199,8 +4244,10 @@ dependencies = [
  "egui",
  "epaint",
  "lgn-app",
+ "lgn-build-utils",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
@@ -5109,6 +5156,15 @@ dependencies = [
  "memchr",
  "minimal-lexical",
  "version_check",
+]
+
+[[package]]
+name = "normpath"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "640c20e9df4a2d4a5adad5b47e17d76dac3e824346b181931c3ec9f7a85687b1"
+dependencies = [
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -6239,6 +6295,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "relative-path"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73d4caf086b102ab49d0525b721594a555ab55c6556086bbe52a430ad26c3bd7"
+
+[[package]]
 name = "remove_dir_all"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6943,6 +7005,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple_logger"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45b60258a35dc3cb8a16890b8fd6723349bfa458d7960e25e633f1b1c19d7b5e"
+dependencies = [
+ "atty",
+ "colored",
+ "log",
+ "time 0.3.5",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "simplelog"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7269,6 +7344,9 @@ name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+dependencies = [
+ "strum_macros 0.21.1",
+]
 
 [[package]]
 name = "strum"
@@ -7781,8 +7859,16 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
 dependencies = [
+ "itoa",
  "libc",
+ "time-macros",
 ]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tinycom"
