@@ -113,6 +113,9 @@ impl Queue {
         bind_pages: &[PagedBufferAllocation],
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
         #[cfg(any(feature = "vulkan"))]
         self.inner.platform_queue.commmit_sparse_bindings(
             prev_frame_semaphore,
