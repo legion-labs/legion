@@ -367,7 +367,7 @@ fn parse_type_def(path: &syn::Path) -> Result<(String, Option<String>)> {
             if e.args.len() != 1 {
                 return Err(anyhow!("Invalid template argument"));
             }
-            let tpl_arg = &e.args[0];            
+            let tpl_arg = &e.args[0];
             if let syn::GenericArgument::Type(syn::Type::Path(tpl_path)) = tpl_arg {
                 let path = &tpl_path.path;
                 if path.segments.len() != 1 {
