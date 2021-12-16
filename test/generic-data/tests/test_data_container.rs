@@ -55,7 +55,7 @@
 
 use std::io::Cursor;
 
-use generic_data_offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
+use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
 use lgn_data_reflection::collector::{collect_properties, PropertyCollector};
 use lgn_data_reflection::json_utils::{get_property_as_json_string, set_property_from_json_string};
 use lgn_data_reflection::{TypeDefinition, TypeReflection};

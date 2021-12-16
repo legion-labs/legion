@@ -2603,10 +2603,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic_data_offline"
+name = "generic_data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "erased-serde",
  "lazy_static",
  "lgn-data-codegen",
@@ -2617,26 +2618,6 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
- "memoffset 0.6.5",
- "serde",
- "serde_json",
- "typetag",
-]
-
-[[package]]
-name = "generic_data_runtime"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "erased-serde",
- "lazy_static",
- "lgn-data-codegen",
- "lgn-data-reflection",
- "lgn-data-runtime",
- "lgn-ecs",
- "lgn-graphics-data",
- "lgn-math",
  "memoffset 0.6.5",
  "serde",
  "serde_json",
@@ -3542,7 +3523,7 @@ name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.5.1",
- "generic_data_runtime",
+ "generic_data",
  "lgn-app",
  "lgn-content-store",
  "lgn-data-runtime",
@@ -3604,8 +3585,7 @@ name = "lgn-compiler-debugcube"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "generic_data_offline",
- "generic_data_runtime",
+ "generic_data",
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -3617,8 +3597,7 @@ name = "lgn-compiler-entitydc"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "generic_data_offline",
- "generic_data_runtime",
+ "generic_data",
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -3630,8 +3609,7 @@ name = "lgn-compiler-instancedc"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "generic_data_offline",
- "generic_data_runtime",
+ "generic_data",
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -3760,8 +3738,7 @@ name = "lgn-compiler-testentity"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "generic_data_offline",
- "generic_data_runtime",
+ "generic_data",
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -3856,6 +3833,7 @@ dependencies = [
 name = "lgn-data-codegen"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "lgn-utils",
  "proc-macro2",
  "quote",
@@ -3957,7 +3935,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "generic_data_offline",
+ "generic_data",
  "lgn-data-offline",
  "lgn-data-reflection",
  "lgn-data-runtime",
@@ -4262,7 +4240,7 @@ dependencies = [
 name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
- "generic_data_offline",
+ "generic_data",
  "lgn-app",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -6561,8 +6539,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "clap",
- "generic_data_offline",
- "generic_data_runtime",
+ "generic_data",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",

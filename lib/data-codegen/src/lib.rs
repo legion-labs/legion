@@ -80,69 +80,142 @@ pub enum GenerationType {
     RuntimeFormat,
 }
 
+/// Directory Code Generator (called from Build Scripts)
+/// # Errors
+pub fn generate_for_directory(directory: &std::path::Path) -> anyhow::Result<()> {
+    let codegen_dir = directory.parent().unwrap().join("codegen");
+    std::fs::create_dir_all(&codegen_dir)?;
+
+    [GenerationType::OfflineFormat, GenerationType::RuntimeFormat]
+        .into_iter()
+        .try_for_each(|gen_type| -> anyhow::Result<()> {
+            // Create a mod.rs per gentype
+            let mod_path = if gen_type == GenerationType::OfflineFormat {
+                codegen_dir.join("offline")
+            } else {
+                codegen_dir.join("runtime")
+            };
+            std::fs::create_dir_all(&mod_path)?;
+            let mut mod_file = std::fs::File::create(&mod_path.join("mod.rs"))?;
+
+            let mut processed_types = Vec::<DataContainerMetaInfo>::new();
+
+            // Process all the .rs inside the directory
+            for entry in std::fs::read_dir(directory)? {
+                let path = entry?.path();
+                let filename = path.file_name().unwrap().to_ascii_lowercase();
+
+                if let Some(ext) = path.extension() {
+                    if ext.to_ascii_lowercase() == "rs" && filename != "build.rs" {
+                        let types = generate_data_container_code(&path, &mod_path, gen_type)?;
+                        processed_types.extend(types);
+
+                        writeln!(
+                            mod_file,
+                            r#"#[path = "../{}/{}"]"#,
+                            if gen_type == GenerationType::OfflineFormat {
+                                "offline"
+                            } else {
+                                "runtime"
+                            },
+                            filename.to_str().unwrap()
+                        )?;
+
+                        let sub_mod_name = filename.to_str().unwrap().strip_suffix(".rs").unwrap();
+                        writeln!(mod_file, "mod {};", sub_mod_name)?;
+                        writeln!(mod_file, "pub use {}::*;\n", sub_mod_name)?;
+                    }
+                }
+            }
+
+            // Registration code
+            let out_token = if gen_type == GenerationType::OfflineFormat {
+                resource_codegen::generate_registration_code(&processed_types)
+            } else {
+                runtime_codegen::generate_registration_code(&processed_types)
+            };
+            mod_file.write_all(out_token.to_string().as_bytes())?;
+
+            mod_file.flush()?;
+            Command::new("rustfmt")
+                .args(&[mod_path.join("mod.rs").as_os_str()])
+                .status()?;
+
+            Ok(())
+        })?;
+
+    Ok(())
+}
+
 /// Default Code Generator (called from Build Scripts)
 /// # Errors
 pub fn generate_data_container_code(
     source_path: &std::path::Path,
+    out_dir: &std::path::Path,
     gen_type: GenerationType,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<Vec<DataContainerMetaInfo>> {
     let src = std::fs::read_to_string(source_path).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
 
-    let gen_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
-        .join(source_path.file_name().unwrap());
+    let source_file_name = source_path.file_name().unwrap().to_ascii_lowercase();
+
+    let gen_path = out_dir.join(&source_file_name);
 
     let mut gen_file = std::fs::File::create(&gen_path)?;
 
-    for item in &ast.items {
-        if let syn::Item::Use(uses) = &item {
-            gen_file.write_all(uses.to_token_stream().to_string().as_bytes())?;
-        }
-    }
-    writeln!(gen_file)?;
+    writeln!(gen_file, "#![allow(dead_code)]")?;
+    writeln!(gen_file, "#![allow(clippy::needless_update)]\n")?;
 
-    let mut processed_structs: Vec<DataContainerMetaInfo> = Vec::new();
+    let uses_token = ast
+        .items
+        .iter()
+        .filter_map(|item| match &item {
+            syn::Item::Use(uses) => Some(uses.to_token_stream()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
-    let mut add_uses = true;
-    for item in &ast.items {
-        if let syn::Item::Struct(item_struct) = &item {
-            if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
-                let out_token = reflection_codegen::generate_reflection(&meta_info, gen_type);
-                gen_file.write_all(out_token.to_string().as_bytes())?;
+    let structs: Vec<DataContainerMetaInfo> = ast
+        .items
+        .iter()
+        .filter_map(|item| match &item {
+            syn::Item::Struct(item_struct) => reflection::get_data_container_info(item_struct).ok(),
+            _ => None,
+        })
+        .collect();
 
-                if meta_info.is_resource {
-                    gen_file.write_all(
-                        if gen_type == GenerationType::OfflineFormat {
-                            resource_codegen::generate(&meta_info, add_uses)
-                        } else {
-                            runtime_codegen::generate(&meta_info, add_uses)
-                        }
+    // Add uses inside the mod
+    uses_token
+        .iter()
+        .try_for_each(|use_token| gen_file.write_all(use_token.to_string().as_bytes()))?;
+
+    structs
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, meta_info)| {
+            let out_token = reflection_codegen::generate_reflection(meta_info, gen_type);
+            gen_file.write_all(out_token.to_string().as_bytes())?;
+
+            // generate component traits
+            if meta_info.is_component {
+                gen_file.write_all(
+                    component_codegen::generate_component(meta_info, gen_type)
                         .to_string()
                         .as_bytes(),
-                    )?;
-                    processed_structs.push(meta_info);
-                } else if meta_info.is_component {
-                    gen_file.write_all(
-                        component_codegen::generate_component(&meta_info, gen_type)
-                            .to_string()
-                            .as_bytes(),
-                    )?;
-                }
-
-                add_uses = false;
+                )?;
             }
-        }
-    }
 
-    // Generate Loader and Processor Registration code
-    if !processed_structs.is_empty() {
-        let out_token = if gen_type == GenerationType::OfflineFormat {
-            resource_codegen::generate_registration_code(&processed_structs)
-        } else {
-            runtime_codegen::generate_registration_code(&processed_structs)
-        };
-        gen_file.write_all(out_token.to_string().as_bytes())?;
-    }
+            // generate resources traits
+            if meta_info.is_resource {
+                let token_stream = if gen_type == GenerationType::OfflineFormat {
+                    resource_codegen::generate(meta_info, index == 0)
+                } else {
+                    runtime_codegen::generate(meta_info, index == 0)
+                };
+                gen_file.write_all(token_stream.to_string().as_bytes())?;
+            }
+            writeln!(gen_file)
+        })?;
 
     gen_file.flush()?;
 
@@ -150,7 +223,7 @@ pub fn generate_data_container_code(
         .args(&[gen_path.as_os_str()])
         .status()?;
 
-    Ok(())
+    Ok(structs)
 }
 
 fn extract_crate_name(path: &Path) -> syn::Ident {
@@ -179,13 +252,10 @@ pub fn generate_data_compiler_code(
     let src = std::fs::read_to_string(source_path).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
 
-    let package_path = source_path.parent().unwrap();
+    let package_path = source_path.parent().unwrap().parent().unwrap();
 
     // Extract name of the runtime and offline crate from their Cargo.toml files
-    let offline_crate_name = extract_crate_name(package_path);
-    let runtime_crate_name = extract_crate_name(Path::new(
-        &String::from(package_path.to_str().unwrap()).replace("_offline", "_runtime"),
-    ));
+    let crate_name = extract_crate_name(package_path);
 
     for item in &ast.items {
         if let syn::Item::Struct(item_struct) = &item {
@@ -198,11 +268,7 @@ pub fn generate_data_compiler_code(
 
                     let mut gen_file = std::fs::File::create(&gen_path)?;
 
-                    let out_token = compiler_codegen::generate(
-                        &meta_info,
-                        &offline_crate_name,
-                        &runtime_crate_name,
-                    );
+                    let out_token = compiler_codegen::generate(&meta_info, &crate_name);
                     gen_file.write_all(out_token.to_string().as_bytes())?;
                     gen_file.flush()?;
 
@@ -221,31 +287,18 @@ pub fn generate_data_compiler_code(
 ///
 /// # Errors
 /// Returns `Err` if the data is format is not compliant
-#[macro_export]
+/*#[macro_export]
 macro_rules! data_container_gen {
     ( $( $x:expr ),* ) => {
-        let package_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
+        let mut data_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
         $(
-            let mut data_path = package_path.replace("_runtime", "_offline").replace("_compiler", "_offline");
             data_path.push_str($x);
-            if package_path.ends_with("_offline") {
-                lgn_data_codegen::generate_data_container_code(
-                    std::path::Path::new(&data_path),
-                    lgn_data_codegen::GenerationType::OfflineFormat,
-                ).expect("Offline data codegen failed");
-            } else if package_path.ends_with("_runtime") {
-                lgn_data_codegen::generate_data_container_code(
-                    std::path::Path::new(&data_path),
-                    lgn_data_codegen::GenerationType::RuntimeFormat,
-                ).expect("Runtime data codegen failed");
-            } else if package_path.ends_with("_compiler") {
-                lgn_data_codegen::generate_data_compiler_code(std::path::Path::new(&data_path)
-                ).expect("Compiler codegen failed");
-            }
+            lgn_data_codegen::generate_data_container_code(std::path::Path::new(&data_path)
+            ).expect("Offline data codegen failed");
             println!("cargo:rerun-if-changed={}", data_path);
         )*
     };
-}
+}*/
 
 /// Helper function to be used in build.rs files to generate the proper
 /// binding to be included by crates

@@ -78,8 +78,7 @@ fn generate_extract_dependencies(data_container_info: &DataContainerMetaInfo) ->
 #[allow(clippy::too_many_lines)]
 pub fn generate(
     data_container_info: &DataContainerMetaInfo,
-    offline_crate_name: &syn::Ident,
-    runtime_crate_name: &syn::Ident,
+    crate_name: &syn::Ident,
 ) -> TokenStream {
     let type_name: syn::Ident = format_ident!("{}", data_container_info.name);
 
@@ -101,8 +100,8 @@ pub fn generate(
 
         use lgn_data_offline::{ResourcePathId, Transform};
         use lgn_data_runtime::{Resource};
-        type OfflineType = #offline_crate_name::#type_name;
-        type RuntimeType = #runtime_crate_name::#type_name;
+        type OfflineType = #crate_name::offline::#type_name;
+        type RuntimeType = #crate_name::runtime::#type_name;
 
         pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
             name: env!("CARGO_CRATE_NAME"),

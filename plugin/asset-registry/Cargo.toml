@@ -21,7 +21,9 @@ lgn-renderer = { path = "../renderer", version = "0.1.0" }
 
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }
-generic_data_runtime = { path = "../../test/generic_data_runtime", version = "0.1.0" }
+generic_data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "runtime",
+] }
 
 # other
 crossbeam-channel = "0.5.1"

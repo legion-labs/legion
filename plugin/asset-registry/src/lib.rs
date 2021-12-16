@@ -95,7 +95,7 @@ impl Plugin for AssetRegistryPlugin {
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
                 registry = lgn_graphics_runtime::add_loaders(registry);
-                registry = generic_data_runtime::add_loaders(registry);
+                registry = generic_data::runtime::add_loaders(registry);
 
                 if let Some(databuild_settings) = &settings.databuild_settings {
                     registry = registry.add_device_build(
@@ -201,7 +201,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                        ) && !load_ecs_asset::<generic_data_runtime::DebugCube>(
+                        ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,

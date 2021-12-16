@@ -109,14 +109,12 @@ pub fn generate_reflection(
     let fields_descriptors = generate_fields_descriptors(data_container_info, gen_type);
 
     quote! {
-
         #[derive(serde::Serialize, serde::Deserialize)]
         pub struct #type_identifier {
             #(#fields)*
         }
 
         impl #type_identifier {
-            #[allow(dead_code)]
             const SIGNATURE_HASH: u64 = #signature_hash;
             pub fn get_default_instance() -> &'static Self {
                 &#default_instance
