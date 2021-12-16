@@ -154,12 +154,12 @@ dependencies = [
  "chrono",
  "crc",
  "lgn-analytics",
+ "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-transit",
  "log",
  "prost",
- "simple_logger",
  "sqlx",
  "tokio",
  "tonic",
@@ -328,9 +328,9 @@ checksum = "e91831deabf0d6d7ec49552e489aed63b7456a7a3c46cff62adad428110b0af0"
 
 [[package]]
 name = "async-trait"
-version = "0.1.51"
+version = "0.1.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44318e776df68115a881de9a8fd1b9e53368d7a4a5ce4cc48517da3393233a5e"
+checksum = "061a7acccaa286c011ddc30970520b98fa40e00c9d644633fb26b5fc63a265e3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -515,12 +515,12 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
+ "lgn-logger",
  "lgn-online",
  "lgn-streaming-proto",
  "log",
  "serde",
  "serde_json",
- "simple_logger",
  "tokio",
  "tonic",
  "tonic-web",
@@ -829,7 +829,7 @@ dependencies = [
  "cc",
  "cfg-if 1.0.0",
  "constant_time_eq",
- "digest",
+ "digest 0.9.0",
  "rayon",
 ]
 
@@ -844,6 +844,15 @@ name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
+name = "block-buffer"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
 dependencies = [
  "generic-array",
 ]
@@ -1452,6 +1461,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-common"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567569e659735adb39ff2d4c20600f7cd78be5471f8c58ab162bce3c03fdbc5f"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1558,7 +1576,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b9fdf9972b2bd6af2d913799d9ebc165ea4d2e65878e329d9c6b372c4491b61"
 dependencies = [
  "byteorder",
- "digest",
+ "digest 0.9.0",
  "rand_core 0.5.1",
  "subtle",
  "zeroize",
@@ -1586,12 +1604,12 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "757c0ded2af11d8e739c4daea1ac623dd1624b06c844cf3f5a39f1bdbd99bb12"
+checksum = "d0d720b8683f8dd83c65155f0530560cba68cd2bf395f6513a483caee57ff7f4"
 dependencies = [
- "darling_core 0.13.0",
- "darling_macro 0.13.0",
+ "darling_core 0.13.1",
+ "darling_macro 0.13.1",
 ]
 
 [[package]]
@@ -1624,9 +1642,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c34d8efb62d0c2d7f60ece80f75e5c63c1588ba68032740494b0b9a996466e3"
+checksum = "7a340f241d2ceed1deb47ae36c4144b2707ec7dd0b649f894cb39bb595986324"
 dependencies = [
  "fnv",
  "ident_case",
@@ -1660,11 +1678,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ade7bff147130fe5e6d39f089c6bd49ec0250f35d70b2eebf72afdfc919f15cc"
+checksum = "72c41b3b7352feb3211a0d743dc5700a4e3b60f51bd2b368892d1e0f9a95f44b"
 dependencies = [
- "darling_core 0.13.0",
+ "darling_core 0.13.1",
  "quote",
  "syn",
 ]
@@ -1832,6 +1850,17 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
+ "generic-array",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8549e6bfdecd113b7e221fe60b433087f6957387a20f8118ebca9b12af19143d"
+dependencies = [
+ "block-buffer 0.10.0",
+ "crypto-common",
  "generic-array",
 ]
 
@@ -2014,6 +2043,7 @@ dependencies = [
  "lgn-editor-proto",
  "lgn-grpc",
  "lgn-input",
+ "lgn-logger",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
@@ -2022,7 +2052,6 @@ dependencies = [
  "lgn-transform",
  "lgn-utils",
  "log",
- "simple_logger",
  "tokio",
  "tonic",
 ]
@@ -2051,7 +2080,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2db227e61a43a34915680bdda462ec0e212095518020a88a1f91acd16092c39"
 dependencies = [
  "bitvec 0.18.5",
- "digest",
+ "digest 0.9.0",
  "ff",
  "funty",
  "generic-array",
@@ -2146,9 +2175,9 @@ checksum = "a246d82be1c9d791c5dfde9a2bd045fc3cbba3fa2b11ad558f27d01712f00569"
 
 [[package]]
 name = "encoding_rs"
-version = "0.8.29"
+version = "0.8.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a74ea89a0a1b98f6332de42c95baff457ada66d1cb4030f9ff151b2041a1c746"
+checksum = "7896dc8abb250ffdda33912550faa54c88ec8b998dec0b2c55ab224921ce11df"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -2820,30 +2849,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics-sandbox"
-version = "0.1.0"
-dependencies = [
- "clap",
- "lgn-app",
- "lgn-asset-registry",
- "lgn-core",
- "lgn-ecs",
- "lgn-graphics-api",
- "lgn-input",
- "lgn-presenter",
- "lgn-presenter-snapshot",
- "lgn-presenter-window",
- "lgn-renderer",
- "lgn-test-utils",
- "lgn-transform",
- "lgn-window",
- "lgn-winit",
- "log",
- "png 0.17.2",
- "simple_logger",
-]
-
-[[package]]
 name = "group"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2912,9 +2917,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.7"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fd819562fcebdac5afc5c113c3ec36f902840b70fd4fc458799c8ce4607ae55"
+checksum = "8f072413d126e57991455e0a922b31e4c8ba7c2ffbebf6b78b4f8521397d65cd"
 dependencies = [
  "bytes",
  "fnv",
@@ -3016,7 +3021,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1441c6b1e930e2817404b5046f1f989899143a12bf92de603b69f4e0aee1e15"
 dependencies = [
  "crypto-mac 0.10.1",
- "digest",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -3026,7 +3031,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a2a2320eb7ec0ebe8da8f744d7812d9fc4cb4d09344ac01898dbcb6a20ae69b"
 dependencies = [
  "crypto-mac 0.11.1",
- "digest",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -3085,9 +3090,9 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "hyper"
-version = "0.14.15"
+version = "0.14.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "436ec0091e4f20e655156a30a0df3770fe2900aa301e548e08446ec794b6953c"
+checksum = "b7ec3e62bdc98a2f0393a5048e4c30ef659440ea6e0e572965103e72bd836f55"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -3530,6 +3535,7 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "lgn-graphics-cgen",
  "named-lock",
  "thiserror",
  "tonic-build",
@@ -3767,6 +3773,7 @@ dependencies = [
 name = "lgn-data-build"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "byteorder",
  "hex",
  "integer-asset",
@@ -3781,6 +3788,7 @@ dependencies = [
  "refs-resource",
  "serde",
  "serde_json",
+ "serde_with",
  "tempfile",
  "text-resource",
 ]
@@ -3823,6 +3831,7 @@ name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
  "binary-resource",
+ "bincode",
  "clap",
  "integer-asset",
  "lgn-content-store",
@@ -3865,10 +3874,11 @@ dependencies = [
  "hex",
  "lgn-content-store",
  "lgn-data-runtime-macros",
+ "lgn-utils",
  "log",
- "rand 0.8.4",
  "serde",
  "serde_json",
+ "uuid",
  "xxhash-rust",
 ]
 
@@ -3972,6 +3982,7 @@ dependencies = [
  "ash",
  "ash-window",
  "bitflags",
+ "bumpalo",
  "crossbeam-channel 0.5.1",
  "fnv",
  "lgn-utils",
@@ -3979,6 +3990,36 @@ dependencies = [
  "raw-window-handle 0.4.2",
  "serde",
  "vk-mem",
+]
+
+[[package]]
+name = "lgn-graphics-cgen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "clap",
+ "fxhash",
+ "heck",
+ "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
+ "log",
+ "proc-macro2",
+ "relative-path",
+ "simple_logger",
+ "strum 0.21.0",
+ "syn",
+]
+
+[[package]]
+name = "lgn-graphics-cgen-runtime"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bumpalo",
+ "glam",
+ "lgn-graphics-api",
+ "serde",
 ]
 
 [[package]]
@@ -4008,6 +4049,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-graphics-sandbox"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-input",
+ "lgn-logger",
+ "lgn-math",
+ "lgn-presenter",
+ "lgn-presenter-snapshot",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-test-utils",
+ "lgn-transform",
+ "lgn-window",
+ "lgn-winit",
+ "log",
+ "png 0.17.2",
+]
+
+[[package]]
 name = "lgn-grpc"
 version = "0.1.0"
 dependencies = [
@@ -4030,6 +4096,15 @@ dependencies = [
  "lgn-math",
  "lgn-utils",
  "serde",
+]
+
+[[package]]
+name = "lgn-logger"
+version = "0.1.0"
+dependencies = [
+ "lgn-telemetry",
+ "log",
+ "simplelog",
 ]
 
 [[package]]
@@ -4078,6 +4153,7 @@ dependencies = [
  "hyper-rustls",
  "lambda_http",
  "lambda_runtime",
+ "lgn-logger",
  "log",
  "pin-project",
  "prost",
@@ -4088,7 +4164,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "simple_asn1",
- "simple_logger",
  "strum 0.23.0",
  "strum_macros 0.23.1",
  "thiserror",
@@ -4154,6 +4229,8 @@ dependencies = [
  "anyhow",
  "hassle-rs",
  "lgn-graphics-api",
+ "normpath",
+ "relative-path",
  "spirv-reflect",
  "spirv-tools",
 ]
@@ -4167,8 +4244,10 @@ dependencies = [
  "egui",
  "epaint",
  "lgn-app",
+ "lgn-build-utils",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
@@ -4199,9 +4278,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-runtime-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "lgn-build-utils",
+ "prost",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
 name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-recursion",
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
@@ -4218,7 +4310,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.0",
  "sqlx",
  "tokio",
  "unicase",
@@ -4244,6 +4336,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-grpc",
+ "lgn-input",
+ "lgn-math",
  "lgn-mp4",
  "lgn-presenter",
  "lgn-pso-compiler",
@@ -4413,9 +4507,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.109"
+version = "0.2.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
+checksum = "8e167738f1866a7ec625567bae89ca0d44477232a4f7c52b1c7f2adc2c98804f"
 
 [[package]]
 name = "libgit2-sys"
@@ -4536,10 +4630,13 @@ dependencies = [
 name = "lsc"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
+ "lgn-logger",
  "lgn-source-control",
  "lgn-telemetry",
  "lgn-test-utils",
+ "log",
  "tokio",
 ]
 
@@ -4631,8 +4728,8 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5a279bb9607f9f53c22d496eade00d138d1bdcccd07d74650387cf94942a15"
 dependencies = [
- "block-buffer",
- "digest",
+ "block-buffer 0.9.0",
+ "digest 0.9.0",
  "opaque-debug",
 ]
 
@@ -4958,7 +5055,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0df7ac00c4672f9d5aece54ee3347520b7e20f158656c7db2e6de01902eb7a6c"
 dependencies = [
- "darling 0.13.0",
+ "darling 0.13.1",
  "proc-macro-crate 1.1.0",
  "proc-macro2",
  "quote",
@@ -5061,6 +5158,15 @@ dependencies = [
  "memchr",
  "minimal-lexical",
  "version_check",
+]
+
+[[package]]
+name = "normpath"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "640c20e9df4a2d4a5adad5b47e17d76dac3e824346b181931c3ec9f7a85687b1"
+dependencies = [
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -5363,18 +5469,18 @@ checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
 
 [[package]]
 name = "openssl-src"
-version = "300.0.2+3.0.0"
+version = "111.16.0+1.1.1l"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14a760a11390b1a5daf72074d4f6ff1a6e772534ae191f999f57e9ee8146d1fb"
+checksum = "7ab2173f69416cf3ec12debb5823d244127d23a9b127d5a5189aa97c5fa2859f"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.71"
+version = "0.9.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7df13d165e607909b363a4757a6f133f8a818a74e9d3a98d09c6128e15fa4c73"
+checksum = "7e46109c383602735fa0a2e48dd2b7c892b048e1bf69e5c3b1d804b7d9c203cb"
 dependencies = [
  "autocfg 1.0.1",
  "cc",
@@ -5422,7 +5528,7 @@ checksum = "8adcc06fe90ec8fb2d2ad46746d2cbd639b158d4240364aa832da7e263dbee91"
 dependencies = [
  "ecdsa",
  "elliptic-curve",
- "sha2",
+ "sha2 0.9.8",
 ]
 
 [[package]]
@@ -5577,9 +5683,9 @@ dependencies = [
 
 [[package]]
 name = "phf"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9fc3db1018c4b59d7d582a739436478b6035138b6aecbce989fc91c3e98409f"
+checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
 dependencies = [
  "phf_macros 0.10.0",
  "phf_shared 0.10.0",
@@ -5705,9 +5811,9 @@ dependencies = [
 
 [[package]]
 name = "pkg-config"
-version = "0.3.23"
+version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1a3ea4f0dd7f1f3e512cf97bf100819aa547f36a6eccac8dbaae839eb92363e"
+checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 
 [[package]]
 name = "png"
@@ -6191,6 +6297,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "relative-path"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73d4caf086b102ab49d0525b721594a555ab55c6556086bbe52a430ad26c3bd7"
+
+[[package]]
 name = "remove_dir_all"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6296,7 +6408,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ef841a26fc5d040ced0417c6c6a64ee851f42489df11cdf0218e545b6f8d28"
 dependencies = [
  "byteorder",
- "digest",
+ "digest 0.9.0",
  "lazy_static",
  "num-bigint-dig",
  "num-integer",
@@ -6334,6 +6446,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "directories",
+ "lgn-app",
+ "lgn-async",
+ "lgn-build-utils",
+ "lgn-online",
+ "lgn-tauri",
+ "tauri",
+ "tauri-build",
+ "url",
+]
+
+[[package]]
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
@@ -6341,19 +6470,22 @@ dependencies = [
  "instant",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-async",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-grpc",
  "lgn-input",
+ "lgn-logger",
  "lgn-presenter-window",
  "lgn-renderer",
+ "lgn-streamer",
  "lgn-telemetry",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
  "log",
- "simple_logger",
 ]
 
 [[package]]
@@ -6449,9 +6581,9 @@ checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
 
 [[package]]
 name = "ryu"
-version = "1.0.6"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c9613b5a66ab9ba26415184cfc41156594925a9cf3a2057e57f31ff145f6568"
+checksum = "73b4b750c782965c211b42f022f59af1fbceabdd026623714f104152f1ec149f"
 
 [[package]]
 name = "safemem"
@@ -6650,18 +6782,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.130"
+version = "1.0.131"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
+checksum = "b4ad69dfbd3e45369132cc64e6748c2d65cdfb001a2b1c232d128b4ad60561c1"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.130"
+version = "1.0.131"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7bc1a1ab1961464eae040d96713baa5a724a8152c1222492465b54322ec508b"
+checksum = "b710a83c4e0dff6a3d511946b95274ad9ca9e5d3ae497b63fda866ac955358d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6715,13 +6847,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yaml"
-version = "0.8.21"
+name = "serde_with"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8c608a35705a5d3cdc9fbe403147647ff34b921f8e833e49306df898f9b20af"
+checksum = "ad6056b4cb69b6e43e3a0f055def223380baecc99da683884f205bf347f7c4b3"
 dependencies = [
- "dtoa",
+ "rustversion",
+ "serde",
+ "serde_with_macros",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12e47be9471c72889ebafb5e14d5ff930d89ae7a67bbdb5f8abb564f845a927e"
+dependencies = [
+ "darling 0.13.1",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "serde_yaml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a521f2940385c165a24ee286aa8599633d162077a54bdcae2a6fd5a7bfa7a0"
+dependencies = [
  "indexmap",
+ "ryu",
  "serde",
  "yaml-rust",
 ]
@@ -6764,10 +6919,10 @@ version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99cd6713db3cf16b6c84e06321e049a9b9f699826e16096d23bbcc44d15d51a6"
 dependencies = [
- "block-buffer",
+ "block-buffer 0.9.0",
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest",
+ "digest 0.9.0",
  "opaque-debug",
 ]
 
@@ -6777,11 +6932,22 @@ version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b69f9a4c9740d74c5baa3fd2e547f9525fa8088a8a958e0ca2409a514e33f5fa"
 dependencies = [
- "block-buffer",
+ "block-buffer 0.9.0",
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest",
+ "digest 0.9.0",
  "opaque-debug",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d964dd36bb15bcf2f2b35694c072feab74969a54f2bbeec7a2d725d2bdcb6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.0",
 ]
 
 [[package]]
@@ -6818,7 +6984,7 @@ version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29f060a7d147e33490ec10da418795238fd7545bba241504d6b31a409f2e6210"
 dependencies = [
- "digest",
+ "digest 0.9.0",
  "rand_core 0.5.1",
 ]
 
@@ -6842,15 +7008,26 @@ dependencies = [
 
 [[package]]
 name = "simple_logger"
-version = "1.15.0"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "205596cf77a15774e5601c5ef759f4211ac381c0855a1f1d5e24a46f60f93e9a"
+checksum = "45b60258a35dc3cb8a16890b8fd6723349bfa458d7960e25e633f1b1c19d7b5e"
 dependencies = [
  "atty",
  "colored",
  "log",
  "time 0.3.5",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "simplelog"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecabc0118918611790b8615670ab79296272cbe09496b6884b02b1e929c20886"
+dependencies = [
+ "chrono",
+ "log",
+ "termcolor",
 ]
 
 [[package]]
@@ -6922,6 +7099,7 @@ dependencies = [
 name = "source-control-srv"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytes",
  "futures",
  "http",
@@ -7018,7 +7196,7 @@ dependencies = [
  "crossbeam-channel 0.5.1",
  "crossbeam-queue",
  "crossbeam-utils 0.8.5",
- "digest",
+ "digest 0.9.0",
  "either",
  "futures-channel",
  "futures-core",
@@ -7040,7 +7218,7 @@ dependencies = [
  "rand 0.8.4",
  "rsa",
  "sha-1",
- "sha2",
+ "sha2 0.9.8",
  "smallvec",
  "sqlformat",
  "sqlx-rt",
@@ -7063,7 +7241,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "sha2",
+ "sha2 0.9.8",
  "sqlx-core",
  "sqlx-rt",
  "syn",
@@ -7168,6 +7346,9 @@ name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+dependencies = [
+ "strum_macros 0.21.1",
+]
 
 [[package]]
 name = "strum"
@@ -7507,7 +7688,7 @@ checksum = "fcb9b79594f22b6ed0cc8362e0dfde5b7969962de3cd8ca683de702e59e8221b"
 dependencies = [
  "html5ever",
  "kuchiki",
- "phf 0.10.0",
+ "phf 0.10.1",
  "proc-macro2",
  "quote",
  "serde",
@@ -7541,12 +7722,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "log",
  "prost",
  "serde_json",
- "simple_logger",
  "sqlx",
  "tokio",
  "tonic",
@@ -7577,6 +7758,15 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -7813,9 +8003,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24203b79cf2d68909da91178db3026e77054effba0c5d93deb870d3ca7b35afa"
+checksum = "ff08f4649d10a70ffa3522ca559031285d8e421d727ac85c60825761818f5d0a"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7846,9 +8036,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.6.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88358bb1dcfeb62dcce85c63006cafb964b7be481d522b7e09589d4d1e718d2a"
+checksum = "9403f1bafde247186684b230dc6f38b5cd514584e8bec1dd32514be4745fa757"
 dependencies = [
  "proc-macro2",
  "prost-build",
@@ -8225,7 +8415,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vk-mem"
-version = "0.2.3"
+version = "0.2.2"
 dependencies = [
  "ash",
  "bitflags",
@@ -8239,8 +8429,8 @@ dependencies = [
  "anyhow",
  "clap",
  "lgn-cli",
+ "lgn-logger",
  "log",
- "simple_logger",
  "tokio",
 ]
 
@@ -8576,7 +8766,7 @@ dependencies = [
  "sdp",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.9.8",
  "stun",
  "thiserror",
  "tokio",
@@ -8636,7 +8826,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha-1",
- "sha2",
+ "sha2 0.9.8",
  "signature",
  "subtle",
  "thiserror",

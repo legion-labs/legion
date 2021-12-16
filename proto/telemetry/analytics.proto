@@ -11,6 +11,7 @@ service PerformanceAnalytics {
     rpc find_process(FindProcessRequest) returns (FindProcessReply);
     rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
     rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
+    rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
@@ -133,6 +134,8 @@ message CumulativeCallGraphReply{
 // list_process_log_entries
 message ProcessLogRequest{
     telemetry.Process process = 1;
+    uint64 begin = 2; // included
+    uint64 end = 3;   // excluded
 }
 
 message LogEntry{
@@ -142,6 +145,17 @@ message LogEntry{
 
 message ProcessLogReply{
     repeated LogEntry entries = 1;
+    uint64 begin = 2; // included
+    uint64 end = 3;   // excluded
+}
+
+// nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+message ProcessNbLogEntriesRequest{
+    string process_id = 1;
+}
+
+message ProcessNbLogEntriesReply{
+    uint64 count = 1;
 }
 
 // list_process_children
@@ -173,8 +187,9 @@ message ProcessMetricsReply{
 message FetchProcessMetricRequest{
     string process_id = 1;
     string metric_name = 2;
-    double begin_ms = 3;
-    double end_ms = 4;
+    string unit = 3;
+    double begin_ms = 4;
+    double end_ms = 5;
 }
 
 message MetricDataPoint{

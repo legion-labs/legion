@@ -61,7 +61,7 @@
 #![warn(missing_docs)]
 
 use core::fmt;
-use std::{num::ParseIntError, str::FromStr};
+use std::str::FromStr;
 
 use lgn_content_store::Checksum;
 use lgn_data_offline::ResourcePathId;
@@ -92,7 +92,7 @@ impl fmt::Display for CompiledResource {
 }
 
 impl FromStr for CompiledResource {
-    type Err = ParseIntError;
+    type Err = Box<dyn std::error::Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let err = "Z".parse::<i32>().expect_err("ParseIntError");
@@ -100,7 +100,9 @@ impl FromStr for CompiledResource {
 
         let checksum = Checksum::from_str(iter.next().ok_or_else(|| err.clone())?)?;
         let size = usize::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let path = ResourcePathId::from_str(iter.next().ok_or(err)?)?;
+        let data_iter = iter.next().unwrap();
+        let data_idx = unsafe { data_iter.as_ptr().offset_from(s.as_ptr()) } as usize;
+        let path = ResourcePathId::from_str(&s[data_idx..])?;
         Ok(Self {
             path,
             checksum,
@@ -136,7 +138,7 @@ impl Manifest {
         self,
         filter: fn(&ResourcePathId) -> bool,
     ) -> lgn_data_runtime::manifest::Manifest {
-        let mut output = lgn_data_runtime::manifest::Manifest::default();
+        let output = lgn_data_runtime::manifest::Manifest::default();
 
         let runtime_resources = self
             .compiled_resources

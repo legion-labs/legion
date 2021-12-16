@@ -1,7 +1,6 @@
-use std::{fmt, hash::Hash, num::ParseIntError, str::FromStr};
+use std::{fmt, hash::Hash, str::FromStr};
 
-use lgn_data_runtime::{ResourceId, ResourceType};
-use lgn_utils::DefaultHash;
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
 /// Resource transformation identifier.
@@ -21,7 +20,7 @@ impl Transform {
 /// Identifier of a path in a build graph.
 ///
 /// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
-/// the `ResourcePathId` uniqely identifies any resource/node in the build graph.
+/// the `ResourcePathId` uniquely identifies any resource/node in the build graph.
 ///
 /// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type between two resource types.
 ///
@@ -57,14 +56,14 @@ impl Transform {
 /// ```
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {
-    source: ResourceId,
+    source: ResourceTypeAndId,
     transforms: Vec<(ResourceType, Option<String>)>,
 }
 
-impl From<ResourceId> for ResourcePathId {
-    fn from(id: ResourceId) -> Self {
+impl From<ResourceTypeAndId> for ResourcePathId {
+    fn from(type_id: ResourceTypeAndId) -> Self {
         Self {
-            source: id,
+            source: type_id,
             transforms: vec![],
         }
     }
@@ -86,7 +85,7 @@ impl fmt::Display for ResourcePathId {
 
 impl fmt::Debug for ResourcePathId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.source))?;
+        f.write_fmt(format_args!("{:?}", self.source))?;
         for (kind, name) in &self.transforms {
             if let Some(name) = name {
                 f.write_fmt(format_args!("|{}_{}", kind, name))?;
@@ -99,11 +98,11 @@ impl fmt::Debug for ResourcePathId {
 }
 
 impl FromStr for ResourcePathId {
-    type Err = ParseIntError;
+    type Err = Box<dyn std::error::Error>;
 
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         let end = s.find('|').unwrap_or(s.len());
-        let source = ResourceId::from_str(&s[0..end])?;
+        let source = s[0..end].parse::<ResourceTypeAndId>().unwrap();
         s = &s[end..];
 
         let mut transforms = vec![];
@@ -113,13 +112,13 @@ impl FromStr for ResourcePathId {
             let end = s.find('|').unwrap_or(s.len());
 
             let transform = if name < end {
-                let err = "Z".parse::<i32>().expect_err("ParseIntError");
-                let t = u32::from_str_radix(&s[0..name], 16)?;
-                let p = String::from_str(&s[name + 1..end]).map_err(|_e| err)?;
-                (ResourceType::from_raw(t), Some(p))
+                let t = ResourceType::from_str(&s[0..name])?;
+                let p = String::from_str(&s[name + 1..end])
+                    .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))?;
+                (t, Some(p))
             } else {
-                let t = u32::from_str_radix(&s[0..end], 16)?;
-                (ResourceType::from_raw(t), None)
+                let t = ResourceType::from_str(&s[0..end])?;
+                (t, None)
             };
             transforms.push(transform);
             s = &s[end..];
@@ -133,8 +132,7 @@ impl Serialize for ResourcePathId {
     where
         S: serde::Serializer,
     {
-        let str = format!("{}", self);
-        serializer.serialize_str(&str)
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -210,14 +208,14 @@ impl ResourcePathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ResourceType {
         if self.transforms.is_empty() {
-            self.source.ty()
+            self.source.t
         } else {
-            self.transforms[self.transforms.len() - 1].0
+            self.transforms.last().unwrap().0
         }
     }
 
     /// Returns resource id of the build path's source resource.
-    pub fn source_resource(&self) -> ResourceId {
+    pub fn source_resource(&self) -> ResourceTypeAndId {
         self.source
     }
 
@@ -239,7 +237,7 @@ impl ResourcePathId {
     pub fn last_transform(&self) -> Option<Transform> {
         match self.transforms.len() {
             0 => None,
-            1 => Some(Transform::new(self.source.ty(), self.transforms[0].0)),
+            1 => Some(Transform::new(self.source.t, self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some(Transform::new(
@@ -262,13 +260,15 @@ impl ResourcePathId {
         Some(dependency)
     }
 
-    /// Returns `ResourceId` representing the path.
-    pub fn resource_id(&self) -> ResourceId {
+    /// Returns an identifier representing the path.
+    pub fn resource_id(&self) -> ResourceTypeAndId {
         if self.is_source() {
             self.source
         } else {
-            let id = self.default_hash();
-            ResourceId::new(self.content_type(), id)
+            ResourceTypeAndId {
+                t: self.content_type(),
+                id: ResourceId::from_obj(&self),
+            }
         }
     }
 
@@ -277,11 +277,11 @@ impl ResourcePathId {
     /// # Example
     ///
     /// ```
-    /// # use lgn_data_runtime::{ResourceType, ResourceId};
+    /// # use lgn_data_runtime::{ResourceType, ResourceId, ResourceTypeAndId};
     /// # use lgn_data_offline::{ResourcePathId};
     /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
     /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
-    /// let source = ResourceId::new_random_id(FOO_TYPE);
+    /// let source = ResourceTypeAndId { t: FOO_TYPE, id: ResourceId::new() };
     /// let path = ResourcePathId::from(source).push(BAR_TYPE).push_named(FOO_TYPE, "parameter");
     ///
     /// let mut transforms = path.transforms();
@@ -313,7 +313,7 @@ impl<'a> Iterator for Transforms<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.target_index < self.path_id.transforms.len() {
             let source = if self.target_index == 0 {
-                self.path_id.source.ty()
+                self.path_id.source.t
             } else {
                 self.path_id.transforms[self.target_index - 1].0
             };
@@ -332,32 +332,38 @@ mod tests {
 
     use std::str::FromStr;
 
-    use lgn_data_runtime::{Resource, ResourceId, ResourceType};
+    use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 
     use crate::{resource::test_resource, ResourcePathId};
 
     #[test]
     fn simple_path() {
-        let source = ResourceId::new_random_id(test_resource::TestResource::TYPE);
+        let source = ResourceTypeAndId {
+            t: test_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let path_a = ResourcePathId::from(source);
         let path_b = path_a.push(test_resource::TestResource::TYPE);
 
-        let name_a = format!("{}", path_a);
+        let name_a = path_a.to_string();
         assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
 
-        let name_b = format!("{}", path_b);
+        let name_b = path_b.to_string();
         assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
     }
 
     #[test]
     fn named_path() {
-        let source = ResourceId::new_random_id(test_resource::TestResource::TYPE);
+        let source = ResourceTypeAndId {
+            t: test_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let source = ResourcePathId::from(source);
         let source_hello = source.push_named(test_resource::TestResource::TYPE, "hello");
 
-        let hello_text = format!("{}", source_hello);
+        let hello_text = source_hello.to_string();
         assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());
     }
 
@@ -365,7 +371,10 @@ mod tests {
     fn transform_iter() {
         let foo_type = ResourceType::new(b"foo");
         let bar_type = ResourceType::new(b"bar");
-        let source = ResourceId::new_random_id(foo_type);
+        let source = ResourceTypeAndId {
+            t: foo_type,
+            id: ResourceId::new(),
+        };
 
         let source_only = ResourcePathId::from(source);
         assert_eq!(source_only.transforms().next(), None);

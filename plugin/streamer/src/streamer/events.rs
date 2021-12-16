@@ -1,4 +1,5 @@
 use anyhow::bail;
+use lgn_math::Vec2;
 use serde::Deserialize;
 
 use super::StreamID;
@@ -25,7 +26,7 @@ pub struct Color(pub [f32; 4]);
 impl Default for Color {
     fn default() -> Self {
         // This is red.
-        Self([1.0f32, 0.0f32, 0.0f32, 1.0f32])
+        Self([1.0_f32, 0.0_f32, 0.0_f32, 1.0_f32])
     }
 }
 
@@ -37,7 +38,11 @@ impl TryFrom<String> for Color {
             bail!("color values must start with #");
         }
 
-        let bytes = hex::decode(value[1..].as_bytes())?;
+        let mut bytes = hex::decode(value[1..].as_bytes())?;
+        if bytes.len() == 3 {
+            // append alpha if not specified
+            bytes.push(0xff_u8);
+        }
 
         if bytes.len() != 4 {
             bail!("expected `#RGBA` but got `{}`", value);
@@ -58,6 +63,33 @@ impl TryFrom<String> for Color {
 }
 
 #[derive(Debug, Deserialize)]
+pub(crate) struct Position {
+    pub(crate) x: f32,
+    pub(crate) y: f32,
+}
+
+impl From<&Position> for Vec2 {
+    fn from(position: &Position) -> Self {
+        Self::new(position.x, position.y)
+    }
+}
+
+impl From<Position> for Vec2 {
+    fn from(position: Position) -> Self {
+        Self::new(position.x, position.y)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+pub(crate) enum InputPayload {
+    #[serde(rename = "click")]
+    Click { position: Position },
+    #[serde(rename = "mousemove")]
+    MouseMove { from: Position, to: Position },
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "event")]
 pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "resize")]
@@ -66,4 +98,6 @@ pub(crate) enum VideoStreamEventInfo {
     Color { id: String, color: Color },
     #[serde(rename = "speed")]
     Speed { id: String, speed: f32 },
+    #[serde(rename = "input")]
+    Input { payload: InputPayload },
 }

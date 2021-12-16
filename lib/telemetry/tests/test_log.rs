@@ -7,7 +7,7 @@ use debug_event_sink::DebugEventSink;
 
 fn test_log_str() {
     for x in 1..5 {
-        log_str(LogLevel::Info, "test");
+        log_static_str(LogLevel::Info, "test");
         log_string(LogLevel::Info, format!("test {}", x));
     }
     flush_log_buffer();
@@ -48,7 +48,7 @@ fn test_log_thread() {
             init_thread_stream();
             for _ in 1..1024 {
                 trace_scope!();
-                log_str(LogLevel::Info, "test_msg");
+                log_static_str(LogLevel::Info, "test_msg");
             }
         }));
     }

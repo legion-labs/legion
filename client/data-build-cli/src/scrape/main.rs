@@ -11,7 +11,7 @@
 //!
 //! # `rty` - Resource Type Tool
 //!
-//! Various commands to help identify resource types known under a specified sourcecode directory.
+//! Various commands to help identify resource types known under a specified source code directory.
 //!
 //! It helps with mapping between `Resource::TYPENAME` and `Resource::TYPE`.
 //!
@@ -120,7 +120,7 @@
 //!
 //! The tool prints detailed information about the specified `ResourcePathId` - such as the name of the source resource, its type and all transformations with their parameters.
 //!
-//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occured during data compilation).
+//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occurred during data compilation).
 //!
 //! ## `ResourceId` as input
 //!
@@ -239,11 +239,12 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
+use lgn_content_store::Checksum;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
 };
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 
 mod config;
 use config::Config;
@@ -371,8 +372,7 @@ fn main() -> Result<(), String> {
             }
             ("decode", Some(cmd_args)) => {
                 let searched_ty = cmd_args.value_of("ty").unwrap();
-                let searched_ty =
-                    ResourceType::from_raw(u32::from_str_radix(searched_ty, 16).unwrap());
+                let searched_ty = ResourceType::from_str(searched_ty).unwrap();
                 if let Some((name, ty)) = ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
                     .find(|(_, ty)| ty == &searched_ty)
                 {
@@ -399,7 +399,7 @@ fn main() -> Result<(), String> {
             }
             ("name", Some(cmd_args)) => {
                 let id = cmd_args.value_of("id").unwrap();
-                let id = ResourceId::from_str(id).map_err(|e| e.to_string())?;
+                let id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
                 if let Ok(name) = project.resource_name(id) {
                     println!("{} = {}", name, id);
                 } else {
@@ -443,7 +443,7 @@ fn main() -> Result<(), String> {
             let rid = {
                 if let Ok(rid) = ResourcePathId::from_str(text_id) {
                     rid
-                } else if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                } else if let Ok(resource_id) = text_id.parse() {
                     if let Some(rid) = build.lookup_pathid(resource_id) {
                         rid
                     } else {
@@ -468,7 +468,7 @@ fn main() -> Result<(), String> {
         if let Some(config) = config {
             let (build, project) = config.open()?;
             let rid = {
-                if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                if let Ok(resource_id) = text_id.parse() {
                     build
                         .lookup_pathid(resource_id)
                         .ok_or(format!("ResourceId '{}' not found", resource_id))?
@@ -623,9 +623,13 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
     types
 }
 
-// Finds all #[resource="name"] attributes in a file and returns (name, hashed name) tuple.
+// Finds all #[resource("name")] attributes in a file and returns (name, hashed name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
+    // Quickly bail out without parsing the file
+    if src.find("#[resource(") == None {
+        return vec![];
+    }
     proc_macro2::fallback::force(); // prevent panic, if panic = abort is set
     let tokens = proc_macro2::TokenStream::from_str(&src).expect("Tokenize source file");
     let ast: syn::File = syn::parse2(tokens).expect("Unable to parse file");
@@ -639,13 +643,13 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let mut f = File::open(path).expect("unable to open asset file");
 
     let file_name = path.file_name().unwrap().to_string_lossy();
-    let file_guid = u128::from_str_radix(&file_name, 16);
-    if let Err(_e) = file_guid {
+    let checksum = file_name.parse::<Checksum>();
+    if let Err(_e) = checksum {
         // not an asset file, just ignore it
         return;
     }
-    let file_guid = file_guid.unwrap();
-    println!("\nasset {:032x}", file_guid);
+    let checksum = checksum.unwrap();
+    println!("\nasset {}", checksum);
 
     let mut typename: [u8; 4] = [0; 4];
     let typename_result = f.read_exact(&mut typename);
@@ -670,27 +674,33 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     if reference_count != 0 {
         println!("\treference count: {}", reference_count);
         for _ in 0..reference_count {
-            let asset_ref = unsafe {
-                std::mem::transmute::<u128, ResourceId>(
-                    f.read_u128::<LittleEndian>().expect("valid data"),
-                )
-            };
+            let asset_ref_type =
+                ResourceType::from_raw(f.read_u64::<LittleEndian>().expect("valid data"));
+            let asset_ref_id =
+                ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
                 let (_build, project) = config.open().expect("open config");
-                let path_id = ResourcePathId::from(asset_ref);
+                let path_id = ResourcePathId::from(ResourceTypeAndId {
+                    t: asset_ref_type,
+                    id: asset_ref_id,
+                });
                 println!(
                     "\t\treference: {}",
                     pretty_name_from_pathid(&path_id, &project, config)
                 );
             } else {
-                println!("\t\treference: {}", asset_ref);
+                println!(
+                    "\t\treference: {}",
+                    ResourceTypeAndId {
+                        t: asset_ref_type,
+                        id: asset_ref_id
+                    }
+                );
             }
         }
     }
 
-    let asset_type = unsafe {
-        std::mem::transmute::<u32, ResourceType>(f.read_u32::<LittleEndian>().expect("valid data"))
-    };
+    let asset_type = ResourceType::from_raw(f.read_u64::<LittleEndian>().expect("valid data"));
     if let Some(config) = config {
         if let Some(asset_type_name) = config.type_map.get(&asset_type).cloned() {
             println!("\tasset type: {} ({})", asset_type, asset_type_name);
@@ -719,9 +729,9 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
 
     let source_ty_pretty = config
         .type_map
-        .get(&rid.source_resource().ty())
+        .get(&rid.source_resource().t)
         .cloned()
-        .unwrap_or_else(|| rid.source_resource().ty().to_string());
+        .unwrap_or_else(|| rid.source_resource().t.to_string());
     output_text.push_str(&format!(" ({})", source_ty_pretty));
 
     for (_, target, name) in rid.transforms() {

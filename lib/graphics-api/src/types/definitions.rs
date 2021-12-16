@@ -4,14 +4,13 @@ use std::{
 };
 
 use lgn_utils::decimal::DecimalF32;
-#[cfg(feature = "serde-support")]
+
 use serde::{Deserialize, Serialize};
 
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
-    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
-    VertexAttributeRate,
+    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PrimitiveTopology,
+    SampleCount, ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
@@ -201,13 +200,17 @@ bitflags::bitflags! {
 
 #[derive(Clone, Debug)]
 pub struct Descriptor {
-    pub(crate) name: String,
-    pub(crate) binding: u32,
-    pub(crate) shader_resource_type: ShaderResourceType,
-    #[cfg(feature = "vulkan")]
-    pub(crate) vk_type: ash::vk::DescriptorType,
-    pub(crate) element_count: u32,
-    pub(crate) update_data_offset: u32,
+    pub name: String,
+    pub binding: u32,
+    pub shader_resource_type: ShaderResourceType,
+    pub element_count: u32,
+    pub update_data_offset: u32,
+}
+
+impl Descriptor {
+    pub fn element_count_normalized(&self) -> u32 {
+        self.element_count.max(1)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -426,7 +429,7 @@ pub struct ShaderStageDef {
     pub shader_module: ShaderModule,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,
@@ -485,8 +488,9 @@ pub struct PushConstantDef {
     pub size: NonZeroU32,
 }
 
+#[derive(Default)]
 pub struct RootSignatureDef {
-    pub pipeline_type: PipelineType,
+    // pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -494,19 +498,9 @@ pub struct RootSignatureDef {
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
         Self {
-            pipeline_type: self.pipeline_type,
+            // pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
-        }
-    }
-}
-
-impl Default for RootSignatureDef {
-    fn default() -> Self {
-        Self {
-            pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: Vec::new(),
-            push_constant_def: None,
         }
     }
 }
@@ -825,7 +819,6 @@ pub struct ComputePipelineDef<'a> {
 /// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
-    pub transient: bool,
     pub max_descriptor_sets: u32,
     pub sampler_count: u32,
     pub constant_buffer_count: u32,
@@ -838,11 +831,9 @@ pub struct DescriptorHeapDef {
 impl DescriptorHeapDef {
     pub fn from_descriptor_set_layout_def(
         definition: &DescriptorSetLayoutDef,
-        transient: bool,
         max_descriptor_sets: u32,
     ) -> Self {
         let mut result = Self {
-            transient,
             max_descriptor_sets,
             ..Self::default()
         };

@@ -1,8 +1,27 @@
+#[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocation};
-use crate::deferred_drop::Drc;
-use crate::{Buffer, DeviceContext, MemoryUsage};
+
+use crate::{deferred_drop::Drc, Buffer, DeviceContext, MemoryUsage};
 
 use super::buffer_allocation::BufferSubAllocation;
+
+pub struct BufferMappingInfo {
+    pub allocation: MemoryAllocation,
+    pub data_ptr: *mut u8,
+}
+
+impl BufferMappingInfo {
+    pub fn data_ptr(&self) -> *mut u8 {
+        self.data_ptr
+    }
+}
+
+impl Drop for BufferMappingInfo {
+    fn drop(&mut self) {
+        self.allocation
+            .unmap_buffer(self.allocation.device_context());
+    }
+}
 
 pub struct MemoryAllocationDef {
     pub memory_usage: MemoryUsage,
@@ -73,6 +92,7 @@ impl MemoryAllocation {
         buffer_byte_offset: u64,
     ) {
         let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
+
         #[cfg(any(feature = "vulkan"))]
         assert!(buffer_byte_offset + data_size_in_bytes <= self.size() as u64);
 
@@ -88,6 +108,38 @@ impl MemoryAllocation {
             assert_eq!(((dst as usize) % required_alignment), 0);
             std::ptr::copy_nonoverlapping(src, dst, data_size_in_bytes as usize);
         }
+    }
+
+    pub fn map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(feature = "vulkan")]
+        self.map_buffer_platform(device_context)
+    }
+
+    pub fn unmap_buffer(&self, device_context: &DeviceContext) {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(feature = "vulkan")]
+        self.unmap_buffer_platform(device_context);
+    }
+
+    pub fn mapped_ptr(&self) -> *mut u8 {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(feature = "vulkan")]
+        self.mapped_ptr_platform()
+    }
+
+    pub fn size(&self) -> usize {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(feature = "vulkan")]
+        self.size_platform()
     }
 }
 

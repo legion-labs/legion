@@ -58,9 +58,6 @@ impl Fence {
     }
 
     pub fn wait_for_fences(device_context: &DeviceContext, fences: &[&Self]) -> GfxResult<()> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
         let mut fence_list = Vec::with_capacity(fences.len());
         for fence in fences {
             if fence.submitted() {
@@ -89,7 +86,6 @@ impl Fence {
 
             #[cfg(any(feature = "vulkan"))]
             {
-                #[cfg(any(feature = "vulkan"))]
                 let status = self.get_fence_status_platform();
                 if status.is_ok() && FenceStatus::Complete == status.clone().unwrap() {
                     self.set_submitted(false);

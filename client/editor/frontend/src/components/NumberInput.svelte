@@ -25,6 +25,8 @@
 
   export let step = 0;
 
+  export let align: "right" | "left" = "left";
+
   let input: HTMLInputElement | undefined;
 
   const onFocus = (_event: FocusEvent) => {
@@ -49,6 +51,7 @@
   class:default={size === "default"}
   class:w-full={fullWidth}
   class:no-arrow={noArrow}
+  class:text-right={align === "right"}
   on:focus={onFocus}
   type="number"
   {min}

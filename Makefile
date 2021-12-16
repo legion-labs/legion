@@ -109,7 +109,9 @@ book:
 clean:
 	cargo clean
 
+rebuild: clean build
+
 git-clean:
 	git clean -fxd
 
-.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book clean git-clean
+.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book clean git-clean rebuild

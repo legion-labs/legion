@@ -1,7 +1,10 @@
+use anyhow::{Context, Result};
+use async_recursion::async_recursion;
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -40,19 +43,12 @@ impl Tree {
         }
     }
 
-    pub fn from_json(contents: &str) -> Result<Self, String> {
-        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
-        match parsed {
-            Ok(tree) => Ok(tree),
-            Err(e) => Err(format!("Error parsing tree {}", e)),
-        }
+    pub fn from_json(contents: &str) -> Result<Self> {
+        serde_json::from_str(contents).context("error parsing tree")
     }
 
-    pub fn to_json(&self) -> Result<String, String> {
-        match serde_json::to_string(&self) {
-            Ok(json) => Ok(json),
-            Err(e) => Err(format!("Error formatting tree {:?}: {}", &self, e)),
-        }
+    pub fn to_json(&self) -> Result<String> {
+        serde_json::to_string(&self).context("error serializing tree")
     }
 
     pub fn is_empty(&self) -> bool {
@@ -88,14 +84,15 @@ impl Tree {
         self.directory_nodes.push(node);
     }
 
-    pub fn find_dir_node(&self, specified: &str) -> Result<&TreeNode, String> {
+    pub fn find_dir_node(&self, specified: &str) -> Result<&TreeNode> {
         let name = UniCase::new(specified);
         for node in &self.directory_nodes {
             if UniCase::new(&node.name) == name {
                 return Ok(node);
             }
         }
-        Err(format!("could not find directory node {}", name))
+
+        anyhow::bail!("could not find directory node {}", name);
     }
 
     pub fn find_file_node(&self, specified: &str) -> Option<&TreeNode> {
@@ -135,7 +132,7 @@ pub async fn fetch_tree_subdir(
     query: &dyn RepositoryQuery,
     root: &Tree,
     subdir: &Path,
-) -> Result<Tree, String> {
+) -> Result<Tree> {
     let mut parent = root.clone();
     for component in subdir.components() {
         let component_name = component
@@ -158,7 +155,7 @@ pub async fn find_file_hash_in_tree(
     connection: &RepositoryConnection,
     relative_path: &Path,
     root_tree: &Tree,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(connection.query(), root_tree, parent_dir).await?;
     match dir_tree.find_file_node(
@@ -178,7 +175,7 @@ pub async fn update_tree_from_changes(
     previous_root: &Tree,
     local_changes: &[HashedChange],
     connection: &RepositoryConnection,
-) -> Result<String, String> {
+) -> Result<String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
     for change in local_changes {
@@ -209,6 +206,7 @@ pub async fn update_tree_from_changes(
     let mut parent_to_children_dir = HashMap::<PathBuf, Vec<TreeNode>>::new();
     //process leafs before parents to be able to patch parents with hash of children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
+
     for dir in dir_to_update_by_length {
         let mut tree = fetch_tree_subdir(connection.query(), previous_root, &dir).await?;
         for change in local_changes {
@@ -270,21 +268,24 @@ pub async fn update_tree_from_changes(
             return Ok(dir_hash);
         }
     }
-    Err(String::from("root tree not processed"))
+
+    anyhow::bail!("root tree not processed");
 }
 
-pub fn remove_dir_rec(
-    runtime: &tokio::runtime::Runtime, //todo: remove recursion, make async
-    connection: &RepositoryConnection,
+#[async_recursion]
+pub async fn remove_dir_rec(
+    connection: Arc<RepositoryConnection>,
     local_path: &Path,
     tree_hash: &str,
-) -> Result<String, String> {
+) -> Result<String> {
     let mut messages: Vec<String> = Vec::new();
-    let tree = runtime.block_on(connection.query().read_tree(tree_hash))?;
+    let query = connection.query();
+    let tree = query.read_tree(tree_hash).await?;
 
     for file_node in &tree.file_nodes {
         let file_path = local_path.join(&file_node.name);
         make_file_read_only(&file_path, false)?;
+
         if let Err(e) = fs::remove_file(&file_path) {
             messages.push(format!(
                 "Error deleting file {}: {}",
@@ -296,15 +297,16 @@ pub fn remove_dir_rec(
         }
     }
 
-    for dir_node in &tree.directory_nodes {
+    let connection = Arc::clone(&connection);
+    for dir_node in tree.directory_nodes {
         let dir_path = local_path.join(&dir_node.name);
-        let message = remove_dir_rec(runtime, connection, &dir_path, &dir_node.hash)?;
+        let message = remove_dir_rec(Arc::clone(&connection), &dir_path, &dir_node.hash).await?;
         if !message.is_empty() {
             messages.push(message);
         }
     }
 
-    if let Err(e) = fs::remove_dir(&local_path) {
+    if let Err(e) = fs::remove_dir(local_path) {
         messages.push(format!(
             "Error deleting directory {}: {}",
             local_path.display(),
@@ -321,15 +323,18 @@ pub async fn download_tree(
     connection: &RepositoryConnection,
     download_path: &Path,
     tree_hash: &str,
-) -> Result<(), String> {
+) -> Result<()> {
     let mut dir_to_process = Vec::from([TreeNode {
         name: String::from(download_path.to_str().expect("path is invalid string")),
         hash: String::from(tree_hash),
     }]);
+
     let mut errors: Vec<String> = Vec::new();
+
     while !dir_to_process.is_empty() {
         let dir_node = dir_to_process.pop().expect("empty dir_to_process");
         let tree = connection.query().read_tree(&dir_node.hash).await?;
+
         for relative_subdir_node in tree.directory_nodes {
             let abs_subdir_node = TreeNode {
                 name: format!("{}/{}", &dir_node.name, relative_subdir_node.name),
@@ -347,6 +352,7 @@ pub async fn download_tree(
                 }
             }
         }
+
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             println!("writing {}", abs_path.display());
@@ -363,14 +369,16 @@ pub async fn download_tree(
                     e
                 ));
             }
+
             if let Err(e) = make_file_read_only(&abs_path, true) {
-                errors.push(e);
+                errors.push(e.to_string());
             }
         }
     }
+
     if !errors.is_empty() {
-        let message = errors.join("\n");
-        return Err(message);
+        anyhow::bail!("failed to download tree:\n{}", errors.join("\n"));
     }
+
     Ok(())
 }

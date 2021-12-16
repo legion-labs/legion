@@ -2,34 +2,60 @@
   import { link } from "svelte-navigator";
   import {
     GrpcWebImpl,
+    LogEntry,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
+  import { onMount } from "svelte";
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
 
   export let id: string;
+  const MAX_NB_ENTRIES_IN_PAGE = 1000;
+  let nbEntries = 0;
+  let viewRange: [number, number] = [0, 0];
   let processInfo: Process | null = null;
+  let logEntries: LogEntry[] = [];
 
   async function fetchLogEntries() {
     const { process } = await client.find_process({
       processId: id,
     });
-
     if (!process) {
       throw new Error(`Process ${id} not found`);
     }
-
     processInfo = process;
 
-    const { entries } = await client.list_process_log_entries({
-      process,
-    });
+    const { count } = await client.nb_process_log_entries({ processId: id });
+    nbEntries = count;
 
-    return entries;
+    const urlParams = new URLSearchParams(window.location.search);
+    let begin = 0;
+    const beginParam = urlParams.get("begin");
+    if (beginParam) {
+      begin = Number.parseFloat(beginParam);
+    }
+
+    let end = Math.min(count, MAX_NB_ENTRIES_IN_PAGE);
+    const endParam = urlParams.get("end");
+    if (endParam) {
+      end = Number.parseFloat(endParam);
+    }
+
+    const reply = await client.list_process_log_entries({
+      process,
+      begin,
+      end,
+    });
+    viewRange = [reply.begin, reply.end];
+    logEntries = reply.entries;
   }
+
+  onMount(() => {
+    fetchLogEntries();
+  });
 
   function formatTime(ms: number) {
     const seconds = ms / 1000;
@@ -58,7 +84,7 @@
       <div>exe: {processInfo.exe}</div>
 
       {#if processInfo.parentProcessId}
-        <div class="parent-process">
+        <div class="nav-link">
           <a href={`/log/${processInfo.parentProcessId}`} use:link>
             Parent Process Log
           </a>
@@ -66,16 +92,63 @@
       {/if}
     </div>
   {/if}
-  {#await fetchLogEntries() then logEntriesList}
-    {#each logEntriesList as entry, index (index)}
-      <div class="logentry">
-        <span class="logentrytime">{formatTime(entry.timeMs)}</span>
-        <span>{entry.msg}</span>
-      </div>
-    {/each}
-  {:catch error}
-    <div>An error occured: {error.message}</div>
-  {/await}
+  {#each logEntries as entry, index (index)}
+    <div class="logentry">
+      <span class="logentrytime">{formatTime(entry.timeMs)}</span>
+      <span>{entry.msg}</span>
+    </div>
+  {/each}
+
+  {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+    <div class="page-nav">
+      {#if viewRange[0] > 0}
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=0&end=${Math.min(
+              MAX_NB_ENTRIES_IN_PAGE,
+              nbEntries
+            )}`}
+            use:link
+          >
+            First
+          </a>
+        </span>
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${Math.max(
+              0,
+              viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
+            )}&end=${viewRange[0]}`}
+            use:link
+          >
+            Previous
+          </a>
+        </span>
+      {/if}
+      {#if viewRange[1] < nbEntries}
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${viewRange[1]}&end=${
+              viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
+            }`}
+            use:link
+          >
+            Next
+          </a>
+        </span>
+        <span class="nav-link">
+          <a
+            href={`/log/${id}?begin=${
+              nbEntries - MAX_NB_ENTRIES_IN_PAGE
+            }&end=${nbEntries}`}
+            use:link
+          >
+            Last
+          </a>
+        </span>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style lang="postcss">
@@ -101,7 +174,12 @@
     @apply font-bold pr-5;
   }
 
-  .parent-process {
-    @apply text-[#42b983] underline;
+  .nav-link {
+    @apply text-[#ca2f0f] underline;
+  }
+
+  .page-nav {
+    text-align: left;
+    margin: 0px 0px 5px 5px;
   }
 </style>

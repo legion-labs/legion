@@ -310,7 +310,7 @@ impl CompilerCompileCmd {
     ) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILE);
-        builder.arg(format!("{}", compile_path));
+        builder.arg(compile_path.to_string());
         if !source_deps.is_empty() {
             builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
             for res in source_deps {

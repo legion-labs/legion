@@ -11,7 +11,7 @@ pub trait ScopeEvent {
 #[derive(Debug, TransitReflect)]
 pub struct BeginScopeEvent {
     pub time: i64,
-    pub scope: fn() -> ScopeDesc,
+    pub scope: GetScopeDesc,
 }
 
 impl InProcSerialize for BeginScopeEvent {}
@@ -24,7 +24,7 @@ impl ScopeEvent for BeginScopeEvent {
 #[derive(Debug, TransitReflect)]
 pub struct EndScopeEvent {
     pub time: i64,
-    pub scope: fn() -> ScopeDesc,
+    pub scope: GetScopeDesc,
 }
 
 impl InProcSerialize for EndScopeEvent {}

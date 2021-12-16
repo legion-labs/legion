@@ -410,7 +410,7 @@ pub async fn find_block(
     block_id: &str,
 ) -> Result<lgn_telemetry::EncodedBlock> {
     let row = sqlx::query(
-        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -428,6 +428,7 @@ pub async fn find_block(
         end_time: row.get("end_time"),
         end_ticks: row.get("end_ticks"),
         payload: None,
+        nb_objects: row.get("nb_objects"),
     };
     Ok(block)
 }
@@ -437,7 +438,7 @@ pub async fn find_stream_blocks(
     stream_id: &str,
 ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -455,6 +456,7 @@ pub async fn find_stream_blocks(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         payload: None,
+        nb_objects: r.get("nb_objects"),
     })
     .collect();
     Ok(blocks)
@@ -467,7 +469,7 @@ pub async fn find_stream_blocks_in_range(
     end_time: &str,
 ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -489,6 +491,7 @@ pub async fn find_stream_blocks_in_range(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         payload: None,
+        nb_objects: r.get("nb_objects"),
     })
     .collect();
     Ok(blocks)
@@ -619,6 +622,38 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
     Ok(found_entry)
 }
 
+// for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log entry until fun returns false
+//mad
+pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    stream: &lgn_telemetry::StreamInfo,
+    block: &lgn_telemetry::EncodedBlock,
+    mut fun: Predicate,
+) -> Result<()> {
+    let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+    parse_block(stream, &payload, |val| {
+        if let Value::Object(obj) = val {
+            match obj.type_name.as_str() {
+                "LogMsgEvent" | "LogDynMsgEvent" => {
+                    let time = obj.get::<i64>("time").unwrap();
+                    let entry = format!(
+                        "[{}] {}",
+                        format_log_level(obj.get::<u8>("level").unwrap()),
+                        obj.get::<String>("msg").unwrap()
+                    );
+                    if !fun(time, entry) {
+                        return false; //do not continue
+                    }
+                }
+                _ => {}
+            }
+        }
+        true //continue
+    })?;
+    Ok(())
+}
+
 pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -684,11 +719,13 @@ pub mod prelude {
     pub use crate::find_block;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;
     pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
     pub use crate::find_stream_blocks_in_range;
+    pub use crate::for_each_log_entry_in_block;
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;

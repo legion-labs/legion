@@ -2,6 +2,9 @@
   type Thread = {
     streamInfo: Stream;
     spanBlocks: BlockSpansReply[];
+    maxDepth: number;
+    minMs: number;
+    maxMs: number;
   };
 
   type BeginPan = {
@@ -11,8 +14,9 @@
     beginYOffset: number;
   };
 
-  type BeginSelect = {
-    beginMouseX: number;
+  type LoadingState = {
+    requested: number;
+    completed: number;
   };
 </script>
 
@@ -29,8 +33,20 @@
   import { Stream } from "@lgn/proto-telemetry/codegen/stream";
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
+  import { zoomHorizontalViewRange } from "@/lib/zoom";
+  import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
+  import {
+    DrawSelectedRange,
+    NewSelectionState,
+    RangeSelectionOnMouseDown,
+    RangeSelectionOnMouseMove,
+    SelectionState,
+  } from "@/lib/time_range_selection";
 
-  export let id: string;
+  export let processId: string;
+
+  let timelineStart: number | undefined;
+  let timelineEnd: number | undefined;
 
   let canvas: HTMLCanvasElement | undefined;
   let processList: Process[] = [];
@@ -42,18 +58,28 @@
   let threads: Record<string, Thread> = {};
   let blockList: Block[] = [];
   let scopes: Record<number, ScopeDesc> = {};
-  let selectedRange: [number, number] | undefined;
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
-  let beginSelect: BeginSelect | undefined;
+  let selectionState: SelectionState = NewSelectionState();
+  let currentSelection: [number, number] | undefined;
+  let loadingProgression: LoadingState | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
 
   onMount(() => {
-    const canvas = document.getElementById("canvas_timeline");
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get("timelineStart");
+    if (startParam) {
+      timelineStart = Number.parseFloat(startParam);
+    }
+    const endParam = urlParams.get("timelineEnd");
+    if (endParam) {
+      timelineEnd = Number.parseFloat(endParam);
+    }
 
+    const canvas = document.getElementById("canvas_timeline");
     if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
       throw new Error("Canvas can't be found or is invalid");
     }
@@ -65,78 +91,61 @@
     }
 
     renderingContext = context;
-
     fetchProcessInfo();
   });
 
   async function fetchProcessInfo() {
-    try {
-      const { process } = await client.find_process({ processId: id });
+    const { process } = await client.find_process({ processId: processId });
 
-      if (!process) {
-        throw new Error(`Process ${id} not found`);
-      }
-
-      processList.push(process);
-      fetchStreams(process);
-      currentProcess = process;
-      fetchChildren();
-    } catch (error) {
-      console.error(error);
-      throw error;
+    if (!process) {
+      throw new Error(`Process ${processId} not found`);
     }
+
+    processList.push(process);
+    await fetchStreams(process);
+    currentProcess = process;
+    await fetchChildren();
+    loadingProgression = { requested: blockList.length, completed: 0 };
+    blockList.forEach((block) => fetchBlockSpans(block));
   }
 
   async function fetchStreams(process: Process) {
-    try {
-      const { streams } = await client.list_process_streams({
-        processId: process.processId,
-      });
+    const { streams } = await client.list_process_streams({
+      processId: process.processId,
+    });
 
-      streams.forEach((stream) => {
-        if (stream.tags.includes("cpu")) {
-          threads[stream.streamId] = {
-            streamInfo: stream,
-            spanBlocks: [],
-          };
+    let promises: Promise<void>[] = [];
+    streams.forEach((stream) => {
+      if (stream.tags.includes("cpu")) {
+        threads[stream.streamId] = {
+          streamInfo: stream,
+          spanBlocks: [],
+          maxDepth: 0,
+          minMs: Infinity,
+          maxMs: -Infinity,
+        };
 
-          fetchBlocks(stream.streamId);
-        }
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+        promises.push(fetchBlocks(stream.streamId));
+      }
+    });
+    await Promise.all(promises);
   }
 
   async function fetchChildren() {
-    try {
-      const { processes } = await client.list_process_children({
-        processId: id,
-      });
+    const { processes } = await client.list_process_children({
+      processId: processId,
+    });
 
-      processes.forEach((process) => {
-        processList.push(process);
-
-        fetchStreams(process);
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    let promises = processes.map((process) => {
+      processList.push(process);
+      return fetchStreams(process);
+    });
+    await Promise.all(promises);
   }
 
   async function fetchBlocks(streamId: string) {
-    try {
-      const { blocks } = await client.list_stream_blocks({ streamId });
-
-      blockList = blockList.concat(blocks);
-
-      blocks.forEach(fetchBlockSpans);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    const { blocks } = await client.list_stream_blocks({ streamId });
+    blockList = blockList.concat(blocks);
   }
 
   async function fetchBlockSpans(block: Block) {
@@ -161,14 +170,15 @@
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 
-    threads = {
-      ...threads,
-      [streamId]: {
-        ...threads[streamId],
-        spanBlocks: [...threads[streamId].spanBlocks, response],
-      },
-    };
-
+    let thread = threads[streamId];
+    thread.spanBlocks.push(response);
+    thread.maxDepth = Math.max(thread.maxDepth, response.maxDepth);
+    thread.minMs = Math.min(thread.minMs, response.beginMs);
+    thread.maxMs = Math.max(thread.maxMs, response.endMs);
+    if (loadingProgression) {
+      loadingProgression.completed += 1;
+    }
+    updateProgess();
     drawCanvas();
   }
 
@@ -206,46 +216,18 @@
       }
 
       const childStartTime = Date.parse(childProcess.startTime);
-
-      const maxDepth = drawThread(
-        threads[streamId],
-        threadVerticalOffset,
-        childStartTime - parentStartTime
-      );
-
-      if (maxDepth) {
-        threadVerticalOffset += (maxDepth + 2) * 20;
+      const thread = threads[streamId];
+      if (thread.spanBlocks.length > 0) {
+        drawThread(
+          thread,
+          threadVerticalOffset,
+          childStartTime - parentStartTime
+        );
+        threadVerticalOffset += (thread.maxDepth + 2) * 20;
       }
     }
 
-    drawSelectedRange();
-  }
-
-  function drawSelectedRange() {
-    if (!canvas || !renderingContext) {
-      return;
-    }
-
-    if (!selectedRange) {
-      return;
-    }
-
-    const [begin, end] = getViewRange();
-    const invTimeSpan = 1.0 / (end - begin);
-    const canvasWidth = canvas.clientWidth;
-    const canvasHeight = canvas.clientHeight;
-    const msToPixelsFactor = invTimeSpan * canvasWidth;
-    const [beginSelection, endSelection] = selectedRange;
-    const beginPixels = (beginSelection - begin) * msToPixelsFactor;
-    const endPixels = (endSelection - begin) * msToPixelsFactor;
-
-    renderingContext.fillStyle = "rgba(64, 64, 200, 0.2)";
-    renderingContext.fillRect(
-      beginPixels,
-      0,
-      endPixels - beginPixels,
-      canvasHeight
-    );
+    DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
   }
 
   function drawThread(
@@ -254,6 +236,9 @@
     offsetMs: number
   ) {
     if (!canvas || !renderingContext) {
+      return;
+    }
+    if (threadVerticalOffset > canvas.clientHeight) {
       return;
     }
 
@@ -269,10 +254,33 @@
     const characterWidth = testTextMetrics.width / testString.length;
     const characterHeight = testTextMetrics.actualBoundingBoxAscent;
 
-    let maxDepth = 0;
+    const beginThread = Math.max(begin, thread.minMs + offsetMs);
+    const endThread = Math.min(end, thread.maxMs + offsetMs);
+    const beginThreadPixels = (beginThread - begin) * msToPixelsFactor;
+    const endThreadPixels = (endThread - begin) * msToPixelsFactor;
+
+    renderingContext.fillStyle = "#FCFCFC";
+    renderingContext.fillRect(
+      0,
+      threadVerticalOffset,
+      canvasWidth,
+      20 * thread.maxDepth
+    );
+    renderingContext.fillStyle = "#F0F0F0";
+    renderingContext.fillRect(
+      beginThreadPixels,
+      threadVerticalOffset,
+      endThreadPixels - beginThreadPixels,
+      20 * thread.maxDepth
+    );
 
     thread.spanBlocks.forEach((blockSpans) => {
-      maxDepth = Math.max(maxDepth, blockSpans.maxDepth);
+      if (
+        blockSpans.beginMs + offsetMs > end ||
+        blockSpans.endMs + offsetMs < begin
+      ) {
+        return;
+      }
 
       blockSpans.spans.forEach(({ beginMs, endMs, depth, scopeHash }) => {
         if (!renderingContext) {
@@ -281,16 +289,24 @@
 
         const beginSpan = beginMs + offsetMs;
         const endSpan = endMs + offsetMs;
+
+        if (beginSpan > end || endSpan < begin) {
+          return;
+        }
+
         const beginPixels = (beginSpan - begin) * msToPixelsFactor;
         const endPixels = (endSpan - begin) * msToPixelsFactor;
         const callWidth = endPixels - beginPixels;
+        if (callWidth < 0.1) {
+          return;
+        }
 
         const offsetY = threadVerticalOffset + depth * 20;
 
         if (depth % 2 === 0) {
-          renderingContext.fillStyle = "#7DF9FF";
+          renderingContext.fillStyle = "#fede99";
         } else {
-          renderingContext.fillStyle = "#A0A0CC";
+          renderingContext.fillStyle = "#fea446";
         }
 
         renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
@@ -314,8 +330,6 @@
         }
       });
     });
-
-    return maxDepth;
   }
 
   function getViewRange(): [number, number] {
@@ -323,7 +337,15 @@
       return viewRange;
     }
 
-    return [minMs, maxMs];
+    let start = minMs;
+    if (timelineStart) {
+      start = timelineStart;
+    }
+    let end = maxMs;
+    if (timelineEnd) {
+      end = timelineEnd;
+    }
+    return [start, end];
   }
 
   function onPan(event: MouseEvent) {
@@ -348,51 +370,46 @@
       beginPan.viewRange[0] + offsetMs,
       beginPan.viewRange[1] + offsetMs,
     ];
+
     yOffset = beginPan.beginYOffset + event.offsetY - beginPan.beginMouseY;
-    drawCanvas();
-  }
-
-  function onSelectRange(event: MouseEvent) {
-    if (!canvas) {
-      throw new Error("Canvas can't be found");
-    }
-
-    if (!beginSelect) {
-      beginSelect = {
-        beginMouseX: event.offsetX,
-      };
-    }
-
-    const viewRange = getViewRange();
-    const factor = (viewRange[1] - viewRange[0]) / canvas.width;
-    const beginTime = viewRange[0] + factor * beginSelect.beginMouseX;
-    const endTime = viewRange[0] + factor * event.offsetX;
-
-    selectedRange = [beginTime, endTime];
-
-    drawCanvas();
   }
 
   function onMouseDown(event: MouseEvent) {
-    if (event.shiftKey) {
-      beginSelect = undefined;
-      selectedRange = undefined;
+    if (RangeSelectionOnMouseDown(event, selectionState)) {
+      currentSelection = selectionState.selectedRange;
       drawCanvas();
     }
   }
 
-  function onMouseMove(event: MouseEvent) {
+  // returns if the view should be updated
+  function PanOnMouseMove(event: MouseEvent): boolean {
     if (event.buttons !== 1) {
       beginPan = undefined;
-      beginSelect = undefined;
-
-      return;
+      return false;
     }
 
-    if (event.shiftKey) {
-      onSelectRange(event);
-    } else {
+    if (!event.shiftKey) {
       onPan(event);
+      return true;
+    }
+    return false;
+  }
+
+  function onMouseMove(event: MouseEvent) {
+    if (!canvas) {
+      return;
+    }
+    if (
+      RangeSelectionOnMouseMove(
+        event,
+        selectionState,
+        canvas,
+        getViewRange()
+      ) ||
+      PanOnMouseMove(event)
+    ) {
+      currentSelection = selectionState.selectedRange;
+      drawCanvas();
     }
   }
 
@@ -400,21 +417,23 @@
     if (!canvas) {
       throw new Error("Canvas can't be found");
     }
-
-    const speed = 0.75;
-    const factor = event.deltaY > 0 ? 1.0 / speed : speed;
-    const oldRange = getViewRange();
-    const length = oldRange[1] - oldRange[0];
-    const newLength = length * factor;
-    const pctCursor = event.offsetX / canvas.width;
-    const pivot = oldRange[0] + length * pctCursor;
-
-    viewRange = [
-      pivot - newLength * pctCursor,
-      pivot + newLength * (1 - pctCursor),
-    ];
-
+    viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
     drawCanvas();
+  }
+
+  function updateProgess() {
+    if (!loadingProgression) {
+      return;
+    }
+    var elem = document.getElementById("loadedProgress");
+    if (elem) {
+      elem.style.width =
+        (loadingProgression.completed * 100) / loadingProgression.requested +
+        "%";
+    }
+    if (loadingProgression.completed == loadingProgression.requested) {
+      loadingProgression = undefined;
+    }
   }
 </script>
 
@@ -429,48 +448,46 @@
           </a>
         </div>
       {/if}
-      {#if selectedRange}
-        <button class="call-graph-button">
-          <a
-            href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${selectedRange[0]}&end=${selectedRange[1]}`}
-            use:link
-          >
-            Cumulative Call Graph
-          </a>
-        </button>
-      {/if}
     </div>
   {/if}
+
+  {#if loadingProgression}
+    <div id="totalLoadingProgress">
+      <div id="loadedProgress">Loading</div>
+    </div>
+  {/if}
+
   <canvas
     class="timeline-canvas"
     bind:this={canvas}
     id="canvas_timeline"
     width="1024px"
     on:wheel|preventDefault={onZoom}
-    on:mousemove={onMouseMove}
-    on:mousedown={onMouseDown}
+    on:mousemove|preventDefault={onMouseMove}
+    on:mousedown|preventDefault={onMouseDown}
   />
+
+  <TimeRangeDetails timeRange={currentSelection} {processId} />
 </div>
 
 <style lang="postcss">
   .parent-process {
-    @apply text-[#42b983] underline;
+    @apply text-[#ca2f0f] underline;
   }
 
   .timeline-canvas {
     margin: auto;
+    display: inline-block;
   }
 
-  .call-graph-button {
-    background-color: rgba(64, 64, 200, 0.2);
-    border: 1px solid;
-    transition-duration: 0.4s;
-    border-radius: 4px;
+  #totalLoadingProgress {
+    margin: auto;
+    width: 90%;
+    background-color: grey;
   }
 
-  .call-graph-button:hover {
-    background-color: rgba(64, 64, 200, 1);
-    color: white;
-    border: 1px solid;
+  #loadedProgress {
+    width: 0px;
+    background-color: #fea446;
   }
 </style>

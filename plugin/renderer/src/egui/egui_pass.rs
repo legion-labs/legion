@@ -3,7 +3,7 @@ use crate::egui::egui_plugin::Egui;
 use crate::RenderContext;
 use crate::Renderer;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ impl EguiPass {
         //
         // Shaders
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
+        let shader_compiler = renderer.shader_compiler();
 
         let shader_source =
             String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap();
@@ -113,7 +113,6 @@ impl EguiPass {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
@@ -324,22 +323,22 @@ impl EguiPass {
             .descriptor_set_layouts[0];
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "font_texture",
-                0,
                 &[DescriptorRef::TextureView(
                     &self.texture_data.as_ref().unwrap().2,
                 )],
             )
             .unwrap();
         descriptor_set_writer
-            .set_descriptors("font_sampler", 0, &[DescriptorRef::Sampler(&self.sampler)])
+            .set_descriptors_by_name("font_sampler", &[DescriptorRef::Sampler(&self.sampler)])
             .unwrap();
         let descriptor_set_handle =
             descriptor_set_writer.flush(render_context.renderer().device_context());
 
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
+                PipelineType::Graphics,
                 &self.root_signature,
                 descriptor_set_layout.definition().frequency,
                 descriptor_set_handle,

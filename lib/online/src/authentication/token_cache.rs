@@ -5,16 +5,15 @@ use std::path::PathBuf;
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use log::{debug, warn};
-use tokio::sync::{Semaphore, SemaphorePermit};
+use tokio::sync::{Mutex, MutexGuard};
 
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
 pub struct TokenCache<A> {
-    authenticator: A,
     project_dirs: ProjectDirs,
     validation: UnsecureValidation<'static>,
-    semaphore: Semaphore,
+    authenticator: Mutex<A>,
 }
 
 impl<A> TokenCache<A>
@@ -24,16 +23,15 @@ where
     /// Instanciate a new `TokenCache`
     pub fn new(authenticator: A, project_dirs: ProjectDirs) -> Self {
         Self {
-            authenticator,
             project_dirs,
             validation: UnsecureValidation::default(),
-            semaphore: Semaphore::new(1),
+            authenticator: Mutex::new(authenticator),
         }
     }
 
     /// Get the `Authenticator` used by this `TokenCache`.
-    pub fn authenticator(&self) -> &A {
-        &self.authenticator
+    pub async fn authenticator(&self) -> MutexGuard<'_, A> {
+        self.authenticator.lock().await
     }
 
     fn get_tokens_file_path(&self) -> PathBuf {
@@ -98,11 +96,21 @@ where
         }
     }
 
-    async fn lock(&self) -> Result<SemaphorePermit<'_>> {
-        self.semaphore
-            .acquire()
+    async fn refresh_login_with(
+        &self,
+        refresh_token: &str,
+        authenticator: &A,
+    ) -> Result<ClientTokenSet> {
+        authenticator
+            .refresh_login(refresh_token)
             .await
-            .map_err(|e| Error::InternalError(format!("failed to acquire semaphore: {}", e)))
+            .map(|token_set| {
+                if let Err(err) = self.write_token_set_to_cache(&token_set) {
+                    warn!("Failed to write access token to cache: {}", err);
+                }
+
+                token_set
+            })
     }
 }
 
@@ -118,7 +126,7 @@ where
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
     async fn login(&self) -> Result<ClientTokenSet> {
-        let _permit = self.lock().await?;
+        let authenticator = self.authenticator().await;
 
         let token_set = match self.read_token_set_from_cache() {
             Ok(token_set) => {
@@ -132,10 +140,12 @@ where
                             );
 
                             if let Some(refresh_token) = &token_set.refresh_token {
-                                return self.refresh_login(refresh_token).await;
+                                return self
+                                    .refresh_login_with(refresh_token, &authenticator)
+                                    .await;
                             }
 
-                            self.authenticator.login().await?
+                            authenticator.login().await?
                         } else {
                             debug!("Reusing cached access token.");
 
@@ -149,14 +159,14 @@ where
 
                         self.delete_cache()?;
 
-                        self.authenticator.login().await?
+                        authenticator.login().await?
                     }
                 }
             }
             Err(err) => {
                 warn!("Failed to read access token from cache: {}", err);
 
-                self.authenticator.login().await?
+                authenticator.login().await?
             }
         };
 
@@ -169,26 +179,17 @@ where
     }
 
     async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
-        let _permit = self.lock().await?;
+        let authenticator = self.authenticator().await;
 
-        self.authenticator
-            .refresh_login(refresh_token)
-            .await
-            .map(|token_set| {
-                if let Err(err) = self.write_token_set_to_cache(&token_set) {
-                    warn!("Failed to write access token to cache: {}", err);
-                }
-
-                token_set
-            })
+        self.refresh_login_with(refresh_token, &authenticator).await
     }
 
     /// Perform a logout, delegating its execution to the owned `Authenticator` and clearing the cache.
     async fn logout(&self) -> Result<()> {
-        let _permit = self.lock().await?;
+        let authenticator = self.authenticator().await;
 
         self.delete_cache()?;
 
-        self.authenticator.logout().await
+        authenticator.logout().await
     }
 }

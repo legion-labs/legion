@@ -710,9 +710,16 @@ pub struct CmdCopyTextureParams {
 
 /// Wraps all the possible types used to fill a `DescriptorSet`
 pub enum DescriptorRef<'a> {
+    Undefined,
     Sampler(&'a Sampler),
     BufferView(&'a BufferView),
     TextureView(&'a TextureView),
+}
+
+impl<'a> Default for DescriptorRef<'a> {
+    fn default() -> Self {
+        Self::Undefined
+    }
 }
 
 /// Set the texture tiling (internally swizzled, linear)

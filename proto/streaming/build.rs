@@ -1,10 +1,12 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "run-codegen")]
     {
+        let proto_filepaths = &["./streaming.proto"];
+
         let context = lgn_build_utils::Context::new(cfg!(feature = "run-codegen-validation"));
         lgn_build_utils::build_protos(
             &context,
-            &["./streaming.proto"],
+            proto_filepaths,
             &["."],
             lgn_build_utils::Language::RUST | lgn_build_utils::Language::TYPESCRIPT,
         )?;

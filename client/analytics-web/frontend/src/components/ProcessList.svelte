@@ -18,9 +18,11 @@
     processList = response.processes;
   }
 
-  async function onSearchChange(evt: Event & { currentTarget: EventTarget & HTMLInputElement; }) {
+  async function onSearchChange(
+    evt: Event & { currentTarget: EventTarget & HTMLInputElement }
+  ) {
     const searchString = evt.currentTarget.value;
-    const response = await client.search_processes({search: searchString});
+    const response = await client.search_processes({ search: searchString });
     processList = response.processes;
   }
 
@@ -28,13 +30,15 @@
     getRecentProcesses();
   });
 
-  function formatLocalTime(timeStr: string):string{
+  function formatLocalTime(timeStr: string): string {
     const time = new Date(timeStr);
-    return time.toLocaleTimeString( navigator.language, { timeZoneName: 'short',
-                                                          hour12: false,
-                                                          year: 'numeric',
-                                                          month: '2-digit',
-                                                          day: '2-digit' } );
+    return time.toLocaleTimeString(navigator.language, {
+      timeZoneName: "short",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   }
 </script>
 
@@ -44,7 +48,13 @@
   <center>
     <div class="search-div">
       <!-- svelte-ignore a11y-autofocus -->
-      <input autofocus type="text" class="search-input" placeholder="search exe" on:input={onSearchChange} />
+      <input
+        autofocus
+        type="text"
+        class="search-input"
+        placeholder="search exe"
+        on:input={onSearchChange}
+      />
     </div>
     <table>
       <thead>
@@ -66,9 +76,7 @@
             <td>
               {#if nbLogBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/log/${processInfo?.processId}`} use:link>
-                    log
-                  </a>
+                  <a href={`/log/${processInfo?.processId}`} use:link> log </a>
                 </div>
               {/if}
             </td>
@@ -125,10 +133,10 @@
     text-align: left;
   }
 
-  table tr:nth-child(even){
+  table tr:nth-child(even) {
     background-color: #f2f2f2;
   }
-  
+
   table td {
     @apply p-1 text-left border border-[rgb(153,153,153)];
     font-family: monospace;
@@ -140,7 +148,7 @@
   }
 
   a {
-    @apply text-[#42b983] underline;
+    @apply text-[#ca2f0f] underline;
   }
 
   .search-div {
@@ -153,5 +161,4 @@
     border-radius: 8px;
     text-align: center;
   }
-  
 </style>

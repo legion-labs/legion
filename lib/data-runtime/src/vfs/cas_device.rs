@@ -1,7 +1,7 @@
 use lgn_content_store::ContentStore;
 
 use super::Device;
-use crate::{manifest::Manifest, ResourceId};
+use crate::{manifest::Manifest, ResourceTypeAndId};
 
 /// Content addressable storage device. Resources are accessed through a manifest access table.
 pub(crate) struct CasDevice {
@@ -19,8 +19,8 @@ impl CasDevice {
 }
 
 impl Device for CasDevice {
-    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
-        let (checksum, size) = self.manifest.find(id)?;
+    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+        let (checksum, size) = self.manifest.find(type_id)?;
         let content = self.content_store.read(checksum)?;
         assert_eq!(content.len(), size);
         Some(content)

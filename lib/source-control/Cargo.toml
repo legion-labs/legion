@@ -6,31 +6,33 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-uuid = { version = "0.8", features = ["serde", "v4"] }
-whoami = "1.2"
-path-clean = "0.1"
-sha2 = "0.9"
-lz4 = "1.23"
+anyhow = "1"
+async-trait = "0.1"
+async-recursion = "0.3"
+aws-config = "0.2"
+aws-sdk-s3 = "0.2"
 chrono = "0.4"
 diffy = "0.2"
 dirs = "4.0"
-glob = "0.3"
-git2 = { version = "0.13", features = ["vendored-openssl"] }
-unicase = "2.6"
 futures = "0.3"
+git2 = { version = "0.13", features = ["vendored-openssl"] }
+glob = "0.3"
+http = "0.2"
+lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lz4 = "1.23"
+path-clean = "0.1"
+reqwest = { version = "0.11", features = ["blocking"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
     "mysql",
     "runtime-tokio-native-tls",
 ] }
-http = "0.2"
 tokio = { version = "1.13", features = ["full"] }
-aws-sdk-s3 = "0.2"
-aws-config = "0.2"
-reqwest = { version = "0.11", features = ["blocking"] }
-async-trait = "0.1"
+unicase = "2.6"
 url = "2.2"
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+uuid = { version = "0.8", features = ["serde", "v4"] }
+whoami = "1.2"

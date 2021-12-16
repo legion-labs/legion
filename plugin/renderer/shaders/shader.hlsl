@@ -1,3 +1,5 @@
+// #include "crate://renderer/cgen/hlsl/pipeline_layout/default_pipeline_layout.hlsl"
+
 struct VertexIn {
     float3 pos : POSITION;
     float3 normal : NORMAL;   
@@ -15,11 +17,6 @@ struct ConstData {
     float4 color;
 };
 
-struct PushConstData {
-    uint offset;
-    uint is_picked;
-};
-
 struct EntityTransforms {
     float4x4 world;
 };
@@ -27,6 +24,11 @@ struct EntityTransforms {
 ConstantBuffer<ConstData> const_data;
 
 ByteAddressBuffer static_buffer;
+
+struct PushConstData {
+    uint offset;
+    uint is_picked;
+};
 
 [[vk::push_constant]]
 ConstantBuffer<PushConstData> push_constant;

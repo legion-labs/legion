@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 use std::convert::TryFrom;
 
-use graphics_api::prelude::*;
+use lgn_graphics_api::prelude::*;
 use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
@@ -45,9 +45,9 @@ impl PresenterWindow {
         }
     }
 
-    pub fn present<'renderer>(
+    pub fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
         //
@@ -154,9 +154,9 @@ impl Presenter for PresenterWindow {
         self.extents = extents;
     }
 
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

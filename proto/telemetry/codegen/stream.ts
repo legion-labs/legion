@@ -126,8 +126,8 @@ export const UDTMember = {
     const obj: any = {};
     message.name !== undefined && (obj.name = message.name);
     message.typeName !== undefined && (obj.typeName = message.typeName);
-    message.offset !== undefined && (obj.offset = message.offset);
-    message.size !== undefined && (obj.size = message.size);
+    message.offset !== undefined && (obj.offset = Math.round(message.offset));
+    message.size !== undefined && (obj.size = Math.round(message.size));
     message.isReference !== undefined &&
       (obj.isReference = message.isReference);
     return obj;
@@ -209,7 +209,7 @@ export const UserDefinedType = {
   toJSON(message: UserDefinedType): unknown {
     const obj: any = {};
     message.name !== undefined && (obj.name = message.name);
-    message.size !== undefined && (obj.size = message.size);
+    message.size !== undefined && (obj.size = Math.round(message.size));
     if (message.members) {
       obj.members = message.members.map((e) =>
         e ? UDTMember.toJSON(e) : undefined

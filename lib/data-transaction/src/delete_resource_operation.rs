@@ -1,17 +1,17 @@
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct DeleteResourceOperation {
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     old_resource_name: Option<ResourcePathName>,
     old_resource_data: Option<Vec<u8>>,
 }
 
 impl DeleteResourceOperation {
-    pub fn new(resource_id: ResourceId) -> Self {
+    pub fn new(resource_id: ResourceTypeAndId) -> Self {
         Self {
             resource_id,
             old_resource_name: None,
@@ -28,7 +28,7 @@ impl TransactionOperation for DeleteResourceOperation {
             if self.old_resource_name.is_none() {
                 let mut old_resource_data = Vec::<u8>::new();
                 ctx.resource_registry.serialize_resource(
-                    self.resource_id.ty(),
+                    self.resource_id.t,
                     &old_handle,
                     &mut old_resource_data,
                 )?;
@@ -54,11 +54,11 @@ impl TransactionOperation for DeleteResourceOperation {
 
         let handle = ctx
             .resource_registry
-            .deserialize_resource(self.resource_id.ty(), &mut old_resource_data.as_slice())?;
+            .deserialize_resource(self.resource_id.t, &mut old_resource_data.as_slice())?;
 
         ctx.project.add_resource_with_id(
             old_resource_name.clone(),
-            self.resource_id.ty(),
+            self.resource_id.t,
             self.resource_id,
             &handle,
             &mut ctx.resource_registry,

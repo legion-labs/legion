@@ -1,6 +1,9 @@
 use ash::vk::{self};
 
-use crate::{Buffer, DeviceContext, MemoryAllocation, MemoryAllocationDef, MemoryPagesAllocation};
+use crate::{
+    Buffer, BufferMappingInfo, DeviceContext, MemoryAllocation, MemoryAllocationDef,
+    MemoryPagesAllocation,
+};
 
 pub(crate) struct VulkanMemoryAllocation {
     vk_allocation_info: vk_mem::AllocationInfo,
@@ -8,7 +11,7 @@ pub(crate) struct VulkanMemoryAllocation {
 }
 
 impl VulkanMemoryAllocation {
-    pub fn from_buffer(
+    pub(crate) fn from_buffer(
         device_context: &DeviceContext,
         buffer: &Buffer,
         alloc_def: &MemoryAllocationDef,
@@ -44,7 +47,7 @@ impl VulkanMemoryAllocation {
         }
     }
 
-    pub fn destroy(&self, device_context: &DeviceContext) {
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         device_context
             .vk_allocator()
             .free_memory(&self.vk_allocation);
@@ -52,7 +55,7 @@ impl VulkanMemoryAllocation {
 }
 
 impl MemoryAllocation {
-    pub fn map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
+    pub(crate) fn map_buffer_platform(&self, device_context: &DeviceContext) -> BufferMappingInfo {
         let ptr = device_context
             .vk_allocator()
             .map_memory(self.vk_allocation())
@@ -64,17 +67,17 @@ impl MemoryAllocation {
         }
     }
 
-    pub fn unmap_buffer(&self, device_context: &DeviceContext) {
+    pub(crate) fn unmap_buffer_platform(&self, device_context: &DeviceContext) {
         device_context
             .vk_allocator()
             .unmap_memory(self.vk_allocation());
     }
 
-    pub fn mapped_ptr(&self) -> *mut u8 {
+    pub(crate) fn mapped_ptr_platform(&self) -> *mut u8 {
         self.vk_allocation_info().get_mapped_data()
     }
 
-    pub fn size(&self) -> usize {
+    pub(crate) fn size_platform(&self) -> usize {
         self.vk_allocation_info().get_size()
     }
 
@@ -84,24 +87,6 @@ impl MemoryAllocation {
 
     pub(crate) fn vk_allocation_info(&self) -> &vk_mem::AllocationInfo {
         &self.inner.platform_allocation.vk_allocation_info
-    }
-}
-
-pub struct BufferMappingInfo {
-    allocation: MemoryAllocation,
-    data_ptr: *mut u8,
-}
-
-impl BufferMappingInfo {
-    pub fn data_ptr(&self) -> *mut u8 {
-        self.data_ptr
-    }
-}
-
-impl Drop for BufferMappingInfo {
-    fn drop(&mut self) {
-        self.allocation
-            .unmap_buffer(self.allocation.device_context());
     }
 }
 

@@ -7,6 +7,7 @@ use std::{
     fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 
@@ -14,9 +15,8 @@ use generic_data_offline::{DebugCube, TestEntity};
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use lgn_data_runtime::{Resource, ResourceId, ResourceType};
+use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_offline::PsdFile;
-use lgn_utils::DefaultHash;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 
@@ -35,18 +35,28 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
 
             let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
 
-            let resource_names = file_paths
+            let file_paths_guids = file_paths
+                .iter()
+                .map(|s| {
+                    let mut p = s.clone();
+                    p.set_extension(s.extension().unwrap().to_str().unwrap().to_owned() + ".guid");
+                    ResourceId::from_str(&fs::read_to_string(p).unwrap()).unwrap()
+                })
+                .collect::<Vec<_>>();
+
+            let in_resources = file_paths
                 .iter()
                 .map(|s| path_to_resource_name(s))
+                .zip(file_paths_guids)
                 .collect::<Vec<_>>();
 
             let resource_ids =
-                create_or_find_default(&file_paths, &resource_names, &mut project, &mut resources);
+                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources);
 
             println!("Created resources: {:#?}", project);
 
             for (i, path) in file_paths.iter().enumerate() {
-                let resource_name = &resource_names[i];
+                let resource_name = &in_resources[i].0;
                 let resource_id = *resource_ids.get(resource_name).unwrap();
                 match path.extension().unwrap().to_str().unwrap() {
                     "ent" => {
@@ -140,22 +150,36 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
 /// in order to resolve references from a `ResourcePathName` (/path/to/resource) to `ResourceId` (125463453).
 fn create_or_find_default(
     file_paths: &[PathBuf],
-    resource_names: &[ResourcePathName],
+    in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> HashMap<ResourcePathName, ResourceId> {
-    let mut ids: HashMap<ResourcePathName, ResourceId> = HashMap::default();
+) -> HashMap<ResourcePathName, ResourceTypeAndId> {
+    let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
+    build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids);
+    build_test_entity(project, resources, &mut ids);
+    build_debug_cubes(project, resources, &mut ids);
+    ids
+}
 
+fn build_resource_from_raw(
+    file_paths: &[PathBuf],
+    in_resources: &[(ResourcePathName, ResourceId)],
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+    ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
+) {
     for (i, path) in file_paths.iter().enumerate() {
-        let name = &resource_names[i];
+        let name = &in_resources[i].0;
         let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
 
         let id = {
             if let Ok(id) = project.find_resource(name) {
                 id
             } else {
-                let resource_hash = name.default_hash();
-                let id = ResourceId::new(kind, resource_hash);
+                let id = ResourceTypeAndId {
+                    t: kind,
+                    id: in_resources[i].1,
+                };
                 project
                     .add_resource_with_id(
                         name.clone(),
@@ -169,38 +193,59 @@ fn create_or_find_default(
         };
         ids.insert(name.clone(), id);
     }
+}
 
+fn build_test_entity(
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+    ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
+) {
     // Create TestEntity Generic DataContainer
-    {
-        let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
-        let id = {
-            if let Ok(id) = project.find_resource(&name) {
-                id
-            } else {
-                let resource_hash = name.default_hash();
-                let kind = TestEntity::TYPE;
-                let id = ResourceId::new(kind, resource_hash);
-                let test_entity_handle = resources.new_resource(kind).unwrap();
-                let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
-                test_entity.test_string = "Editable String Value".into();
-                test_entity.test_float32 = 1.0;
-                test_entity.test_float64 = 2.0;
-                test_entity.test_int = 1337;
-                test_entity.test_position = lgn_math::Vec3::new(0.0, 100.0, 0.0);
-                project
-                    .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
-                    .unwrap()
-            }
-        };
-        ids.insert(name, id);
-    }
+    let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
+    let id = {
+        if let Ok(id) = project.find_resource(&name) {
+            id
+        } else {
+            let kind = TestEntity::TYPE;
+            let id = ResourceTypeAndId {
+                t: kind,
+                id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
+            };
+            let test_entity_handle = resources.new_resource(kind).unwrap();
+            let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
+            test_entity.test_string = "Editable String Value".into();
+            test_entity.test_float32 = 1.0;
+            test_entity.test_float64 = 2.0;
+            test_entity.test_int = 1337;
+            test_entity.test_position = lgn_math::Vec3::new(0.0, 100.0, 0.0);
+            project
+                .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                .unwrap()
+        }
+    };
+    ids.insert(name, id);
+}
+
+fn build_debug_cubes(
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+    ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
+) {
+    let cube_ids = [
+        "DB051B98-6FF5-4BAC-BEA8-50B5A13C3F1B",
+        "202E3AA6-F158-4C77-890B-3F59B183B6BD",
+        "7483C534-FE2A-4F16-B655-E9AFE39A93BA",
+    ];
 
     // Create DebugCube DataContainer
     (0..3).for_each(|index| {
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
         let id = project.find_resource(&name).unwrap_or_else(|_err| {
             let kind = DebugCube::TYPE;
-            let id = ResourceId::new(kind, name.default_hash());
+            let id = ResourceTypeAndId {
+                t: kind,
+                id: ResourceId::from_str(cube_ids[index]).unwrap(),
+            };
             let cube_entity_handle = resources.new_resource(kind).unwrap();
             let cube_entity = cube_entity_handle.get_mut::<DebugCube>(resources).unwrap();
 
@@ -242,8 +287,6 @@ fn create_or_find_default(
 
         ids.insert(name, id);
     });
-
-    ids
 }
 
 fn path_to_resource_name(path: &Path) -> ResourcePathName {
@@ -291,12 +334,12 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
 }
 
 fn load_ron_resource<RawType, OfflineType>(
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     file: &Path,
-    references: &HashMap<ResourcePathName, ResourceId>,
+    references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> Option<ResourceId>
+) -> Option<ResourceTypeAndId>
 where
     RawType: DeserializeOwned,
     OfflineType: Resource + FromRaw<RawType> + 'static,
@@ -324,11 +367,11 @@ where
 }
 
 fn load_psd_resource(
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> Option<ResourceId> {
+) -> Option<ResourceTypeAndId> {
     let raw_data = fs::read(file).ok()?;
     let loaded_psd = PsdFile::from_bytes(&raw_data)?;
 

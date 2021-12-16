@@ -3,12 +3,12 @@ use std::{fs::File, path::Path};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use lgn_data_runtime::{AssetLoader, Resource, ResourceId};
+use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
 
 mod common;
 
-fn create_test_resource(id: ResourceId, dir: &Path, content: &str) {
-    let path = dir.join(format!("{:x}", id));
+fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
+    let path = dir.join(id.to_string());
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};
@@ -47,7 +47,10 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = ResourceId::new_random_id(refs_resource::TestResource::TYPE);
+    let source = ResourceTypeAndId {
+        t: refs_resource::TestResource::TYPE,
+        id: ResourceId::new(),
+    };
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");

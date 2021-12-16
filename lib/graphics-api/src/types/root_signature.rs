@@ -1,7 +1,7 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanRootSignature;
 use crate::deferred_drop::Drc;
-use crate::{DeviceContext, GfxResult, PipelineType, RootSignatureDef};
+use crate::{DeviceContext, GfxResult, RootSignatureDef};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -14,7 +14,7 @@ pub(crate) struct RootSignatureInner {
     definition: RootSignatureDef,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_root_signature: VulkanRootSignature,
+    pub(crate) platform_root_signature: VulkanRootSignature,
 }
 
 impl Drop for RootSignatureInner {
@@ -26,7 +26,7 @@ impl Drop for RootSignatureInner {
 
 #[derive(Clone)]
 pub struct RootSignature {
-    pub(super) inner: Drc<RootSignatureInner>,
+    pub(crate) inner: Drc<RootSignatureInner>,
 }
 
 impl RootSignature {
@@ -54,16 +54,11 @@ impl RootSignature {
         &self.inner.device_context
     }
 
-    pub fn pipeline_type(&self) -> PipelineType {
-        self.inner.definition.pipeline_type
-    }
+    // pub fn pipeline_type(&self) -> PipelineType {
+    //     self.inner.definition.pipeline_type
+    // }
 
     pub fn definition(&self) -> &RootSignatureDef {
         &self.inner.definition
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_root_signature(&self) -> &VulkanRootSignature {
-        &self.inner.platform_root_signature
     }
 }

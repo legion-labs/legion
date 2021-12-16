@@ -2,7 +2,9 @@ use std::cmp;
 
 use ash::vk;
 
-use crate::{DeviceContext, GfxResult, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{
+    DeviceContext, GfxResult, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -12,7 +14,7 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 
 #[derive(Debug)]
 pub(crate) struct VulkanRootSignature {
-    pipeline_layout: vk::PipelineLayout,
+    vk_pipeline_layout: vk::PipelineLayout,
 }
 
 impl VulkanRootSignature {
@@ -31,7 +33,7 @@ impl VulkanRootSignature {
         let mut descriptor_set_layout_count = 0;
         for layout in &definition.descriptor_set_layouts {
             let set_index = layout.set_index() as usize;
-            vk_descriptor_set_layouts[set_index] = layout.platform_layout().vk_layout();
+            vk_descriptor_set_layouts[set_index] = layout.vk_layout();
             descriptor_set_layout_count = cmp::max(descriptor_set_layout_count, set_index + 1);
         }
 
@@ -49,24 +51,26 @@ impl VulkanRootSignature {
             .push_constant_ranges(&push_constant_ranges)
             .build();
 
-        let pipeline_layout = unsafe {
+        let vk_pipeline_layout = unsafe {
             device_context
                 .vk_device()
                 .create_pipeline_layout(&pipeline_layout_create_info, None)?
         };
 
-        Ok(Self { pipeline_layout })
+        Ok(Self { vk_pipeline_layout })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContext) {
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         let device = device_context.vk_device();
 
         unsafe {
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
+            device.destroy_pipeline_layout(self.vk_pipeline_layout, None);
         }
     }
+}
 
-    pub fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
-        self.pipeline_layout
+impl RootSignature {
+    pub(crate) fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
+        self.inner.platform_root_signature.vk_pipeline_layout
     }
 }

@@ -9,26 +9,12 @@ use hyper::{
 };
 use hyper_rustls::HttpsConnector;
 use log::{debug, info, warn};
-use tokio::sync::{Mutex, Semaphore, SemaphorePermit};
+use tokio::sync::{Mutex, MutexGuard};
 use url::Url;
 
 use super::{Authenticator, Error, Result};
 
-pub struct AwsCognitoClientAuthenticator {
-    pub domain_name: String,
-    pub region: String,
-    pub client_id: String,
-    pub scopes: Vec<String>,
-    pub port: u16,
-    pub identity_provider: Option<String>,
-
-    client: Client<HttpsConnector<HttpConnector>>,
-    semaphore: Semaphore,
-}
-
-use super::ClientTokenSet;
-use super::UserInfo;
-
+type AuthClient = Client<HttpsConnector<HttpConnector>>;
 /// An `AwsCognitoClientAuthenticator`'s primary goal is to authenticate a user and return a
 /// `ClientTokenSet` containing the user's id, access and refresh tokens.
 ///
@@ -38,6 +24,20 @@ use super::UserInfo;
 ///
 /// It can also validate a user's access token and return a `UserInfo` struct containing the user's
 /// profile.
+pub struct AwsCognitoClientAuthenticator {
+    pub domain_name: String,
+    pub region: String,
+    pub client_id: String,
+    pub scopes: Vec<String>,
+    pub port: u16,
+    pub identity_provider: Option<String>,
+
+    client: Mutex<AuthClient>,
+}
+
+use super::ClientTokenSet;
+use super::UserInfo;
+
 impl AwsCognitoClientAuthenticator {
     /// Creates an authenticator from a valid AWS Cognito URL.
     ///
@@ -123,10 +123,10 @@ impl AwsCognitoClientAuthenticator {
         // If there is no explicit port, assume the default port for the scheme.
         let port = redirect_uri.port().unwrap_or(80);
 
-        let client = hyper::Client::builder()
-            .build::<_, hyper::Body>(hyper_rustls::HttpsConnector::with_native_roots());
-
-        let semaphore = Semaphore::new(1);
+        let client = Mutex::new(
+            hyper::Client::builder()
+                .build::<_, hyper::Body>(hyper_rustls::HttpsConnector::with_native_roots()),
+        );
 
         Ok(Self {
             domain_name,
@@ -136,7 +136,6 @@ impl AwsCognitoClientAuthenticator {
             port,
             identity_provider,
             client,
-            semaphore,
         })
     }
 
@@ -459,7 +458,11 @@ impl AwsCognitoClientAuthenticator {
     }
 
     /// Get a token set from an authorization code.
-    async fn get_token_set_from_authorization_code(&self, code: &str) -> Result<ClientTokenSet> {
+    async fn get_token_set_from_authorization_code(
+        &self,
+        client: &AuthClient,
+        code: &str,
+    ) -> Result<ClientTokenSet> {
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .uri(self.get_access_token_url().as_str())
@@ -477,10 +480,10 @@ impl AwsCognitoClientAuthenticator {
             )))
             .unwrap();
 
-        let resp =
-            self.client.request(req).await.map_err(|e| {
-                Error::InternalError(format!("failed to execute HTTP request: {}", e))
-            })?;
+        let resp = client
+            .request(req)
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to execute HTTP request: {}", e)))?;
         let bytes = hyper::body::to_bytes(resp.into_body())
             .await
             .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
@@ -501,7 +504,7 @@ impl AwsCognitoClientAuthenticator {
             .unwrap();
 
         let resp =
-            self.client.request(req).await.map_err(|e| {
+            self.client.lock().await.request(req).await.map_err(|e| {
                 Error::InternalError(format!("failed to execute HTTP request: {}", e))
             })?;
         let bytes = hyper::body::to_bytes(resp.into_body())
@@ -511,11 +514,8 @@ impl AwsCognitoClientAuthenticator {
             .map_err(|e| Error::InternalError(format!("failed to parse JSON user info: {}", e)))
     }
 
-    async fn lock(&self) -> Result<SemaphorePermit<'_>> {
-        self.semaphore
-            .acquire()
-            .await
-            .map_err(|e| Error::InternalError(format!("failed to acquire semaphore: {}", e)))
+    async fn client(&self) -> MutexGuard<'_, AuthClient> {
+        self.client.lock().await
     }
 }
 
@@ -523,11 +523,12 @@ impl AwsCognitoClientAuthenticator {
 impl Authenticator for AwsCognitoClientAuthenticator {
     /// Get a token set by opening a possible interactive browser window.
     async fn login(&self) -> Result<ClientTokenSet> {
-        let _permit = self.lock().await?;
+        let client = self.client().await;
 
         let code = self.get_authorization_code_interactive().await?;
 
-        self.get_token_set_from_authorization_code(&code).await
+        self.get_token_set_from_authorization_code(&client, &code)
+            .await
     }
 
     /// Get a token set from a refresh token.
@@ -535,7 +536,7 @@ impl Authenticator for AwsCognitoClientAuthenticator {
     /// If the call does not return a new refresh token within the `TokenSet`, the specified
     /// refresh token will be filled in instead.
     async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
-        let _permit = self.lock().await?;
+        let client = self.client().await;
 
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -552,10 +553,10 @@ impl Authenticator for AwsCognitoClientAuthenticator {
             )))
             .unwrap();
 
-        let resp =
-            self.client.request(req).await.map_err(|e| {
-                Error::InternalError(format!("failed to execute HTTP request: {}", e))
-            })?;
+        let resp = client
+            .request(req)
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to execute HTTP request: {}", e)))?;
         let bytes = hyper::body::to_bytes(resp.into_body())
             .await
             .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
@@ -572,8 +573,6 @@ impl Authenticator for AwsCognitoClientAuthenticator {
 
     /// Logout by opening an interactive browser window.
     async fn logout(&self) -> Result<()> {
-        let _permit = self.lock().await?;
-
         let logout_url = self.get_logout_url();
 
         info!("Opening web-browser at: {}", logout_url);

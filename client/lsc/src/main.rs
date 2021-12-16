@@ -59,25 +59,42 @@
 
 use std::path::Path;
 
+use ::log::info;
 use clap::{App, AppSettings, Arg, SubCommand};
+
 use lgn_source_control::*;
 use lgn_telemetry::*;
 
-fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new(None);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
-    if let Err(e) = main_impl() {
-        println!("{}", e);
-        std::process::exit(1);
-    }
-}
+const SUB_COMMAND_INIT_REPOSITORY: &str = "init-repository";
 
-fn main_impl() -> Result<(), String> {
+const ARG_REPOSITORY_URL: &str = "repository-url";
+const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+
     trace_scope!();
+
     let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .about("CLI to interact with Legion Source Control")
+        .subcommand(
+            SubCommand::with_name(SUB_COMMAND_INIT_REPOSITORY)
+                .about("Initializes a repository.")
+                .arg(
+                    Arg::with_name(ARG_REPOSITORY_URL)
+                        .required(true)
+                        .help("The repository URL"),
+                )
+                .arg(
+                    Arg::with_name(ARG_BLOB_STORAGE_URL)
+                        .help("The blob storage URL. If not specified and the repository URL is a local file, the blob storage URL will be relative to the repository URL. Otherwise it will fail"),
+                )
+        )
         .subcommand(
             SubCommand::with_name("init-local-repository")
                 .about("Initializes a repository stored on a local or remote system")
@@ -302,128 +319,137 @@ fn main_impl() -> Result<(), String> {
         )
         .get_matches();
 
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-
     match matches.subcommand() {
-        ("init-local-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-local-repository");
-            let path = command_match.value_of("directory").unwrap();
-            if let Err(e) = tokio_runtime.block_on(
-                lgn_source_control::init_local_repository_command(Path::new(&path)),
-            ) {
-                return Err(e);
-            }
+        (SUB_COMMAND_INIT_REPOSITORY, Some(command_match)) => {
+            info!("{}", SUB_COMMAND_INIT_REPOSITORY);
+
+            let _repository_url: RepositoryUrl = command_match
+                .value_of(ARG_REPOSITORY_URL)
+                .unwrap()
+                .parse()?;
+
             Ok(())
         }
+        ("init-local-repository", Some(command_match)) => {
+            info!("init-local-repository");
+            let path = command_match.value_of("directory").unwrap();
+
+            lgn_source_control::init_local_repository_command(Path::new(&path)).await
+        }
         ("init-remote-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-remote-repository");
+            info!("init-remote-repository");
             let repo_uri = command_match.value_of("uri").unwrap();
             let blob_uri = command_match.value_of("blob-storage");
-            tokio_runtime.block_on(lgn_source_control::init_remote_repository_command(
-                repo_uri, blob_uri,
-            ))
+
+            lgn_source_control::init_remote_repository_command(repo_uri, blob_uri).await
         }
         ("destroy-repository", Some(command_match)) => {
-            log_str(LogLevel::Info, "destroy-repository");
+            info!("destroy-repository");
             let repo_uri = command_match.value_of("uri").unwrap();
-            tokio_runtime.block_on(
-                lgn_source_control::destroy_repository::destroy_repository_command(repo_uri),
-            )
+
+            lgn_source_control::destroy_repository::destroy_repository_command(repo_uri).await
         }
         ("init-workspace", Some(command_match)) => {
-            log_str(LogLevel::Info, "init-workspace");
-            tokio_runtime.block_on(init_workspace_command(
+            info!("init-workspace");
+
+            init_workspace_command(
                 Path::new(command_match.value_of("workspace-directory").unwrap()),
                 command_match.value_of("repository-uri").unwrap(),
-            ))
+            )
+            .await
         }
         ("add", Some(command_match)) => {
             let path_arg = command_match.value_of("path").unwrap();
-            log_string(LogLevel::Info, format!("add {}", path_arg));
-            tokio_runtime.block_on(track_new_file_command(Path::new(path_arg)))
+            info!("add {}", path_arg);
+
+            track_new_file_command(Path::new(path_arg)).await
         }
         ("edit", Some(command_match)) => {
-            log_str(LogLevel::Info, "edit");
-            tokio_runtime.block_on(edit_file_command(Path::new(
-                command_match.value_of("path").unwrap(),
-            )))
+            info!("edit");
+
+            edit_file_command(Path::new(command_match.value_of("path").unwrap())).await
         }
         ("delete", Some(command_match)) => {
-            log_str(LogLevel::Info, "delete");
-            tokio_runtime.block_on(delete_file_command(Path::new(
-                command_match.value_of("path").unwrap(),
-            )))
+            info!("delete");
+
+            delete_file_command(Path::new(command_match.value_of("path").unwrap())).await
         }
         ("lock", Some(command_match)) => {
-            log_str(LogLevel::Info, "lock");
-            tokio_runtime.block_on(lock_file_command(Path::new(
-                command_match.value_of("path").unwrap(),
-            )))
+            info!("lock");
+
+            lock_file_command(Path::new(command_match.value_of("path").unwrap())).await
         }
         ("unlock", Some(command_match)) => {
-            log_str(LogLevel::Info, "unlock");
-            tokio_runtime.block_on(unlock_file_command(Path::new(
-                command_match.value_of("path").unwrap(),
-            )))
+            info!("unlock");
+
+            unlock_file_command(Path::new(command_match.value_of("path").unwrap())).await
         }
         ("list-locks", Some(_command_match)) => {
-            log_str(LogLevel::Info, "list-locks");
-            tokio_runtime.block_on(list_locks_command())
+            info!("list-locks");
+
+            list_locks_command().await
         }
         ("diff", Some(command_match)) => {
-            log_str(LogLevel::Info, "diff");
+            info!("diff");
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
-            tokio_runtime.block_on(diff_file_command(
+
+            diff_file_command(
                 Path::new(command_match.value_of("path").unwrap()),
                 reference_version_name,
                 !notool,
-            ))
+            )
+            .await
         }
         ("resolve", Some(command_match)) => {
-            log_str(LogLevel::Info, "resolve");
+            info!("resolve");
             let notool = command_match.is_present("notool");
             let path = Path::new(command_match.value_of("path").unwrap());
-            tokio_runtime.block_on(resolve_file_command(path, !notool))
+
+            resolve_file_command(path, !notool).await
         }
         ("create-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "create-branch");
+            info!("create-branch");
             let name = command_match.value_of("name").unwrap();
-            tokio_runtime.block_on(create_branch_command(name))
+
+            create_branch_command(name).await
         }
         ("merge-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "merge-branch");
+            info!("merge-branch");
             let name = command_match.value_of("name").unwrap();
-            merge_branch_command(&tokio_runtime, name)
+
+            merge_branch_command(name).await
         }
         ("switch-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "switch-branch");
+            info!("switch-branch");
             let name = command_match.value_of("name").unwrap();
-            switch_branch_command(&tokio_runtime, name)
+
+            switch_branch_command(name).await
         }
         ("detach-branch", Some(_command_match)) => {
-            log_str(LogLevel::Info, "detach-branch");
-            tokio_runtime.block_on(detach_branch_command())
+            info!("detach-branch");
+
+            detach_branch_command().await
         }
         ("attach-branch", Some(command_match)) => {
             let parent_branch_name = command_match.value_of("parent-branch-name").unwrap();
-            log_string(
-                LogLevel::Info,
-                format!("attach-branch {}", parent_branch_name),
-            );
-            tokio_runtime.block_on(attach_branch_command(parent_branch_name))
+            info!("attach-branch {}", parent_branch_name);
+
+            attach_branch_command(parent_branch_name).await
         }
         ("list-branches", Some(_command_match)) => {
-            log_str(LogLevel::Info, "list-branches");
-            tokio_runtime.block_on(list_branches_command())
+            info!("list-branches");
+
+            list_branches_command().await
         }
         ("revert", Some(command_match)) => {
             let path = command_match.value_of("path").unwrap();
-            log_string(LogLevel::Info, format!("revert {}", path));
+            info!("revert {}", path);
+
             if command_match.is_present("glob") {
-                tokio_runtime.block_on(revert_glob_command(path))
+                revert_glob_command(path).await
             } else {
-                tokio_runtime.block_on(revert_file_command(Path::new(path)))
+                revert_file_command(Path::new(path)).await
             }
         }
         ("commit", Some(command_match)) => {
@@ -431,74 +457,76 @@ fn main_impl() -> Result<(), String> {
             for item in command_match.values_of("message").unwrap() {
                 message += item;
             }
-            log_string(LogLevel::Info, format!("commit {:?}", message));
-            tokio_runtime.block_on(commit_command(&message))
+            info!("commit {:?}", message);
+
+            commit_command(&message).await
         }
         ("local-changes", Some(_command_match)) => {
-            log_str(LogLevel::Info, "local-changes");
-            match tokio_runtime.block_on(find_local_changes_command()) {
-                Ok(changes) => {
-                    if changes.is_empty() {
-                        println!("No local changes");
-                    }
-                    for change in changes {
-                        println!("{:?} {}", change.change_type, change.relative_path);
-                    }
-                    Ok(())
+            info!("local-changes");
+
+            find_local_changes_command().await.map(|changes| {
+                if changes.is_empty() {
+                    println!("No local changes");
                 }
-                Err(e) => Err(e),
-            }
+
+                for change in changes {
+                    println!("{:?} {}", change.change_type, change.relative_path);
+                }
+            })
         }
         ("resolves-pending", Some(_command_match)) => {
-            log_str(LogLevel::Info, "resolves-pending");
-            match tokio_runtime.block_on(find_resolves_pending_command()) {
-                Ok(resolves_pending) => {
+            info!("resolves-pending");
+
+            find_resolves_pending_command()
+                .await
+                .map(|resolves_pending| {
                     if resolves_pending.is_empty() {
                         println!("No local changes need to be resolved");
                     }
+
                     for m in resolves_pending {
                         println!(
                             "{} {} {}",
                             m.relative_path, &m.base_commit_id, &m.theirs_commit_id
                         );
                     }
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
+                })
         }
         ("sync", Some(command_match)) => {
-            log_str(LogLevel::Info, "sync");
+            info!("sync");
+
             match command_match.value_of("commit-id") {
-                Some(commit_id) => tokio_runtime.block_on(sync_to_command(commit_id)),
-                None => tokio_runtime.block_on(sync_command()),
+                Some(commit_id) => sync_to_command(commit_id).await,
+                None => sync_command().await,
             }
         }
         ("log", Some(_command_match)) => {
-            log_str(LogLevel::Info, "log");
-            tokio_runtime.block_on(log_command())
+            info!("log");
+
+            log_command().await
         }
         ("config", Some(_command_match)) => {
-            log_str(LogLevel::Info, "config");
+            info!("config");
+
             print_config_command()
         }
         ("import-git-branch", Some(command_match)) => {
             let path_arg = command_match.value_of("path").unwrap();
             let branch_name = command_match.value_of("branch").unwrap();
-            log_string(
-                LogLevel::Info,
-                format!("import-git-branch {} {} ", path_arg, branch_name),
-            );
-            import_git_branch_command(Path::new(path_arg), branch_name)
+            info!("import-git-branch {} {} ", path_arg, branch_name);
+
+            import_git_branch_command(Path::new(path_arg), branch_name).await
         }
         ("ping", Some(command_match)) => {
             let server_uri = command_match.value_of("server_uri").unwrap();
-            log_string(LogLevel::Info, format!("ping {}", server_uri));
-            tokio_runtime.block_on(ping_console_command(server_uri))
+            info!("ping {}", server_uri);
+
+            ping_console_command(server_uri).await
         }
         other_match => {
-            log_str(LogLevel::Info, "unknown subcommand match");
-            Err(format!("unknown subcommand match: {:?}", &other_match))
+            info!("unknown subcommand match");
+
+            anyhow::bail!("unknown subcommand match: {:?}", &other_match)
         }
     }
 }

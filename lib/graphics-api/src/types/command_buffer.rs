@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
-use crate::{Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, Texture};
+use crate::{
+    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
+};
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
     ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,
@@ -154,12 +156,14 @@ impl CommandBuffer {
 
     pub fn cmd_bind_descriptor_set_handle(
         &self,
+        pipeline_type: PipelineType,
         root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
         self.cmd_bind_descriptor_set_handle_platform(
+            pipeline_type,
             root_signature,
             set_index,
             descriptor_set_handle,
@@ -173,7 +177,7 @@ impl CommandBuffer {
         constants: &T,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.cmd_push_constants_platform(root_signature.platform_root_signature(), constants);
+        self.cmd_push_constants_platform(root_signature, constants);
         Ok(())
     }
 

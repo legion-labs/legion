@@ -14,9 +14,11 @@ walkdir = "2.0"
 named-lock = "0.1"
 
 # define dependencies as optional and enable them on build-dependencies to not bring additional trees
+lgn-graphics-cgen = { path = "../../lib/graphics-cgen", version = "0.1.0", optional = true }
 tonic-build = { version = "0.6", optional = true }
 which = { version = "4.2.2", optional = true }
 
 [features]
 proto-codegen = ["tonic-build", "which"]
 web-appgen = ["which"]
+graphics-cgen = ["lgn-graphics-cgen"]

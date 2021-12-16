@@ -1,7 +1,9 @@
-use super::{deferred_drop::Drc, BufferViewDef, DeviceContext, QueueType, ResourceUsage};
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanBuffer;
-use crate::{BufferView, GfxResult, ResourceCreation};
+use crate::{
+    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult, QueueType,
+    ResourceCreation, ResourceUsage,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {
@@ -80,7 +82,6 @@ impl BufferDef {
 pub(crate) struct BufferInner {
     pub(crate) buffer_def: BufferDef,
     pub(crate) device_context: DeviceContext,
-    pub(crate) required_alignment: u64,
 
     #[cfg(feature = "vulkan")]
     pub(crate) platform_buffer: VulkanBuffer,
@@ -102,13 +103,12 @@ pub struct Buffer {
 impl Buffer {
     pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
         #[cfg(feature = "vulkan")]
-        let (platform_buffer, required_alignment) = VulkanBuffer::new(device_context, buffer_def);
+        let platform_buffer = VulkanBuffer::new(device_context, buffer_def);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
                 buffer_def: *buffer_def,
-                required_alignment,
                 #[cfg(any(feature = "vulkan"))]
                 platform_buffer,
             }),
@@ -122,8 +122,13 @@ impl Buffer {
     pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
+
     pub fn required_alignment(&self) -> u64 {
-        self.inner.required_alignment
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(any(feature = "vulkan"))]
+        self.required_alignment_platform()
     }
 
     pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferView> {
@@ -135,4 +140,4 @@ impl Buffer {
 pub type BufferCopy = ash::vk::BufferCopy;
 
 #[cfg(not(any(feature = "vulkan")))]
-struct BufferCopy {}
+pub struct BufferCopy {}

@@ -30,14 +30,14 @@
     </div>
     <Route path="/" primary={false}><Home /></Route>
     <Route path="/about"><About /></Route>
-    <Route path="/log/:id" let:params primary={false}>
-      {#key params.id}
+    <Route path="/log/:id" let:params let:location primary={false}>
+      {#key params.id + location.search}
         <Log id={params.id} />
       {/key}
     </Route>
-    <Route path="/timeline/:id" let:params primary={false}>
-      {#key params.id}
-        <Timeline id={params.id} />
+    <Route path="/timeline/:id" let:params let:location primary={false}>
+      {#key params.id + location.search}
+        <Timeline processId={params.id} />
       {/key}
     </Route>
     <Route path="/metrics/:id" let:params primary={false}>
@@ -66,6 +66,6 @@
   }
 
   #nav a.router-link-exact-active {
-    @apply font-bold text-[#42b983] underline;
+    @apply font-bold text-[#ca2f0f] underline;
   }
 </style>

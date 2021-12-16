@@ -8,7 +8,7 @@ use std::{
 use lgn_content_store::{ContentStore, ContentStoreAddr};
 
 use super::Device;
-use crate::{manifest::Manifest, ResourceId};
+use crate::{manifest::Manifest, ResourceTypeAndId};
 
 /// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
 pub(crate) struct BuildDevice {
@@ -41,22 +41,22 @@ impl BuildDevice {
 }
 
 impl Device for BuildDevice {
-    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         if self.force_recompile {
-            self.reload(id)
+            self.reload(type_id)
         } else {
-            let (checksum, size) = self.manifest.borrow().find(id)?;
+            let (checksum, size) = self.manifest.borrow().find(type_id)?;
             let content = self.content_store.read(checksum)?;
             assert_eq!(content.len(), size);
             Some(content)
         }
     }
 
-    fn reload(&self, id: ResourceId) -> Option<Vec<u8>> {
-        let output = self.build_resource(id).ok()?;
+    fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+        let output = self.build_resource(type_id).ok()?;
         self.manifest.borrow_mut().extend(output);
 
-        let (checksum, size) = self.manifest.borrow().find(id)?;
+        let (checksum, size) = self.manifest.borrow().find(type_id)?;
         let content = self.content_store.read(checksum)?;
         assert_eq!(content.len(), size);
         Some(content)
@@ -64,7 +64,7 @@ impl Device for BuildDevice {
 }
 
 impl BuildDevice {
-    fn build_resource(&self, resource_id: ResourceId) -> io::Result<Manifest> {
+    fn build_resource(&self, resource_id: ResourceTypeAndId) -> io::Result<Manifest> {
         let mut command = build_command(
             &self.databuild_bin,
             resource_id,
@@ -116,7 +116,7 @@ impl BuildDevice {
 
 fn build_command(
     databuild_path: impl AsRef<Path>,
-    resource_id: ResourceId,
+    resource_id: ResourceTypeAndId,
     cas: &ContentStoreAddr,
     buildindex_dir: impl AsRef<Path>,
 ) -> std::process::Command {
@@ -125,7 +125,7 @@ fn build_command(
     let locale = "en";
     let mut command = std::process::Command::new(databuild_path.as_ref());
     command.arg("compile");
-    command.arg(format!("{}", resource_id));
+    command.arg(resource_id.to_string());
     command.arg("--rt");
     command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));

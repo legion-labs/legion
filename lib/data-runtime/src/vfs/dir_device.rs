@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::Device;
-use crate::ResourceId;
+use crate::ResourceTypeAndId;
 
 /// Directory storage device. Resources are stored if files named by their ids.
 pub(crate) struct DirDevice {
@@ -17,8 +17,8 @@ impl DirDevice {
 }
 
 impl Device for DirDevice {
-    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
-        let path = self.dir.join(format!("{:x}", id));
+    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+        let path = self.dir.join(type_id.to_string());
         std::fs::read(path).ok()
     }
 }

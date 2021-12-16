@@ -86,9 +86,8 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
-        simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info),
-    )));
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let addr = "127.0.0.1:9090".parse()?;

@@ -5,7 +5,7 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
 use lgn_async::AsyncPlugin;
 use lgn_core::CorePlugin;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
@@ -14,8 +14,6 @@ use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
 use lgn_transform::TransformPlugin;
 use lgn_utils::Settings;
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
 
 mod grpc;
 mod plugin;
@@ -23,9 +21,8 @@ mod plugin;
 use plugin::EditorPlugin;
 
 fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
-        SimpleLogger::new().with_level(LevelFilter::Info),
-    )));
+    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 
@@ -136,7 +133,7 @@ fn main() {
         Some(DataBuildSettings::new(build_bin, buildindex))
     };
 
-    let assets_to_load: Vec<ResourceId> = Vec::new();
+    let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
@@ -157,7 +154,11 @@ fn main() {
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(false, args.is_present(ARG_NAME_EGUI)))
+        .add_plugin(RendererPlugin::new(
+            false,
+            args.is_present(ARG_NAME_EGUI),
+            false,
+        ))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())

@@ -21,6 +21,7 @@ export interface Block {
   endTime: string;
   endTicks: number;
   payload: BlockPayload | undefined;
+  nbObjects: number;
 }
 
 const baseBlockPayload: object = {};
@@ -107,6 +108,7 @@ const baseBlock: object = {
   beginTicks: 0,
   endTime: "",
   endTicks: 0,
+  nbObjects: 0,
 };
 
 export const Block = {
@@ -131,6 +133,9 @@ export const Block = {
     }
     if (message.payload !== undefined) {
       BlockPayload.encode(message.payload, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.nbObjects !== 0) {
+      writer.uint32(64).int32(message.nbObjects);
     }
     return writer;
   },
@@ -162,6 +167,9 @@ export const Block = {
           break;
         case 7:
           message.payload = BlockPayload.decode(reader, reader.uint32());
+          break;
+        case 8:
+          message.nbObjects = reader.int32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -201,6 +209,10 @@ export const Block = {
       object.payload !== undefined && object.payload !== null
         ? BlockPayload.fromJSON(object.payload)
         : undefined;
+    message.nbObjects =
+      object.nbObjects !== undefined && object.nbObjects !== null
+        ? Number(object.nbObjects)
+        : 0;
     return message;
   },
 
@@ -209,13 +221,17 @@ export const Block = {
     message.blockId !== undefined && (obj.blockId = message.blockId);
     message.streamId !== undefined && (obj.streamId = message.streamId);
     message.beginTime !== undefined && (obj.beginTime = message.beginTime);
-    message.beginTicks !== undefined && (obj.beginTicks = message.beginTicks);
+    message.beginTicks !== undefined &&
+      (obj.beginTicks = Math.round(message.beginTicks));
     message.endTime !== undefined && (obj.endTime = message.endTime);
-    message.endTicks !== undefined && (obj.endTicks = message.endTicks);
+    message.endTicks !== undefined &&
+      (obj.endTicks = Math.round(message.endTicks));
     message.payload !== undefined &&
       (obj.payload = message.payload
         ? BlockPayload.toJSON(message.payload)
         : undefined);
+    message.nbObjects !== undefined &&
+      (obj.nbObjects = Math.round(message.nbObjects));
     return obj;
   },
 
@@ -231,6 +247,7 @@ export const Block = {
       object.payload !== undefined && object.payload !== null
         ? BlockPayload.fromPartial(object.payload)
         : undefined;
+    message.nbObjects = object.nbObjects ?? 0;
     return message;
   },
 };

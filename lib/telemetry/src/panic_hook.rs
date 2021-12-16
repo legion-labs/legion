@@ -24,7 +24,7 @@ pub fn init_panic_hook() {
 #[allow(clippy::exit)]
 pub fn init_ctrlc_hook() {
     ctrlc::set_handler(move || {
-        log_str(LogLevel::Error, "ctrl-c");
+        log_static_str(LogLevel::Error, "ctrl-c");
         shutdown_telemetry();
         std::process::exit(1);
     })

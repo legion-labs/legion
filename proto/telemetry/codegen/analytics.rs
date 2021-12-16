@@ -160,6 +160,12 @@ pub struct CumulativeCallGraphReply {
 pub struct ProcessLogRequest {
     #[prost(message, optional, tag = "1")]
     pub process: ::core::option::Option<super::telemetry::Process>,
+    /// included
+    #[prost(uint64, tag = "2")]
+    pub begin: u64,
+    /// excluded
+    #[prost(uint64, tag = "3")]
+    pub end: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LogEntry {
@@ -172,6 +178,23 @@ pub struct LogEntry {
 pub struct ProcessLogReply {
     #[prost(message, repeated, tag = "1")]
     pub entries: ::prost::alloc::vec::Vec<LogEntry>,
+    /// included
+    #[prost(uint64, tag = "2")]
+    pub begin: u64,
+    /// excluded
+    #[prost(uint64, tag = "3")]
+    pub end: u64,
+}
+/// nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessNbLogEntriesRequest {
+    #[prost(string, tag = "1")]
+    pub process_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessNbLogEntriesReply {
+    #[prost(uint64, tag = "1")]
+    pub count: u64,
 }
 /// list_process_children
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -213,9 +236,11 @@ pub struct FetchProcessMetricRequest {
     pub process_id: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub metric_name: ::prost::alloc::string::String,
-    #[prost(double, tag = "3")]
-    pub begin_ms: f64,
+    #[prost(string, tag = "3")]
+    pub unit: ::prost::alloc::string::String,
     #[prost(double, tag = "4")]
+    pub begin_ms: f64,
+    #[prost(double, tag = "5")]
     pub end_ms: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -369,6 +394,22 @@ pub mod performance_analytics_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn nb_process_log_entries(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ProcessNbLogEntriesRequest>,
+        ) -> Result<tonic::Response<super::ProcessNbLogEntriesReply>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/analytics.PerformanceAnalytics/nb_process_log_entries",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         pub async fn list_process_streams(
             &mut self,
             request: impl tonic::IntoRequest<super::ListProcessStreamsRequest>,
@@ -494,6 +535,10 @@ pub mod performance_analytics_server {
             &self,
             request: tonic::Request<super::ProcessLogRequest>,
         ) -> Result<tonic::Response<super::ProcessLogReply>, tonic::Status>;
+        async fn nb_process_log_entries(
+            &self,
+            request: tonic::Request<super::ProcessNbLogEntriesRequest>,
+        ) -> Result<tonic::Response<super::ProcessNbLogEntriesReply>, tonic::Status>;
         async fn list_process_streams(
             &self,
             request: tonic::Request<super::ListProcessStreamsRequest>,
@@ -721,6 +766,40 @@ pub mod performance_analytics_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = list_process_log_entriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/analytics.PerformanceAnalytics/nb_process_log_entries" => {
+                    #[allow(non_camel_case_types)]
+                    struct nb_process_log_entriesSvc<T: PerformanceAnalytics>(pub Arc<T>);
+                    impl<T: PerformanceAnalytics>
+                        tonic::server::UnaryService<super::ProcessNbLogEntriesRequest>
+                        for nb_process_log_entriesSvc<T>
+                    {
+                        type Response = super::ProcessNbLogEntriesReply;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ProcessNbLogEntriesRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).nb_process_log_entries(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = nb_process_log_entriesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

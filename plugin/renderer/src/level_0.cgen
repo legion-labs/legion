@@ -1,0 +1,5 @@
+mod internal;
+
+struct LayoutC {
+    a: Float1,
+}

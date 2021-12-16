@@ -179,9 +179,10 @@ export const Process = {
     message.distro !== undefined && (obj.distro = message.distro);
     message.cpuBrand !== undefined && (obj.cpuBrand = message.cpuBrand);
     message.tscFrequency !== undefined &&
-      (obj.tscFrequency = message.tscFrequency);
+      (obj.tscFrequency = Math.round(message.tscFrequency));
     message.startTime !== undefined && (obj.startTime = message.startTime);
-    message.startTicks !== undefined && (obj.startTicks = message.startTicks);
+    message.startTicks !== undefined &&
+      (obj.startTicks = Math.round(message.startTicks));
     message.parentProcessId !== undefined &&
       (obj.parentProcessId = message.parentProcessId);
     return obj;

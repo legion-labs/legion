@@ -1,6 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
+use lgn_telemetry::trace_scope;
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -150,6 +151,7 @@ impl ParallelExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last call to
     /// [`update_archetypes`] and updates cached `archetype_component_access`.
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
+        trace_scope!("update_archetypes");
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
         let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
@@ -174,6 +176,7 @@ impl ParallelExecutor {
         systems: &'scope [ParallelSystemContainer],
         world: &'scope World,
     ) {
+        trace_scope!("prepare_systems");
         self.should_run.clear();
         for (index, system_data) in self.system_metadata.iter_mut().enumerate() {
             // Spawn the system task.

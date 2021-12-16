@@ -1,0 +1,7 @@
+{
+  "name": "/world/sample_1/ground.mesh",
+  "dependencies": [
+    "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)|738a5b850f6f8b3a"
+  ],
+  "content_checksum": "60eeef84d5f6c66190402d79092c831c"
+}

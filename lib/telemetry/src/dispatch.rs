@@ -171,7 +171,7 @@ impl Dispatch {
             .on_sink_event(TelemetrySinkEvent::OnMetricsBufferFull(old_event_block));
     }
 
-    fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
+    fn on_log_static_str(&mut self, level: LogLevel, msg: &'static str) {
         let time = now();
         let mut log_stream = self.log_stream.lock().unwrap();
         if log_stream.is_empty() {
@@ -310,10 +310,10 @@ pub fn record_float_metric(metric_desc: &'static MetricDesc, value: f64) {
     }
 }
 
-pub fn log_str(level: LogLevel, msg: &'static str) {
+pub fn log_static_str(level: LogLevel, msg: &'static str) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_log_str(level, msg);
+            d.on_log_static_str(level, msg);
         }
     }
 }

@@ -12,7 +12,7 @@ use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
     ResourcePathId,
 };
-use lgn_data_runtime::{AssetLoader, Resource, ResourceId};
+use lgn_data_runtime::{AssetLoader, Resource, ResourceTypeAndId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
@@ -46,7 +46,7 @@ fn create_resource(
     deps: &[ResourcePathId],
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> ResourceId {
+) -> ResourceTypeAndId {
     let resource_b = {
         let res = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -67,7 +67,7 @@ fn create_resource(
         .unwrap()
 }
 
-fn change_resource(resource_id: ResourceId, project_dir: &Path) {
+fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
     let mut project = Project::open(project_dir).expect("failed to open project");
     let resources = setup_registry();
     let mut resources = resources.lock().unwrap();
@@ -205,7 +205,7 @@ fn compile_change_no_deps() {
 //         V            V
 //         D -------> t(E) -> E
 //
-fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
+fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
     let mut project =
         Project::create_new(project_dir.as_ref()).expect("failed to create a project");
 

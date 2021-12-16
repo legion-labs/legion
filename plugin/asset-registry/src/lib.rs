@@ -89,7 +89,7 @@ impl Plugin for AssetRegistryPlugin {
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
                 let manifest = Self::read_manifest(&settings.game_manifest);
                 if settings.assets_to_load.is_empty() {
-                    settings.assets_to_load = manifest.resources().copied().collect();
+                    settings.assets_to_load = manifest.resources();
                 }
 
                 let mut registry = AssetRegistryOptions::new();
@@ -210,8 +210,7 @@ impl AssetRegistryPlugin {
                         ) {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
-                                asset_id.ty(),
-                                asset_id
+                                asset_id.t, asset_id
                             );
                         }
 

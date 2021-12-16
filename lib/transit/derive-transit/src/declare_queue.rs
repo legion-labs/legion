@@ -75,7 +75,9 @@ fn gen_hetero_queue_impl(
             type Item = #any_ident;
 
             fn new(buffer_size: usize) -> Self {
-                Self { buffer: Vec::with_capacity(buffer_size), }
+                Self { buffer: Vec::with_capacity(buffer_size),
+                       obj_counter: 0,
+                }
             }
 
             fn reflect_contained() -> Vec<UserDefinedType> {
@@ -85,6 +87,10 @@ fn gen_hetero_queue_impl(
 
             fn len_bytes(&self) -> usize{
                 self.buffer.len()
+            }
+
+            fn nb_objects(&self) -> usize{
+                self.obj_counter
             }
 
             fn iter(&self) -> QueueIterator<'_, Self, #any_ident> {
@@ -127,6 +133,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
         pub struct #struct_identifier {
             buffer: Vec<u8>,
+            obj_counter: usize,
         }
 
         #reflective_queue_impl
@@ -151,6 +158,8 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
             where
                 T: lgn_transit::InProcSerialize + #type_index_ident,
             {
+                self.obj_counter += 1;
+
                 // write type discriminant
                 self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);
 

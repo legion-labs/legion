@@ -12,10 +12,10 @@
     "test": "yarn check:all"
   },
   "devDependencies": {
-    "jest": "^27.4.3",
-    "ts-jest": "^27.1.0",
-    "ts-proto": "^1.92.1",
-    "typescript": "^4.5.2",
+    "jest": "^27.4.5",
+    "ts-jest": "^27.1.1",
+    "ts-proto": "^1.95.0",
+    "typescript": "^4.5.4",
     "yarn": "^1.22.17"
   },
   "dependencies": {
