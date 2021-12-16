@@ -13,7 +13,7 @@ trait ThreadBlockProcessor {
     fn on_end_scope(&mut self, scope_name: String, ts: i64);
 }
 
-async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
+async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     stream: &lgn_telemetry::StreamInfo,
@@ -174,7 +174,7 @@ pub(crate) async fn compute_block_call_tree(
         ts_offset,
         inv_tsc_frequency,
     );
-    parse_thread_bock(connection, data_path, stream, block_id, &mut builder).await?;
+    parse_thread_block(connection, data_path, stream, block_id, &mut builder).await?;
     Ok(builder.finish())
 }
 
@@ -231,8 +231,14 @@ pub(crate) async fn compute_block_spans(
     let mut scopes = ScopeHashMap::new();
     let mut spans = vec![];
     let mut max_depth = 0;
+    let mut begin_ms = tree.begin_ms;
+    let mut end_ms = tree.end_ms;
     if tree.name.is_empty() {
+        begin_ms = f64::MAX;
+        end_ms = f64::MIN;
         for child in &tree.scopes {
+            begin_ms = begin_ms.min(child.begin_ms);
+            end_ms = end_ms.max(child.end_ms);
             max_depth = std::cmp::max(
                 max_depth,
                 make_spans_from_tree(child, 0, &mut scopes, &mut spans),
@@ -251,8 +257,8 @@ pub(crate) async fn compute_block_spans(
         scopes: scope_vec,
         spans,
         block_id: block_id.to_owned(),
-        begin_ms: tree.begin_ms,
-        end_ms: tree.end_ms,
+        begin_ms,
+        end_ms,
         max_depth,
     })
 }

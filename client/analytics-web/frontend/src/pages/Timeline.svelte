@@ -3,6 +3,8 @@
     streamInfo: Stream;
     spanBlocks: BlockSpansReply[];
     maxDepth: number;
+    minMs: number;
+    maxMs: number;
   };
 
   type BeginPan = {
@@ -119,6 +121,8 @@
           streamInfo: stream,
           spanBlocks: [],
           maxDepth: 0,
+          minMs: Infinity,
+          maxMs: -Infinity,
         };
 
         promises.push(fetchBlocks(stream.streamId));
@@ -169,6 +173,8 @@
     let thread = threads[streamId];
     thread.spanBlocks.push(response);
     thread.maxDepth = Math.max(thread.maxDepth, response.maxDepth);
+    thread.minMs = Math.min(thread.minMs, response.beginMs);
+    thread.maxMs = Math.max(thread.maxMs, response.endMs);
     if (loadingProgression) {
       loadingProgression.completed += 1;
     }
@@ -210,15 +216,14 @@
       }
 
       const childStartTime = Date.parse(childProcess.startTime);
-
-      const maxDepth = drawThread(
-        threads[streamId],
-        threadVerticalOffset,
-        childStartTime - parentStartTime
-      );
-
-      if (maxDepth) {
-        threadVerticalOffset += (maxDepth + 2) * 20;
+      const thread = threads[streamId];
+      if (thread.spanBlocks.length > 0) {
+        drawThread(
+          thread,
+          threadVerticalOffset,
+          childStartTime - parentStartTime
+        );
+        threadVerticalOffset += (thread.maxDepth + 2) * 20;
       }
     }
 
@@ -249,18 +254,27 @@
     const characterWidth = testTextMetrics.width / testString.length;
     const characterHeight = testTextMetrics.actualBoundingBoxAscent;
 
-    renderingContext.fillStyle = "#F0F0F0";
+    const beginThread = Math.max(begin, thread.minMs + offsetMs);
+    const endThread = Math.min(end, thread.maxMs + offsetMs);
+    const beginThreadPixels = (beginThread - begin) * msToPixelsFactor;
+    const endThreadPixels = (endThread - begin) * msToPixelsFactor;
+
+    renderingContext.fillStyle = "#FCFCFC";
     renderingContext.fillRect(
       0,
       threadVerticalOffset,
       canvasWidth,
       20 * thread.maxDepth
     );
-
-    let maxDepth = 0;
+    renderingContext.fillStyle = "#F0F0F0";
+    renderingContext.fillRect(
+      beginThreadPixels,
+      threadVerticalOffset,
+      endThreadPixels - beginThreadPixels,
+      20 * thread.maxDepth
+    );
 
     thread.spanBlocks.forEach((blockSpans) => {
-      maxDepth = Math.max(maxDepth, blockSpans.maxDepth);
       if (
         blockSpans.beginMs + offsetMs > end ||
         blockSpans.endMs + offsetMs < begin
@@ -316,8 +330,6 @@
         }
       });
     });
-
-    return maxDepth;
   }
 
   function getViewRange(): [number, number] {
