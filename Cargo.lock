@@ -4163,7 +4163,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "simple_asn1",
+ "simple_asn1 0.6.1",
  "strum 0.23.0",
  "strum_macros 0.23.1",
  "thiserror",
@@ -6025,6 +6025,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
+name = "quickcheck"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
+dependencies = [
+ "rand 0.8.4",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6414,7 +6423,7 @@ dependencies = [
  "num-traits",
  "pem 0.8.3",
  "rand 0.8.4",
- "simple_asn1",
+ "simple_asn1 0.5.4",
  "subtle",
  "zeroize",
 ]
@@ -7002,6 +7011,18 @@ dependencies = [
  "num-bigint 0.4.3",
  "num-traits",
  "thiserror",
+]
+
+[[package]]
+name = "simple_asn1"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a762b1c38b9b990c694b9c2f8abe3372ce6a9ceaae6bca39cfc46e054f45745"
+dependencies = [
+ "num-bigint 0.4.3",
+ "num-traits",
+ "thiserror",
+ "time 0.3.5",
 ]
 
 [[package]]
@@ -7861,6 +7882,7 @@ checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
 dependencies = [
  "itoa",
  "libc",
+ "quickcheck",
  "time-macros",
 ]
 
