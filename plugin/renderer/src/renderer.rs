@@ -6,10 +6,9 @@ use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::components::{RenderSurface, StaticMesh};
+use crate::components::{PickedComponent, RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -50,7 +49,7 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
 
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
@@ -465,7 +464,7 @@ impl TmpRenderPass {
         render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&Transform, &StaticMesh)],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
     ) {
         {
             let bump = render_context.acquire_bump_allocator();
@@ -521,7 +520,8 @@ impl TmpRenderPass {
 
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
+        for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
+        {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {
                 continue;
@@ -541,18 +541,16 @@ impl TmpRenderPass {
                 f32::from(static_mesh_component.color.a) / 255.0f32,
             );
 
-            let world = transform.compute_matrix();
-            let mut push_constant_data: [f32; 52] = [0.0; 52];
-            world.write_cols_to_slice(&mut push_constant_data[0..]);
-            view_matrix.write_cols_to_slice(&mut push_constant_data[16..]);
-            projection_matrix.write_cols_to_slice(&mut push_constant_data[32..]);
-            push_constant_data[48] = color.0;
-            push_constant_data[49] = color.1;
-            push_constant_data[50] = color.2;
-            push_constant_data[51] = 1.0;
+            let mut constant_data: [f32; 36] = [0.0; 36];
+            view_matrix.write_cols_to_slice(&mut constant_data[0..]);
+            projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
+            constant_data[32] = color.0;
+            constant_data[33] = color.1;
+            constant_data[34] = color.2;
+            constant_data[35] = 1.0;
 
             sub_allocation =
-                transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
+                transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
@@ -588,8 +586,12 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
+            let mut push_constant_data: [u32; 2] = [0; 2];
+            push_constant_data[0] = static_mesh_component.offset as u32;
+            push_constant_data[1] = if picked_component.is_some() { 1 } else { 0 };
+
             cmd_buffer
-                .cmd_push_constants(&self.root_signature, &(static_mesh_component.offset))
+                .cmd_push_constants(&self.root_signature, &push_constant_data)
                 .unwrap();
 
             cmd_buffer

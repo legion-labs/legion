@@ -11,6 +11,7 @@ use parking_lot::RwLock;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
+use crate::picking::PickingRenderPass;
 use crate::{RenderContext, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
@@ -136,6 +137,7 @@ pub struct RenderSurface {
     num_render_frames: usize,
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
+    picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
 }
@@ -147,6 +149,10 @@ impl RenderSurface {
 
     pub fn extents(&self) -> RenderSurfaceExtents {
         self.extents
+    }
+
+    pub fn picking_renderpass(&self) -> Arc<RwLock<PickingRenderPass>> {
+        self.picking_renderpass.clone()
     }
 
     pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
@@ -258,6 +264,9 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(
+                renderer.device_context(),
+            ))),
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),

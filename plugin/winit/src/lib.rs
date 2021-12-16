@@ -386,12 +386,13 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let mut mouse_button_input_events = world
                             .get_resource_mut::<Events<MouseButtonInput>>()
                             .unwrap();
-                        let pos = window.cursor_position().unwrap();
-                        mouse_button_input_events.send(MouseButtonInput {
-                            button: converters::convert_mouse_button(button),
-                            state: converters::convert_element_state(state),
-                            pos: Vec2::new(pos.x, pos.y),
-                        });
+                        if let Some(pos) = window.cursor_position() {
+                            mouse_button_input_events.send(MouseButtonInput {
+                                button: converters::convert_mouse_button(button),
+                                state: converters::convert_element_state(state),
+                                pos: Vec2::new(pos.x, pos.y),
+                            });
+                        }
                     }
                     WindowEvent::MouseWheel { delta, .. } => match delta {
                         event::MouseScrollDelta::LineDelta(x, y) => {

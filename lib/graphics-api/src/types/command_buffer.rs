@@ -255,6 +255,11 @@ impl CommandBuffer {
         Ok(())
     }
 
+    pub fn cmd_fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+        #[cfg(any(feature = "vulkan"))]
+        self.cmd_fill_buffer_platform(dst_buffer, offset, size, data);
+    }
+
     pub fn cmd_copy_buffer_to_buffer(
         &self,
         src_buffer: &Buffer,

@@ -619,6 +619,18 @@ impl CommandBuffer {
         }
     }
 
+    pub(crate) fn cmd_fill_buffer_platform(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+        unsafe {
+            self.inner.device_context.vk_device().cmd_fill_buffer(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                dst_buffer.vk_buffer(),
+                offset,
+                size,
+                data,
+            );
+        }
+    }
+
     pub(crate) fn cmd_copy_buffer_to_buffer_platform(
         &self,
 

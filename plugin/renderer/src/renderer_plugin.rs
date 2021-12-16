@@ -1,4 +1,8 @@
-use crate::egui::egui_plugin::{Egui, EguiPlugin};
+use crate::{
+    components::PickedComponent,
+    egui::egui_plugin::{Egui, EguiPlugin},
+    picking::{PickingManager, PickingPlugin},
+};
 use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::QueueType;
@@ -31,6 +35,7 @@ impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
         app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
+        app.add_plugin(PickingPlugin::new(self.has_window));
         app.insert_resource(renderer);
 
         // Pre-Update
@@ -112,8 +117,9 @@ fn update_rotation(
 #[allow(clippy::needless_pass_by_value)]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    picking_manager: ResMut<'_, PickingManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
+    q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
 ) {
@@ -122,16 +128,24 @@ fn render_update(
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
         .iter()
-        .collect::<Vec<(&Transform, &StaticMesh)>>();
+        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
     let graphics_queue = renderer.queue(QueueType::Graphics);
 
     renderer.flush_update_jobs(&mut render_context, &graphics_queue);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
+        let picking_pass = render_surface.picking_renderpass();
+        let mut picking_pass = picking_pass.write();
+        picking_pass.render(
+            &picking_manager,
+            &mut render_context,
+            render_surface.as_mut(),
+            q_drawables.as_slice(),
+        );
+
         // TODO: render graph
         let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
-
         cmd_buffer.begin().unwrap();
 
         let render_pass = render_surface.test_renderpass();

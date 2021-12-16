@@ -1,3 +1,6 @@
+mod picked_component;
+pub use picked_component::*;
+
 mod render_surface;
 pub use render_surface::*;
 
