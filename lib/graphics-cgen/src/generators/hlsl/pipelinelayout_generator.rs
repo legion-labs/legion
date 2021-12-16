@@ -13,7 +13,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             CGenVariant::Hlsl,
             GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Hlsl),
             content.into_bytes(),
-        ))
+        ));
     }
     products
 }
@@ -74,5 +74,5 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line("#endif");
 
     // finalize
-    writer.to_string()
+    writer.build()
 }

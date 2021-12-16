@@ -222,6 +222,11 @@ impl Model {
         }
     }
 
+    /// Add an object to the model.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelObjectId> {
         let key = ModelKey::new(key);
         if self.key_map.contains_key(&key) {
@@ -295,45 +300,6 @@ impl Model {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct ModelContainer<T> {
-    objects: HashMap<String, T>,
-}
-
-impl<T: Default> ModelContainer<T> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn add(&mut self, id: String, entry: T) -> anyhow::Result<()> {
-        if self.objects.contains_key(&id) {
-            return Err(anyhow!("Object '{}' already inserted.", id));
-        }
-        self.objects.insert(id, entry);
-
-        Ok(())
-    }
-
-    pub fn contains(&self, id: &str) -> bool {
-        self.objects.contains_key(id)
-    }
-
-    pub fn get(&self, id: &str) -> Result<&T> {
-        match self.objects.get(id) {
-            Some(o) => Ok(o),
-            None => Err(anyhow!("Unknown object '{}'", id)),
-        }
-    }
-
-    pub fn try_get(&self, id: &str) -> Option<&T> {
-        self.objects.get(id)
-    }
-
-    pub fn iter(&self) -> std::collections::hash_map::Values<'_, String, T> {
-        self.objects.values()
-    }
-}
-
 #[derive(Debug, Clone, Copy, EnumString, EnumIter, AsStaticStr)]
 pub enum NativeType {
     Float1,
@@ -373,7 +339,7 @@ impl CGenType {
     pub fn struct_type(&self) -> &StructType {
         match self {
             CGenType::Struct(e) => e,
-            _ => panic!("Invalid access"),
+            CGenType::Native(_) => panic!("Invalid access"),
         }
     }
 }

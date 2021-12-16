@@ -75,7 +75,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     writer.add_line( "}");
     writer.new_line();
 
-    writer.to_string()
+    writer.build()
 }
 
 // struct DescriptorDef {}

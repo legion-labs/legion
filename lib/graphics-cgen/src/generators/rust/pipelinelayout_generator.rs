@@ -29,7 +29,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Rust,
             mod_path,
-            writer.to_string().into_bytes(),
+            writer.build().into_bytes(),
         ));
     }
 
@@ -51,5 +51,5 @@ fn generate_rust_pipeline_layout(
     writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
 
     // finalize
-    writer.to_string()
+    writer.build()
 }

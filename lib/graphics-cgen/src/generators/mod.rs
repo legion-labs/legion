@@ -77,26 +77,24 @@ impl<'a> GeneratorContext<'a> {
 
         for descriptor in &ty.descriptors {
             match descriptor.def {
-                crate::model::DescriptorDef::Sampler => (),
                 crate::model::DescriptorDef::ConstantBuffer(def) => {
                     set.insert(def.object_id);
                 }
-                crate::model::DescriptorDef::StructuredBuffer(def) => {
+                crate::model::DescriptorDef::StructuredBuffer(def)
+                | crate::model::DescriptorDef::RWStructuredBuffer(def) => {
                     set.insert(def.object_id);
                 }
-                crate::model::DescriptorDef::RWStructuredBuffer(def) => {
-                    set.insert(def.object_id);
-                }
-                crate::model::DescriptorDef::ByteAddressBuffer => (),
-                crate::model::DescriptorDef::RWByteAddressBuffer => (),
-                crate::model::DescriptorDef::Texture2D(_) => (),
-                crate::model::DescriptorDef::RWTexture2D(_) => (),
-                crate::model::DescriptorDef::Texture3D(_) => (),
-                crate::model::DescriptorDef::RWTexture3D(_) => (),
-                crate::model::DescriptorDef::Texture2DArray(_) => (),
-                crate::model::DescriptorDef::RWTexture2DArray(_) => (),
-                crate::model::DescriptorDef::TextureCube(_) => (),
-                crate::model::DescriptorDef::TextureCubeArray(_) => (),
+                crate::model::DescriptorDef::Sampler
+                | crate::model::DescriptorDef::ByteAddressBuffer
+                | crate::model::DescriptorDef::RWByteAddressBuffer
+                | crate::model::DescriptorDef::Texture2D(_)
+                | crate::model::DescriptorDef::RWTexture2D(_)
+                | crate::model::DescriptorDef::Texture3D(_)
+                | crate::model::DescriptorDef::RWTexture3D(_)
+                | crate::model::DescriptorDef::Texture2DArray(_)
+                | crate::model::DescriptorDef::RWTexture2DArray(_)
+                | crate::model::DescriptorDef::TextureCube(_)
+                | crate::model::DescriptorDef::TextureCubeArray(_) => (),
             }
         }
 

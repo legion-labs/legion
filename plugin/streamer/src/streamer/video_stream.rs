@@ -50,7 +50,7 @@ impl VideoStream {
         let graphics_queue = renderer.queue(QueueType::Graphics);
         let encoder = VideoStreamEncoder::new(resolution)?;
         let offscreen_helper = offscreen_helper::OffscreenHelper::new(
-            renderer.shader_compiler(),
+            &renderer.shader_compiler(),
             device_context,
             &graphics_queue,
             resolution,

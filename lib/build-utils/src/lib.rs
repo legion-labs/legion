@@ -260,7 +260,7 @@ pub fn build_graphics_cgen(context: &Context, root_file: &impl AsRef<Path>) -> R
     ctx_builder.set_outdir(&out_dir).unwrap();
 
     // run generation
-    let result = lgn_graphics_cgen::run::run(ctx_builder.build());
+    let result = lgn_graphics_cgen::run::run(&ctx_builder.build());
     match &result {
         Ok(build_result) => {
             for input_dependency in &build_result.input_dependencies {

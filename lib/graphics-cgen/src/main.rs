@@ -124,5 +124,5 @@ fn main_internal() -> Result<CGenBuildResult> {
     ctx_builder.set_outdir(&outdir)?;
 
     // run the generation
-    run(ctx_builder.build())
+    run(&ctx_builder.build())
 }

@@ -16,7 +16,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             CGenVariant::Hlsl,
             GeneratorContext::get_object_rel_path(descriptorset, CGenVariant::Hlsl),
             content.into_bytes(),
-        ))
+        ));
     }
     products
 }
@@ -123,5 +123,5 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     writer.add_line("#endif");
 
     // finalize
-    writer.to_string()
+    writer.build()
 }

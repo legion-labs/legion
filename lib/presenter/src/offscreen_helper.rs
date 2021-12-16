@@ -114,7 +114,7 @@ pub struct OffscreenHelper {
 
 impl OffscreenHelper {
     pub fn new(
-        shader_compiler: HlslCompiler,
+        shader_compiler: &HlslCompiler,
         device_context: &DeviceContext,
         graphics_queue: &Queue,
         resolution: Resolution,

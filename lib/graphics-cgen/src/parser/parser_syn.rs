@@ -124,20 +124,21 @@ fn process_syn_mod(
     process_syn_model(model, input_dependencies, &final_path, false)
 }
 
+#[allow(clippy::todo)]
 fn expect<T>(lit: &syn::Lit) -> Result<T>
 where
     T: FromStr,
     T::Err: Display,
 {
     let result = match lit {
-        Lit::Str(_) => todo!(),
-        Lit::ByteStr(_) => todo!(),
-        Lit::Byte(_) => todo!(),
-        Lit::Char(_) => todo!(),
+        Lit::Str(_)
+        | Lit::ByteStr(_)
+        | Lit::Byte(_)
+        | Lit::Bool(_)
+        | Lit::Verbatim(_)
+        | Lit::Char(_) => todo!(),
         Lit::Int(e) => e.base10_parse::<T>(),
         Lit::Float(e) => e.base10_parse::<T>(),
-        Lit::Bool(_) => todo!(),
-        Lit::Verbatim(_) => todo!(),
     };
     result.map_err(|err| anyhow!(err))
 }
@@ -171,6 +172,7 @@ impl Attribute {
         Ok(Self { name, value: None })
     }
 
+    #[allow(clippy::todo)]
     fn value<T>(&self) -> Result<T>
     where
         T: FromStr,
@@ -221,6 +223,7 @@ impl Attributes {
         Ok(Self { attribs })
     }
 
+    #[allow(clippy::todo)]
     fn expect<T>(&self, name: &str) -> Result<T>
     where
         T: FromStr,
@@ -268,6 +271,7 @@ struct Property {
 }
 
 impl Property {
+    #[allow(clippy::todo)]
     fn from_field(field: &syn::Field) -> Result<Self> {
         //
         // Field format:
@@ -363,18 +367,14 @@ fn parse_type_def(path: &syn::Path) -> Result<(String, Option<String>)> {
             if e.args.len() != 1 {
                 return Err(anyhow!("Invalid template argument"));
             }
-            let tpl_arg = &e.args[0];
-            if let syn::GenericArgument::Type(ga) = tpl_arg {
-                if let syn::Type::Path(tpl_path) = ga {
-                    let path = &tpl_path.path;
-                    if path.segments.len() != 1 {
-                        return Err(anyhow!("Invalid template type"));
-                    }
-                    let segment = &path.segments[0];
-                    tpl_name = Some(segment.ident.to_string());
-                } else {
-                    return Err(anyhow!("#todo"));
+            let tpl_arg = &e.args[0];            
+            if let syn::GenericArgument::Type(syn::Type::Path(tpl_path)) = tpl_arg {
+                let path = &tpl_path.path;
+                if path.segments.len() != 1 {
+                    return Err(anyhow!("Invalid template type"));
                 }
+                let segment = &path.segments[0];
+                tpl_name = Some(segment.ident.to_string());
             } else {
                 return Err(anyhow!("#todo"));
             }
@@ -452,6 +452,7 @@ fn process_syn_struct(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::todo)]
 fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     trace!("Parsing descriptorset {}", &prop_bag.nam);
 
@@ -526,6 +527,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
     Ok(())
 }
 
+#[allow(clippy::todo)]
 fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Result<()> {
     trace!("Parsing pipelinelayout {}", &prop_bag.nam);
 

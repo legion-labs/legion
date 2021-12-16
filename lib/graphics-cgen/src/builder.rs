@@ -22,6 +22,11 @@ impl<'mdl> StructBuilder<'mdl> {
         }
     }
 
+    /// Add struct member
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_member(mut self, name: &str, typ: &str, array_len: Option<u32>) -> Result<Self> {
         // check member uniqueness
         if self.names.contains(name) {
@@ -48,6 +53,11 @@ impl<'mdl> StructBuilder<'mdl> {
         Ok(self)
     }
 
+    /// Build
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn build(self) -> Result<StructType> {
         Ok(self.product)
     }
@@ -68,10 +78,20 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         }
     }
 
+    /// Add descriptor.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_samplers(self, name: &str, array_len: Option<u32>) -> Result<Self> {
         self.add_descriptor(name, array_len, DescriptorDef::Sampler)
     }
 
+    /// Add descriptor.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_constantbuffer(self, name: &str, inner_type: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let object_id = self
@@ -87,6 +107,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(name, None, DescriptorDef::ConstantBuffer(def))
     }
 
+    /// Add descriptor.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_structuredbuffer(
         self,
         name: &str,
@@ -113,6 +138,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(name, array_len, def)
     }
 
+    /// Add descriptor.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_byteaddressbuffer(
         self,
         name: &str,
@@ -124,9 +154,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         } else {
             DescriptorDef::ByteAddressBuffer
         };
-        self.add_descriptor(name.clone(), array_len, def)
+        self.add_descriptor(name, array_len, def)
     }
 
+    /// Add descriptor.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_texture(
         self,
         name: &str,
@@ -145,17 +180,12 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             fmt
         ))?;
         let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_id).unwrap();
-        let valid_type = {
-            match fmt_ty {
-                CGenType::Struct(_) => false,
-                CGenType::Native(e) => match e {
-                    NativeType::Float1
-                    | NativeType::Float2
-                    | NativeType::Float3
-                    | NativeType::Float4 => true,
-                    _ => false,
-                },
-            }
+        let valid_type = match fmt_ty {
+            CGenType::Struct(_) => false,
+            CGenType::Native(e) => matches!(
+                e,
+                NativeType::Float1 | NativeType::Float2 | NativeType::Float3 | NativeType::Float4
+            ),
         };
         if !valid_type {
             return Err(anyhow!(
@@ -220,7 +250,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             }
         };
 
-        self.add_descriptor(name.clone(), array_len, ds)
+        self.add_descriptor(name, array_len, ds)
     }
 
     fn add_descriptor(
@@ -246,6 +276,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         Ok(self)
     }
 
+    /// Build.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn build(self) -> Result<DescriptorSet> {
         Ok(self.product)
     }
@@ -270,6 +305,11 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         }
     }
 
+    /// Add descriptorset.
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
         // check descriptorset exists
         let ds_id = self.mdl.get_object_id::<DescriptorSet>(ty);
@@ -296,6 +336,11 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         self.add_member(name, PipelineLayoutContent::DescriptorSet(obj_id))
     }
 
+    /// Add pushconstant
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
         // only one pushconstant is allowed
         if self.has_pushconstant {
@@ -347,6 +392,11 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         Ok(self)
     }
 
+    /// build
+    ///
+    /// # Errors
+    /// todo
+    ///
     pub fn build(self) -> Result<PipelineLayout> {
         Ok(self.product)
     }

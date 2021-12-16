@@ -63,7 +63,7 @@ impl<'frame> RenderContext<'frame> {
         &self.descriptor_pool
     }
 
-    #[allow(unreachable_code)]
+    #[allow(clippy::todo)]
     pub fn alloc_descriptor_set(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
@@ -90,14 +90,6 @@ impl<'frame> RenderContext<'frame> {
     pub fn bump_allocator(&self) -> &BumpAllocatorHandle {
         &self.bump_allocator
     }
-
-    // pub fn acquire_bump_allocator(&mut self) -> BumpAllocatorHandle {
-    //     self.bump_allocator.transfer()
-    // }
-
-    // pub fn release_bump_allocator(&mut self, handle: BumpAllocatorHandle) {
-    //     self.bump_allocator = handle;
-    // }
 }
 
 impl<'frame> Drop for RenderContext<'frame> {

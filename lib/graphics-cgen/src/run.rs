@@ -48,17 +48,21 @@ pub struct CGenBuildResult {
     pub input_dependencies: Vec<PathBuf>,
 }
 
+#[derive(Default)]
 pub struct CGenContextBuilder {
     context: CGenContext,
 }
 
 impl CGenContextBuilder {
     pub fn new() -> Self {
-        Self {
-            context: CGenContext::default(),
-        }
+        Self::default()
     }
 
+    /// Set root file
+    ///
+    /// # Errors
+    /// File does not exists or invalid path..
+    ///
     pub fn set_root_file(&mut self, root_file: &impl AsRef<Path>) -> Result<()> {
         let abs_path = to_abs_path(root_file)?;
         if !abs_path.exists() || !abs_path.is_file() {
@@ -71,7 +75,11 @@ impl CGenContextBuilder {
 
         Ok(())
     }
-
+    /// Set output directory
+    ///
+    /// # Errors
+    /// Invalid path.
+    ///
     pub fn set_outdir(&mut self, outdir: &impl AsRef<Path>) -> Result<()> {
         self.context.outdir = to_abs_path(outdir)?;
 
@@ -83,8 +91,13 @@ impl CGenContextBuilder {
     }
 }
 
-pub fn run(context: CGenContext) -> Result<CGenBuildResult> {
-    // timing
+/// Run code generation
+///
+/// # Errors
+/// Returns an error.
+///
+pub fn run(context: &CGenContext) -> Result<CGenBuildResult> {
+    // todo: timing
     run_internal(context)
 }
 
@@ -98,16 +111,16 @@ fn to_abs_path(path: &impl AsRef<Path>) -> Result<PathBuf> {
     })
 }
 
-fn run_internal(context: CGenContext) -> Result<CGenBuildResult> {
+fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
     //
     // Load model
     //
     info!("Load model from {}", context.root_file.display());
 
-    let root_file_ext = context.root_file.extension().ok_or(anyhow!(
-        "No extension on root file {}",
-        context.root_file.display()
-    ))?;
+    let root_file_ext = context
+        .root_file
+        .extension()
+        .ok_or_else(|| anyhow!("No extension on root file {}", context.root_file.display()))?;
 
     let parsing_result = match root_file_ext.to_str().unwrap() {
         "cgen" => from_syn(&context.root_file)?,
@@ -119,16 +132,16 @@ fn run_internal(context: CGenContext) -> Result<CGenBuildResult> {
     // generation step
     //
     let gen_context = GeneratorContext::new(model);
-    let mut generators = Vec::<generators::GeneratorFunc>::new();
-    generators.push(generators::hlsl::type_generator::run);
-    generators.push(generators::hlsl::descriptorset_generator::run);
-    generators.push(generators::hlsl::pipelinelayout_generator::run);
-    generators.push(generators::rust::base_mod_generator::run);
-    generators.push(generators::rust::type_generator::run);
-    generators.push(generators::rust::descriptorset_generator::run);
-    generators.push(generators::rust::pipelinelayout_generator::run);
-    generators.push(generators::rust::cgen_def_generator::run);
-
+    let generators = [
+        generators::hlsl::type_generator::run,
+        generators::hlsl::descriptorset_generator::run,
+        generators::hlsl::pipelinelayout_generator::run,
+        generators::rust::base_mod_generator::run,
+        generators::rust::type_generator::run,
+        generators::rust::descriptorset_generator::run,
+        generators::rust::pipelinelayout_generator::run,
+        generators::rust::cgen_def_generator::run,
+    ];
     let mut products = Vec::<Product>::new();
     for generator in generators {
         let mut pr = generator(&gen_context);
@@ -139,7 +152,7 @@ fn run_internal(context: CGenContext) -> Result<CGenBuildResult> {
     // write to disk
     //
     for product in &products {
-        product.write_to_disk(&context)?;
+        product.write_to_disk(context)?;
     }
 
     // done

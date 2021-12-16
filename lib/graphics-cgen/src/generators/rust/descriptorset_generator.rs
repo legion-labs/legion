@@ -31,7 +31,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Rust,
             mod_path,
-            writer.to_string().into_bytes(),
+            writer.build().into_bytes(),
         ));
     }
 
@@ -103,5 +103,5 @@ fn generate_rust_descriptorset(
     writer.add_line("}".to_string());
 
     // finalize
-    writer.to_string()
+    writer.build()
 }

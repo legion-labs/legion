@@ -40,7 +40,7 @@ impl FileWriter {
         self.indent -= 1;
     }
 
-    pub fn to_string(self) -> String {
+    pub fn build(self) -> String {
         assert_eq!(self.indent, 0);
 
         let mut result = String::new();

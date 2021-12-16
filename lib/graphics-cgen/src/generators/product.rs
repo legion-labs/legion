@@ -30,6 +30,11 @@ impl Product {
         &self.content
     }
 
+    /// Write product content to disk.
+    ///
+    /// # Errors
+    /// Todo.
+    ///
     pub fn write_to_disk(&self, context: &CGenContext) -> Result<()> {
         // create output folder if needed
         let final_path = self.path.to_path(context.out_dir(self.variant));
@@ -50,7 +55,7 @@ impl Product {
         };
 
         // write file content
-        output.write(&self.content)?;
+        output.write_all(&self.content)?;
 
         Ok(())
     }

@@ -20,7 +20,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
                 CGenVariant::Rust,
                 GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
                 content.into_bytes(),
-            ))
+            ));
         }
     }
 
@@ -38,7 +38,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Rust,
             mod_path,
-            writer.to_string().into_bytes(),
+            writer.build().into_bytes(),
         ));
     }
 
@@ -95,5 +95,5 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     writer.new_line();
 
     // finalize
-    writer.to_string()
+    writer.build()
 }
