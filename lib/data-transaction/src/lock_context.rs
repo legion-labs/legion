@@ -2,8 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use tokio::sync::MutexGuard;
 
 use crate::{BuildManager, DataManager};
@@ -49,14 +48,10 @@ impl<'a> LockContext<'a> {
                     )?;
 
                     match self.build.build_all_derived(*resource_id) {
-                        Ok(_manifest) => {
-                            //todo: use manifest to update asset_registry CAS
-                            // TODO HACK. Assume DebugCube until proper mapping is exposed
-                            let derived_id = ResourcePathId::from(*resource_id)
-                                .push(ResourceType::new(b"runtime_debugcube"))
-                                .resource_id();
-
-                            self.asset_registry.reload(derived_id);
+                        Ok(built_resources) => {
+                            for resource in built_resources {
+                                self.asset_registry.reload(resource);
+                            }
                         }
                         Err(e) => {
                             log::error!("Error building resource derivations {:?}", e);

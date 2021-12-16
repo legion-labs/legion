@@ -18,37 +18,37 @@ impl BuildManager {
         options: &DataBuildOptions,
         project_dir: impl AsRef<Path>,
         manifest: Manifest,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let editor_env = CompilationEnv {
             target: Target::Game,
             platform: Platform::Windows,
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create(project_dir).unwrap(); // todo: failure
-        Self {
+        let build = options.open_or_create(project_dir)?;
+        Ok(Self {
             build,
             compile_env: editor_env,
             manifest,
-        }
+        })
     }
 
     /// Builds derived resources based on changed source resoure.
-    pub fn build_all_derived(&mut self, resource_id: ResourceTypeAndId) -> anyhow::Result<()> {
+    pub fn build_all_derived(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> anyhow::Result<Vec<ResourceTypeAndId>> {
         // TODO HACK. Assume DebugCube until proper mapping is exposed
         let derived_id =
             ResourcePathId::from(resource_id).push(ResourceType::new(b"runtime_debugcube"));
 
         self.build.source_pull().unwrap();
-        match self.build.compile(
-            derived_id,
-            None, /*Some(self.manifest.clone())*/
-            &self.compile_env,
-        ) {
+        match self.build.compile(derived_id, None, &self.compile_env) {
             Ok(output) => {
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
+                let built = rt_manifest.resources();
                 self.manifest.extend(rt_manifest);
-                Ok(())
+                Ok(built)
             }
             Err(e) => {
                 println!("Data Build Failed: '{}'", e.to_string());

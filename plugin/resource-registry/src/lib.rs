@@ -99,12 +99,12 @@ impl Plugin for ResourceRegistryPlugin {
                 let mut build_options = DataBuildOptions::new(&build_dir);
                 if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
                     if exe_dir.pop() && exe_dir.is_dir() {
-                        println!("{:?}", exe_dir);
                         build_options.compiler_dir(exe_dir);
                     }
                 }
                 build_options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
-                let build_manager = BuildManager::new(&build_options, &project_dir, manifest);
+                let build_manager = BuildManager::new(&build_options, &project_dir, manifest)
+                    .expect("the editor requires valid build manager");
 
                 let data_manager = Arc::new(Mutex::new(DataManager::new(
                     project,

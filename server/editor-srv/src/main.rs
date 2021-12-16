@@ -111,29 +111,6 @@ fn main() {
         PathBuf::from,
     );
 
-    let databuild_settings = None;
-    /*{
-        let build_bin = {
-            args.value_of(ARG_NAME_DATABUILD_CLI).map_or_else(
-                || {
-                    std::env::current_exe().ok().map_or_else(
-                        || panic!("cannot find test directory"),
-                        |mut path| {
-                            path.pop();
-                            path.as_path().join("data-build.exe")
-                        },
-                    )
-                },
-                PathBuf::from,
-            )
-        };
-        let buildindex = args
-            .value_of(ARG_NAME_BUILDINDEX)
-            .map_or_else(|| content_store_path.clone(), PathBuf::from);
-
-        Some(DataBuildSettings::new(build_bin, buildindex))
-    };*/
-
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     App::new()
@@ -147,7 +124,7 @@ fn main() {
             content_store_path,
             &game_manifest_path,
             assets_to_load,
-            databuild_settings,
+            None,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .insert_resource(ResourceRegistrySettings::new(project_folder))

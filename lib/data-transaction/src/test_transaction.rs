@@ -28,7 +28,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
     let mut options = DataBuildOptions::new(&build_dir);
     options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
-    let build_manager = BuildManager::new(&options, &project_dir, Manifest::default());
+    let build_manager = BuildManager::new(&options, &project_dir, Manifest::default()).unwrap();
 
     {
         let mut data_manager = DataManager::new(

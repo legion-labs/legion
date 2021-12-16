@@ -49,7 +49,14 @@ impl Default for AssetRegistrySettings {
 
         let content_store_path = project_folder.join("temp");
         let databuild_settings = None;
-        /*{
+
+        /*
+        //
+        // Below is how runtime can be configured to use data-build CLI
+        // to re-build resources when reload is requested.
+        //
+
+        let databuild_settings = {
             let build_bin = {
                 std::env::current_exe().ok().map_or_else(
                     || panic!("cannot find test directory"),
@@ -63,6 +70,7 @@ impl Default for AssetRegistrySettings {
 
             Some(DataBuildSettings::new(build_bin, buildindex))
         };*/
+
         Self {
             content_store_addr: content_store_path,
             game_manifest: project_folder.join("runtime").join("game.manifest"),
