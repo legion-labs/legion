@@ -4,7 +4,7 @@
   import { Panel, PanelList } from "@/components/panel";
   import TopBar from "@/components/TopBar.svelte";
   import StatusBar from "@/components/StatusBar.svelte";
-  import Video, { Resolution } from "@/components/Video.svelte";
+  import RemoteWindow, { Resolution } from "@/components/RemoteWindow.svelte";
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
@@ -106,7 +106,7 @@
           <div class="video-container" slot="content">
             {#if editorActiveTab === "editor" || editorActiveTab === "runtime"}
               {#key editorActiveTab}
-                <Video
+                <RemoteWindow
                   serverType={editorActiveTab}
                   bind:desiredResolution={desiredVideoResolution}
                 />

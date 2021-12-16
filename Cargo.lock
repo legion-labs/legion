@@ -4336,6 +4336,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-grpc",
+ "lgn-input",
+ "lgn-math",
  "lgn-mp4",
  "lgn-presenter",
  "lgn-pso-compiler",
