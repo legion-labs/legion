@@ -1,4 +1,5 @@
 use anyhow::bail;
+use lgn_input::{mouse::MouseButton, ElementState};
 use lgn_math::Vec2;
 use serde::Deserialize;
 
@@ -62,31 +63,35 @@ impl TryFrom<String> for Color {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub(crate) struct Position {
-    pub(crate) x: f32,
-    pub(crate) y: f32,
-}
+// #[derive(Debug, Deserialize)]
+// pub(crate) struct Position {
+//     pub(crate) x: f32,
+//     pub(crate) y: f32,
+// }
 
-impl From<&Position> for Vec2 {
-    fn from(position: &Position) -> Self {
-        Self::new(position.x, position.y)
-    }
-}
+// impl From<&Position> for Vec2 {
+//     fn from(position: &Position) -> Self {
+//         Self::new(position.x, position.y)
+//     }
+// }
 
-impl From<Position> for Vec2 {
-    fn from(position: Position) -> Self {
-        Self::new(position.x, position.y)
-    }
-}
+// impl From<Position> for Vec2 {
+//     fn from(position: Position) -> Self {
+//         Self::new(position.x, position.y)
+//     }
+// }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
-pub(crate) enum InputPayload {
-    #[serde(rename = "click")]
-    Click { position: Position },
-    #[serde(rename = "mousemove")]
-    MouseMove { from: Position, to: Position },
+pub(crate) enum Input {
+    MouseButtonInput {
+        button: MouseButton,
+        state: ElementState,
+        pos: Vec2,
+    },
+    CursorMoved {
+        delta: Vec2,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,5 +104,5 @@ pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "speed")]
     Speed { id: String, speed: f32 },
     #[serde(rename = "input")]
-    Input { payload: InputPayload },
+    Input { input: Input },
 }

@@ -2,11 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use lgn_app::Events;
 use lgn_ecs::prelude::*;
-use lgn_input::{
-    mouse::{MouseButton, MouseButtonInput, MouseMotion},
-    ElementState,
-};
-use lgn_math::Vec2;
+use lgn_input::mouse::{MouseButtonInput, MouseMotion};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -200,24 +196,22 @@ pub(crate) fn update_streams(
                         log::info!("received speed command id={}", id);
                         render_pass.write().set_speed(*speed);
                     }
-                    VideoStreamEventInfo::Input { payload } => match payload {
-                        InputPayload::Click { position } => {
-                            log::info!("Got a click at {:?}", position);
+                    VideoStreamEventInfo::Input { input } => {
+                        log::info!("received input: {:?}", input);
 
-                            input_mouse_buttton_input.send(MouseButtonInput {
-                                button: MouseButton::Left,
-                                pos: position.into(),
-                                state: ElementState::Released,
-                            });
+                        match *input {
+                            Input::MouseButtonInput { button, pos, state } => {
+                                input_mouse_buttton_input.send(MouseButtonInput {
+                                    button,
+                                    state,
+                                    pos,
+                                });
+                            }
+                            Input::CursorMoved { delta } => {
+                                input_mouse_motion.send(MouseMotion { delta });
+                            }
                         }
-                        InputPayload::MouseMove { from, to } => {
-                            log::info!("Got a mouse move from {:?} to {:?}", from, to);
-
-                            input_mouse_motion.send(MouseMotion {
-                                delta: Vec2::new(to.x - from.x, to.y - from.y),
-                            });
-                        }
-                    },
+                    }
                 }
             }
             Err(query_err) => {
