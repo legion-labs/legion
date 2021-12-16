@@ -123,7 +123,7 @@ impl MemoryAllocation {
         unimplemented!();
 
         #[cfg(feature = "vulkan")]
-        self.unmap_buffer_platform(device_context)
+        self.unmap_buffer_platform(device_context);
     }
 
     pub fn mapped_ptr(&self) -> *mut u8 {

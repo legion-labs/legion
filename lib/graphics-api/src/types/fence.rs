@@ -85,7 +85,7 @@ impl Fence {
             unimplemented!();
 
             #[cfg(any(feature = "vulkan"))]
-            {                
+            {
                 let status = self.get_fence_status_platform();
                 if status.is_ok() && FenceStatus::Complete == status.clone().unwrap() {
                     self.set_submitted(false);
