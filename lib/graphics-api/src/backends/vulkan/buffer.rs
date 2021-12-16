@@ -3,10 +3,11 @@ use crate::{Buffer, BufferDef, DeviceContext, ResourceUsage};
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
     vk_buffer: ash::vk::Buffer,
+    vk_mem_requirements: ash::vk::MemoryRequirements,
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> (Self, u64) {
+    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
         buffer_def.verify();
         let mut allocation_size = buffer_def.size;
 
@@ -41,22 +42,29 @@ impl VulkanBuffer {
             .usage(usage_flags)
             .sharing_mode(ash::vk::SharingMode::EXCLUSIVE);
 
-        let buffer = unsafe {
+        let vk_buffer = unsafe {
             device_context
                 .vk_device()
                 .create_buffer(&buffer_info, None)
                 .unwrap()
         };
 
-        let memory_requirements = unsafe {
+        let vk_mem_requirements = unsafe {
             device_context
                 .vk_device()
-                .get_buffer_memory_requirements(buffer)
+                .get_buffer_memory_requirements(vk_buffer)
         };
 
-        log::trace!("Buffer {:?} crated with size {}", buffer, buffer_info.size,);
+        log::trace!(
+            "Buffer {:?} created with size {}",
+            vk_buffer,
+            buffer_info.size,
+        );
 
-        (Self { vk_buffer: buffer }, memory_requirements.alignment)
+        Self {
+            vk_buffer,
+            vk_mem_requirements,
+        }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext, buffer_def: &BufferDef) {
@@ -81,5 +89,9 @@ impl VulkanBuffer {
 impl Buffer {
     pub(crate) fn vk_buffer(&self) -> ash::vk::Buffer {
         self.inner.platform_buffer.vk_buffer
+    }
+
+    pub(crate) fn required_alignment_platform(&self) -> u64 {
+        self.inner.platform_buffer.vk_mem_requirements.alignment
     }
 }
