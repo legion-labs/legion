@@ -9,7 +9,6 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
     InputPlugin,
 };
-use lgn_math::{Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
@@ -418,41 +417,39 @@ fn camera_control(
 
     let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
     {
-        let mut translation = Vec3::default();
         for keyboard_input_event in keyboard_input_events.iter() {
             if let Some(key_code) = keyboard_input_event.key_code {
                 match key_code {
                     KeyCode::W => {
                         let dir = transform.forward();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::S => {
                         let dir = transform.back();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::D => {
                         let dir = transform.right();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::A => {
                         let dir = transform.left();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     _ => {}
                 }
             }
         }
 
-        let mut rotation = Quat::default();
         for mouse_motion_event in mouse_motion_events.iter() {
-            rotation *=
-                Quat::from_rotation_y(mouse_motion_event.delta.x * camera.rotation_speed / 60.0);
-            rotation *=
-                Quat::from_rotation_x(mouse_motion_event.delta.y * camera.rotation_speed / 60.0);
+            let (euler_x, euler_y, euler_z) = transform.rotation.to_euler(EulerRot::XYZ);
+            transform.rotation = Quat::from_euler(
+                EulerRot::XYZ,
+                euler_x + mouse_motion_event.delta.y * camera.rotation_speed / 60.0,
+                euler_y - mouse_motion_event.delta.x * camera.rotation_speed / 60.0,
+                euler_z,
+            );
         }
-
-        transform.translation += translation;
-        transform.rotation = rotation * transform.rotation;
 
         for mouse_wheel_event in mouse_wheel_events.iter() {
             camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);

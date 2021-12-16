@@ -81,8 +81,17 @@ fn update_ui(
     mut rotations: Query<'_, '_, &mut RotationComponent>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
     mut light_settings: ResMut<'_, LightSettings>,
+    mut camera_transform: Query<
+        '_,
+        '_,
+        (&mut CameraComponent, &mut Transform),
+        Without<LightComponent>,
+    >,
 ) {
     egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
+        for (mut camera, mut transform) in camera_transform.iter_mut() {
+            ui.label(transform.rotation.to_string());
+        }
         ui.label("Objects");
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
