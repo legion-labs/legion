@@ -13,7 +13,7 @@ wayland = ["winit/wayland"]
 x11 = ["winit/x11"]
 
 [dependencies]
-# bevy
+# Legion engine
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-input = { path = "../input", version = "0.1.0" }

@@ -8,7 +8,7 @@ use crate::{
     entity::Entity,
     query::{
         Fetch, FilterFetch, QueryCombinationIter, QueryEntityError, QueryIter, QueryState,
-        ReadOnlyFetch, WorldQuery,
+        WorldQuery,
     },
     world::{Mut, World},
 };
@@ -279,8 +279,8 @@ where
 
     /// Returns an [`Iterator`] over the query results.
     ///
-    /// This can only be called for read-only queries (due to the [`ReadOnlyFetch`] trait
-    /// bound). See [`Self::iter_mut`] for queries that contain at least one mutable component.
+    /// This can only return immutable data (mutable data will be cast to an immutable form).
+    /// See [`Self::iter_mut`] for queries that contain at least one mutable component.
     ///
     /// # Example
     ///
@@ -301,10 +301,7 @@ where
     /// # report_names_system.system();
     /// ```
     #[inline]
-    pub fn iter(&'s self) -> QueryIter<'w, 's, Q, F>
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    pub fn iter(&'s self) -> QueryIter<'w, 's, Q, Q::ReadOnlyFetch, F> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
@@ -334,7 +331,7 @@ where
     /// # gravity_system.system();
     /// ```
     #[inline]
-    pub fn iter_mut(&mut self) -> QueryIter<'_, '_, Q, F> {
+    pub fn iter_mut(&mut self) -> QueryIter<'_, '_, Q, Q::Fetch, F> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
@@ -344,17 +341,16 @@ where
     }
 
     /// Returns an [`Iterator`] over all possible combinations of `K` query results without repetition.
-    /// This can only be called for read-only queries
+    /// This can only return immutable data
     ///
     ///  For permutations of size K of query returning N results, you will get:
     /// - if K == N: one permutation of all query results
     /// - if K < N: all possible K-sized combinations of query results, without repetition
     /// - if K > N: empty set (no K-sized combinations exist)
     #[inline]
-    pub fn iter_combinations<const K: usize>(&self) -> QueryCombinationIter<'_, '_, Q, F, K>
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    pub fn iter_combinations<const K: usize>(
+        &self,
+    ) -> QueryCombinationIter<'_, '_, Q, Q::ReadOnlyFetch, F, K> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
@@ -391,7 +387,7 @@ where
     #[inline]
     pub fn iter_combinations_mut<const K: usize>(
         &mut self,
-    ) -> QueryCombinationIter<'_, '_, Q, F, K> {
+    ) -> QueryCombinationIter<'_, '_, Q, Q::Fetch, F, K> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
@@ -410,7 +406,7 @@ where
     /// This function makes it possible to violate Rust's aliasing guarantees. You must make sure
     /// this call does not result in multiple mutable references to the same component
     #[inline]
-    pub unsafe fn iter_unsafe(&self) -> QueryIter<'_, '_, Q, F> {
+    pub unsafe fn iter_unsafe(&'s self) -> QueryIter<'w, 's, Q, Q::Fetch, F> {
         // SEMI-SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         self.state
@@ -426,7 +422,7 @@ where
     #[inline]
     pub unsafe fn iter_combinations_unsafe<const K: usize>(
         &self,
-    ) -> QueryCombinationIter<'_, '_, Q, F, K> {
+    ) -> QueryCombinationIter<'_, '_, Q, Q::Fetch, F, K> {
         // SEMI-SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         self.state.iter_combinations_unchecked_manual(
@@ -439,7 +435,7 @@ where
     /// Runs `f` on each query result. This is faster than the equivalent iter() method, but cannot
     /// be chained like a normal [`Iterator`].
     ///
-    /// This can only be called for read-only queries, see [`Self::for_each_mut`] for write-queries.
+    /// This can only pass in immutable data, see [`Self::for_each_mut`] for mutable access.
     ///
     /// # Example
     ///
@@ -460,19 +456,17 @@ where
     /// # report_names_system.system();
     /// ```
     #[inline]
-    pub fn for_each(&'s self, f: impl FnMut(<Q::Fetch as Fetch<'w, 's>>::Item))
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    pub fn for_each<FN: FnMut(<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item)>(&'s self, f: FN) {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
-            self.state.for_each_unchecked_manual(
-                self.world,
-                f,
-                self.last_change_tick,
-                self.change_tick,
-            );
+            self.state
+                .for_each_unchecked_manual::<Q::ReadOnlyFetch, FN>(
+                    self.world,
+                    f,
+                    self.last_change_tick,
+                    self.change_tick,
+                );
         };
     }
 
@@ -498,11 +492,11 @@ where
     /// # gravity_system.system();
     /// ```
     #[inline]
-    pub fn for_each_mut<'a>(&'a mut self, f: impl FnMut(<Q::Fetch as Fetch<'a, 'a>>::Item)) {
+    pub fn for_each_mut<'a, FN: FnMut(<Q::Fetch as Fetch<'a, 'a>>::Item)>(&'a mut self, f: FN) {
         // SAFE: system runs without conflicts with other systems. same-system queries have runtime
         // borrow checks when they conflict
         unsafe {
-            self.state.for_each_unchecked_manual(
+            self.state.for_each_unchecked_manual::<Q::Fetch, FN>(
                 self.world,
                 f,
                 self.last_change_tick,
@@ -513,43 +507,42 @@ where
 
     /// Runs `f` on each query result in parallel using the given task pool.
     ///
-    /// This can only be called for read-only queries, see [`Self::par_for_each_mut`] for
-    /// write-queries.
+    /// This can only be called for immutable data, see [`Self::par_for_each_mut`] for
+    /// mutable access.
     #[inline]
-    pub fn par_for_each(
+    pub fn par_for_each<FN: Fn(<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item) + Send + Sync + Clone>(
         &'s self,
         task_pool: &TaskPool,
         batch_size: usize,
-        f: impl Fn(<Q::Fetch as Fetch<'w, 's>>::Item) + Send + Sync + Clone,
-    ) where
-        Q::Fetch: ReadOnlyFetch,
-    {
+        f: FN,
+    ) {
         // SAFE: system runs without conflicts with other systems. same-system queries have runtime
         // borrow checks when they conflict
         unsafe {
-            self.state.par_for_each_unchecked_manual(
-                self.world,
-                task_pool,
-                batch_size,
-                f,
-                self.last_change_tick,
-                self.change_tick,
-            );
+            self.state
+                .par_for_each_unchecked_manual::<Q::ReadOnlyFetch, FN>(
+                    self.world,
+                    task_pool,
+                    batch_size,
+                    f,
+                    self.last_change_tick,
+                    self.change_tick,
+                );
         };
     }
 
     /// Runs `f` on each query result in parallel using the given task pool.
     #[inline]
-    pub fn par_for_each_mut<'a>(
+    pub fn par_for_each_mut<'a, FN: Fn(<Q::Fetch as Fetch<'a, 'a>>::Item) + Send + Sync + Clone>(
         &'a mut self,
         task_pool: &TaskPool,
         batch_size: usize,
-        f: impl Fn(<Q::Fetch as Fetch<'a, 'a>>::Item) + Send + Sync + Clone,
+        f: FN,
     ) {
         // SAFE: system runs without conflicts with other systems. same-system queries have runtime
         // borrow checks when they conflict
         unsafe {
-            self.state.par_for_each_unchecked_manual(
+            self.state.par_for_each_unchecked_manual::<Q::Fetch, FN>(
                 self.world,
                 task_pool,
                 batch_size,
@@ -565,8 +558,8 @@ where
     /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
     /// returned instead.
     ///
-    /// This can only be called for read-only queries (due to the [`ReadOnlyFetch`] trait bound).
-    /// see [`get_mut`](Self::get_mut) for queries that contain at least one mutable component.
+    /// This can only return immutable data (mutable data will be cast to an immutable form).
+    /// See [`get_mut`](Self::get_mut) for queries that contain at least one mutable component.
     ///
     /// # Example
     ///
@@ -595,14 +588,11 @@ where
     pub fn get(
         &'s self,
         entity: Entity,
-    ) -> Result<<Q::Fetch as Fetch<'w, 's>>::Item, QueryEntityError>
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    ) -> Result<<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item, QueryEntityError> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
-            self.state.get_unchecked_manual(
+            self.state.get_unchecked_manual::<Q::ReadOnlyFetch>(
                 self.world,
                 entity,
                 self.last_change_tick,
@@ -643,7 +633,7 @@ where
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
-            self.state.get_unchecked_manual(
+            self.state.get_unchecked_manual::<Q::Fetch>(
                 self.world,
                 entity,
                 self.last_change_tick,
@@ -663,13 +653,17 @@ where
     /// this call does not result in multiple mutable references to the same component
     #[inline]
     pub unsafe fn get_unchecked(
-        &self,
+        &'s self,
         entity: Entity,
-    ) -> Result<<Q::Fetch as Fetch<'_, '_>>::Item, QueryEntityError> {
+    ) -> Result<<Q::Fetch as Fetch<'w, 's>>::Item, QueryEntityError> {
         // SEMI-SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
-        self.state
-            .get_unchecked_manual(self.world, entity, self.last_change_tick, self.change_tick)
+        self.state.get_unchecked_manual::<Q::Fetch>(
+            self.world,
+            entity,
+            self.last_change_tick,
+            self.change_tick,
+        )
     }
 
     /// Returns a reference to the [`Entity`]'s [`Component`] of the given type.
@@ -701,10 +695,7 @@ where
     /// # print_selected_character_name_system.system();
     /// ```
     #[inline]
-    pub fn get_component<T: Component>(
-        &self,
-        entity: Entity,
-    ) -> Result<&'w T, QueryComponentError> {
+    pub fn get_component<T: Component>(&self, entity: Entity) -> Result<&T, QueryComponentError> {
         let world = self.world;
         let entity_ref = world
             .get_entity(entity)
@@ -805,9 +796,8 @@ where
     /// Returns a single immutable query result when there is exactly one entity matching
     /// the query.
     ///
-    /// This can only be called for read-only queries (due to the [`ReadOnlyFetch`] trait
-    /// bound). Use [`single_mut`](Self::single_mut) for queries that contain at least one
-    /// mutable component.
+    /// This can only return immutable data. Use [`single_mut`](Self::single_mut) for
+    /// queries that contain at least one mutable component.
     ///
     /// # Example
     ///
@@ -829,19 +819,15 @@ where
     /// Panics if the number of query results is not exactly one. Use
     /// [`get_single`](Self::get_single) to return a `Result` instead of panicking.
     #[track_caller]
-    pub fn single(&'s self) -> <Q::Fetch as Fetch<'w, 's>>::Item
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    pub fn single(&'s self) -> <Q::ReadOnlyFetch as Fetch<'w, 's>>::Item {
         self.get_single().unwrap()
     }
 
     /// Returns a single immutable query result when there is exactly one entity matching
     /// the query.
     ///
-    /// This can only be called for read-only queries (due to the [`ReadOnlyFetch`] trait
-    /// bound). Use [`get_single_mut`](Self::get_single_mut) for queries that contain at least one
-    /// mutable component.
+    /// This can only return immutable data. Use [`get_single_mut`](Self::get_single_mut)
+    /// for queries that contain at least one mutable component.
     ///
     /// If the number of query results is not exactly one, a [`QuerySingleError`] is returned
     /// instead.
@@ -868,10 +854,9 @@ where
     /// }
     /// # player_scoring_system.system();
     /// ```
-    pub fn get_single(&'s self) -> Result<<Q::Fetch as Fetch<'w, 's>>::Item, QuerySingleError>
-    where
-        Q::Fetch: ReadOnlyFetch,
-    {
+    pub fn get_single(
+        &'s self,
+    ) -> Result<<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item, QuerySingleError> {
         let mut query = self.iter();
         let first = query.next();
         let extra = query.next().is_some();
@@ -975,8 +960,6 @@ where
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
-        // TODO: This code can be replaced with `self.iter().next().is_none()` if/when
-        // we sort out how to convert "write" queries to "read" queries.
         self.state
             .is_empty(self.world, self.last_change_tick, self.change_tick)
     }
