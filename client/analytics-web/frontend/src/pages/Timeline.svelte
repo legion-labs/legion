@@ -2,6 +2,7 @@
   type Thread = {
     streamInfo: Stream;
     spanBlocks: BlockSpansReply[];
+    maxDepth: number;
   };
 
   type BeginPan = {
@@ -117,6 +118,7 @@
         threads[stream.streamId] = {
           streamInfo: stream,
           spanBlocks: [],
+          maxDepth: 0,
         };
 
         promises.push(fetchBlocks(stream.streamId));
@@ -164,7 +166,9 @@
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 
-    threads[streamId].spanBlocks.push(response);
+    let thread = threads[streamId];
+    thread.spanBlocks.push(response);
+    thread.maxDepth = Math.max(thread.maxDepth, response.maxDepth);
     if (loadingProgression) {
       loadingProgression.completed += 1;
     }
@@ -245,6 +249,14 @@
     const characterWidth = testTextMetrics.width / testString.length;
     const characterHeight = testTextMetrics.actualBoundingBoxAscent;
 
+    renderingContext.fillStyle = "#F0F0F0";
+    renderingContext.fillRect(
+      0,
+      threadVerticalOffset,
+      canvasWidth,
+      20 * thread.maxDepth
+    );
+
     let maxDepth = 0;
 
     thread.spanBlocks.forEach((blockSpans) => {
@@ -278,9 +290,9 @@
         const offsetY = threadVerticalOffset + depth * 20;
 
         if (depth % 2 === 0) {
-          renderingContext.fillStyle = "#7DF9FF";
+          renderingContext.fillStyle = "#fede99";
         } else {
-          renderingContext.fillStyle = "#A0A0CC";
+          renderingContext.fillStyle = "#fea446";
         }
 
         renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
@@ -448,7 +460,7 @@
 
 <style lang="postcss">
   .parent-process {
-    @apply text-[#42b983] underline;
+    @apply text-[#ca2f0f] underline;
   }
 
   .timeline-canvas {
@@ -464,6 +476,6 @@
 
   #loadedProgress {
     width: 0px;
-    background-color: #42b983;
+    background-color: #fea446;
   }
 </style>

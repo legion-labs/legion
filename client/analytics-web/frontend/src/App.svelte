@@ -66,6 +66,6 @@
   }
 
   #nav a.router-link-exact-active {
-    @apply font-bold text-[#42b983] underline;
+    @apply font-bold text-[#ca2f0f] underline;
   }
 </style>

@@ -175,7 +175,7 @@
   }
 
   .nav-link {
-    @apply text-[#42b983] underline;
+    @apply text-[#ca2f0f] underline;
   }
 
   .page-nav {

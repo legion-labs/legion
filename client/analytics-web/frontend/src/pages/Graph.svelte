@@ -255,7 +255,7 @@
   .fundiv {
     margin: 5px;
     text-align: left;
-    background-color: rgba(64, 64, 200, 0.1);
+    background-color: #fea446;
     overflow: visible;
     white-space: nowrap;
   }
@@ -266,11 +266,11 @@
 
   .fundiv:hover {
     color: white;
-    background-color: rgba(64, 64, 200, 1);
+    background-color: #ca2f0f;
   }
 
   .fundiv span:hover {
     margin: 0 10px;
-    background-color: rgba(64, 64, 200, 1);
+    background-color: #ca2f0f;
   }
 </style>
