@@ -50,7 +50,7 @@ export type MouseButtonInput = Type<"MouseButtonInput"> & {
 };
 
 /** Represents a cursor move input, the last known cursor position and the current cursor position are included */
-export type CursorMoved = Type<"CursorMoved"> & {
+export type MouseMotion = Type<"MouseMotion"> & {
   /** The difference between the last known position and the current one */
   delta: Vec2;
 };
@@ -64,7 +64,7 @@ export type MouseWheel = Type<"MouseWheel"> & {
 };
 
 /** The Input type union */
-export type Input = MouseButtonInput | CursorMoved | MouseWheel;
+export type Input = MouseButtonInput | MouseMotion | MouseWheel;
 
 /** A function passed to the `remotedWindowEvents` action that will be called when an event is dispatched */
 export type Listener = (input: Input) => void;
@@ -139,17 +139,17 @@ function createEvents(
 
     state.previousMousePosition = currentMousePosition;
 
-    const mouseMoveEvent: CursorMoved = {
-      type: "CursorMoved",
+    const mouseMotion: MouseMotion = {
+      type: "MouseMotion",
       delta: [
         currentMousePosition[0] - previousMousePosition[0],
         currentMousePosition[1] - previousMousePosition[1],
       ],
     };
 
-    log.debug(logLabel, log.json`Cursor moved ${mouseMoveEvent}`);
+    log.debug(logLabel, log.json`Cursor moved ${mouseMotion}`);
 
-    listener(mouseMoveEvent);
+    listener(mouseMotion);
   }
 
   function onWheel(event: WheelEvent) {

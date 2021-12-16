@@ -5,6 +5,7 @@ use crate::{ElementState, Input};
 
 /// A mouse button input event
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct MouseButtonInput {
     pub button: MouseButton,
     pub state: ElementState,
@@ -23,6 +24,7 @@ pub enum MouseButton {
 
 /// A mouse motion event
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct MouseMotion {
     pub delta: Vec2,
 }
@@ -38,6 +40,7 @@ pub enum MouseScrollUnit {
 /// A mouse scroll wheel event, where x represents horizontal scroll and y represents vertical
 /// scroll.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct MouseWheel {
     pub unit: MouseScrollUnit,
     pub x: f32,

@@ -1,6 +1,6 @@
 use anyhow::bail;
 use lgn_input::{
-    mouse::{MouseButton, MouseScrollUnit},
+    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
     ElementState,
 };
 use lgn_math::Vec2;
@@ -67,22 +67,29 @@ impl TryFrom<String> for Color {
 }
 
 #[derive(Debug, Deserialize)]
+pub(crate) struct MouseButtonInputPayload {
+    pub button: MouseButton,
+    pub state: ElementState,
+    pub pos: Vec2,
+}
+
+impl From<&MouseButtonInputPayload> for MouseButtonInput {
+    fn from(MouseButtonInputPayload { button, state, pos }: &MouseButtonInputPayload) -> Self {
+        Self {
+            button: *button,
+            state: *state,
+            pos: *pos,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum Input {
-    MouseButtonInput {
-        button: MouseButton,
-        state: ElementState,
-        pos: Vec2,
-    },
-    CursorMoved {
-        delta: Vec2,
-    },
-    MouseWheel {
-        unit: MouseScrollUnit,
-        x: f32,
-        y: f32,
-    },
+    MouseButtonInput(MouseButtonInput),
+    MouseMotion(MouseMotion),
+    MouseWheel(MouseWheel),
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,6 +1,5 @@
 use std::{fmt::Display, sync::Arc};
 
-use lgn_app::Events;
 use lgn_ecs::prelude::*;
 use lgn_input::mouse::{MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_presenter::offscreen_helper::Resolution;
@@ -171,16 +170,17 @@ pub(crate) fn handle_stream_events(
 
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
-    mut input_mouse_motion: ResMut<'_, Events<MouseMotion>>,
-    mut input_mouse_button_input: ResMut<'_, Events<MouseButtonInput>>,
-    mut input_mouse_wheel: ResMut<'_, Events<MouseWheel>>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
+    mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
+    mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
+    mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
 ) {
     for event in video_stream_events.iter() {
         match query.get_mut(event.stream_id.entity) {
             Ok(mut render_surface) => {
                 let render_pass = render_surface.test_renderpass();
+
                 match &event.info {
                     VideoStreamEventInfo::Color { id, color } => {
                         log::info!("received color command id={}", id);
@@ -198,21 +198,18 @@ pub(crate) fn update_streams(
                         render_pass.write().set_speed(*speed);
                     }
                     VideoStreamEventInfo::Input { input } => {
+                        // TODO: Use debug!
                         log::info!("received input: {:?}", input);
 
-                        match *input {
-                            Input::MouseButtonInput { button, pos, state } => {
-                                input_mouse_button_input.send(MouseButtonInput {
-                                    button,
-                                    state,
-                                    pos,
-                                });
+                        match input {
+                            Input::MouseButtonInput(mouse_button_input) => {
+                                input_mouse_button_input.send(mouse_button_input.clone());
                             }
-                            Input::CursorMoved { delta } => {
-                                input_mouse_motion.send(MouseMotion { delta });
+                            Input::MouseMotion(mouse_motion) => {
+                                input_mouse_motion.send(mouse_motion.clone());
                             }
-                            Input::MouseWheel { unit, x, y } => {
-                                input_mouse_wheel.send(MouseWheel { unit, x, y });
+                            Input::MouseWheel(mouse_wheel) => {
+                                input_mouse_wheel.send(mouse_wheel.clone());
                             }
                         }
                     }
