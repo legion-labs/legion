@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
+lgn-derive = { path = "../../derive", version = "0.1.0" }
 lgn-macro-utils = { path = "../../macro-utils", version = "0.1.0" }
 
 syn = "1.0"

@@ -3936,6 +3936,7 @@ dependencies = [
 name = "lgn-ecs-macros"
 version = "0.1.0"
 dependencies = [
+ "lgn-derive",
  "lgn-macro-utils",
  "proc-macro2",
  "quote",
@@ -4098,6 +4099,7 @@ name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
  "cargo-manifest",
+ "quote",
  "syn",
 ]
 
