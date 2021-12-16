@@ -47,16 +47,20 @@ impl<'frame> DescriptorSetWriter<'frame> {
         name: &str,
         update_datas: &[DescriptorRef<'frame>],
     ) -> GfxResult<()> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
         let descriptor_index = self
             .descriptor_set_layout
             .find_descriptor_index_by_name(name)
             .ok_or_else(|| GfxError::from("Invalid descriptor name"))?;
 
         #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index(descriptor_index, update_datas)
+        {
+            self.set_descriptors_by_index(descriptor_index, update_datas)
+        }
+
+        #[cfg(not(any(feature = "vulkan")))]
+        {
+            unimplemented!()
+        }
     }
 
     #[allow(clippy::todo)]
@@ -65,13 +69,17 @@ impl<'frame> DescriptorSetWriter<'frame> {
         index: usize,
         update_datas: &[DescriptorRef<'frame>],
     ) -> GfxResult<()> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
         self.write_mask &= !(1u64 << index);
 
         #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index_platform(index, update_datas)
+        {
+            self.set_descriptors_by_index_platform(index, update_datas)
+        }
+
+        #[cfg(not(any(feature = "vulkan")))]
+        {
+            unimplemented!();
+        }
     }
 
     pub fn flush(self, vulkan_device_context: &DeviceContext) -> DescriptorSetHandle {

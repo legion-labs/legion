@@ -124,7 +124,15 @@ impl Buffer {
     }
 
     pub fn required_alignment(&self) -> u64 {
-        self.required_alignment_platform()
+        #[cfg(any(feature = "vulkan"))]
+        {
+            self.required_alignment_platform()
+        }
+
+        #[cfg(not(any(feature = "vulkan")))]
+        {
+            u64::MAX
+        }
     }
 
     pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferView> {

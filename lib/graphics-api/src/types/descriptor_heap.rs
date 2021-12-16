@@ -138,12 +138,14 @@ impl DescriptorHeapPartition {
     pub fn reset(&self) -> GfxResult<()> {
         assert!(self.inner.transient);
 
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
         #[cfg(any(feature = "vulkan"))]
-        self.reset_platform().unwrap();
+        {
+            self.reset_platform()
+        }
 
-        Ok(())
+        #[cfg(not(any(feature = "vulkan")))]
+        {
+            unimplemented!()
+        }
     }
 }

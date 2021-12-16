@@ -4,13 +4,13 @@ use std::sync::Arc;
 use raw_window_handle::HasRawWindowHandle;
 
 use super::deferred_drop::DeferredDropper;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDeviceContext;
-#[cfg(any(feature = "vulkan"))]
-use crate::DeviceInfo;
+
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
-    DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
+    DescriptorSetLayout, DescriptorSetLayoutDef, DeviceInfo, ExtensionMode, Fence, GfxResult,
     GraphicsPipelineDef, Instance, Pipeline, PipelineReflection, Queue, QueueType, RootSignature,
     RootSignatureDef, Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef,
     ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
@@ -289,6 +289,10 @@ impl DeviceContext {
     }
 
     pub fn device_info(&self) -> &DeviceInfo {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(any(feature = "vulkan"))]
         &self.inner.device_info
     }
 }
