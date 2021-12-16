@@ -73,7 +73,6 @@
 
   const initialize = () => {
     if (!videoElement) {
-      console.log("no video???");
       log.error("video", "Video element couldn't be found");
 
       return;
@@ -255,7 +254,7 @@
       return;
     }
 
-    videoChannel.send(JSON.stringify({ event: "input", ...event }));
+    videoChannel.send(JSON.stringify({ event: "input", payload: event }));
   }
 
   $: if (

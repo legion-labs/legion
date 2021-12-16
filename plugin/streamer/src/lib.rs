@@ -80,10 +80,8 @@ impl Plugin for StreamerPlugin {
         // The streamer is the game-loop representative of the whole streaming system.
         let streamer = streamer::Streamer::new(stream_events_receiver);
 
-        let time = Time::default();
-
         app.insert_resource(streamer)
-            .insert_resource(time)
+            .init_resource::<Time>()
             .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams);

@@ -1,4 +1,5 @@
 use anyhow::bail;
+use lgn_math::Vec2;
 use serde::Deserialize;
 
 use super::StreamID;
@@ -63,8 +64,20 @@ impl TryFrom<String> for Color {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Position {
-    x: i32,
-    y: i32,
+    pub(crate) x: f32,
+    pub(crate) y: f32,
+}
+
+impl From<&Position> for Vec2 {
+    fn from(position: &Position) -> Self {
+        Self::new(position.x, position.y)
+    }
+}
+
+impl From<Position> for Vec2 {
+    fn from(position: Position) -> Self {
+        Self::new(position.x, position.y)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,5 +99,5 @@ pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "speed")]
     Speed { id: String, speed: f32 },
     #[serde(rename = "input")]
-    Input(InputPayload),
+    Input { payload: InputPayload },
 }

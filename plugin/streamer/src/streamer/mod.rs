@@ -1,6 +1,12 @@
 use std::{fmt::Display, sync::Arc};
 
+use lgn_app::Events;
 use lgn_ecs::prelude::*;
+use lgn_input::{
+    mouse::{MouseButton, MouseButtonInput, MouseMotion},
+    ElementState,
+};
+use lgn_math::Vec2;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -69,7 +75,7 @@ impl Streamer {
 
 pub(crate) fn handle_stream_events(
     task_pool: Res<'_, RenderTaskPool>,
-    streamer: ResMut<'_, Streamer>,
+    streamer: Res<'_, Streamer>,
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
@@ -169,6 +175,8 @@ pub(crate) fn handle_stream_events(
 
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
+    mut input_mouse_motion: ResMut<'_, Events<MouseMotion>>,
+    mut input_mouse_buttton_input: ResMut<'_, Events<MouseButtonInput>>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
 ) {
@@ -192,6 +200,24 @@ pub(crate) fn update_streams(
                         log::info!("received speed command id={}", id);
                         render_pass.write().set_speed(*speed);
                     }
+                    VideoStreamEventInfo::Input { payload } => match payload {
+                        InputPayload::Click { position } => {
+                            log::info!("Got a click at {:?}", position);
+
+                            input_mouse_buttton_input.send(MouseButtonInput {
+                                button: MouseButton::Left,
+                                pos: position.into(),
+                                state: ElementState::Released,
+                            });
+                        }
+                        InputPayload::MouseMove { from, to } => {
+                            log::info!("Got a mouse move from {:?} to {:?}", from, to);
+
+                            input_mouse_motion.send(MouseMotion {
+                                delta: Vec2::new(to.x - from.x, to.y - from.y),
+                            });
+                        }
+                    },
                 }
             }
             Err(query_err) => {
@@ -199,12 +225,6 @@ pub(crate) fn update_streams(
                 // Most likely: "The given entity does not have the requested component"
                 // i.e. the entity associated with the stream-id does not have a RenderSurface
                 eprintln!("{}", query_err);
-            }
-            VideoStreamEventInfo::Input(InputPayload::Click { position }) => {
-                log::info!("Got a click at {:?}", position);
-            }
-            VideoStreamEventInfo::Input(InputPayload::MouseMove { from, to }) => {
-                log::info!("Got a mouse move from {:?} to {:?}", from, to);
             }
         }
     }
