@@ -172,9 +172,8 @@ impl DebugDisplayPass {
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "const_data",
-                    0,
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
@@ -184,6 +183,7 @@ impl DebugDisplayPass {
 
             cmd_buffer
                 .cmd_bind_descriptor_set_handle(
+                    PipelineType::Graphics,
                     &self.root_signature,
                     descriptor_set_layout.definition().frequency,
                     descriptor_set_handle,

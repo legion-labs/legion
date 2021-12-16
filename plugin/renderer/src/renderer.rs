@@ -413,17 +413,15 @@ impl TmpRenderPass {
                 )
                 .unwrap();
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "directional_lights",
-                    0,
                     &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
                 )
                 .unwrap();
 
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "omnidirectional_lights",
-                    0,
                     &[DescriptorRef::BufferView(
                         &omnidirectional_lights_buffer_view,
                     )],
@@ -431,8 +429,7 @@ impl TmpRenderPass {
                 .unwrap();
 
             descriptor_set_writer
-                .set_descriptors(
+                .set_descriptors_by_name(
                     "spotlights",
-                    0,
                     &[DescriptorRef::BufferView(&spotlights_buffer_view)],
             }
