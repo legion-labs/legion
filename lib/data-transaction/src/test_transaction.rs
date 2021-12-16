@@ -4,7 +4,7 @@ use generic_data::TestEntity;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
-use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource};
 use tokio::sync::Mutex;
 
 use crate::{build_manager::BuildManager, DataManager, Transaction};
@@ -28,7 +28,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
     let mut options = DataBuildOptions::new(&build_dir);
     options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
-    let build_manager = BuildManager::new(&options, &project_dir, build_dir.join("test.manifest"));
+    let build_manager = BuildManager::new(&options, &project_dir, Manifest::default());
 
     {
         let mut data_manager = DataManager::new(

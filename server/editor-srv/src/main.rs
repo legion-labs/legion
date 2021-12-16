@@ -150,10 +150,7 @@ fn main() {
             databuild_settings,
         ))
         .add_plugin(AssetRegistryPlugin::default())
-        .insert_resource(ResourceRegistrySettings::new(
-            project_folder,
-            &game_manifest_path,
-        ))
+        .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())

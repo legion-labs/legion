@@ -59,13 +59,13 @@
 
 mod settings;
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use lgn_app::Plugin;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::AssetRegistry;
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
 use lgn_data_transaction::{BuildManager, DataManager};
 use lgn_tasks::IoTaskPool;
 use sample_data_offline as offline_data;
@@ -77,10 +77,10 @@ pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut lgn_app::App) {
+        let manifest = app.world.get_resource::<Manifest>().unwrap().clone();
         if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
             let project_dir = settings.root_folder.clone();
             let build_dir = project_dir.join("temp");
-            let manifest = &settings.manifest;
 
             if let Ok(project) = Project::open(&project_dir) {
                 // register resource types
@@ -96,9 +96,15 @@ impl Plugin for ResourceRegistryPlugin {
                     .get_resource::<Arc<AssetRegistry>>()
                     .expect("the editor plugin requires AssetRegistry resource");
 
-                let mut options = DataBuildOptions::new(&build_dir);
-                options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
-                let build_manager = BuildManager::new(&options, &project_dir, manifest);
+                let mut build_options = DataBuildOptions::new(&build_dir);
+                if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
+                    if exe_dir.pop() && exe_dir.is_dir() {
+                        println!("{:?}", exe_dir);
+                        build_options.compiler_dir(exe_dir);
+                    }
+                }
+                build_options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
+                let build_manager = BuildManager::new(&build_options, &project_dir, manifest);
 
                 let data_manager = Arc::new(Mutex::new(DataManager::new(
                     project,
@@ -123,12 +129,6 @@ impl Plugin for ResourceRegistryPlugin {
                 }
 
                 app.insert_resource(data_manager);
-
-                /*let buildindex_dir = project_dir.join("temp");
-                let mut options = DataBuildOptions::new(&buildindex_dir);
-                options.content_store(&ContentStoreAddr::from(buildindex_dir.as_path()));
-                let build_manager = BuildManager::new(&options, project_dir);
-                app.insert_resource(build_manager);*/
             }
         }
     }
