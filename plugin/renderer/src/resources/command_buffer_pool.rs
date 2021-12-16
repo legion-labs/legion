@@ -3,7 +3,6 @@ use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPool
 use super::OnFrameEventHandler;
 use crate::RenderHandle;
 
-// TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
 
 pub(crate) struct CommandBufferPool {

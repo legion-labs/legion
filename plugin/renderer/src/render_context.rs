@@ -5,7 +5,7 @@ use crate::{
     memory::BumpAllocatorHandle,
     resources::{
         CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
-        TransientBufferAllocator,
+        TransientBufferAllocator, CommandBufferPool,
     },
     RenderHandle, Renderer,
 };
@@ -14,7 +14,6 @@ type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,
-    cgen_runtime: CGenRuntime,
     cmd_buffer_pool_handle: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
@@ -27,7 +26,6 @@ impl<'frame> RenderContext<'frame> {
 
         Self {
             renderer,
-            cgen_runtime: renderer.cgen_runtime().clone(),
             cmd_buffer_pool_handle: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
             // TMP: we should acquire a handle from the renderer
@@ -47,17 +45,21 @@ impl<'frame> RenderContext<'frame> {
     }
 
     pub fn cgen_runtime(&self) -> &CGenRuntime {
-        &self.cgen_runtime
+        self.renderer.cgen_runtime()
     }
 
-    pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
-        assert_eq!(queue_type, QueueType::Graphics);
-        self.cmd_buffer_pool_handle.acquire()
+    pub fn cmd_buffer_pool(&self) -> CommandBufferPool {
+        self.cmd_buffer_pool_handle.
     }
 
-    pub fn release_cmd_buffer(&mut self, handle: CommandBufferHandle) {
-        self.cmd_buffer_pool_handle.release(handle);
-    }
+    // pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
+    //     assert_eq!(queue_type, QueueType::Graphics);
+    //     self.cmd_buffer_pool_handle.acquire()
+    // }
+
+    // pub fn release_cmd_buffer(&mut self, handle: CommandBufferHandle) {
+    //     self.cmd_buffer_pool_handle.release(handle);
+    // }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
         &self.descriptor_pool

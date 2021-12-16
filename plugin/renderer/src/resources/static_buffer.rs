@@ -156,6 +156,7 @@ impl UnifiedStaticBuffer {
         }
 
         let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+        let cmd_buffer = HLCommandBuffer::new( render_context  )
 
         cmd_buffer.begin().unwrap();
 
