@@ -12,13 +12,13 @@ use lgn_graphics_api::{
 };
 
 use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
     resources::{CommandBufferHandle, GpuSafePool, OnFrameEventHandler},
     static_mesh_render_data::StaticMeshRenderData,
-    RenderContext, RenderHandle,
+    RenderContext, RenderHandle, Renderer,
 };
 
 use super::{PickingManager, PickingState};
@@ -152,11 +152,13 @@ pub struct PickingRenderPass {
 
 impl PickingRenderPass {
     #![allow(clippy::too_many_lines)]
-    pub fn new(device_context: &DeviceContext) -> Self {
+    pub fn new(renderer: &Renderer) -> Self {
+        let device_context = renderer.device_context();
+
         //
         // Shaders
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
+        let shader_compiler = renderer.shader_compiler();
 
         let shader_source =
             String::from_utf8(include_bytes!("../../shaders/picking.hlsl").to_vec()).unwrap();
@@ -246,7 +248,6 @@ impl PickingRenderPass {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
@@ -487,35 +488,30 @@ impl PickingRenderPass {
                     render_context.alloc_descriptor_set(descriptor_set_layout);
 
                 descriptor_set_writer
-                    .set_descriptors(
+                    .set_descriptors_by_name(
                         "const_data",
-                        0,
                         &[DescriptorRef::BufferView(&const_buffer_view)],
                     )
                     .unwrap();
 
+                let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
                 descriptor_set_writer
-                    .set_descriptors(
+                    .set_descriptors_by_name(
                         "static_buffer",
-                        0,
-                        &[DescriptorRef::BufferView(
-                            &render_context.renderer().static_buffer_ro_view(),
-                        )],
+                        &[DescriptorRef::BufferView(&static_buffer_ro_view)],
                     )
                     .unwrap();
 
                 descriptor_set_writer
-                    .set_descriptors(
+                    .set_descriptors_by_name(
                         "picked_count",
-                        0,
                         &[DescriptorRef::BufferView(&self.count_rw_view)],
                     )
                     .unwrap();
 
                 descriptor_set_writer
-                    .set_descriptors(
+                    .set_descriptors_by_name(
                         "picked_objects",
-                        0,
                         &[DescriptorRef::BufferView(&self.picked_rw_view)],
                     )
                     .unwrap();
@@ -525,6 +521,7 @@ impl PickingRenderPass {
 
                 cmd_buffer
                     .cmd_bind_descriptor_set_handle(
+                        PipelineType::Graphics,
                         &self.root_signature,
                         descriptor_set_layout.definition().frequency,
                         descriptor_set_handle,

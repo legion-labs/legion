@@ -260,9 +260,7 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(
-                renderer.device_context(),
-            ))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(renderer))),
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
