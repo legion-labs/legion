@@ -29,6 +29,7 @@ pub struct MouseMotion {
 
 /// Unit of scroll
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub enum MouseScrollUnit {
     Line,
     Pixel,

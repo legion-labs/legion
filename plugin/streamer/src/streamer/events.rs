@@ -1,5 +1,8 @@
 use anyhow::bail;
-use lgn_input::{mouse::MouseButton, ElementState};
+use lgn_input::{
+    mouse::{MouseButton, MouseScrollUnit},
+    ElementState,
+};
 use lgn_math::Vec2;
 use serde::Deserialize;
 
@@ -63,26 +66,9 @@ impl TryFrom<String> for Color {
     }
 }
 
-// #[derive(Debug, Deserialize)]
-// pub(crate) struct Position {
-//     pub(crate) x: f32,
-//     pub(crate) y: f32,
-// }
-
-// impl From<&Position> for Vec2 {
-//     fn from(position: &Position) -> Self {
-//         Self::new(position.x, position.y)
-//     }
-// }
-
-// impl From<Position> for Vec2 {
-//     fn from(position: Position) -> Self {
-//         Self::new(position.x, position.y)
-//     }
-// }
-
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum Input {
     MouseButtonInput {
         button: MouseButton,
@@ -91,6 +77,11 @@ pub(crate) enum Input {
     },
     CursorMoved {
         delta: Vec2,
+    },
+    MouseWheel {
+        unit: MouseScrollUnit,
+        x: f32,
+        y: f32,
     },
 }
 

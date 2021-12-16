@@ -2,8 +2,9 @@ import log from "@/lib/log";
 
 const logLabel = "remote window inputs";
 
-export type Vec2 = [x: number, y: number];
+export type Vec2 = [x: /* f32 */ number, y: /* f32 */ number];
 
+/** Takes an `event.button` "key" and return a proper `MouseButton` value */
 function keyToMouseButton(key: number): MouseButton {
   // https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
   switch (key) {
@@ -19,6 +20,11 @@ function keyToMouseButton(key: number): MouseButton {
   }
 }
 
+/** Takes anything and returns `true` if the passed object is a `Node` */
+function isNode(element: unknown): element is Node {
+  return element instanceof Node;
+}
+
 export type MouseButton =
   | "Left"
   | "Middle"
@@ -31,10 +37,10 @@ export type MouseButton =
  */
 export type MouseState = "Pressed" | "Released";
 
-type InputBase<Type extends string> = { type: Type };
+type Type<Type extends string> = { type: Type };
 
 /** A mouse button input */
-export type MouseButtonInput = InputBase<"MouseButtonInput"> & {
+export type MouseButtonInput = Type<"MouseButtonInput"> & {
   /** The mouse button (typically Left/Middle/Right) */
   button: MouseButton;
   /** The mouse button state Pressed/Released */
@@ -44,13 +50,21 @@ export type MouseButtonInput = InputBase<"MouseButtonInput"> & {
 };
 
 /** Represents a cursor move input, the last known cursor position and the current cursor position are included */
-export type CursorMoved = InputBase<"CursorMoved"> & {
+export type CursorMoved = Type<"CursorMoved"> & {
   /** The difference between the last known position and the current one */
   delta: Vec2;
 };
 
+export type MouseScrollUnit = "Line" | "Pixel";
+
+export type MouseWheel = Type<"MouseWheel"> & {
+  unit: MouseScrollUnit;
+  x: /* f32 */ number;
+  y: /* f32 */ number;
+};
+
 /** The Input type union */
-export type Input = MouseButtonInput | CursorMoved;
+export type Input = MouseButtonInput | CursorMoved | MouseWheel;
 
 /** A function passed to the `remotedWindowEvents` action that will be called when an event is dispatched */
 export type Listener = (input: Input) => void;
@@ -59,10 +73,6 @@ type State = {
   mouseState: MouseState;
   previousMousePosition: Vec2 | null;
 };
-
-function isNode(element: unknown): element is Node {
-  return element instanceof Node;
-}
 
 function createEvents(
   state: State,
@@ -142,7 +152,55 @@ function createEvents(
     listener(mouseMoveEvent);
   }
 
-  return { onMouseDown, onMouseMove, onMouseUp };
+  function onWheel(event: WheelEvent) {
+    if (!isNode(event.target) || !element.contains(event.target)) {
+      return;
+    }
+
+    let unit: MouseScrollUnit;
+
+    switch (event.deltaMode) {
+      case WheelEvent.DOM_DELTA_PIXEL: {
+        unit = "Pixel";
+
+        break;
+      }
+      case WheelEvent.DOM_DELTA_LINE: {
+        unit = "Line";
+
+        break;
+      }
+      case WheelEvent.DOM_DELTA_PAGE: {
+        log.error(
+          logLabel,
+          "Mouse wheel delta mode was specified in page which is not supported"
+        );
+
+        return;
+      }
+      default: {
+        log.error(
+          logLabel,
+          `Unknown mouse wheel delta mode ${event.deltaMode}`
+        );
+
+        return;
+      }
+    }
+
+    const wheelInput: MouseWheel = {
+      type: "MouseWheel",
+      unit,
+      x: event.deltaX,
+      y: event.deltaY,
+    };
+
+    log.debug(logLabel, log.json`Mouse wheel ${wheelInput}`);
+
+    listener(wheelInput);
+  }
+
+  return { onMouseDown, onMouseMove, onMouseUp, onWheel };
 }
 
 export default function remoteWindowEvents(
@@ -154,7 +212,7 @@ export default function remoteWindowEvents(
     previousMousePosition: null,
   };
 
-  const { onMouseDown, onMouseMove, onMouseUp } = createEvents(
+  const { onMouseDown, onMouseMove, onMouseUp, onWheel } = createEvents(
     state,
     element,
     listener
@@ -166,6 +224,8 @@ export default function remoteWindowEvents(
 
   window.addEventListener("mousemove", onMouseMove);
 
+  window.addEventListener("wheel", onWheel);
+
   return {
     destroy() {
       window.removeEventListener("mousedown", onMouseDown);
@@ -173,6 +233,8 @@ export default function remoteWindowEvents(
       window.removeEventListener("mouseup", onMouseUp);
 
       window.removeEventListener("mousemove", onMouseMove);
+
+      window.removeEventListener("wheel", onWheel);
     },
   };
 }

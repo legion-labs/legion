@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use lgn_app::Events;
 use lgn_ecs::prelude::*;
-use lgn_input::mouse::{MouseButtonInput, MouseMotion};
+use lgn_input::mouse::{MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -172,7 +172,8 @@ pub(crate) fn handle_stream_events(
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
     mut input_mouse_motion: ResMut<'_, Events<MouseMotion>>,
-    mut input_mouse_buttton_input: ResMut<'_, Events<MouseButtonInput>>,
+    mut input_mouse_button_input: ResMut<'_, Events<MouseButtonInput>>,
+    mut input_mouse_wheel: ResMut<'_, Events<MouseWheel>>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
 ) {
@@ -201,7 +202,7 @@ pub(crate) fn update_streams(
 
                         match *input {
                             Input::MouseButtonInput { button, pos, state } => {
-                                input_mouse_buttton_input.send(MouseButtonInput {
+                                input_mouse_button_input.send(MouseButtonInput {
                                     button,
                                     state,
                                     pos,
@@ -209,6 +210,9 @@ pub(crate) fn update_streams(
                             }
                             Input::CursorMoved { delta } => {
                                 input_mouse_motion.send(MouseMotion { delta });
+                            }
+                            Input::MouseWheel { unit, x, y } => {
+                                input_mouse_wheel.send(MouseWheel { unit, x, y });
                             }
                         }
                     }
