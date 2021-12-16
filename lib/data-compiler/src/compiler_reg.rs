@@ -44,8 +44,11 @@ struct InProcessCompilerStub {
 
 impl CompilerStub for InProcessCompilerStub {
     fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash> {
-        // todo: code and data versioning
-        let hash = (self.descriptor.compiler_hash_func)("todo: code", "todo: data", env);
+        let hash = (self.descriptor.compiler_hash_func)(
+            self.descriptor.code_version,
+            self.descriptor.data_version,
+            env,
+        );
         Ok(hash)
     }
 
