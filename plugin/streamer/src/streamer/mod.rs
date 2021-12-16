@@ -1,7 +1,10 @@
 use std::{fmt::Display, sync::Arc};
 
 use lgn_ecs::prelude::*;
-use lgn_input::mouse::{MouseButtonInput, MouseMotion, MouseWheel};
+use lgn_input::{
+    mouse::{MouseButtonInput, MouseMotion, MouseWheel},
+    touch::TouchInput,
+};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -175,6 +178,7 @@ pub(crate) fn update_streams(
     mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
     mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
     mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
+    mut input_touch_input: EventWriter<'_, '_, TouchInput>,
 ) {
     for event in video_stream_events.iter() {
         match query.get_mut(event.stream_id.entity) {
@@ -198,7 +202,6 @@ pub(crate) fn update_streams(
                         render_pass.write().set_speed(*speed);
                     }
                     VideoStreamEventInfo::Input { input } => {
-                        // TODO: Use debug!
                         log::info!("received input: {:?}", input);
 
                         match input {
@@ -210,6 +213,11 @@ pub(crate) fn update_streams(
                             }
                             Input::MouseWheel(mouse_wheel) => {
                                 input_mouse_wheel.send(mouse_wheel.clone());
+                            }
+                            Input::TouchInput(touch_input) => {
+                                // A bit unsure why, but unlike other events [`legion_input::touch:TouchInput`]
+                                // derives Copy (_and_ `Clone`).
+                                input_touch_input.send(*touch_input);
                             }
                         }
                     }

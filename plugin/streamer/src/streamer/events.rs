@@ -1,6 +1,7 @@
 use anyhow::bail;
 use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
+    touch::TouchInput,
     ElementState,
 };
 use lgn_math::Vec2;
@@ -90,6 +91,7 @@ pub(crate) enum Input {
     MouseButtonInput(MouseButtonInput),
     MouseMotion(MouseMotion),
     MouseWheel(MouseWheel),
+    TouchInput(TouchInput),
 }
 
 #[derive(Debug, Deserialize)]
