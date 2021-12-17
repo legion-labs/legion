@@ -1,0 +1,291 @@
+use std::sync::{Arc, Mutex};
+
+use lgn_ecs::prelude::{Commands, Entity, Query};
+use lgn_input::{
+    mouse::{MouseButton, MouseButtonInput},
+    ElementState,
+};
+use lgn_math::{Vec2, Vec3};
+
+use crate::components::PickedComponent;
+
+use super::PickingData;
+
+pub struct PickingIdBlock {
+    picking_ids: Vec<u32>,
+    entity_ids: Vec<u64>,
+    base_picking_id: u32,
+}
+
+impl PickingIdBlock {
+    pub fn new(base_picking_id: u32, block_size: u32) -> Self {
+        let mut generation_counts = Vec::with_capacity(block_size as usize);
+        generation_counts.reserve(block_size as usize);
+        for i in 0..block_size {
+            generation_counts.push(base_picking_id + i as u32);
+        }
+
+        Self {
+            picking_ids: generation_counts,
+            entity_ids: vec![0; block_size as usize],
+            base_picking_id,
+        }
+    }
+
+    pub fn aquire_picking_id(&mut self, entity: Entity) -> Option<u32> {
+        let picking_id = self.picking_ids.pop();
+        if let Some(picking_id) = picking_id {
+            let index = (picking_id & 0x00FFFFFF) - self.base_picking_id;
+            self.entity_ids[index as usize] = entity.to_bits();
+            Some(picking_id)
+        } else {
+            None
+        }
+    }
+
+    pub fn release_picking_id(&mut self, picking_id: &u32) {
+        let generation = (picking_id >> 24) + 1;
+        let picking_id = picking_id & 0x00FFFFFF;
+        assert!(picking_id >= self.base_picking_id);
+
+        let index = picking_id - self.base_picking_id;
+        assert!(index < self.entity_ids.len() as u32);
+
+        self.entity_ids[index as usize] = 0;
+        let picking_id = (generation << 24) | picking_id;
+        self.picking_ids.push(picking_id);
+    }
+
+    pub fn entity_id_for_picking_id(&self, picking_id: u32) -> Entity {
+        let picking_id = picking_id & 0x00FFFFFF;
+        assert!(picking_id >= self.base_picking_id);
+
+        let index = picking_id - self.base_picking_id;
+        assert!(index < self.entity_ids.len() as u32);
+
+        Entity::from_bits(self.entity_ids[index as usize])
+    }
+
+    pub fn base_picking_id(&self) -> u32 {
+        self.base_picking_id
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub(super) enum PickingState {
+    Ready,
+    Rendering,
+    Waiting,
+    Processing,
+    Completed,
+}
+
+pub struct PickingManagerInner {
+    block_size: u32,
+    picking_blocks: Vec<Option<PickingIdBlock>>,
+    mouse_input: MouseButtonInput,
+    screen_rect: Vec2,
+    picking_state: PickingState,
+    current_cpu_frame_no: u64,
+    picked_cpu_frame_no: u64,
+    current_picking_ids: Vec<u32>,
+    closest_world_pos: Vec3,
+}
+
+#[derive(Clone)]
+pub struct PickingManager {
+    inner: Arc<Mutex<PickingManagerInner>>,
+}
+
+impl PickingManager {
+    pub fn new(block_size: u32) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(PickingManagerInner {
+                block_size,
+                picking_blocks: Vec::new(),
+                mouse_input: MouseButtonInput {
+                    button: MouseButton::Left,
+                    state: ElementState::Released,
+                    pos: Vec2::NAN,
+                },
+                screen_rect: Vec2::default(),
+                picking_state: PickingState::Ready,
+                current_cpu_frame_no: 0,
+                picked_cpu_frame_no: u64::MAX,
+                current_picking_ids: Vec::new(),
+                closest_world_pos: Vec3::NAN,
+            })),
+        }
+    }
+
+    pub fn aquire_picking_id_block(&self) -> PickingIdBlock {
+        let mut inner = self.inner.lock().unwrap();
+
+        let mut most_free = 0;
+        let mut most_free_idx = inner.picking_blocks.len();
+
+        for i in 0..inner.picking_blocks.len() {
+            if let Some(block) = &inner.picking_blocks[i] {
+                let free_count = block.picking_ids.len();
+
+                if free_count > most_free {
+                    most_free = free_count;
+                    most_free_idx = i;
+                }
+            }
+        }
+        if most_free_idx < inner.picking_blocks.len() {
+            return inner.picking_blocks[most_free_idx].take().unwrap();
+        }
+
+        let result = PickingIdBlock::new(
+            inner.picking_blocks.len() as u32 * inner.block_size,
+            inner.block_size,
+        );
+        inner.picking_blocks.push(None);
+        result
+    }
+
+    pub fn release_picking_id_block(&self, block: PickingIdBlock) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        let block_id = block.base_picking_id() / inner.block_size;
+        assert!(inner.picking_blocks[block_id as usize].is_none());
+
+        inner.picking_blocks[block_id as usize] = Some(block);
+    }
+
+    pub fn release_picking_ids(&mut self, picking_ids: &[u32]) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        for picking_id in picking_ids {
+            let base_id = picking_id & 0x00FFFFFF;
+            let block_id = base_id / inner.block_size as u32;
+
+            if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
+                block.release_picking_id(picking_id);
+            } else {
+                panic!();
+            }
+        }
+    }
+
+    pub fn frame_no_picked(&self) -> u64 {
+        let inner = self.inner.lock().unwrap();
+
+        inner.picked_cpu_frame_no
+    }
+
+    pub fn frame_no_for_picking(&self) -> u64 {
+        let mut inner = self.inner.lock().unwrap();
+
+        inner.picking_state = PickingState::Waiting;
+        inner.picked_cpu_frame_no
+    }
+
+    pub(super) fn picking_state(&self) -> PickingState {
+        let inner = self.inner.lock().unwrap();
+
+        inner.picking_state.clone()
+    }
+
+    pub fn current_cursor_pos(&self) -> Vec2 {
+        let inner = self.inner.lock().unwrap();
+
+        inner.mouse_input.pos
+    }
+
+    pub fn set_mouse_button_input(&mut self, input: &MouseButtonInput) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        inner.mouse_input = input.clone();
+
+        inner.current_cpu_frame_no += 1;
+        if inner.picking_state == PickingState::Ready || inner.mouse_input.state.is_pressed() {
+            inner.picked_cpu_frame_no = inner.current_cpu_frame_no;
+            inner.picking_state = PickingState::Rendering;
+        }
+
+        if inner.picking_state == PickingState::Completed && !inner.mouse_input.state.is_pressed() {
+            inner.picking_state = PickingState::Ready;
+        }
+    }
+
+    pub fn screen_rect(&self) -> Vec2 {
+        let inner = self.inner.lock().unwrap();
+
+        inner.screen_rect
+    }
+
+    pub fn set_screen_rect(&mut self, screen_rect: &Vec2) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        inner.screen_rect = *screen_rect;
+    }
+
+    pub(super) fn set_picked(&self, picked_data_set: &[PickingData]) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        inner.closest_world_pos = Vec3::NAN;
+        for picking_data in picked_data_set {
+            if !inner
+                .current_picking_ids
+                .iter()
+                .any(|picking_id| *picking_id == picking_data.picking_id)
+            {
+                inner.current_picking_ids.push(picking_data.picking_id);
+            }
+            if inner.closest_world_pos == Vec3::NAN
+                || inner.closest_world_pos.z > picking_data.picking_pos.z
+            {
+                inner.closest_world_pos = picking_data.picking_pos;
+            }
+        }
+        assert!(inner.picking_state == PickingState::Waiting);
+        inner.picking_state = PickingState::Processing;
+    }
+
+    pub(super) fn update_picking_components(
+        &self,
+        mut commands: Commands<'_, '_>,
+        mut picked_components: Query<'_, '_, (Entity, &mut PickedComponent)>,
+    ) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        if inner.picking_state == PickingState::Processing {
+            let mut picked_entities = Vec::with_capacity(inner.current_picking_ids.len());
+            for picking_id in &inner.current_picking_ids {
+                let base_id = picking_id & 0x00FFFFFF;
+                let block_id = base_id / inner.block_size as u32;
+
+                if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
+                    picked_entities.push(block.entity_id_for_picking_id(*picking_id));
+                }
+            }
+
+            for (entity, mut picked_component) in picked_components.iter_mut() {
+                picked_component.replace_picking_ids(
+                    entity,
+                    &mut inner.current_picking_ids,
+                    &mut picked_entities,
+                );
+                if picked_component.is_empty() {
+                    commands.entity(entity).remove::<PickedComponent>();
+                }
+            }
+
+            let i = 0;
+            while i < inner.current_picking_ids.len() {
+                let mut add_component = commands.get_or_spawn(picked_entities[i]);
+                let mut new_component = PickedComponent::new();
+                new_component.replace_picking_ids(
+                    picked_entities[i],
+                    &mut inner.current_picking_ids,
+                    &mut picked_entities,
+                );
+                add_component.insert(new_component);
+            }
+            inner.picking_state = PickingState::Completed;
+        }
+    }
+}

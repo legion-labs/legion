@@ -604,7 +604,8 @@ fn create_logical_device(
         // Used for debug drawing lines/points
         .fill_mode_non_solid(true)
         .sparse_binding(true)
-        .sparse_residency_buffer(true);
+        .sparse_residency_buffer(true)
+        .fragment_stores_and_atomics(true);
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {

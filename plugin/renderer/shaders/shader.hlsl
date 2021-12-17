@@ -11,12 +11,12 @@ struct VertexOut {
     float3 pos : POSITION;
 };
 
- struct ConstData {
-     float4x4 world;
-     float4x4 view;
-     float4x4 projection;
-     float4 color;
- };
+struct ConstData {
+    float4x4 view;
+    float4x4 projection;
+    float4 color;
+};
+
 struct EntityTransforms {
     float4x4 world;
 };
@@ -27,6 +27,7 @@ ByteAddressBuffer static_buffer;
 
 struct PushConstData {
     uint offset;
+    uint is_picked;
 };
 
 [[vk::push_constant]]
@@ -78,5 +79,11 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
                     diffuse_color * lambertian * light_color * light_power / distance + 
                     spec_color * specular * light_color * light_power / distance;
     //debug normals: float4((float3(1.0, 1.0, 1.0) + vertex_out.normal)/2.0, 1.0);
-    return float4(pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), 1.0);
+    float4 result = float4(pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), 1.0);
+    float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
+
+    if (push_constant.is_picked != 0)
+        result = result * 0.25f + picking_color * 0.75f;
+
+    return result;
 }

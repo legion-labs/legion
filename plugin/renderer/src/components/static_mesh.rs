@@ -5,4 +5,5 @@ pub struct StaticMesh {
     pub mesh_id: usize,
     pub color: Color,
     pub offset: u64,
+    pub picking_id: u32,
 }

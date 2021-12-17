@@ -280,6 +280,7 @@ fn init_scene(mut commands: Commands) {
             mesh_id: 0,
             color: (0, 0, 255).into(),
             offset: 0,
+            picking_id: 0,
         })
         .insert(RotationComponent {
             rotation_speed: (0.4, 0.0, 0.0),
@@ -293,6 +294,7 @@ fn init_scene(mut commands: Commands) {
             mesh_id: 1,
             color: (255, 0, 0).into(),
             offset: 0,
+            picking_id: 0,
         })
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.4, 0.0),
@@ -306,6 +308,7 @@ fn init_scene(mut commands: Commands) {
             mesh_id: 2,
             color: (0, 255, 0).into(),
             offset: 0,
+            picking_id: 0,
         })
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.0, 0.4),

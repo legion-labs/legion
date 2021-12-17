@@ -65,7 +65,8 @@ impl<'frame> DescriptorSetWriter<'frame> {
         index: usize,
         update_datas: &[DescriptorRef<'frame>],
     ) -> GfxResult<()> {
-        self.write_mask &= !(1u64 << index);
+        let descriptor = self.descriptor_set_layout.descriptor(index);
+        self.write_mask &= !(1u64 << descriptor.binding);
 
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
