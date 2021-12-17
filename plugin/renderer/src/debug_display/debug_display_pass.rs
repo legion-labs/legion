@@ -74,8 +74,6 @@ impl DebugDisplayPass {
         }
     }
 
-    pub fn update(&mut self) {}
-
     pub fn render(
         &self,
         render_context: &mut RenderContext<'_>,

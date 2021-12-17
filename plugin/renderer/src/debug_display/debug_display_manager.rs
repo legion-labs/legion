@@ -27,8 +27,7 @@ impl DebugDisplay {
 
     pub fn render_primitives<F: FnMut(&DebugPrimitive)>(&mut self, mut f: F) {
         for display_list in self.display_lists.lock().unwrap().as_slice() {
-            let mut more_primitives = unsafe { &(*display_list.ptr).primitives };
-            for primitive in more_primitives.into_iter() {
+            for primitive in unsafe { &(*display_list.ptr).primitives } {
                 f(unsafe { &**primitive });
             }
         }
@@ -39,13 +38,11 @@ impl DebugDisplay {
     }
 }
 
-#[derive(Clone, Copy)]
 pub enum DebugPrimitiveType {
     Cube,
     Arrow { dir: Vec3 },
 }
 
-#[derive(Clone, Copy)]
 pub struct DebugPrimitive {
     pub primitive_type: DebugPrimitiveType,
     pub pos: Vec3,

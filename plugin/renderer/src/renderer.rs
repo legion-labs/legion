@@ -316,6 +316,7 @@ impl TmpRenderPass {
                     ..RasterizerState::default()
                 },
             StaticMeshRenderData::new_sphere(0.25, 20, 20),
+    #[allow(clippy::too_many_arguments)]
         lights: &[(&Transform, &LightComponent)],
         light_settings: &LightSettings,
         const NUM_LIGHTS: usize = 8;

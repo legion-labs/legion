@@ -81,17 +81,8 @@ fn update_ui(
     mut rotations: Query<'_, '_, &mut RotationComponent>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
     mut light_settings: ResMut<'_, LightSettings>,
-    mut camera_transform: Query<
-        '_,
-        '_,
-        (&mut CameraComponent, &mut Transform),
-        Without<LightComponent>,
-    >,
 ) {
     egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
-        for (mut camera, mut transform) in camera_transform.iter_mut() {
-            ui.label(transform.rotation.to_string());
-        }
         ui.label("Objects");
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -174,11 +165,12 @@ fn update_ui(
     });
 }
 
+#[allow(clippy::match_same_arms)] // TODO: remove when more advanced visualization is introduced
 #[allow(clippy::needless_pass_by_value)]
 fn update_debug(
-    mut renderer: ResMut<'_, Renderer>,
+    renderer: Res<'_, Renderer>,
     mut debug_display: ResMut<'_, DebugDisplay>,
-    mut lights: Query<'_, '_, (&LightComponent, &Transform)>,
+    lights: Query<'_, '_, (&LightComponent, &Transform)>,
 ) {
     let bump = renderer.acquire_bump_allocator();
     debug_display.create_display_list(bump.bump(), |display_list| {
@@ -195,7 +187,7 @@ fn update_debug(
                     transform.translation - direction.normalize(),
                     bump.bump(),
                 ),
-                _ => (),
+                LightType::Omnidirectional { .. } => (),
             }
         }
     });
