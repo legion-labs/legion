@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = []
-vulkan = ["ash", "vk-mem", "ash-window"]
+vulkan = ["ash", "vk-mem"]
 
 [dependencies]
 bumpalo = "3.8"
@@ -24,7 +24,6 @@ crossbeam-channel = "0.5"
 # vulkan backend
 ash = { version = ">= 0.33", optional = true }
 vk-mem = { version = "0.2.2", optional = true }
-ash-window = { version = ">= 0.7", optional = true }
 
 [package.metadata.docs.rs]
 features = ["serde", "vulkan"]

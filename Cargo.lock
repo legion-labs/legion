@@ -236,15 +236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ash-window"
-version = "0.7.0"
-dependencies = [
- "ash",
- "raw-window-handle 0.4.2",
- "raw-window-metal",
-]
-
-[[package]]
 name = "async-channel"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2936,6 +2927,7 @@ dependencies = [
 [[package]]
 name = "hassle-rs"
 version = "0.5.4"
+source = "git+https://github.com/legion-labs/hassle-rs?branch=com_to_tinycom#8a00501f9de1173f2d7ff3acd25c4561e296dab1"
 dependencies = [
  "bitflags",
  "libc",
@@ -3407,6 +3399,7 @@ dependencies = [
 [[package]]
 name = "lambda_http"
 version = "0.4.1"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "base64",
  "http",
@@ -3419,6 +3412,7 @@ dependencies = [
 [[package]]
 name = "lambda_runtime"
 version = "0.4.1"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "async-stream",
  "bytes",
@@ -3973,7 +3967,6 @@ name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
  "ash",
- "ash-window",
  "bitflags",
  "bumpalo",
  "crossbeam-channel 0.5.1",
@@ -6166,18 +6159,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "raw-window-metal"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cd21ed1cdef7f1b1579b972148ba6058b5b545959a14d91ea83c4f0ea9f289b"
-dependencies = [
- "cocoa",
- "core-graphics 0.22.3",
- "objc",
- "raw-window-handle 0.3.4",
-]
-
-[[package]]
 name = "rayon"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7874,6 +7855,7 @@ checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 [[package]]
 name = "tinycom"
 version = "0.1.0"
+source = "git+https://github.com/legion-labs/tinycom-rs.git?branch=main#845d958e39dba1a7c567df79893099e32c43727f"
 
 [[package]]
 name = "tinyvec"
@@ -8413,7 +8395,8 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vk-mem"
-version = "0.2.2"
+version = "0.2.3"
+source = "git+https://github.com/legion-labs/vk-mem-rs?branch=ash-fixes#6e747a5bbce3d10ea8553190a23d3f4d8edd81f8"
 dependencies = [
  "ash",
  "bitflags",

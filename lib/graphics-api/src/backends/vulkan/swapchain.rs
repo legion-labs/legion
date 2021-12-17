@@ -100,7 +100,7 @@ impl VulkanSwapchain {
     ) -> GfxResult<Self> {
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
-            ash_window::create_surface(
+            crate::backends::vulkan::create_surface(
                 &*device_context.vk_entry(),
                 device_context.vk_instance(),
                 raw_window_handle,
