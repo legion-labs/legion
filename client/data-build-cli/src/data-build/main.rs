@@ -206,10 +206,8 @@ fn main() -> Result<(), String> {
             }
         };
 
-        let config =
-            DataBuildOptions::new(buildindex_dir, compilers).content_store(&content_store_path);
-
-        let mut build = config
+        let mut build = DataBuildOptions::new(buildindex_dir, compilers)
+            .content_store(&content_store_path)
             .open()
             .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 

@@ -1,8 +1,5 @@
 //! Compiler registry defines an interface between different compiler types (executable, in-process, etc).
-use std::{
-    io,
-    path::{Path, PathBuf},
-};
+use std::{io, path::Path};
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
@@ -11,11 +8,11 @@ use crate::{
     compiler_api::{
         CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
     },
-    compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
+    compiler_cmd::list_compilers,
     CompiledResource, CompilerHash,
 };
 
-/// Interface allowing to support multiple types of compilers - in-process, external executables, shared objects.
+/// Interface allowing to support multiple types of compilers - in-process, external executables.
 pub trait CompilerStub: Send + Sync {
     /// Returns information about the compiler.
     fn info(&self) -> io::Result<CompilerInfo>;
@@ -36,101 +33,11 @@ pub trait CompilerStub: Send + Sync {
     ) -> Result<CompilationOutput, CompilerError>;
 }
 
-//
+mod inproc_stub;
+use inproc_stub::InProcessCompilerStub;
 
-struct InProcessCompilerStub {
-    descriptor: &'static CompilerDescriptor,
-}
-
-impl CompilerStub for InProcessCompilerStub {
-    fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash> {
-        let hash = (self.descriptor.compiler_hash_func)(
-            self.descriptor.code_version,
-            self.descriptor.data_version,
-            env,
-        );
-        Ok(hash)
-    }
-
-    fn compile(
-        &self,
-        compile_path: ResourcePathId,
-        dependencies: &[ResourcePathId],
-        derived_deps: &[CompiledResource],
-        cas_addr: ContentStoreAddr,
-        project_dir: &Path,
-        env: &CompilationEnv,
-    ) -> Result<CompilationOutput, CompilerError> {
-        self.descriptor.compile(
-            compile_path,
-            dependencies,
-            derived_deps,
-            cas_addr,
-            project_dir,
-            env,
-        )
-    }
-
-    fn info(&self) -> io::Result<CompilerInfo> {
-        let info = CompilerInfo {
-            build_version: self.descriptor.build_version.to_string(),
-            code_version: self.descriptor.code_version.to_string(),
-            data_version: self.descriptor.data_version.to_string(),
-            transform: *self.descriptor.transform,
-        };
-        Ok(info)
-    }
-}
-
-//
-
-struct BinCompilerStub {
-    bin_path: PathBuf,
-}
-
-impl CompilerStub for BinCompilerStub {
-    fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash> {
-        let cmd = CompilerHashCmd::new(env);
-        cmd.execute(&self.bin_path)
-            .map(|output| output.compiler_hash)
-    }
-
-    fn compile(
-        &self,
-        compile_path: ResourcePathId,
-        dependencies: &[ResourcePathId],
-        derived_deps: &[CompiledResource],
-        cas_addr: ContentStoreAddr,
-        resource_dir: &Path,
-        env: &CompilationEnv,
-    ) -> Result<CompilationOutput, CompilerError> {
-        let mut cmd = CompilerCompileCmd::new(
-            &compile_path,
-            dependencies,
-            derived_deps,
-            &cas_addr,
-            resource_dir,
-            env,
-        );
-
-        cmd.execute(&self.bin_path)
-            .map(|output| CompilationOutput {
-                compiled_resources: output.compiled_resources,
-                resource_references: output.resource_references,
-            })
-            .map_err(|_e| CompilerError::StdoutError)
-    }
-
-    fn info(&self) -> io::Result<CompilerInfo> {
-        let cmd = CompilerInfoCmd::default();
-        cmd.execute(&self.bin_path).map(|output| CompilerInfo {
-            build_version: output.build_version,
-            code_version: output.code_version,
-            data_version: output.data_version,
-            transform: output.transform,
-        })
-    }
-}
+mod binary_stub;
+use binary_stub::BinCompilerStub;
 
 /// Options and flags which can be used to configure how a compiler registry is created.
 #[derive(Default)]
@@ -224,6 +131,9 @@ impl CompilerRegistry {
         project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
+        if compiler_index >= self.compilers.len() {
+            return Err(CompilerError::InvalidTransform);
+        }
         let compiler = &self.compilers[compiler_index];
         compiler.compile(
             compile_path,
@@ -233,5 +143,98 @@ impl CompilerRegistry {
             project_dir,
             env,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use lgn_content_store::{Checksum, ContentStoreAddr};
+    use lgn_data_offline::{ResourcePathId, Transform};
+    use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+
+    use crate::{
+        compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError},
+        CompiledResource, CompilerHash, Locale, Platform, Target,
+    };
+
+    use super::CompilerRegistryOptions;
+
+    const TEST_TRANSFORM: Transform =
+        Transform::new(ResourceType::new(b"input"), ResourceType::new(b"output"));
+    const TEST_COMPILER: CompilerDescriptor = CompilerDescriptor {
+        name: "test_name",
+        build_version: "build0",
+        code_version: "code0",
+        data_version: "data0",
+        transform: &TEST_TRANSFORM,
+        compiler_hash_func: |_code, _data, _env| CompilerHash(7),
+        compile_func: |ctx| {
+            Ok(CompilationOutput {
+                compiled_resources: vec![CompiledResource {
+                    path: ctx.target_unnamed,
+                    checksum: Checksum::from(7),
+                    size: 7,
+                }],
+                resource_references: vec![],
+            })
+        },
+    };
+
+    #[test]
+    fn in_proc() {
+        let registry = CompilerRegistryOptions::default()
+            .add_compiler(&TEST_COMPILER)
+            .create();
+
+        let env = CompilationEnv {
+            target: Target::Game,
+            platform: Platform::Windows,
+            locale: Locale::new("en"),
+        };
+
+        let (compiler_index, hash) = registry.get_hash(TEST_TRANSFORM, &env).expect("valid hash");
+        assert_eq!(hash, CompilerHash(7));
+
+        let source = ResourceTypeAndId {
+            t: ResourceType::new(b"input"),
+            id: ResourceId::new(),
+        };
+        let cas = ContentStoreAddr::from(".");
+        let proj_dir = PathBuf::from(".");
+        let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
+
+        let result = registry.compile(
+            compiler_index + 1,
+            compile_path.clone(),
+            &[],
+            &[],
+            cas.clone(),
+            &proj_dir,
+            &env,
+        );
+
+        assert!(matches!(
+            result.unwrap_err(),
+            CompilerError::InvalidTransform
+        ));
+
+        let output = registry
+            .compile(
+                compiler_index,
+                compile_path.clone(),
+                &[],
+                &[],
+                cas,
+                &proj_dir,
+                &env,
+            )
+            .expect("valid output");
+
+        assert_eq!(output.compiled_resources.len(), 1);
+        assert_eq!(output.compiled_resources[0].path, compile_path);
+        assert_eq!(output.compiled_resources[0].checksum, Checksum::from(7));
+        assert_eq!(output.compiled_resources[0].size, 7);
     }
 }

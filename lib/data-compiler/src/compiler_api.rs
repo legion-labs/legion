@@ -101,6 +101,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
+#[derive(Debug)]
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
