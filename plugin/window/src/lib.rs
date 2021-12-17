@@ -58,10 +58,12 @@
 #![allow()]
 
 mod event;
+mod raw_window_handle;
 mod system;
 mod window;
 mod windows;
 
+pub use crate::raw_window_handle::*;
 pub use event::*;
 pub use system::*;
 pub use window::*;
@@ -113,9 +115,8 @@ impl Plugin for WindowPlugin {
             let window_descriptor = app
                 .world
                 .get_resource::<WindowDescriptor>()
-                .map_or_else(WindowDescriptor::default, |descriptor| {
-                    (*descriptor).clone()
-                });
+                .map(|descriptor| (*descriptor).clone())
+                .unwrap_or_default();
             let mut create_window_event = app
                 .world
                 .get_resource_mut::<Events<CreateWindow>>()

@@ -13,18 +13,19 @@ wayland = ["winit/wayland"]
 x11 = ["winit/x11"]
 
 [dependencies]
-# bevy
+# Legion engine
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-input = { path = "../input", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
-lgn-window = { path = "../window", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-window = { path = "../window", version = "0.1.0" }
 
 # other
-log = "0.4"
-winit = { version = "0.26.0", default-features = false }
 approx = { version = "0.5.0", default-features = false }
+log = "0.4"
+raw-window-handle = "0.4.2"
+winit = { version = "0.26.0", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 winit = { version = "0.26.0", default-features = false }

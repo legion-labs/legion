@@ -1,7 +1,7 @@
 //! Legion App
 //!
-//! TODO: write documentation.
-//!
+//! This crate is about everything concerning the highest-level, application layer of a Legion
+//! app.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -82,6 +82,8 @@ pub mod prelude {
 use lgn_ecs::schedule::StageLabel;
 
 /// The names of the default App stages
+///
+/// The relative stages are added by [`App::add_default_stages`].
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
 pub enum CoreStage {
     /// Runs only once at the beginning of the app.

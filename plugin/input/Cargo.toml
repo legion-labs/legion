@@ -20,4 +20,5 @@ lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
+log = "0.4"
 serde = { version = "1.0", features = ["derive"], optional = true }

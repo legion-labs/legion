@@ -4081,6 +4081,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-math",
  "lgn-utils",
+ "log",
  "serde",
 ]
 
@@ -4098,6 +4099,7 @@ name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
  "cargo-manifest",
+ "quote",
  "syn",
 ]
 
@@ -4470,6 +4472,7 @@ dependencies = [
  "lgn-math",
  "lgn-utils",
  "log",
+ "raw-window-handle 0.4.2",
  "uuid",
  "web-sys",
 ]
@@ -4486,6 +4489,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "log",
+ "raw-window-handle 0.4.2",
  "wasm-bindgen",
  "web-sys",
  "winit",

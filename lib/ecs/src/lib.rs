@@ -101,6 +101,8 @@ pub mod prelude {
     };
 }
 
+pub use lgn_ecs_macros::all_tuples;
+
 #[cfg(test)]
 mod tests {
     use std::{

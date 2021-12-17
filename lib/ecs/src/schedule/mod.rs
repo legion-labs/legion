@@ -1,3 +1,8 @@
+//! Tools for controlling system execution.
+//!
+//! When using Legion ECS, systems are usually not run directly, but are inserted into a
+//!  [`Stage`], which then lives within a [`Schedule`].
+
 mod executor;
 mod executor_parallel;
 pub mod graph_utils;
@@ -335,7 +340,7 @@ impl Schedule {
         for label in &self.stage_order {
             // TODO: add stage name to trace scope
             trace_scope!();
-            // let stage_span = info_span!("stage", name = &format!("{:?}", label) as &str);
+            // let stage_span = info_span!("stage", name = ?label);
             // let _stage_guard = stage_span.enter();
             let stage = self.stages.get_mut(label).unwrap();
             stage.run(world);
