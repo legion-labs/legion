@@ -17,9 +17,8 @@ impl EguiPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        let (shader, root_signature) = renderer.prepare_vs_ps(
-            String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap(),
-        );
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/ui.hlsl"));
         //
         // Pipeline state
         //

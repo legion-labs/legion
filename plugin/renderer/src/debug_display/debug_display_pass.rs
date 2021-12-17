@@ -14,9 +14,8 @@ pub struct DebugDisplayPass {
 impl DebugDisplayPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        let (shader, root_signature) = renderer.prepare_vs_ps(
-            String::from_utf8(include_bytes!("../../shaders/debug_display.hlsl").to_vec()).unwrap(),
-        );
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/debug_display.hlsl"));
         //
         // Pipeline state
         //
@@ -129,6 +128,8 @@ impl DebugDisplayPass {
             Vec3::new(0.0, 1.0, 0.0),
         );
 
+        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
+
         debug_display.render_primitives(|primitive| {
             let mesh_data = match primitive.primitive_type {
                 DebugPrimitiveType::Cube => StaticMeshRenderData::new_cube(0.1),
@@ -136,8 +137,6 @@ impl DebugDisplayPass {
                     StaticMeshRenderData::new_arrow(Vec3::new(0.0, 0.0, 0.0), dir)
                 }
             };
-
-            let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
             let mut sub_allocation = transient_allocator.copy_data(
                 &mesh_data

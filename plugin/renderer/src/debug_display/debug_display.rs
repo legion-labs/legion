@@ -25,7 +25,7 @@ impl DebugDisplay {
         }
     }
 
-    pub fn render_primitives<F: Fn(&DebugPrimitive)>(&mut self, f: F) {
+    pub fn render_primitives<F: FnMut(&DebugPrimitive)>(&mut self, mut f: F) {
         for display_list in self.display_lists.lock().unwrap().as_slice() {
             let mut more_primitives = unsafe { &(*display_list.ptr).primitives };
             for primitive in more_primitives.into_iter() {

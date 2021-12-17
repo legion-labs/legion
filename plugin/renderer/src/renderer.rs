@@ -12,6 +12,8 @@ use lgn_pso_compiler::{FileSystem, HlslCompiler};
 
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
+    LightComponent, LightSettings, LightType, PickedComponent, RenderSurface, StaticMesh,
+};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -307,9 +309,8 @@ impl TmpRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
-        let (shader, root_signature) = renderer.prepare_vs_ps(
-            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap(),
-        );
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/shader.hlsl"));
 
                     cull_mode: CullMode::Back,
                     ..RasterizerState::default()
@@ -405,11 +406,11 @@ impl TmpRenderPass {
             .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(64, true);
 
-            push_constant_data[36] = f32::from_bits(num_directional_lights);
-            push_constant_data[37] = f32::from_bits(num_omnidirectional_lights);
-            push_constant_data[38] = f32::from_bits(num_spotlights);
-            push_constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
-            push_constant_data[40] = f32::from_bits(light_settings.specular as u32);
+            constant_data[36] = f32::from_bits(num_directional_lights);
+            constant_data[37] = f32::from_bits(num_omnidirectional_lights);
+            constant_data[38] = f32::from_bits(num_spotlights);
+            constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
+            constant_data[40] = f32::from_bits(light_settings.specular as u32);
                 )
                 .unwrap();
             descriptor_set_writer

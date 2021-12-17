@@ -199,6 +199,7 @@ fn update_debug(
             }
         }
     });
+    renderer.release_bump_allocator(bump);
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
