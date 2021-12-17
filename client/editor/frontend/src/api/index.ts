@@ -164,7 +164,7 @@ export function propertyIsString(
 export function propertyIsNumber(
   property: ResourceProperty
 ): property is NumberProperty {
-  return ["i32", "u32", "f32", "f64"].includes(property.ptype);
+  return ["i32", "u32", "f32", "f64", "usize"].includes(property.ptype);
 }
 
 export function propertyIsVec3(
