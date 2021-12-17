@@ -20,7 +20,7 @@ lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-window = { path = "../window", version = "0.1.0" }
 
 anyhow = "1.0"
-bumpalo = { version = "3.8", features = ["collections"] }
+bumpalo = "3.8"
 egui = "0.15.0"
 epaint = "0.15.0"
 log = "0.4"
