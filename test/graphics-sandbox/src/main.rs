@@ -168,6 +168,8 @@ fn main() {
     if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
+    } else if setup_name.eq("light_test") {
+        app.add_startup_system(init_light_test);
     } else {
         app.add_startup_system(init_scene);
     }
@@ -276,8 +278,8 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
-    // plane
+fn init_light_test(mut commands: Commands) {
+    // sphere 1
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
@@ -293,7 +295,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             rotation_speed: (0.1, 0.0, 0.0),
         });
 
-    // cube
+    // sphere 2
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
@@ -309,7 +311,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             rotation_speed: (0.0, 0.1, 0.0),
         });
 
-    // pyramid
+    // sphere 3
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
@@ -331,14 +333,14 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
         .insert(LightComponent {
             light_type: LightType::Directional {
-                direction: Vec3::new(0.0, 1.0, 0.0),
+                direction: Vec3::new(0.5, 1.0, 0.0).normalize(),
             },
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
         });
 
-    // omnidirectional light
+    // omnidirectional light 1
     commands
         .spawn()
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
@@ -349,7 +351,7 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             enabled: false,
         });
 
-    // omnidirectional light
+    // omnidirectional light 2
     commands
         .spawn()
         .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
@@ -370,6 +372,67 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
                 cone_angle: std::f32::consts::PI / 4.0,
                 attenuation: 1.0,
             },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
+        });
+
+    // camera
+    commands
+        .spawn()
+        .insert(CameraComponent::default())
+        .insert(CameraComponent::default_transform());
+}
+
+fn init_scene(mut commands: Commands) {
+    // plane
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
+        .insert(StaticMesh {
+            mesh_id: 0,
+            color: (255, 0, 0).into(),
+            offset: 0,
+            picking_id: 0,
+        })
+        .insert(RotationComponent {
+            rotation_speed: (0.4, 0.0, 0.0),
+        });
+
+    // cube
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh {
+            mesh_id: 1,
+            color: (0, 255, 0).into(),
+            offset: 0,
+            picking_id: 0,
+        })
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.4, 0.0),
+        });
+
+    // pyramid
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(StaticMesh {
+            mesh_id: 2,
+            color: (0, 0, 255).into(),
+            offset: 0,
+            picking_id: 0,
+        })
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.0, 0.4),
+        });
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional { attenuation: 1.0 },
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: true,
