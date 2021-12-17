@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 
 use std::mem::forget;
 use std::ptr::{null, NonNull};
-use strum::{AsRefStr, AsStaticRef, AsStaticStr, EnumIter, EnumString, IntoEnumIterator};
+use strum::{AsRefStr, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct ModelKey(u64);
@@ -208,7 +208,7 @@ impl Model {
         let mut ret = Self::default();
 
         for native_type in NativeType::iter() {
-            ret.add(native_type.as_static(), CGenType::Native(native_type))
+            ret.add(native_type.into(), CGenType::Native(native_type))
                 .unwrap();
         }
 
@@ -300,7 +300,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, Copy, EnumString, EnumIter, AsStaticStr)]
+#[derive(Debug, Clone, Copy, EnumString, EnumIter, IntoStaticStr)]
 pub enum NativeType {
     Float1,
     Float2,
@@ -365,7 +365,7 @@ impl ModelObject for CGenType {
     }
     fn name(&self) -> &str {
         match self {
-            CGenType::Native(e) => e.as_static(),
+            CGenType::Native(e) => e.into(),
             CGenType::Struct(e) => e.name.as_str(),
         }
     }

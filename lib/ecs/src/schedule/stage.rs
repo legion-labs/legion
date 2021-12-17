@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
+use lgn_telemetry::trace_scope;
 use lgn_utils::{HashMap, HashSet};
 use log::info;
 
@@ -86,6 +87,8 @@ pub struct SystemStage {
     uninitialized_parallel: Vec<usize>,
     /// Saves the value of the World change_tick during the last tick check
     last_tick_check: u32,
+    /// If true, buffers will be automatically applied at the end of the stage. If false, buffers must be manually applied.
+    apply_buffers: bool,
 }
 
 impl SystemStage {
@@ -107,6 +110,7 @@ impl SystemStage {
             uninitialized_before_commands: Vec::default(),
             uninitialized_at_end: Vec::default(),
             last_tick_check: Default::default(),
+            apply_buffers: true,
         }
     }
 
@@ -204,6 +208,21 @@ impl SystemStage {
                 self.parallel.push(container);
             }
         }
+    }
+
+    pub fn apply_buffers(&mut self, world: &mut World) {
+        for container in &mut self.parallel {
+            let system = container.system_mut();
+            // TODO: add system name to async trace scope
+            trace_scope!("system_commands");
+            // let span = info_span!("system_commands", name = &*system.name());
+            // let _guard = span.enter();
+            system.apply_buffers(world);
+        }
+    }
+
+    pub fn set_apply_buffers(&mut self, apply_buffers: bool) {
+        self.apply_buffers = apply_buffers;
     }
 
     /// Topologically sorted parallel systems.
@@ -814,6 +833,13 @@ impl Stage for SystemStage {
                 // Run systems that want to be at the start of stage.
                 for container in &mut self.exclusive_at_start {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }
@@ -829,20 +855,43 @@ impl Stage for SystemStage {
                 // Run systems that want to be between parallel systems and their command buffers.
                 for container in &mut self.exclusive_before_commands {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }
 
                 // Apply parallel systems' buffers.
-                for container in &mut self.parallel {
-                    if container.should_run {
-                        container.system_mut().apply_buffers(world);
+                if self.apply_buffers {
+                    for container in &mut self.parallel {
+                        if container.should_run {
+                            // TODO add container name to trace scope
+                            trace_scope!("system_commands");
+                            // let span = info_span!(
+                            //     "system_commands",
+                            //     name = &*container.name()
+                            // );
+                            // let _guard = span.enter();
+                            container.system_mut().apply_buffers(world);
+                        }
                     }
                 }
 
                 // Run systems that want to be at the end of stage.
                 for container in &mut self.exclusive_at_end {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }

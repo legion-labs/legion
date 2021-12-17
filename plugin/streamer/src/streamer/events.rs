@@ -1,4 +1,9 @@
 use anyhow::bail;
+use lgn_input::{
+    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
+    touch::TouchInput,
+    ElementState,
+};
 use lgn_math::Vec2;
 use serde::Deserialize;
 
@@ -63,30 +68,30 @@ impl TryFrom<String> for Color {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct Position {
-    pub(crate) x: f32,
-    pub(crate) y: f32,
+pub(crate) struct MouseButtonInputPayload {
+    pub button: MouseButton,
+    pub state: ElementState,
+    pub pos: Vec2,
 }
 
-impl From<&Position> for Vec2 {
-    fn from(position: &Position) -> Self {
-        Self::new(position.x, position.y)
-    }
-}
-
-impl From<Position> for Vec2 {
-    fn from(position: Position) -> Self {
-        Self::new(position.x, position.y)
+impl From<&MouseButtonInputPayload> for MouseButtonInput {
+    fn from(MouseButtonInputPayload { button, state, pos }: &MouseButtonInputPayload) -> Self {
+        Self {
+            button: *button,
+            state: *state,
+            pos: *pos,
+        }
     }
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
-pub(crate) enum InputPayload {
-    #[serde(rename = "click")]
-    Click { position: Position },
-    #[serde(rename = "mousemove")]
-    MouseMove { from: Position, to: Position },
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum Input {
+    MouseButtonInput(MouseButtonInput),
+    MouseMotion(MouseMotion),
+    MouseWheel(MouseWheel),
+    TouchInput(TouchInput),
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,5 +104,5 @@ pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "speed")]
     Speed { id: String, speed: f32 },
     #[serde(rename = "input")]
-    Input { payload: InputPayload },
+    Input { input: Input },
 }

@@ -68,24 +68,15 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel},
     touch::TouchInput,
 };
-use lgn_math::{ivec2, Vec2};
+use lgn_math::{ivec2, DVec2, Vec2};
 use lgn_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ReceivedCharacter,
     WindowBackendScaleFactorChanged, WindowCloseRequested, WindowCreated, WindowFocused,
     WindowMoved, WindowResized, WindowScaleFactorChanged, Windows,
 };
 use log::{error, trace, warn};
-use winit::dpi::LogicalSize;
-#[cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-use winit::platform::unix::EventLoopExtUnix;
 use winit::{
-    dpi::PhysicalPosition,
+    dpi::{LogicalSize, PhysicalPosition},
     event::{self, DeviceEvent, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
 };
@@ -100,6 +91,9 @@ impl Plugin for WinitPlugin {
         app.init_resource::<WinitWindows>()
             .set_runner(winit_runner)
             .add_system_to_stage(CoreStage::PostUpdate, change_window.exclusive_system());
+        let event_loop = EventLoop::new();
+        handle_initial_window_events(&mut app.world, &event_loop);
+        app.insert_non_send_resource(event_loop);
     }
 }
 
@@ -122,17 +116,18 @@ fn change_window(world: &mut World) {
                             window
                                 .set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
                         }
-                        lgn_window::WindowMode::Fullscreen { use_size } => window.set_fullscreen(
-                            Some(winit::window::Fullscreen::Exclusive(if use_size {
-                                get_fitting_videomode(
-                                    &window.current_monitor().unwrap(),
-                                    width,
-                                    height,
-                                )
-                            } else {
-                                get_best_videomode(&window.current_monitor().unwrap())
-                            })),
-                        ),
+                        lgn_window::WindowMode::Fullscreen => {
+                            window.set_fullscreen(Some(winit::window::Fullscreen::Exclusive(
+                                get_best_videomode(&window.current_monitor().unwrap()),
+                            )));
+                        }
+                        lgn_window::WindowMode::SizedFullscreen => window.set_fullscreen(Some(
+                            winit::window::Fullscreen::Exclusive(get_fitting_videomode(
+                                &window.current_monitor().unwrap(),
+                                width,
+                                height,
+                            )),
+                        )),
                         lgn_window::WindowMode::Windowed => window.set_fullscreen(None),
                     }
                 }
@@ -266,21 +261,22 @@ where
 }
 
 pub fn winit_runner(app: App) {
-    winit_runner_with(app, EventLoop::new());
+    winit_runner_with(app);
 }
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-pub fn winit_runner_any_thread(app: App) {
-    winit_runner_with(app, EventLoop::new_any_thread());
-}
+// #[cfg(any(
+//     target_os = "linux",
+//     target_os = "dragonfly",
+//     target_os = "freebsd",
+//     target_os = "netbsd",
+//     target_os = "openbsd"
+// ))]
+// pub fn winit_runner_any_thread(app: App) {
+//     winit_runner_with(app, EventLoop::new_any_thread());
+// }
 
-pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
+pub fn winit_runner_with(mut app: App) {
+    let mut event_loop = app.world.remove_non_send::<EventLoop<()>>().unwrap();
     let mut create_window_event_reader = ManualEventReader::<CreateWindow>::default();
     let mut app_exit_event_reader = ManualEventReader::<AppExit>::default();
     app.world.insert_non_send(event_loop.create_proxy());
@@ -362,13 +358,18 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let mut cursor_moved_events =
                             world.get_resource_mut::<Events<CursorMoved>>().unwrap();
                         let winit_window = winit_windows.get_window(window_id).unwrap();
-                        let position = position.to_logical(winit_window.scale_factor());
-                        let position = Vec2::new(position.x, position.y);
-                        window.update_cursor_position_from_backend(Some(position));
+                        let inner_size = winit_window.inner_size();
+
+                        // move origin to bottom left
+                        let y_position = f64::from(inner_size.height) - position.y;
+
+                        let physical_position = DVec2::new(position.x, y_position);
+                        window
+                            .update_cursor_physical_position_from_backend(Some(physical_position));
 
                         cursor_moved_events.send(CursorMoved {
                             id: window_id,
-                            position,
+                            position: (physical_position / window.scale_factor()).as_vec2(),
                         });
                     }
                     WindowEvent::CursorEntered { .. } => {
@@ -379,7 +380,7 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                     WindowEvent::CursorLeft { .. } => {
                         let mut cursor_left_events =
                             world.get_resource_mut::<Events<CursorLeft>>().unwrap();
-                        window.update_cursor_position_from_backend(None);
+                        window.update_cursor_physical_position_from_backend(None);
                         cursor_left_events.send(CursorLeft { id: window_id });
                     }
                     WindowEvent::MouseInput { state, button, .. } => {
@@ -418,8 +419,7 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let mut touch_input_events =
                             world.get_resource_mut::<Events<TouchInput>>().unwrap();
 
-                        let winit_window = winit_windows.get_window(window_id).unwrap();
-                        let mut location = touch.location.to_logical(winit_window.scale_factor());
+                        let mut location = touch.location.to_logical(window.scale_factor());
 
                         // On a mobile window, the start is from the top while on PC/Linux/OSX from
                         // bottom
@@ -581,6 +581,25 @@ fn handle_create_window_events(
     let create_window_events = world.get_resource::<Events<CreateWindow>>().unwrap();
     let mut window_created_events = world.get_resource_mut::<Events<WindowCreated>>().unwrap();
     for create_window_event in create_window_event_reader.iter(&create_window_events) {
+        let window = winit_windows.create_window(
+            event_loop,
+            create_window_event.id,
+            &create_window_event.descriptor,
+        );
+        windows.add(window);
+        window_created_events.send(WindowCreated {
+            id: create_window_event.id,
+        });
+    }
+}
+
+fn handle_initial_window_events(world: &mut World, event_loop: &EventLoop<()>) {
+    let world = world.cell();
+    let mut winit_windows = world.get_resource_mut::<WinitWindows>().unwrap();
+    let mut windows = world.get_resource_mut::<Windows>().unwrap();
+    let mut create_window_events = world.get_resource_mut::<Events<CreateWindow>>().unwrap();
+    let mut window_created_events = world.get_resource_mut::<Events<WindowCreated>>().unwrap();
+    for create_window_event in create_window_events.drain() {
         let window = winit_windows.create_window(
             event_loop,
             create_window_event.id,

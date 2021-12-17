@@ -1,3 +1,28 @@
+//! Entity handling types.
+//!
+//! In Legion ECS, there is no monolithic data structure for an entity. Instead, the [`Entity`]
+//! `struct` is just a *generational index* (a combination of an ID and a generation). Then,
+//! the `Entity` maps to the specific [`Component`s](crate::component::Component). This way,
+//! entities can have meaningful data attached to it. This is a fundamental design choice
+//! that has been taken to enhance performance and usability.
+//!
+//! # Usage
+//!
+//! Here are links to the methods used to perform common operations
+//! involving entities:
+//!
+//! - **Spawning an empty entity:** use [`Commands::spawn`](crate::system::Commands::spawn).
+//! - **Spawning an entity with components:** use
+//!   [`Commands::spawn_bundle`](crate::system::Commands::spawn_bundle).
+//! - **Despawning an entity:** use
+//!   [`EntityCommands::despawn`](crate::system::EntityCommands::despawn).
+//! - **Inserting a component to an entity:** use
+//!   [`EntityCommands::insert`](crate::system::EntityCommands::insert).
+//! - **Adding multiple components to an entity:** use
+//!   [`EntityCommands::insert_bundle`](crate::system::EntityCommands::insert_bundle).
+//! - **Removing a component to an entity:** use
+//!   [`EntityCommands::remove`](crate::system::EntityCommands::remove).
+
 #![allow(unsafe_code)]
 
 mod map_entities;
