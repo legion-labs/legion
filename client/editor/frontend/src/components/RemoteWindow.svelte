@@ -5,9 +5,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import resize from "@/actions/resize";
-  import remoteWindowEvents, {
-    Event as RemoteWindowEvent,
-  } from "@/actions/remoteWindowEvents";
+  import remoteWindowInputs, {
+    Input as RemoteWindowInput,
+  } from "@/actions/remoteWindowInputs";
   import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage, ServerType } from "@/api";
@@ -244,17 +244,17 @@
     };
   };
 
-  function onRemoveWindowEvent(event: RemoteWindowEvent) {
+  function onRemoteWindowInput(input: RemoteWindowInput) {
     if (!videoChannel || videoChannel.readyState !== "open") {
       log.debug(
         "video remote window",
-        "Received an event while the vide channel wasn't available"
+        "Received an input while the video channel wasn't available"
       );
 
       return;
     }
 
-    videoChannel.send(JSON.stringify({ event: "input", payload: event }));
+    videoChannel.send(JSON.stringify({ event: "input", input }));
   }
 
   $: if (
@@ -272,7 +272,7 @@
 <div
   class="video-container"
   use:resize={onVideoResize}
-  use:remoteWindowEvents={onRemoveWindowEvent}
+  use:remoteWindowInputs={onRemoteWindowInput}
 >
   <video
     class="video"

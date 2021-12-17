@@ -1,12 +1,10 @@
 use std::{fmt::Display, sync::Arc};
 
-use lgn_app::Events;
 use lgn_ecs::prelude::*;
 use lgn_input::{
-    mouse::{MouseButton, MouseButtonInput, MouseMotion},
-    ElementState,
+    mouse::{MouseButtonInput, MouseMotion, MouseWheel},
+    touch::TouchInput,
 };
-use lgn_math::Vec2;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -175,15 +173,18 @@ pub(crate) fn handle_stream_events(
 
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
-    mut input_mouse_motion: ResMut<'_, Events<MouseMotion>>,
-    mut input_mouse_buttton_input: ResMut<'_, Events<MouseButtonInput>>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
+    mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
+    mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
+    mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
+    mut input_touch_input: EventWriter<'_, '_, TouchInput>,
 ) {
     for event in video_stream_events.iter() {
         match query.get_mut(event.stream_id.entity) {
             Ok(mut render_surface) => {
                 let render_pass = render_surface.test_renderpass();
+
                 match &event.info {
                     VideoStreamEventInfo::Color { id, color } => {
                         log::info!("received color command id={}", id);
@@ -200,24 +201,26 @@ pub(crate) fn update_streams(
                         log::info!("received speed command id={}", id);
                         render_pass.write().set_speed(*speed);
                     }
-                    VideoStreamEventInfo::Input { payload } => match payload {
-                        InputPayload::Click { position } => {
-                            log::info!("Got a click at {:?}", position);
+                    VideoStreamEventInfo::Input { input } => {
+                        log::info!("received input: {:?}", input);
 
-                            input_mouse_buttton_input.send(MouseButtonInput {
-                                button: MouseButton::Left,
-                                pos: position.into(),
-                                state: ElementState::Released,
-                            });
+                        match input {
+                            Input::MouseButtonInput(mouse_button_input) => {
+                                input_mouse_button_input.send(mouse_button_input.clone());
+                            }
+                            Input::MouseMotion(mouse_motion) => {
+                                input_mouse_motion.send(mouse_motion.clone());
+                            }
+                            Input::MouseWheel(mouse_wheel) => {
+                                input_mouse_wheel.send(mouse_wheel.clone());
+                            }
+                            Input::TouchInput(touch_input) => {
+                                // A bit unsure why, but unlike other events [`legion_input::touch:TouchInput`]
+                                // derives Copy (_and_ `Clone`).
+                                input_touch_input.send(*touch_input);
+                            }
                         }
-                        InputPayload::MouseMove { from, to } => {
-                            log::info!("Got a mouse move from {:?} to {:?}", from, to);
-
-                            input_mouse_motion.send(MouseMotion {
-                                delta: Vec2::new(to.x - from.x, to.y - from.y),
-                            });
-                        }
-                    },
+                    }
                 }
             }
             Err(query_err) => {

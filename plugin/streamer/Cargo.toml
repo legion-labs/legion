@@ -12,7 +12,9 @@ lgn-core = { path = "../core", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-grpc = { path = "../grpc", version = "0.1.0" }
-lgn-input = { path = "../../plugin/input", version = "0.1.0" }
+lgn-input = { path = "../../plugin/input", version = "0.1.0", features = [
+    "serialize",
+] }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
