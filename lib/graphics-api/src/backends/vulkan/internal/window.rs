@@ -55,7 +55,7 @@ pub(crate) unsafe fn create_surface(
         ))]
         RawWindowHandle::Xlib(handle) => {
             let surface_desc = vk::XlibSurfaceCreateInfoKHR::builder()
-                .dpy(handle.display as *mut _)
+                .dpy(handle.display.cast())
                 .window(handle.window);
             let surface_fn = khr::XlibSurface::new(entry, instance);
             surface_fn.create_xlib_surface(&surface_desc, allocation_callbacks)
@@ -70,7 +70,7 @@ pub(crate) unsafe fn create_surface(
         ))]
         RawWindowHandle::Xcb(handle) => {
             let surface_desc = vk::XcbSurfaceCreateInfoKHR::builder()
-                .connection(handle.connection as *mut _)
+                .connection(handle.connection.cast())
                 .window(handle.window);
             let surface_fn = khr::XcbSurface::new(entry, instance);
             surface_fn.create_xcb_surface(&surface_desc, allocation_callbacks)
