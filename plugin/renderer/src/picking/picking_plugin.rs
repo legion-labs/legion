@@ -20,10 +20,10 @@ impl PickingPlugin {
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        if self.has_window {
-            let picking_manager = PickingManager::new(4096);
-            app.insert_resource(picking_manager);
+        let picking_manager = PickingManager::new(4096);
+        app.insert_resource(picking_manager);
 
+        if self.has_window {
             app.add_system_to_stage(CoreStage::PreUpdate, gather_input_window);
             app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
 
