@@ -1,7 +1,6 @@
 use crate::{
     components::PickedComponent,
     egui::egui_plugin::{Egui, EguiPlugin},
-    hl_gfx_api::HLCommandBuffer,
     picking::{PickingManager, PickingPlugin},
 };
 use lgn_app::{CoreStage, Plugin};
@@ -149,7 +148,7 @@ fn render_update(
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
-        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
+        let cmd_buffer = render_context.alloc_command_buffer();
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
         picking_pass.render(
@@ -183,7 +182,7 @@ fn render_update(
         // queue
         let sem = render_surface.acquire();
         let graphics_queue = render_context.graphics_queue();
-        graphics_queue.submit(&mut [cmd_buffer.build()], &[], &[sem], None);
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
         render_surface.present(&render_context, &task_pool);
     }

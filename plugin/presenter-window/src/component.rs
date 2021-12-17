@@ -5,7 +5,6 @@ use lgn_graphics_api::prelude::*;
 use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
-    hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
 use lgn_tasks::TaskPool;
@@ -63,7 +62,7 @@ impl PresenterWindow {
         //
         // Blit render surface
         //
-        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
+        let cmd_buffer = render_context.alloc_command_buffer();
         let swapchain_texture = presentable_frame.swapchain_texture();
 
         {
@@ -125,7 +124,7 @@ impl PresenterWindow {
             let present_queue = render_context.graphics_queue();
             let wait_sem = render_surface.sema();
             presentable_frame
-                .present(&present_queue, wait_sem, &mut [cmd_buffer.build()])
+                .present(&present_queue, wait_sem, &mut [cmd_buffer.finalize()])
                 .unwrap();
         }
     }

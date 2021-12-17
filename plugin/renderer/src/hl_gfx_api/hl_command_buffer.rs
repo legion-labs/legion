@@ -206,7 +206,7 @@ impl<'rc> HLCommandBuffer<'rc> {
             .cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 
-    pub fn build(mut self) -> CommandBufferHandle {
+    pub fn finalize(mut self) -> CommandBufferHandle {
         self.cmd_buffer.end().unwrap();
         self.cmd_buffer.transfer()
     }

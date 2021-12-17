@@ -403,7 +403,7 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
+            let cmd_buffer = render_context.alloc_command_buffer();
 
             render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -539,7 +539,7 @@ impl PickingRenderPass {
 
             {                
                 let graphics_queue = render_context.graphics_queue();
-                graphics_queue.submit(&mut [cmd_buffer.build()], &[], &[], None);
+                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
             }
 
             readback.sent_to_gpu(picking_manager.frame_no_for_picking());

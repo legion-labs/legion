@@ -2,7 +2,7 @@ use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWrit
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
 use crate::{
-    hl_gfx_api::HLQueue,
+    hl_gfx_api::{HLCommandBuffer, HLQueue},
     memory::BumpAllocatorHandle,
     resources::{CommandBufferPoolHandle, DescriptorPoolHandle, TransientBufferAllocator},
     RenderHandle, Renderer,
@@ -53,8 +53,8 @@ impl<'frame> RenderContext<'frame> {
         self.renderer.cgen_runtime()
     }
 
-    pub fn cmd_buffer_pool(&self) -> &CommandBufferPoolHandle {
-        &self.cmd_buffer_pool_handle
+    pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
+        HLCommandBuffer::new(&self.cmd_buffer_pool_handle)
     }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {

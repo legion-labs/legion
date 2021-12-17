@@ -8,7 +8,7 @@ use lgn_graphics_api::{
 };
 use lgn_math::Mat4;
 
-use crate::{hl_gfx_api::HLCommandBuffer, RenderContext, RenderHandle};
+use crate::{RenderContext, RenderHandle};
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 
@@ -153,7 +153,7 @@ impl UnifiedStaticBuffer {
             ));
         }
 
-        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
+        let cmd_buffer = render_context.alloc_command_buffer();
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
@@ -192,7 +192,7 @@ impl UnifiedStaticBuffer {
             }
         }
 
-        graphics_queue.submit(&mut [cmd_buffer.build()], &wait_sems, &[], None);
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &wait_sems, &[], None);
     }
 
     pub fn read_only_view(&self) -> BufferView {

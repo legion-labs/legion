@@ -24,7 +24,7 @@ use lgn_pso_compiler::FileSystem;
 use lgn_pso_compiler::HlslCompiler;
 use lgn_pso_compiler::ShaderSource;
 use lgn_transform::prelude::Transform;
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::components::{PickedComponent, RenderSurface, StaticMesh};
 use crate::hl_gfx_api::HLCommandBuffer;
@@ -48,23 +48,18 @@ pub struct Renderer {
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
     descriptor_heap: DescriptorHeap,
-    command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
-    descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
+    command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
+    descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
-    bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
+    bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
     shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
-
-// #[derive(Clone)]
-// pub struct Renderer {
-//     inner: Arc<RendererInner>,
-// }
 
 unsafe impl Send for Renderer {}
 
@@ -118,13 +113,13 @@ impl Renderer {
             descriptor_heap: device_context
                 .create_descriptor_heap(&descriptor_heap_def)
                 .unwrap(),
-            command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
+            descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
-            bump_allocator_pool: RwLock::new(CpuPool::new()),
+            bump_allocator_pool: Mutex::new(CpuPool::new()),
             shader_compiler,
             api,
         })
@@ -194,12 +189,12 @@ impl Renderer {
         queue_type: QueueType,
     ) -> CommandBufferPoolHandle {
         let queue = self.queue_(queue_type);
-        let mut pool = self.command_buffer_pools.write();
+        let mut pool = self.command_buffer_pools.lock();
         pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
     }
 
     pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
-        let mut pool = self.command_buffer_pools.write();
+        let mut pool = self.command_buffer_pools.lock();
         pool.release(handle);
     }
 
@@ -207,7 +202,7 @@ impl Renderer {
         &self,
         heap_def: &DescriptorHeapDef,
     ) -> DescriptorPoolHandle {
-        let mut pool = self.descriptor_pools.write();
+        let mut pool = self.descriptor_pools.lock();
         pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
     }
 
@@ -216,17 +211,17 @@ impl Renderer {
     }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
-        let mut pool = self.descriptor_pools.write();
+        let mut pool = self.descriptor_pools.lock();
         pool.release(handle);
     }
 
     pub(crate) fn acquire_bump_allocator(&self) -> BumpAllocatorHandle {
-        let mut pool = self.bump_allocator_pool.write();
+        let mut pool = self.bump_allocator_pool.lock();
         pool.acquire_or_create(BumpAllocator::new)
     }
 
     pub(crate) fn release_bump_allocator(&self, handle: BumpAllocatorHandle) {
-        let mut pool = self.bump_allocator_pool.write();
+        let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
 
@@ -255,15 +250,15 @@ impl Renderer {
         // Broadcast begin frame event
         //
         {
-            let mut pool = self.command_buffer_pools.write();
+            let mut pool = self.command_buffer_pools.lock();
             pool.begin_frame();
         }
         {
-            let mut pool = self.descriptor_pools.write();
+            let mut pool = self.descriptor_pools.lock();
             pool.begin_frame();
         }
         {
-            let mut pool = self.bump_allocator_pool.write();
+            let mut pool = self.bump_allocator_pool.lock();
             pool.begin_frame();
         }
 
@@ -284,15 +279,15 @@ impl Renderer {
         //
 
         {
-            let mut pool = self.command_buffer_pools.write();
+            let mut pool = self.command_buffer_pools.lock();
             pool.end_frame();
         }
         {
-            let mut pool = self.descriptor_pools.write();
+            let mut pool = self.descriptor_pools.lock();
             pool.end_frame();
         }
         {
-            let mut pool = self.bump_allocator_pool.write();
+            let mut pool = self.bump_allocator_pool.lock();
             pool.end_frame();
         }
     }

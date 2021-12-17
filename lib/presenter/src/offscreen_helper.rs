@@ -2,7 +2,7 @@
 
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use lgn_renderer::{components::RenderSurface, hl_gfx_api::HLCommandBuffer, RenderContext};
+use lgn_renderer::{components::RenderSurface, RenderContext};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Resolution {
@@ -278,7 +278,7 @@ impl OffscreenHelper {
         // Render
         //
         let render_frame_idx = 0;
-        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
+        let cmd_buffer = render_context.alloc_command_buffer();
         let render_texture = &self.resolution_dependent_resources.render_images[render_frame_idx];
         let render_texture_rtv =
             &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
@@ -402,7 +402,7 @@ impl OffscreenHelper {
         let wait_sem = render_surface.sema();
         let graphics_queue = render_context.graphics_queue();
 
-        graphics_queue.submit(&mut [cmd_buffer.build()], &[wait_sem], &[], None);
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
 
         graphics_queue.wait_for_queue_idle();
 
