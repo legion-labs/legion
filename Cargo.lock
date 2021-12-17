@@ -4081,6 +4081,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-math",
  "lgn-utils",
+ "log",
  "serde",
 ]
 
