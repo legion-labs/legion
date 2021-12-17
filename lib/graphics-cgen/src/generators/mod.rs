@@ -5,7 +5,7 @@ pub mod rust;
 
 use std::collections::HashSet;
 
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{

@@ -1,4 +1,4 @@
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use relative_path::RelativePath;
 
 use crate::{
