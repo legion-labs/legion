@@ -15,7 +15,7 @@ pub struct BuildManager {
 impl BuildManager {
     /// New instance of `BuildManager`.
     pub fn new(
-        options: &DataBuildOptions,
+        options: DataBuildOptions,
         project_dir: impl AsRef<Path>,
         manifest: Manifest,
     ) -> anyhow::Result<Self> {

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
@@ -46,7 +47,7 @@ fn no_dependencies() {
         ResourcePathId::from(id)
     };
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -112,7 +113,7 @@ fn with_dependency() {
         )
     };
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -180,7 +181,7 @@ fn with_derived_dependency() {
             .unwrap();
     }
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("to create index");

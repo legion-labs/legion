@@ -59,7 +59,9 @@ use std::{path::PathBuf, str::FromStr};
 use clap::{AppSettings, Arg, SubCommand};
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+use lgn_data_compiler::{
+    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+};
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 
@@ -159,7 +161,7 @@ fn main() -> Result<(), String> {
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
         let project_path = PathBuf::from(cmd_args.value_of(ARG_NAME_PROJECT).unwrap());
 
-        let mut build = DataBuildOptions::new(&buildindex_path)
+        let mut build = DataBuildOptions::new(&buildindex_path, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from("."))
             .create(project_path)
             .map_err(|e| format!("failed creating build index {}", e))?;
@@ -192,16 +194,20 @@ fn main() -> Result<(), String> {
             }
         };
 
-        let mut config = DataBuildOptions::new(buildindex_dir);
-        config.content_store(&content_store_path);
-        if let Ok(cwd) = std::env::current_dir() {
-            config.compiler_dir(cwd);
-        }
-        if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
-            if exe_dir.pop() && exe_dir.is_dir() {
-                config.compiler_dir(exe_dir);
+        let compilers = {
+            if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
+                if exe_dir.pop() && exe_dir.is_dir() {
+                    CompilerRegistryOptions::from_dir(&exe_dir)
+                } else {
+                    CompilerRegistryOptions::default()
+                }
+            } else {
+                CompilerRegistryOptions::default()
             }
-        }
+        };
+
+        let config =
+            DataBuildOptions::new(buildindex_dir, compilers).content_store(&content_store_path);
 
         let mut build = config
             .open()

@@ -133,13 +133,14 @@ impl CompilerStub for BinCompilerStub {
 }
 
 /// Options and flags which can be used to configure how a compiler registry is created.
+#[derive(Default)]
 pub struct CompilerRegistryOptions {
     compilers: Vec<Box<dyn CompilerStub>>,
 }
 
 impl CompilerRegistryOptions {
     /// Creates `CompilerRegistry` based on provided compiler directory paths.
-    pub fn from_dir(dirs: &[impl AsRef<Path>]) -> Self {
+    pub fn from_dirs(dirs: &[impl AsRef<Path>]) -> Self {
         let compilers = list_compilers(dirs)
             .into_iter()
             .map(|info| {
@@ -153,8 +154,20 @@ impl CompilerRegistryOptions {
         Self { compilers }
     }
 
+    /// Creates `CompilerRegistry` based on provided compiler directory path.
+    pub fn from_dir(dir: impl AsRef<Path>) -> Self {
+        Self::from_dirs(std::slice::from_ref(&dir))
+    }
+
+    /// Register an in-process compiler.
+    pub fn add_compiler(mut self, descriptor: &'static CompilerDescriptor) -> Self {
+        let compiler = Box::new(InProcessCompilerStub { descriptor });
+        self.compilers.push(compiler);
+        self
+    }
+
     /// Creates a new compiler registry based on specified options.
-    pub fn create(mut self) -> CompilerRegistry {
+    pub fn create(self) -> CompilerRegistry {
         let infos = self.collect_info();
 
         CompilerRegistry {
@@ -164,7 +177,7 @@ impl CompilerRegistryOptions {
     }
 
     /// Gathers info on all compilers.
-    fn collect_info(&mut self) -> Vec<CompilerInfo> {
+    fn collect_info(&self) -> Vec<CompilerInfo> {
         // todo: panic if info already gathered
         let mut infos = Vec::with_capacity(self.compilers.len());
         for compiler in &self.compilers {

@@ -8,7 +8,7 @@ use std::{env, io};
 
 use lgn_content_store::{ContentStore, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerRegistryOptions};
+use lgn_data_compiler::compiler_reg::CompilerRegistry;
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -65,15 +65,14 @@ fn compute_context_hash(
 /// ```no_run
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+/// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 /// # use std::str::FromStr;
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
-/// let mut build = DataBuildOptions::new(".")
+/// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
-///         .compiler_dir("./compilers/")
 ///         .create(".").expect("new build index");
 ///
 /// build.source_pull().expect("successful source pull");
@@ -100,7 +99,7 @@ pub struct DataBuild {
 }
 
 impl DataBuild {
-    pub(crate) fn new(config: &DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
+    pub(crate) fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
             BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
@@ -121,11 +120,11 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths).create(),
+            compilers: config.compiler_options.create(),
         })
     }
 
-    pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) fn open(config: DataBuildOptions) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
@@ -135,7 +134,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths).create(),
+            compilers: config.compiler_options.create(),
         })
     }
 
@@ -143,7 +142,7 @@ impl DataBuild {
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
     pub(crate) fn open_or_create(
-        config: &DataBuildOptions,
+        config: DataBuildOptions,
         project_dir: &Path,
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
@@ -155,8 +154,7 @@ impl DataBuild {
                     build_index,
                     project,
                     content_store,
-                    compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths)
-                        .create(),
+                    compilers: config.compiler_options.create(),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),

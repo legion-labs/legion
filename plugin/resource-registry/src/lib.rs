@@ -59,7 +59,7 @@
 
 mod settings;
 
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use lgn_app::Plugin;
 use lgn_content_store::ContentStoreAddr;
@@ -96,14 +96,23 @@ impl Plugin for ResourceRegistryPlugin {
                     .get_resource::<Arc<AssetRegistry>>()
                     .expect("the editor plugin requires AssetRegistry resource");
 
-                let mut build_options = DataBuildOptions::new(&build_dir);
-                if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
-                    if exe_dir.pop() && exe_dir.is_dir() {
-                        build_options.compiler_dir(exe_dir);
+                let compilers = lgn_ubercompiler::create_ubercompiler();
+                /*{
+                    if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
+                        if exe_dir.pop() && exe_dir.is_dir() {
+                            CompilerRegistryOptions::from_dir(exe_dir)
+                        } else {
+                            CompilerRegistryOptions::default()
+                        }
+                    } else {
+                        CompilerRegistryOptions::default()
                     }
-                }
-                build_options.content_store(&ContentStoreAddr::from(build_dir.as_path()));
-                let build_manager = BuildManager::new(&build_options, &project_dir, manifest)
+                };*/
+
+                let build_options = DataBuildOptions::new(&build_dir, compilers)
+                    .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+
+                let build_manager = BuildManager::new(build_options, &project_dir, manifest)
                     .expect("the editor requires valid build manager");
 
                 let data_manager = Arc::new(Mutex::new(DataManager::new(
