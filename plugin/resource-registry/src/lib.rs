@@ -96,7 +96,12 @@ impl Plugin for ResourceRegistryPlugin {
                     .get_resource::<Arc<AssetRegistry>>()
                     .expect("the editor plugin requires AssetRegistry resource");
 
-                let compilers = lgn_ubercompiler::create_ubercompiler();
+                let compilers = lgn_ubercompiler::create();
+
+                //
+                // In-process compilers can be replaced with standalone compiler executables
+                // with the following code:
+                //
                 /*{
                     if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
                         if exe_dir.pop() && exe_dir.is_dir() {

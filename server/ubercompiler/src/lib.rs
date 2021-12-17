@@ -1,7 +1,6 @@
 use lgn_data_compiler::compiler_reg;
 
-// todo: temporary function. need interface for this
-pub fn create_ubercompiler() -> compiler_reg::CompilerRegistryOptions {
+pub fn create() -> compiler_reg::CompilerRegistryOptions {
     let registry = compiler_reg::CompilerRegistryOptions::default();
     registry
         .add_compiler(&lgn_compiler_material::COMPILER_INFO)
