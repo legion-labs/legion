@@ -1,6 +1,6 @@
 //! Legion App
 //!
-//! This crate is about everything concerning the highest-level, application layer of a Bevy
+//! This crate is about everything concerning the highest-level, application layer of a Legion
 //! app.
 
 // BEGIN - Legion Labs lints v0.6
