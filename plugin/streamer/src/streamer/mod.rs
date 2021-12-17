@@ -2,6 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use lgn_ecs::prelude::*;
 use lgn_input::{
+    keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
 };
@@ -179,6 +180,7 @@ pub(crate) fn update_streams(
     mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
     mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
     mut input_touch_input: EventWriter<'_, '_, TouchInput>,
+    mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
 ) {
     for event in video_stream_events.iter() {
         match query.get_mut(event.stream_id.entity) {
@@ -218,6 +220,9 @@ pub(crate) fn update_streams(
                                 // A bit unsure why, but unlike other events [`legion_input::touch:TouchInput`]
                                 // derives Copy (_and_ `Clone`).
                                 input_touch_input.send(*touch_input);
+                            }
+                            Input::KeyboardInput(keyboard_input) => {
+                                input_keyboard_input.send(keyboard_input.clone());
                             }
                         }
                     }

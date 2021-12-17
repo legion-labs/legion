@@ -1,4 +1,5 @@
 import log from "@/lib/log";
+import { KeyCode, fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
 
 const logLabel = "remote window inputs";
 
@@ -87,30 +88,46 @@ export type TouchInput = Type<"TouchInput"> & {
   id: /* u64 */ number;
 };
 
+export type KeyboardInput = Type<"KeyboardInput"> & {
+  // Browser events don't contain the scan code
+  scan_code: /* u32 */ 0;
+  key_code: KeyCode;
+  state: ElementState;
+};
+
 /** The Input type union */
-export type Input = MouseButtonInput | MouseMotion | MouseWheel | TouchInput;
+export type Input =
+  | MouseButtonInput
+  | MouseMotion
+  | MouseWheel
+  | TouchInput
+  | KeyboardInput;
 
 /** A function passed to the `remotedWindowEvents` action that will be called when an event is dispatched */
 export type Listener = (input: Input) => void;
 
+export type Options = {
+  isFocused: boolean;
+  listener: Listener;
+};
+
 type State = {
   mouseState: ElementState;
   /** Where the index is the Touch id.
-   * We use an object of `undefined` value instead of an array
+   * We use an object of `null` value instead of an array
    * so that it's easier and faster to lookup for ids and
    * to delete the touch action that's not active anymore
    */
-  activeTouches: Record<number, undefined>;
+  activeTouches: Record<number, null>;
+  /**
+   * Where the index is the `KeyCode`.
+   */
+  activeKeys: Record<string, null>;
   previousMousePosition: Vec2 | null;
+  isFocused: boolean;
 };
 
-function createEvents(
-  state: State,
-  element: HTMLElement,
-  listener: Listener = () => {
-    // No op
-  }
-) {
+function createEvents(state: State, element: HTMLElement, listener: Listener) {
   function getCurrentMousePosition({
     clientX,
     clientY,
@@ -265,7 +282,7 @@ function createEvents(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const changedTouch = event.changedTouches.item(i)!;
 
-      state.activeTouches[changedTouch.identifier] = undefined;
+      state.activeTouches[changedTouch.identifier] = null;
 
       const touchInput: TouchInput = {
         type: "TouchInput",
@@ -383,6 +400,61 @@ function createEvents(
     }
   }
 
+  function onKeyDown(event: KeyboardEvent) {
+    if (!state.isFocused) {
+      return;
+    }
+
+    const key = keyCodeFromBrowserKey(event.key);
+
+    // We don't report unknown keys or keys that are being pressed already
+    if (!key || key in state.activeKeys) {
+      return;
+    }
+
+    event.preventDefault();
+
+    state.activeKeys[key] = null;
+
+    const keyboardInput: KeyboardInput = {
+      type: "KeyboardInput",
+      key_code: key,
+      scan_code: 0,
+      state: "Pressed",
+    };
+
+    log.debug(logLabel, log.json`Keyboard input ${keyboardInput}`);
+
+    listener(keyboardInput);
+  }
+
+  function onKeyUp(event: KeyboardEvent) {
+    if (!state.isFocused) {
+      return;
+    }
+
+    const key = keyCodeFromBrowserKey(event.key);
+
+    if (!key || !(key in state.activeKeys)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    delete state.activeKeys[key];
+
+    const keyboardInput: KeyboardInput = {
+      type: "KeyboardInput",
+      key_code: key,
+      scan_code: 0,
+      state: "Released",
+    };
+
+    log.debug(logLabel, log.json`Keyboard input ${keyboardInput}`);
+
+    listener(keyboardInput);
+  }
+
   return {
     onContextMenu,
     onMouseDown,
@@ -393,19 +465,23 @@ function createEvents(
     onTouchMove,
     onTouchEnd,
     onTouchCancel,
+    onKeyDown,
+    onKeyUp,
   };
 }
 
 export default function remoteWindowEvents(
   element: HTMLElement,
-  listener?: Listener
+  { isFocused, listener }: Options
 ) {
   element.style.touchAction = "none";
 
   const state: State = {
     mouseState: "Released",
     activeTouches: {},
+    activeKeys: {},
     previousMousePosition: null,
+    isFocused,
   };
 
   const {
@@ -418,6 +494,8 @@ export default function remoteWindowEvents(
     onTouchMove,
     onTouchEnd,
     onTouchCancel,
+    onKeyDown,
+    onKeyUp,
   } = createEvents(state, element, listener);
 
   // Global listeners, useful when an event occurs outside
@@ -432,6 +510,10 @@ export default function remoteWindowEvents(
 
   window.addEventListener("touchcancel", onTouchCancel);
 
+  window.addEventListener("keydown", onKeyDown);
+
+  window.addEventListener("keyup", onKeyUp);
+
   // Element listeners
   element.addEventListener("contextmenu", onContextMenu);
 
@@ -442,6 +524,9 @@ export default function remoteWindowEvents(
   element.addEventListener("touchstart", onTouchStart);
 
   return {
+    update({ isFocused }: Options) {
+      state.isFocused = isFocused;
+    },
     destroy() {
       window.removeEventListener("mousemove", onMouseMove);
 
@@ -453,7 +538,11 @@ export default function remoteWindowEvents(
 
       window.removeEventListener("touchcancel", onTouchCancel);
 
-      element.addEventListener("contextmenu", onContextMenu);
+      window.removeEventListener("keydown", onKeyDown);
+
+      window.removeEventListener("keyup", onKeyUp);
+
+      element.removeEventListener("contextmenu", onContextMenu);
 
       element.removeEventListener("mousedown", onMouseDown);
 

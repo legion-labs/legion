@@ -24,6 +24,8 @@
 
   export let serverType: ServerType;
 
+  export let isFocused: boolean = false;
+
   let resolution: Resolution | null = null;
 
   let videoElement: HTMLVideoElement | undefined;
@@ -272,7 +274,7 @@
 <div
   class="video-container"
   use:resize={onVideoResize}
-  use:remoteWindowInputs={onRemoteWindowInput}
+  use:remoteWindowInputs={{ isFocused, listener: onRemoteWindowInput }}
 >
   <video
     class="video"
