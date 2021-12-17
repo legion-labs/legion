@@ -4472,6 +4472,7 @@ dependencies = [
  "lgn-math",
  "lgn-utils",
  "log",
+ "raw-window-handle 0.4.2",
  "uuid",
  "web-sys",
 ]
@@ -4488,6 +4489,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "log",
+ "raw-window-handle 0.4.2",
  "wasm-bindgen",
  "web-sys",
  "winit",
