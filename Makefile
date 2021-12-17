@@ -28,6 +28,7 @@ check-format:
 	cargo fmt --all -- --check
 
 check-build:
+	cargo check --locked -p lgn-graphics-api --all-targets
 	cargo check --locked --all-targets --all-features
 
 check-clippy:
