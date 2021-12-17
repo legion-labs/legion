@@ -259,7 +259,7 @@ Could support the interface to get visibility into crates that are already instr
 - CLI analytics (csv output)
 
 ## Christmas
-- Web Analytics client (Vue.js & Canvas)
+- Web Analytics client (svelte & Canvas)
 - Visualization of call tree timeline
 
 ---
