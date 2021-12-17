@@ -24,6 +24,7 @@ use lgn_pso_compiler::FileSystem;
 use lgn_pso_compiler::HlslCompiler;
 use lgn_pso_compiler::ShaderSource;
 use lgn_transform::prelude::Transform;
+
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::components::{PickedComponent, RenderSurface, StaticMesh};
@@ -137,7 +138,7 @@ impl Renderer {
         self.render_frame_idx
     }
 
-    pub fn queue_(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
+    pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
             _ => unreachable!(),
@@ -188,7 +189,7 @@ impl Renderer {
         &self,
         queue_type: QueueType,
     ) -> CommandBufferPoolHandle {
-        let queue = self.queue_(queue_type);
+        let queue = self.graphics_queue_guard(queue_type);
         let mut pool = self.command_buffer_pools.lock();
         pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
     }
@@ -297,7 +298,7 @@ impl Drop for Renderer {
     fn drop(&mut self) {
         std::mem::drop(self.test_transform_data.take());
 
-        let graphics_queue = self.queue_(QueueType::Graphics);
+        let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
 }

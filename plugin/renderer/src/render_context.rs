@@ -12,7 +12,7 @@ type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,
-    cmd_buffer_pool_handle: CommandBufferPoolHandle,
+    cmd_buffer_pool: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
@@ -24,7 +24,7 @@ impl<'frame> RenderContext<'frame> {
 
         Self {
             renderer,
-            cmd_buffer_pool_handle: renderer.acquire_command_buffer_pool(QueueType::Graphics),
+            cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
             // TMP: we should acquire a handle from the renderer
             transient_buffer_allocator: TransientBufferAllocatorHandle::new(
@@ -44,8 +44,8 @@ impl<'frame> RenderContext<'frame> {
 
     pub fn graphics_queue(&self) -> HLQueue<'_> {
         HLQueue::new(
-            self.renderer.queue_(QueueType::Graphics),
-            &self.cmd_buffer_pool_handle,
+            self.renderer.graphics_queue_guard(QueueType::Graphics),
+            &self.cmd_buffer_pool,
         )
     }
 
@@ -54,7 +54,7 @@ impl<'frame> RenderContext<'frame> {
     }
 
     pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
-        HLCommandBuffer::new(&self.cmd_buffer_pool_handle)
+        HLCommandBuffer::new(&self.cmd_buffer_pool)
     }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
@@ -89,7 +89,7 @@ impl<'frame> RenderContext<'frame> {
 impl<'frame> Drop for RenderContext<'frame> {
     fn drop(&mut self) {
         self.renderer
-            .release_command_buffer_pool(self.cmd_buffer_pool_handle.transfer());
+            .release_command_buffer_pool(self.cmd_buffer_pool.transfer());
 
         self.renderer
             .release_descriptor_pool(self.descriptor_pool.transfer());

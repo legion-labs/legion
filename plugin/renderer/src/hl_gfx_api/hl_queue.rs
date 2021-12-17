@@ -1,4 +1,7 @@
-use lgn_graphics_api::{CommandBuffer, Fence, PagedBufferAllocation, Queue, Semaphore, Swapchain, GfxResult, PresentSuccessResult};
+use lgn_graphics_api::{
+    CommandBuffer, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult, Queue, Semaphore,
+    Swapchain,
+};
 use parking_lot::RwLockReadGuard;
 
 use crate::{resources::CommandBufferPool, RenderHandle};
