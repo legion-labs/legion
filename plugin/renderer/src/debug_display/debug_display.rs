@@ -1,33 +1,51 @@
+#![allow(unsafe_code)]
+
+use bumpalo::Bump;
 use lgn_math::Vec3;
+use std::sync::Mutex;
+
+struct DisplayListWrapper {
+    ptr: *mut DisplayList,
+}
+
+unsafe impl Send for DisplayListWrapper {}
 
 #[derive(Default)]
 pub struct DebugDisplay {
-    display_lists: Vec<DisplayList>,
+    display_lists: Mutex<Vec<DisplayListWrapper>>,
 }
 
 impl DebugDisplay {
-    pub fn create_display_list(&mut self) -> &mut DisplayList {
-        self.display_lists.push(DisplayList::default());
-        self.display_lists.last_mut().unwrap()
+    pub fn create_display_list<F: FnOnce(&mut DisplayList)>(&mut self, bump: &Bump, f: F) {
+        let display_list = bump.alloc(DisplayList::default());
+        {
+            let mut display_lists = self.display_lists.lock().unwrap();
+            display_lists.push(DisplayListWrapper { ptr: display_list });
+            f(display_list);
+        }
     }
 
-    pub fn primitives(&mut self) -> Vec<DebugPrimitive> {
-        let mut primitives = Vec::new();
-        for display_list in &mut self.display_lists {
-            primitives.append(&mut display_list.primitives);
+    pub fn render_primitives<F: Fn(&DebugPrimitive)>(&mut self, f: F) {
+        for display_list in self.display_lists.lock().unwrap().as_slice() {
+            let mut more_primitives = unsafe { &(*display_list.ptr).primitives };
+            for primitive in more_primitives.into_iter() {
+                f(unsafe { &**primitive });
+            }
         }
-        primitives
     }
 
     pub fn clear_display_lists(&mut self) {
-        self.display_lists.clear();
+        self.display_lists.lock().unwrap().clear();
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum DebugPrimitiveType {
     Cube,
     Arrow { dir: Vec3 },
 }
+
+#[derive(Clone, Copy)]
 pub struct DebugPrimitive {
     pub primitive_type: DebugPrimitiveType,
     pub pos: Vec3,
@@ -35,20 +53,20 @@ pub struct DebugPrimitive {
 
 #[derive(Default)]
 pub struct DisplayList {
-    primitives: Vec<DebugPrimitive>,
+    primitives: Vec<*mut DebugPrimitive>,
 }
 
 impl DisplayList {
-    pub fn add_cube(&mut self, pos: Vec3) {
-        self.primitives.push(DebugPrimitive {
+    pub fn add_cube(&mut self, pos: Vec3, bump: &Bump) {
+        self.primitives.push(bump.alloc(DebugPrimitive {
             primitive_type: DebugPrimitiveType::Cube,
             pos,
-        });
+        }));
     }
-    pub fn add_arrow(&mut self, start: Vec3, end: Vec3) {
-        self.primitives.push(DebugPrimitive {
+    pub fn add_arrow(&mut self, start: Vec3, end: Vec3, bump: &Bump) {
+        self.primitives.push(bump.alloc(DebugPrimitive {
             primitive_type: DebugPrimitiveType::Arrow { dir: end - start },
             pos: start,
-        });
+        }));
     }
 }

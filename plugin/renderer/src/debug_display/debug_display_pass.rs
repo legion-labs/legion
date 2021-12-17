@@ -128,15 +128,16 @@ impl DebugDisplayPass {
             camera_transform.translation + camera_transform.forward(),
             Vec3::new(0.0, 1.0, 0.0),
         );
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for primitive in debug_display.primitives() {
+        debug_display.render_primitives(|primitive| {
             let mesh_data = match primitive.primitive_type {
                 DebugPrimitiveType::Cube => StaticMeshRenderData::new_cube(0.1),
                 DebugPrimitiveType::Arrow { dir } => {
                     StaticMeshRenderData::new_arrow(Vec3::new(0.0, 0.0, 0.0), dir)
                 }
             };
+
+            let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
             let mut sub_allocation = transient_allocator.copy_data(
                 &mesh_data
@@ -193,7 +194,7 @@ impl DebugDisplayPass {
             cmd_buffer
                 .cmd_draw((mesh_data.num_vertices()) as u32, 0)
                 .unwrap();
-        }
+        });
 
         debug_display.clear_display_lists();
 

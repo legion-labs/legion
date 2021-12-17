@@ -180,21 +180,25 @@ fn update_debug(
     mut debug_display: ResMut<'_, DebugDisplay>,
     mut lights: Query<'_, '_, (&LightComponent, &Transform)>,
 ) {
-    let display_list = debug_display.create_display_list();
-    for (light, transform) in lights.iter() {
-        display_list.add_cube(transform.translation);
-        match light.light_type {
-            LightType::Directional { direction } => display_list.add_arrow(
-                transform.translation,
-                transform.translation - direction.normalize(),
-            ),
-            LightType::Spotlight { direction, .. } => display_list.add_arrow(
-                transform.translation,
-                transform.translation - direction.normalize(),
-            ),
-            _ => (),
+    let bump = renderer.acquire_bump_allocator();
+    debug_display.create_display_list(bump.bump(), |display_list| {
+        for (light, transform) in lights.iter() {
+            display_list.add_cube(transform.translation, bump.bump());
+            match light.light_type {
+                LightType::Directional { direction } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                LightType::Spotlight { direction, .. } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                _ => (),
+            }
         }
-    }
+    });
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
