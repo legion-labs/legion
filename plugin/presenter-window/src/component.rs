@@ -5,6 +5,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
+    hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
 use lgn_tasks::TaskPool;
@@ -47,7 +48,7 @@ impl PresenterWindow {
 
     pub fn present(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
         //
@@ -62,24 +63,20 @@ impl PresenterWindow {
         //
         // Blit render surface
         //
-        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
         let swapchain_texture = presentable_frame.swapchain_texture();
-
-        cmd_buffer.begin().unwrap();
 
         {
             render_surface.transition_to(&cmd_buffer, ResourceState::COPY_SRC);
 
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::PRESENT,
-                        ResourceState::COPY_DST,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    swapchain_texture,
+                    ResourceState::PRESENT,
+                    ResourceState::COPY_DST,
+                )],
+            );
 
             let src_texture = render_surface.texture();
             let src_texture_def = src_texture.definition();
@@ -109,37 +106,28 @@ impl PresenterWindow {
                 array_slices: Some([0, 0]),
                 filtering: FilterType::Linear,
             };
-            cmd_buffer
-                .cmd_blit_texture(src_texture, dst_texture, &blit_params)
-                .unwrap();
+            cmd_buffer.blit_texture(src_texture, dst_texture, &blit_params);
 
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::COPY_DST,
-                        ResourceState::PRESENT,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    swapchain_texture,
+                    ResourceState::COPY_DST,
+                    ResourceState::PRESENT,
+                )],
+            );
         }
-
-        cmd_buffer.end().unwrap();
 
         //
         // Present
         //
         {
-            let renderer = render_context.renderer();
-            let present_queue = renderer.queue(QueueType::Graphics);
+            let present_queue = render_context.graphics_queue();
             let wait_sem = render_surface.sema();
             presentable_frame
-                .present(&present_queue, wait_sem, &[&cmd_buffer])
+                .present(&present_queue, wait_sem, &mut [cmd_buffer.build()])
                 .unwrap();
         }
-
-        render_context.release_cmd_buffer(cmd_buffer);
     }
 }
 
@@ -156,7 +144,7 @@ impl Presenter for PresenterWindow {
 
     fn present(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

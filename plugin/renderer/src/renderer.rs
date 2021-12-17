@@ -3,15 +3,16 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
+use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
-    ApiDef, BlendState, BufferView, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
-    CompareOp, DepthState, DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef,
+    ApiDef, BlendState, BufferView, ColorClearValue, ColorRenderTargetBinding, CompareOp,
+    DepthState, DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef,
     DescriptorHeap, DescriptorHeapDef, DescriptorRef, DescriptorSetLayoutDef, DeviceContext, Fence,
     FenceStatus, Format, GfxApi, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
-    PrimitiveTopology, PushConstantDef, Queue, QueueType, RasterizerState, ResourceState,
-    ResourceUsage, RootSignature, RootSignatureDef, SampleCount, Semaphore, ShaderPackage,
-    ShaderStageDef, ShaderStageFlags, StencilOp, StoreOp, VertexAttributeRate, VertexLayout,
-    VertexLayoutAttribute, VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
+    PrimitiveTopology, PushConstantDef, QueueType, RasterizerState, ResourceState, ResourceUsage,
+    RootSignature, RootSignatureDef, SampleCount, Semaphore, ShaderPackage, ShaderStageDef,
+    ShaderStageFlags, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
+    VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
@@ -26,6 +27,8 @@ use lgn_transform::prelude::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{PickedComponent, RenderSurface, StaticMesh};
+use crate::hl_gfx_api::HLCommandBuffer;
+
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -139,7 +142,7 @@ impl Renderer {
         self.render_frame_idx
     }
 
-    pub fn queue(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
+    pub fn queue_(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
             _ => unreachable!(),
@@ -167,11 +170,7 @@ impl Renderer {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 
-    pub fn flush_update_jobs(
-        &self,
-        render_context: &mut RenderContext<'_>,
-        graphics_queue: &RwLockReadGuard<'_, Queue>,
-    ) {
+    pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
         let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
         let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
         let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
@@ -181,7 +180,6 @@ impl Renderer {
             unbind_semaphore,
             bind_semaphore,
             render_context,
-            graphics_queue,
         );
     }
 
@@ -195,7 +193,7 @@ impl Renderer {
         &self,
         queue_type: QueueType,
     ) -> CommandBufferPoolHandle {
-        let queue = self.queue(queue_type);
+        let queue = self.queue_(queue_type);
         let mut pool = self.command_buffer_pools.write();
         pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
     }
@@ -304,7 +302,7 @@ impl Drop for Renderer {
     fn drop(&mut self) {
         std::mem::drop(self.test_transform_data.take());
 
-        let graphics_queue = self.queue(QueueType::Graphics);
+        let graphics_queue = self.queue_(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
@@ -515,37 +513,35 @@ impl TmpRenderPass {
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera_transform: &Transform,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue(self.color),
-                }],
-                &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_stencil_texture_view(),
-                    depth_load_op: LoadOp::Clear,
-                    stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::DontCare,
-                    stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
-                }),
-            )
-            .unwrap();
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_surface.render_target_view(),
+                load_op: LoadOp::Clear,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue(self.color),
+            }],
+            &Some(DepthStencilRenderTargetBinding {
+                texture_view: render_surface.depth_stencil_texture_view(),
+                depth_load_op: LoadOp::Clear,
+                stencil_load_op: LoadOp::DontCare,
+                depth_store_op: StoreOp::DontCare,
+                stencil_store_op: StoreOp::DontCare,
+                clear_value: DepthStencilClearValue {
+                    depth: 1.0,
+                    stencil: 0,
+                },
+            }),
+        );
 
-        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+        cmd_buffer.bind_pipeline(&self.pipeline);
         let descriptor_set_layout = &self
             .pipeline
             .root_signature()
@@ -565,7 +561,7 @@ impl TmpRenderPass {
             camera_transform.translation + camera_transform.forward(),
             Vec3::new(0.0, 1.0, 0.0),
         );
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let transient_allocator = render_context.transient_buffer_allocator();
 
         for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
         {
@@ -579,7 +575,7 @@ impl TmpRenderPass {
             let mut sub_allocation =
                 transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
+            cmd_buffer.bind_suballocation_as_vertex_buffer(0, &sub_allocation);
 
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
@@ -643,30 +639,22 @@ impl TmpRenderPass {
             let descriptor_set_handle =
                 descriptor_set_writer.flush(render_context.renderer().device_context());
 
-            cmd_buffer
-                .cmd_bind_descriptor_set_handle(
-                    PipelineType::Graphics,
-                    &self.root_signature,
-                    descriptor_set_layout.definition().frequency,
-                    descriptor_set_handle,
-                )
-                .unwrap();
+            cmd_buffer.bind_descriptor_set_handle(
+                PipelineType::Graphics,
+                &self.root_signature,
+                descriptor_set_layout.definition().frequency,
+                descriptor_set_handle,
+            );
 
             let mut push_constant_data: [u32; 2] = [0; 2];
             push_constant_data[0] = static_mesh_component.offset as u32;
             push_constant_data[1] = if picked_component.is_some() { 1 } else { 0 };
 
-            cmd_buffer
-                .cmd_push_constants(&self.root_signature, &push_constant_data)
-                .unwrap();
+            cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-            cmd_buffer
-                .cmd_draw((mesh.num_vertices()) as u32, 0)
-                .unwrap();
+            cmd_buffer.draw((mesh.num_vertices()) as u32, 0);
         }
 
-        render_context.release_transient_buffer_allocator(transient_allocator);
-
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        cmd_buffer.end_render_pass();
     }
 }

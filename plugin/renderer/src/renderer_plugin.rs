@@ -1,11 +1,11 @@
 use crate::{
     components::PickedComponent,
     egui::egui_plugin::{Egui, EguiPlugin},
+    hl_gfx_api::HLCommandBuffer,
     picking::{PickingManager, PickingPlugin},
 };
 use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
-use lgn_graphics_api::QueueType;
 use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
@@ -136,7 +136,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer);
+    let render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
@@ -144,29 +144,25 @@ fn render_update(
     let q_cameras = q_cameras
         .iter()
         .collect::<Vec<(&CameraComponent, &Transform)>>();
-    let graphics_queue = renderer.queue(QueueType::Graphics);
 
-    renderer.flush_update_jobs(&mut render_context, &graphics_queue);
+    renderer.flush_update_jobs(&render_context);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
+        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
         picking_pass.render(
             &picking_manager,
-            &mut render_context,
+            &render_context,
             render_surface.as_mut(),
             q_drawables.as_slice(),
         );
 
-        // TODO: render graph
-        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
-        cmd_buffer.begin().unwrap();
-
         let render_pass = render_surface.test_renderpass();
         let render_pass = render_pass.write();
         render_pass.render(
-            &mut render_context,
+            &render_context,
             &cmd_buffer,
             render_surface.as_mut(),
             q_drawables.as_slice(),
@@ -179,26 +175,17 @@ fn render_update(
 
         let egui_pass = render_surface.egui_renderpass();
         let mut egui_pass = egui_pass.write();
-        egui_pass.update_font_texture(&mut render_context, &cmd_buffer, &egui.ctx);
+        egui_pass.update_font_texture(&render_context, &cmd_buffer, &egui.ctx);
         if egui.enable {
-            egui_pass.render(
-                &mut render_context,
-                &cmd_buffer,
-                render_surface.as_mut(),
-                &egui,
-            );
+            egui_pass.render(&render_context, &cmd_buffer, render_surface.as_mut(), &egui);
         }
 
-        cmd_buffer.end().unwrap();
         // queue
         let sem = render_surface.acquire();
-        graphics_queue
-            .submit(&[&cmd_buffer], &[], &[sem], None)
-            .unwrap();
+        let graphics_queue = render_context.graphics_queue();
+        graphics_queue.submit(&mut [cmd_buffer.build()], &[], &[sem], None);
 
-        render_context.release_cmd_buffer(cmd_buffer);
-
-        render_surface.present(&mut render_context, &task_pool);
+        render_surface.present(&render_context, &task_pool);
     }
 }
 

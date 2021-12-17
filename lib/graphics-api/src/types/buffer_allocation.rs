@@ -1,7 +1,4 @@
-use crate::{
-    Buffer, BufferView, BufferViewDef, CommandBuffer, IndexBufferBinding, IndexType,
-    VertexBufferBinding,
-};
+use crate::{Buffer, BufferView, BufferViewDef};
 
 #[derive(Clone, Copy)]
 pub struct Range {
@@ -29,28 +26,6 @@ impl<AllocType> BufferSubAllocation<AllocType> {
 
     pub fn size(&self) -> u64 {
         self.range.last - self.range.first
-    }
-
-    pub fn bind_as_vertex_buffer(&self, cmd_buffer: &CommandBuffer) {
-        cmd_buffer
-            .cmd_bind_vertex_buffers(
-                0,
-                &[VertexBufferBinding {
-                    buffer: &self.buffer,
-                    byte_offset: self.offset(),
-                }],
-            )
-            .unwrap();
-    }
-
-    pub fn bind_as_index_buffer(&self, cmd_buffer: &CommandBuffer, index_type: IndexType) {
-        cmd_buffer
-            .cmd_bind_index_buffer(&IndexBufferBinding {
-                buffer: &self.buffer,
-                byte_offset: self.offset(),
-                index_type,
-            })
-            .unwrap();
     }
 
     pub fn const_buffer_view(&self) -> BufferView {

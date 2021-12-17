@@ -94,4 +94,4 @@ pub mod static_mesh_render_data;
 pub use lgn_tasks::ComputeTaskPool as RenderTaskPool;
 pub mod egui;
 
-mod hl_gfx_api;
+pub mod hl_gfx_api;

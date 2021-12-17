@@ -2,7 +2,7 @@
 
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use lgn_renderer::{components::RenderSurface, RenderContext};
+use lgn_renderer::{components::RenderSurface, hl_gfx_api::HLCommandBuffer, RenderContext};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Resolution {
@@ -105,8 +105,6 @@ impl ResolutionDependentResources {
 pub struct OffscreenHelper {
     render_frame_count: u32,
     resolution_dependent_resources: ResolutionDependentResources,
-    cmd_pools: Vec<CommandPool>,
-    cmd_buffers: Vec<CommandBuffer>,
     root_signature: RootSignature,
     pipeline: Pipeline,
     bilinear_sampler: Sampler,
@@ -116,7 +114,6 @@ impl OffscreenHelper {
     pub fn new(
         shader_compiler: &HlslCompiler,
         device_context: &DeviceContext,
-        graphics_queue: &Queue,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
         shader_compiler
@@ -245,26 +242,9 @@ impl OffscreenHelper {
         let resolution_dependent_resources =
             ResolutionDependentResources::new(device_context, render_frame_count, resolution)?;
 
-        let mut cmd_pools = Vec::with_capacity(render_frame_count as usize);
-        let mut cmd_buffers = Vec::with_capacity(render_frame_count as usize);
-
-        for _ in 0..render_frame_count {
-            let cmd_pool =
-                graphics_queue.create_command_pool(&CommandPoolDef { transient: true })?;
-
-            let cmd_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
-                is_secondary: false,
-            })?;
-
-            cmd_pools.push(cmd_pool);
-            cmd_buffers.push(cmd_buffer);
-        }
-
         Ok(Self {
             render_frame_count: render_frame_count as u32,
             resolution_dependent_resources,
-            cmd_pools,
-            cmd_buffers,
             root_signature,
             pipeline,
             bilinear_sampler,
@@ -290,7 +270,7 @@ impl OffscreenHelper {
 
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
@@ -298,45 +278,37 @@ impl OffscreenHelper {
         // Render
         //
         let render_frame_idx = 0;
-        let cmd_pool = &self.cmd_pools[render_frame_idx];
-        let cmd_buffer = &self.cmd_buffers[render_frame_idx];
+        let cmd_buffer = HLCommandBuffer::new(render_context.cmd_buffer_pool());
         let render_texture = &self.resolution_dependent_resources.render_images[render_frame_idx];
         let render_texture_rtv =
             &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
         let copy_texture = &self.resolution_dependent_resources.copy_images[render_frame_idx];
 
-        cmd_pool.reset_command_pool().unwrap();
-        cmd_buffer.begin().unwrap();
-
         //
         // RenderPass
         //
-        render_surface.transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
+        render_surface.transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    render_texture,
-                    ResourceState::COPY_SRC,
-                    ResourceState::RENDER_TARGET,
-                )],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                render_texture,
+                ResourceState::COPY_SRC,
+                ResourceState::RENDER_TARGET,
+            )],
+        );
 
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_texture_rtv,
-                    load_op: LoadOp::DontCare,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue::default(),
-                }],
-                &None,
-            )
-            .unwrap();
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_texture_rtv,
+                load_op: LoadOp::DontCare,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue::default(),
+            }],
+            &None,
+        );
 
-        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+        cmd_buffer.bind_pipeline(&self.pipeline);
 
         let descriptor_set_layout = &self
             .pipeline
@@ -362,90 +334,77 @@ impl OffscreenHelper {
         let device_context = render_context.renderer().device_context();
         let descriptor_set_handle = descriptor_set_writer.flush(device_context);
 
-        cmd_buffer
-            .cmd_bind_descriptor_set_handle(
-                PipelineType::Graphics,
-                &self.root_signature,
-                descriptor_set_layout.definition().frequency,
-                descriptor_set_handle,
-            )
-            .unwrap();
+        cmd_buffer.bind_descriptor_set_handle(
+            PipelineType::Graphics,
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency,
+            descriptor_set_handle,
+        );
 
-        cmd_buffer.cmd_draw(3, 0).unwrap();
+        cmd_buffer.draw(3, 0);
 
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        cmd_buffer.end_render_pass();
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    render_texture,
-                    ResourceState::RENDER_TARGET,
-                    ResourceState::COPY_SRC,
-                )],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                render_texture,
+                ResourceState::RENDER_TARGET,
+                ResourceState::COPY_SRC,
+            )],
+        );
 
         //
         // Copy
         //
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    copy_texture,
-                    ResourceState::COMMON,
-                    ResourceState::COPY_DST,
-                )],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                copy_texture,
+                ResourceState::COMMON,
+                ResourceState::COPY_DST,
+            )],
+        );
 
         let copy_extents = render_texture.definition().extents;
         assert_eq!(copy_texture.definition().extents, copy_extents);
 
-        cmd_buffer
-            .cmd_copy_image(
-                render_texture,
-                copy_texture,
-                &CmdCopyTextureParams {
-                    src_state: ResourceState::COPY_SRC,
-                    dst_state: ResourceState::COPY_DST,
-                    src_offset: Offset3D { x: 0, y: 0, z: 0 },
-                    dst_offset: Offset3D { x: 0, y: 0, z: 0 },
-                    src_mip_level: 0,
-                    dst_mip_level: 0,
-                    src_array_slice: 0,
-                    dst_array_slice: 0,
-                    extent: copy_extents,
-                },
-            )
-            .unwrap();
+        cmd_buffer.copy_image(
+            render_texture,
+            copy_texture,
+            &CmdCopyTextureParams {
+                src_state: ResourceState::COPY_SRC,
+                dst_state: ResourceState::COPY_DST,
+                src_offset: Offset3D { x: 0, y: 0, z: 0 },
+                dst_offset: Offset3D { x: 0, y: 0, z: 0 },
+                src_mip_level: 0,
+                dst_mip_level: 0,
+                src_array_slice: 0,
+                dst_array_slice: 0,
+                extent: copy_extents,
+            },
+        );
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    copy_texture,
-                    ResourceState::COPY_DST,
-                    ResourceState::COMMON,
-                )],
-            )
-            .unwrap();
-        cmd_buffer.end().unwrap();
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                copy_texture,
+                ResourceState::COPY_DST,
+                ResourceState::COMMON,
+            )],
+        );
 
         //
         // Present the image
         //
 
         let wait_sem = render_surface.sema();
-        let graphics_queue = render_context.renderer().queue(QueueType::Graphics);
+        let graphics_queue = render_context.graphics_queue();
 
-        graphics_queue
-            .submit(&[cmd_buffer], &[wait_sem], &[], None)
-            .unwrap();
+        graphics_queue.submit(&mut [cmd_buffer.build()], &[wait_sem], &[], None);
 
-        graphics_queue.wait_for_queue_idle().unwrap();
+        graphics_queue.wait_for_queue_idle();
 
         let sub_resource = copy_texture.map_texture().unwrap();
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);

@@ -1,4 +1,6 @@
-use lgn_graphics_api::{PagedBufferAllocation, Queue, Semaphore};
+use lgn_graphics_api::{PagedBufferAllocation, Semaphore};
+
+use crate::hl_gfx_api::HLQueue;
 
 pub struct SparseBindingManager {
     sparse_buffer_bindings: Vec<PagedBufferAllocation>,
@@ -23,7 +25,7 @@ impl SparseBindingManager {
 
     pub fn commmit_sparse_bindings<'a>(
         &mut self,
-        queue: &Queue,
+        queue: &HLQueue<'_>,
         prev_frame_semaphore: &'a Semaphore,
         unbind_semaphore: &'a Semaphore,
         bind_semaphore: &'a Semaphore,

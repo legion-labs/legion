@@ -2,11 +2,9 @@ use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWrit
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
 use crate::{
+    hl_gfx_api::HLQueue,
     memory::BumpAllocatorHandle,
-    resources::{
-        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
-        TransientBufferAllocator, CommandBufferPool,
-    },
+    resources::{CommandBufferPoolHandle, DescriptorPoolHandle, TransientBufferAllocator},
     RenderHandle, Renderer,
 };
 
@@ -44,22 +42,20 @@ impl<'frame> RenderContext<'frame> {
         self.renderer
     }
 
+    pub fn graphics_queue(&self) -> HLQueue<'_> {
+        HLQueue::new(
+            self.renderer.queue_(QueueType::Graphics),
+            &self.cmd_buffer_pool_handle,
+        )
+    }
+
     pub fn cgen_runtime(&self) -> &CGenRuntime {
         self.renderer.cgen_runtime()
     }
 
-    pub fn cmd_buffer_pool(&self) -> CommandBufferPool {
-        self.cmd_buffer_pool_handle.
+    pub fn cmd_buffer_pool(&self) -> &CommandBufferPoolHandle {
+        &self.cmd_buffer_pool_handle
     }
-
-    // pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
-    //     assert_eq!(queue_type, QueueType::Graphics);
-    //     self.cmd_buffer_pool_handle.acquire()
-    // }
-
-    // pub fn release_cmd_buffer(&mut self, handle: CommandBufferHandle) {
-    //     self.cmd_buffer_pool_handle.release(handle);
-    // }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
         &self.descriptor_pool
@@ -81,12 +77,8 @@ impl<'frame> RenderContext<'frame> {
         }
     }
 
-    pub(crate) fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
-        self.transient_buffer_allocator.transfer()
-    }
-
-    pub fn release_transient_buffer_allocator(&mut self, handle: TransientBufferAllocatorHandle) {
-        self.transient_buffer_allocator = handle;
+    pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {
+        &self.transient_buffer_allocator
     }
 
     pub fn bump_allocator(&self) -> &BumpAllocatorHandle {
