@@ -18,14 +18,7 @@ impl<T> RenderHandle<T> {
             Some(e) => e,
             None => unreachable!(),
         }
-    }
-
-    pub fn as_ref(&self) -> &T {
-        match &self.inner {
-            Some(e) => e,
-            None => unreachable!(),
-        }
-    }
+    }    
 
     pub fn transfer(&mut self) -> Self {
         Self {

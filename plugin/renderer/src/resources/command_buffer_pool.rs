@@ -5,7 +5,7 @@ use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPool
 use super::OnFrameEventHandler;
 use crate::RenderHandle;
 
-// pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
+pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
 
 pub struct CommandBufferPool {
     command_pool: CommandPool,
@@ -34,7 +34,7 @@ impl CommandBufferPool {
         availables.append(in_flights.as_mut());
     }
 
-    pub(crate) fn acquire(&self) -> CommandBuffer {
+    pub(crate) fn acquire(&self) -> CommandBufferHandle {
         let mut availables = self.availables.borrow_mut();
 
         let result = if availables.is_empty() {
@@ -48,13 +48,13 @@ impl CommandBufferPool {
         let acquired_count = self.acquired_count.get();
         self.acquired_count.set(acquired_count + 1);
 
-        result
+        CommandBufferHandle::new(result)
     }
 
-    pub(crate) fn release(&self, handle: CommandBuffer) {
+    pub(crate) fn release(&self, mut handle: CommandBufferHandle) {
         assert!(self.acquired_count.get() > 0);
         let mut in_flights = self.in_flights.borrow_mut();
-        in_flights.push(handle);
+        in_flights.push(handle.take());
         let acquired_count = self.acquired_count.get();
         self.acquired_count.set(acquired_count - 1);
     }

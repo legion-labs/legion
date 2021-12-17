@@ -1,15 +1,15 @@
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
-    CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
+    CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, IndexBufferBinding, IndexType, Pipeline,
     PipelineType, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
 
-use crate::{resources::CommandBufferPoolHandle, RenderHandle};
+use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
 
 pub struct HLCommandBuffer<'rc> {
     cmd_buffer_pool: &'rc CommandBufferPoolHandle,
-    cmd_buffer: RenderHandle<CommandBuffer>,
+    cmd_buffer: CommandBufferHandle,
 }
 
 impl<'rc> HLCommandBuffer<'rc> {
@@ -18,7 +18,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         cmd_buffer.begin().unwrap();
         Self {
             cmd_buffer_pool,
-            cmd_buffer: RenderHandle::new(cmd_buffer),
+            cmd_buffer,
         }
     }
 
@@ -206,7 +206,7 @@ impl<'rc> HLCommandBuffer<'rc> {
             .cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 
-    pub fn build(mut self) -> RenderHandle<CommandBuffer> {
+    pub fn build(mut self) -> CommandBufferHandle {
         self.cmd_buffer.end().unwrap();
         self.cmd_buffer.transfer()
     }
@@ -216,7 +216,7 @@ impl<'rc> Drop for HLCommandBuffer<'rc> {
     fn drop(&mut self) {
         if self.cmd_buffer.is_valid() {
             self.cmd_buffer.end().unwrap();
-            self.cmd_buffer_pool.release(self.cmd_buffer.take());
+            self.cmd_buffer_pool.release(self.cmd_buffer.transfer());
         }
     }
 }

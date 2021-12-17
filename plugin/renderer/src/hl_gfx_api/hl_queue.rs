@@ -46,7 +46,7 @@ impl<'rc> HLQueue<'rc> {
         }
 
         for cbh in command_buffer_handles.iter_mut() {
-            self.command_buffer_pool.release(cbh.take())
+            self.command_buffer_pool.release(cbh.transfer())
         }
     }
 
