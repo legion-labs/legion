@@ -1,7 +1,8 @@
+use lgn_data_runtime::Component;
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
 
-#[data_container()]
+#[resource()]
 pub struct TestEntity {
     // Default with string literal
     #[legion(default = "string literal", readonly, category = "Name")]
@@ -36,4 +37,26 @@ pub struct TestEntity {
     // Default with Array
     #[legion(default=[0,1,2,3])]
     test_blob: Vec<u8>,
+
+    // Default SubType
+    test_sub_type: TestSubType1,
+
+    test_option_set: Option<TestSubType2>,
+    test_option_none: Option<TestSubType2>,
+}
+
+#[component]
+pub struct TestComponent {
+    test_i32: i32,
+}
+
+pub struct TestSubType1 {
+    /// Test Dynamic Array Box Component
+    test_components: Vec<Box<dyn Component>>,
+    test_string: String,
+    test_sub_type: TestSubType2,
+}
+
+pub struct TestSubType2 {
+    pub test_vec: Vec3,
 }

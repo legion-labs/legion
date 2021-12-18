@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 lgn-data-runtime = { path = "../data-runtime", version = "0.1.0" }
 lgn-data-offline = { path = "../data-offline", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
+lgn-data-model = { path = "../data-model" }
 
 # others
 serde = { version = "1.0", features = ["derive"] }

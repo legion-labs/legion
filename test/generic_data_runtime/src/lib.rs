@@ -54,7 +54,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::needless_update)]
 
 mod debug_cube {
     include!(concat!(env!("OUT_DIR"), "/debug_cube.rs"));
@@ -69,10 +69,29 @@ mod test_entity {
     include!(concat!(env!("OUT_DIR"), "/test_entity.rs"));
 }
 
+mod light_component {
+    include!(concat!(env!("OUT_DIR"), "/light_component.rs"));
+}
+mod static_mesh_component {
+    include!(concat!(env!("OUT_DIR"), "/static_mesh_component.rs"));
+}
+
+mod transform_component {
+    include!(concat!(env!("OUT_DIR"), "/transform_component.rs"));
+}
+
+mod rotation_component {
+    include!(concat!(env!("OUT_DIR"), "/rotation_component.rs"));
+}
+
 pub use debug_cube::*;
 pub use entity_dc::*;
 pub use instance_dc::*;
+pub use light_component::*;
+pub use rotation_component::*;
+pub use static_mesh_component::*;
 pub use test_entity::*;
+pub use transform_component::*;
 
 pub fn add_loaders(
     registry: lgn_data_runtime::AssetRegistryOptions,

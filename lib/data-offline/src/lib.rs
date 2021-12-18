@@ -75,6 +75,3 @@ pub mod resource;
 
 mod resourcepathid;
 pub use resourcepathid::*;
-
-mod property_descriptor;
-pub use property_descriptor::*;

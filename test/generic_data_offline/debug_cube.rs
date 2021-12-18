@@ -1,7 +1,7 @@
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
 
-#[data_container()]
+#[resource]
 struct DebugCube {
     #[legion(default=(0.0,0.0,0.0))]
     pub position: Vec3,

@@ -41,7 +41,7 @@ pub enum Error {
 
     /// Invalid Resource Reflection
     #[error("Resource {0} doesn't have reflection.")]
-    InvalidResourceReflection(ResourceTypeAndId),
+    InvalidTypeReflection(ResourceTypeAndId),
 }
 
 /// System that manage the current state of the Loaded Offline Data

@@ -2004,6 +2004,7 @@ dependencies = [
  "lgn-async",
  "lgn-codec-api",
  "lgn-core",
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",
@@ -2578,28 +2579,40 @@ name = "generic_data_offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "erased-serde",
  "lazy_static",
  "lgn-data-codegen",
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
+ "memoffset 0.6.5",
  "serde",
  "serde_json",
+ "typetag",
 ]
 
 [[package]]
 name = "generic_data_runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
+ "erased-serde",
  "lazy_static",
  "lgn-data-codegen",
+ "lgn-data-model",
  "lgn-data-runtime",
+ "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
+ "memoffset 0.6.5",
  "serde",
+ "serde_json",
+ "typetag",
 ]
 
 [[package]]
@@ -3730,6 +3743,7 @@ dependencies = [
  "generic_data_runtime",
  "lgn-data-codegen",
  "lgn-data-compiler",
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
 ]
@@ -3850,13 +3864,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-data-model"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "erased-serde",
+ "itertools",
+ "lazy_static",
+ "lgn-math",
+ "lgn-utils",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel 0.5.1",
+ "erased-serde",
  "hex",
+ "lazy_static",
  "lgn-content-store",
+ "lgn-data-model",
  "lgn-data-runtime",
  "lgn-utils",
  "rand 0.8.4",
@@ -3872,14 +3905,18 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "crossbeam-channel 0.5.1",
+ "erased-serde",
  "flurry",
  "hex",
+ "lazy_static",
  "lgn-content-store",
+ "lgn-data-model",
  "lgn-data-runtime-macros",
  "lgn-utils",
  "log",
  "serde",
  "serde_json",
+ "typetag",
  "uuid",
  "xxhash-rust",
 ]
@@ -3899,6 +3936,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "generic_data_offline",
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-utils",
@@ -4027,7 +4065,11 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "erased-serde",
+ "lazy_static",
+ "lgn-data-model",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

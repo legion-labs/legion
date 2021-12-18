@@ -58,20 +58,21 @@
 #![warn(missing_docs)]
 
 mod compiler_codegen;
-mod offline_codegen;
+mod component_codegen;
 mod reflection;
+mod reflection_codegen;
 mod resource_codegen;
 mod runtime_codegen;
 
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-use std::{io::Write, path::PathBuf};
 
 use quote::{format_ident, ToTokens};
 use reflection::DataContainerMetaInfo;
 
 /// Type of Generation
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum GenerationType {
     /// Generate code for Offline (tools, editor)
     OfflineFormat,
@@ -83,7 +84,7 @@ pub enum GenerationType {
 /// # Errors
 pub fn generate_data_container_code(
     source_path: &std::path::Path,
-    gen_type: &GenerationType,
+    gen_type: GenerationType,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let src = std::fs::read_to_string(source_path).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
@@ -105,34 +106,43 @@ pub fn generate_data_container_code(
     let mut add_uses = true;
     for item in &ast.items {
         if let syn::Item::Struct(item_struct) = &item {
-            for a in &item_struct.attrs {
-                if a.path.segments.len() == 1 && a.path.segments[0].ident == "data_container" {
-                    if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
-                        if *gen_type == GenerationType::OfflineFormat {
-                            let out_token = offline_codegen::generate(&meta_info);
-                            gen_file.write_all(out_token.to_string().as_bytes())?;
+            if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
+                let out_token = reflection_codegen::generate_reflection(&meta_info, gen_type);
+                gen_file.write_all(out_token.to_string().as_bytes())?;
 
-                            let out_token = resource_codegen::generate(&meta_info, add_uses);
-                            gen_file.write_all(out_token.to_string().as_bytes())?;
+                if meta_info.is_resource {
+                    gen_file.write_all(
+                        if gen_type == GenerationType::OfflineFormat {
+                            resource_codegen::generate(&meta_info, add_uses)
                         } else {
-                            let out_token = runtime_codegen::generate(&meta_info, add_uses);
-                            gen_file.write_all(out_token.to_string().as_bytes())?;
+                            runtime_codegen::generate(&meta_info, add_uses)
                         }
-                        add_uses = false;
-                        processed_structs.push(meta_info);
-                    }
+                        .to_string()
+                        .as_bytes(),
+                    )?;
+                    processed_structs.push(meta_info);
+                } else if meta_info.is_component {
+                    gen_file.write_all(
+                        component_codegen::generate_component(&meta_info, gen_type)
+                            .to_string()
+                            .as_bytes(),
+                    )?;
                 }
+
+                add_uses = false;
             }
         }
     }
 
     // Generate Loader and Processor Registration code
-    let out_token = if *gen_type == GenerationType::OfflineFormat {
-        resource_codegen::generate_registration_code(&processed_structs)
-    } else {
-        runtime_codegen::generate_registration_code(&processed_structs)
-    };
-    gen_file.write_all(out_token.to_string().as_bytes())?;
+    if !processed_structs.is_empty() {
+        let out_token = if gen_type == GenerationType::OfflineFormat {
+            resource_codegen::generate_registration_code(&processed_structs)
+        } else {
+            runtime_codegen::generate_registration_code(&processed_structs)
+        };
+        gen_file.write_all(out_token.to_string().as_bytes())?;
+    }
 
     gen_file.flush()?;
 
@@ -161,12 +171,6 @@ fn extract_crate_name(path: &Path) -> syn::Ident {
     format_ident!("{}", crate_name)
 }
 
-/// Creates a path to a definition file relative to current crate's directory.
-pub fn definition_path(path: impl AsRef<Path>) -> PathBuf {
-    let package_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
-    std::path::Path::new(&package_path).join(path)
-}
-
 /// Default Code Generator (called from Build Scripts)
 /// # Errors
 pub fn generate_data_compiler_code(
@@ -185,29 +189,26 @@ pub fn generate_data_compiler_code(
 
     for item in &ast.items {
         if let syn::Item::Struct(item_struct) = &item {
-            for a in &item_struct.attrs {
-                if a.path.segments.len() == 1 && a.path.segments[0].ident == "data_container" {
-                    if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
-                        let gen_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
-                            .join(Path::new(&format!(
-                                "compiler_{}.rs",
-                                &meta_info.name.to_lowercase()
-                            )));
-
-                        let mut gen_file = std::fs::File::create(&gen_path)?;
-
-                        let out_token = compiler_codegen::generate(
-                            &meta_info,
-                            &offline_crate_name,
-                            &runtime_crate_name,
+            if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
+                if meta_info.is_resource {
+                    let gen_path =
+                        std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join(
+                            Path::new(&format!("compiler_{}.rs", &meta_info.name.to_lowercase())),
                         );
-                        gen_file.write_all(out_token.to_string().as_bytes())?;
-                        gen_file.flush()?;
 
-                        Command::new("rustfmt")
-                            .args(&[gen_path.as_os_str()])
-                            .status()?;
-                    }
+                    let mut gen_file = std::fs::File::create(&gen_path)?;
+
+                    let out_token = compiler_codegen::generate(
+                        &meta_info,
+                        &offline_crate_name,
+                        &runtime_crate_name,
+                    );
+                    gen_file.write_all(out_token.to_string().as_bytes())?;
+                    gen_file.flush()?;
+
+                    Command::new("rustfmt")
+                        .args(&[gen_path.as_os_str()])
+                        .status()?;
                 }
             }
         }
@@ -230,12 +231,12 @@ macro_rules! data_container_gen {
             if package_path.ends_with("_offline") {
                 lgn_data_codegen::generate_data_container_code(
                     std::path::Path::new(&data_path),
-                    &lgn_data_codegen::GenerationType::OfflineFormat,
+                    lgn_data_codegen::GenerationType::OfflineFormat,
                 ).expect("Offline data codegen failed");
             } else if package_path.ends_with("_runtime") {
                 lgn_data_codegen::generate_data_container_code(
                     std::path::Path::new(&data_path),
-                    &lgn_data_codegen::GenerationType::RuntimeFormat,
+                    lgn_data_codegen::GenerationType::RuntimeFormat,
                 ).expect("Runtime data codegen failed");
             } else if package_path.ends_with("_compiler") {
                 lgn_data_codegen::generate_data_compiler_code(std::path::Path::new(&data_path)
@@ -243,5 +244,20 @@ macro_rules! data_container_gen {
             }
             println!("cargo:rerun-if-changed={}", data_path);
         )*
+    };
+}
+
+/// Helper function to be used in build.rs files to generate the proper
+/// binding to be included by crates
+///
+/// # Errors
+/// Returns `Err` if the data is format is not compliant
+#[macro_export]
+macro_rules! compiler_container_gen {
+    ( $x:expr ) => {
+        let mut data_path = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
+        let data_path = data_path.join($x);
+        lgn_data_codegen::generate_data_compiler_code(&data_path).expect("Compiler codegen failed");
+        println!("cargo:rerun-if-changed={}", data_path.display());
     };
 }
