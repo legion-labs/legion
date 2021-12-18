@@ -25,7 +25,11 @@ impl GrpcClient {
     /// Such a client cannot call `gRPC` servers that operate over HTTP 1 or are behind a non-HTTP
     /// 2 compatible proxy.
     pub fn new(uri: Uri) -> Self {
-        let https_connector = HttpsConnector::with_native_roots();
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
         let client = hyper::Client::builder()
             .pool_max_idle_per_host(std::usize::MAX)
             .pool_idle_timeout(None)
@@ -44,7 +48,11 @@ impl GrpcWebClient {
     ///
     /// The client expects the remote server to understand the `gRPC-Web` protocol.
     pub fn new(uri: Uri) -> Self {
-        let https_connector = HttpsConnector::with_native_roots();
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
         let client = hyper::Client::builder()
             .pool_max_idle_per_host(std::usize::MAX)
             .pool_idle_timeout(None)
