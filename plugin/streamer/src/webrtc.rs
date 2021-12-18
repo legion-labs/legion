@@ -3,15 +3,13 @@ use std::sync::Arc;
 use interceptor::registry::Registry;
 use log::{debug, info, warn};
 use webrtc::{
-    api::{
-        interceptor_registry::register_default_interceptors, media_engine::MediaEngine, APIBuilder,
-        API,
-    },
-    data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
-    peer::{
-        configuration::RTCConfiguration, ice::ice_server::RTCIceServer,
-        peer_connection::RTCPeerConnection, peer_connection_state::RTCPeerConnectionState,
+    api::{media_engine::MediaEngine, APIBuilder, API},
+    data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    ice_transport::ice_server::RTCIceServer,
+    peer_connection::{
+        configuration::RTCConfiguration, peer_connection_state::RTCPeerConnectionState,
         sdp::session_description::RTCSessionDescription, signaling_state::RTCSignalingState,
+        RTCPeerConnection,
     },
 };
 
@@ -25,7 +23,7 @@ pub(crate) struct WebRTCServer {
 }
 
 impl WebRTCServer {
-    /// Instanciate a new `WebRTCServer` with its own media engin and
+    /// Instantiate a new `WebRTCServer` with its own media engin and
     /// interceptors registry.
     ///
     /// Typically, a single `WebRTCServer` is enough for any given application.
@@ -43,7 +41,10 @@ impl WebRTCServer {
         let mut registry = Registry::new();
 
         // Use the default set of Interceptors
-        registry = register_default_interceptors(registry, &mut media_engine)?;
+        // Function here became async... https://github.com/webrtc-rs/webrtc/pull/146
+        // registry = webrtc::api::interceptor_registry::register_default_interceptors(registry, &mut media_engine)?;
+        registry = webrtc::api::interceptor_registry::configure_nack(registry, &mut media_engine);
+        registry = webrtc::api::interceptor_registry::configure_rtcp_reports(registry);
 
         // Create the API object with the MediaEngine
         let api = APIBuilder::new()
@@ -318,7 +319,7 @@ trait RTCDataChannelID {
     fn name(&self) -> String;
 }
 
-impl RTCDataChannelID for webrtc::data::data_channel::RTCDataChannel {
+impl RTCDataChannelID for RTCDataChannel {
     fn name(&self) -> String {
         format!("{}-{}", self.label(), self.id())
     }

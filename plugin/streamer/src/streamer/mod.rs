@@ -12,8 +12,8 @@ use lgn_renderer::{
 };
 use log::{error, info, warn};
 use webrtc::{
-    data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
-    peer::peer_connection::RTCPeerConnection,
+    data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    peer_connection::RTCPeerConnection,
 };
 
 mod control_stream;

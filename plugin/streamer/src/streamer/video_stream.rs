@@ -18,7 +18,7 @@ use lgn_telemetry::prelude::*;
 use lgn_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
 use serde::Serialize;
-use webrtc::data::data_channel::RTCDataChannel;
+use webrtc::data_channel::RTCDataChannel;
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();

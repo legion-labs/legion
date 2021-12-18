@@ -182,7 +182,7 @@ skip = [
 # by default infinite
 skip-tree = [
   { name = "tauri", version = "1.0.0-beta.8" },
-  { name = "webrtc", version = "0.2.0" },
+  { name = "webrtc", version = "0.3.4" },
 ]
 
 # This section is considered when running `cargo deny check sources`.
