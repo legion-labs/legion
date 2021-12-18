@@ -1,4 +1,4 @@
-//! Generic data codegen test (runtime)
+//! Generic data codegen test (offline)
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -54,50 +54,11 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::needless_update)]
 
-mod debug_cube {
-    include!(concat!(env!("OUT_DIR"), "/debug_cube.rs"));
-}
-mod entity_dc {
-    include!(concat!(env!("OUT_DIR"), "/entity_dc.rs"));
-}
-mod instance_dc {
-    include!(concat!(env!("OUT_DIR"), "/instance_dc.rs"));
-}
-mod test_entity {
-    include!(concat!(env!("OUT_DIR"), "/test_entity.rs"));
-}
+#[path = "../codegen/offline/mod.rs"]
+#[cfg(feature = "offline")]
+pub mod offline;
 
-mod light_component {
-    include!(concat!(env!("OUT_DIR"), "/light_component.rs"));
-}
-mod static_mesh_component {
-    include!(concat!(env!("OUT_DIR"), "/static_mesh_component.rs"));
-}
-
-mod transform_component {
-    include!(concat!(env!("OUT_DIR"), "/transform_component.rs"));
-}
-
-mod rotation_component {
-    include!(concat!(env!("OUT_DIR"), "/rotation_component.rs"));
-}
-
-pub use debug_cube::*;
-pub use entity_dc::*;
-pub use instance_dc::*;
-pub use light_component::*;
-pub use rotation_component::*;
-pub use static_mesh_component::*;
-pub use test_entity::*;
-pub use transform_component::*;
-
-pub fn add_loaders(
-    registry: lgn_data_runtime::AssetRegistryOptions,
-) -> lgn_data_runtime::AssetRegistryOptions {
-    let registry = debug_cube::add_loaders(registry);
-    let registry = entity_dc::add_loaders(registry);
-    let registry = instance_dc::add_loaders(registry);
-    test_entity::add_loaders(registry)
-}
+#[path = "../codegen/runtime/mod.rs"]
+#[cfg(feature = "runtime")]
+pub mod runtime;

@@ -20,6 +20,8 @@ lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 
 # temp dependency on sample-data, until offline data moved to plugins
 sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }
-generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "offline",
+] }
 
 tokio = { version = "1.13", features = ["full"] }

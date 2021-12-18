@@ -16,8 +16,10 @@ lgn-graphics-runtime = { path = "../../lib/graphics-runtime" }
 lgn-graphics-offline = { path = "../../lib/graphics-offline" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
-generic_data_offline = { path = "../generic_data_offline" }
-generic_data_runtime = { path = "../generic_data_runtime" }
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
 
 # Sample data test
 sample-data-offline = { path = "../sample-data-offline", version = "0.1.0" }

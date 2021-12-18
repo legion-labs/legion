@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use generic_data_offline::{DebugCube, TestComponent, TestEntity};
+use generic_data::offline::{DebugCube, TestComponent, TestEntity};
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -125,7 +125,7 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
     let mut registry = ResourceRegistryOptions::new();
     registry = offline_data::register_resource_types(registry);
     registry = lgn_graphics_offline::register_resource_types(registry);
-    registry = generic_data_offline::register_resource_types(registry);
+    registry = generic_data::offline::register_resource_types(registry);
     let registry = registry.create_registry();
 
     (project, registry)
@@ -225,7 +225,7 @@ fn build_test_entity(
                     .test_components
                     .push(Box::new(TestComponent { test_i32: i }));
             });
-            test_entity.test_option_set = Some(generic_data_offline::TestSubType2::default());
+            test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
 
             project
                 .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)

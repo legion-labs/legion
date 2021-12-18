@@ -81,7 +81,7 @@ impl Plugin for ResourceRegistryPlugin {
                 let mut registry = ResourceRegistryOptions::new();
                 registry = offline_data::register_resource_types(registry);
                 registry = lgn_graphics_offline::register_resource_types(registry);
-                registry = generic_data_offline::register_resource_types(registry);
+                registry = generic_data::offline::register_resource_types(registry);
                 let registry = registry.create_async_registry();
                 let project = Arc::new(Mutex::new(project));
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use generic_data_offline::TestEntity;
+use generic_data::offline::TestEntity;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
 use tokio::sync::Mutex;
@@ -17,7 +17,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     let project = Arc::new(Mutex::new(project));
 
     let mut registry = ResourceRegistryOptions::new();
-    registry = generic_data_offline::register_resource_types(registry);
+    registry = generic_data::offline::register_resource_types(registry);
     let registry = registry.create_async_registry();
 
     let asset_registry = AssetRegistryOptions::new();

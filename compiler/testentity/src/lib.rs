@@ -66,8 +66,8 @@ use lgn_data_compiler::{
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::Resource;
 use std::env;
-type OfflineType = generic_data_offline::TestEntity;
-type RuntimeType = generic_data_runtime::TestEntity;
+type OfflineType = generic_data::offline::TestEntity;
+type RuntimeType = generic_data::runtime::TestEntity;
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
     build_version: DATA_BUILD_VERSION,
@@ -91,7 +91,7 @@ fn compile_resource(offline: &OfflineType) -> RuntimeType {
         test_float32: offline.test_float32,
         test_int: offline.test_int,
         test_blob: offline.test_blob.clone(),
-        test_sub_type: generic_data_runtime::TestSubType1::default(),
+        test_sub_type: generic_data::runtime::TestSubType1::default(),
         test_option_set: None,
         test_option_none: None,
     }
