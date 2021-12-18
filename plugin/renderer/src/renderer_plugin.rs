@@ -129,7 +129,7 @@ fn render_update(
     renderer: ResMut<'_, Renderer>,
     picking_manager: ResMut<'_, PickingManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
+    q_drawables: Query<'_, '_, (&StaticMesh, &Transform, Option<&PickedComponent>)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
@@ -139,7 +139,7 @@ fn render_update(
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
         .iter()
-        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
+        .collect::<Vec<(&StaticMesh, &Transform, Option<&PickedComponent>)>>();
     let default_camera = CameraComponent::default_transform();
     let q_cameras = q_cameras
         .iter()
@@ -157,6 +157,11 @@ fn render_update(
             &mut render_context,
             render_surface.as_mut(),
             q_drawables.as_slice(),
+            if !q_cameras.is_empty() {
+                q_cameras[0].1
+            } else {
+                &default_camera
+            },
         );
 
         // TODO: render graph
@@ -166,6 +171,20 @@ fn render_update(
         let render_pass = render_surface.test_renderpass();
         let render_pass = render_pass.write();
         render_pass.render(
+            &mut render_context,
+            &cmd_buffer,
+            render_surface.as_mut(),
+            q_drawables.as_slice(),
+            if !q_cameras.is_empty() {
+                q_cameras[0].1
+            } else {
+                &default_camera
+            },
+        );
+
+        let debug_renderpass = render_surface.debug_renderpass();
+        let debug_renderpass = debug_renderpass.write();
+        debug_renderpass.render(
             &mut render_context,
             &cmd_buffer,
             render_surface.as_mut(),

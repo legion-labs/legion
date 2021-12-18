@@ -10,7 +10,7 @@ use crate::{
     RenderHandle, Renderer,
 };
 
-type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
+pub(super) type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,

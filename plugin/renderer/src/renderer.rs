@@ -448,9 +448,23 @@ impl TmpRenderPass {
                     byte_offset: 12,
                     gl_attribute_name: Some("normal".to_owned()),
                 },
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32A32_SFLOAT,
+                    buffer_index: 0,
+                    location: 2,
+                    byte_offset: 24,
+                    gl_attribute_name: Some("color".to_owned()),
+                },
+                VertexLayoutAttribute {
+                    format: Format::R32G32_SFLOAT,
+                    buffer_index: 0,
+                    location: 3,
+                    byte_offset: 40,
+                    gl_attribute_name: Some("uv_coord".to_owned()),
+                },
             ],
             buffers: vec![VertexLayoutBuffer {
-                stride: 24,
+                stride: 48,
                 rate: VertexAttributeRate::Vertex,
             }],
         };
@@ -518,7 +532,7 @@ impl TmpRenderPass {
         render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
         camera_transform: &Transform,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
@@ -529,13 +543,13 @@ impl TmpRenderPass {
                     texture_view: render_surface.render_target_view(),
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
-                    clear_value: ColorClearValue(self.color),
+                    clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
                 }],
                 &Some(DepthStencilRenderTargetBinding {
                     texture_view: render_surface.depth_stencil_texture_view(),
                     depth_load_op: LoadOp::Clear,
                     stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::DontCare,
+                    depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
                     clear_value: DepthStencilClearValue {
                         depth: 1.0,
@@ -567,7 +581,8 @@ impl TmpRenderPass {
         );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
+        for (_index, (static_mesh_component, _transform, picked_component)) in
+            static_meshes.iter().enumerate()
         {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {

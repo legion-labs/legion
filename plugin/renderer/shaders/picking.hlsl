@@ -1,6 +1,8 @@
 struct VertexIn {
     float3 pos : POSITION;
-    float3 normal : NORMAL;   
+    float3 normal : NORMAL;
+    float4 color: COLOR;
+    float2 uv_coord : TEXCOORD0;
 };
 
 struct VertexOut {  

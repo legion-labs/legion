@@ -13,6 +13,7 @@ use lgn_graphics_api::{
 
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
+use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
@@ -281,9 +282,23 @@ impl PickingRenderPass {
                     byte_offset: 12,
                     gl_attribute_name: Some("normal".to_owned()),
                 },
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32A32_SFLOAT,
+                    buffer_index: 0,
+                    location: 2,
+                    byte_offset: 24,
+                    gl_attribute_name: Some("color".to_owned()),
+                },
+                VertexLayoutAttribute {
+                    format: Format::R32G32_SFLOAT,
+                    buffer_index: 0,
+                    location: 3,
+                    byte_offset: 40,
+                    gl_attribute_name: Some("uv_coord".to_owned()),
+                },
             ],
             buffers: vec![VertexLayoutBuffer {
-                stride: 24,
+                stride: 48,
                 rate: VertexAttributeRate::Vertex,
             }],
         };
@@ -392,7 +407,8 @@ impl PickingRenderPass {
         picking_manager: &PickingManager,
         render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        camera_transform: &Transform,
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
@@ -438,17 +454,18 @@ impl PickingRenderPass {
             let projection_matrix =
                 Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
-            let eye = Vec3::new(0.0, 1.0, -2.0);
-            let center = Vec3::new(0.0, 0.0, 0.0);
-            let up = Vec3::new(0.0, 1.0, 0.0);
-            let view_matrix = Mat4::look_at_lh(eye, center, up);
+            let view_matrix = Mat4::look_at_lh(
+                camera_transform.translation,
+                camera_transform.translation + camera_transform.forward(),
+                Vec3::new(0.0, 1.0, 0.0),
+            );
 
             let view_proj_matrix = projection_matrix * view_matrix;
             let inv_view_proj_matrix = view_proj_matrix.inverse();
 
             let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-            for (_index, (static_mesh_component, _picked_component)) in
+            for (_index, (static_mesh_component, _transform, _picked_component)) in
                 static_meshes.iter().enumerate()
             {
                 let mesh_id = static_mesh_component.mesh_id;
