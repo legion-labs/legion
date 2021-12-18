@@ -32,8 +32,8 @@ http = "0.2"
 http-body = "0.4"
 pin-project = "1"
 dyn-clone = "1"
-lambda_runtime = "0.4"
-lambda_http = "0.4"
+lambda_runtime = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
+lambda_http = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
 strum = "0.23"
 strum_macros = "0.23"
 
