@@ -1,4 +1,4 @@
-use lgn_graphics_api::ShaderResourceType;
+use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_graphics_cgen_runtime::{
     CGenDef, CGenDescriptorDef, CGenDescriptorSetDef, CGenPipelineLayoutDef, CGenTypeDef,
 };
@@ -103,10 +103,13 @@ impl From<&DescriptorSet> for CGenDescriptorSetDef {
 
 impl From<&PipelineLayout> for CGenPipelineLayoutDef {
     fn from(pipeline_layout: &PipelineLayout) -> Self {
-        let descriptor_set_layout_ids = pipeline_layout
-            .descriptor_sets()
-            .map(|x| x.object_id())
-            .collect();
+        let mut descriptor_set_layout_ids = [u32::MAX; MAX_DESCRIPTOR_SET_LAYOUTS];
+        // pipeline_layout
+        //     .descriptor_sets()
+        //     .map(|x| (x.object_id(), x))
+        //     .for_each(|(id, descriptor_set_info)| {
+        //         descriptor_set_layout_ids[descriptor_set_info.frequency()] = id
+        //     });
 
         Self {
             name: pipeline_layout.name.clone(),

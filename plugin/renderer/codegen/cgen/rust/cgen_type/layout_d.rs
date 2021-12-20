@@ -2,7 +2,8 @@
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
+#[derive(Default, Clone, Copy)]
 pub struct LayoutD {
-	pub(crate) a: Float4,
+	pub a: Float4,
 } // LayoutD
 

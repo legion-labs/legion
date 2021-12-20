@@ -269,7 +269,7 @@ impl TmpRenderPass {
             constant_data[44] = light_settings.shininess;
 
             let sub_allocation =
-                transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 

@@ -48,7 +48,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
     let typestring = get_rust_typestring(model, member.object_id);
 
-    format!("pub(crate) {}: {},", member.name, typestring)
+    format!("pub {}: {},", member.name, typestring)
 }
 
 fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String {
@@ -82,6 +82,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     }
 
     // struct
+    writer.add_line("#[derive(Default, Clone, Copy)]");
     writer.add_line(format!("pub struct {} {{", struct_def.name));
 
     writer.indent();

@@ -326,13 +326,13 @@ fn render_update(
     {
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let constant_data = crate::cgen::ViewData::default();
+        let view_data = crate::cgen::ViewData::default();
 
         // view_matrix.write_cols_to_slice(&mut constant_data[0..]);
         // projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
 
         let sub_allocation =
-            transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+            transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
         let bump_allocator = render_context.bump_allocator();
 
@@ -350,7 +350,7 @@ fn render_update(
 
         ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
 
-        let descriptor_handle = ds_data.build(render_context.renderer().device_context());
+        let _descriptor_handle = ds_data.build(render_context.renderer().device_context());
     }
 
     // For each surface/view, we have to execute the render graph

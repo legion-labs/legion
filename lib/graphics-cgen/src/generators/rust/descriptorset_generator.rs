@@ -60,7 +60,7 @@ fn generate_rust_descriptorset(
                 CGenType::Struct(e) => {
                     writer.add_line("#[allow(unused_imports)]");
                     writer.add_line(format!(
-                        "use super::super::c_gen_type::{}::{};",
+                        "use super::super::cgen_type::{}::{};",
                         e.name.to_snake_case(),
                         e.name
                     ));

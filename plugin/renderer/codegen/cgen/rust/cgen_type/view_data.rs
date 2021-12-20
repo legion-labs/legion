@@ -2,8 +2,9 @@
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
+#[derive(Default, Clone, Copy)]
 pub struct ViewData {
-	pub(crate) view: Float4x4,
-	pub(crate) projection: Float4x4,
+	pub view: Float4x4,
+	pub projection: Float4x4,
 } // ViewData
 

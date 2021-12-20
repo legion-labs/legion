@@ -1,7 +1,7 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanBuffer;
 use crate::{
-    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult, QueueType,
+    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult,
     ResourceCreation, ResourceUsage,
 };
 
@@ -17,7 +17,6 @@ pub struct BufferElementData {
 #[derive(Clone, Copy, Debug)]
 pub struct BufferDef {
     pub size: u64,
-    pub queue_type: QueueType,
     pub usage_flags: ResourceUsage,
     pub creation_flags: ResourceCreation,
 }
@@ -26,7 +25,6 @@ impl Default for BufferDef {
     fn default() -> Self {
         Self {
             size: 0,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::empty(),
             creation_flags: ResourceCreation::empty(),
         }
@@ -44,7 +42,6 @@ impl BufferDef {
     pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
             size: size as u64,
-            queue_type: QueueType::Graphics,
             usage_flags,
             creation_flags: ResourceCreation::empty(),
         }

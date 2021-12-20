@@ -1,9 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    alloc::Layout,
+    sync::{Arc, Mutex},
+};
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, QueueType, ResourceCreation,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation,
     ResourceState, ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
@@ -39,7 +42,6 @@ impl UnifiedStaticBuffer {
         }
         let buffer_def = BufferDef {
             size: virtual_buffer_size,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             creation_flags,
         };

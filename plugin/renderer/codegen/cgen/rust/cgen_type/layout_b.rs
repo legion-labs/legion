@@ -3,9 +3,10 @@
 use super::layout_a::LayoutA;
 use lgn_graphics_cgen_runtime::prelude::*;
 
+#[derive(Default, Clone, Copy)]
 pub struct LayoutB {
-	pub(crate) a: Float3,
-	pub(crate) b: Float4,
-	pub(crate) c: LayoutA,
+	pub a: Float3,
+	pub b: Float4,
+	pub c: LayoutA,
 } // LayoutB
 

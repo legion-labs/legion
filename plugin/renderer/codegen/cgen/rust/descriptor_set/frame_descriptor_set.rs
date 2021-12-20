@@ -4,7 +4,7 @@ use lgn_graphics_api::DeviceContext;
 use lgn_graphics_api::DescriptorSetLayoutDef;
 use lgn_graphics_api::DescriptorSetLayout;
 #[allow(unused_imports)]
-use super::super::c_gen_type::layout_a::LayoutA;
+use super::super::cgen_type::layout_a::LayoutA;
 
 pub struct FrameDescriptorSet {
 	api_layout : DescriptorSetLayout,

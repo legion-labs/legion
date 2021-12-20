@@ -2,11 +2,12 @@ use std::slice;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
-    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DescriptorRef,
-    DeviceContext, Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef,
-    MemoryUsage, Pipeline, PipelineType, PrimitiveTopology, QueueType, RasterizerState,
-    ResourceCreation, ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp,
-    VertexLayout,
+    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DescriptorDef,
+    DescriptorRef, DescriptorSetLayoutDef, DeviceContext, Format, GraphicsPipelineDef, LoadOp,
+    MemoryAllocation, MemoryAllocationDef, MemoryUsage, Pipeline, PipelineType, PrimitiveTopology,
+    PushConstantDef, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    RootSignature, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use crate::{
@@ -52,7 +53,6 @@ impl ReadbackBufferPool {
     pub(crate) fn new(device_context: &DeviceContext, picking_manager: &PickingManager) -> Self {
         let count_buffer_def = BufferDef {
             size: 4,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             creation_flags: ResourceCreation::empty(),
         };
@@ -69,7 +69,6 @@ impl ReadbackBufferPool {
 
         let picked_buffer_def = BufferDef {
             size: 16 * 1024,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             creation_flags: ResourceCreation::empty(),
         };
@@ -197,7 +196,7 @@ impl PickingRenderPass {
 
         let count_buffer_def = BufferDef {
             size: 4,
-            queue_type: QueueType::Graphics,
+
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS
                 | ResourceUsage::AS_TRANSFERABLE,
@@ -220,7 +219,7 @@ impl PickingRenderPass {
 
         let picked_buffer_def = BufferDef {
             size: 16 * 1024,
-            queue_type: QueueType::Graphics,
+
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_UNORDERED_ACCESS,
             creation_flags: ResourceCreation::empty(),
         };

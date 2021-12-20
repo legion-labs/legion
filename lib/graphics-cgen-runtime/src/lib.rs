@@ -60,17 +60,23 @@ use std::{marker::PhantomData, sync::Arc};
 
 use lgn_graphics_api::{
     BufferView, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext, ShaderResourceType,
+    DescriptorSetWriter, DeviceContext, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use serde::{Deserialize, Serialize};
 
+#[derive(Default, Clone, Copy)]
 pub struct Float1(f32);
+
+#[derive(Default, Clone, Copy)]
 pub struct Float2(glam::Vec2);
 
+#[derive(Default, Clone, Copy)]
 pub struct Float3(glam::Vec3);
 
+#[derive(Default, Clone, Copy)]
 pub struct Float4(glam::Vec4);
 
+#[derive(Default, Clone, Copy)]
 pub struct Float4x4(glam::Mat4);
 
 pub mod prelude {
@@ -96,15 +102,12 @@ pub struct CGenDescriptorSetDef {
     pub name: String,
     pub frequency: u32,
     pub descriptor_defs: Vec<CGenDescriptorDef>,
-    // pub flat_sampler_count: u32,
-    // pub flat_texture_count: u32,
-    // pub flat_buffer_count: u32,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CGenPipelineLayoutDef {
     pub name: String,
-    pub descriptor_set_layout_ids: Vec<u32>,
+    pub descriptor_set_layout_ids: [u32; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub push_constant_type: Option<u32>,
 }
 
@@ -220,7 +223,7 @@ pub trait DescriptorSetLayoutStaticInfo {
     fn descriptor_set_layout_id() -> u32;
 }
 
-pub struct DescriptorSetData<'renderer, 'frame, T>
+pub struct DescriptorSetData_<'renderer, 'frame, T>
 where
     T: DescriptorSetLayoutStaticInfo,
     T::DescriptorID: ToIndex + Copy,
@@ -234,7 +237,7 @@ pub trait ToIndex {
     fn to_index(self) -> usize;
 }
 
-impl<'renderer, 'frame, T: DescriptorSetLayoutStaticInfo> DescriptorSetData<'renderer, 'frame, T>
+impl<'renderer, 'frame, T: DescriptorSetLayoutStaticInfo> DescriptorSetData_<'renderer, 'frame, T>
 where
     T::DescriptorID: ToIndex + Copy,
 {
@@ -277,7 +280,7 @@ where
 
 pub mod fake {
 
-    use crate::{DescriptorSetData, DescriptorSetLayoutStaticInfo, ToIndex};
+    use crate::{DescriptorSetData_, DescriptorSetLayoutStaticInfo, ToIndex};
 
     pub struct Fake;
 
@@ -298,7 +301,7 @@ pub mod fake {
         }
     }
 
-    pub type FakeDescriptorSetData<'renderer, 'frame> = DescriptorSetData<'renderer, 'frame, Fake>;
+    pub type FakeDescriptorSetData<'renderer, 'frame> = DescriptorSetData_<'renderer, 'frame, Fake>;
 
     impl DescriptorSetLayoutStaticInfo for Fake {
         type DescriptorID = FakeDescriptorID;
