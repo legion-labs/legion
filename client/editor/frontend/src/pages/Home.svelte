@@ -90,6 +90,7 @@
         <Panel
           tabs={["editor", "runtime", "script"]}
           bind:activeTab={editorActiveTab}
+          let:isFocused
         >
           <div slot="tab" let:tab>
             {#if tab === "editor" || tab === "runtime"}
@@ -109,6 +110,7 @@
                 <RemoteWindow
                   serverType={editorActiveTab}
                   bind:desiredResolution={desiredVideoResolution}
+                  {isFocused}
                 />
               {/key}
             {:else if editorActiveTab === "script"}
