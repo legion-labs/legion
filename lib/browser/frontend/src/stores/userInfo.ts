@@ -8,7 +8,7 @@ export default asyncData(async () => {
   const awsCognitoAuthenticator = createAwsCognito();
 
   const accessToken = window.__TAURI__
-    ? await invoke("get_access_token")
+    ? await invoke("plugin:browser|get_access_token")
     : getCookie("access_token");
 
   if (!accessToken) {

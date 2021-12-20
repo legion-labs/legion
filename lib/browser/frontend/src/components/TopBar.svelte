@@ -44,7 +44,7 @@
 
   async function authenticate() {
     if (window.__TAURI__) {
-      const userInfo = await invoke("authenticate");
+      const userInfo = await invoke("plugin:browser|authenticate");
 
       log.debug("auth", userInfo);
 
