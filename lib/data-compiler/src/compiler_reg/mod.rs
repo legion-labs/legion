@@ -205,36 +205,42 @@ mod tests {
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        let result = registry.compile(
-            compiler_index + 1,
-            compile_path.clone(),
-            &[],
-            &[],
-            cas.clone(),
-            &proj_dir,
-            &env,
-        );
-
-        assert!(matches!(
-            result.unwrap_err(),
-            CompilerError::InvalidTransform
-        ));
-
-        let output = registry
-            .compile(
-                compiler_index,
+        // testing invalid compiler index
+        {
+            let result = registry.compile(
+                compiler_index + 1,
                 compile_path.clone(),
                 &[],
                 &[],
-                cas,
+                cas.clone(),
                 &proj_dir,
                 &env,
-            )
-            .expect("valid output");
+            );
 
-        assert_eq!(output.compiled_resources.len(), 1);
-        assert_eq!(output.compiled_resources[0].path, compile_path);
-        assert_eq!(output.compiled_resources[0].checksum, Checksum::from(7));
-        assert_eq!(output.compiled_resources[0].size, 7);
+            assert!(matches!(
+                result.unwrap_err(),
+                CompilerError::InvalidTransform
+            ));
+        }
+
+        // testing successful compilation
+        {
+            let output = registry
+                .compile(
+                    compiler_index,
+                    compile_path.clone(),
+                    &[],
+                    &[],
+                    cas,
+                    &proj_dir,
+                    &env,
+                )
+                .expect("valid output");
+
+            assert_eq!(output.compiled_resources.len(), 1);
+            assert_eq!(output.compiled_resources[0].path, compile_path);
+            assert_eq!(output.compiled_resources[0].checksum, Checksum::from(7));
+            assert_eq!(output.compiled_resources[0].size, 7);
+        }
     }
 }
