@@ -12,7 +12,8 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::picking::PickingRenderPass;
-use crate::{RenderContext, Renderer, TmpRenderPass};
+use crate::render_pass::TmpRenderPass;
+use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
