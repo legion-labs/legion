@@ -320,11 +320,16 @@ impl TmpRenderPass {
         lights: &[(&Transform, &LightComponent)],
         light_settings: &LightSettings,
         const NUM_LIGHTS: usize = 8;
+        const DIRECTIONAL_LIGHT_SIZE: usize = 32;
+        const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
+        const SPOTLIGHT_SIZE: usize = 32;
 
         // Lights
-        let mut directional_lights_data = Vec::<f32>::with_capacity(32 * NUM_LIGHTS);
-        let mut omnidirectional_lights_data = Vec::<f32>::with_capacity(32 * NUM_LIGHTS);
-        let mut spotlights_data = Vec::<f32>::with_capacity(64 * NUM_LIGHTS);
+        let mut directional_lights_data =
+            Vec::<f32>::with_capacity(DIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+        let mut omnidirectional_lights_data =
+            Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+        let mut spotlights_data = Vec::<f32>::with_capacity(SPOTLIGHT_SIZE * NUM_LIGHTS);
         let mut num_directional_lights = 0;
         let mut num_omnidirectional_lights = 0;
         let mut num_spotlights = 0;
@@ -343,26 +348,32 @@ impl TmpRenderPass {
                     directional_lights_data.push(light.color.0);
                     directional_lights_data.push(light.color.1);
                     directional_lights_data.push(light.color.2);
-                    directional_lights_data.push(0.0);
                     num_directional_lights += 1;
+                    unsafe {
+                        directional_lights_data
+                            .set_len(DIRECTIONAL_LIGHT_SIZE / 4 * num_directional_lights as usize);
+                    }
                 }
-                LightType::Omnidirectional { attenuation } => {
+                LightType::Omnidirectional => {
                     let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
 
                     omnidirectional_lights_data.push(transform_in_view.x);
                     omnidirectional_lights_data.push(transform_in_view.y);
                     omnidirectional_lights_data.push(transform_in_view.z);
                     omnidirectional_lights_data.push(light.radiance);
-                    omnidirectional_lights_data.push(attenuation);
                     omnidirectional_lights_data.push(light.color.0);
                     omnidirectional_lights_data.push(light.color.1);
                     omnidirectional_lights_data.push(light.color.2);
                     num_omnidirectional_lights += 1;
+                    unsafe {
+                        omnidirectional_lights_data.set_len(
+                            OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
+                        );
+                    }
                 }
                 LightType::Spotlight {
                     direction,
                     cone_angle,
-                    attenuation,
                 } => {
                     let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
                     let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
@@ -375,43 +386,46 @@ impl TmpRenderPass {
                     spotlights_data.push(direction_in_view.y);
                     spotlights_data.push(direction_in_view.z);
                     spotlights_data.push(cone_angle);
-                    spotlights_data.push(attenuation);
                     spotlights_data.push(light.color.0);
                     spotlights_data.push(light.color.1);
                     spotlights_data.push(light.color.2);
                     num_spotlights += 1;
                     unsafe {
-                        spotlights_data.set_len(64 * num_spotlights as usize);
+                        spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * num_spotlights as usize);
                     }
                 }
             }
         }
         unsafe {
-            directional_lights_data.set_len(32 * NUM_LIGHTS);
-            omnidirectional_lights_data.set_len(32 * NUM_LIGHTS);
-            spotlights_data.set_len(64 * NUM_LIGHTS);
+            directional_lights_data.set_len(DIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
+            omnidirectional_lights_data.set_len(OMNIDIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
+            spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * NUM_LIGHTS);
         }
 
         let directional_lights_buffer_view = transient_allocator
             .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(32, true);
+            .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let omnidirectional_lights_buffer_view = transient_allocator
             .copy_data(
                 &omnidirectional_lights_data,
                 ResourceUsage::AS_SHADER_RESOURCE,
             )
-            .structured_buffer_view(32, true);
+            .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let spotlights_buffer_view = transient_allocator
             .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(64, true);
+            .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
 
             constant_data[36] = f32::from_bits(num_directional_lights);
             constant_data[37] = f32::from_bits(num_omnidirectional_lights);
             constant_data[38] = f32::from_bits(num_spotlights);
             constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
             constant_data[40] = f32::from_bits(light_settings.specular as u32);
+            constant_data[41] = light_settings.specular_reflection;
+            constant_data[42] = light_settings.diffuse_reflection;
+            constant_data[43] = light_settings.ambient_reflection;
+            constant_data[44] = light_settings.shininess;
                 )
                 .unwrap();
             descriptor_set_writer

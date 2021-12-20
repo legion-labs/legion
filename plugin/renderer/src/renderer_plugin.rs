@@ -104,6 +104,19 @@ fn update_ui(
 
         ui.checkbox(&mut light_settings.diffuse, "Diffuse");
         ui.checkbox(&mut light_settings.specular, "Specular");
+        ui.add(
+            egui::Slider::new(&mut light_settings.specular_reflection, 0.0..=1.0)
+                .text("specular_reflection"),
+        );
+        ui.add(
+            egui::Slider::new(&mut light_settings.diffuse_reflection, 0.0..=1.0)
+                .text("diffuse_reflection"),
+        );
+        ui.add(
+            egui::Slider::new(&mut light_settings.ambient_reflection, 0.0..=1.0)
+                .text("ambient_reflection"),
+        );
+        ui.add(egui::Slider::new(&mut light_settings.shininess, 1.0..=32.0).text("shininess"));
         ui.label("Lights");
         for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {

@@ -20,8 +20,14 @@ struct ConstData {
     uint num_directional_lights;
     uint num_omnidirectional_lights;
     uint num_spotlights;
+
+    // light settings
     bool diffuse;
     bool specular;
+    float specular_reflection;
+    float diffuse_reflection;
+    float ambient_reflection;
+    float shininess;
 };
 
 struct EntityTransforms {
@@ -59,7 +65,6 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 struct OmnidirectionalLight {
     float3 pos;
     float radiance;
-    float attenuation;
     float3 color;
 };
 
@@ -74,7 +79,6 @@ struct SpotLight {
     float radiance;
     float3 dir;
     float cone_angle;
-    float attenuation;
     float3 color;
 };
 
@@ -91,7 +95,7 @@ StructuredBuffer<SpotLight> spotlights;
 float GetSpecular(float3 pos, float3 light_dir, float3 normal) {
     float3 view_dir = normalize(-pos);
     float3 light_reflect = normalize(reflect(-light_dir, normal));
-    return pow(saturate(dot(view_dir, light_reflect)), 32);
+    return pow(saturate(dot(view_dir, light_reflect)), const_data.shininess);
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal, float3 pos) {
@@ -160,10 +164,10 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) 
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    float4 uniform_color = const_data.color; 
-    float3 ambient_color = uniform_color * 0.01;
-    float3 diffuse_color = uniform_color.xyz;
-    float3 spec_color = diffuse_color + float3(0.5, 0.5, 0.5);
+    float3 uniform_color = const_data.color.xyz; 
+    float3 ambient_color = uniform_color * const_data.ambient_reflection;
+    float3 diffuse_color = uniform_color * const_data.diffuse_reflection;
+    float3 spec_color = float3(1.0, 1.0, 1.0) * const_data.specular_reflection;
 
     float3 color = ambient_color;
     for (uint i = 0; i < const_data.num_directional_lights; i++)
@@ -211,7 +215,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         }
     }
 
-    float4 result = float4(pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), 1.0);
+    float4 result = float4(color, 1.0);
     float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
 
     if (push_constant.is_picked != 0)

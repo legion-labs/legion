@@ -2,22 +2,18 @@ use lgn_ecs::prelude::*;
 use lgn_math::Vec3;
 
 pub enum LightType {
-    Omnidirectional {
-        attenuation: f32,
-    },
-    Directional {
-        direction: Vec3,
-    },
-    Spotlight {
-        direction: Vec3,
-        cone_angle: f32,
-        attenuation: f32,
-    },
+    Omnidirectional,
+    Directional { direction: Vec3 },
+    Spotlight { direction: Vec3, cone_angle: f32 },
 }
 
 pub struct LightSettings {
     pub specular: bool,
     pub diffuse: bool,
+    pub specular_reflection: f32,
+    pub diffuse_reflection: f32,
+    pub ambient_reflection: f32,
+    pub shininess: f32,
 }
 
 impl Default for LightSettings {
@@ -25,6 +21,10 @@ impl Default for LightSettings {
         Self {
             specular: true,
             diffuse: true,
+            specular_reflection: 1.0,
+            diffuse_reflection: 1.0,
+            ambient_reflection: 0.2,
+            shininess: 16.0,
         }
     }
 }
@@ -40,7 +40,7 @@ pub struct LightComponent {
 impl Default for LightComponent {
     fn default() -> Self {
         Self {
-            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            light_type: LightType::Omnidirectional,
             color: (1.0, 1.0, 1.0),
             radiance: 40.0,
             enabled: true,

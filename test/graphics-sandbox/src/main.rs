@@ -345,7 +345,7 @@ fn init_light_test(mut commands: Commands) {
         .spawn()
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            light_type: LightType::Omnidirectional,
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
@@ -356,7 +356,7 @@ fn init_light_test(mut commands: Commands) {
         .spawn()
         .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            light_type: LightType::Omnidirectional,
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
@@ -370,7 +370,6 @@ fn init_light_test(mut commands: Commands) {
             light_type: LightType::Spotlight {
                 direction: Vec3::new(0.0, 1.0, 0.0),
                 cone_angle: std::f32::consts::PI / 4.0,
-                attenuation: 1.0,
             },
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
@@ -432,7 +431,7 @@ fn init_scene(mut commands: Commands) {
         .spawn()
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            light_type: LightType::Omnidirectional,
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: true,
