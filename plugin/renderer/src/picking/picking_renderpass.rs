@@ -7,8 +7,7 @@ use lgn_graphics_api::{
     MemoryAllocation, MemoryAllocationDef, MemoryUsage, Pipeline, PipelineType, PrimitiveTopology,
     PushConstantDef, QueueType, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
     RootSignature, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags,
-    StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
-    VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
+    StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use lgn_math::{Mat4, Vec3};
@@ -18,7 +17,6 @@ use lgn_transform::prelude::Transform;
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
     resources::{CommandBufferHandle, GpuSafePool, OnFrameEventHandler},
-    static_mesh_render_data::StaticMeshRenderData,
     RenderContext, RenderHandle, Renderer,
 };
 
@@ -136,7 +134,6 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    static_meshes: Vec<StaticMeshRenderData>,
     root_signature: RootSignature,
     pipeline: Pipeline,
 
@@ -267,40 +264,8 @@ impl PickingRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 12,
-                    gl_attribute_name: Some("normal".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32A32_SFLOAT,
-                    buffer_index: 0,
-                    location: 2,
-                    byte_offset: 24,
-                    gl_attribute_name: Some("color".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 3,
-                    byte_offset: 40,
-                    gl_attribute_name: Some("uv_coord".to_owned()),
-                },
-            ],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 48,
-                rate: VertexAttributeRate::Vertex,
-            }],
+            attributes: vec![],
+            buffers: vec![],
         };
 
         let depth_state = DepthState {
@@ -334,15 +299,6 @@ impl PickingRenderPass {
                 primitive_topology: PrimitiveTopology::TriangleList,
             })
             .unwrap();
-
-        //
-        // Per frame resources
-        //
-        let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0),
-            StaticMeshRenderData::new_cube(0.5),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0),
-        ];
 
         let count_buffer_def = BufferDef {
             size: 4,
@@ -389,7 +345,6 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def).unwrap();
 
         Self {
-            static_meshes,
             root_signature,
             pipeline,
             readback_buffer_pools: GpuSafePool::new(3),
@@ -407,7 +362,7 @@ impl PickingRenderPass {
         picking_manager: &PickingManager,
         render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera_transform: &Transform,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -465,21 +420,9 @@ impl PickingRenderPass {
 
             let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-            for (_index, (static_mesh_component, _transform, _picked_component)) in
+            for (_index, (static_mesh_component, _picked_component)) in
                 static_meshes.iter().enumerate()
             {
-                let mesh_id = static_mesh_component.mesh_id;
-                if mesh_id >= self.static_meshes.len() {
-                    continue;
-                }
-
-                let mesh = &self.static_meshes[static_mesh_component.mesh_id];
-
-                let mut sub_allocation =
-                    transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
-
-                sub_allocation.bind_as_vertex_buffer(&cmd_buffer);
-
                 let mut constant_data: [f32; 39] = [0.0; 39];
                 view_proj_matrix.write_cols_to_slice(&mut constant_data[0..]);
                 inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
@@ -496,7 +439,7 @@ impl PickingRenderPass {
 
                 constant_data[38] = 1.0;
 
-                sub_allocation =
+                let sub_allocation =
                     transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
                 let const_buffer_view = sub_allocation.const_buffer_view();
@@ -545,16 +488,17 @@ impl PickingRenderPass {
                     )
                     .unwrap();
 
-                let mut push_constant_data: [u32; 2] = [0; 2];
-                push_constant_data[0] = static_mesh_component.offset as u32;
-                push_constant_data[1] = static_mesh_component.picking_id;
+                let mut push_constant_data: [u32; 3] = [0; 3];
+                push_constant_data[0] = static_mesh_component.vertex_offset;
+                push_constant_data[1] = static_mesh_component.world_offset;
+                push_constant_data[2] = static_mesh_component.picking_id;
 
                 cmd_buffer
                     .cmd_push_constants(&self.root_signature, &push_constant_data)
                     .unwrap();
 
                 cmd_buffer
-                    .cmd_draw((mesh.num_vertices()) as u32, 0)
+                    .cmd_draw(static_mesh_component.num_verticies, 0)
                     .unwrap();
             }
 

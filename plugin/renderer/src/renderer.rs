@@ -10,8 +10,7 @@ use lgn_graphics_api::{
     FenceStatus, Format, GfxApi, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
     PrimitiveTopology, PushConstantDef, Queue, QueueType, RasterizerState, ResourceState,
     ResourceUsage, RootSignature, RootSignatureDef, SampleCount, Semaphore, ShaderPackage,
-    ShaderStageDef, ShaderStageFlags, StencilOp, StoreOp, VertexAttributeRate, VertexLayout,
-    VertexLayoutAttribute, VertexLayoutBuffer, MAX_DESCRIPTOR_SET_LAYOUTS,
+    ShaderStageDef, ShaderStageFlags, StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
@@ -32,7 +31,6 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
 
 pub struct Renderer {
@@ -79,7 +77,7 @@ impl Renderer {
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
         let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/cgen/blob/cgen_def.blob"));
         let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
@@ -163,7 +161,11 @@ impl Renderer {
         self.test_transform_data = test;
     }
 
-    pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
+        &self.static_buffer
+    }
+
+    pub fn test_add_update_jobs(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 
@@ -310,7 +312,6 @@ impl Drop for Renderer {
 }
 
 pub struct TmpRenderPass {
-    static_meshes: Vec<StaticMeshRenderData>,
     root_signature: RootSignature,
     pipeline: Pipeline,
     pub color: [f32; 4],
@@ -433,40 +434,8 @@ impl TmpRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 12,
-                    gl_attribute_name: Some("normal".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32A32_SFLOAT,
-                    buffer_index: 0,
-                    location: 2,
-                    byte_offset: 24,
-                    gl_attribute_name: Some("color".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 3,
-                    byte_offset: 40,
-                    gl_attribute_name: Some("uv_coord".to_owned()),
-                },
-            ],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 48,
-                rate: VertexAttributeRate::Vertex,
-            }],
+            attributes: vec![],
+            buffers: vec![],
         };
 
         let depth_state = DepthState {
@@ -501,17 +470,7 @@ impl TmpRenderPass {
             })
             .unwrap();
 
-        //
-        // Per frame resources
-        //
-        let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0),
-            StaticMeshRenderData::new_cube(0.5),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0),
-        ];
-
         Self {
-            static_meshes,
             root_signature,
             pipeline,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
@@ -532,7 +491,7 @@ impl TmpRenderPass {
         render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera_transform: &Transform,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
@@ -581,21 +540,8 @@ impl TmpRenderPass {
         );
         let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for (_index, (static_mesh_component, _transform, picked_component)) in
-            static_meshes.iter().enumerate()
+        for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
         {
-            let mesh_id = static_mesh_component.mesh_id;
-            if mesh_id >= self.static_meshes.len() {
-                continue;
-            }
-
-            let mesh = &self.static_meshes[static_mesh_component.mesh_id];
-
-            let mut sub_allocation =
-                transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
-
-            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
-
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
                 f32::from(static_mesh_component.color.g) / 255.0f32,
@@ -611,7 +557,7 @@ impl TmpRenderPass {
             constant_data[34] = color.2;
             constant_data[35] = 1.0;
 
-            sub_allocation =
+            let sub_allocation =
                 transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
@@ -667,16 +613,17 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
-            let mut push_constant_data: [u32; 2] = [0; 2];
-            push_constant_data[0] = static_mesh_component.offset as u32;
-            push_constant_data[1] = if picked_component.is_some() { 1 } else { 0 };
+            let mut push_constant_data: [u32; 3] = [0; 3];
+            push_constant_data[0] = static_mesh_component.vertex_offset;
+            push_constant_data[1] = static_mesh_component.world_offset;
+            push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
 
             cmd_buffer
                 .cmd_push_constants(&self.root_signature, &push_constant_data)
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((mesh.num_vertices()) as u32, 0)
+                .cmd_draw(static_mesh_component.num_verticies as u32, 0)
                 .unwrap();
         }
 

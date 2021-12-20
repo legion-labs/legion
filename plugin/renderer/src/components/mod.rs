@@ -1,3 +1,9 @@
+mod camera_component;
+pub use camera_component::*;
+
+mod manipulator_component;
+pub use manipulator_component::*;
+
 mod picked_component;
 pub use picked_component::*;
 
@@ -9,6 +15,3 @@ pub use rotation_component::*;
 
 mod static_mesh;
 pub use static_mesh::*;
-
-mod camera_component;
-pub use camera_component::*;

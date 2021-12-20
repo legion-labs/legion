@@ -6,8 +6,7 @@ use lgn_graphics_api::{
     DescriptorSetLayoutDef, FillMode, Format, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
     PrimitiveTopology, PushConstantDef, RasterizerState, ResourceUsage, RootSignature,
     RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags, StencilOp,
-    StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
@@ -15,12 +14,11 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
-    static_mesh_render_data::StaticMeshRenderData,
+    resources::DefaultMeshes,
     RenderContext, Renderer, TransientBufferAllocatorHandle,
 };
 
 pub struct DebugRenderPass {
-    static_meshes: Vec<StaticMeshRenderData>,
     root_signature: RootSignature,
     _solid_pso_depth: Pipeline,
     wire_pso_depth: Pipeline,
@@ -144,40 +142,8 @@ impl DebugRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 12,
-                    gl_attribute_name: Some("normal".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32A32_SFLOAT,
-                    buffer_index: 0,
-                    location: 2,
-                    byte_offset: 24,
-                    gl_attribute_name: Some("color".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 3,
-                    byte_offset: 40,
-                    gl_attribute_name: Some("uv_coord".to_owned()),
-                },
-            ],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 48,
-                rate: VertexAttributeRate::Vertex,
-            }],
+            attributes: vec![],
+            buffers: vec![],
         };
 
         let depth_state_enabled = DepthState {
@@ -279,19 +245,7 @@ impl DebugRenderPass {
             })
             .unwrap();
 
-        //
-        // Per frame resources
-        //
-        let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0),
-            StaticMeshRenderData::new_cube(0.5),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0),
-            StaticMeshRenderData::new_ground_plane(6, 5, 0.25),
-            StaticMeshRenderData::new_wireframe_cube(1.0),
-        ];
-
         Self {
-            static_meshes,
             root_signature,
             _solid_pso_depth: solid_pso_depth,
             wire_pso_depth,
@@ -328,6 +282,14 @@ impl DebugRenderPass {
             )
             .unwrap();
 
+        let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "static_buffer",
+                &[DescriptorRef::BufferView(&static_buffer_ro_view)],
+            )
+            .unwrap();
+
         let descriptor_set_handle =
             descriptor_set_writer.flush(render_context.renderer().device_context());
 
@@ -343,19 +305,22 @@ impl DebugRenderPass {
 
     pub fn render_mesh(
         &self,
-        mesh_id: usize,
+        mesh_id: u32,
         cmd_buffer: &CommandBuffer,
-        transient_allocator: &mut TransientBufferAllocatorHandle,
+        default_meshes: &DefaultMeshes,
     ) {
-        let mesh = &self.static_meshes[mesh_id];
-
-        let sub_allocation =
-            transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
-
-        sub_allocation.bind_as_vertex_buffer(cmd_buffer);
+        let mut push_constant_data: [u32; 1] = [0; 1];
+        push_constant_data[0] = default_meshes.mesh_offset_from_id(mesh_id);
 
         cmd_buffer
-            .cmd_draw((mesh.num_vertices()) as u32, 0)
+            .cmd_push_constants(&self.root_signature, &push_constant_data)
+            .unwrap();
+
+        cmd_buffer
+            .cmd_draw(
+                default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
+                0,
+            )
             .unwrap();
     }
 
@@ -365,6 +330,7 @@ impl DebugRenderPass {
         cmd_buffer: &CommandBuffer,
         render_context: &mut RenderContext<'_>,
         transient_allocator: &mut TransientBufferAllocatorHandle,
+        default_meshes: &DefaultMeshes,
     ) {
         Mat4::IDENTITY.write_cols_to_slice(&mut constant_data[0..]);
 
@@ -382,28 +348,30 @@ impl DebugRenderPass {
             transient_allocator,
         );
 
-        self.render_mesh(3, cmd_buffer, transient_allocator);
+        self.render_mesh(4, cmd_buffer, default_meshes);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_aabb_for_mesh(
         &self,
-        mesh_id: usize,
+        mesh_id: u32,
         transform: &Transform,
         mut constant_data: [f32; 53],
         cmd_buffer: &CommandBuffer,
         render_context: &mut RenderContext<'_>,
         transient_allocator: &mut TransientBufferAllocatorHandle,
+        default_meshes: &DefaultMeshes,
     ) {
-        let mesh = &self.static_meshes[mesh_id];
+        let mesh = default_meshes.mesh_from_id(mesh_id);
 
         let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
         let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
         for i in 0..mesh.num_vertices() {
             let position = Vec3::new(
-                mesh.vertices[i * 12],
-                mesh.vertices[i * 12 + 1],
-                mesh.vertices[i * 12 + 2],
+                mesh.vertices[i * 14],
+                mesh.vertices[i * 14 + 1],
+                mesh.vertices[i * 14 + 2],
             );
 
             let world_pos = transform.mul_vec3(position);
@@ -437,7 +405,7 @@ impl DebugRenderPass {
             transient_allocator,
         );
 
-        self.render_mesh(4, cmd_buffer, transient_allocator);
+        self.render_mesh(3, cmd_buffer, default_meshes);
     }
 
     pub fn render(
@@ -445,8 +413,9 @@ impl DebugRenderPass {
         render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
         camera_transform: &Transform,
+        default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer
             .cmd_begin_render_pass(
@@ -494,26 +463,21 @@ impl DebugRenderPass {
             cmd_buffer,
             render_context,
             &mut transient_allocator,
+            default_meshes,
         );
 
-        for (_index, (static_mesh_component, transform, picked_component)) in
+        for (_index, (static_mesh_component, transform, _picked_component)) in
             static_meshes.iter().enumerate()
         {
-            if let Some(_picked_component) = picked_component {
-                let mesh_id = static_mesh_component.mesh_id;
-                if mesh_id >= self.static_meshes.len() {
-                    continue;
-                }
-
-                self.render_aabb_for_mesh(
-                    mesh_id,
-                    transform,
-                    constant_data,
-                    cmd_buffer,
-                    render_context,
-                    &mut transient_allocator,
-                );
-            }
+            self.render_aabb_for_mesh(
+                static_mesh_component.mesh_id as u32,
+                transform,
+                constant_data,
+                cmd_buffer,
+                render_context,
+                &mut transient_allocator,
+                default_meshes,
+            );
         }
 
         render_context.release_transient_buffer_allocator(transient_allocator);

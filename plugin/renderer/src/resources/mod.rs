@@ -4,6 +4,9 @@ pub(crate) use command_buffer_pool::*;
 mod cpu_pool;
 pub(crate) use cpu_pool::*;
 
+mod default_meshes;
+pub use default_meshes::*;
+
 mod descriptor_pool;
 pub(crate) use descriptor_pool::*;
 

@@ -2,6 +2,7 @@ use crate::{
     components::PickedComponent,
     egui::egui_plugin::{Egui, EguiPlugin},
     picking::{PickingManager, PickingPlugin},
+    resources::DefaultMeshes,
 };
 use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
@@ -36,9 +37,12 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
+        let default_meshes = DefaultMeshes::new(&renderer);
+
         app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
         app.add_plugin(PickingPlugin::new(self.has_window));
         app.insert_resource(renderer);
+        app.insert_resource(default_meshes);
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
@@ -110,13 +114,13 @@ fn update_transform(
     let mut gpu_data = renderer.aquire_transform_data();
 
     for (entity, transform, mut mesh) in query.iter_mut() {
-        mesh.offset = gpu_data.ensure_index_allocated(entity.id());
+        mesh.world_offset = gpu_data.ensure_index_allocated(entity.id()) as u32;
 
         let world = EntityTransforms {
             world: transform.compute_matrix(),
         };
 
-        updater.add_update_jobs(&[world], mesh.offset);
+        updater.add_update_jobs(&[world], u64::from(mesh.world_offset));
     }
 
     renderer.test_add_update_jobs(updater.job_blocks());
@@ -124,12 +128,14 @@ fn update_transform(
     renderer.release_transform_data(gpu_data);
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (&StaticMesh, &Transform, Option<&PickedComponent>)>,
+    q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
+    q_debug_drawables: Query<'_, '_, (&StaticMesh, &Transform, &PickedComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
@@ -139,7 +145,11 @@ fn render_update(
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
         .iter()
-        .collect::<Vec<(&StaticMesh, &Transform, Option<&PickedComponent>)>>();
+        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
+    let q_debug_drawables =
+        q_debug_drawables
+            .iter()
+            .collect::<Vec<(&StaticMesh, &Transform, &PickedComponent)>>();
     let default_camera = CameraComponent::default_transform();
     let q_cameras = q_cameras
         .iter()
@@ -188,12 +198,13 @@ fn render_update(
             &mut render_context,
             &cmd_buffer,
             render_surface.as_mut(),
-            q_drawables.as_slice(),
+            q_debug_drawables.as_slice(),
             if !q_cameras.is_empty() {
                 q_cameras[0].1
             } else {
                 &default_camera
             },
+            &default_meshes,
         );
 
         let egui_pass = render_surface.egui_renderpass();
