@@ -1,4 +1,4 @@
-import log from "@/lib/log";
+import log from "../../lib/log";
 import { KeyCode, fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
 
 const logLabel = "remote window inputs";
@@ -96,7 +96,7 @@ export type KeyboardInput = Type<"KeyboardInput"> & {
 };
 
 /** The Input type union */
-export type Input =
+export type RemoteWindowInput =
   | MouseButtonInput
   | MouseMotion
   | MouseWheel
@@ -104,12 +104,7 @@ export type Input =
   | KeyboardInput;
 
 /** A function passed to the `remotedWindowEvents` action that will be called when an event is dispatched */
-export type Listener = (input: Input) => void;
-
-export type Options = {
-  isFocused: boolean;
-  listener: Listener;
-};
+export type Listener = (input: RemoteWindowInput) => void;
 
 type State = {
   mouseState: ElementState;
@@ -124,10 +119,9 @@ type State = {
    */
   activeKeys: Record<string, null>;
   previousMousePosition: Vec2 | null;
-  isFocused: boolean;
 };
 
-function createEvents(state: State, element: HTMLElement, listener: Listener) {
+function createEvents(state: State, element: HTMLElement, onInput: Listener) {
   function getCurrentMousePosition({
     clientX,
     clientY,
@@ -141,10 +135,6 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
   }
 
   function onContextMenu(event: MouseEvent) {
-    if (!isNode(event.target) || !element.contains(event.target)) {
-      return;
-    }
-
     event.preventDefault();
     event.stopPropagation();
 
@@ -152,10 +142,6 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
   }
 
   function onMouseDown(event: MouseEvent) {
-    if (!isNode(event.target) || !element.contains(event.target)) {
-      return;
-    }
-
     state.mouseState = "Pressed";
 
     const mouseButtonInput: MouseButtonInput = {
@@ -167,7 +153,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Mouse button input ${mouseButtonInput}`);
 
-    listener(mouseButtonInput);
+    onInput(mouseButtonInput);
   }
 
   function onMouseUp(event: MouseEvent) {
@@ -190,7 +176,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Mouse button input ${mouseButtonInput}`);
 
-    listener(mouseButtonInput);
+    onInput(mouseButtonInput);
   }
 
   function onMouseMove(event: MouseEvent) {
@@ -217,14 +203,10 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Cursor moved ${mouseMotion}`);
 
-    listener(mouseMotion);
+    onInput(mouseMotion);
   }
 
   function onWheel(event: WheelEvent) {
-    if (!isNode(event.target) || !element.contains(event.target)) {
-      return;
-    }
-
     event.preventDefault();
 
     let unit: MouseScrollUnit;
@@ -268,14 +250,10 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Mouse wheel ${wheelInput}`);
 
-    listener(wheelInput);
+    onInput(wheelInput);
   }
 
   function onTouchStart(event: TouchEvent) {
-    if (!isNode(event.target) || !element.contains(event.target)) {
-      return;
-    }
-
     event.preventDefault();
 
     for (let i = 0; i < event.changedTouches.length; i++) {
@@ -296,7 +274,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
       log.debug(logLabel, log.json`Touch input ${touchInput}`);
 
-      listener(touchInput);
+      onInput(touchInput);
     }
   }
 
@@ -305,10 +283,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const changedTouch = event.changedTouches.item(i)!;
 
-      if (
-        (!isNode(event.target) || !element.contains(event.target)) &&
-        !(changedTouch.identifier in state.activeTouches)
-      ) {
+      if (!(changedTouch.identifier in state.activeTouches)) {
         continue;
       }
 
@@ -324,7 +299,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
       log.debug(logLabel, log.json`Touch input ${touchInput}`);
 
-      listener(touchInput);
+      onInput(touchInput);
     }
   }
 
@@ -360,7 +335,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
       log.debug(logLabel, log.json`Touch input ${touchInput}`);
 
-      listener(touchInput);
+      onInput(touchInput);
     }
   }
 
@@ -396,15 +371,11 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
       log.debug(logLabel, log.json`Touch input ${touchInput}`);
 
-      listener(touchInput);
+      onInput(touchInput);
     }
   }
 
   function onKeyDown(event: KeyboardEvent) {
-    if (!state.isFocused) {
-      return;
-    }
-
     const key = keyCodeFromBrowserKey(event.key, event.location);
 
     // We don't report unknown keys or keys that are being pressed already
@@ -425,14 +396,10 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Keyboard input ${keyboardInput}`);
 
-    listener(keyboardInput);
+    onInput(keyboardInput);
   }
 
   function onKeyUp(event: KeyboardEvent) {
-    if (!state.isFocused) {
-      return;
-    }
-
     const key = keyCodeFromBrowserKey(event.key, event.location);
 
     if (!key || !(key in state.activeKeys)) {
@@ -452,103 +419,107 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
 
     log.debug(logLabel, log.json`Keyboard input ${keyboardInput}`);
 
-    listener(keyboardInput);
+    onInput(keyboardInput);
   }
 
   return {
-    onContextMenu,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
-    onWheel,
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-    onTouchCancel,
-    onKeyDown,
-    onKeyUp,
+    // Window listeners, useful when an event occurs outside
+    // the remote window and still has to be sent to the server
+    window: {
+      onMouseMove,
+      onMouseUp,
+    },
+    // Listeners attached to the element
+    element: {
+      onContextMenu,
+      onMouseDown,
+      onWheel,
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+      onTouchCancel,
+      onKeyDown,
+      onKeyUp,
+    },
   };
 }
 
-export default function remoteWindowEvents(
+/**
+ * The `removeWindowInputs` action will automatically attach all keyboard, touch,
+ * and mouse input events, and turn them into proper lgn-input's inputs.
+ *
+ * All inputs will be passed down to the provided `onInput` function.
+ */
+export default function remoteWindowInputs(
   element: HTMLElement,
-  { isFocused, listener }: Options
+  onInput: Listener
 ) {
   element.style.touchAction = "none";
+
+  element.tabIndex = 0;
 
   const state: State = {
     mouseState: "Released",
     activeTouches: {},
     activeKeys: {},
     previousMousePosition: null,
-    isFocused,
   };
 
-  const {
-    onContextMenu,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
-    onWheel,
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-    onTouchCancel,
-    onKeyDown,
-    onKeyUp,
-  } = createEvents(state, element, listener);
+  const listeners = createEvents(state, element, onInput);
 
-  // Global listeners, useful when an event occurs outside
-  // the remote window but still has to be sent to the server
-  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mousemove", listeners.window.onMouseMove);
 
-  window.addEventListener("mouseup", onMouseUp);
+  window.addEventListener("mouseup", listeners.window.onMouseUp);
 
-  window.addEventListener("touchmove", onTouchMove);
+  element.addEventListener("contextmenu", listeners.element.onContextMenu);
 
-  window.addEventListener("touchend", onTouchEnd);
+  element.addEventListener("mousedown", listeners.element.onMouseDown);
 
-  window.addEventListener("touchcancel", onTouchCancel);
+  element.addEventListener("wheel", listeners.element.onWheel, {
+    passive: false,
+  });
 
-  window.addEventListener("keydown", onKeyDown);
+  element.addEventListener("touchstart", listeners.element.onTouchStart);
 
-  window.addEventListener("keyup", onKeyUp);
+  element.addEventListener("touchmove", listeners.element.onTouchMove);
 
-  // Element listeners
-  element.addEventListener("contextmenu", onContextMenu);
+  element.addEventListener("touchend", listeners.element.onTouchEnd);
 
-  element.addEventListener("mousedown", onMouseDown);
+  element.addEventListener("touchcancel", listeners.element.onTouchCancel);
 
-  element.addEventListener("wheel", onWheel, { passive: false });
+  element.addEventListener("keydown", listeners.element.onKeyDown);
 
-  element.addEventListener("touchstart", onTouchStart);
+  element.addEventListener("keyup", listeners.element.onKeyUp);
 
   return {
-    update({ isFocused }: Options) {
-      state.isFocused = isFocused;
-    },
     destroy() {
-      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mousemove", listeners.window.onMouseMove);
 
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("mouseup", listeners.window.onMouseUp);
 
-      window.removeEventListener("touchmove", onTouchMove);
+      element.removeEventListener(
+        "contextmenu",
+        listeners.element.onContextMenu
+      );
 
-      window.removeEventListener("touchend", onTouchEnd);
+      element.removeEventListener("mousedown", listeners.element.onMouseDown);
 
-      window.removeEventListener("touchcancel", onTouchCancel);
+      element.removeEventListener("wheel", listeners.element.onWheel);
 
-      window.removeEventListener("keydown", onKeyDown);
+      element.removeEventListener("touchstart", listeners.element.onTouchStart);
 
-      window.removeEventListener("keyup", onKeyUp);
+      element.removeEventListener("touchmove", listeners.element.onTouchMove);
 
-      element.removeEventListener("contextmenu", onContextMenu);
+      element.removeEventListener("touchend", listeners.element.onTouchEnd);
 
-      element.removeEventListener("mousedown", onMouseDown);
+      element.removeEventListener(
+        "touchcancel",
+        listeners.element.onTouchCancel
+      );
 
-      element.removeEventListener("wheel", onWheel);
+      element.removeEventListener("keydown", listeners.element.onKeyDown);
 
-      element.removeEventListener("touchstart", onTouchStart);
+      element.removeEventListener("keyup", listeners.element.onKeyUp);
     },
   };
 }

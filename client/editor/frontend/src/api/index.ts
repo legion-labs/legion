@@ -1,69 +1,17 @@
-import log from "@/lib/log";
+import log from "@lgn/frontend/src/lib/log";
 import {
   GrpcWebImpl as EditorGrpcWebImpl,
   EditorClientImpl,
   ResourceDescription,
 } from "@lgn/proto-editor/codegen/editor";
-import {
-  GrpcWebImpl as StreamingGrpcWebImpl,
-  StreamerClientImpl,
-} from "@lgn/proto-streaming/codegen/streaming";
-import {} from "@lgn/proto-runtime/codegen/runtime";
 
-// TODO: Move to config
 const editorServerURL = "http://[::1]:50051";
-const runtimeServerURL = "http://[::1]:50052";
-
-// Some functions useful when dealing with the api
-
-const stringToBytes = (s: string) => new TextEncoder().encode(s);
-
-const jsonToBytes = (j: Record<string, unknown>) =>
-  stringToBytes(JSON.stringify(j));
-
-const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
-
-const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
 
 const editorClient = new EditorClientImpl(
   new EditorGrpcWebImpl(editorServerURL, {
     debug: false,
   })
 );
-
-const streamerClients = {
-  editor: new StreamerClientImpl(
-    new StreamingGrpcWebImpl(editorServerURL, {
-      debug: false,
-    })
-  ),
-  runtime: new StreamerClientImpl(
-    new StreamingGrpcWebImpl(runtimeServerURL, {
-      debug: false,
-    })
-  ),
-};
-
-export type ServerType = keyof typeof streamerClients;
-
-/**
- * Initialize the video player stream
- * @param serverType
- * @param localSessionDescription
- * @returns a valid RTC sessions description to use with an RTCPeerConnection
- */
-export async function initializeStream(
-  serverType: ServerType,
-  localSessionDescription: RTCSessionDescription
-) {
-  const client = streamerClients[serverType];
-
-  const response = await client.initializeStream({
-    rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
-  });
-
-  return new RTCSessionDescription(bytesToJson(response.rtcSessionDescription));
-}
 
 /**
  * Eagerly fetches all the resource descriptions on the server
@@ -261,37 +209,9 @@ export async function updateResourceProperties(
 
 /**
  * Used for logging purpose
- * @param jsonMsg
- * @returns
- */
-export async function onReceiveControlMessage(jsonMsg: string) {
-  log.info("video", `Received control message. msg=${jsonMsg}`);
-}
-
-/**
- * Used for logging purpose
  * @param jsonCommand
  * @returns
  */
 export async function onSendEditionCommand(jsonCommand: string) {
   log.info("video", `Sending edition_command=${jsonCommand}`);
-}
-
-// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
-/**
- * Used for logging and telemetry purpose
- * @param _chunkHeader
- * @returns
- */
-export async function onVideoChunkReceived(_chunkHeader: string) {
-  return;
-}
-
-// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
-/**
- * Used for logging and telemetry purpose
- * @returns
- */
-export async function onVideoClose() {
-  return;
 }

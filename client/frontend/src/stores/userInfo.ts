@@ -1,6 +1,7 @@
-import { createAwsCognito } from "@/lib/auth";
-import { getCookie } from "@/lib/cookie";
 import { invoke } from "@tauri-apps/api";
+
+import { createAwsCognito } from "../lib/auth";
+import { getCookie } from "../lib/cookie";
 import asyncData from "./asyncData";
 
 export default asyncData(async () => {

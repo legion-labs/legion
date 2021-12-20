@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { keepElementVisible } from "@/lib/html";
   import { createEventDispatcher } from "svelte";
+  import { keepElementVisible } from "../../lib/html";
 
   type Item = $$Generic;
 

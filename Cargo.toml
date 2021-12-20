@@ -8,7 +8,7 @@ members = [
     "test/*",
     "compiler/*",
 ]
-exclude = []
+exclude = ["client/frontend"]
 
 [profile.dev]
 panic = 'abort'
