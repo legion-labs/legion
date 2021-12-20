@@ -4,13 +4,13 @@ use lgn_graphics_api::DeviceContext;
 use lgn_graphics_api::DescriptorSetLayoutDef;
 use lgn_graphics_api::DescriptorSetLayout;
 #[allow(unused_imports)]
-use super::super::c_gen_type::const_data::ConstData;
+use super::super::c_gen_type::view_data::ViewData;
 
-pub struct DefaultDescriptorSet {
+pub struct ViewDescriptorSet {
 	api_layout : DescriptorSetLayout,
 }
 
-impl DefaultDescriptorSet {
+impl ViewDescriptorSet {
 	pub fn new(device_context: &DeviceContext) -> Self {
 		let mut layout_def = DescriptorSetLayoutDef::default();
 		layout_def.frequency = 0;

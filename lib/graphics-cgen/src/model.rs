@@ -359,7 +359,7 @@ impl StructType {
 
 impl ModelObject for CGenType {
     fn typename() -> &'static str {
-        "CGenType"
+        "CgenType"
     }
     fn name(&self) -> &str {
         match self {

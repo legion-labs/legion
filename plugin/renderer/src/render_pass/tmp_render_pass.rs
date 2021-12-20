@@ -273,27 +273,6 @@ impl TmpRenderPass {
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
-            /* WIP
-            {
-                let bump_allocator = render_context.bump_allocator();
-
-                let descriptor_heap_partition = render_context
-                    .descriptor_pool()
-                    .descriptor_heap_partition_mut();
-
-              let mut ds_data = FakeDescriptorSetData::new(
-                    render_context.cgen_runtime(),
-                    bump_allocator.bumpalo(),
-                    descriptor_heap_partition,
-                );
-
-
-                ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
-
-                let descriptor_handle = ds_data.build(render_context.renderer().device_context());
-            }
-            */
-
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
