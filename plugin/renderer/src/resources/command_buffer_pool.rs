@@ -1,16 +1,17 @@
+use std::cell::{Cell, RefCell};
+
 use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
 use super::OnFrameEventHandler;
 use crate::RenderHandle;
 
-// TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
 
-pub(crate) struct CommandBufferPool {
+pub struct CommandBufferPool {
     command_pool: CommandPool,
-    availables: Vec<CommandBuffer>,
-    in_flights: Vec<CommandBuffer>,
-    acquired_count: u32,
+    availables: RefCell<Vec<CommandBuffer>>,
+    in_flights: RefCell<Vec<CommandBuffer>>,
+    acquired_count: Cell<u32>,
 }
 
 impl CommandBufferPool {
@@ -19,35 +20,43 @@ impl CommandBufferPool {
             command_pool: queue
                 .create_command_pool(&CommandPoolDef { transient: true })
                 .unwrap(),
-            availables: Vec::new(),
-            in_flights: Vec::new(),
-            acquired_count: 0,
+            availables: RefCell::new(Vec::new()),
+            in_flights: RefCell::new(Vec::new()),
+            acquired_count: Cell::new(0),
         }
     }
 
     pub(crate) fn reset(&mut self) {
         self.command_pool.reset_command_pool().unwrap();
-        self.availables.append(&mut self.in_flights);
+        let mut availables = self.availables.borrow_mut();
+        let mut in_flights = self.in_flights.borrow_mut();
+
+        availables.append(in_flights.as_mut());
     }
 
-    pub(crate) fn acquire(&mut self) -> CommandBufferHandle {
-        let result = if self.availables.is_empty() {
+    pub(crate) fn acquire(&self) -> CommandBufferHandle {
+        let mut availables = self.availables.borrow_mut();
+
+        let result = if availables.is_empty() {
             let def = CommandBufferDef {
                 is_secondary: false,
             };
             self.command_pool.create_command_buffer(&def).unwrap()
         } else {
-            self.availables.pop().unwrap()
+            availables.pop().unwrap()
         };
-        self.acquired_count += 1;
+        let acquired_count = self.acquired_count.get();
+        self.acquired_count.set(acquired_count + 1);
+
         CommandBufferHandle::new(result)
     }
 
-    pub(crate) fn release(&mut self, mut handle: CommandBufferHandle) {
-        assert!(handle.is_valid());
-        assert!(self.acquired_count > 0);
-        self.in_flights.push(handle.take());
-        self.acquired_count -= 1;
+    pub(crate) fn release(&self, mut handle: CommandBufferHandle) {
+        assert!(self.acquired_count.get() > 0);
+        let mut in_flights = self.in_flights.borrow_mut();
+        in_flights.push(handle.take());
+        let acquired_count = self.acquired_count.get();
+        self.acquired_count.set(acquired_count - 1);
     }
 }
 
@@ -57,8 +66,8 @@ impl OnFrameEventHandler for CommandBufferPool {
     }
 
     fn on_end_frame(&mut self) {
-        assert_eq!(self.acquired_count, 0);
+        assert_eq!(self.acquired_count.get(), 0);
     }
 }
 
-pub(crate) type CommandBufferPoolHandle = RenderHandle<CommandBufferPool>;
+pub type CommandBufferPoolHandle = RenderHandle<CommandBufferPool>;

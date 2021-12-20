@@ -27,6 +27,10 @@ Or from the root of the monorepo:
 yarn analytics:dev
 ```
 
+## Starting the analytics server
+
+The web app in only a client to the analytics gRPC server. You can execute `legion\server\analytics-srv\start-test-server.bat` to start the server using dummy validation data.
+
 ## validations: tsc && svelte-check
 
 ```

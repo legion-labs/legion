@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use tempfile::TempDir;
 
@@ -27,7 +28,7 @@ fn create() {
     let cas_addr = ContentStoreAddr::from(output_dir);
 
     {
-        let _build = DataBuildOptions::new(&buildindex_dir)
+        let _build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
             .create(project_dir)
             .expect("valid data build index");

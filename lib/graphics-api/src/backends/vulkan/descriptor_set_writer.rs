@@ -22,9 +22,6 @@ impl<'frame> VulkanDescriptorSetWriter<'frame> {
 
         let vk_image_info_count = descriptor_set_layout.vk_image_info_count();
         let vk_buffer_info_count = descriptor_set_layout.vk_buffer_info_count();
-
-        // let update_data_count = descriptor_set_layout.update_data_count();
-        // let vk_pending_writes = Vec::with_capacity(update_data_count as usize);
         let vk_pending_writes = bump.alloc_slice_fill_default::<vk::WriteDescriptorSet>(
             descriptor_set_layout.definition().descriptor_defs.len(),
         );

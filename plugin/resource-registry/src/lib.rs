@@ -62,9 +62,11 @@ mod settings;
 use std::sync::Arc;
 
 use lgn_app::Plugin;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::AssetRegistry;
-use lgn_data_transaction::DataManager;
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
+use lgn_data_transaction::{BuildManager, DataManager};
 use lgn_tasks::IoTaskPool;
 use sample_data_offline as offline_data;
 pub use settings::ResourceRegistrySettings;
@@ -75,13 +77,17 @@ pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut lgn_app::App) {
+        let manifest = app.world.get_resource::<Manifest>().unwrap().clone();
         if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
-            if let Ok(project) = Project::open(&settings.root_folder) {
+            let project_dir = settings.root_folder.clone();
+            let build_dir = project_dir.join("temp");
+
+            if let Ok(project) = Project::open(&project_dir) {
                 // register resource types
                 let mut registry = ResourceRegistryOptions::new();
                 registry = offline_data::register_resource_types(registry);
                 registry = lgn_graphics_offline::register_resource_types(registry);
-                registry = generic_data_offline::register_resource_types(registry);
+                registry = generic_data::offline::register_resource_types(registry);
                 let registry = registry.create_async_registry();
                 let project = Arc::new(Mutex::new(project));
 
@@ -90,10 +96,19 @@ impl Plugin for ResourceRegistryPlugin {
                     .get_resource::<Arc<AssetRegistry>>()
                     .expect("the editor plugin requires AssetRegistry resource");
 
+                let compilers = lgn_ubercompiler::create();
+
+                let build_options = DataBuildOptions::new(&build_dir, compilers)
+                    .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+
+                let build_manager = BuildManager::new(build_options, &project_dir, manifest)
+                    .expect("the editor requires valid build manager");
+
                 let data_manager = Arc::new(Mutex::new(DataManager::new(
                     project,
                     registry,
                     asset_registry.clone(),
+                    build_manager,
                 )));
 
                 let task_pool = app

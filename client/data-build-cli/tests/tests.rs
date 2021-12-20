@@ -2,7 +2,9 @@ use std::fs;
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+use lgn_data_compiler::{
+    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
     ResourcePathId,
@@ -63,11 +65,13 @@ fn build_device() {
     };
 
     // create build index.
-    let mut build = DataBuildOptions::new(&buildindex_dir)
-        .content_store(&ContentStoreAddr::from(cas.clone()))
-        .compiler_dir(target_dir)
-        .create(project_dir)
-        .expect("new build index");
+    let mut build = DataBuildOptions::new(
+        &buildindex_dir,
+        CompilerRegistryOptions::from_dir(target_dir),
+    )
+    .content_store(&ContentStoreAddr::from(cas.clone()))
+    .create(project_dir)
+    .expect("new build index");
     build.source_pull().expect("successful pull");
 
     // the transformation below will reverse source resource's content.
@@ -184,7 +188,7 @@ fn no_intermediate_resource() {
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir)
+        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");
@@ -265,7 +269,7 @@ fn with_intermediate_resource() {
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir)
+        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");

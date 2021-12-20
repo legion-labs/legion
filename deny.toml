@@ -39,7 +39,18 @@ yanked = "warn"
 notice = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
-ignore = [] #"RUSTSEC-0000-0000",
+ignore = [
+  "RUSTSEC-2020-0113",
+  "RUSTSEC-2020-0159",
+  "RUSTSEC-2021-0119",
+  "RUSTSEC-2020-0071",
+  "RUSTSEC-2021-0060",
+  "RUSTSEC-2021-0059",
+  "RUSTSEC-2021-0064",
+  "RUSTSEC-2021-0096",
+  "RUSTSEC-2020-0070",
+  "RUSTSEC-2020-0016",
+] #"RUSTSEC-0000-0000",
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
 # will still output a note when they are encountered.
@@ -160,6 +171,10 @@ deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
   { name = "mio", version = "=0.6.23" },
+  { name = "simple_asn1", version = "=0.5.4" },
+  { name = "hyper-rustls", version = "=0.22.1" },
+  { name = "rustls-native-certs", version = "=0.5.0" },
+  { name = "tokio-rustls", version = "=0.22.0" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
@@ -167,7 +182,7 @@ skip = [
 # by default infinite
 skip-tree = [
   { name = "tauri", version = "1.0.0-beta.8" },
-  { name = "webrtc", version = "0.2.0" },
+  { name = "webrtc", version = "0.3.4" },
 ]
 
 # This section is considered when running `cargo deny check sources`.
@@ -184,7 +199,7 @@ unknown-git = "warn"
 # if not specified. If it is specified but empty, no registries are allowed.
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
-allow-git = ["https://github.com/awslabs/aws-sdk-rust"]
+allow-git = []
 
 [sources.allow-org]
 # 1 or more github.com organizations to allow git sources for

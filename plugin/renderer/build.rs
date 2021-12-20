@@ -1,15 +1,16 @@
+use std::path::Path;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // #[cfg(feature = "run-codegen")]
     {
-        let crate_folder = env!("CARGO_MANIFEST_DIR").to_string();
+        let context = lgn_build_utils::pre_codegen(cfg!(feature = "run-codegen-validation"))?;
 
-        let mut root_cgen = crate_folder;
-        root_cgen.push_str("/src/root.cgen");
-
-        let context = lgn_build_utils::Context::new(cfg!(feature = "run-codegen-validation"));
+        let root_cgen = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("root.cgen");
         lgn_build_utils::build_graphics_cgen(&context, &root_cgen)?;
 
-        lgn_build_utils::handle_output(&context)?;
+        lgn_build_utils::post_codegen(&context)?;
     }
     Ok(())
 }

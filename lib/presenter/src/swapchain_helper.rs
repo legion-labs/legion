@@ -4,9 +4,11 @@ use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
 use lgn_graphics_api::{
-    CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue,
+    CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
     Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
+use lgn_renderer::hl_gfx_api::HLQueue;
+use lgn_renderer::RenderHandle;
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
 /// optional.
@@ -107,9 +109,9 @@ impl PresentableFrame {
     /// their completion
     pub fn present(
         mut self,
-        queue: &Queue,
+        queue: &HLQueue<'_>,
         wait_sem: &Semaphore,
-        command_buffers: &[&CommandBuffer],
+        command_buffers: &mut [RenderHandle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
         log::trace!(
             "Calling PresentableFrame::present with {} command buffers",
@@ -127,9 +129,9 @@ impl PresentableFrame {
     /// Present the current swapchain    
     pub fn do_present(
         &mut self,
-        queue: &Queue,
+        queue: &HLQueue<'_>,
         wait_sem: &Semaphore,
-        command_buffers: &[&CommandBuffer],
+        command_buffers: &mut [RenderHandle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous acquire_next_image call
         let shared_state = self.shared_state.as_ref().unwrap();
@@ -148,7 +150,7 @@ impl PresentableFrame {
             &wait_semaphores,
             &signal_semaphores,
             Some(frame_fence),
-        )?;
+        );
 
         let swapchain = shared_state.swapchain.lock().unwrap();
 

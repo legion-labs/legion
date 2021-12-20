@@ -132,7 +132,7 @@ impl AssetToECS for runtime_data::Mesh {}
 
 impl AssetToECS for lgn_graphics_runtime::Texture {}
 
-impl AssetToECS for generic_data_runtime::DebugCube {
+impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         instance: &Self,

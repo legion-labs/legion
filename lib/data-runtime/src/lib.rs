@@ -126,6 +126,9 @@ mod asset;
 pub use asset::*;
 pub mod manifest;
 
+mod component;
+pub use component::*;
+
 pub use lgn_data_runtime_macros::resource;
 
 #[cfg(test)]

@@ -6,7 +6,9 @@ use std::{
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+use lgn_data_compiler::{
+    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+};
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::Resource;
 use sample_data_runtime as runtime_data;
@@ -27,11 +29,11 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     exe_path.pop();
     let project_dir = PathBuf::from("..\\");
 
-    let mut build = DataBuildOptions::new(build_index_dir)
-        .content_store(&asset_store_path)
-        .compiler_dir(exe_path)
-        .open_or_create(project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
+            .content_store(&asset_store_path)
+            .open_or_create(project_dir)
+            .expect("new build index");
 
     build.source_pull().expect("successful pull");
 
@@ -87,7 +89,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
                     | runtime_data::Mesh::TYPE
                     | lgn_graphics_runtime::Texture::TYPE
                     | lgn_graphics_runtime::Material::TYPE
-                    | generic_data_runtime::DebugCube::TYPE
+                    | generic_data::runtime::DebugCube::TYPE
             )
         };
 

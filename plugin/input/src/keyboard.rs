@@ -5,6 +5,7 @@ use crate::{ElementState, Input};
 
 /// A key input event from a keyboard device
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct KeyboardInput {
     pub scan_code: u32,
     pub key_code: Option<KeyCode>,

@@ -1,5 +1,6 @@
 use anyhow::bail;
 use lgn_input::{
+    keyboard::KeyboardInput,
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
     ElementState,
@@ -92,6 +93,7 @@ pub(crate) enum Input {
     MouseMotion(MouseMotion),
     MouseWheel(MouseWheel),
     TouchInput(TouchInput),
+    KeyboardInput(KeyboardInput),
 }
 
 #[derive(Debug, Deserialize)]

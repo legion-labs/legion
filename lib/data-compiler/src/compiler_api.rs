@@ -64,7 +64,7 @@
 use std::{
     env,
     io::{self, stdout},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
@@ -72,6 +72,7 @@ use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::AssetRegistryOptions;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     compiler_cmd::{
@@ -100,6 +101,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
+#[derive(Debug)]
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
@@ -117,6 +119,19 @@ pub struct CompilationEnv {
     pub locale: Locale,
 }
 
+/// Compiler information.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CompilerInfo {
+    /// Data build version of data compiler.
+    pub build_version: String,
+    /// Code version of data compiler.
+    pub code_version: String,
+    /// Resource and Asset data version.
+    pub data_version: String,
+    /// Transformation supported by data compiler.
+    pub transform: Transform,
+}
+
 /// Context of the current compilation process.
 pub struct CompilerContext<'a> {
     /// Compilation input - direct dependency of target.
@@ -128,7 +143,7 @@ pub struct CompilerContext<'a> {
     /// Pre-configures asset registry builder.
     resources: Option<AssetRegistryOptions>,
     /// Compilation environment.
-    pub env: CompilationEnv,
+    pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
     output_store: &'a mut dyn ContentStore,
 }
@@ -230,6 +245,84 @@ impl std::fmt::Display for CompilerError {
     }
 }
 
+impl CompilerDescriptor {
+    pub(crate) fn compiler_hash(&self, env: &CompilationEnv) -> CompilerHash {
+        (self.compiler_hash_func)(self.code_version, self.data_version, env)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn compile(
+        &self,
+        compile_path: ResourcePathId,
+        dependencies: &[ResourcePathId],
+        derived_deps: &[CompiledResource],
+        cas_addr: ContentStoreAddr,
+        resource_dir: &Path,
+        env: &CompilationEnv,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let transform = compile_path
+            .last_transform()
+            .ok_or(CompilerError::InvalidTransform)?;
+        if self.transform != &transform {
+            return Err(CompilerError::InvalidTransform);
+        }
+
+        let source_store =
+            HddContentStore::open(cas_addr.clone()).ok_or(CompilerError::AssetStoreError)?;
+        let mut output_store =
+            HddContentStore::open(cas_addr).ok_or(CompilerError::AssetStoreError)?;
+        let manifest = Manifest {
+            compiled_resources: derived_deps.to_owned(),
+        };
+
+        /*
+        eprintln!("# Target: {}({})", derived, derived.resource_id());
+        if let Some(source) = derived.direct_dependency() {
+            eprintln!("# Source: {}({})", source, source.resource_id());
+        }
+        for derived_input in &manifest.compiled_resources {
+            eprintln!(
+                "# Derived Input: {}({}) chk: {} size: {}",
+                derived_input.path,
+                derived_input.path.resource_id(),
+                derived_input.checksum,
+                derived_input.size
+            );
+        }
+
+        eprintln!("# Resource Dir: {:?}", &resource_dir);
+        let paths = std::fs::read_dir(&resource_dir).unwrap();
+        for path in paths {
+            eprintln!("## File: {}", path.unwrap().path().display());
+        }
+
+        eprintln!("# CAS Dir: {:?}", &cas_dir);
+        let paths = std::fs::read_dir(&cas_dir).unwrap();
+        for path in paths {
+            eprintln!("## File: {}", path.unwrap().path().display());
+        }
+        */
+
+        let manifest = manifest.into_rt_manifest(|_rpid| true);
+
+        let registry = AssetRegistryOptions::new()
+            .add_device_cas(Box::new(source_store), manifest)
+            .add_device_dir(resource_dir); // todo: filter dependencies only
+
+        assert!(!compile_path.is_named());
+        let context = CompilerContext {
+            source: compile_path.direct_dependency().unwrap(),
+            target_unnamed: compile_path,
+            dependencies,
+            resources: Some(registry),
+            env,
+            output_store: &mut output_store,
+        };
+
+        (self.compile_func)(context)
+    }
+}
+
 fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
     match matches.subcommand() {
         (COMMAND_NAME_INFO, _) => {
@@ -255,12 +348,8 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 platform,
                 locale,
             };
+            let compiler_hash = descriptor.compiler_hash(&env);
 
-            let compiler_hash = (descriptor.compiler_hash_func)(
-                descriptor.code_version,
-                descriptor.data_version,
-                &env,
-            );
             let output = CompilerHashCmdOutput { compiler_hash };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
@@ -289,73 +378,23 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 .filter_map(|s| CompiledResource::from_str(s).ok())
                 .collect();
             let cas_dir = cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap();
-            let asset_store_path = ContentStoreAddr::from(cas_dir);
+            let cas_addr = ContentStoreAddr::from(cas_dir);
             let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
 
-            let transform = derived
-                .last_transform()
-                .ok_or(CompilerError::InvalidTransform)?;
-            if descriptor.transform != &transform {
-                return Err(CompilerError::InvalidTransform);
-            }
-
-            let source_store = HddContentStore::open(asset_store_path.clone())
-                .ok_or(CompilerError::AssetStoreError)?;
-            let mut output_store =
-                HddContentStore::open(asset_store_path).ok_or(CompilerError::AssetStoreError)?;
-            let manifest = Manifest {
-                compiled_resources: derived_deps,
+            let env = CompilationEnv {
+                target,
+                platform,
+                locale,
             };
 
-            /*
-            eprintln!("# Target: {}({})", derived, derived.resource_id());
-            if let Some(source) = derived.direct_dependency() {
-                eprintln!("# Source: {}({})", source, source.resource_id());
-            }
-            for derived_input in &manifest.compiled_resources {
-                eprintln!(
-                    "# Derived Input: {}({}) chk: {} size: {}",
-                    derived_input.path,
-                    derived_input.path.resource_id(),
-                    derived_input.checksum,
-                    derived_input.size
-                );
-            }
-
-            eprintln!("# Resource Dir: {:?}", &resource_dir);
-            let paths = std::fs::read_dir(&resource_dir).unwrap();
-            for path in paths {
-                eprintln!("## File: {}", path.unwrap().path().display());
-            }
-
-            eprintln!("# CAS Dir: {:?}", &cas_dir);
-            let paths = std::fs::read_dir(&cas_dir).unwrap();
-            for path in paths {
-                eprintln!("## File: {}", path.unwrap().path().display());
-            }
-            */
-
-            let manifest = manifest.into_rt_manifest(|_rpid| true);
-
-            let registry = AssetRegistryOptions::new()
-                .add_device_cas(Box::new(source_store), manifest)
-                .add_device_dir(resource_dir); // todo: filter dependencies only
-
-            assert!(!derived.is_named());
-            let context = CompilerContext {
-                source: derived.direct_dependency().unwrap(),
-                target_unnamed: derived,
-                dependencies: &dependencies,
-                resources: Some(registry),
-                env: CompilationEnv {
-                    target,
-                    platform,
-                    locale,
-                },
-                output_store: &mut output_store,
-            };
-
-            let compilation_output = (descriptor.compile_func)(context)?;
+            let compilation_output = descriptor.compile(
+                derived,
+                &dependencies,
+                &derived_deps,
+                cas_addr,
+                &resource_dir,
+                &env,
+            )?;
 
             let output = CompilerCompileCmdOutput {
                 compiled_resources: compilation_output.compiled_resources,

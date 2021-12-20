@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { getAllResources, getResourceProperties, ServerType } from "@/api";
+  import { ServerType } from "@lgn/frontend/src/api";
+  import asyncData from "@lgn/frontend/src/stores/asyncData";
+  import { Resolution } from "@lgn/frontend/src/lib/types";
+  import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
+  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
+  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
+  import { getAllResources, getResourceProperties } from "@/api";
   import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
-  import { Panel, PanelList } from "@/components/panel";
-  import TopBar from "@/components/TopBar.svelte";
-  import StatusBar from "@/components/StatusBar.svelte";
-  import RemoteWindow, { Resolution } from "@/components/RemoteWindow.svelte";
-  import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";

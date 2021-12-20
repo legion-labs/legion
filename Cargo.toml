@@ -8,7 +8,7 @@ members = [
     "test/*",
     "compiler/*",
 ]
-exclude = []
+exclude = ["client/frontend"]
 
 [profile.dev]
 panic = 'abort'
@@ -24,10 +24,3 @@ opt-level = 3
 debug = true
 debug-assertions = false
 panic = 'abort'
-
-[patch.crates-io]
-lambda_runtime = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
-lambda_http = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
-tinycom = { git = "https://github.com/legion-labs/tinycom-rs.git", branch = "main" }
-hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
-vk-mem = { git = "https://github.com/legion-labs/vk-mem-rs", branch = "ash-fixes" }

@@ -63,12 +63,15 @@ impl DescriptorHeap {
         transient: bool,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<DescriptorHeapPartition> {
+        // todo(vdbdd): is there enough room inside this heap to allocate this partition
         DescriptorHeapPartition::new(self.clone(), transient, definition)
     }
 
     #[allow(clippy::unused_self)]
     #[allow(clippy::needless_pass_by_value)]
-    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {}
+    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
+        // todo(vdbdd): free
+    }
 }
 
 //

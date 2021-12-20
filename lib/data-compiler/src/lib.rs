@@ -245,4 +245,5 @@ impl fmt::Display for Locale {
 
 pub mod compiler_api;
 pub mod compiler_cmd;
+pub mod compiler_reg;
 pub mod compiler_utils;

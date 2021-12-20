@@ -16,7 +16,9 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
-    resources::{CommandBufferHandle, GpuSafePool, OnFrameEventHandler},
+    hl_gfx_api::HLCommandBuffer,
+    resources::{GpuSafePool, OnFrameEventHandler},
+    static_mesh_render_data::StaticMeshRenderData,
     RenderContext, RenderHandle, Renderer,
 };
 
@@ -360,7 +362,7 @@ impl PickingRenderPass {
     pub fn render(
         &mut self,
         picking_manager: &PickingManager,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera_transform: &Transform,
@@ -373,26 +375,23 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
-            cmd_buffer.begin().unwrap();
+            let cmd_buffer = render_context.alloc_command_buffer();
 
             render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
 
             self.init_picking_results(&cmd_buffer);
 
-            cmd_buffer
-                .cmd_begin_render_pass(
-                    &[ColorRenderTargetBinding {
-                        texture_view: render_surface.render_target_view(),
-                        load_op: LoadOp::Clear,
-                        store_op: StoreOp::Store,
-                        clear_value: ColorClearValue::default(),
-                    }],
-                    &None,
-                )
-                .unwrap();
+            cmd_buffer.begin_render_pass(
+                &[ColorRenderTargetBinding {
+                    texture_view: render_surface.render_target_view(),
+                    load_op: LoadOp::Clear,
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue::default(),
+                }],
+                &None,
+            );
 
-            cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+            cmd_buffer.bind_pipeline(&self.pipeline);
 
             let descriptor_set_layout = &self
                 .pipeline
@@ -418,7 +417,7 @@ impl PickingRenderPass {
             let view_proj_matrix = projection_matrix * view_matrix;
             let inv_view_proj_matrix = view_proj_matrix.inverse();
 
-            let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
+            let transient_allocator = render_context.transient_buffer_allocator();
 
             for (_index, (static_mesh_component, _picked_component)) in
                 static_meshes.iter().enumerate()
@@ -479,45 +478,33 @@ impl PickingRenderPass {
                 let descriptor_set_handle =
                     descriptor_set_writer.flush(render_context.renderer().device_context());
 
-                cmd_buffer
-                    .cmd_bind_descriptor_set_handle(
-                        PipelineType::Graphics,
-                        &self.root_signature,
-                        descriptor_set_layout.definition().frequency,
-                        descriptor_set_handle,
-                    )
-                    .unwrap();
+                cmd_buffer.bind_descriptor_set_handle(
+                    PipelineType::Graphics,
+                    &self.root_signature,
+                    descriptor_set_layout.definition().frequency,
+                    descriptor_set_handle,
+                );
 
                 let mut push_constant_data: [u32; 3] = [0; 3];
                 push_constant_data[0] = static_mesh_component.vertex_offset;
                 push_constant_data[1] = static_mesh_component.world_offset;
                 push_constant_data[2] = static_mesh_component.picking_id;
 
-                cmd_buffer
-                    .cmd_push_constants(&self.root_signature, &push_constant_data)
-                    .unwrap();
+                cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
                 cmd_buffer
                     .cmd_draw(static_mesh_component.num_verticies, 0)
                     .unwrap();
             }
 
-            render_context.release_transient_buffer_allocator(transient_allocator);
-
-            cmd_buffer.cmd_end_render_pass().unwrap();
+            cmd_buffer.end_render_pass();
 
             self.copy_picking_results_to_readback(&cmd_buffer, &readback);
 
-            cmd_buffer.end().unwrap();
-
             {
-                let graphics_queue = render_context.renderer().queue(QueueType::Graphics);
-                graphics_queue
-                    .submit(&[&cmd_buffer], &[], &[], None)
-                    .unwrap();
+                let graphics_queue = render_context.graphics_queue();
+                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
             }
-
-            render_context.release_cmd_buffer(cmd_buffer);
 
             readback.sent_to_gpu(picking_manager.frame_no_for_picking());
         }
@@ -526,60 +513,54 @@ impl PickingRenderPass {
         self.readback_buffer_pools.end_frame();
     }
 
-    fn init_picking_results(&mut self, cmd_buffer: &CommandBufferHandle) {
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &self.count_buffer,
-                    src_state: ResourceState::COPY_SRC,
-                    dst_state: ResourceState::COPY_DST,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
+    fn init_picking_results(&mut self, cmd_buffer: &HLCommandBuffer<'_>) {
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &self.count_buffer,
+                src_state: ResourceState::COPY_SRC,
+                dst_state: ResourceState::COPY_DST,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
 
-        cmd_buffer.cmd_fill_buffer(&self.count_buffer, 0, 4, 0);
+        cmd_buffer.fill_buffer(&self.count_buffer, 0, 4, 0);
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &self.count_buffer,
-                    src_state: ResourceState::COPY_DST,
-                    dst_state: ResourceState::UNORDERED_ACCESS,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &self.count_buffer,
+                src_state: ResourceState::COPY_DST,
+                dst_state: ResourceState::UNORDERED_ACCESS,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
     }
 
     fn copy_picking_results_to_readback(
         &mut self,
-        cmd_buffer: &CommandBufferHandle,
+        cmd_buffer: &HLCommandBuffer<'_>,
         readback: &RenderHandle<ReadbackBufferPool>,
     ) {
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[
-                    BufferBarrier {
-                        buffer: &self.count_buffer,
-                        src_state: ResourceState::UNORDERED_ACCESS,
-                        dst_state: ResourceState::COPY_SRC,
-                        queue_transition: BarrierQueueTransition::None,
-                    },
-                    BufferBarrier {
-                        buffer: &self.picked_buffer,
-                        src_state: ResourceState::UNORDERED_ACCESS,
-                        dst_state: ResourceState::COPY_SRC,
-                        queue_transition: BarrierQueueTransition::None,
-                    },
-                ],
-                &[],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[
+                BufferBarrier {
+                    buffer: &self.count_buffer,
+                    src_state: ResourceState::UNORDERED_ACCESS,
+                    dst_state: ResourceState::COPY_SRC,
+                    queue_transition: BarrierQueueTransition::None,
+                },
+                BufferBarrier {
+                    buffer: &self.picked_buffer,
+                    src_state: ResourceState::UNORDERED_ACCESS,
+                    dst_state: ResourceState::COPY_SRC,
+                    queue_transition: BarrierQueueTransition::None,
+                },
+            ],
+            &[],
+        );
 
-        cmd_buffer.cmd_copy_buffer_to_buffer(
+        cmd_buffer.copy_buffer_to_buffer(
             &self.count_buffer,
             &readback.count_buffer,
             &[BufferCopy {
@@ -589,7 +570,7 @@ impl PickingRenderPass {
             }],
         );
 
-        cmd_buffer.cmd_copy_buffer_to_buffer(
+        cmd_buffer.copy_buffer_to_buffer(
             &self.picked_buffer,
             &readback.picked_buffer,
             &[BufferCopy {
@@ -599,16 +580,14 @@ impl PickingRenderPass {
             }],
         );
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &self.picked_buffer,
-                    src_state: ResourceState::COPY_SRC,
-                    dst_state: ResourceState::UNORDERED_ACCESS,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &self.picked_buffer,
+                src_state: ResourceState::COPY_SRC,
+                dst_state: ResourceState::UNORDERED_ACCESS,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
     }
 }

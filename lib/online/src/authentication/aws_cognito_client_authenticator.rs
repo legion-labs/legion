@@ -123,10 +123,13 @@ impl AwsCognitoClientAuthenticator {
         // If there is no explicit port, assume the default port for the scheme.
         let port = redirect_uri.port().unwrap_or(80);
 
-        let client = Mutex::new(
-            hyper::Client::builder()
-                .build::<_, hyper::Body>(hyper_rustls::HttpsConnector::with_native_roots()),
-        );
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
+
+        let client = Mutex::new(hyper::Client::builder().build::<_, hyper::Body>(https_connector));
 
         Ok(Self {
             domain_name,

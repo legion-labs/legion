@@ -9,7 +9,11 @@ license = "MIT OR Apache-2.0"
 # Legion engine
 lgn-data-runtime = { path = "../data-runtime", version = "0.1.0" }
 lgn-data-offline = { path = "../data-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../data-compiler", version = "0.1.0" }
+lgn-data-build = { path = "../data-build", version = "0.1.0" }
+lgn-content-store = { path = "../content-store", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
+lgn-data-model = { path = "../data-model" }
 
 # others
 serde = { version = "1.0", features = ["derive"] }
@@ -22,5 +26,7 @@ tokio = { version = "1.13", features = ["full"] }
 async-trait = "0.1"
 
 [dev-dependencies]
-generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "offline",
+] }
 tempfile = "3.2.0"
