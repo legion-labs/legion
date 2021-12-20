@@ -1,5 +1,6 @@
 use crate::components::RenderSurface;
 use crate::debug_display::{DebugDisplay, DebugPrimitiveType};
+use crate::hl_gfx_api::HLCommandBuffer;
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::{RenderContext, Renderer};
 use lgn_graphics_api::prelude::*;
@@ -76,35 +77,33 @@ impl DebugDisplayPass {
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &RenderSurface,
         debug_display: &mut DebugDisplay,
         camera_transform: &Transform,
     ) {
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
-                    load_op: LoadOp::Load,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue::default(),
-                }],
-                &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_stencil_texture_view(),
-                    depth_load_op: LoadOp::Load,
-                    stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::Store,
-                    stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
-                }),
-            )
-            .unwrap();
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_surface.render_target_view(),
+                load_op: LoadOp::Load,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue::default(),
+            }],
+            &Some(DepthStencilRenderTargetBinding {
+                texture_view: render_surface.depth_stencil_texture_view(),
+                depth_load_op: LoadOp::Load,
+                stencil_load_op: LoadOp::DontCare,
+                depth_store_op: StoreOp::Store,
+                stencil_store_op: StoreOp::DontCare,
+                clear_value: DepthStencilClearValue {
+                    depth: 1.0,
+                    stencil: 0,
+                },
+            }),
+        );
 
-        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+        cmd_buffer.bind_pipeline(&self.pipeline);
 
         let descriptor_set_layout = &self
             .pipeline
@@ -126,7 +125,7 @@ impl DebugDisplayPass {
             Vec3::new(0.0, 1.0, 0.0),
         );
 
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let transient_allocator = render_context.transient_buffer_allocator();
 
         debug_display.render_primitives(|primitive| {
             let mesh_data = match primitive.primitive_type {
@@ -147,7 +146,7 @@ impl DebugDisplayPass {
                 ResourceUsage::AS_VERTEX_BUFFER,
             );
 
-            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
+            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
             let color: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
@@ -179,24 +178,18 @@ impl DebugDisplayPass {
             let descriptor_set_handle =
                 descriptor_set_writer.flush(render_context.renderer().device_context());
 
-            cmd_buffer
-                .cmd_bind_descriptor_set_handle(
-                    PipelineType::Graphics,
-                    &self.root_signature,
-                    descriptor_set_layout.definition().frequency,
-                    descriptor_set_handle,
-                )
-                .unwrap();
+            cmd_buffer.bind_descriptor_set_handle(
+                PipelineType::Graphics,
+                &self.root_signature,
+                descriptor_set_layout.definition().frequency,
+                descriptor_set_handle,
+            );
 
-            cmd_buffer
-                .cmd_draw((mesh_data.num_vertices()) as u32, 0)
-                .unwrap();
+            cmd_buffer.draw((mesh_data.num_vertices()) as u32, 0);
         });
 
         debug_display.clear_display_lists();
 
-        render_context.release_transient_buffer_allocator(transient_allocator);
-
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        cmd_buffer.end_render_pass();
     }
 }

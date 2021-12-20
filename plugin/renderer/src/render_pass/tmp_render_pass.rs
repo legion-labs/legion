@@ -1,19 +1,20 @@
-use std::num::NonZeroU32;
+#![allow(unsafe_code)]
 
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef, DescriptorRef,
-    DescriptorSetLayoutDef, Format, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
-    PrimitiveTopology, PushConstantDef, RasterizerState, ResourceState, ResourceUsage,
-    RootSignature, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags,
-    StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorRef, Format,
+    GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
+    ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp,
+    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
+
 use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{
+        LightComponent, LightSettings, LightType, PickedComponent, RenderSurface, StaticMesh,
+    },
     hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
@@ -29,113 +30,9 @@ impl TmpRenderPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        //
-        // Shaders
-        //
 
-        let shader_compiler = renderer.shader_compiler();
-
-        let shader_build_result = shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Path(
-                    "crate://renderer/shaders/shader.hlsl".to_owned(),
-                ),
-                glob_defines: Vec::new(),
-                entry_points: vec![
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_vs".to_owned(),
-                        target_profile: "vs_6_0".to_owned(),
-                    },
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_ps".to_owned(),
-                        target_profile: "ps_6_0".to_owned(),
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
-
-        //
-        // Root signature
-        //
-
-        let mut descriptor_set_layouts = Vec::new();
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let shader_resources: Vec<_> = shader_build_result
-                .pipeline_reflection
-                .shader_resources
-                .iter()
-                .filter(|x| x.set_index as usize == set_index)
-                .collect();
-
-            if !shader_resources.is_empty() {
-                let descriptor_defs = shader_resources
-                    .iter()
-                    .map(|sr| DescriptorDef {
-                        name: sr.name.clone(),
-                        binding: sr.binding,
-                        shader_resource_type: sr.shader_resource_type,
-                        array_size: sr.element_count,
-                    })
-                    .collect();
-
-                let def = DescriptorSetLayoutDef {
-                    frequency: set_index as u32,
-                    descriptor_defs,
-                };
-                let descriptor_set_layout =
-                    device_context.create_descriptorset_layout(&def).unwrap();
-                descriptor_set_layouts.push(descriptor_set_layout);
-            }
-        }
-
-        let root_signature_def = RootSignatureDef {
-            descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: shader_build_result
-                .pipeline_reflection
-                .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
-                }),
-        };
-
-        let root_signature = device_context
-            .create_root_signature(&root_signature_def)
-            .unwrap();
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/shader.hlsl"));
 
         //
         // Pipeline state
@@ -177,6 +74,7 @@ impl TmpRenderPass {
             })
             .unwrap();
 
+            StaticMeshRenderData::new_sphere(0.25, 20, 20),
         Self {
             root_signature,
             pipeline,
@@ -193,6 +91,7 @@ impl TmpRenderPass {
         self.speed = speed;
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
@@ -200,6 +99,8 @@ impl TmpRenderPass {
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera_transform: &Transform,
+        lights: &[(&Transform, &LightComponent)],
+        light_settings: &LightSettings,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -245,6 +146,104 @@ impl TmpRenderPass {
         );
         let transient_allocator = render_context.transient_buffer_allocator();
 
+        const NUM_LIGHTS: usize = 8;
+        const DIRECTIONAL_LIGHT_SIZE: usize = 32;
+        const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
+        const SPOTLIGHT_SIZE: usize = 32;
+
+        // Lights
+        let mut directional_lights_data =
+            Vec::<f32>::with_capacity(DIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+        let mut omnidirectional_lights_data =
+            Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+        let mut spotlights_data = Vec::<f32>::with_capacity(SPOTLIGHT_SIZE * NUM_LIGHTS);
+        let mut num_directional_lights = 0;
+        let mut num_omnidirectional_lights = 0;
+        let mut num_spotlights = 0;
+        for (transform, light) in lights {
+            if !light.enabled {
+                continue;
+            }
+            match light.light_type {
+                LightType::Directional { direction } => {
+                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
+
+                    directional_lights_data.push(direction_in_view.x);
+                    directional_lights_data.push(direction_in_view.y);
+                    directional_lights_data.push(direction_in_view.z);
+                    directional_lights_data.push(light.radiance);
+                    directional_lights_data.push(light.color.0);
+                    directional_lights_data.push(light.color.1);
+                    directional_lights_data.push(light.color.2);
+                    num_directional_lights += 1;
+                    unsafe {
+                        directional_lights_data
+                            .set_len(DIRECTIONAL_LIGHT_SIZE / 4 * num_directional_lights as usize);
+                    }
+                }
+                LightType::Omnidirectional => {
+                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+
+                    omnidirectional_lights_data.push(transform_in_view.x);
+                    omnidirectional_lights_data.push(transform_in_view.y);
+                    omnidirectional_lights_data.push(transform_in_view.z);
+                    omnidirectional_lights_data.push(light.radiance);
+                    omnidirectional_lights_data.push(light.color.0);
+                    omnidirectional_lights_data.push(light.color.1);
+                    omnidirectional_lights_data.push(light.color.2);
+                    num_omnidirectional_lights += 1;
+                    unsafe {
+                        omnidirectional_lights_data.set_len(
+                            OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
+                        );
+                    }
+                }
+                LightType::Spotlight {
+                    direction,
+                    cone_angle,
+                } => {
+                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
+
+                    spotlights_data.push(transform_in_view.x);
+                    spotlights_data.push(transform_in_view.y);
+                    spotlights_data.push(transform_in_view.z);
+                    spotlights_data.push(light.radiance);
+                    spotlights_data.push(direction_in_view.x);
+                    spotlights_data.push(direction_in_view.y);
+                    spotlights_data.push(direction_in_view.z);
+                    spotlights_data.push(cone_angle);
+                    spotlights_data.push(light.color.0);
+                    spotlights_data.push(light.color.1);
+                    spotlights_data.push(light.color.2);
+                    num_spotlights += 1;
+                    unsafe {
+                        spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * num_spotlights as usize);
+                    }
+                }
+            }
+        }
+        unsafe {
+            directional_lights_data.set_len(DIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
+            omnidirectional_lights_data.set_len(OMNIDIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
+            spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * NUM_LIGHTS);
+        }
+
+        let directional_lights_buffer_view = transient_allocator
+            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
+
+        let omnidirectional_lights_buffer_view = transient_allocator
+            .copy_data(
+                &omnidirectional_lights_data,
+                ResourceUsage::AS_SHADER_RESOURCE,
+            )
+            .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
+
+        let spotlights_buffer_view = transient_allocator
+            .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
+
         for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
         {
             let color: (f32, f32, f32, f32) = (
@@ -254,13 +253,23 @@ impl TmpRenderPass {
                 f32::from(static_mesh_component.color.a) / 255.0f32,
             );
 
-            let mut constant_data: [f32; 36] = [0.0; 36];
+            let mut constant_data = [0.0; 45];
+
             view_matrix.write_cols_to_slice(&mut constant_data[0..]);
             projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
             constant_data[32] = color.0;
             constant_data[33] = color.1;
             constant_data[34] = color.2;
             constant_data[35] = 1.0;
+            constant_data[36] = f32::from_bits(num_directional_lights);
+            constant_data[37] = f32::from_bits(num_omnidirectional_lights);
+            constant_data[38] = f32::from_bits(num_spotlights);
+            constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
+            constant_data[40] = f32::from_bits(light_settings.specular as u32);
+            constant_data[41] = light_settings.specular_reflection;
+            constant_data[42] = light_settings.diffuse_reflection;
+            constant_data[43] = light_settings.ambient_reflection;
+            constant_data[44] = light_settings.shininess;
 
             let sub_allocation =
                 transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
@@ -295,6 +304,29 @@ impl TmpRenderPass {
                 .set_descriptors_by_name(
                     "const_data",
                     &[DescriptorRef::BufferView(&const_buffer_view)],
+                )
+                .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "directional_lights",
+                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
+                )
+                .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "omnidirectional_lights",
+                    &[DescriptorRef::BufferView(
+                        &omnidirectional_lights_buffer_view,
+                    )],
+                )
+                .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "spotlights",
+                    &[DescriptorRef::BufferView(&spotlights_buffer_view)],
                 )
                 .unwrap();
 

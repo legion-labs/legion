@@ -330,7 +330,7 @@ fn render_update(
         let debug_display_pass = render_surface.debug_display_renderpass();
         let debug_display_pass = debug_display_pass.write();
         debug_display_pass.render(
-            &mut render_context,
+            &render_context,
             &cmd_buffer,
             render_surface.as_mut(),
             debug_display.as_mut(),

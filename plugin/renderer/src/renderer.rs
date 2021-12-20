@@ -1,25 +1,27 @@
 #![allow(unsafe_code)]
 
+use std::num::NonZeroU32;
+
 use anyhow::Result;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
-    ApiDef, BufferView, DescriptorHeap, DescriptorHeapDef, DeviceContext, Fence, FenceStatus,
-    GfxApi, QueueType, Semaphore,
+    ApiDef, BufferView, DescriptorDef, DescriptorHeap, DescriptorHeapDef, DescriptorSetLayoutDef,
+    DeviceContext, Fence, FenceStatus, GfxApi, PushConstantDef, QueueType, RootSignature,
+    RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
+
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
-use lgn_pso_compiler::{FileSystem, HlslCompiler};
+use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
 
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
-
-    LightComponent, LightSettings, LightType, PickedComponent, RenderSurface, StaticMesh,
-};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use crate::RenderContext;
 
 pub struct Renderer {
@@ -283,6 +285,110 @@ impl Renderer {
         }
     }
 
+    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> (Shader, RootSignature) {
+        let device_context = self.device_context();
+
+        let shader_compiler = self.shader_compiler();
+        let shader_build_result = shader_compiler
+            .compile(&CompileParams {
+                shader_source: ShaderSource::Path(shader_source),
+                glob_defines: Vec::new(),
+                entry_points: vec![
+                    EntryPoint {
+                        defines: Vec::new(),
+                        name: "main_vs".to_owned(),
+                        target_profile: "vs_6_0".to_owned(),
+                    },
+                    EntryPoint {
+                        defines: Vec::new(),
+                        name: "main_ps".to_owned(),
+                        target_profile: "ps_6_0".to_owned(),
+                    },
+                ],
+            })
+            .unwrap();
+
+        let vert_shader_module = device_context
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
+
+        let frag_shader_module = device_context
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
+
+        let shader = device_context
+            .create_shader(
+                vec![
+                    ShaderStageDef {
+                        entry_point: "main_vs".to_owned(),
+                        shader_stage: ShaderStageFlags::VERTEX,
+                        shader_module: vert_shader_module,
+                    },
+                    ShaderStageDef {
+                        entry_point: "main_ps".to_owned(),
+                        shader_stage: ShaderStageFlags::FRAGMENT,
+                        shader_module: frag_shader_module,
+                    },
+                ],
+                &shader_build_result.pipeline_reflection,
+            )
+            .unwrap();
+
+        //
+        // Root signature
+        //
+
+        let mut descriptor_set_layouts = Vec::new();
+        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+            let shader_resources: Vec<_> = shader_build_result
+                .pipeline_reflection
+                .shader_resources
+                .iter()
+                .filter(|x| x.set_index as usize == set_index)
+                .collect();
+
+            if !shader_resources.is_empty() {
+                let descriptor_defs = shader_resources
+                    .iter()
+                    .map(|sr| DescriptorDef {
+                        name: sr.name.clone(),
+                        binding: sr.binding,
+                        shader_resource_type: sr.shader_resource_type,
+                        array_size: sr.element_count,
+                    })
+                    .collect();
+
+                let def = DescriptorSetLayoutDef {
+                    frequency: set_index as u32,
+                    descriptor_defs,
+                };
+                let descriptor_set_layout =
+                    device_context.create_descriptorset_layout(&def).unwrap();
+                descriptor_set_layouts.push(descriptor_set_layout);
+            }
+        }
+
+        let root_signature_def = RootSignatureDef {
+            descriptor_set_layouts: descriptor_set_layouts.clone(),
+            push_constant_def: shader_build_result
+                .pipeline_reflection
+                .push_constant
+                .map(|x| PushConstantDef {
+                    used_in_shader_stages: x.used_in_shader_stages,
+                    size: NonZeroU32::new(x.size).unwrap(),
+                }),
+        };
+
+        let root_signature = device_context
+            .create_root_signature(&root_signature_def)
+            .unwrap();
+
         (shader, root_signature)
     }
 }
@@ -291,161 +397,7 @@ impl Drop for Renderer {
     fn drop(&mut self) {
         std::mem::drop(self.test_transform_data.take());
 
-        let graphics_queue = self.queue(QueueType::Graphics);
+        let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
-
-pub struct TmpRenderPass {
-    static_meshes: Vec<StaticMeshRenderData>,
-    root_signature: RootSignature,
-    pipeline: Pipeline,
-    pub color: [f32; 4],
-    pub speed: f32,
-}
-
-impl TmpRenderPass {
-    #![allow(clippy::too_many_lines)]
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
-        let (shader, root_signature) =
-            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/shader.hlsl"));
-
-                    cull_mode: CullMode::Back,
-                    ..RasterizerState::default()
-                },
-            StaticMeshRenderData::new_sphere(0.25, 20, 20),
-    #[allow(clippy::too_many_arguments)]
-        lights: &[(&Transform, &LightComponent)],
-        light_settings: &LightSettings,
-        const NUM_LIGHTS: usize = 8;
-        const DIRECTIONAL_LIGHT_SIZE: usize = 32;
-        const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
-        const SPOTLIGHT_SIZE: usize = 32;
-
-        // Lights
-        let mut directional_lights_data =
-            Vec::<f32>::with_capacity(DIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
-        let mut omnidirectional_lights_data =
-            Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
-        let mut spotlights_data = Vec::<f32>::with_capacity(SPOTLIGHT_SIZE * NUM_LIGHTS);
-        let mut num_directional_lights = 0;
-        let mut num_omnidirectional_lights = 0;
-        let mut num_spotlights = 0;
-        for (transform, light) in lights {
-            if !light.enabled {
-                continue;
-            }
-            match light.light_type {
-                LightType::Directional { direction } => {
-                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                    directional_lights_data.push(direction_in_view.x);
-                    directional_lights_data.push(direction_in_view.y);
-                    directional_lights_data.push(direction_in_view.z);
-                    directional_lights_data.push(light.radiance);
-                    directional_lights_data.push(light.color.0);
-                    directional_lights_data.push(light.color.1);
-                    directional_lights_data.push(light.color.2);
-                    num_directional_lights += 1;
-                    unsafe {
-                        directional_lights_data
-                            .set_len(DIRECTIONAL_LIGHT_SIZE / 4 * num_directional_lights as usize);
-                    }
-                }
-                LightType::Omnidirectional => {
-                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-
-                    omnidirectional_lights_data.push(transform_in_view.x);
-                    omnidirectional_lights_data.push(transform_in_view.y);
-                    omnidirectional_lights_data.push(transform_in_view.z);
-                    omnidirectional_lights_data.push(light.radiance);
-                    omnidirectional_lights_data.push(light.color.0);
-                    omnidirectional_lights_data.push(light.color.1);
-                    omnidirectional_lights_data.push(light.color.2);
-                    num_omnidirectional_lights += 1;
-                    unsafe {
-                        omnidirectional_lights_data.set_len(
-                            OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
-                        );
-                    }
-                }
-                LightType::Spotlight {
-                    direction,
-                    cone_angle,
-                } => {
-                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                    spotlights_data.push(transform_in_view.x);
-                    spotlights_data.push(transform_in_view.y);
-                    spotlights_data.push(transform_in_view.z);
-                    spotlights_data.push(light.radiance);
-                    spotlights_data.push(direction_in_view.x);
-                    spotlights_data.push(direction_in_view.y);
-                    spotlights_data.push(direction_in_view.z);
-                    spotlights_data.push(cone_angle);
-                    spotlights_data.push(light.color.0);
-                    spotlights_data.push(light.color.1);
-                    spotlights_data.push(light.color.2);
-                    num_spotlights += 1;
-                    unsafe {
-                        spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * num_spotlights as usize);
-                    }
-                }
-            }
-        }
-        unsafe {
-            directional_lights_data.set_len(DIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
-            omnidirectional_lights_data.set_len(OMNIDIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
-            spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * NUM_LIGHTS);
-        }
-
-        let directional_lights_buffer_view = transient_allocator
-            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
-
-        let omnidirectional_lights_buffer_view = transient_allocator
-            .copy_data(
-                &omnidirectional_lights_data,
-                ResourceUsage::AS_SHADER_RESOURCE,
-            )
-            .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
-
-        let spotlights_buffer_view = transient_allocator
-            .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
-
-            constant_data[36] = f32::from_bits(num_directional_lights);
-            constant_data[37] = f32::from_bits(num_omnidirectional_lights);
-            constant_data[38] = f32::from_bits(num_spotlights);
-            constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
-            constant_data[40] = f32::from_bits(light_settings.specular as u32);
-            constant_data[41] = light_settings.specular_reflection;
-            constant_data[42] = light_settings.diffuse_reflection;
-            constant_data[43] = light_settings.ambient_reflection;
-            constant_data[44] = light_settings.shininess;
-                )
-                .unwrap();
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "directional_lights",
-                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
-                )
-                .unwrap();
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "omnidirectional_lights",
-                    &[DescriptorRef::BufferView(
-                        &omnidirectional_lights_buffer_view,
-                    )],
-                )
-                .unwrap();
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "spotlights",
-                    &[DescriptorRef::BufferView(&spotlights_buffer_view)],
-            }
