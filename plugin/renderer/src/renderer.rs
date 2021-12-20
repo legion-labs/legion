@@ -571,7 +571,7 @@ impl TmpRenderPass {
             let mut sub_allocation =
                 transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            cmd_buffer.bind_suballocation_as_vertex_buffer(0, &sub_allocation);
+            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,

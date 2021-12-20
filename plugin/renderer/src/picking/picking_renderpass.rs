@@ -459,7 +459,7 @@ impl PickingRenderPass {
                 let mut sub_allocation =
                     transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-                cmd_buffer.bind_suballocation_as_vertex_buffer(0, &sub_allocation);
+                cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
                 let mut constant_data: [f32; 39] = [0.0; 39];
                 view_proj_matrix.write_cols_to_slice(&mut constant_data[0..]);
@@ -530,14 +530,14 @@ impl PickingRenderPass {
 
                 cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-                cmd_buffer.draw((mesh.num_vertices()) as u32, 0)
+                cmd_buffer.draw((mesh.num_vertices()) as u32, 0);
             }
 
             cmd_buffer.end_render_pass();
 
             self.copy_picking_results_to_readback(&cmd_buffer, &readback);
 
-            {                
+            {
                 let graphics_queue = render_context.graphics_queue();
                 graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
             }

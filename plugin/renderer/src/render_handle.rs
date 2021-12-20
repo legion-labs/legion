@@ -18,7 +18,7 @@ impl<T> RenderHandle<T> {
             Some(e) => e,
             None => unreachable!(),
         }
-    }    
+    }
 
     pub fn transfer(&mut self) -> Self {
         Self {

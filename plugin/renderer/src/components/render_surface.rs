@@ -204,12 +204,12 @@ impl RenderSurface {
 
         if src_state != dst_state {
             cmd_buffer.resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        &self.resources.texture,
-                        src_state,
-                        dst_state,
-                    )],
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.resources.texture,
+                    src_state,
+                    dst_state,
+                )],
             );
             self.resources.texture_state = dst_state;
         }

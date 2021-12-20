@@ -46,7 +46,7 @@ impl<'rc> HLCommandBuffer<'rc> {
             .unwrap();
     }
 
-    pub fn bind_suballocation_as_vertex_buffer<AllocType>(
+    pub fn bind_buffer_suballocation_as_vertex_buffer<AllocType>(
         &self,
         binding: u32,
         buffer_suballoc: &BufferSubAllocation<AllocType>,
@@ -64,7 +64,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_bind_index_buffer(binding).unwrap();
     }
 
-    pub fn bind_suballocation_as_index_buffer<AllocType>(
+    pub fn bind_buffer_suballocation_as_index_buffer<AllocType>(
         &self,
         buffer_suballoc: &BufferSubAllocation<AllocType>,
         index_type: IndexType,
