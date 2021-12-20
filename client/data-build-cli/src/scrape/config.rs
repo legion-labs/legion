@@ -5,6 +5,7 @@ use std::{
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
@@ -37,7 +38,7 @@ impl Config {
     pub fn open(&self) -> Result<(DataBuild, Project), String> {
         let project = Project::open(self.project.clone()).map_err(|e| e.to_string())?;
         let buildindex = self.buildindex.clone();
-        let build = DataBuildOptions::new(buildindex)
+        let build = DataBuildOptions::new(buildindex, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from("."))
             .open()
             .map_err(|e| e.to_string())?;

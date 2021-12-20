@@ -159,7 +159,7 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-use std::io;
+use lgn_data_compiler::compiler_api::CompilerError;
 
 #[derive(Debug)]
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
@@ -189,7 +189,7 @@ pub enum Error {
     /// Compilation did not produce expected output.
     OutputNotPresent,
     /// Compiler returned an error.
-    CompilerError(io::Error),
+    CompilerError(CompilerError),
 }
 
 impl std::error::Error for Error {}

@@ -3908,6 +3908,9 @@ dependencies = [
  "anyhow",
  "async-trait",
  "generic-data",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4285,12 +4288,16 @@ version = "0.1.0"
 dependencies = [
  "generic-data",
  "lgn-app",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
  "lgn-graphics-offline",
  "lgn-tasks",
+ "lgn-ubercompiler",
  "sample-data-offline",
  "tokio",
 ]
@@ -4478,6 +4485,30 @@ dependencies = [
  "lgn-utils",
  "memoffset 0.6.5",
  "serde",
+]
+
+[[package]]
+name = "lgn-ubercompiler"
+version = "0.1.0"
+dependencies = [
+ "lgn-compiler-debugcube",
+ "lgn-compiler-entitydc",
+ "lgn-compiler-instancedc",
+ "lgn-compiler-material",
+ "lgn-compiler-psd2tex",
+ "lgn-compiler-runtime-entity",
+ "lgn-compiler-runtime-instance",
+ "lgn-compiler-runtime-mesh",
+ "lgn-compiler-test-atoi",
+ "lgn-compiler-test-base64",
+ "lgn-compiler-test-refs",
+ "lgn-compiler-test-reverse",
+ "lgn-compiler-test-split",
+ "lgn-compiler-testentity",
+ "lgn-compiler-tex2bin",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]

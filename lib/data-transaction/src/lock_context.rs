@@ -2,11 +2,10 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use tokio::sync::MutexGuard;
 
-use crate::DataManager;
+use crate::{BuildManager, DataManager};
 
 /// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
 pub struct LockContext<'a> {
@@ -18,6 +17,8 @@ pub struct LockContext<'a> {
     pub loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
     /// Reference to the Asset Registry
     pub asset_registry: Arc<AssetRegistry>,
+    /// Reference to build manager.
+    pub build: MutexGuard<'a, BuildManager>,
     // List of Resouce changed during the lock (that need saving)
     pub(crate) changed_resources: HashSet<ResourceTypeAndId>,
 }
@@ -29,6 +30,7 @@ impl<'a> LockContext<'a> {
             project: data_manager.project.lock().await,
             resource_registry: data_manager.resource_registry.lock().await,
             asset_registry: data_manager.asset_registry.clone(),
+            build: data_manager.build_manager.lock().await,
             loaded_resource_handles: data_manager.loaded_resource_handles.lock().await,
             changed_resources: HashSet::new(),
         }
@@ -45,12 +47,16 @@ impl<'a> LockContext<'a> {
                         &mut self.resource_registry,
                     )?;
 
-                    // TODO HACK. Assume DebugCube until proper mapping is exposed
-                    let derived_id = ResourcePathId::from(*resource_id)
-                        .push(ResourceType::new(b"runtime_debugcube"))
-                        .resource_id();
-
-                    self.asset_registry.reload(derived_id);
+                    match self.build.build_all_derived(*resource_id) {
+                        Ok(built_resources) => {
+                            for resource in built_resources {
+                                self.asset_registry.reload(resource);
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Error building resource derivations {:?}", e);
+                        }
+                    }
                 }
                 Ok(())
             })?;

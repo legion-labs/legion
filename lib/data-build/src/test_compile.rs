@@ -6,6 +6,7 @@ use std::{env, vec};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::CompilationEnv;
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_compiler::{Locale, Manifest, Platform, Target};
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_offline::{
@@ -125,10 +126,9 @@ fn compile_change_no_deps() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut config = DataBuildOptions::new(output_dir);
-    config
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir());
+    let config =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path);
 
     let source = ResourcePathId::from(resource_id);
     let target = source.push(refs_asset::RefsAsset::TYPE);
@@ -170,6 +170,10 @@ fn compile_change_no_deps() {
 
     // ..re-compile changed resource..
     let modified_checksum = {
+        let config =
+            DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+                .content_store(&contentstore_path);
+
         let mut build = config.open().expect("to open index");
         build.source_pull().expect("failed to pull from project");
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
@@ -280,11 +284,11 @@ fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&cas_addr)
-        .compiler_dir(target_dir())
-        .create(project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&cas_addr)
+            .create(project_dir)
+            .expect("new build index");
 
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
@@ -353,11 +357,11 @@ fn unnamed_cache_use() {
     let resource_list = setup_project(&project_dir);
     let root_resource = resource_list[0];
 
-    let mut build = DataBuildOptions::new(&output_dir)
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&ContentStoreAddr::from(output_dir))
+            .create(&project_dir)
+            .expect("new build index");
     build.source_pull().expect("successful pull");
 
     //
@@ -470,11 +474,11 @@ fn named_path_cache_use() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&cas_addr)
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&cas_addr)
+            .create(&project_dir)
+            .expect("new build index");
 
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
@@ -719,11 +723,11 @@ fn link() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("to create index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path)
+            .create(&project_dir)
+            .expect("to create index");
 
     build.source_pull().unwrap();
 
@@ -805,11 +809,11 @@ fn verify_manifest() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir())
-        .create(project_dir)
-        .expect("to create index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path)
+            .create(project_dir)
+            .expect("to create index");
 
     build.source_pull().unwrap();
 

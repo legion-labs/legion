@@ -87,7 +87,8 @@ impl Plugin for AssetRegistryPlugin {
         if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
-                let manifest = Self::read_manifest(&settings.game_manifest);
+                let manifest = Self::read_or_default(&settings.game_manifest);
+
                 if settings.assets_to_load.is_empty() {
                     settings.assets_to_load = manifest.resources();
                 }
@@ -101,13 +102,13 @@ impl Plugin for AssetRegistryPlugin {
                     registry = registry.add_device_build(
                         Box::new(content_store),
                         ContentStoreAddr::from(settings.content_store_addr.clone()),
-                        manifest,
+                        manifest.clone(),
                         &databuild_settings.build_bin,
                         &databuild_settings.buildindex,
                         false,
                     );
                 } else {
-                    registry = registry.add_device_cas(Box::new(content_store), manifest);
+                    registry = registry.add_device_cas(Box::new(content_store), manifest.clone());
                 }
 
                 let registry = registry.create();
@@ -119,6 +120,7 @@ impl Plugin for AssetRegistryPlugin {
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
                     .insert_resource(load_events)
+                    .insert_resource(manifest)
                     .add_startup_system(Self::setup)
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
@@ -268,7 +270,7 @@ impl AssetRegistryPlugin {
         drop(load_events_rx);
     }
 
-    fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
+    fn read_or_default(manifest_path: impl AsRef<Path>) -> Manifest {
         match File::open(manifest_path) {
             Ok(file) => serde_json::from_reader(file).unwrap_or_default(),
             Err(_e) => Manifest::default(),
