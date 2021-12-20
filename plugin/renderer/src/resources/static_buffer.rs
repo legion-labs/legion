@@ -3,12 +3,10 @@ use std::sync::{Arc, Mutex};
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, Queue, QueueType, ResourceCreation,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, QueueType, ResourceCreation,
     ResourceState, ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
-
-use parking_lot::RwLockReadGuard;
 
 use crate::{RenderContext, RenderHandle};
 
@@ -140,39 +138,35 @@ impl UnifiedStaticBuffer {
         prev_frame_semaphore: &Semaphore,
         unbind_semaphore: &Semaphore,
         bind_semaphore: &Semaphore,
-        render_context: &mut RenderContext<'_>,
-        graphics_queue: &RwLockReadGuard<'_, Queue>,
+        render_context: &RenderContext<'_>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
         let mut last_semaphore = None;
+        let graphics_queue = render_context.graphics_queue();
         if let Some(binding_manager) = &mut inner.binding_manager {
             last_semaphore = Some(binding_manager.commmit_sparse_bindings(
-                graphics_queue,
+                &graphics_queue,
                 prev_frame_semaphore,
                 unbind_semaphore,
                 bind_semaphore,
             ));
         }
 
-        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+        let cmd_buffer = render_context.alloc_command_buffer();
 
-        cmd_buffer.begin().unwrap();
-
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &inner.buffer,
-                    src_state: ResourceState::SHADER_RESOURCE,
-                    dst_state: ResourceState::COPY_DST,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &inner.buffer,
+                src_state: ResourceState::SHADER_RESOURCE,
+                dst_state: ResourceState::COPY_DST,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
 
         for job in &inner.job_blocks {
-            cmd_buffer.cmd_copy_buffer_to_buffer(
+            cmd_buffer.copy_buffer_to_buffer(
                 &job.upload_allocation.buffer,
                 &inner.buffer,
                 &job.upload_jobs,
@@ -180,19 +174,15 @@ impl UnifiedStaticBuffer {
         }
         inner.job_blocks.clear();
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &inner.buffer,
-                    src_state: ResourceState::COPY_DST,
-                    dst_state: ResourceState::SHADER_RESOURCE,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
-
-        cmd_buffer.end().unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &inner.buffer,
+                src_state: ResourceState::COPY_DST,
+                dst_state: ResourceState::SHADER_RESOURCE,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
 
         let mut wait_sems = Vec::new();
         if let Some(wait_sem) = last_semaphore {
@@ -202,11 +192,7 @@ impl UnifiedStaticBuffer {
             }
         }
 
-        graphics_queue
-            .submit(&[&cmd_buffer], &wait_sems, &[], None)
-            .unwrap();
-
-        render_context.release_cmd_buffer(cmd_buffer);
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &wait_sems, &[], None);
     }
 
     pub fn read_only_view(&self) -> BufferView {

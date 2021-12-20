@@ -2,15 +2,15 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
-    TextureViewDef,
+    Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage,
+    Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
+use crate::hl_gfx_api::HLCommandBuffer;
 use crate::picking::PickingRenderPass;
 use crate::{RenderContext, Renderer, TmpRenderPass};
 
@@ -18,7 +18,7 @@ pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
     fn present(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     );
@@ -198,26 +198,24 @@ impl RenderSurface {
         &self.resources.depth_stencil_texture_view
     }
 
-    pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
+    pub fn transition_to(&mut self, cmd_buffer: &HLCommandBuffer<'_>, dst_state: ResourceState) {
         let src_state = self.resources.texture_state;
         let dst_state = dst_state;
 
         if src_state != dst_state {
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        &self.resources.texture,
-                        src_state,
-                        dst_state,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.resources.texture,
+                    src_state,
+                    dst_state,
+                )],
+            );
             self.resources.texture_state = dst_state;
         }
     }
 
-    pub fn present(&mut self, render_context: &mut RenderContext<'_>, task_pool: &TaskPool) {
+    pub fn present(&mut self, render_context: &RenderContext<'_>, task_pool: &TaskPool) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {

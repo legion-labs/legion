@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    cell::{Cell, RefCell},
+    sync::{Arc, Mutex},
+};
 
 use lgn_graphics_api::{
     Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
@@ -153,9 +156,9 @@ impl TransientPagedBuffer {
 
 pub struct TransientBufferAllocator {
     paged_buffer: TransientPagedBuffer,
-    allocation: BufferAllocation,
+    allocation: RefCell<BufferAllocation>,
     device_info: DeviceInfo,
-    offset: u64,
+    offset: Cell<u64>,
 }
 
 impl TransientBufferAllocator {
@@ -168,14 +171,14 @@ impl TransientBufferAllocator {
         let offset = allocation.offset();
         Self {
             paged_buffer: paged_buffer.clone(),
-            allocation,
+            allocation: RefCell::new(allocation),
             device_info: *device_context.device_info(),
-            offset,
+            offset: Cell::new(offset),
         }
     }
 
     pub fn allocate(
-        &mut self,
+        &self,
         data_size_in_bytes: u64,
         resource_usage: ResourceUsage,
     ) -> BufferAllocation {
@@ -185,18 +188,21 @@ impl TransientBufferAllocator {
             self.device_info.min_storage_buffer_offset_alignment
         };
 
-        let mut aligned_offset =
-            lgn_utils::memory::round_size_up_to_alignment_u64(self.offset, u64::from(alignment));
+        let mut aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
+            self.offset.get(),
+            u64::from(alignment),
+        );
         let aligned_size = lgn_utils::memory::round_size_up_to_alignment_u64(
             data_size_in_bytes,
             u64::from(alignment),
         );
         let mut new_offset = aligned_offset + aligned_size;
+        let mut allocation = self.allocation.borrow_mut();
 
-        if new_offset > self.allocation.size() {
-            self.allocation = self.paged_buffer.allocate_page(data_size_in_bytes);
+        if new_offset > allocation.size() {
+            *allocation = self.paged_buffer.allocate_page(data_size_in_bytes);
 
-            aligned_offset = self.allocation.offset();
+            aligned_offset = allocation.offset();
             new_offset = aligned_offset + aligned_size;
 
             assert!(
@@ -208,11 +214,11 @@ impl TransientBufferAllocator {
             );
         }
 
-        self.offset = new_offset;
+        self.offset.set(new_offset);
 
         BufferAllocation {
-            buffer: self.allocation.buffer.clone(),
-            memory: self.allocation.memory.clone(),
+            buffer: allocation.buffer.clone(),
+            memory: allocation.memory.clone(),
             range: Range {
                 first: aligned_offset,
                 last: new_offset,
@@ -221,7 +227,7 @@ impl TransientBufferAllocator {
     }
 
     pub fn copy_data<T: Copy>(
-        &mut self,
+        &self,
         data: &[T],
         resource_usage: ResourceUsage,
     ) -> BufferAllocation {

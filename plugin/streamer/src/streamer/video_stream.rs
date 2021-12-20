@@ -6,7 +6,6 @@ use lgn_codec_api::{
     formats::{self, RBGYUVConverter},
 };
 use lgn_ecs::prelude::*;
-use lgn_graphics_api::prelude::*;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
@@ -47,12 +46,10 @@ impl VideoStream {
         trace_scope!();
 
         let device_context = renderer.device_context();
-        let graphics_queue = renderer.queue(QueueType::Graphics);
         let encoder = VideoStreamEncoder::new(resolution)?;
         let offscreen_helper = offscreen_helper::OffscreenHelper::new(
             &renderer.shader_compiler(),
             device_context,
-            &graphics_queue,
             resolution,
         )?;
 
@@ -88,7 +85,7 @@ impl VideoStream {
 
     pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -156,7 +153,7 @@ impl Presenter for VideoStream {
     }
     fn present(
         &mut self,
-        render_context: &mut RenderContext<'_>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     ) {
