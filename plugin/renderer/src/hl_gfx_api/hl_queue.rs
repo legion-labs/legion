@@ -4,7 +4,7 @@ use lgn_graphics_api::{
 };
 use parking_lot::RwLockReadGuard;
 
-use crate::{resources::CommandBufferPool, RenderHandle};
+use crate::resources::{CommandBufferHandle, CommandBufferPool};
 
 pub struct HLQueue<'rc> {
     queue: RwLockReadGuard<'rc, Queue>,
@@ -12,7 +12,7 @@ pub struct HLQueue<'rc> {
 }
 
 impl<'rc> HLQueue<'rc> {
-    pub fn new(
+    pub(crate) fn new(
         queue: RwLockReadGuard<'rc, Queue>,
         command_buffer_pool: &'rc CommandBufferPool,
     ) -> Self {
@@ -24,7 +24,7 @@ impl<'rc> HLQueue<'rc> {
 
     pub fn submit(
         &self,
-        command_buffer_handles: &mut [RenderHandle<CommandBuffer>],
+        command_buffer_handles: &mut [CommandBufferHandle],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
