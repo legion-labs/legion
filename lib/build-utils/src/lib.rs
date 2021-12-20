@@ -114,17 +114,17 @@ bitflags! {
 }
 
 pub struct Context {
-    crate_out_dir: String,
-    codegen_dir: String,
-    validate: bool,
+    codegen_out_dir: PathBuf,
+    codegen_repo_dir: PathBuf,
+    validation_only: bool,
 }
 
 impl Context {
-    pub fn new(validate: bool) -> Self {
+    fn new(validation_only: bool) -> Self {
         Self {
-            crate_out_dir: std::env::var("OUT_DIR").unwrap(),
-            codegen_dir: String::from("./codegen"),
-            validate,
+            codegen_out_dir: Path::new(&std::env::var("OUT_DIR").unwrap()).join("codegen"),
+            codegen_repo_dir: PathBuf::from("./codegen"),
+            validation_only,
         }
     }
 }
@@ -141,7 +141,7 @@ pub fn build_protos(
     includes: &[impl AsRef<Path>],
     lang: Language,
 ) -> Result<()> {
-    let out_dir = PathBuf::from(&context.crate_out_dir);
+    let out_dir = PathBuf::from(&context.codegen_out_dir);
 
     if lang.contains(Language::RUST) {
         tonic_build::configure()
@@ -253,7 +253,7 @@ pub fn build_web_app() -> Result<()> {
 #[cfg(feature = "graphics-cgen")]
 pub fn build_graphics_cgen(context: &Context, root_file: &impl AsRef<Path>) -> Result<()> {
     // build context
-    let mut out_dir = PathBuf::from(&context.crate_out_dir);
+    let mut out_dir = PathBuf::from(&context.codegen_out_dir);
     out_dir.push("cgen");
     let mut ctx_builder = lgn_graphics_cgen::run::CGenContextBuilder::new();
     ctx_builder.set_root_file(root_file).unwrap();
@@ -278,21 +278,36 @@ pub fn build_graphics_cgen(context: &Context, root_file: &impl AsRef<Path>) -> R
         .map_err(|e| Error::Build(format!("{:?}", e)))
 }
 
+/// Creates a generation context, and cleans the temporary output folder
+///
+/// # Errors
+/// Returns a generation error or an IO error
+///
+pub fn pre_codegen(validation_mode: bool) -> Result<Context> {
+    let context = Context::new(validation_mode);
+    if context.codegen_out_dir.exists() {
+        std::fs::remove_dir_all(&context.codegen_out_dir)?;
+    }
+    std::fs::create_dir_all(&context.codegen_out_dir)?;
+
+    Ok(context)
+}
+
 /// Handle the copy/validation of the output files
 ///
 /// # Errors
 /// Returns a generation error or an IO error
 ///
-pub fn handle_output(context: &Context) -> Result<()> {
-    let diffs = diff(&context.crate_out_dir, &context.codegen_dir)?;
+pub fn post_codegen(context: &Context) -> Result<()> {
+    let diffs = diff(&context.codegen_out_dir, &context.codegen_repo_dir)?;
     for diff in &diffs {
-        if context.validate {
+        if context.validation_only {
             println!("cargo:warning={}", diff);
         } else {
             diff.apply()?;
         }
     }
-    if context.validate && !diffs.is_empty() {
+    if context.validation_only && !diffs.is_empty() {
         Err(Error::Build(format!(
             "Generated files different from source (number of diffs: {})",
             diffs.len()

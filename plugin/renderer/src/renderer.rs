@@ -58,7 +58,10 @@ impl Renderer {
         filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
-        let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/cgen/blob/cgen_def.blob"));
+
+        // this is not compliant with the rules set for code generation, aka no binary files
+        // TODO fix this
+        let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
         let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
