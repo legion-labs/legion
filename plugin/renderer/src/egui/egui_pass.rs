@@ -368,7 +368,8 @@ impl EguiPass {
             let sub_allocation =
                 transient_allocator.copy_data(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
 
-            cmd_buffer.bind_buffer_suballocation_as_index_buffer(&sub_allocation, IndexType::Uint32);
+            cmd_buffer
+                .bind_buffer_suballocation_as_index_buffer(&sub_allocation, IndexType::Uint32);
 
             let scale = 1.0;
             let push_constant_data: [f32; 6] = [
