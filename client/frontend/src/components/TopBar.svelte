@@ -1,14 +1,13 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api";
-  import clickOutside from "@/actions/clickOutside";
-  import log from "@/lib/log";
-  import {
-    default as topBarMenu,
+  import topBarMenu, {
     Id as TopBarMenuId,
     menus as topBarMenus,
-  } from "@/stores/topBarMenu";
-  import { createAwsCognitoTokenCache } from "@/lib/auth";
-  import userInfo from "@/stores/userInfo";
+  } from "../stores/topBarMenu";
+  import { createAwsCognitoTokenCache } from "../lib/auth";
+  import userInfo from "../stores/userInfo";
+  import log from "../lib/log";
+  import clickOutside from "../actions/clickOutside";
 
   export let documentTitle: string | null = null;
 

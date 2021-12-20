@@ -1,20 +1,19 @@
 {
   "compilerOptions": {
+    "outDir": "dist",
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
     "strict": true,
     "jsx": "preserve",
-    "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "jest", "vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "types": ["svelte", "jest"],
+    "noEmit": true,
+    "sourceMap": true,
+    "declaration": true
   },
   "include": [
     "src/**/*.ts",

@@ -1,8 +1,11 @@
 import preprocess from "svelte-preprocess";
 
-export default {
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
   preprocess: preprocess({
     postcss: true,
     typescript: true,
   }),
 };
+
+export default config;
