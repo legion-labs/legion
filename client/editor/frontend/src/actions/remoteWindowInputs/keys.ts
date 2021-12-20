@@ -192,7 +192,7 @@ export type KeyCode =
   | "Paste"
   | "Cut";
 
-export function fromBrowserKey(key: string): KeyCode | null {
+export function fromBrowserKey(key: string, location: number): KeyCode | null {
   switch (key) {
     case "0":
       return "Key0";
@@ -328,6 +328,34 @@ export function fromBrowserKey(key: string): KeyCode | null {
       return "Slash";
     case "_":
       return "Underline";
+
+    case "Alt":
+      switch (location) {
+        case KeyboardEvent.DOM_KEY_LOCATION_RIGHT:
+          return "RAlt";
+        case KeyboardEvent.DOM_KEY_LOCATION_LEFT:
+          return "LAlt";
+        default:
+          return null;
+      }
+    case "Control":
+      switch (location) {
+        case KeyboardEvent.DOM_KEY_LOCATION_RIGHT:
+          return "RControl";
+        case KeyboardEvent.DOM_KEY_LOCATION_LEFT:
+          return "LControl";
+        default:
+          return null;
+      }
+    case "Shift":
+      switch (location) {
+        case KeyboardEvent.DOM_KEY_LOCATION_RIGHT:
+          return "RShift";
+        case KeyboardEvent.DOM_KEY_LOCATION_LEFT:
+          return "LShift";
+        default:
+          return null;
+      }
 
     default:
       return null;

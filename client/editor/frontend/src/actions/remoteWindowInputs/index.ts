@@ -405,7 +405,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
       return;
     }
 
-    const key = keyCodeFromBrowserKey(event.key);
+    const key = keyCodeFromBrowserKey(event.key, event.location);
 
     // We don't report unknown keys or keys that are being pressed already
     if (!key || key in state.activeKeys) {
@@ -433,7 +433,7 @@ function createEvents(state: State, element: HTMLElement, listener: Listener) {
       return;
     }
 
-    const key = keyCodeFromBrowserKey(event.key);
+    const key = keyCodeFromBrowserKey(event.key, event.location);
 
     if (!key || !(key in state.activeKeys)) {
       return;

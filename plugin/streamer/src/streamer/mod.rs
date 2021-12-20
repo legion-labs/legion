@@ -172,6 +172,7 @@ pub(crate) fn handle_stream_events(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
     mut query: Query<'_, '_, &mut RenderSurface>,
