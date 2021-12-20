@@ -200,7 +200,6 @@ fn main() {
             content_store_addr,
             game_manifest,
             assets_to_load,
-            None,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(InputPlugin::default())

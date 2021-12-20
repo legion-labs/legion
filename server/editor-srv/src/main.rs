@@ -124,7 +124,6 @@ fn main() {
             content_store_path,
             &game_manifest_path,
             assets_to_load,
-            None,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .insert_resource(ResourceRegistrySettings::new(project_folder))

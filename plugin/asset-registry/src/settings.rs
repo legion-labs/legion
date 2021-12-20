@@ -29,10 +29,31 @@ impl AssetRegistrySettings {
         content_store_addr: impl AsRef<Path>,
         game_manifest: impl AsRef<Path>,
         assets_to_load: Vec<ResourceTypeAndId>,
-        databuild_settings: Option<DataBuildSettings>,
     ) -> Self {
         Self {
             content_store_addr: content_store_addr.as_ref().to_owned(),
+            game_manifest: game_manifest.as_ref().to_owned(),
+            assets_to_load,
+            databuild_settings: None,
+        }
+    }
+
+    /// Create settings that support rebuilding resources upon reload.
+    /// Build index is assumed to be under the `content_store_addr` location.
+    pub fn new_with_rebuild(
+        content_store_addr: impl AsRef<Path>,
+        game_manifest: impl AsRef<Path>,
+        assets_to_load: Vec<ResourceTypeAndId>,
+        build_bin: impl AsRef<Path>,
+    ) -> Self {
+        let content_store_addr = content_store_addr.as_ref().to_owned();
+        let databuild_settings = {
+            let buildindex = &content_store_addr;
+            Some(DataBuildSettings::new(build_bin, buildindex))
+        };
+
+        Self {
+            content_store_addr,
             game_manifest: game_manifest.as_ref().to_owned(),
             assets_to_load,
             databuild_settings,
@@ -48,34 +69,12 @@ impl Default for AssetRegistrySettings {
             .unwrap_or_else(|| PathBuf::from("test/sample-data"));
 
         let content_store_path = project_folder.join("temp");
-        let databuild_settings = None;
-
-        /*
-        //
-        // Below is how runtime can be configured to use data-build CLI
-        // to re-build resources when reload is requested.
-        //
-
-        let databuild_settings = {
-            let build_bin = {
-                std::env::current_exe().ok().map_or_else(
-                    || panic!("cannot find test directory"),
-                    |mut path| {
-                        path.pop();
-                        path.as_path().join("data-build.exe")
-                    },
-                )
-            };
-            let buildindex = content_store_path.clone();
-
-            Some(DataBuildSettings::new(build_bin, buildindex))
-        };*/
 
         Self {
             content_store_addr: content_store_path,
             game_manifest: project_folder.join("runtime").join("game.manifest"),
             assets_to_load: vec![],
-            databuild_settings,
+            databuild_settings: None,
         }
     }
 }

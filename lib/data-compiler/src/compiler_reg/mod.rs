@@ -152,7 +152,7 @@ mod tests {
 
     use lgn_content_store::{Checksum, ContentStoreAddr};
     use lgn_data_offline::{ResourcePathId, Transform};
-    use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+    use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 
     use crate::{
         compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError},
@@ -181,6 +181,37 @@ mod tests {
             })
         },
     };
+
+    #[test]
+    fn binary() {
+        let target_dir = std::env::current_exe().ok().map_or_else(
+            || panic!("cannot find test directory"),
+            |mut path| {
+                path.pop();
+                if path.ends_with("deps") {
+                    path.pop();
+                }
+                path
+            },
+        );
+
+        let registry = CompilerRegistryOptions::from_dir(target_dir).create();
+
+        let env = CompilationEnv {
+            target: Target::Game,
+            platform: Platform::Windows,
+            locale: Locale::new("en"),
+        };
+
+        let source = ResourceTypeAndId {
+            t: text_resource::TextResource::TYPE,
+            id: ResourceId::new(),
+        };
+        let destination = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
+
+        let transform = Transform::new(source.t, destination.content_type());
+        let _ = registry.get_hash(transform, &env).expect("valid hash");
+    }
 
     #[test]
     fn in_proc() {

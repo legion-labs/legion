@@ -98,22 +98,6 @@ impl Plugin for ResourceRegistryPlugin {
 
                 let compilers = lgn_ubercompiler::create();
 
-                //
-                // In-process compilers can be replaced with standalone compiler executables
-                // with the following code:
-                //
-                /*{
-                    if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
-                        if exe_dir.pop() && exe_dir.is_dir() {
-                            CompilerRegistryOptions::from_dir(exe_dir)
-                        } else {
-                            CompilerRegistryOptions::default()
-                        }
-                    } else {
-                        CompilerRegistryOptions::default()
-                    }
-                };*/
-
                 let build_options = DataBuildOptions::new(&build_dir, compilers)
                     .content_store(&ContentStoreAddr::from(build_dir.as_path()));
 
