@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use generic_data::TestEntity;
+use generic_data::offline::TestEntity;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
