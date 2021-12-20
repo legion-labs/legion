@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use super::{BlobStorage, DiskBlobStorage, S3BlobStorage};
+use super::{AwsS3BlobStorage, BlobStorage, LocalBlobStorage};
 use crate::{parse_url_or_path, AwsS3Url, UrlOrPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,8 +30,8 @@ impl BlobStorageUrl {
 
     pub async fn into_blob_storage(self) -> Result<Box<dyn BlobStorage>> {
         match self {
-            BlobStorageUrl::Local(path) => Ok(Box::new(DiskBlobStorage::new(path).await?)),
-            BlobStorageUrl::AwsS3(url) => Ok(Box::new(S3BlobStorage::new(url).await)),
+            BlobStorageUrl::Local(path) => Ok(Box::new(LocalBlobStorage::new(path).await?)),
+            BlobStorageUrl::AwsS3(url) => Ok(Box::new(AwsS3BlobStorage::new(url).await)),
         }
     }
 }

@@ -5,9 +5,9 @@ use tokio::fs;
 
 use super::{BlobStorage, BoxedAsyncRead, BoxedAsyncWrite};
 
-pub struct DiskBlobStorage(PathBuf);
+pub struct LocalBlobStorage(PathBuf);
 
-impl DiskBlobStorage {
+impl LocalBlobStorage {
     pub async fn new(root: PathBuf) -> Result<Self> {
         fs::create_dir_all(&root)
             .await
@@ -22,7 +22,7 @@ impl DiskBlobStorage {
 }
 
 #[async_trait]
-impl BlobStorage for DiskBlobStorage {
+impl BlobStorage for LocalBlobStorage {
     async fn get_blob_reader(&self, hash: &str) -> super::Result<BoxedAsyncRead> {
         let blob_path = self.0.join(hash);
 

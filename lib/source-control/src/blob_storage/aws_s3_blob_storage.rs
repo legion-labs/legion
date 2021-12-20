@@ -17,12 +17,12 @@ use crate::{BoxedAsyncRead, BoxedAsyncWrite};
 
 use super::{BlobStorage, Error, Result};
 
-pub struct S3BlobStorage {
+pub struct AwsS3BlobStorage {
     url: AwsS3Url,
     client: aws_sdk_s3::Client,
 }
 
-impl S3BlobStorage {
+impl AwsS3BlobStorage {
     pub async fn new(url: AwsS3Url) -> Self {
         let config = aws_config::load_from_env().await;
         let client = aws_sdk_s3::Client::new(&config);
@@ -204,7 +204,7 @@ impl AsyncWrite for ByteStreamWriter {
 }
 
 #[async_trait]
-impl BlobStorage for S3BlobStorage {
+impl BlobStorage for AwsS3BlobStorage {
     async fn get_blob_reader(&self, hash: &str) -> Result<BoxedAsyncRead> {
         let key = self.blob_key(hash);
 
