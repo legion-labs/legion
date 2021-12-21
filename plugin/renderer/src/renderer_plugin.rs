@@ -4,7 +4,7 @@ use crate::{
     picking::{PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
-use lgn_app::{CoreStage, Plugin};
+use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
@@ -34,7 +34,7 @@ impl RendererPlugin {
 }
 
 impl Plugin for RendererPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
+    fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
 

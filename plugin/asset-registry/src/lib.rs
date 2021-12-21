@@ -68,7 +68,7 @@ use std::{fs::File, path::Path, sync::Arc};
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
-use lgn_app::Plugin;
+use lgn_app::prelude::*;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
@@ -76,14 +76,13 @@ use lgn_data_runtime::{
 use lgn_ecs::prelude::*;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
-pub use settings::AssetRegistrySettings;
-pub use settings::DataBuildSettings;
+pub use settings::{AssetRegistrySettings, DataBuildSettings};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
+    fn build(&self, app: &mut App) {
         if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
