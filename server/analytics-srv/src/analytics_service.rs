@@ -29,7 +29,6 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
-use prost::Message;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
 
@@ -123,23 +122,6 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
-    async fn get_cached_call_tree(&self, cache_item_name: &str) -> Option<CallTree> {
-        match self.cache.get(cache_item_name).await {
-            Err(e) => {
-                error!("Error reading from call tree cache: {}", e);
-                None
-            }
-            Ok(Some(buffer)) => match CallTree::decode(&*buffer) {
-                Ok(tree) => Some(tree),
-                Err(e) => {
-                    error!("Error reading call tree from cache: {}", e);
-                    None
-                }
-            },
-            Ok(None) => None,
-        }
-    }
-
     async fn get_call_tree(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -147,21 +129,13 @@ impl AnalyticsService {
         block_id: &str,
     ) -> Result<CallTree> {
         let cache_item_name = format!("tree_{}", block_id);
-        if let Some(tree) = self.get_cached_call_tree(&cache_item_name).await {
-            return Ok(tree);
-        }
-        let mut connection = self.pool.acquire().await?;
-        let tree =
-            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
-                .await?;
-        if let Err(e) = self
-            .cache
-            .put(&cache_item_name, &tree.encode_to_vec())
+        self.cache
+            .get_or_put(&cache_item_name, async {
+                let mut connection = self.pool.acquire().await?;
+                compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
+                    .await
+            })
             .await
-        {
-            error!("Error writing to call tree cache: {}", e);
-        }
-        Ok(tree)
     }
 
     async fn block_spans_impl(
@@ -170,8 +144,15 @@ impl AnalyticsService {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
-        let tree = self.get_call_tree(process, stream, block_id).await?;
-        compute_block_spans(tree, block_id)
+        let cache_item_name = format!("spans_{}", block_id);
+        self.cache
+            .get_or_put(&cache_item_name, async {
+                compute_block_spans(
+                    self.get_call_tree(process, stream, block_id).await?,
+                    block_id,
+                )
+            })
+            .await
     }
 
     async fn process_cumulative_call_graph_impl(
