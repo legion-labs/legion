@@ -83,10 +83,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::ffi::OsStr;
-use std::fmt::Formatter;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
+use std::{ffi::OsStr, process::Command};
+use std::{
+    fmt::Formatter,
+    path::{Path, PathBuf},
+};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -207,7 +209,7 @@ pub fn build_protos(
 /// # Errors
 /// Returns a generation error or an IO error
 ///
-/// #[cfg(feature = "web-appgen")]
+#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
 pub fn build_web_app() -> Result<()> {
     if let Ok(yarn_path) = which::which("yarn") {
         let frontend_dir = "frontend";
@@ -317,6 +319,7 @@ pub fn post_codegen(context: &Context) -> Result<()> {
     }
 }
 
+#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
 fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result<()> {
     let command_path = which::which(command_path.as_ref())
         .map_err(|_err| Error::MissingTool(command_path.as_ref().to_str().unwrap().to_string()))?;
