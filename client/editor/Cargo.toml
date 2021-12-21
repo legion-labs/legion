@@ -18,6 +18,7 @@ lgn-online = { path = "../../lib/online", version = "0.1.0" }
 lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
 lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
+lgn-browser = { path = "../../lib/browser", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = "2.33"
 tonic = "0.6"
