@@ -1,8 +1,9 @@
 <script lang="ts">
-  import Panel from "@/components/Panel.svelte";
-  import TopBar from "@/components/TopBar.svelte";
-  import StatusBar from "@/components/StatusBar.svelte";
-  import Video, { Resolution } from "@/components/Video.svelte";
+  import { Panel } from "@lgn/frontend/src/components/panel";
+  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
+  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
+  import { Resolution } from "@lgn/frontend/src/lib/types";
 
   let desiredVideoResolution: Resolution | null;
 </script>
@@ -22,8 +23,8 @@
             {/if}
           </span>
           <div class="video-container" slot="content">
-            <Video
-              backgroundColor="#112211"
+            <RemoteWindow
+              serverType="runtime"
               bind:desiredResolution={desiredVideoResolution}
             />
           </div>

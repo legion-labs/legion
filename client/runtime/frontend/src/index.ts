@@ -1,8 +1,11 @@
 import "./assets/index.css";
 
-import log, { Level } from "@/lib/log";
-import userInfo from "@/stores/userInfo";
-import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "@/lib/auth";
+import log, { Level } from "@lgn/frontend/src/lib/log";
+import userInfo from "@lgn/frontend/src/stores/userInfo";
+import {
+  createAwsCognitoTokenCache,
+  finalizeAwsCognitoAuth,
+} from "@lgn/frontend/src/lib/auth";
 import App from "@/App.svelte";
 
 const target = document.querySelector("#root");
