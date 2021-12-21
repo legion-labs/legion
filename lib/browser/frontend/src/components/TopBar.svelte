@@ -135,7 +135,7 @@
   }
 
   .menu-dropdown {
-    @apply absolute top-7;
+    @apply absolute top-7 rounded-b-sm;
   }
 
   .menu-dropdown-items {
@@ -155,6 +155,6 @@
   }
 
   .authenticate {
-    @apply flex justify-center items-center rounded-full bg-white h-6 w-6 text-sm text-gray-800;
+    @apply flex justify-center items-center rounded-full bg-orange-700 bg-opacity-80 h-6 w-6 text-xs text-white font-bold;
   }
 </style>

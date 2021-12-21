@@ -126,7 +126,7 @@
             <div slot="tab" let:tab>
               {tab}
             </div>
-            <div slot="content">
+            <div class="properties-content" slot="content">
               <CurrentResourceProperties />
             </div>
           </Panel>
@@ -195,6 +195,10 @@
   }
 
   .properties {
+    @apply h-full;
+  }
+
+  .properties-content {
     @apply h-full;
   }
 </style>
