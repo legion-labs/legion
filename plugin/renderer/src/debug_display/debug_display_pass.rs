@@ -140,7 +140,7 @@ impl DebugDisplayPass {
                     .vertices
                     .iter()
                     .enumerate()
-                    .filter(|(idx, ..)| idx % 6 < 3)
+                    .filter(|(idx, ..)| idx % 14 < 3)
                     .map(|(_idx, v)| *v)
                     .collect::<Vec<f32>>(),
                 ResourceUsage::AS_VERTEX_BUFFER,

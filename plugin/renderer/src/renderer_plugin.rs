@@ -186,24 +186,24 @@ fn update_debug(
     lights: Query<'_, '_, (&LightComponent, &Transform)>,
 ) {
     let bump = renderer.acquire_bump_allocator();
-    //debug_display.create_display_list(bump.bump(), |display_list| {
-    //    for (light, transform) in lights.iter() {
-    //        display_list.add_cube(transform.translation, bump.bump());
-    //        match light.light_type {
-    //            LightType::Directional { direction } => display_list.add_arrow(
-    //                transform.translation,
-    //                transform.translation - direction.normalize(),
-    //                bump.bump(),
-    //            ),
-    //            LightType::Spotlight { direction, .. } => display_list.add_arrow(
-    //                transform.translation,
-    //                transform.translation - direction.normalize(),
-    //                bump.bump(),
-    //            ),
-    //            LightType::Omnidirectional { .. } => (),
-    //        }
-    //    }
-    //});
+    debug_display.create_display_list(bump.bump(), |display_list| {
+        for (light, transform) in lights.iter() {
+            display_list.add_cube(transform.translation, bump.bump());
+            match light.light_type {
+                LightType::Directional { direction } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                LightType::Spotlight { direction, .. } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                LightType::Omnidirectional { .. } => (),
+            }
+        }
+    });
     renderer.release_bump_allocator(bump);
 }
 

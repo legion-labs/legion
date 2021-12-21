@@ -419,7 +419,7 @@ impl DebugRenderPass {
                 texture_view: render_surface.depth_stencil_texture_view(),
                 depth_load_op: LoadOp::Load,
                 stencil_load_op: LoadOp::DontCare,
-                depth_store_op: StoreOp::DontCare,
+                depth_store_op: StoreOp::Store,
                 stencil_store_op: StoreOp::DontCare,
                 clear_value: DepthStencilClearValue {
                     depth: 1.0,
