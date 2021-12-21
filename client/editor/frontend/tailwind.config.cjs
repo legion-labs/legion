@@ -7,7 +7,7 @@ const contentGlobSuffix = "**/*.{svelte,ts}";
 
 const srcContentDir = "./src";
 
-const lgnFrontendContentDir = "../../../node_modules/@lgn/frontend/src";
+const lgnFrontendContentDir = "./node_modules/@lgn/frontend/src";
 
 if (!fs.existsSync(lgnFrontendContentDir)) {
   // eslint-disable-next-line no-console

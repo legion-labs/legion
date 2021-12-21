@@ -23,7 +23,14 @@
 *~
 legion_local.toml
 
-# Yarn/NodeJs files
+# Pnpm/NodeJs files
 node_modules/
 dist/
-yarn-*.log
+.pnpm-debug.log
+
+# Npm/Yarn files
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+npm-debug.log*
+package-lock.json

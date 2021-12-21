@@ -19,19 +19,13 @@ We also use [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) t
 Make sure to install the dependencies
 
 ```bash
-yarn install
-```
-
-And to setup the application:
-
-```bash
-yarn setup
+pnpm install
 ```
 
 You can now run the application:
 
 ```
-yarn dev
+pnpm dev
 ```
 
 The development server on will be accessible on [http://localhost:3000](http://localhost:3000).
@@ -41,9 +35,9 @@ The development server on will be accessible on [http://localhost:3000](http://l
 You should regularly check that the code is clean and properly formatted:
 
 ```
-yarn eslint:check # yarn eslint:fix to fix the errors when possible
-yarn prettier:check # yarn prettier:fix to format the code
-yarn svelte:check # TypeScript and Svelte code checkers
+pnpm eslint:check # pnpm eslint:fix to fix the errors when possible
+pnpm prettier:check # pnpm prettier:fix to format the code
+pnpm svelte:check # TypeScript and Svelte code checkers
 ```
 
 ## Tests
@@ -51,7 +45,7 @@ yarn svelte:check # TypeScript and Svelte code checkers
 You can run the tests by simply typing:
 
 ```
-yarn test
+pnpm test
 ```
 
 ## Production
@@ -59,5 +53,5 @@ yarn test
 You can build the application for production using this command:
 
 ```bash
-yarn build
+pnpm build
 ```

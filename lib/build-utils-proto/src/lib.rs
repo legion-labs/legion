@@ -108,9 +108,9 @@ pub fn build_protos(
     if lang.contains(Language::TYPESCRIPT) {
         if Path::new("./package.json").exists() {
             {
-                let lock = named_lock::NamedLock::create("yarn_install").unwrap();
+                let lock = named_lock::NamedLock::create("pnpm_install").unwrap();
                 let _guard = lock.lock().unwrap();
-                run_cmd("yarn", &["install"], ".")?;
+                run_cmd("pnpm", &["install"], ".")?;
             }
             let mut proto_plugin = PathBuf::from("./node_modules/.bin/protoc-gen-ts_proto");
             if cfg!(windows) {

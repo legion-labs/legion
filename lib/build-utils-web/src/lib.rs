@@ -91,14 +91,14 @@ use lgn_build_utils::{run_cmd, Result};
 /// Returns a generation error or an IO error
 ///
 pub fn build_web_app() -> Result<()> {
-    if let Ok(yarn_path) = which::which("yarn") {
+    if let Ok(pnpm_path) = which::which("pnpm") {
         let frontend_dir = "frontend";
         {
-            let lock = named_lock::NamedLock::create("yarn_install").unwrap();
+            let lock = named_lock::NamedLock::create("pnpm_install").unwrap();
             let _guard = lock.lock().unwrap();
-            run_cmd(&yarn_path, &["install"], frontend_dir)?;
+            run_cmd(&pnpm_path, &["install"], frontend_dir)?;
         }
-        run_cmd(&yarn_path, &["build"], frontend_dir)?;
+        run_cmd(&pnpm_path, &["build"], frontend_dir)?;
 
         // JS ecosystem forces us to have output files in our sources hierarchy
         // we are filtering files
@@ -121,7 +121,7 @@ pub fn build_web_app() -> Result<()> {
             });
     } else {
         std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
+        std::fs::write("frontend/dist/index.html", "pnpm missing from path").unwrap();
         println!("cargo:rerun-if-env-changed=PATH");
     }
     Ok(())
