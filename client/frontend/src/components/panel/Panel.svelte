@@ -1,5 +1,5 @@
 <script lang="ts">
-  import clickOutside from "@/actions/clickOutside";
+  import clickOutside from "@lgn/frontend/src/actions/clickOutside";
 
   /** The `string` value is just an identifier that can be used to display any kind of tab label */
   export let tabs: string[] = [];

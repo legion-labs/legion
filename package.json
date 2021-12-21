@@ -2,6 +2,7 @@
   "private": true,
   "workspaces": [
     "client/*/frontend",
+    "client/frontend",
     "proto/*"
   ],
   "scripts": {

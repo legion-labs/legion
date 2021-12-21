@@ -1,5 +1,5 @@
-import { onVideoChunkReceived, onVideoClose } from "@/api";
-import log from "@/lib/log";
+import { onVideoChunkReceived, onVideoClose } from "../api";
+import log from "../lib/log";
 
 type Source = MediaSource | SourceBuffer | HTMLVideoElement;
 
@@ -17,6 +17,14 @@ export type PushableHTMLVideoElement = HTMLVideoElement & {
   push(data: ArrayBuffer): void;
 };
 
+/**
+ * Takes an `HTMLVideoElement` and attach a `push` method to it.
+ *
+ * The attached `push` method accepts an `ArrayBuffer` that will be
+ * used as a frame in the video.
+ * @param videoElement An `HTMLVideoElement`
+ * @param options
+ */
 export default function videoPlayer(
   videoElement: HTMLVideoElement,
   options?: { onFatal?: () => void }

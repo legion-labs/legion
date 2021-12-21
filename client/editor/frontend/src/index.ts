@@ -1,8 +1,11 @@
 import "./assets/index.css";
 
-import log, { Level } from "@/lib/log";
-import userInfo from "@/stores/userInfo";
-import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "@/lib/auth";
+import log, { Level } from "@lgn/frontend/src/lib/log";
+import {
+  createAwsCognitoTokenCache,
+  finalizeAwsCognitoAuth,
+} from "@lgn/frontend/src/lib/auth";
+import userInfo from "@lgn/frontend/src/stores/userInfo";
 import App from "@/App.svelte";
 import "@/workers/editorWorker";
 

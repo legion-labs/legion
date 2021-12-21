@@ -11,8 +11,7 @@ use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::picking::PickingRenderPass;
-use crate::render_pass::TmpRenderPass;
+use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
 use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
@@ -139,6 +138,7 @@ pub struct RenderSurface {
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
+    debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
 }
@@ -158,6 +158,10 @@ impl RenderSurface {
 
     pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
         self.test_renderpass.clone()
+    }
+
+    pub fn debug_renderpass(&self) -> Arc<RwLock<DebugRenderPass>> {
+        self.debug_renderpass.clone()
     }
 
     pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
@@ -261,6 +265,7 @@ impl RenderSurface {
             signal_sems,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(renderer))),
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(renderer))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
         }

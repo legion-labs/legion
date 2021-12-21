@@ -1,18 +1,20 @@
-<script context="module" lang="ts">
-  export type Resolution = { width: number; height: number };
-</script>
-
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import resize from "@/actions/resize";
+  import { debounce, retry } from "../lib/promises";
+  import { statusStore } from "../stores/statusBarData";
+  import {
+    initializeStream,
+    onReceiveControlMessage,
+    ServerType,
+  } from "../api";
+  import log from "../lib/log";
+  import { PushableHTMLVideoElement } from "../actions/videoPlayer";
+  import resize from "../actions/resize";
+  import videoPlayer from "../actions/videoPlayer";
   import remoteWindowInputs, {
-    Input as RemoteWindowInput,
-  } from "@/actions/remoteWindowInputs";
-  import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
-  import { debounce, retry } from "@/lib/promises";
-  import { initializeStream, onReceiveControlMessage, ServerType } from "@/api";
-  import { statusStore } from "@/stores/statusBarData";
-  import log from "@/lib/log";
+    RemoteWindowInput,
+  } from "../actions/remoteWindowInputs";
+  import { Resolution } from "../lib/types";
 
   const reconnectionTimeout = 600;
 
@@ -23,8 +25,6 @@
   export let desiredResolution: Resolution | null = null;
 
   export let serverType: ServerType;
-
-  export let isFocused: boolean = false;
 
   let resolution: Resolution | null = null;
 
@@ -274,7 +274,7 @@
 <div
   class="video-container"
   use:resize={onVideoResize}
-  use:remoteWindowInputs={{ isFocused, listener: onRemoteWindowInput }}
+  use:remoteWindowInputs={onRemoteWindowInput}
 >
   <video
     class="video"

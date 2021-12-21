@@ -365,7 +365,7 @@ pub(crate) fn rasterizer_state_to_create_info(
         .depth_bias_constant_factor(rasterizer_state.depth_bias)
         .depth_bias_clamp(0.0)
         .depth_bias_slope_factor(rasterizer_state.depth_bias_slope_scaled)
-        .line_width(1.0)
+        .line_width(rasterizer_state.line_width)
         .build()
 }
 

@@ -15,6 +15,7 @@ use lgn_renderer::components::{
     CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
     StaticMesh,
 };
+use lgn_renderer::resources::DefaultMeshes;
 use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::components::Transform;
@@ -272,7 +273,7 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_scene(mut commands: Commands) {
+fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     // plane
     commands
         .spawn()
@@ -280,7 +281,9 @@ fn init_scene(mut commands: Commands) {
         .insert(StaticMesh {
             mesh_id: 0,
             color: (0, 0, 255).into(),
-            offset: 0,
+            vertex_offset: default_meshes.mesh_offset_from_id(0),
+            num_verticies: default_meshes.mesh_from_id(0).num_vertices() as u32,
+            world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
@@ -294,7 +297,9 @@ fn init_scene(mut commands: Commands) {
         .insert(StaticMesh {
             mesh_id: 1,
             color: (255, 0, 0).into(),
-            offset: 0,
+            vertex_offset: default_meshes.mesh_offset_from_id(1),
+            num_verticies: default_meshes.mesh_from_id(1).num_vertices() as u32,
+            world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
@@ -308,7 +313,9 @@ fn init_scene(mut commands: Commands) {
         .insert(StaticMesh {
             mesh_id: 2,
             color: (0, 255, 0).into(),
-            offset: 0,
+            vertex_offset: default_meshes.mesh_offset_from_id(2),
+            num_verticies: default_meshes.mesh_from_id(2).num_vertices() as u32,
+            world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
