@@ -9,15 +9,16 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
     InputPlugin,
 };
+use lgn_math::{EulerRot, Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
-        CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
-        StaticMesh, LightComponent, LightType
+        CameraComponent, LightComponent, LightType, RenderSurface, RenderSurfaceExtents,
+        RenderSurfaceId, RotationComponent, StaticMesh,
     },
-    resources::DefaultMeshes,
+    resources::{DefaultMeshId, DefaultMeshes},
     {Renderer, RendererPlugin, RendererSystemLabel},
 };
 use lgn_telemetry_sink::TelemetryGuard;
@@ -383,10 +384,10 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             default_meshes.as_ref(),
             DefaultMeshId::Plane as usize,
             (255, 0, 0).into(),
-        ));
-    //.insert(RotationComponent {
-    //    rotation_speed: (0.4, 0.0, 0.0),
-    //});
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.4, 0.0, 0.0),
+        });
 
     // cube
     commands
@@ -396,10 +397,10 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             default_meshes.as_ref(),
             DefaultMeshId::Cube as usize,
             (0, 255, 0).into(),
-        ));
-    //.insert(RotationComponent {
-    //    rotation_speed: (0.0, 0.4, 0.0),
-    //});
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.4, 0.0),
+        });
 
     // pyramid
     commands
@@ -409,10 +410,10 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             default_meshes.as_ref(),
             DefaultMeshId::Pyramid as usize,
             (0, 0, 255).into(),
-        ));
-    //.insert(RotationComponent {
-    //    rotation_speed: (0.0, 0.0, 0.4),
-    //});
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.0, 0.4),
+        });
 
     // omnidirectional light
     commands
