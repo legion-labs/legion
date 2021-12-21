@@ -1,3 +1,32 @@
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallTreeNode {
+    #[prost(uint32, tag = "1")]
+    pub hash: u32,
+    #[prost(double, tag = "2")]
+    pub begin_ms: f64,
+    #[prost(double, tag = "3")]
+    pub end_ms: f64,
+    #[prost(message, repeated, tag = "4")]
+    pub children: ::prost::alloc::vec::Vec<CallTreeNode>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScopeDesc {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub filename: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "3")]
+    pub line: u32,
+    #[prost(uint32, tag = "4")]
+    pub hash: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallTree {
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
+    #[prost(message, optional, tag = "2")]
+    pub root: ::core::option::Option<CallTreeNode>,
+}
 /// find_process
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindProcessRequest {
@@ -71,17 +100,6 @@ pub struct Span {
     pub end_ms: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScopeDesc {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub filename: ::prost::alloc::string::String,
-    #[prost(uint32, tag = "3")]
-    pub line: u32,
-    #[prost(uint32, tag = "4")]
-    pub hash: u32,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansRequest {
     #[prost(message, optional, tag = "1")]
     pub process: ::core::option::Option<super::telemetry::Process>,
@@ -92,8 +110,8 @@ pub struct BlockSpansRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansReply {
-    #[prost(message, repeated, tag = "1")]
-    pub scopes: ::prost::alloc::vec::Vec<ScopeDesc>,
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
     #[prost(message, repeated, tag = "2")]
     pub spans: ::prost::alloc::vec::Vec<Span>,
     #[prost(string, tag = "3")]
@@ -150,8 +168,8 @@ pub struct CumulativeCallGraphNode {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CumulativeCallGraphReply {
-    #[prost(message, repeated, tag = "1")]
-    pub scopes: ::prost::alloc::vec::Vec<ScopeDesc>,
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
     #[prost(message, repeated, tag = "2")]
     pub nodes: ::prost::alloc::vec::Vec<CumulativeCallGraphNode>,
 }

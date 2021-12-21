@@ -6,6 +6,7 @@ import { BrowserHeaders } from "browser-headers";
 import { Process } from "./process";
 import { Stream } from "./stream";
 import { Block } from "./block";
+import { ScopeDesc } from "./calltree";
 
 export const protobufPackage = "analytics";
 
@@ -67,13 +68,6 @@ export interface Span {
   endMs: number;
 }
 
-export interface ScopeDesc {
-  name: string;
-  filename: string;
-  line: number;
-  hash: number;
-}
-
 export interface BlockSpansRequest {
   process: Process | undefined;
   stream: Stream | undefined;
@@ -81,12 +75,17 @@ export interface BlockSpansRequest {
 }
 
 export interface BlockSpansReply {
-  scopes: ScopeDesc[];
+  scopes: { [key: number]: ScopeDesc };
   spans: Span[];
   blockId: string;
   beginMs: number;
   endMs: number;
   maxDepth: number;
+}
+
+export interface BlockSpansReply_ScopesEntry {
+  key: number;
+  value: ScopeDesc | undefined;
 }
 
 /** process_cumulative_call_graph */
@@ -118,8 +117,13 @@ export interface CumulativeCallGraphNode {
 }
 
 export interface CumulativeCallGraphReply {
-  scopes: ScopeDesc[];
+  scopes: { [key: number]: ScopeDesc };
   nodes: CumulativeCallGraphNode[];
+}
+
+export interface CumulativeCallGraphReply_ScopesEntry {
+  key: number;
+  value: ScopeDesc | undefined;
 }
 
 /** list_process_log_entries */
@@ -920,97 +924,6 @@ export const Span = {
   },
 };
 
-const baseScopeDesc: object = { name: "", filename: "", line: 0, hash: 0 };
-
-export const ScopeDesc = {
-  encode(
-    message: ScopeDesc,
-    writer: _m0.Writer = _m0.Writer.create()
-  ): _m0.Writer {
-    if (message.name !== "") {
-      writer.uint32(10).string(message.name);
-    }
-    if (message.filename !== "") {
-      writer.uint32(18).string(message.filename);
-    }
-    if (message.line !== 0) {
-      writer.uint32(24).uint32(message.line);
-    }
-    if (message.hash !== 0) {
-      writer.uint32(32).uint32(message.hash);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): ScopeDesc {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.name = reader.string();
-          break;
-        case 2:
-          message.filename = reader.string();
-          break;
-        case 3:
-          message.line = reader.uint32();
-          break;
-        case 4:
-          message.hash = reader.uint32();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.filename =
-      object.filename !== undefined && object.filename !== null
-        ? String(object.filename)
-        : "";
-    message.line =
-      object.line !== undefined && object.line !== null
-        ? Number(object.line)
-        : 0;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    return message;
-  },
-
-  toJSON(message: ScopeDesc): unknown {
-    const obj: any = {};
-    message.name !== undefined && (obj.name = message.name);
-    message.filename !== undefined && (obj.filename = message.filename);
-    message.line !== undefined && (obj.line = Math.round(message.line));
-    message.hash !== undefined && (obj.hash = Math.round(message.hash));
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<ScopeDesc>, I>>(
-    object: I
-  ): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    message.name = object.name ?? "";
-    message.filename = object.filename ?? "";
-    message.line = object.line ?? 0;
-    message.hash = object.hash ?? 0;
-    return message;
-  },
-};
-
 const baseBlockSpansRequest: object = { blockId: "" };
 
 export const BlockSpansRequest = {
@@ -1112,9 +1025,12 @@ export const BlockSpansReply = {
     message: BlockSpansReply,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    for (const v of message.scopes) {
-      ScopeDesc.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
+    Object.entries(message.scopes).forEach(([key, value]) => {
+      BlockSpansReply_ScopesEntry.encode(
+        { key: key as any, value },
+        writer.uint32(10).fork()
+      ).ldelim();
+    });
     for (const v of message.spans) {
       Span.encode(v!, writer.uint32(18).fork()).ldelim();
     }
@@ -1137,13 +1053,19 @@ export const BlockSpansReply = {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = [];
+    message.scopes = {};
     message.spans = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.scopes.push(ScopeDesc.decode(reader, reader.uint32()));
+          const entry1 = BlockSpansReply_ScopesEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry1.value !== undefined) {
+            message.scopes[entry1.key] = entry1.value;
+          }
           break;
         case 2:
           message.spans.push(Span.decode(reader, reader.uint32()));
@@ -1170,9 +1092,12 @@ export const BlockSpansReply = {
 
   fromJSON(object: any): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = (object.scopes ?? []).map((e: any) =>
-      ScopeDesc.fromJSON(e)
-    );
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      acc[Number(key)] = ScopeDesc.fromJSON(value);
+      return acc;
+    }, {});
     message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
     message.blockId =
       object.blockId !== undefined && object.blockId !== null
@@ -1195,12 +1120,11 @@ export const BlockSpansReply = {
 
   toJSON(message: BlockSpansReply): unknown {
     const obj: any = {};
+    obj.scopes = {};
     if (message.scopes) {
-      obj.scopes = message.scopes.map((e) =>
-        e ? ScopeDesc.toJSON(e) : undefined
-      );
-    } else {
-      obj.scopes = [];
+      Object.entries(message.scopes).forEach(([k, v]) => {
+        obj.scopes[k] = ScopeDesc.toJSON(v);
+      });
     }
     if (message.spans) {
       obj.spans = message.spans.map((e) => (e ? Span.toJSON(e) : undefined));
@@ -1219,12 +1143,97 @@ export const BlockSpansReply = {
     object: I
   ): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[Number(key)] = ScopeDesc.fromPartial(value);
+      }
+      return acc;
+    }, {});
     message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
     message.blockId = object.blockId ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
     message.maxDepth = object.maxDepth ?? 0;
+    return message;
+  },
+};
+
+const baseBlockSpansReply_ScopesEntry: object = { key: 0 };
+
+export const BlockSpansReply_ScopesEntry = {
+  encode(
+    message: BlockSpansReply_ScopesEntry,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).uint32(message.key);
+    }
+    if (message.value !== undefined) {
+      ScopeDesc.encode(message.value, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): BlockSpansReply_ScopesEntry {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.uint32();
+          break;
+        case 2:
+          message.value = ScopeDesc.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockSpansReply_ScopesEntry {
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    message.key =
+      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromJSON(object.value)
+        : undefined;
+    return message;
+  },
+
+  toJSON(message: BlockSpansReply_ScopesEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined &&
+      (obj.value = message.value ? ScopeDesc.toJSON(message.value) : undefined);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockSpansReply_ScopesEntry>, I>>(
+    object: I
+  ): BlockSpansReply_ScopesEntry {
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    message.key = object.key ?? 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromPartial(object.value)
+        : undefined;
     return message;
   },
 };
@@ -1629,9 +1638,12 @@ export const CumulativeCallGraphReply = {
     message: CumulativeCallGraphReply,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    for (const v of message.scopes) {
-      ScopeDesc.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
+    Object.entries(message.scopes).forEach(([key, value]) => {
+      CumulativeCallGraphReply_ScopesEntry.encode(
+        { key: key as any, value },
+        writer.uint32(10).fork()
+      ).ldelim();
+    });
     for (const v of message.nodes) {
       CumulativeCallGraphNode.encode(v!, writer.uint32(18).fork()).ldelim();
     }
@@ -1647,13 +1659,19 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = [];
+    message.scopes = {};
     message.nodes = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.scopes.push(ScopeDesc.decode(reader, reader.uint32()));
+          const entry1 = CumulativeCallGraphReply_ScopesEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry1.value !== undefined) {
+            message.scopes[entry1.key] = entry1.value;
+          }
           break;
         case 2:
           message.nodes.push(
@@ -1672,9 +1690,12 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = (object.scopes ?? []).map((e: any) =>
-      ScopeDesc.fromJSON(e)
-    );
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      acc[Number(key)] = ScopeDesc.fromJSON(value);
+      return acc;
+    }, {});
     message.nodes = (object.nodes ?? []).map((e: any) =>
       CumulativeCallGraphNode.fromJSON(e)
     );
@@ -1683,12 +1704,11 @@ export const CumulativeCallGraphReply = {
 
   toJSON(message: CumulativeCallGraphReply): unknown {
     const obj: any = {};
+    obj.scopes = {};
     if (message.scopes) {
-      obj.scopes = message.scopes.map((e) =>
-        e ? ScopeDesc.toJSON(e) : undefined
-      );
-    } else {
-      obj.scopes = [];
+      Object.entries(message.scopes).forEach(([k, v]) => {
+        obj.scopes[k] = ScopeDesc.toJSON(v);
+      });
     }
     if (message.nodes) {
       obj.nodes = message.nodes.map((e) =>
@@ -1706,9 +1726,94 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[Number(key)] = ScopeDesc.fromPartial(value);
+      }
+      return acc;
+    }, {});
     message.nodes =
       object.nodes?.map((e) => CumulativeCallGraphNode.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+const baseCumulativeCallGraphReply_ScopesEntry: object = { key: 0 };
+
+export const CumulativeCallGraphReply_ScopesEntry = {
+  encode(
+    message: CumulativeCallGraphReply_ScopesEntry,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).uint32(message.key);
+    }
+    if (message.value !== undefined) {
+      ScopeDesc.encode(message.value, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): CumulativeCallGraphReply_ScopesEntry {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.uint32();
+          break;
+        case 2:
+          message.value = ScopeDesc.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CumulativeCallGraphReply_ScopesEntry {
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    message.key =
+      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromJSON(object.value)
+        : undefined;
+    return message;
+  },
+
+  toJSON(message: CumulativeCallGraphReply_ScopesEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined &&
+      (obj.value = message.value ? ScopeDesc.toJSON(message.value) : undefined);
+    return obj;
+  },
+
+  fromPartial<
+    I extends Exact<DeepPartial<CumulativeCallGraphReply_ScopesEntry>, I>
+  >(object: I): CumulativeCallGraphReply_ScopesEntry {
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    message.key = object.key ?? 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromPartial(object.value)
+        : undefined;
     return message;
   },
 };

@@ -162,11 +162,7 @@
       process,
       stream: threads[streamId].streamInfo,
     });
-
-    response.scopes.forEach((scopeDesc) => {
-      scopes[scopeDesc.hash] = scopeDesc;
-    });
-
+    scopes = {...scopes,...response.scopes};
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 

@@ -4,6 +4,8 @@
 //!
 //! Env variables:
 //!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local telemetry directory
+//!  - `LEGION_TELEMETRY_CACHE_DIRECTORY` : local directory where reusable computations will be stored
+//!
 //!
 
 // BEGIN - Legion Labs lints v0.6
@@ -63,6 +65,7 @@
 #![allow()]
 
 mod analytics_service;
+mod cache;
 mod call_tree;
 mod cumulative_call_graph;
 mod metrics;
@@ -93,7 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;
-    let service = AnalyticsService::new(pool, data_dir);
+    let service =
+        AnalyticsService::new(pool, data_dir).with_context(|| "allocating AnalyticsService")?;
     log::info!("service allocated");
     Server::builder()
         .accept_http1(true)

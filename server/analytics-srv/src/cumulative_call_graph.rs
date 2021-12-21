@@ -4,11 +4,12 @@ use std::{cmp::min, path::Path};
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
 use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
 
-use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
+use crate::call_tree::{compute_block_call_tree, ScopeHashMap}; //todo: move to analytics lib
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
@@ -52,7 +53,6 @@ fn record_tree_stats(
     tree: &CallTreeNode,
     filter_begin_ms: f64,
     filter_end_ms: f64,
-    scopes: &mut ScopeHashMap,
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
@@ -60,7 +60,6 @@ fn record_tree_stats(
     if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
         return;
     }
-    record_scope_in_map(tree, scopes);
     {
         let stats = stats_map.entry(tree.hash).or_insert_with(NodeStatsAcc::new);
         let duration = tree.end_ms.min(filter_end_ms) - tree.begin_ms.max(filter_begin_ms);
@@ -68,7 +67,7 @@ fn record_tree_stats(
         if let Some(ph) = parent_hash {
             *stats.parents.entry(ph).or_insert(0.0) += duration;
         }
-        for child in &tree.scopes {
+        for child in &tree.children {
             if tree_overlaps(child, filter_begin_ms, filter_end_ms) {
                 let child_duration =
                     child.end_ms.min(filter_end_ms) - child.begin_ms.max(filter_begin_ms);
@@ -76,12 +75,11 @@ fn record_tree_stats(
             }
         }
     }
-    for child in &tree.scopes {
+    for child in &tree.children {
         record_tree_stats(
             child,
             filter_begin_ms,
             filter_end_ms,
-            scopes,
             stats_map,
             Some(tree.hash),
         );
@@ -118,7 +116,10 @@ async fn record_process_call_graph(
             //compute_block_call_tree fetches the block metadata again
             let tree =
                 compute_block_call_tree(connection, data_path, process, &s, &b.block_id).await?;
-            record_tree_stats(&tree, begin_ms, end_ms, scopes, stats, None);
+            if let Some(root) = tree.root {
+                scopes.extend(tree.scopes);
+                record_tree_stats(&root, begin_ms, end_ms, stats, None);
+            }
         }
     }
     Ok(())
@@ -169,12 +170,6 @@ pub(crate) async fn compute_cumulative_call_graph(
         .await?;
     }
 
-    let mut scope_vec = vec![];
-    scope_vec.reserve(scopes.len());
-    for (_k, v) in scopes.drain() {
-        scope_vec.push(v);
-    }
-
     let mut nodes = vec![];
     nodes.reserve(stats.len());
     for (hash, mut node_stats) in stats.drain() {
@@ -216,8 +211,5 @@ pub(crate) async fn compute_cumulative_call_graph(
         });
     }
 
-    Ok(CumulativeCallGraphReply {
-        scopes: scope_vec,
-        nodes,
-    })
+    Ok(CumulativeCallGraphReply { scopes, nodes })
 }

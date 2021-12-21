@@ -4,6 +4,8 @@ use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::CallTree;
+use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::ScopeDesc;
 use lgn_telemetry_proto::analytics::Span;
 use lgn_transit::prelude::*;
@@ -38,21 +40,13 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     Ok(())
 }
 
-#[derive(Debug)]
-pub(crate) struct CallTreeNode {
-    pub hash: u32,
-    pub name: String,
-    pub scopes: Vec<CallTreeNode>,
-    pub begin_ms: f64,
-    pub end_ms: f64,
-}
-
 struct CallTreeBuilder {
     ts_begin_block: i64,
     ts_end_block: i64,
     ts_offset: i64,
     inv_tsc_frequency: f64,
     stack: Vec<CallTreeNode>,
+    scopes: ScopeHashMap,
 }
 
 impl CallTreeBuilder {
@@ -68,28 +62,29 @@ impl CallTreeBuilder {
             ts_offset,
             inv_tsc_frequency,
             stack: Vec::new(),
+            scopes: ScopeHashMap::new(),
         }
     }
 
-    pub fn finish(mut self) -> CallTreeNode {
+    pub fn finish(mut self) -> CallTree {
         trace_scope!();
         if self.stack.is_empty() {
-            return CallTreeNode {
-                hash: 0,
-                name: String::new(),
-                begin_ms: self.get_time(self.ts_begin_block),
-                end_ms: self.get_time(self.ts_end_block),
-                scopes: vec![],
+            return CallTree {
+                scopes: ScopeHashMap::new(),
+                root: None,
             };
         }
         while self.stack.len() > 1 {
             let top = self.stack.pop().unwrap();
             let last_index = self.stack.len() - 1;
             let parent = &mut self.stack[last_index];
-            parent.scopes.push(top);
+            parent.children.push(top);
         }
         assert_eq!(1, self.stack.len());
-        self.stack.pop().unwrap()
+        CallTree {
+            scopes: self.scopes,
+            root: self.stack.pop(),
+        }
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -100,18 +95,26 @@ impl CallTreeBuilder {
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
         trace_scope!();
         if let Some(mut top) = self.stack.pop() {
-            top.scopes.push(scope);
+            top.children.push(scope);
             self.stack.push(top);
         } else {
             let new_root = CallTreeNode {
                 hash: 0,
-                name: String::new(),
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: self.get_time(self.ts_end_block),
-                scopes: vec![scope],
+                children: vec![scope],
             };
             self.stack.push(new_root);
         }
+    }
+
+    fn record_scope_desc(&mut self, hash: u32, name: String) {
+        self.scopes.entry(hash).or_insert_with(|| ScopeDesc {
+            name,
+            filename: "".to_string(),
+            line: 0,
+            hash,
+        });
     }
 }
 
@@ -119,12 +122,13 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
         trace_scope!();
         let time = self.get_time(ts);
+        let hash = compute_scope_hash(&scope_name);
+        self.record_scope_desc(hash, scope_name);
         let scope = CallTreeNode {
-            hash: compute_scope_hash(&scope_name),
-            name: scope_name,
+            hash,
             begin_ms: time,
             end_ms: self.get_time(self.ts_end_block),
-            scopes: Vec::new(),
+            children: Vec::new(),
         };
         self.stack.push(scope);
     }
@@ -132,25 +136,25 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_end_scope(&mut self, scope_name: String, ts: i64) {
         trace_scope!();
         let time = self.get_time(ts);
+        let hash = compute_scope_hash(&scope_name);
         if let Some(mut old_top) = self.stack.pop() {
-            if old_top.name == scope_name {
+            if old_top.hash == hash {
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
-            } else if old_top.name.is_empty() {
-                old_top.hash = compute_scope_hash(&scope_name);
-                old_top.name = scope_name;
+            } else if old_top.hash == 0 {
+                old_top.hash = hash;
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else {
                 panic!("top scope mismatch");
             }
         } else {
+            self.record_scope_desc(hash, scope_name);
             let scope = CallTreeNode {
-                hash: compute_scope_hash(&scope_name),
-                name: scope_name,
+                hash,
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: time,
-                scopes: Vec::new(),
+                children: Vec::new(),
             };
             self.add_child_to_top(scope);
         }
@@ -164,7 +168,7 @@ pub(crate) async fn compute_block_call_tree(
     process: &lgn_telemetry::ProcessInfo,
     stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
-) -> Result<CallTreeNode> {
+) -> Result<CallTree> {
     let ts_offset = process.start_ticks;
     let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
     let block = find_block(connection, block_id).await?;
@@ -186,23 +190,8 @@ fn compute_scope_hash(name: &str) -> u32 {
     CRC32.checksum(name.as_bytes())
 }
 
-pub(crate) fn record_scope_in_map(node: &CallTreeNode, scopes: &mut ScopeHashMap) {
+fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, spans: &mut Vec<Span>) -> u32 {
     trace_scope!();
-    scopes.entry(node.hash).or_insert_with(|| ScopeDesc {
-        name: node.name.clone(),
-        filename: "".to_string(),
-        line: 0,
-        hash: node.hash,
-    });
-}
-
-fn make_spans_from_tree(
-    tree: &CallTreeNode,
-    depth: u32,
-    scopes: &mut ScopeHashMap,
-    spans: &mut Vec<Span>,
-) -> u32 {
-    record_scope_in_map(tree, scopes);
     let span = Span {
         scope_hash: tree.hash,
         depth,
@@ -211,50 +200,36 @@ fn make_spans_from_tree(
     };
     spans.push(span);
     let mut max_depth = depth;
-    for child in &tree.scopes {
-        max_depth = std::cmp::max(
-            max_depth,
-            make_spans_from_tree(child, depth + 1, scopes, spans),
-        );
+    for child in &tree.children {
+        max_depth = std::cmp::max(max_depth, make_spans_from_tree(child, depth + 1, spans));
     }
     max_depth
 }
 
-pub(crate) async fn compute_block_spans(
-    connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
-    process: &lgn_telemetry::ProcessInfo,
-    stream: &lgn_telemetry::StreamInfo,
-    block_id: &str,
-) -> Result<BlockSpansReply> {
-    let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
-    let mut scopes = ScopeHashMap::new();
+pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
+    trace_scope!();
     let mut spans = vec![];
     let mut max_depth = 0;
-    let mut begin_ms = tree.begin_ms;
-    let mut end_ms = tree.end_ms;
-    if tree.name.is_empty() {
+    if tree.root.is_none() {
+        anyhow::bail!("no root in call tree of block {}", block_id);
+    }
+    let root = tree.root.unwrap();
+    let mut begin_ms = root.begin_ms;
+    let mut end_ms = root.end_ms;
+    if root.hash == 0 {
         begin_ms = f64::MAX;
         end_ms = f64::MIN;
-        for child in &tree.scopes {
+        for child in &root.children {
             begin_ms = begin_ms.min(child.begin_ms);
             end_ms = end_ms.max(child.end_ms);
-            max_depth = std::cmp::max(
-                max_depth,
-                make_spans_from_tree(child, 0, &mut scopes, &mut spans),
-            );
+            max_depth = std::cmp::max(max_depth, make_spans_from_tree(child, 0, &mut spans));
         }
     } else {
-        max_depth = make_spans_from_tree(&tree, 0, &mut scopes, &mut spans);
+        max_depth = make_spans_from_tree(&root, 0, &mut spans);
     }
 
-    let mut scope_vec = vec![];
-    scope_vec.reserve(scopes.len());
-    for (_k, v) in scopes.drain() {
-        scope_vec.push(v);
-    }
     Ok(BlockSpansReply {
-        scopes: scope_vec,
+        scopes: tree.scopes,
         spans,
         block_id: block_id.to_owned(),
         begin_ms,
