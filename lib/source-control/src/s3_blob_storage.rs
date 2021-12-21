@@ -5,7 +5,8 @@ use http::Uri;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::{compute_file_hash, lz4_decompress, lz4_read, BlobStorage};
+use crate::utils::{lz4_decompress, lz4_read, lz4_read_bin};
+use crate::{compute_file_hash, BlobStorage};
 
 pub struct S3BlobStorage {
     bucket_name: String,
@@ -34,29 +35,6 @@ impl S3BlobStorage {
             client,
             compressed_blob_cache,
         })
-    }
-
-    async fn blob_exists(&self, hash: &str) -> Result<bool> {
-        let path = self.root.join(hash);
-        let key = path.to_str().unwrap();
-        //we fetch the acl to know if the object exists
-        let req_acl = self
-            .client
-            .get_object_acl()
-            .bucket(&self.bucket_name)
-            .key(key);
-
-        match req_acl.send().await {
-            Ok(_acl) => Ok(true),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
-                if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
-                    Ok(false)
-                } else {
-                    anyhow::bail!("error fetching acl for {:?}: {}", key, err);
-                }
-            }
-            Err(e) => anyhow::bail!("error fetching acl for {:?}: {:?}", key, e),
-        }
     }
 
     async fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf> {
@@ -99,6 +77,11 @@ impl BlobStorage for S3BlobStorage {
         lz4_read(&cache_path)
     }
 
+    async fn read_bin_blob(&self, hash: &str) -> Result<Vec<u8>> {
+        let cache_path = self.download_blob_to_cache(hash).await?;
+        lz4_read_bin(&cache_path)
+    }
+
     async fn download_blob(&self, local_path: &Path, hash: &str) -> Result<()> {
         assert!(!hash.is_empty());
         let cache_path = self.download_blob_to_cache(hash).await?;
@@ -118,7 +101,7 @@ impl BlobStorage for S3BlobStorage {
         let path = self.root.join(hash);
         let key = path.to_str().unwrap();
 
-        if self.blob_exists(hash).await? {
+        if self.exists(hash).await? {
             return Ok(());
         }
 
@@ -141,6 +124,29 @@ impl BlobStorage for S3BlobStorage {
             .context("error writing to bucket")?;
 
         Ok(())
+    }
+
+    async fn exists(&self, hash: &str) -> Result<bool> {
+        let path = self.root.join(hash);
+        let key = path.to_str().unwrap();
+        //we fetch the acl to know if the object exists
+        let req_acl = self
+            .client
+            .get_object_acl()
+            .bucket(&self.bucket_name)
+            .key(key);
+
+        match req_acl.send().await {
+            Ok(_acl) => Ok(true),
+            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+                if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
+                    Ok(false)
+                } else {
+                    anyhow::bail!("error fetching acl for {:?}: {}", key, err);
+                }
+            }
+            Err(e) => anyhow::bail!("error fetching acl for {:?}: {:?}", key, e),
+        }
     }
 }
 

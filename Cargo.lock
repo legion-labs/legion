@@ -154,6 +154,7 @@ dependencies = [
  "chrono",
  "crc",
  "lgn-analytics",
+ "lgn-source-control",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",

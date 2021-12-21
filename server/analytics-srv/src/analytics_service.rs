@@ -6,6 +6,7 @@ use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
+use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FetchProcessMetricRequest;
 use lgn_telemetry_proto::analytics::FindProcessReply;
@@ -28,9 +29,9 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use prost::Message;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
-// use prost::Message;
 
 use crate::cache::DiskCache;
 use crate::call_tree::compute_block_call_tree;
@@ -74,7 +75,7 @@ impl Drop for RequestGuard {
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_dir: PathBuf,
-    _cache: DiskCache,
+    cache: DiskCache,
 }
 
 impl AnalyticsService {
@@ -82,7 +83,7 @@ impl AnalyticsService {
         Ok(Self {
             pool,
             data_dir,
-            _cache: DiskCache::new()?,
+            cache: DiskCache::new()?,
         })
     }
 
@@ -122,18 +123,54 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
+    async fn get_cached_call_tree(&self, cache_item_name: &str) -> Option<CallTree> {
+        match self.cache.get(cache_item_name).await {
+            Err(e) => {
+                error!("Error reading from call tree cache: {}", e);
+                None
+            }
+            Ok(Some(buffer)) => match CallTree::decode(&*buffer) {
+                Ok(tree) => Some(tree),
+                Err(e) => {
+                    error!("Error reading call tree from cache: {}", e);
+                    None
+                }
+            },
+            Ok(None) => None,
+        }
+    }
+
+    async fn get_call_tree(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
+    ) -> Result<CallTree> {
+        let cache_item_name = format!("tree_{}", block_id);
+        if let Some(tree) = self.get_cached_call_tree(&cache_item_name).await {
+            return Ok(tree);
+        }
+        let mut connection = self.pool.acquire().await?;
+        let tree =
+            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
+                .await?;
+        if let Err(e) = self
+            .cache
+            .put(&cache_item_name, &tree.encode_to_vec())
+            .await
+        {
+            error!("Error writing to call tree cache: {}", e);
+        }
+        Ok(tree)
+    }
+
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
-        let mut connection = self.pool.acquire().await?;
-        let tree =
-            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
-                .await?;
-        // self.cache
-        //     .put(&format!("tree_{}", block_id), &tree.encode_to_vec());
+        let tree = self.get_call_tree(process, stream, block_id).await?;
         compute_block_spans(tree, block_id)
     }
 

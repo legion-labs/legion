@@ -139,6 +139,19 @@ pub fn lz4_read(compressed: &Path) -> Result<String> {
     Ok(res)
 }
 
+pub fn lz4_read_bin(compressed: &Path) -> Result<Vec<u8>> {
+    let input_file = std::fs::File::open(compressed)
+        .context(format!("error opening file: {}", compressed.display()))?;
+    let mut decoder = lz4::Decoder::new(input_file)
+        .context(format!("error reading file: {}", compressed.display()))?;
+    let mut res = Vec::new();
+    decoder
+        .read_to_end(&mut res)
+        .context(format!("error reading file: {}", compressed.display()))?;
+
+    Ok(res)
+}
+
 pub fn lz4_decompress(compressed: &Path, destination: &Path) -> Result<()> {
     create_parent_directory(destination)?;
 
