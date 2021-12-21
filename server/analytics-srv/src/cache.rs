@@ -71,7 +71,7 @@ impl DiskCache {
         }
         let obj = f.await?;
         if let Err(e) = self.put(name, &obj.encode_to_vec()).await {
-            error!("Error writing to call tree cache: {}", e);
+            error!("Error writing {} to cache: {}", name, e);
         }
         Ok(obj)
     }
