@@ -642,6 +642,7 @@ pub struct RasterizerState {
     pub depth_clamp_enable: bool,
     pub multisample: bool,
     pub scissor: bool,
+    pub line_width: f32,
     // Hash implemented manually below, don't forget to update it!
 }
 
@@ -657,6 +658,7 @@ impl PartialEq for RasterizerState {
             && self.depth_clamp_enable == other.depth_clamp_enable
             && self.multisample == other.multisample
             && self.scissor == other.scissor
+            && self.line_width == other.line_width
     }
 }
 
@@ -670,6 +672,7 @@ impl Hash for RasterizerState {
         self.depth_clamp_enable.hash(&mut state);
         self.multisample.hash(&mut state);
         self.scissor.hash(&mut state);
+        DecimalF32(self.line_width).hash(&mut state);
     }
 }
 
@@ -684,6 +687,7 @@ impl Default for RasterizerState {
             depth_clamp_enable: false,
             multisample: false,
             scissor: false,
+            line_width: 1.0,
         }
     }
 }

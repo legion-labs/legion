@@ -1,6 +1,8 @@
 struct VertexIn {
-    float3 pos : POSITION;
-    float3 normal : NORMAL;   
+    float4 pos : POSITION;
+    float4 normal : NORMAL;
+    float4 color: COLOR;
+    float2 uv_coord : TEXCOORD0;
 };
 
 struct VertexOut {  
@@ -14,11 +16,6 @@ struct ConstData {
     float4 screen_size;
     float2 cursor_pos;
     float picking_distance;
-};
-
-struct PushConstData {
-    uint offset;
-    uint picking_id;
 };
 
 struct EntityTransforms {
@@ -37,20 +34,26 @@ struct PickingData
 RWStructuredBuffer<uint> picked_count;
 RWStructuredBuffer<PickingData> picked_objects;
 
+struct PushConstData {
+    uint vertex_offset;
+    uint world_offset;
+    uint picking_id;
+};
+
 [[vk::push_constant]]
 ConstantBuffer<PushConstData> push_constant;
 
-VertexOut main_vs(in VertexIn vertex_in) {
+VertexOut main_vs(uint vertexId: SV_VertexID) {
+    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.offset);
+    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
     float4x4 world = transpose(transform.world);
 
-    float4 world_pos = mul(world, float4(vertex_in.pos, 1.0));
+    float4 world_pos = mul(world, vertex_in.pos);
     vertex_out.hpos = mul(const_data.view_proj, world_pos);
 
     float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;
-    pers_div.y *= -1.0f;
 
     vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * const_data.screen_size.xy, world_pos.z);
 
