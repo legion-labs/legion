@@ -124,6 +124,6 @@
   }
 
   .active-item.item-panel-is-focused {
-    @apply border-gray-800;
+    @apply border-orange-700;
   }
 </style>

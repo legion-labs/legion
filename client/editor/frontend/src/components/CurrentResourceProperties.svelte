@@ -73,87 +73,84 @@
   {:else if !$currentResource.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    <div>
-      {#each $currentResource.properties as property (property.name)}
-        <div class="property">
-          <div class="property-name" title={property.name}>
-            <div class="truncate">{property.name}</div>
-          </div>
-          <div class="property-input-container">
-            <div class="property-input">
-              {#if propertyIsBoolean(property)}
-                <BooleanProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsString(property)}
-                <StringProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsNumber(property)}
-                <NumberProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsColor(property)}
-                <ColorProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsSpeed(property)}
-                <SpeedProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsVec3(property)}
-                <Vec3Property
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsQuat(property)}
-                <QuatProperty
-                  on:input={({ detail }) =>
-                    onInput({ name: property.name, value: detail })}
-                  bind:value={property.value}
-                />
-              {:else if propertyIsVecU8(property)}
-                Vec: {property.value}
-              {:else}
+    {#each $currentResource.properties as property (property.name)}
+      <div class="property">
+        <div class="property-name" title={property.name}>
+          <div class="truncate">{property.name}</div>
+        </div>
+        <div class="property-input-container">
+          <div class="property-input">
+            {#if propertyIsBoolean(property)}
+              <BooleanProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsString(property)}
+              <StringProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsNumber(property)}
+              <NumberProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsColor(property)}
+              <ColorProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsSpeed(property)}
+              <SpeedProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsVec3(property)}
+              <Vec3Property
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsQuat(property)}
+              <QuatProperty
+                on:input={({ detail }) =>
+                  onInput({ name: property.name, value: detail })}
+                bind:value={property.value}
+              />
+            {:else if propertyIsVecU8(property)}
+              Vec: {property.value}
+            {:else}
+              <div class="unknown-property">
                 Unknown property: {JSON.stringify(property, null, 2)}
-              {/if}
-            </div>
-            <div
-              class="property-actions"
-              on:click={() => {
-                property.value = property.defaultValue;
-
-                onInput({ name: property.name, value: property.defaultValue });
-              }}
-            >
-              <div
-                class="property-action-default"
-                title="Reset value to default"
-              >
-                &#10227;
               </div>
+            {/if}
+          </div>
+          <div
+            class="property-actions"
+            on:click={() => {
+              property.value = property.defaultValue;
+
+              onInput({ name: property.name, value: property.defaultValue });
+            }}
+          >
+            <div class="property-action-default" title="Reset value to default">
+              &#10227;
             </div>
           </div>
         </div>
-      {/each}
-    </div>
+      </div>
+    {/each}
   {/if}
 </div>
 
 <style lang="postcss">
   .root {
-    @apply px-2;
+    @apply h-full px-2 overflow-y-auto;
   }
 
   .property {
@@ -161,7 +158,7 @@
   }
 
   .property-name {
-    @apply flex flex-shrink font-bold text-lg min-w-0 w-auto;
+    @apply flex flex-shrink font-semibold text-lg min-w-0 w-auto;
   }
 
   .property-input-container {
@@ -170,6 +167,10 @@
 
   .property-input {
     @apply flex w-full justify-end;
+  }
+
+  .unknown-property {
+    @apply break-all;
   }
 
   .property-actions {

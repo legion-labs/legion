@@ -54,43 +54,23 @@
   }
 
   .tabs {
-    @apply flex bg-black flex-shrink-0 rounded-tl-lg;
+    @apply flex bg-black flex-shrink-0 rounded-tl-sm;
   }
 
   .tab {
-    @apply flex flex-row relative items-center bg-gray-700 px-3 rounded-t-lg cursor-pointer;
+    @apply flex flex-row relative items-center bg-gray-700 px-2 cursor-pointer first:rounded-tl-sm last:rounded-tr-sm;
   }
 
   .tab-inactive {
-    @apply relative bg-gray-400;
-  }
-
-  .tab-inactive:last-child:after {
-    content: "";
-    box-shadow: calc(0px - theme("spacing.3")) 0px 0px 0px
-      theme("colors.gray.400");
-    @apply absolute -right-6 bottom-0 w-6 h-3 rounded-bl-full;
+    @apply relative bg-gray-500 text-white;
   }
 
   .tab-active {
-    @apply relative z-10;
-  }
-
-  .tab-active:not(:first-child):before {
-    content: "";
-    box-shadow: theme("spacing.3") 0px 0px 0px theme("colors.gray.700");
-    @apply absolute -left-6 bottom-0 w-6 h-3 rounded-br-full;
-  }
-
-  .tab-active:after {
-    content: "";
-    box-shadow: calc(0px - theme("spacing.3")) 0px 0px 0px
-      theme("colors.gray.700");
-    @apply absolute -right-6 bottom-0 w-6 h-3 rounded-bl-full;
+    @apply relative z-10 border-b-2 border-orange-700 font-semibold shadow-lg;
   }
 
   .tabs-filler-bg {
-    @apply flex bg-gray-400 w-full rounded-tr-lg;
+    @apply flex bg-gray-400 w-full rounded-tr-sm;
   }
 
   .last-tabs-filler-bg {
@@ -98,10 +78,10 @@
   }
 
   .tabs-filler {
-    @apply bg-black rounded-tr-lg w-full;
+    @apply bg-black rounded-tr-sm w-full;
   }
 
   .content {
-    @apply bg-gray-700 flex-1 w-full rounded-b-lg overflow-hidden;
+    @apply bg-gray-700 flex-1 w-full rounded-b-sm overflow-hidden;
   }
 </style>
