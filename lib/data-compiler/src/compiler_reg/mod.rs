@@ -85,7 +85,7 @@ impl CompilerRegistryOptions {
 
         CompilerRegistry {
             compilers: self.compilers,
-            infos: Some(infos),
+            infos,
         }
     }
 
@@ -105,7 +105,7 @@ impl CompilerRegistryOptions {
 #[derive(Default)]
 pub struct CompilerRegistry {
     compilers: Vec<Box<dyn CompilerStub>>,
-    infos: Option<Vec<CompilerInfo>>,
+    infos: Vec<CompilerInfo>,
 }
 
 impl fmt::Debug for CompilerRegistry {
@@ -124,12 +124,13 @@ impl CompilerRegistry {
         transform: Transform,
         env: &CompilationEnv,
     ) -> io::Result<(usize, CompilerHash)> {
-        if let Some(infos) = &self.infos {
-            if let Some(compiler_index) = infos.iter().position(|info| info.transform == transform)
-            {
-                let hash = self.compilers[compiler_index].compiler_hash(env)?;
-                return Ok((compiler_index, hash));
-            }
+        if let Some(compiler_index) = self
+            .infos
+            .iter()
+            .position(|info| info.transform == transform)
+        {
+            let hash = self.compilers[compiler_index].compiler_hash(env)?;
+            return Ok((compiler_index, hash));
         }
         Err(io::Error::new(io::ErrorKind::NotFound, ""))
     }
