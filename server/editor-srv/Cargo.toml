@@ -25,7 +25,7 @@ lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-input = { path = "../../plugin/input" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 clap = "2.33"

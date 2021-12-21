@@ -75,6 +75,7 @@ use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
+use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]
@@ -85,8 +86,7 @@ use standalone::build_standalone;
 
 #[allow(clippy::too_many_lines)]
 fn main() {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 

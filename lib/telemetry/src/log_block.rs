@@ -1,10 +1,8 @@
-use std::collections::HashSet;
-
 use anyhow::Result;
 use lgn_transit::prelude::*;
 
-use crate::event_block::{EventBlock, TelemetryBlock};
-use crate::{compress, EncodedBlock, EventStream, LogDynMsgEvent, LogMsgEvent, StreamBlock};
+use crate::event_block::EventBlock;
+use crate::{EventStream, LogDynMsgEvent, LogMsgEvent};
 
 declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent, LogDynMsgEvent> {}
@@ -15,50 +13,5 @@ declare_queue_struct!(
 );
 
 pub type LogBlock = EventBlock<LogMsgQueue>;
-
-impl StreamBlock for LogBlock {
-    #[allow(clippy::cast_possible_wrap)]
-    fn encode(&self) -> Result<EncodedBlock> {
-        let block_id = uuid::Uuid::new_v4().to_string();
-        let end = self.end.as_ref().unwrap();
-
-        let mut deps = LogDepsQueue::new(1024 * 1024);
-        let mut recorded_deps = HashSet::new();
-        for x in self.events.iter() {
-            match x {
-                LogMsgQueueAny::LogMsgEvent(evt) => {
-                    if recorded_deps.insert(evt.msg as u64) {
-                        deps.push(StaticString {
-                            len: evt.msg_len,
-                            ptr: evt.msg,
-                        });
-                    }
-                }
-                LogMsgQueueAny::LogDynMsgEvent(_evt) => {}
-            }
-        }
-
-        let payload = lgn_telemetry_proto::telemetry::BlockPayload {
-            dependencies: compress(deps.as_bytes())?,
-            objects: compress(self.events.as_bytes())?,
-        };
-
-        Ok(EncodedBlock {
-            stream_id: self.stream_id.clone(),
-            block_id,
-            begin_time: self
-                .begin
-                .time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
-            begin_ticks: self.begin.ticks,
-            end_time: end
-                .time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
-            end_ticks: end.ticks,
-            payload: Some(payload),
-            nb_objects: self.nb_objects() as i32,
-        })
-    }
-}
 
 pub type LogStream = EventStream<LogBlock, LogDepsQueue>;

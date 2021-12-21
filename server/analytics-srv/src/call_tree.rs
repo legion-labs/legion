@@ -18,7 +18,7 @@ trait ThreadBlockProcessor {
 async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    stream: &lgn_telemetry::StreamInfo,
+    stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
     processor: &mut Proc,
 ) -> Result<()> {
@@ -165,8 +165,8 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 pub(crate) async fn compute_block_call_tree(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &lgn_telemetry::ProcessInfo,
-    stream: &lgn_telemetry::StreamInfo,
+    process: &lgn_telemetry_sink::ProcessInfo,
+    stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
 ) -> Result<CallTree> {
     let ts_offset = process.start_ticks;

@@ -154,11 +154,10 @@ dependencies = [
  "chrono",
  "crc",
  "lgn-analytics",
- "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
+ "lgn-telemetry-sink",
  "lgn-transit",
- "log",
  "prost",
  "sqlx",
  "tokio",
@@ -480,9 +479,9 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
- "lgn-logger",
  "lgn-online",
  "lgn-streaming-proto",
+ "lgn-telemetry-sink",
  "log",
  "serde",
  "serde_json",
@@ -2012,12 +2011,12 @@ dependencies = [
  "lgn-editor-proto",
  "lgn-grpc",
  "lgn-input",
- "lgn-logger",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-streamer",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-transform",
  "lgn-utils",
  "log",
@@ -4090,12 +4089,12 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-input",
- "lgn-logger",
  "lgn-math",
  "lgn-presenter",
  "lgn-presenter-snapshot",
  "lgn-presenter-window",
  "lgn-renderer",
+ "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-transform",
  "lgn-window",
@@ -4128,15 +4127,6 @@ dependencies = [
  "lgn-utils",
  "log",
  "serde",
-]
-
-[[package]]
-name = "lgn-logger"
-version = "0.1.0"
-dependencies = [
- "lgn-telemetry",
- "log",
- "simplelog",
 ]
 
 [[package]]
@@ -4186,7 +4176,7 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lambda_http",
  "lambda_runtime",
- "lgn-logger",
+ "lgn-telemetry-sink",
  "log",
  "pin-project",
  "prost",
@@ -4444,17 +4434,12 @@ dependencies = [
  "chrono",
  "ctrlc",
  "lazy_static",
- "lgn-telemetry-proto",
  "lgn-transit",
  "lgn-utils",
  "log",
- "lz4",
  "memoffset 0.6.5",
- "prost",
  "raw-cpuid",
  "thread-id",
- "tokio",
- "tonic",
  "uuid",
  "whoami",
 ]
@@ -4463,11 +4448,29 @@ dependencies = [
 name = "lgn-telemetry-proto"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64",
  "lgn-build-utils",
+ "lz4",
  "prost",
  "tokio",
  "tonic",
+]
+
+[[package]]
+name = "lgn-telemetry-sink"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
+ "lgn-transit",
+ "prost",
+ "simple_logger",
+ "tokio",
+ "tonic",
+ "uuid",
 ]
 
 [[package]]
@@ -4696,9 +4699,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "lgn-logger",
  "lgn-source-control",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-test-utils",
  "log",
  "tokio",
@@ -6535,11 +6538,11 @@ dependencies = [
  "lgn-ecs",
  "lgn-grpc",
  "lgn-input",
- "lgn-logger",
  "lgn-presenter-window",
  "lgn-renderer",
  "lgn-streamer",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
@@ -7109,17 +7112,6 @@ dependencies = [
  "log",
  "time 0.3.5",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "simplelog"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecabc0118918611790b8615670ab79296272cbe09496b6884b02b1e929c20886"
-dependencies = [
- "chrono",
- "log",
- "termcolor",
 ]
 
 [[package]]
@@ -7809,6 +7801,7 @@ dependencies = [
  "json",
  "lgn-analytics",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-transit",
  "lz4",
@@ -7823,9 +7816,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "lgn-logger",
  "lgn-telemetry",
  "lgn-telemetry-proto",
+ "lgn-telemetry-sink",
  "log",
  "prost",
  "serde_json",
@@ -7859,15 +7852,6 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]
@@ -8542,7 +8526,7 @@ dependencies = [
  "anyhow",
  "clap",
  "lgn-cli",
- "lgn-logger",
+ "lgn-telemetry-sink",
  "log",
  "tokio",
 ]

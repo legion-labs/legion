@@ -2,23 +2,11 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use anyhow::Result;
-
 use crate::event_block::TelemetryBlock;
-use crate::queue_metadata::make_queue_metedata;
-use crate::{EncodedBlock, StreamInfo};
 
-pub trait Stream {
-    fn get_stream_info(&self) -> StreamInfo;
-    fn get_stream_id(&self) -> String;
-}
-
-pub trait StreamBlock {
-    fn encode(&self) -> Result<EncodedBlock>;
-}
-
+#[derive(Debug)]
 pub struct EventStream<Block, DepsQueue> {
-    pub stream_id: String,
+    stream_id: String,
     process_id: String,
     current_block: Arc<Block>,
     initial_size: usize,
@@ -47,6 +35,10 @@ where
             properties,
             _bogus: PhantomData::default(),
         }
+    }
+
+    pub fn stream_id(&self) -> &str {
+        self.stream_id.as_str()
     }
 
     pub fn replace_block(&mut self, new_block: Arc<Block>) -> Arc<Block> {
@@ -79,29 +71,5 @@ where
 
     pub fn get_properties(&self) -> HashMap<String, String> {
         self.properties.clone()
-    }
-}
-
-impl<Block, DepsQueue> Stream for EventStream<Block, DepsQueue>
-where
-    Block: TelemetryBlock,
-    DepsQueue: lgn_transit::HeterogeneousQueue,
-    <Block as TelemetryBlock>::Queue: lgn_transit::HeterogeneousQueue,
-{
-    fn get_stream_info(&self) -> StreamInfo {
-        let dependencies_meta = make_queue_metedata::<DepsQueue>();
-        let obj_meta = make_queue_metedata::<Block::Queue>();
-        StreamInfo {
-            process_id: self.get_process_id(),
-            stream_id: self.get_stream_id(),
-            dependencies_metadata: Some(dependencies_meta),
-            objects_metadata: Some(obj_meta),
-            tags: self.get_tags(),
-            properties: self.get_properties(),
-        }
-    }
-
-    fn get_stream_id(&self) -> String {
-        self.stream_id.clone()
     }
 }

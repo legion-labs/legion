@@ -11,7 +11,7 @@ lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
 lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 anyhow = "1.0"
 tonic = "0.6"
 tonic-web = "0.2"
@@ -23,7 +23,6 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 prost = "0.9"
-log = "0.4"
 crc = "2.1.0"
 chrono = "0.4"
 

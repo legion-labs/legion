@@ -1,10 +1,10 @@
 use lgn_telemetry::prelude::*;
+use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
-    log::info!("hello from generator");
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    info!("hello from generator");
     static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
         name: "Frame Time",
         unit: "ticks",

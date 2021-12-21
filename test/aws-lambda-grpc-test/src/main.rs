@@ -4,10 +4,11 @@ use anyhow::Result;
 use handler::MyStreamer;
 use lgn_online::grpc::Server;
 use lgn_streaming_proto::streamer_server::StreamerServer;
+use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
 
     let service = StreamerServer::new(MyStreamer);
 

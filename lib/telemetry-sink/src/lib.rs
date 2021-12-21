@@ -1,4 +1,4 @@
-//! Telemetry library
+//! Telemetry Grpc sink library
 //!
 //! Provides logging, metrics, memory and performance profiling
 //!
@@ -59,40 +59,35 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
-pub mod dispatch;
-pub mod dual_time;
-pub mod event_block;
-pub mod event_sink;
-pub mod event_stream;
-pub mod guard;
-pub mod log_block;
-pub mod log_events;
-pub mod metric_event;
-pub mod metrics_block;
-pub mod panic_hook;
-pub mod scope;
-pub mod thread_block;
-pub mod thread_events;
+use std::sync::Arc;
 
-pub use dual_time::*;
-pub use event_sink::*;
-pub use event_stream::*;
-pub use log_block::*;
-pub use metrics_block::*;
-pub use scope::*;
-pub use thread_block::*;
-pub use thread_events::*;
+use lgn_telemetry::{prelude::*, EventSink};
 
-pub use log;
+mod grpc_event_sink;
+mod log_event_sink;
+mod stream;
 
-pub mod prelude {
-    pub use crate::dispatch::*;
-    pub use crate::guard::*;
-    pub use crate::log_events::*;
-    pub use crate::metric_event::*;
-    pub use crate::trace_scope;
-    // re-exporting log macros for convenience
-    pub use crate::log::{debug, error, info, log, trace, warn, Level, LevelFilter};
+use grpc_event_sink::GRPCEventSink;
+use log_event_sink::SimpleLoggerEventSink;
+
+pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
+pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
+pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+
+pub struct TelemetryGuard {
+    _guard: TelemetrySystemGuard,
 }
 
-pub use prelude::*;
+impl TelemetryGuard {
+    pub fn new() -> anyhow::Result<Self, String> {
+        let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
+            Ok(url) => Arc::new(GRPCEventSink::new(&url)),
+            Err(_no_url_in_env) => Arc::new(SimpleLoggerEventSink::new()),
+        };
+        set_max_log_level(LevelFilter::Info);
+        Ok(Self {
+            _guard: TelemetrySystemGuard::new(sink)?,
+        })
+    }
+}
