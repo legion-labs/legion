@@ -42,8 +42,12 @@ impl<AllocType> BufferSubAllocation<AllocType> {
     }
 
     pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
-        let buffer_view_def =
-            BufferViewDef::as_structured_buffer(self.buffer.definition(), struct_size, read_only);
+        let buffer_view_def = BufferViewDef::as_structured_buffer_with_offset(
+            self.size(),
+            struct_size,
+            read_only,
+            self.range.first,
+        );
         BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
     }
 }

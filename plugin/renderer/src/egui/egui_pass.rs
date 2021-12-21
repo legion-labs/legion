@@ -3,9 +3,7 @@ use crate::egui::egui_plugin::Egui;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::RenderContext;
 use crate::Renderer;
-use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
-use std::num::NonZeroU32;
+use lgn_graphics_api::prelude::*;
 use std::sync::Arc;
 
 pub struct EguiPass {
@@ -19,115 +17,8 @@ impl EguiPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-
-        //
-        // Shaders
-        //
-        let shader_compiler = renderer.shader_compiler();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap();
-
-        let shader_build_result = shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
-                glob_defines: Vec::new(),
-                entry_points: vec![
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_vs".to_owned(),
-                        target_profile: "vs_6_0".to_owned(),
-                    },
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_ps".to_owned(),
-                        target_profile: "ps_6_0".to_owned(),
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
-
-        //
-        // Root signature
-        //
-
-        let mut descriptor_set_layouts = Vec::new();
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let shader_resources: Vec<_> = shader_build_result
-                .pipeline_reflection
-                .shader_resources
-                .iter()
-                .filter(|x| x.set_index as usize == set_index)
-                .collect();
-
-            if !shader_resources.is_empty() {
-                let descriptor_defs = shader_resources
-                    .iter()
-                    .map(|sr| DescriptorDef {
-                        name: sr.name.clone(),
-                        binding: sr.binding,
-                        shader_resource_type: sr.shader_resource_type,
-                        array_size: sr.element_count,
-                    })
-                    .collect();
-
-                let def = DescriptorSetLayoutDef {
-                    frequency: set_index as u32,
-                    descriptor_defs,
-                };
-                let descriptor_set_layout =
-                    device_context.create_descriptorset_layout(&def).unwrap();
-                descriptor_set_layouts.push(descriptor_set_layout);
-            }
-        }
-
-        let root_signature_def = RootSignatureDef {
-            descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: shader_build_result
-                .pipeline_reflection
-                .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
-                }),
-        };
-
-        let root_signature = device_context
-            .create_root_signature(&root_signature_def)
-            .unwrap();
-
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/ui.hlsl"));
         //
         // Pipeline state
         //

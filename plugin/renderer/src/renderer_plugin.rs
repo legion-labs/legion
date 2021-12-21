@@ -10,11 +10,16 @@ use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::{
-    components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh},
+    components::{
+        CameraComponent, LightComponent, LightSettings, LightType, RenderSurface,
+        RotationComponent, StaticMesh,
+    },
     labels::RendererSystemLabel,
-    resources::{EntityTransforms, UniformGPUDataUpdater},
     RenderContext, Renderer,
 };
+
+use crate::debug_display::DebugDisplay;
+use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 
 #[derive(Default)]
 pub struct RendererPlugin {
@@ -42,6 +47,8 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin::new(self.has_window));
         app.insert_resource(renderer);
         app.insert_resource(default_meshes);
+        app.init_resource::<DebugDisplay>();
+        app.init_resource::<LightSettings>();
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
@@ -51,6 +58,7 @@ impl Plugin for RendererPlugin {
             app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
             app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
         }
+        app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
@@ -68,8 +76,14 @@ impl Plugin for RendererPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_ui(egui_ctx: Res<'_, Egui>, mut rotations: Query<'_, '_, &mut RotationComponent>) {
-    egui::Window::new("Rotations").show(&egui_ctx.ctx, |ui| {
+fn update_ui(
+    egui_ctx: Res<'_, Egui>,
+    mut rotations: Query<'_, '_, &mut RotationComponent>,
+    mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
+    mut light_settings: ResMut<'_, LightSettings>,
+) {
+    egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
+        ui.label("Objects");
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(format!("Object {}: ", i));
@@ -87,7 +101,110 @@ fn update_ui(egui_ctx: Res<'_, Egui>, mut rotations: Query<'_, '_, &mut Rotation
                 );
             });
         }
+
+        ui.checkbox(&mut light_settings.diffuse, "Diffuse");
+        ui.checkbox(&mut light_settings.specular, "Specular");
+        ui.add(
+            egui::Slider::new(&mut light_settings.specular_reflection, 0.0..=1.0)
+                .text("specular_reflection"),
+        );
+        ui.add(
+            egui::Slider::new(&mut light_settings.diffuse_reflection, 0.0..=1.0)
+                .text("diffuse_reflection"),
+        );
+        ui.add(
+            egui::Slider::new(&mut light_settings.ambient_reflection, 0.0..=1.0)
+                .text("ambient_reflection"),
+        );
+        ui.add(egui::Slider::new(&mut light_settings.shininess, 1.0..=32.0).text("shininess"));
+        ui.label("Lights");
+        for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.add(egui::Checkbox::new(&mut light.enabled, "Enabled"));
+                match light.light_type {
+                    LightType::Directional { ref mut direction } => {
+                        ui.label(format!("Light {} (dir): ", i));
+                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
+                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
+                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
+                    }
+                    LightType::Omnidirectional { .. } => {
+                        ui.label(format!("Light {} (omni): ", i));
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
+                        );
+                    }
+                    LightType::Spotlight {
+                        ref mut direction,
+                        ref mut cone_angle,
+                        ..
+                    } => {
+                        ui.label(format!("Light {} (spot): ", i));
+                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
+                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
+                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
+                        );
+                        ui.add(
+                            egui::Slider::new(cone_angle, -0.0..=std::f32::consts::PI)
+                                .text("angle"),
+                        );
+                    }
+                }
+                let mut rgb = [light.color.0, light.color.1, light.color.2];
+                if ui.color_edit_button_rgb(&mut rgb).changed() {
+                    light.color.0 = rgb[0];
+                    light.color.1 = rgb[1];
+                    light.color.2 = rgb[2];
+                }
+            });
+        }
     });
+}
+
+#[allow(clippy::match_same_arms)] // TODO: remove when more advanced visualization is introduced
+#[allow(clippy::needless_pass_by_value)]
+fn update_debug(
+    renderer: Res<'_, Renderer>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
+    lights: Query<'_, '_, (&LightComponent, &Transform)>,
+) {
+    let bump = renderer.acquire_bump_allocator();
+    debug_display.create_display_list(bump.bump(), |display_list| {
+        for (light, transform) in lights.iter() {
+            display_list.add_cube(transform.translation, bump.bump());
+            match light.light_type {
+                LightType::Directional { direction } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                LightType::Spotlight { direction, .. } => display_list.add_arrow(
+                    transform.translation,
+                    transform.translation - direction.normalize(),
+                    bump.bump(),
+                ),
+                LightType::Omnidirectional { .. } => (),
+            }
+        }
+    });
+    renderer.release_bump_allocator(bump);
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
@@ -135,9 +252,12 @@ fn render_update(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
     q_debug_drawables: Query<'_, '_, (&StaticMesh, &Transform, &PickedComponent)>,
+    q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
+    light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
@@ -149,6 +269,11 @@ fn render_update(
         q_debug_drawables
             .iter()
             .collect::<Vec<(&StaticMesh, &Transform, &PickedComponent)>>();
+
+    let q_lights = q_lights
+        .iter()
+        .collect::<Vec<(&Transform, &LightComponent)>>();
+
     let default_camera = CameraComponent::default_transform();
     let q_cameras = q_cameras
         .iter()
@@ -185,6 +310,8 @@ fn render_update(
             } else {
                 &default_camera
             },
+            q_lights.as_slice(),
+            &light_settings,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
@@ -200,6 +327,20 @@ fn render_update(
                 &default_camera
             },
             &default_meshes,
+        );
+
+        let debug_display_pass = render_surface.debug_display_renderpass();
+        let debug_display_pass = debug_display_pass.write();
+        debug_display_pass.render(
+            &render_context,
+            &cmd_buffer,
+            render_surface.as_mut(),
+            debug_display.as_mut(),
+            if !q_cameras.is_empty() {
+                q_cameras[0].1
+            } else {
+                &default_camera
+            },
         );
 
         let egui_pass = render_surface.egui_renderpass();

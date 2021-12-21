@@ -9,16 +9,16 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
     InputPlugin,
 };
-use lgn_math::{Quat, Vec3};
+use lgn_math::{EulerRot, Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
-        CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
-        StaticMesh,
+        CameraComponent, LightComponent, LightType, RenderSurface, RenderSurfaceExtents,
+        RenderSurfaceId, RotationComponent, StaticMesh,
     },
-    resources::DefaultMeshes,
+    resources::{DefaultMeshId, DefaultMeshes},
     {Renderer, RendererPlugin, RendererSystemLabel},
 };
 use lgn_telemetry_sink::TelemetryGuard;
@@ -169,6 +169,8 @@ fn main() {
     if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
+    } else if setup_name.eq("light_test") {
+        app.add_startup_system(init_light_test);
     } else {
         app.add_startup_system(init_scene);
     }
@@ -277,19 +279,112 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
+fn init_light_test(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
+    // sphere 1
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (255, 0, 0).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.1, 0.0, 0.0),
+        });
+
+    // sphere 2
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 255, 0).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.1, 0.0),
+        });
+
+    // sphere 3
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 0, 255).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.0, 0.1),
+        });
+
+    // directional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Directional {
+                direction: Vec3::new(0.5, 1.0, 0.0).normalize(),
+            },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // omnidirectional light 1
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // omnidirectional light 2
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // spotlight
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Spotlight {
+                direction: Vec3::new(0.0, 1.0, 0.0),
+                cone_angle: std::f32::consts::PI / 4.0,
+            },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
+        });
+
+    // camera
+    commands
+        .spawn()
+        .insert(CameraComponent::default())
+        .insert(CameraComponent::default_transform());
+}
+
 fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     // plane
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 0,
-            color: (0, 0, 255).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(0),
-            num_verticies: default_meshes.mesh_from_id(0).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Plane as usize,
+            (255, 0, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.4, 0.0, 0.0),
         });
@@ -298,14 +393,11 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 1,
-            color: (255, 0, 0).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(1),
-            num_verticies: default_meshes.mesh_from_id(1).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Cube as usize,
+            (0, 255, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.4, 0.0),
         });
@@ -314,16 +406,24 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 2,
-            color: (0, 255, 0).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(2),
-            num_verticies: default_meshes.mesh_from_id(2).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Pyramid as usize,
+            (0, 0, 255).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.0, 0.4),
+        });
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
         });
 
     // camera
@@ -368,41 +468,39 @@ fn camera_control(
 
     let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
     {
-        let mut translation = Vec3::default();
         for keyboard_input_event in keyboard_input_events.iter() {
             if let Some(key_code) = keyboard_input_event.key_code {
                 match key_code {
                     KeyCode::W => {
                         let dir = transform.forward();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::S => {
                         let dir = transform.back();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::D => {
                         let dir = transform.right();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     KeyCode::A => {
                         let dir = transform.left();
-                        translation += dir * camera.speed / 60.0;
+                        transform.translation += dir * camera.speed / 60.0;
                     }
                     _ => {}
                 }
             }
         }
 
-        let mut rotation = Quat::default();
         for mouse_motion_event in mouse_motion_events.iter() {
-            rotation *=
-                Quat::from_rotation_y(mouse_motion_event.delta.x * camera.rotation_speed / 60.0);
-            rotation *=
-                Quat::from_rotation_x(mouse_motion_event.delta.y * camera.rotation_speed / 60.0);
+            let (euler_x, euler_y, euler_z) = transform.rotation.to_euler(EulerRot::XYZ);
+            transform.rotation = Quat::from_euler(
+                EulerRot::XYZ,
+                euler_x + mouse_motion_event.delta.y * camera.rotation_speed / 60.0,
+                euler_y - mouse_motion_event.delta.x * camera.rotation_speed / 60.0,
+                euler_z,
+            );
         }
-
-        transform.translation += translation;
-        transform.rotation = rotation * transform.rotation;
 
         for mouse_wheel_event in mouse_wheel_events.iter() {
             camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);

@@ -18,8 +18,21 @@ impl Drop for DefaultMeshes {
     }
 }
 
+pub enum DefaultMeshId {
+    Plane = 0,
+    Cube,
+    Pyramid,
+    WireframeCube,
+    GroundPlane,
+    Torus,
+    Cone,
+    Cylinder,
+    Sphere,
+}
+
 impl DefaultMeshes {
     pub fn new(renderer: &Renderer) -> Self {
+        // Keep consistent with DefaultMeshId
         let static_meshes = vec![
             StaticMeshRenderData::new_plane(1.0),
             StaticMeshRenderData::new_cube(0.5),
@@ -28,9 +41,8 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_ground_plane(6, 5, 0.25),
             StaticMeshRenderData::new_torus(0.01, 32, 0.5, 128),
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
-            StaticMeshRenderData::new_torus(0.01, 32, 0.5, 128),
-            StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
+            StaticMeshRenderData::new_sphere(0.25, 20, 20),
         ];
 
         let mut vertex_data_size_in_bytes = 0;

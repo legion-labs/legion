@@ -15,3 +15,6 @@ pub use rotation_component::*;
 
 mod static_mesh;
 pub use static_mesh::*;
+
+mod light_component;
+pub use light_component::*;
