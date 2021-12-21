@@ -70,5 +70,3 @@ pub use bevy_ecs::*;
 pub mod prelude {
     pub use bevy_ecs::prelude::*;
 }
-
-pub use bevy_ecs_macros::{Component, SystemLabel};

@@ -20,6 +20,7 @@ lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-window = { path = "../window", version = "0.1.0" }
 
 anyhow = "1.0"
+bevy_ecs = { git = "https://github.com/legion-labs/bevy", default-features = false }
 bumpalo = "3.8"
 egui = "0.15.0"
 epaint = "0.15.0"

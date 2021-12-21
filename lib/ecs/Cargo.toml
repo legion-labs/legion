@@ -11,4 +11,3 @@ categories = ["game-engines", "data-structures"]
 
 [dependencies]
 bevy_ecs = { git = "https://github.com/legion-labs/bevy", default-features = false }
-bevy_ecs_macros = { git = "https://github.com/legion-labs/bevy", default-features = false }

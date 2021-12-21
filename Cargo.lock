@@ -4123,7 +4123,6 @@ name = "lgn-ecs"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
- "bevy_ecs_macros",
 ]
 
 [[package]]
@@ -4402,6 +4401,7 @@ name = "lgn-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bevy_ecs",
  "bumpalo",
  "egui",
  "epaint",
