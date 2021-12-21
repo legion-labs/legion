@@ -326,7 +326,7 @@ fn render_update(
     {
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let view_data = crate::cgen::ViewData::default();
+        let view_data = crate::cgen::cgen_type::ViewData::default();
 
         // view_matrix.write_cols_to_slice(&mut constant_data[0..]);
         // projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
@@ -334,23 +334,32 @@ fn render_update(
         let sub_allocation =
             transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-        let bump_allocator = render_context.bump_allocator();
+        // let bump_allocator = render_context.bump_allocator();
 
-        let descriptor_heap_partition = render_context
-            .descriptor_pool()
-            .descriptor_heap_partition_mut();
+        // let descriptor_heap_partition = render_context
+        //     .descriptor_pool()
+        //     .descriptor_heap_partition_mut();
 
-        let mut ds_data = FakeDescriptorSetData::new(
-            render_context.cgen_runtime(),
-            bump_allocator.bumpalo(),
-            descriptor_heap_partition,
-        );
+        // let mut ds_data = FakeDescriptorSetData::new(
+        //     render_context.cgen_runtime(),
+        //     bump_allocator.bumpalo(),
+        //     descriptor_heap_partition,
+        // );
 
         let const_buffer_view = sub_allocation.const_buffer_view();
 
-        ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
+        let mut view_descriptor_set_data = DescriptorSetData::new(
+            render_context
+                .cgen_runtime()
+                .get_descriptor_set_def(ViewDescriptorSet::id()),
+            render_context.bump_allocator().bumpalo(),
+        );
+        view_descriptor_set_data
+            .set_constant_buffer(ViewDescriptorSet::view_data, &const_buffer_view);
 
-        let _descriptor_handle = ds_data.build(render_context.renderer().device_context());
+        // ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
+
+        // let _descriptor_handle = ds_data.build(render_context.renderer().device_context());
     }
 
     // For each surface/view, we have to execute the render graph

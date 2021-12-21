@@ -1,7 +1,6 @@
-use crate::model::{CGenType, Model, ModelObjectId, NativeType};
+use crate::model::{CGenType, NativeType};
 
-pub(super) fn get_hlsl_typestring(model: &Model, object_id: ModelObjectId) -> &str {
-    let ty = model.get_from_objectid::<CGenType>(object_id).unwrap();
+pub(super) fn get_hlsl_typestring<'a>(ty: &'a CGenType) -> &'a str {
     let typestring = match ty {
         CGenType::Native(e) => match e {
             NativeType::Float1 => "float",

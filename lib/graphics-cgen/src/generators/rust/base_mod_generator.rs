@@ -1,4 +1,3 @@
-use heck::ToSnakeCase;
 use relative_path::RelativePath;
 
 use crate::{
@@ -24,9 +23,7 @@ where
 {
     if model.size::<T>() > 0 {
         let folder = GeneratorContext::get_object_folder::<T>();
-        writer.add_line(format!("pub(crate) mod {};", folder.to_string()));
-        writer.add_line("#[allow(unused_imports)]");
-        writer.add_line(format!("pub(crate) use {}::*;", folder.to_string()));
+        writer.add_line(format!("pub mod {};", folder.to_string()));
     }
 }
 
@@ -36,11 +33,12 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
 
     // write dependencies
     let model = ctx.model;
-    writer.add_line("use lgn_graphics_api::DeviceContext;");
+    // writer.add_line("use lgn_graphics_api::DeviceContext;");
     write_mod::<CGenType>(model, &mut writer);
     write_mod::<DescriptorSet>(model, &mut writer);
     write_mod::<PipelineLayout>(model, &mut writer);
 
+    /*
     // write struct
     writer.new_line();    
     writer.add_line( "pub struct CodeGen {" );
@@ -74,18 +72,6 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         writer.unindent();
     writer.add_line( "}");
     writer.new_line();
-
+*/
     writer.build()
 }
-
-// struct DescriptorDef {}
-
-// struct DescriptorSetLayoutDef {
-//     frequency: u32,
-//     descriptor_count: u32,
-//     descriptor_defs: [DescriptorDef; 64],
-// }
-
-// struct FrameDescriptorSetLayout {
-//     layout_def: DescriptorSetLayoutDef,
-// }

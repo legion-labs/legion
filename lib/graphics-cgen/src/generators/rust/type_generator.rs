@@ -46,7 +46,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 }
 
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
-    let typestring = get_rust_typestring(model, member.object_id);
+    let typestring = get_rust_typestring(member.ty_ref.get(model));
 
     format!("pub {}: {},", member.name, typestring)
 }
@@ -60,9 +60,9 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
 
     if !deps.is_empty() {
         let mut has_native_types = false;
-        for object_id in &deps {
-            let dep_ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
-            match dep_ty {
+        for ty_ref in &deps {
+            let ty = ty_ref.get(ctx.model);
+            match ty {
                 CGenType::Native(_) => {
                     has_native_types = true;
                 }

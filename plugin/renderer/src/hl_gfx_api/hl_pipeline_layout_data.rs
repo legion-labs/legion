@@ -4,13 +4,13 @@ use lgn_graphics_cgen_runtime::CGenPipelineLayoutDef;
 use super::DescriptorSetData;
 
 pub struct PipelineLayoutData<'rc> {
-    info: &'static CGenPipelineLayoutDef,
+    info: &'rc CGenPipelineLayoutDef,
     pipeline_state: &'rc Pipeline,
-    descriptor_sets: [Option<&'rc DescriptorSetData>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    descriptor_sets: [Option<&'rc DescriptorSetData<'rc>>; MAX_DESCRIPTOR_SET_LAYOUTS],
 }
 
 impl<'rc> PipelineLayoutData<'rc> {
-    pub fn new(info: &'static CGenPipelineLayoutDef, pipeline_state: &'rc Pipeline) -> Self {
+    pub fn new(info: &'rc CGenPipelineLayoutDef, pipeline_state: &'rc Pipeline) -> Self {
         Self {
             info,
             pipeline_state,
@@ -18,13 +18,15 @@ impl<'rc> PipelineLayoutData<'rc> {
         }
     }
 
-    pub fn set_descriptor_set(&mut self, descriptor_set_data: &'rc DescriptorSetData) {
+    pub fn set_descriptor_set(&mut self, descriptor_set_data: &'rc DescriptorSetData<'rc>) {
         let frequency = descriptor_set_data.frequency();
-        assert!(
-            self.info.descriptor_set_layout_ids[frequency]
-                == descriptor_set_data.descriptor_set_id()
-        );
-        self.descriptor_sets[frequency] = Some(descriptor_set_data);
+
+        match self.info.descriptor_set_layout_ids[frequency as usize] {
+            Some(e) => assert_eq!(e, descriptor_set_data.id()),
+            None => panic!(),
+        };
+
+        self.descriptor_sets[frequency as usize] = Some(descriptor_set_data);
     }
 
     pub fn set_push_constant<T>(&mut self, data: &T) {}

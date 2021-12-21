@@ -1,29 +1,56 @@
-use lgn_graphics_api::BufferView;
-use lgn_graphics_cgen_runtime::CGenDescriptorSetDef;
+use bumpalo::Bump;
+use lgn_graphics_api::{
+    BufferView, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, ShaderResourceType,
+};
+use lgn_graphics_cgen_runtime::{CGenDescriptorId, CGenDescriptorSetDef, CGenDescriptorSetId};
 
-pub struct DescriptorSetData {
-    info: &'static CGenDescriptorSetDef,
+pub struct DescriptorSetData<'rc> {
+    info: &'rc CGenDescriptorSetDef,
+    descriptor_refs: &'rc mut [DescriptorRef<'rc>],
 }
 
-impl DescriptorSetData {
-    pub fn new(info: &'static CGenDescriptorSetDef) -> Self {
-        Self { info }
+impl<'rc> DescriptorSetData<'rc> {
+    pub fn new(info: &'rc CGenDescriptorSetDef, bump: &'rc Bump) -> Self {
+        Self {
+            info,
+            descriptor_refs: bump
+                .alloc_slice_fill_default::<DescriptorRef>(info.descriptor_flat_count as usize),
+        }
+    }
+
+    pub fn id(&self) -> CGenDescriptorSetId {
+        self.info.id
     }
 
     pub fn frequency(&self) -> u32 {
         self.info.frequency
     }
 
-    pub fn set_constant_buffer(&mut self, id: u32, const_buffer_view: &BufferView) {
-        // let descriptor_index = id.to_index();
-        // let descriptor_def = &self.cgen_descriptor_set_def.descriptor_defs[descriptor_index];
-        // assert_eq!(
-        //     descriptor_def.shader_resource_type,
-        //     ShaderResourceType::ConstantBuffer
-        // );
+    pub fn set_constant_buffer(
+        &mut self,
+        id: CGenDescriptorId,
+        const_buffer_view: &'rc BufferView,
+    ) {
+        let descriptor_index = id.0;
+        let descriptor_def = &self.info.descriptor_defs[descriptor_index as usize];
+        assert_eq!(
+            descriptor_def.shader_resource_type,
+            ShaderResourceType::ConstantBuffer
+        );
+        self.descriptor_refs[descriptor_def.flat_index as usize] =
+            DescriptorRef::BufferView(const_buffer_view);
+    }
 
+    pub fn kick(&self) {
+        // writer: DescriptorSetWriter<'rc>,
+        //     writer: descriptor_heap_partition
+        //         .write_descriptor_set(descriptor_set_layout, bump)
+        //         .unwrap(),
         // self.writer
-        //     .set_descriptors_by_index(descriptor_index, &[DescriptorRef::BufferView(cbv)])
+        //     .set_descriptors_by_index(
+        //         descriptor_index,
+        //         &[DescriptorRef::BufferView(const_buffer_view)],
+        //     )
         //     .unwrap();
     }
 }

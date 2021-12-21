@@ -10,7 +10,7 @@ use relative_path::{RelativePath, RelativePathBuf};
 
 use self::product::Product;
 use crate::{
-    model::{CGenType, DescriptorSet, Model, ModelObject, ModelObjectId},
+    model::{CGenType, CGenTypeRef, DescriptorSet, Model, ModelObject},
     run::CGenVariant,
 };
 
@@ -56,14 +56,14 @@ impl<'a> GeneratorContext<'a> {
         file_name
     }
 
-    pub fn get_type_dependencies(ty: &CGenType) -> HashSet<ModelObjectId> {
+    pub fn get_type_dependencies(ty: &CGenType) -> HashSet<CGenTypeRef> {
         let mut set = HashSet::new();
 
         match ty {
             CGenType::Native(_) => {}
             CGenType::Struct(inner_ty) => {
                 for mb in &inner_ty.members {
-                    set.insert(mb.object_id);
+                    set.insert(mb.ty_ref);
                 }
             }
         }
@@ -71,17 +71,17 @@ impl<'a> GeneratorContext<'a> {
         set
     }
 
-    pub fn get_descriptorset_dependencies(ty: &DescriptorSet) -> HashSet<ModelObjectId> {
+    pub fn get_descriptorset_dependencies(ty: &DescriptorSet) -> HashSet<CGenTypeRef> {
         let mut set = HashSet::new();
 
         for descriptor in &ty.descriptors {
-            match descriptor.def {
+            match &descriptor.def {
                 crate::model::DescriptorDef::ConstantBuffer(def) => {
-                    set.insert(def.object_id);
+                    set.insert(def.ty_ref);
                 }
                 crate::model::DescriptorDef::StructuredBuffer(def)
                 | crate::model::DescriptorDef::RWStructuredBuffer(def) => {
-                    set.insert(def.object_id);
+                    set.insert(def.ty_ref);
                 }
                 crate::model::DescriptorDef::Sampler
                 | crate::model::DescriptorDef::ByteAddressBuffer

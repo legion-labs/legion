@@ -492,7 +492,6 @@ pub struct PushConstantDef {
 
 #[derive(Default)]
 pub struct RootSignatureDef {
-    // pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }

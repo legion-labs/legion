@@ -59,8 +59,8 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use lgn_graphics_api::{
-    BufferView, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DescriptorHeapPartition, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter,
+    DeviceContext, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use serde::{Deserialize, Serialize};
 
@@ -87,28 +87,46 @@ pub mod prelude {
     pub use crate::Float4x4;
 }
 
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CGenTypeId(pub u32);
+
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
-pub struct CGenTypeDef {}
+pub struct CGenTypeDef {
+    pub id: CGenTypeId,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct CGenDescriptorId(pub u32);
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct CGenDescriptorDef {
     pub name: String,
     pub shader_resource_type: lgn_graphics_api::ShaderResourceType,
+    pub flat_index: u32,
     pub array_size: u32,
 }
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct CGenDescriptorSetId(pub u32);
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CGenDescriptorSetDef {
     pub name: String,
+    pub id: CGenDescriptorSetId,
     pub frequency: u32,
+    pub descriptor_flat_count: u32,
     pub descriptor_defs: Vec<CGenDescriptorDef>,
 }
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+pub struct CGenPipelineLayoutId(pub u32);
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CGenPipelineLayoutDef {
     pub name: String,
-    pub descriptor_set_layout_ids: [u32; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub push_constant_type: Option<u32>,
+    pub id: CGenPipelineLayoutId,
+    pub descriptor_set_layout_ids: [Option<CGenDescriptorSetId>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub push_constant_type: Option<CGenTypeId>,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
@@ -121,7 +139,7 @@ pub struct CGenDef {
 struct CGenRuntimeInner {
     definition: CGenDef,
     descriptor_set_layouts: Vec<lgn_graphics_api::DescriptorSetLayout>,
-    _root_signatures: Vec<lgn_graphics_api::RootSignature>,
+    root_signatures: Vec<lgn_graphics_api::RootSignature>,
 }
 
 #[derive(Clone)]
@@ -167,9 +185,13 @@ impl CGenRuntime {
                 descriptor_set_layouts: cgen_signature_def
                     .descriptor_set_layout_ids
                     .iter()
-                    .map(|id| descriptor_set_layouts[*id as usize].clone())
+                    .filter_map(|opt_id| {
+                        opt_id
+                            .as_ref()
+                            .map(|id| descriptor_set_layouts[id.0 as usize].clone())
+                    })
                     .collect::<Vec<_>>(),
-                push_constant_def: cgen_signature_def.push_constant_type.map(|_pc| {
+                push_constant_def: cgen_signature_def.push_constant_type.as_ref().map(|_pc| {
                     lgn_graphics_api::PushConstantDef {
                         used_in_shader_stages: todo!(),
                         size: todo!(),
@@ -188,7 +210,7 @@ impl CGenRuntime {
             inner: Arc::new(CGenRuntimeInner {
                 definition,
                 descriptor_set_layouts,
-                _root_signatures: root_signatures,
+                root_signatures,
             }),
         }
     }
@@ -199,7 +221,7 @@ impl CGenRuntime {
     //     descriptor_heap_partition: &DescriptorHeapPartition,
     // ) -> DescriptorSetData<'_, T>
     // where
-    //     T: DescriptorSetLayoutStaticInfo,
+    //     T: CGenDescriptorSetInfo,
     //     T::DescriptorID: ToIndex + Copy,
     // {
     //     let cgen_descriptor_set_def =
@@ -209,24 +231,42 @@ impl CGenRuntime {
     //     DescriptorSetData::<'_, T>::new(self, bump, descriptor_heap_partition)
     // }
 
-    pub fn get_descriptor_set_def(&self, descriptor_set_layout_id: u32) -> &CGenDescriptorSetDef {
-        &self.inner.definition.descriptor_set_layout_defs[descriptor_set_layout_id as usize]
+    pub fn get_descriptor_set_def(&self, id: CGenDescriptorSetId) -> &CGenDescriptorSetDef {
+        &self.inner.definition.descriptor_set_layout_defs[id.0 as usize]
     }
 
-    pub fn get_descriptor_set_layout(&self, descriptor_set_layout_id: u32) -> &DescriptorSetLayout {
-        &self.inner.descriptor_set_layouts[descriptor_set_layout_id as usize]
+    pub fn get_descriptor_set_layout(&self, id: CGenDescriptorSetId) -> &DescriptorSetLayout {
+        &self.inner.descriptor_set_layouts[id.0 as usize]
+    }
+
+    pub fn get_pipeline_layout_def(
+        &self,
+        pipeline_layout_id: CGenPipelineLayoutId,
+    ) -> &CGenPipelineLayoutDef {
+        &self.inner.definition.root_signature_defs[pipeline_layout_id.0 as usize]
+    }
+
+    pub fn get_pipeline_layout(
+        &self,
+        pipeline_layout_id: CGenPipelineLayoutId,
+    ) -> &lgn_graphics_api::RootSignature {
+        &self.inner.root_signatures[pipeline_layout_id.0 as usize]
     }
 }
 
-pub trait DescriptorSetLayoutStaticInfo {
-    type DescriptorID;
-    fn descriptor_set_layout_id() -> u32;
+pub trait CGenDescriptorSetInfo {
+    // type DescriptorID;
+    fn id() -> CGenDescriptorSetId;
+}
+
+pub trait CGenPipelineLayoutInfo {
+    fn id() -> CGenPipelineLayoutId;
 }
 
 pub struct DescriptorSetData_<'renderer, 'frame, T>
 where
-    T: DescriptorSetLayoutStaticInfo,
-    T::DescriptorID: ToIndex + Copy,
+    T: CGenDescriptorSetInfo,
+    // T::DescriptorID: ToIndex + Copy,
 {
     cgen_descriptor_set_def: &'renderer CGenDescriptorSetDef,
     writer: DescriptorSetWriter<'frame>,
@@ -237,19 +277,17 @@ pub trait ToIndex {
     fn to_index(self) -> usize;
 }
 
-impl<'renderer, 'frame, T: DescriptorSetLayoutStaticInfo> DescriptorSetData_<'renderer, 'frame, T>
-where
-    T::DescriptorID: ToIndex + Copy,
+impl<'renderer, 'frame, T: CGenDescriptorSetInfo> DescriptorSetData_<'renderer, 'frame, T>
+// where
+//     T::DescriptorID: ToIndex + Copy,
 {
     pub fn new(
         cgen_runtime: &'renderer CGenRuntime,
         bump: &'frame bumpalo::Bump,
         descriptor_heap_partition: &DescriptorHeapPartition,
     ) -> Self {
-        let cgen_descriptor_set_def =
-            cgen_runtime.get_descriptor_set_def(T::descriptor_set_layout_id());
-        let descriptor_set_layout =
-            cgen_runtime.get_descriptor_set_layout(T::descriptor_set_layout_id());
+        let cgen_descriptor_set_def = cgen_runtime.get_descriptor_set_def(T::id());
+        let descriptor_set_layout = cgen_runtime.get_descriptor_set_layout(T::id());
 
         Self {
             cgen_descriptor_set_def,
@@ -260,18 +298,18 @@ where
         }
     }
 
-    pub fn set_constant_buffer(&mut self, id: T::DescriptorID, cbv: &'frame BufferView) {
-        let descriptor_index = id.to_index();
-        let descriptor_def = &self.cgen_descriptor_set_def.descriptor_defs[descriptor_index];
-        assert_eq!(
-            descriptor_def.shader_resource_type,
-            ShaderResourceType::ConstantBuffer
-        );
+    // pub fn set_constant_buffer(&mut self, id: T::DescriptorID, cbv: &'frame BufferView) {
+    //     let descriptor_index = id.to_index();
+    //     let descriptor_def = &self.cgen_descriptor_set_def.descriptor_defs[descriptor_index];
+    //     assert_eq!(
+    //         descriptor_def.shader_resource_type,
+    //         ShaderResourceType::ConstantBuffer
+    //     );
 
-        self.writer
-            .set_descriptors_by_index(descriptor_index, &[DescriptorRef::BufferView(cbv)])
-            .unwrap();
-    }
+    //     self.writer
+    //         .set_descriptors_by_index(descriptor_index, &[DescriptorRef::BufferView(cbv)])
+    //         .unwrap();
+    // }
 
     pub fn build(self, device_context: &DeviceContext) -> DescriptorSetHandle {
         self.writer.flush(device_context)
@@ -280,7 +318,7 @@ where
 
 pub mod fake {
 
-    use crate::{DescriptorSetData_, DescriptorSetLayoutStaticInfo, ToIndex};
+    use crate::{CGenDescriptorSetId, CGenDescriptorSetInfo, DescriptorSetData_, ToIndex};
 
     pub struct Fake;
 
@@ -303,11 +341,11 @@ pub mod fake {
 
     pub type FakeDescriptorSetData<'renderer, 'frame> = DescriptorSetData_<'renderer, 'frame, Fake>;
 
-    impl DescriptorSetLayoutStaticInfo for Fake {
-        type DescriptorID = FakeDescriptorID;
+    impl CGenDescriptorSetInfo for Fake {
+        // type DescriptorID = FakeDescriptorID;
 
-        fn descriptor_set_layout_id() -> u32 {
-            0
+        fn id() -> CGenDescriptorSetId {
+            CGenDescriptorSetId(0)
         }
     }
 }

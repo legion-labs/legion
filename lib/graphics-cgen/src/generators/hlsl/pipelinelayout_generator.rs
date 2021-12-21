@@ -1,6 +1,6 @@
 use crate::{
     generators::{file_writer::FileWriter, product::Product, GeneratorContext},
-    model::{CGenType, DescriptorSet, ModelObject, PipelineLayout},
+    model::{ModelObject, PipelineLayout},
     run::CGenVariant,
 };
 
@@ -34,11 +34,12 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line("// DescriptorSets");
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::DescriptorSet(object_id) => {
-                let ds = ctx
-                    .model
-                    .get_from_objectid::<DescriptorSet>(*object_id)
-                    .unwrap();
+            crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                let ds = ds_ref.get(ctx.model);
+                // let ds = ctx
+                //     .model
+                //     .get_from_objectid::<DescriptorSet>(*ds_ref)
+                //     .unwrap();
                 let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ds_path);
                 writer.add_line(format!("// - name: {}", name));
@@ -52,8 +53,9 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line("// PushConstant".to_string());
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::Pushconstant(object_id) => {
-                let ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
+            crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                let ty = ty_ref.get(ctx.model);
+                // let ty = ctx.model.get_from_objectid::<CGenType>(*ty_ref).unwrap();
                 let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ty_path);
                 writer.add_line(format!("// - name: {}", name));
