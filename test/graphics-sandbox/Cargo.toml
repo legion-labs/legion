@@ -26,9 +26,6 @@ lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 clap = "2.33"
 log = "0.4"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-lgn-winit = { path = "../../plugin/winit", features = ["x11"] }
-
 [dev-dependencies]
 png = "0.17"
 lgn-test-utils = { path = "../../lib/test-utils" }

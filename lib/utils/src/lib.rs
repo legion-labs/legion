@@ -64,8 +64,6 @@ pub mod decimal;
 pub mod memory;
 pub mod trust_cell;
 
-pub mod label;
-
 mod hash;
 pub use hash::*;
 

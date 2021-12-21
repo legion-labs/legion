@@ -4,16 +4,3 @@ version = "0.1.0"
 edition = "2021"
 description = "A task executor for the Legion Engine"
 license = "MIT OR Apache-2.0"
-
-[dependencies]
-futures-lite = "1.12"
-event-listener = "2.5"
-async-executor = "1.4"
-async-channel = "1.6"
-num_cpus = "1.13"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures = "0.4"
-
-[dev-dependencies]
-instant = { version = "0.1", features = ["wasm-bindgen"] }

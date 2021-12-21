@@ -9,12 +9,4 @@ license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [dependencies]
-# legion
-lgn-app = { path = "../../lib/app", version = "0.1.0" }
-lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-lgn-math = { path = "../../lib/math", version = "0.1.0" }
-lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
-
-# other
-log = "0.4"
-smallvec = { version = "1.7", features = ["serde", "union", "const_generics"] }
+bevy_transform = { version = "0.5.0", default-features = false }

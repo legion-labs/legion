@@ -9,17 +9,4 @@ license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [dependencies]
-# legion
-lgn-app = { path = "../../lib/app", version = "0.1.0" }
-lgn-derive = { path = "../../lib/derive", version = "0.1.0" }
-lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
-lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
-
-# other
-bytemuck = "1.7"
-instant = { version = "0.1", features = ["wasm-bindgen"] }
-log = "0.4"
-
-[dev-dependencies]
-lgn-math = { path = "../../lib/math", version = "0.1.0" }
+bevy_core = { version = "0.5.0", default-features = false }
