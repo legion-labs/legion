@@ -1,22 +1,26 @@
 use std::collections::HashMap;
 
-use lgn_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
-use lgn_input::keyboard::{KeyCode, KeyboardInput};
-use lgn_input::mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
-use lgn_input::InputPlugin;
+use lgn_input::{
+    keyboard::{KeyCode, KeyboardInput},
+    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
+    InputPlugin,
+};
 use lgn_math::{Quat, Vec3};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::components::{
-    CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
-    StaticMesh,
+use lgn_renderer::{
+    components::{
+        CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
+        StaticMesh,
+    },
+    resources::DefaultMeshes,
+    {Renderer, RendererPlugin, RendererSystemLabel},
 };
-use lgn_renderer::resources::DefaultMeshes;
-use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::components::Transform;
 use lgn_window::{

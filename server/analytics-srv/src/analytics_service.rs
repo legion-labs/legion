@@ -30,7 +30,10 @@ use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
+// use prost::Message;
 
+use crate::cache::DiskCache;
+use crate::call_tree::compute_block_call_tree;
 use crate::call_tree::compute_block_spans;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::metrics;
@@ -71,11 +74,16 @@ impl Drop for RequestGuard {
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_dir: PathBuf,
+    _cache: DiskCache,
 }
 
 impl AnalyticsService {
-    pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Self {
-        Self { pool, data_dir }
+    pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
+        Ok(Self {
+            pool,
+            data_dir,
+            _cache: DiskCache::new()?,
+        })
     }
 
     async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
@@ -121,7 +129,12 @@ impl AnalyticsService {
         block_id: &str,
     ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
-        compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
+        let tree =
+            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
+                .await?;
+        // self.cache
+        //     .put(&format!("tree_{}", block_id), &tree.encode_to_vec());
+        compute_block_spans(tree, block_id)
     }
 
     async fn process_cumulative_call_graph_impl(
@@ -381,7 +394,7 @@ impl PerformanceAnalytics for AnalyticsService {
         {
             Ok(block_spans) => Ok(Response::new(block_spans)),
             Err(e) => {
-                return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
+                return Err(Status::internal(format!("Error in block_spans: {}", e)));
             }
         }
     }

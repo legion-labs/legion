@@ -2,6 +2,7 @@ syntax = "proto3";
 import public "process.proto";
 import public "stream.proto";
 import public "block.proto";
+import public "calltree.proto";
 
 package analytics;
 
@@ -76,13 +77,6 @@ message Span{
     double end_ms = 4;
 }
 
-message ScopeDesc{
-    string name = 1;
-    string filename = 2;
-    uint32 line = 3;
-    uint32 hash = 4;
-}
-
 message BlockSpansRequest{
     telemetry.Process process = 1;
     telemetry.Stream stream = 2;
@@ -90,7 +84,7 @@ message BlockSpansRequest{
 }
 
 message BlockSpansReply{
-    repeated ScopeDesc scopes = 1;
+    map<uint32,ScopeDesc> scopes = 1;
     repeated Span spans = 2;
     string block_id = 3;
     double begin_ms = 4;
@@ -127,7 +121,7 @@ message CumulativeCallGraphNode{
 }
 
 message CumulativeCallGraphReply{
-    repeated ScopeDesc scopes = 1;
+    map<uint32,ScopeDesc> scopes = 1;
     repeated CumulativeCallGraphNode nodes = 2;
 }
 

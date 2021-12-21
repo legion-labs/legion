@@ -65,9 +65,7 @@
       endMs: params.endMs,
     });
 
-    reply.scopes.forEach(function (scope) {
-      scopes[scope.hash] = scope;
-    });
+    scopes = {...scopes,...reply.scopes};
     nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
     nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;

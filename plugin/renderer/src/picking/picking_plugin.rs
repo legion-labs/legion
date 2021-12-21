@@ -1,5 +1,5 @@
-use lgn_app::{App, CoreStage, EventReader, Plugin};
-use lgn_ecs::prelude::{Added, Commands, Entity, Query, Res, ResMut};
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
 use lgn_input::mouse::MouseButtonInput;
 use lgn_math::Vec2;
 use lgn_window::WindowResized;

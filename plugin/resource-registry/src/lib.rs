@@ -61,7 +61,7 @@ mod settings;
 
 use std::sync::Arc;
 
-use lgn_app::Plugin;
+use lgn_app::prelude::*;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
@@ -76,7 +76,7 @@ use tokio::sync::Mutex;
 pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
+    fn build(&self, app: &mut App) {
         let manifest = app.world.get_resource::<Manifest>().unwrap().clone();
         if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
             let project_dir = settings.root_folder.clone();
