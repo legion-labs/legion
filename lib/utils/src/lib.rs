@@ -64,9 +64,6 @@ pub mod decimal;
 pub mod memory;
 pub mod trust_cell;
 
-mod enum_variant_meta;
-pub use enum_variant_meta::*;
-
 pub mod label;
 
 mod hash;
