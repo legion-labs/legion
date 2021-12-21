@@ -13,8 +13,8 @@ use crate::{
 };
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightSettings, LightType, RenderSurface,
-        RotationComponent, StaticMesh,
+        camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
+        RenderSurface, RotationComponent, StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
@@ -49,6 +49,8 @@ impl Plugin for RendererPlugin {
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightSettings>();
 
+        app.add_startup_system(create_camera.system());
+
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
 
@@ -59,6 +61,7 @@ impl Plugin for RendererPlugin {
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
+        app.add_system(camera_control.system());
 
         app.add_system_set(
             SystemSet::new()
