@@ -1,9 +1,7 @@
-use std::sync::{Arc, Mutex};
+//use std::sync::{Arc, Mutex};
 
 trait Manipulator {
     fn new() -> Self;
-
-    
 }
 
 struct PositionManipulator {}
@@ -14,13 +12,13 @@ impl Manipulator for PositionManipulator {
     }
 }
 
-struct RotationManipulator {}
-struct ScaleManipulator {}
+// struct RotationManipulator {}
+// struct ScaleManipulator {}
 
-struct ManipulatorManagerInner {}
+// struct ManipulatorManagerInner {}
 
-struct ManipulatorManager {
-    inner: Arc<Mutex<ManipulatorManagerInner>>,
-}
+// struct ManipulatorManager {
+//     inner: Arc<Mutex<ManipulatorManagerInner>>,
+// }
 
-impl ManipulatorManager {}
+//impl ManipulatorManager {}
