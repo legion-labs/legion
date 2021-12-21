@@ -45,8 +45,8 @@ impl Plugin for RendererPlugin {
 
         app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
         app.add_plugin(PickingPlugin::new(self.has_window));
-        app.insert_resource(renderer);
         app.insert_resource(default_meshes);
+        app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightSettings>();
 

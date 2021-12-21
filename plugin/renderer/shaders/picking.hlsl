@@ -54,6 +54,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     vertex_out.hpos = mul(const_data.view_proj, world_pos);
 
     float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;
+    pers_div.y *= -1.0f;
 
     vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * const_data.screen_size.xy, world_pos.z);
 
