@@ -1,3 +1,6 @@
+mod manipulator;
+pub use manipulator::*;
+
 mod picking_manager;
 pub use picking_manager::*;
 
