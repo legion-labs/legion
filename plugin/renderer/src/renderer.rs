@@ -21,8 +21,8 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use crate::RenderContext;
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 pub struct Renderer {
     frame_idx: usize,
