@@ -12,6 +12,7 @@ use lgn_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
+use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::TransformPlugin;
 use lgn_utils::Settings;
 
@@ -21,8 +22,7 @@ mod plugin;
 use plugin::EditorPlugin;
 
 fn main() {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
 

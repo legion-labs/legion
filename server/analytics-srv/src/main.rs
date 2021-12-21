@@ -74,6 +74,7 @@ use anyhow::{Context, Result};
 use lgn_analytics::alloc_sql_pool;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
+use lgn_telemetry_sink::TelemetryGuard;
 use tonic::transport::Server;
 
 fn get_data_directory() -> Result<PathBuf> {
@@ -86,15 +87,14 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;
     let service = AnalyticsService::new(pool, data_dir);
-    log::info!("service allocated");
+    info!("service allocated");
     Server::builder()
         .accept_http1(true)
         .add_service(tonic_web::enable(PerformanceAnalyticsServer::new(service)))

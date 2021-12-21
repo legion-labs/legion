@@ -1,23 +1,6 @@
 use lgn_transit::prelude::*;
 use lgn_utils::memory::{read_any, write_any};
 
-#[derive(Debug, Clone, Copy)]
-pub enum LogLevel {
-    Info = 1,
-    Warning = 2,
-    Error = 3,
-}
-
-impl std::convert::From<log::Level> for LogLevel {
-    fn from(src: log::Level) -> Self {
-        match src {
-            log::Level::Error => Self::Error,
-            log::Level::Warn => Self::Warning,
-            _ => Self::Info,
-        }
-    }
-}
-
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
     pub time: i64,

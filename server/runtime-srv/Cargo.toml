@@ -23,7 +23,7 @@ lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 
 # other
 clap = "2.33"

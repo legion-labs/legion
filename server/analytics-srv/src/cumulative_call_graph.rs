@@ -91,7 +91,7 @@ fn record_tree_stats(
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &lgn_telemetry::ProcessInfo,
+    process: &lgn_telemetry_sink::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
     scopes: &mut ScopeHashMap,
@@ -128,7 +128,7 @@ async fn record_process_call_graph(
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &lgn_telemetry::ProcessInfo,
+    process: &lgn_telemetry_sink::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {

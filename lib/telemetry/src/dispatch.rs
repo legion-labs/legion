@@ -5,14 +5,14 @@ use std::{
 };
 
 use chrono::Utc;
+use log::LevelFilter;
 
 use crate::event_block::TelemetryBlock;
 use crate::metrics_block::MetricsStream;
 use crate::{
-    now, BeginScopeEvent, EndScopeEvent, EventBlockSink, FloatMetricEvent, GetScopeDesc,
-    IntegerMetricEvent, LogBlock, LogDynMsgEvent, LogLevel, LogMsgEvent, LogStream, MetricDesc,
-    MetricsBlock, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent, ThreadBlock,
-    ThreadEventQueueTypeIndex, ThreadStream,
+    now, BeginScopeEvent, EndScopeEvent, EventSink, FloatMetricEvent, GetScopeDesc,
+    IntegerMetricEvent, Level, LogBlock, LogDynMsgEvent, LogMsgEvent, LogStream, MetricDesc,
+    MetricsBlock, NullEventSink, ProcessInfo, ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
 };
 
 struct Dispatch {
@@ -22,7 +22,7 @@ struct Dispatch {
     metrics_buffer_size: usize,
     log_stream: Mutex<LogStream>,
     metrics_stream: Mutex<MetricsStream>,
-    sink: Arc<dyn EventBlockSink>,
+    sink: Arc<dyn EventSink>,
 }
 
 impl Dispatch {
@@ -30,7 +30,7 @@ impl Dispatch {
         log_buffer_size: usize,
         thread_buffer_size: usize,
         metrics_buffer_size: usize,
-        sink: Arc<dyn EventBlockSink>,
+        sink: Arc<dyn EventSink>,
     ) -> Self {
         let process_id = uuid::Uuid::new_v4().to_string();
         let mut obj = Self {
@@ -52,9 +52,9 @@ impl Dispatch {
             )),
             sink,
         };
-        obj.on_init_process();
-        obj.on_init_log_stream();
-        obj.on_init_metrics_stream();
+        obj.startup();
+        obj.init_log_stream();
+        obj.init_metrics_stream();
         obj
     }
 
@@ -62,12 +62,12 @@ impl Dispatch {
         self.process_id.clone()
     }
 
-    fn on_shutdown(&mut self) {
-        self.sink.on_sink_event(TelemetrySinkEvent::OnShutdown);
+    fn shutdown(&mut self) {
+        self.sink.on_shutdown();
         self.sink = Arc::new(NullEventSink {});
     }
 
-    fn on_init_process(&mut self) {
+    fn startup(&mut self) {
         use raw_cpuid::CpuId;
 
         let mut parent_process = String::new();
@@ -104,131 +104,17 @@ impl Dispatch {
             start_ticks,
             parent_process_id: parent_process,
         };
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnInitProcess(process_info));
+        self.sink.on_startup(process_info);
     }
 
-    fn on_init_log_stream(&mut self) {
+    fn init_log_stream(&mut self) {
         let log_stream = self.log_stream.lock().unwrap();
-        self.sink.on_sink_event(TelemetrySinkEvent::OnInitStream(
-            log_stream.get_stream_info(),
-        ));
+        self.sink.on_init_log_stream(&log_stream);
     }
 
-    fn on_init_metrics_stream(&mut self) {
+    fn init_metrics_stream(&mut self) {
         let metrics_stream = self.metrics_stream.lock().unwrap();
-        self.sink.on_sink_event(TelemetrySinkEvent::OnInitStream(
-            metrics_stream.get_stream_info(),
-        ));
-    }
-
-    fn on_init_thread_stream(&mut self, stream: &ThreadStream) {
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnInitStream(stream.get_stream_info()));
-    }
-
-    fn on_int_metric(&mut self, metric: &'static MetricDesc, value: u64) {
-        let time = now();
-        let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream.get_events_mut().push(IntegerMetricEvent {
-            metric,
-            value,
-            time,
-        });
-        if metrics_stream.is_full() {
-            drop(metrics_stream);
-            self.on_metrics_buffer_full();
-        }
-    }
-
-    fn on_float_metric(&mut self, metric: &'static MetricDesc, value: f64) {
-        let time = now();
-        let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream.get_events_mut().push(FloatMetricEvent {
-            metric,
-            value,
-            time,
-        });
-        if metrics_stream.is_full() {
-            drop(metrics_stream);
-            self.on_metrics_buffer_full();
-        }
-    }
-
-    fn on_metrics_buffer_full(&mut self) {
-        let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        if metrics_stream.is_empty() {
-            return;
-        }
-        let stream_id = metrics_stream.get_stream_id();
-        let mut old_event_block = metrics_stream.replace_block(Arc::new(MetricsBlock::new(
-            self.metrics_buffer_size,
-            stream_id,
-        )));
-        assert!(!metrics_stream.is_full());
-        Arc::get_mut(&mut old_event_block).unwrap().close();
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnMetricsBufferFull(old_event_block));
-    }
-
-    fn on_log_static_str(&mut self, level: LogLevel, msg: &'static str) {
-        let time = now();
-        let mut log_stream = self.log_stream.lock().unwrap();
-        if log_stream.is_empty() {
-            return;
-        }
-        log_stream.get_events_mut().push(LogMsgEvent {
-            time,
-            level: level as u8,
-            msg_len: msg.len() as u32,
-            msg: msg.as_ptr(),
-        });
-        if log_stream.is_full() {
-            drop(log_stream);
-            self.on_log_buffer_full();
-        }
-    }
-
-    fn on_log_string(&mut self, level: LogLevel, msg: String) {
-        let time = now();
-        let mut log_stream = self.log_stream.lock().unwrap();
-        log_stream.get_events_mut().push(LogDynMsgEvent {
-            time,
-            level: level as u8,
-            msg: lgn_transit::DynString(msg),
-        });
-        if log_stream.is_full() {
-            drop(log_stream);
-            self.on_log_buffer_full();
-        }
-    }
-
-    fn on_log_buffer_full(&mut self) {
-        let mut log_stream = self.log_stream.lock().unwrap();
-        if log_stream.is_empty() {
-            return;
-        }
-        let stream_id = log_stream.get_stream_id();
-        let mut old_event_block =
-            log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
-        assert!(!log_stream.is_full());
-        Arc::get_mut(&mut old_event_block).unwrap().close();
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnLogBufferFull(old_event_block));
-    }
-
-    fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
-        if stream.is_empty() {
-            return;
-        }
-        let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
-            self.thread_buffer_size,
-            stream.get_stream_id(),
-        )));
-        assert!(!stream.is_full());
-        Arc::get_mut(&mut old_block).unwrap().close();
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnThreadBufferFull(old_block));
+        self.sink.on_init_metrics_stream(&metrics_stream);
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
@@ -242,13 +128,144 @@ impl Dispatch {
         );
         unsafe {
             let opt_ref = &mut *cell.as_ptr();
-            self.on_init_thread_stream(&thread_stream);
+            self.sink.on_init_thread_stream(&thread_stream);
             *opt_ref = Some(thread_stream);
         }
     }
+
+    #[inline]
+    fn int_metric(&mut self, metric: &'static MetricDesc, value: u64) {
+        let time = now();
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        metrics_stream.get_events_mut().push(IntegerMetricEvent {
+            metric,
+            value,
+            time,
+        });
+        if metrics_stream.is_full() {
+            // Release the lock before calling on_log_buffer_full
+            drop(metrics_stream);
+            self.flush_metrics_buffer();
+        }
+    }
+
+    #[inline]
+    fn float_metric(&mut self, metric: &'static MetricDesc, value: f64) {
+        let time = now();
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        metrics_stream.get_events_mut().push(FloatMetricEvent {
+            metric,
+            value,
+            time,
+        });
+        if metrics_stream.is_full() {
+            drop(metrics_stream);
+            self.flush_metrics_buffer();
+        }
+    }
+
+    #[inline]
+    fn flush_metrics_buffer(&mut self) {
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        if metrics_stream.is_empty() {
+            return;
+        }
+        let stream_id = metrics_stream.stream_id().to_string();
+        let mut old_event_block = metrics_stream.replace_block(Arc::new(MetricsBlock::new(
+            self.metrics_buffer_size,
+            stream_id,
+        )));
+        assert!(!metrics_stream.is_full());
+        Arc::get_mut(&mut old_event_block).unwrap().close();
+        self.sink.on_process_metrics_block(old_event_block);
+    }
+
+    #[inline]
+    fn log_enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        self.sink.on_log_enabled(metadata)
+    }
+
+    fn log(&mut self, record: &log::Record<'_>) {
+        self.sink.on_log(record);
+        if let Some(static_str) = record.args().as_str() {
+            self.log_static_str(record.level(), static_str);
+        } else {
+            self.log_string(
+                record.level(),
+                format!("target={} {}", record.metadata().target(), record.args()),
+            );
+        }
+    }
+
+    #[inline]
+    fn log_static_str(&mut self, level: Level, msg: &'static str) {
+        let time = now();
+        let mut log_stream = self.log_stream.lock().unwrap();
+        if log_stream.is_empty() {
+            return;
+        }
+        log_stream.get_events_mut().push(LogMsgEvent {
+            time,
+            level: level as u8,
+            msg_len: msg.len() as u32,
+            msg: msg.as_ptr(),
+        });
+        if log_stream.is_full() {
+            // Release the lock before calling on_log_buffer_full
+            drop(log_stream);
+            self.flush_log_buffer();
+        }
+    }
+
+    #[inline]
+    fn log_string(&mut self, level: Level, msg: String) {
+        let time = now();
+        let mut log_stream = self.log_stream.lock().unwrap();
+        log_stream.get_events_mut().push(LogDynMsgEvent {
+            time,
+            level: level as u8,
+            msg: lgn_transit::DynString(msg),
+        });
+        if log_stream.is_full() {
+            // Release the lock before calling on_log_buffer_full()
+            drop(log_stream);
+            self.flush_log_buffer();
+        }
+    }
+
+    #[inline]
+    fn flush_log_buffer(&mut self) {
+        let mut log_stream = self.log_stream.lock().unwrap();
+        if log_stream.is_empty() {
+            return;
+        }
+        let stream_id = log_stream.stream_id().to_string();
+        let mut old_event_block =
+            log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
+        assert!(!log_stream.is_full());
+        Arc::get_mut(&mut old_event_block).unwrap().close();
+        self.sink.on_process_log_block(old_event_block);
+    }
+
+    #[inline]
+    fn flush_thread_buffer(&mut self, stream: &mut ThreadStream) {
+        if stream.is_empty() {
+            return;
+        }
+        let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
+            self.thread_buffer_size,
+            stream.stream_id().to_string(),
+        )));
+        assert!(!stream.is_full());
+        Arc::get_mut(&mut old_block).unwrap().close();
+        self.sink.on_process_thread_block(old_block);
+    }
 }
 
+struct LogDispatch;
+
 static mut G_DISPATCH: Option<Dispatch> = None;
+static LOG_DISPATCHER: LogDispatch = LogDispatch;
 
 thread_local! {
     static LOCAL_THREAD_STREAM: Cell<Option<ThreadStream>> = Cell::new(None);
@@ -258,7 +275,7 @@ pub fn init_event_dispatch(
     log_buffer_size: usize,
     thread_buffer_size: usize,
     metrics_buffer_size: usize,
-    make_sink: &mut dyn FnMut() -> Arc<dyn EventBlockSink>,
+    sink: Arc<dyn EventSink>,
 ) -> Result<(), String> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
@@ -267,13 +284,13 @@ pub fn init_event_dispatch(
 
     unsafe {
         if G_DISPATCH.is_none() {
-            let sink: Arc<dyn EventBlockSink> = make_sink();
             G_DISPATCH = Some(Dispatch::new(
                 log_buffer_size,
                 thread_buffer_size,
                 metrics_buffer_size,
                 sink,
             ));
+            log::set_logger(&LOG_DISPATCHER).unwrap();
             Ok(())
         } else {
             log::info!("event dispatch already initialized");
@@ -282,67 +299,84 @@ pub fn init_event_dispatch(
     }
 }
 
+impl log::Log for LogDispatch {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        unsafe {
+            if let Some(d) = &mut G_DISPATCH {
+                d.log_enabled(metadata)
+            } else {
+                false
+            }
+        }
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        unsafe {
+            if let Some(d) = &mut G_DISPATCH {
+                d.log(record);
+            }
+        }
+    }
+    fn flush(&self) {}
+}
+
+#[inline]
+pub fn set_max_log_level(level_filter: LevelFilter) {
+    log::set_max_level(level_filter);
+}
+
+#[inline]
 pub fn get_process_id() -> Option<String> {
     unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
 }
 
+#[inline]
 pub fn shutdown_event_dispatch() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_shutdown();
+            d.shutdown();
         }
     }
 }
 
+#[inline]
 pub fn record_int_metric(metric_desc: &'static MetricDesc, value: u64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_int_metric(metric_desc, value);
+            d.int_metric(metric_desc, value);
         }
     }
 }
 
+#[inline]
 pub fn record_float_metric(metric_desc: &'static MetricDesc, value: f64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_float_metric(metric_desc, value);
+            d.float_metric(metric_desc, value);
         }
     }
 }
 
-pub fn log_static_str(level: LogLevel, msg: &'static str) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.on_log_static_str(level, msg);
-        }
-    }
-}
-
-pub fn log_string(level: LogLevel, msg: String) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.on_log_string(level, msg);
-        }
-    }
-}
-
+#[inline]
 pub fn flush_log_buffer() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_log_buffer_full();
+            d.flush_log_buffer();
         }
     }
 }
 
+#[inline]
 pub fn flush_metrics_buffer() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.on_metrics_buffer_full();
+            d.flush_metrics_buffer();
         }
     }
 }
 
 //todo: should be implicit by default but limit the maximum number of tracked threads
+#[inline]
 pub fn init_thread_stream() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         if (*cell.as_ptr()).is_some() {
@@ -356,13 +390,14 @@ pub fn init_thread_stream() {
     });
 }
 
+#[inline]
 pub fn flush_thread_buffer() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         let opt_stream = &mut *cell.as_ptr();
         if let Some(stream) = opt_stream {
             match &mut G_DISPATCH {
                 Some(d) => {
-                    d.on_thread_buffer_full(stream);
+                    d.flush_thread_buffer(stream);
                 }
                 None => {
                     panic!("threads are recording but there is no event dispatch");
@@ -372,6 +407,7 @@ pub fn flush_thread_buffer() {
     });
 }
 
+#[inline]
 fn on_thread_event<T>(event: T)
 where
     T: lgn_transit::InProcSerialize + ThreadEventQueueTypeIndex,
@@ -387,10 +423,12 @@ where
     });
 }
 
+#[inline]
 pub fn on_begin_scope(scope: GetScopeDesc) {
     on_thread_event(BeginScopeEvent { time: now(), scope });
 }
 
+#[inline]
 pub fn on_end_scope(scope: GetScopeDesc) {
     on_thread_event(EndScopeEvent { time: now(), scope });
 }

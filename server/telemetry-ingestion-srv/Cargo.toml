@@ -10,7 +10,7 @@ tonic = "0.6"
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 uuid = { version = "0.8", features = ["v4"] }
 whoami = "1.2"
 anyhow = "1.0"

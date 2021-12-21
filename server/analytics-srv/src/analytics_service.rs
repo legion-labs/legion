@@ -78,7 +78,7 @@ impl AnalyticsService {
         Self { pool, data_dir }
     }
 
-    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry::ProcessInfo> {
+    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
         let mut connection = self.pool.acquire().await?;
         find_process(&mut connection, process_id).await
     }
@@ -101,7 +101,7 @@ impl AnalyticsService {
     async fn list_process_streams_impl(
         &self,
         process_id: &str,
-    ) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+    ) -> Result<Vec<lgn_telemetry_sink::StreamInfo>> {
         let mut connection = self.pool.acquire().await?;
         find_process_streams(&mut connection, process_id).await
     }
@@ -109,15 +109,15 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
+    ) -> Result<Vec<lgn_telemetry_sink::EncodedBlock>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }
 
     async fn block_spans_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
-        stream: &lgn_telemetry::StreamInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
@@ -126,7 +126,7 @@ impl AnalyticsService {
 
     async fn process_cumulative_call_graph_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
         begin_ms: f64,
         end_ms: f64,
     ) -> Result<CumulativeCallGraphReply> {
@@ -138,7 +138,7 @@ impl AnalyticsService {
     #[allow(clippy::cast_precision_loss)]
     async fn process_log_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
         begin: u64,
         end: u64,
     ) -> Result<ProcessLogReply> {
@@ -250,7 +250,7 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<FindProcessRequest>,
     ) -> Result<Response<FindProcessReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("find_process");
+        info!("find_process");
         let find_request = request.into_inner();
         match self.find_process_impl(&find_request.process_id).await {
             Ok(process) => {
@@ -270,11 +270,11 @@ impl PerformanceAnalytics for AnalyticsService {
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("list_recent_processes");
+        info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
-                log::info!("list_recent_processes_impl ok");
+                info!("list_recent_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -291,13 +291,13 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<SearchProcessRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("search_processes");
+        info!("search_processes");
         let inner = request.into_inner();
         dbg!(&inner.search);
         match self.search_processes_impl(&inner.search).await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
-                log::info!("list_recent_processes_impl ok");
+                info!("list_recent_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -314,7 +314,7 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("list_process_streams");
+        info!("list_process_streams");
         let list_request = request.into_inner();
         match self
             .list_process_streams_impl(&list_request.process_id)
@@ -322,7 +322,7 @@ impl PerformanceAnalytics for AnalyticsService {
         {
             Ok(streams) => {
                 let reply = ListStreamsReply { streams };
-                log::info!("list_process_streams ok");
+                info!("list_process_streams ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {

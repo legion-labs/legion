@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
             edition_latency::print_edition_latency(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
-            log_static_str(LogLevel::Info, "unknown subcommand match");
+            info!("unknown subcommand match");
             bail!("unknown subcommand match: {:?}", &command_name);
         }
     }

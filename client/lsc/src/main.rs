@@ -59,8 +59,8 @@
 
 use std::path::Path;
 
-use ::log::info;
 use clap::{App, AppSettings, Arg, SubCommand};
+use lgn_telemetry_sink::TelemetryGuard;
 
 use lgn_source_control::*;
 use lgn_telemetry::*;
@@ -72,8 +72,7 @@ const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     trace_scope!();

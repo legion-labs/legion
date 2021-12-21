@@ -16,6 +16,7 @@ use lgn_renderer::components::{
     StaticMesh,
 };
 use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
+use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::components::Transform;
 use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
@@ -113,7 +114,7 @@ fn main() {
         )
         .get_matches();
 
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
 
     let width = matches
         .value_of(ARG_NAME_WIDTH)

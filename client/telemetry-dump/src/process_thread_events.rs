@@ -36,7 +36,7 @@ pub async fn print_process_thread_events(
 async fn extract_process_thread_events(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process_info: &lgn_telemetry::ProcessInfo,
+    process_info: &lgn_telemetry_sink::ProcessInfo,
     ts_offset: i64,
     inv_tsc_frequency: f64,
 ) -> Result<json::Array> {

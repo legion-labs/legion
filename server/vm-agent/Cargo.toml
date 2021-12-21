@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-cli = { path = "../../lib/cli", version = "0.1.0" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 clap = "2.33"
 log = "0.4"
 anyhow = "1.0.44"

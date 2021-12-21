@@ -57,7 +57,8 @@ static INIT: std::sync::Once = std::sync::Once::new();
 #[cfg(test)]
 fn setup_test_logger() {
     INIT.call_once(|| {
-        lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+        let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::new();
+        std::mem::forget(_telemetry_guard);
     });
 }
 
