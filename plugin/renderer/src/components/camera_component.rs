@@ -1,8 +1,8 @@
-use lgn_ecs::prelude::*;
+//use lgn_ecs::prelude::*;
 use lgn_math::{Quat, Vec3};
-use lgn_transform::components::Transform;
+use lgn_transform::prelude::*;
 
-#[derive(Component)]
+//#[derive(Component)]
 pub struct CameraComponent {
     pub speed: f32,
     pub rotation_speed: f32,

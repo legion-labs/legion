@@ -1,6 +1,6 @@
 use std::{cmp::max, sync::Arc};
 
-use lgn_ecs::prelude::Component;
+use lgn_ecs::prelude::*;
 use lgn_graphics_api::{
     Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage,
     Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
@@ -128,7 +128,7 @@ impl SizeDependentResources {
     }
 }
 
-#[derive(Component)]
+//#[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
     extents: RenderSurfaceExtents,

@@ -65,12 +65,8 @@
     clippy::option_option
 )]
 
-#[doc(hidden)]
-pub mod prelude {
-    pub use bevy_ecs::component::Component;
+pub use bevy_ecs::*;
 
-    pub type Entity = bevy_ecs::prelude::Entity;
-    pub type Query<'w, Q, F> = bevy_ecs::prelude::Query<'w, Q, F>;
-    pub type Res<'w, T> = bevy_ecs::prelude::Res<'w, T>;
-    pub type ResMut<'w, T> = bevy_ecs::prelude::ResMut<'w, T>;
+pub mod prelude {
+    pub use bevy_ecs::prelude::*;
 }

@@ -57,3 +57,9 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow(clippy::needless_pass_by_value)]
+
+pub use bevy_core::*;
+
+pub mod prelude {
+    pub use bevy_core::prelude::*;
+}

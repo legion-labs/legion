@@ -59,10 +59,8 @@
 // crate-specific exceptions:
 #![allow()]
 
-#[doc(hidden)]
-pub mod prelude {
-    pub use bevy_app::Plugin;
+pub use bevy_app::*;
 
-    pub type App = bevy_app::prelude::App;
-    pub type AppBuilder = bevy_app::prelude::AppBuilder;
+pub mod prelude {
+    pub use bevy_app::prelude::*;
 }

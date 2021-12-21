@@ -1,6 +1,6 @@
-use lgn_ecs::prelude::*;
+//use lgn_ecs::prelude::*;
 
-#[derive(Component)]
+//#[derive(Component)]
 pub struct ManipulatorComponent {}
 
 impl ManipulatorComponent {}

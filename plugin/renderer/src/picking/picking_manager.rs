@@ -1,10 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use lgn_ecs::prelude::{Commands, Entity, Query};
-use lgn_input::{
-    mouse::{MouseButton, MouseButtonInput},
-    ElementState,
-};
+use lgn_ecs::prelude::*;
+use lgn_input::{mouse::MouseButtonInput, prelude::*, ElementState};
 use lgn_math::{Vec2, Vec3};
 
 use crate::{components::PickedComponent, render_pass::PickingData};

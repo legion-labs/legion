@@ -5,7 +5,7 @@ use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
-use lgn_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
+use lgn_window::{prelude::*, WindowCreated, WindowResized, WindowScaleFactorChanged};
 
 #[derive(Default)]
 pub struct Egui {

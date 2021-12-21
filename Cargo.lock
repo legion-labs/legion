@@ -4581,6 +4581,9 @@ dependencies = [
 [[package]]
 name = "lgn-tasks"
 version = "0.1.0"
+dependencies = [
+ "bevy_tasks",
+]
 
 [[package]]
 name = "lgn-tauri"

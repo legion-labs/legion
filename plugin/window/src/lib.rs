@@ -56,3 +56,9 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow()]
+
+pub use bevy_window::*;
+
+pub mod prelude {
+    pub use bevy_window::prelude::*;
+}

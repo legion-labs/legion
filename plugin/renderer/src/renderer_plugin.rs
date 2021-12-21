@@ -7,7 +7,7 @@ use crate::{
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_math::{EulerRot, Quat};
-use lgn_transform::components::Transform;
+use lgn_transform::prelude::*;
 
 use crate::{
     components::{

@@ -22,7 +22,7 @@ use lgn_renderer::{
     {Renderer, RendererPlugin, RendererSystemLabel},
 };
 use lgn_telemetry_sink::TelemetryGuard;
-use lgn_transform::components::Transform;
+use lgn_transform::prelude::*;
 use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,

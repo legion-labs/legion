@@ -58,4 +58,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-pub use bevy_input::InputPlugin;
+pub use bevy_input::*;
+
+pub mod prelude {
+    pub use bevy_input::prelude::*;
+}
+
+pub mod keyboard {
+    pub use bevy_input::keyboard::{KeyCode, KeyboardInput};
+}
