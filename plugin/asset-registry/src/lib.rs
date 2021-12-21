@@ -74,6 +74,7 @@ use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
+use lgn_renderer::resources::DefaultMeshes;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
 pub use settings::AssetRegistrySettings;
@@ -161,12 +162,14 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn update_assets(
         registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
         mut commands: Commands<'_, '_>,
+        default_meshes: Res<'_, DefaultMeshes>,
     ) {
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
@@ -179,36 +182,42 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<lgn_graphics_runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<lgn_graphics_runtime::Texture>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
