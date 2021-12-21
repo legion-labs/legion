@@ -163,7 +163,7 @@ fn main() {
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
-            .add_system(camera_control.system())
+            .add_system(camera_control)
             .insert_resource(RenderSurfaces::new());
     }
     if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {

@@ -1,6 +1,6 @@
 use lgn_ecs::prelude::*;
 
-//#[derive(Component)]
+#[derive(Component)]
 pub struct PickedComponent {
     picking_ids: Vec<u32>,
 }
