@@ -4,8 +4,7 @@ use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorRef, Format,
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
-    ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp,
-    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
+    ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 
 use lgn_math::{Mat4, Vec3};
@@ -74,7 +73,6 @@ impl TmpRenderPass {
             })
             .unwrap();
 
-            StaticMeshRenderData::new_sphere(0.25, 20, 20),
         Self {
             root_signature,
             pipeline,

@@ -38,7 +38,6 @@ impl StaticMeshRenderData {
              half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
              half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            half_size, half_size, half_size, 1.0, 0.0, 0.0,
             // -x
             -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
             -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
@@ -46,7 +45,6 @@ impl StaticMeshRenderData {
             -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
             -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, half_size, -1.0, 0.0, 0.0,
             // +y
              half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
             -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
@@ -54,7 +52,6 @@ impl StaticMeshRenderData {
              half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
             -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, half_size, -half_size,  0.0, 1.0, 0.0,
             // -y
              half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
@@ -62,7 +59,6 @@ impl StaticMeshRenderData {
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size, half_size, 0.0, -1.0, 0.0,
             // +z
              half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
              half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
@@ -70,7 +66,6 @@ impl StaticMeshRenderData {
             -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            half_size, half_size, half_size, 0.0, 0.0, 1.0,
             // -z
              half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
             -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
@@ -78,7 +73,6 @@ impl StaticMeshRenderData {
             -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
             -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
              half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, half_size, -half_size, 0.0, 0.0, -1.0,
         ];
         Self::from_vertex_data(&vertex_data)
     }
@@ -106,7 +100,6 @@ impl StaticMeshRenderData {
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             -half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size, half_size, 0.0, -1.0, 0.0,
             // 1
              half_size, -half_size, -half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
@@ -474,11 +467,17 @@ impl StaticMeshRenderData {
                     let p2 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut pole.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, -1.0, 0.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                 } else if slice == slices - 1 {
                     let pole = Vec3::new(0.0, y1, 0.0);
                     let lr = (radius * radius - y0 * y0).sqrt();
@@ -489,11 +488,17 @@ impl StaticMeshRenderData {
                     let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut pole.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                 } else {
                     let lr = (radius * radius - y0 * y0).sqrt();
                     let langle = angle * (sail as f32);
@@ -503,25 +508,37 @@ impl StaticMeshRenderData {
                     let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * (sail as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * ((sail + 1) as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
+                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
                 }
             }
         }

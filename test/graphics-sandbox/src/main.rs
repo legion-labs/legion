@@ -278,19 +278,16 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands) {
+fn init_light_test(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     // sphere 1
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 3,
-            color: (255, 0, 0).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(0),
-            num_verticies: default_meshes.mesh_from_id(0).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (255, 0, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.1, 0.0, 0.0),
         });
@@ -299,14 +296,11 @@ fn init_light_test(mut commands: Commands) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 3,
-            color: (0, 255, 0).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(1),
-            num_verticies: default_meshes.mesh_from_id(1).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 255, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.1, 0.0),
         });
@@ -315,14 +309,11 @@ fn init_light_test(mut commands: Commands) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 3,
-            color: (0, 0, 255).into(),
-            vertex_offset: default_meshes.mesh_offset_from_id(2),
-            num_verticies: default_meshes.mesh_from_id(2).num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 0, 255).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.0, 0.1),
         });
@@ -383,48 +374,45 @@ fn init_light_test(mut commands: Commands) {
         .insert(CameraComponent::default_transform());
 }
 
-fn init_scene(mut commands: Commands) {
+fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
     // plane
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 0,
-            color: (255, 0, 0).into(),
-            offset: 0,
-            picking_id: 0,
-        })
-        .insert(RotationComponent {
-            rotation_speed: (0.4, 0.0, 0.0),
-        });
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Plane as usize,
+            (255, 0, 0).into(),
+        ));
+    //.insert(RotationComponent {
+    //    rotation_speed: (0.4, 0.0, 0.0),
+    //});
 
     // cube
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 1,
-            color: (0, 255, 0).into(),
-            offset: 0,
-            picking_id: 0,
-        })
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.4, 0.0),
-        });
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Cube as usize,
+            (0, 255, 0).into(),
+        ));
+    //.insert(RotationComponent {
+    //    rotation_speed: (0.0, 0.4, 0.0),
+    //});
 
     // pyramid
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 2,
-            color: (0, 0, 255).into(),
-            offset: 0,
-            picking_id: 0,
-        })
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.0, 0.4),
-        });
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Pyramid as usize,
+            (0, 0, 255).into(),
+        ));
+    //.insert(RotationComponent {
+    //    rotation_speed: (0.0, 0.0, 0.4),
+    //});
 
     // omnidirectional light
     commands
