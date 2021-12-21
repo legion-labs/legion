@@ -1,6 +1,6 @@
-//use lgn_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum RendererSystemLabel {
     FrameUpdate,
 }

@@ -15,7 +15,7 @@ pub struct Egui {
     pub shapes: Vec<epaint::ClippedShape>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
 enum EguiLabels {
     GatherInput,
     BeginFrame,
