@@ -138,7 +138,11 @@
 
     videoChannel = peerConnection.createDataChannel("video");
 
+    videoChannel.binaryType = "arraybuffer";
+
     controlChannel = peerConnection.createDataChannel("control");
+
+    videoChannel.binaryType = "arraybuffer";
 
     videoElement.addEventListener("loadedmetadata", (event) => {
       if (videoElement && event.target instanceof HTMLVideoElement) {
@@ -180,20 +184,14 @@
       log.debug("video", "Video channel is now closed.");
     };
 
-    videoChannel.onmessage = async (message) => {
+    videoChannel.onmessage = async (message: MessageEvent<ArrayBuffer>) => {
       if (!videoElement) {
         return;
       }
 
       // videoElement is augmented with the `videoPlayer` action and will
       // provide a `push` function.
-      (videoElement as PushableHTMLVideoElement).push(
-        // In Tauri message.data is an ArrayBuffer
-        // while it's a Blob in browser
-        message.data instanceof ArrayBuffer
-          ? message.data
-          : await message.data.arrayBuffer()
-      );
+      (videoElement as PushableHTMLVideoElement).push(message.data);
     };
 
     controlChannel.onopen = (event) => {
@@ -204,16 +202,12 @@
       log.debug("video", log.json`Control channel is now closed: ${event}`);
     };
 
-    controlChannel.onmessage = async (
-      message: MessageEvent<ArrayBuffer | Blob>
-    ) => {
-      const jsonMsg = new TextDecoder().decode(
-        // In Tauri message.data is an ArrayBuffer
-        // while it's a Blob in browser
+    controlChannel.onmessage = async (message: MessageEvent<unknown>) => {
+      const jsonMsg =
         message.data instanceof ArrayBuffer
-          ? message.data
-          : await message.data.arrayBuffer()
-      );
+          ? new TextDecoder().decode(message.data)
+          : // TODO: Refine data type
+            (message.data as any);
 
       onReceiveControlMessage(jsonMsg);
     };
