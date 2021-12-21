@@ -9,4 +9,4 @@ license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [dependencies]
-bevy_winit = { version = "0.5.0", default-features = false, features = ["x11"] }
+bevy_winit = { git = "https://github.com/legion-labs/bevy", default-features = false, features = ["x11"] }

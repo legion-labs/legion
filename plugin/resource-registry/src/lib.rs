@@ -76,9 +76,9 @@ use tokio::sync::Mutex;
 pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        let manifest = app.world().get_resource::<Manifest>().unwrap().clone();
-        if let Some(settings) = app.world().get_resource::<ResourceRegistrySettings>() {
+    fn build(&self, app: &mut App) {
+        let manifest = app.world.get_resource::<Manifest>().unwrap().clone();
+        if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
             let project_dir = settings.root_folder.clone();
             let build_dir = project_dir.join("temp");
 
@@ -92,7 +92,7 @@ impl Plugin for ResourceRegistryPlugin {
                 let project = Arc::new(Mutex::new(project));
 
                 let asset_registry = app
-                    .world()
+                    .world
                     .get_resource::<Arc<AssetRegistry>>()
                     .expect("the editor plugin requires AssetRegistry resource");
 
@@ -112,7 +112,7 @@ impl Plugin for ResourceRegistryPlugin {
                 )));
 
                 let task_pool = app
-                    .world()
+                    .world
                     .get_resource::<IoTaskPool>()
                     .expect("IoTaskPool is not available, missing CorePlugin?");
 

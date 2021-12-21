@@ -1,6 +1,6 @@
-//use lgn_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 
-//#[derive(Component)]
+#[derive(Component)]
 pub struct RotationComponent {
     pub rotation_speed: (f32, f32, f32),
 }

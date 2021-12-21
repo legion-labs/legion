@@ -103,9 +103,9 @@ impl Default for GRPCPluginSettings {
 pub struct GRPCPlugin;
 
 impl Plugin for GRPCPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<GRPCPluginSettings>();
-        app.add_startup_system(Self::start_grpc_server.system());
+        app.add_startup_system(Self::start_grpc_server);
     }
 }
 

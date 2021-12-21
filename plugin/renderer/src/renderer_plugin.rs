@@ -39,7 +39,7 @@ impl RendererPlugin {
 }
 
 impl Plugin for RendererPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
 
@@ -76,7 +76,6 @@ impl Plugin for RendererPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-<<<<<<< HEAD
 fn update_ui(
     egui_ctx: Res<'_, Egui>,
     mut rotations: Query<'_, '_, &mut RotationComponent>,
@@ -85,10 +84,6 @@ fn update_ui(
 ) {
     egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
         ui.label("Objects");
-=======
-fn update_ui(egui_ctx: Res<'_, Egui>, mut rotations: Query<'_, &mut RotationComponent>) {
-    egui::Window::new("Rotations").show(&egui_ctx.ctx, |ui| {
->>>>>>> cc9dab71 (redirect math, a few more fixes)
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(format!("Object {}: ", i));
@@ -216,7 +211,7 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(mut query: Query<'_, (&mut Transform, &RotationComponent)>) {
+fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
     for (mut transform, rotation) in query.iter_mut() {
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
@@ -229,7 +224,7 @@ fn update_rotation(mut query: Query<'_, (&mut Transform, &RotationComponent)>) {
 
 fn update_transform(
     mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, (Entity, &Transform, &mut StaticMesh)>,
+    mut query: Query<'_, '_, (Entity, &Transform, &mut StaticMesh)>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut gpu_data = renderer.aquire_transform_data();
@@ -254,7 +249,6 @@ fn render_update(
     renderer: ResMut<'_, Renderer>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
-<<<<<<< HEAD
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
     q_debug_drawables: Query<'_, '_, (&StaticMesh, &Transform, &PickedComponent)>,
@@ -264,14 +258,6 @@ fn render_update(
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
     light_settings: Res<'_, LightSettings>,
-=======
-    mut q_render_surfaces: Query<'_, &mut RenderSurface>,
-    q_drawables: Query<'_, (&StaticMesh, Option<&PickedComponent>)>,
-    q_debug_drawables: Query<'_, (&StaticMesh, &Transform, &PickedComponent)>,
-    task_pool: Res<'_, crate::RenderTaskPool>,
-    mut egui: ResMut<'_, Egui>,
-    q_cameras: Query<'_, (&CameraComponent, &Transform)>,
->>>>>>> cc9dab71 (redirect math, a few more fixes)
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 

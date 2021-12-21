@@ -87,7 +87,7 @@ impl<A: tauri::Assets> TauriPlugin<A> {
 }
 
 impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
 
         app.set_runner(move |app| {

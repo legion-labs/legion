@@ -34,8 +34,8 @@ impl Plugin for PickingPlugin {
 
 fn gather_input_window(
     mut picking_manager: ResMut<'_, PickingManager>,
-    mut cursor_button: EventReader<'_, MouseButtonInput>,
-    mut window_resized_events: EventReader<'_, WindowResized>,
+    mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
+    mut window_resized_events: EventReader<'_, '_, WindowResized>,
 ) {
     for cursor_button_event in cursor_button.iter() {
         picking_manager.set_mouse_button_input(cursor_button_event);
@@ -52,7 +52,7 @@ fn gather_input_window(
 #[allow(clippy::needless_pass_by_value)]
 fn static_meshes_added(
     picking_manager: Res<'_, PickingManager>,
-    mut query: Query<'_, (Entity, &mut StaticMesh), Added<StaticMesh>>,
+    mut query: Query<'_, '_, (Entity, &mut StaticMesh), Added<StaticMesh>>,
 ) {
     let mut picking_block = picking_manager.aquire_picking_id_block();
 
@@ -66,8 +66,8 @@ fn static_meshes_added(
 #[allow(clippy::needless_pass_by_value)]
 fn update_picking_components(
     picking_manager: Res<'_, PickingManager>,
-    commands: Commands<'_>,
-    query: Query<'_, (Entity, &mut PickedComponent)>,
+    commands: Commands<'_, '_>,
+    query: Query<'_, '_, (Entity, &mut PickedComponent)>,
 ) {
     picking_manager.update_picking_components(commands, query);
 }

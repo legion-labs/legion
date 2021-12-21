@@ -74,14 +74,10 @@ pub use runtime::*;
 pub struct AsyncPlugin;
 
 impl Plugin for AsyncPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.insert_resource(TokioAsyncRuntime::default());
-        app.add_system(Self::poll.system());
-    }
-}
-
-impl AsyncPlugin {
-    fn poll(mut rt: ResMut<'_, TokioAsyncRuntime>) {
-        rt.poll();
+        app.add_system(|mut rt: ResMut<'_, TokioAsyncRuntime>| {
+            rt.poll();
+        });
     }
 }
