@@ -92,7 +92,7 @@ pub mod prelude {
     pub use crate::metric_event::*;
     pub use crate::trace_scope;
     // re-exporting log macros for convenience
-    pub use crate::log::{debug, error, info, log, trace, warn, Level, LevelFilter};
+    pub use crate::log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 }
 
 pub use prelude::*;

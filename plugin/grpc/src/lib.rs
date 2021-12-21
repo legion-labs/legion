@@ -66,7 +66,7 @@ use lgn_online::grpc::{
     multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
     Server,
 };
-use log::warn;
+use lgn_telemetry::warn;
 use tonic::transport::NamedService;
 
 pub struct GRPCPluginSettings {

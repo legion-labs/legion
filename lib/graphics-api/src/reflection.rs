@@ -1,6 +1,8 @@
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+use lgn_telemetry::error;
+
 use crate::types::ShaderStageFlags;
 use crate::{GfxResult, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 
@@ -77,7 +79,7 @@ fn merge_pushconstant(reflections: &[&PipelineReflection]) -> GfxResult<Option<P
             if let Some(other_push_constant) = reflection.push_constant {
                 if push_constant.size != other_push_constant.size {
                     let message = "Cannot merge pushconstants of different size".to_owned();
-                    log::error!("{}", message);
+                    error!("{}", message);
                     return Err(message.into());
                 }
                 push_constant.used_in_shader_stages |= other_push_constant.used_in_shader_stages;
@@ -111,7 +113,7 @@ fn merge_resources(reflections: &[&PipelineReflection]) -> GfxResult<Vec<ShaderR
                         } else {
                             let message =
                                 "Cannot merge shader resource of different size".to_owned();
-                            log::error!("{}", message);
+                            error!("{}", message);
                             return Err(message.into());
                         }
                     }

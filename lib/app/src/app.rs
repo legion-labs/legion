@@ -10,9 +10,9 @@ use lgn_ecs::{
     system::Resource,
     world::World,
 };
+use lgn_telemetry::debug;
 use lgn_telemetry::trace_scope;
 use lgn_utils::HashMap;
-use log::debug;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
 

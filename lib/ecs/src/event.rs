@@ -6,7 +6,7 @@ use std::{
     marker::PhantomData,
 };
 
-use log::trace;
+use lgn_telemetry::trace;
 
 use crate::system::{Local, Res, ResMut, SystemParam};
 use crate::{self as lgn_ecs, system::Resource};

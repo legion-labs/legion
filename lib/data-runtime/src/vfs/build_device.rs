@@ -5,10 +5,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store::{ContentStore, ContentStoreAddr};
-
 use super::Device;
 use crate::{manifest::Manifest, ResourceTypeAndId};
+
+use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_telemetry::info;
 
 /// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
 pub(crate) struct BuildDevice {
@@ -72,11 +73,11 @@ impl BuildDevice {
             &self.buildindex,
         );
 
-        log::info!("Running DataBuild for ResourceId: {}", resource_id);
+        info!("Running DataBuild for ResourceId: {}", resource_id);
         let start = Instant::now();
         let output = command.output()?;
 
-        log::info!(
+        info!(
             "{} DataBuild for Resource: {} processed in {:?}",
             if output.status.success() {
                 "Succeeded"

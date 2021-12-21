@@ -1,6 +1,6 @@
 use lgn_ecs::world::World;
 use lgn_tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPoolBuilder};
-use log::trace;
+use lgn_telemetry::trace;
 
 /// Defines a simple way to determine how many threads to use given the number of remaining cores
 /// and number of total cores

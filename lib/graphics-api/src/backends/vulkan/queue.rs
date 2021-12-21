@@ -1,5 +1,7 @@
 use ash::vk;
 
+use lgn_telemetry::trace;
+
 use super::VulkanSwapchain;
 use super::{internal::VkQueue, SparseBindingInfo};
 use crate::{
@@ -56,7 +58,7 @@ impl VulkanQueue {
                     .lock()
                     .unwrap();
                 unsafe {
-                    log::trace!(
+                    trace!(
                         "present to dedicated present queue {:?}",
                         dedicated_present_queue
                     );
@@ -66,7 +68,7 @@ impl VulkanQueue {
                 }
             } else {
                 let queue = self.queue.queue().lock().unwrap();
-                log::trace!("present to dedicated present queue {:?}", *queue);
+                trace!("present to dedicated present queue {:?}", *queue);
                 unsafe {
                     swapchain
                         .vk_swapchain_loader()
@@ -125,7 +127,7 @@ impl VulkanQueue {
         let fence = signal_fence.map_or(vk::Fence::null(), Fence::vk_fence);
         unsafe {
             let queue = self.queue.queue().lock().unwrap();
-            log::trace!(
+            trace!(
                 "submit {} command buffers to queue {:?}",
                 command_buffer_list.len(),
                 *queue

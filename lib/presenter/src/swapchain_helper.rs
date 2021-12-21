@@ -9,6 +9,7 @@ use lgn_graphics_api::{
 };
 use lgn_renderer::hl_gfx_api::HLQueue;
 use lgn_renderer::RenderHandle;
+use lgn_telemetry::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
 /// optional.
@@ -113,7 +114,7 @@ impl PresentableFrame {
         wait_sem: &Semaphore,
         command_buffers: &mut [RenderHandle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
-        log::trace!(
+        trace!(
             "Calling PresentableFrame::present with {} command buffers",
             command_buffers.len()
         );
@@ -238,7 +239,7 @@ impl SwapchainHelper {
         &mut self,
         mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<()> {
-        log::debug!("Destroying swapchain helper");
+        debug!("Destroying swapchain helper");
 
         // If there is a frame in flight, wait until it is submitted. This hopefully means we are
         // the only holder of this arc and we can unwrap it
@@ -251,28 +252,28 @@ impl SwapchainHelper {
                 // occurs.
                 if (instant::Instant::now() - begin_wait_time).as_secs_f32() > 1.0 {
                     // Bail early, we won't properly clean up
-                    log::error!("A presentable frame was submitted but still isn't dropped. Can't clean up the swapchain");
+                    error!("A presentable frame was submitted but still isn't dropped. Can't clean up the swapchain");
                     break;
                 }
             }
 
             match Arc::try_unwrap(shared_state) {
                 Ok(shared_state) => {
-                    log::debug!("wait for all fences to complete");
+                    debug!("wait for all fences to complete");
                     let fences: Vec<_> = shared_state.in_flight_fences.iter().collect();
                     // self.device_context.wait_for_fences(&fences)?;
                     Fence::wait_for_fences(&self.device_context, &fences)?;
 
                     if let Some(event_listener) = event_listener.as_mut() {
                         let old_swapchain = shared_state.swapchain.lock().unwrap();
-                        log::debug!("destroy the swapchain");
+                        debug!("destroy the swapchain");
                         event_listener
                             .swapchain_destroyed(&self.device_context, &*old_swapchain)?;
                     }
                 }
                 Err(_arc) => {
                     let error = "The swapchain could not be destroyed, a PresentableFrame exists that is using it";
-                    log::error!("{}", error);
+                    error!("{}", error);
                     return Err(error.into());
                 }
             }
@@ -362,7 +363,7 @@ impl SwapchainHelper {
                     Some(result) => match result {
                         PresentSuccessResult::Success => false,
                         PresentSuccessResult::SuccessSuboptimal => {
-                            log::debug!("Swapchain is sub-optimal, rebuilding");
+                            debug!("Swapchain is sub-optimal, rebuilding");
                             //TODO: This can occur persistently when the app is minimized, so ignore
                             // if the size has not changed. However, we could also consider adding
                             // a counter to limit the frequency. (A sensible case for this is
@@ -372,7 +373,7 @@ impl SwapchainHelper {
                                 || window_width != self.swapchain_def.width
                         }
                         PresentSuccessResult::DeviceReset => {
-                            log::debug!("Swapchain sent DeviceReset, rebuilding");
+                            debug!("Swapchain sent DeviceReset, rebuilding");
                             true
                         }
                     },
@@ -446,7 +447,7 @@ impl SwapchainHelper {
         let swapchain_def = swapchain.swapchain_def();
 
         if swapchain_def.width != window_width || swapchain_def.height != window_height {
-            log::debug!("Force swapchain rebuild due to changed window size");
+            debug!("Force swapchain rebuild due to changed window size");
             return Ok(TryAcquireNextImageResult::DeviceReset);
         }
 
@@ -477,7 +478,7 @@ impl SwapchainHelper {
         window_height: u32,
         mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<()> {
-        log::info!("Rebuild Swapchain");
+        info!("Rebuild Swapchain");
 
         let shared_state = self.shared_state.take().unwrap();
         {

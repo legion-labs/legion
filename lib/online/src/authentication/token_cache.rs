@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use directories::ProjectDirs;
-use log::{debug, warn};
+use lgn_telemetry::{debug, warn};
 use tokio::sync::{Mutex, MutexGuard};
 
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};

@@ -1,7 +1,7 @@
 use lgn_app::{EventReader, EventWriter};
 use lgn_ecs::system::{Res, ResMut};
+use lgn_telemetry::info;
 use lgn_utils::{HashMap, HashSet};
-use log::info;
 
 use crate::{Axis, Input};
 

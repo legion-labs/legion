@@ -1,8 +1,8 @@
 use std::{borrow::Cow, fmt::Debug, hash::Hash};
 
 use fixedbitset::FixedBitSet;
+use lgn_telemetry::warn;
 use lgn_utils::{AHashExt, HashMap, HashSet};
-use log::warn;
 
 pub enum DependencyGraphError<Labels> {
     GraphCycles(Vec<(usize, Labels)>),

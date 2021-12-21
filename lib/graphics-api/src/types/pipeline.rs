@@ -1,5 +1,7 @@
 #![allow(clippy::too_many_lines)]
 
+use lgn_telemetry::error;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanPipeline;
 use crate::DeviceContext;
@@ -36,7 +38,7 @@ impl Pipeline {
         #[cfg(feature = "vulkan")]
         let platform_pipeline = VulkanPipeline::new_graphics_pipeline(device_context, pipeline_def)
             .map_err(|e| {
-                log::error!("Error creating graphics pipeline {:?}", e);
+                error!("Error creating graphics pipeline {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
@@ -57,7 +59,7 @@ impl Pipeline {
         #[cfg(feature = "vulkan")]
         let platform_pipeline = VulkanPipeline::new_compute_pipeline(device_context, pipeline_def)
             .map_err(|e| {
-                log::error!("Error creating compute pipeline {:?}", e);
+                error!("Error creating compute pipeline {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

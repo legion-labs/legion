@@ -3,6 +3,8 @@ use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
 
+use lgn_telemetry::{error, trace};
+
 use crate::{
     DeviceContext, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
     TextureSubResource,
@@ -20,15 +22,15 @@ pub(crate) struct VulkanRawImage {
 impl VulkanRawImage {
     fn destroy_image(&mut self, device_context: &DeviceContext) {
         if let Some(allocation) = self.vk_allocation.take() {
-            log::trace!("destroying ImageVulkan");
+            trace!("destroying ImageVulkan");
             assert_ne!(self.vk_image, vk::Image::null());
             device_context
                 .vk_allocator()
                 .destroy_image(self.vk_image, &allocation);
             self.vk_image = vk::Image::null();
-            log::trace!("destroyed ImageVulkan");
+            trace!("destroyed ImageVulkan");
         } else {
-            log::trace!("ImageVulkan has no allocation associated with it, not destroying image");
+            trace!("ImageVulkan has no allocation associated with it, not destroying image");
             self.vk_image = vk::Image::null();
         }
     }
@@ -160,7 +162,7 @@ impl VulkanTexture {
                 .vk_allocator()
                 .create_image(&image_create_info, &allocation_create_info)
                 .map_err(|_e| {
-                    log::error!("Error creating image");
+                    error!("Error creating image");
                     vk::Result::ERROR_UNKNOWN
                 })?;
 

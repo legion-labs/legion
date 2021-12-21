@@ -28,7 +28,6 @@ lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 # other
 clap = "2.33"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
-log = "0.4"
 
 [features]
 default = ["standalone"]

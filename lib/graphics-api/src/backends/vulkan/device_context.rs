@@ -5,6 +5,8 @@ use ash::extensions::khr;
 use ash::vk;
 use fnv::FnvHashMap;
 
+use lgn_telemetry::{debug, info, trace, warn};
+
 use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
     VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
@@ -291,7 +293,7 @@ fn query_physical_device_info(
         PhysicalDeviceType::DiscreteGpu,
         PhysicalDeviceType::IntegratedGpu,
     ];
-    log::info!(
+    info!(
         "Preferred device types: {:?}",
         physical_device_type_priority
     );
@@ -306,7 +308,7 @@ fn query_physical_device_info(
 
     let extensions: Vec<ash::vk::ExtensionProperties> =
         unsafe { instance.enumerate_device_extension_properties(device)? };
-    log::debug!("Available device extensions: {:#?}", extensions);
+    debug!("Available device extensions: {:#?}", extensions);
     let mut required_extensions = vec![];
     match windowing_mode {
         ExtensionMode::Disabled => {}
@@ -314,9 +316,9 @@ fn query_physical_device_info(
             if check_extensions_availability(&[khr::Swapchain::name()], &extensions) {
                 required_extensions.push(khr::Swapchain::name());
             } else if windowing_mode == ExtensionMode::EnabledIfAvailable {
-                log::info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
             } else {
-                log::warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
                 return Ok(None);
             }
         }
@@ -333,9 +335,9 @@ fn query_physical_device_info(
             if check_extensions_availability(&video_extensions, &extensions) {
                 required_extensions.extend_from_slice(&video_extensions);
             } else if video_mode == ExtensionMode::EnabledIfAvailable {
-                log::info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
             } else {
-                log::warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
                 return Ok(None);
             }
         }
@@ -361,7 +363,7 @@ fn query_physical_device_info(
         let extensions_rank: i32 = required_extensions.len().try_into().unwrap();
         let score = device_type_rank * 1000 + extensions_rank * 10;
 
-        log::info!(
+        info!(
             "Found suitable device '{}' API: {} DriverVersion: {} Score = {}",
             device_name,
             vk_version_to_string(properties.api_version),
@@ -379,16 +381,16 @@ fn query_physical_device_info(
             required_extensions,
         };
 
-        log::trace!("{:#?}", properties);
+        trace!("{:#?}", properties);
         Ok(Some(result))
     } else {
-        log::info!(
+        info!(
             "Found unsuitable device '{}' API: {} DriverVersion: {} could not find queue families",
             device_name,
             vk_version_to_string(properties.api_version),
             vk_version_to_string(properties.driver_version)
         );
-        log::trace!("{:#?}", properties);
+        trace!("{:#?}", properties);
         Ok(None)
     }
 }
@@ -404,10 +406,10 @@ fn find_queue_families(
     let mut decode_queue_family_index = None;
     let mut encode_queue_family_index = None;
 
-    log::info!("Available queue families:");
+    info!("Available queue families:");
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
-        log::info!("Queue Family {}", queue_family_index);
-        log::info!("{:#?}", queue_family);
+        info!("Queue Family {}", queue_family_index);
+        info!("{:#?}", queue_family);
     }
 
     //
@@ -543,7 +545,7 @@ fn find_queue_families(
         }
     }
 
-    log::info!(
+    info!(
         "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}  Decode QF: {:?}  Encode QF: {:?}",
         graphics_queue_family_index,
         compute_queue_family_index,

@@ -4,6 +4,8 @@ use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
 
+use lgn_telemetry::{debug, warn};
+
 use crate::{backends::vulkan::VkQueueFamilyIndices, DeviceContext};
 
 /// Has the indexes for all the queue families we will need. It's possible that a single queue
@@ -214,7 +216,7 @@ impl VkQueueRequirements {
                     first_queue_index,
                 };
             }
-            log::warn!(
+            warn!(
                 "Not enough available queues in queue family {} to create pool of size {}. Falling back to ShareFirstQueueInFamily behavior",
                 queue_family,
                 count
@@ -239,14 +241,14 @@ impl VkQueueRequirements {
         decode_allocation_strategy: VkQueueAllocationStrategy,
         encode_allocation_strategy: VkQueueAllocationStrategy,
     ) -> Self {
-        log::debug!(
+        debug!(
             "Determine required queue counts. Allocation strategies: Graphics: {:?}, Compute: {:?}, Transfer: {:?}",
             graphics_allocation_strategy,
             queue_allocation_strategy,
             transfer_allocation_strategy
         );
-        log::debug!("Queue family indices: {:?}", queue_family_indices);
-        log::debug!("Queue families: {:?}", all_queue_families);
+        debug!("Queue family indices: {:?}", queue_family_indices);
+        debug!("Queue families: {:?}", all_queue_families);
 
         let mut queue_counts = FnvHashMap::default();
         let graphics_allocation_config = Self::determine_queue_allocation_strategy(
@@ -290,24 +292,24 @@ impl VkQueueRequirements {
                     )
                 });
 
-        log::debug!("Queue counts: {:?}", queue_counts);
-        log::debug!(
+        debug!("Queue counts: {:?}", queue_counts);
+        debug!(
             "Graphics queue allocation config: {:?}",
             graphics_allocation_config
         );
-        log::debug!(
+        debug!(
             "Compute queue allocation config: {:?}",
             compute_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             transfer_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             decode_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             encode_allocation_config
         );
@@ -338,7 +340,7 @@ impl VkQueueAllocatorSet {
         all_queue_families: &[ash::vk::QueueFamilyProperties],
         queue_requirements: VkQueueRequirements,
     ) -> Self {
-        log::debug!("Creating queue allocators");
+        debug!("Creating queue allocators");
 
         // let mut queue_allocators = FnvHashMap::default();
         let mut all_queues = FnvHashMap::default();

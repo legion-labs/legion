@@ -19,7 +19,6 @@ async-channel = "1.6"
 downcast-rs = "1.2"
 fixedbitset = "0.4"
 fxhash = "0.2"
-log = "0.4"
 serde = "1.0"
 thiserror = "1.0"
 

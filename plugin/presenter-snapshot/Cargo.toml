@@ -17,7 +17,6 @@ lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 anyhow = "1.0"
 crossbeam-channel = "0.5"
 instant = "0.1"
-log = "0.4"
 png = "0.17"
 
 [features]

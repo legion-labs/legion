@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
+use lgn_telemetry::error;
 use tokio::sync::MutexGuard;
 
 use crate::{BuildManager, DataManager};
@@ -54,7 +55,7 @@ impl<'a> LockContext<'a> {
                             }
                         }
                         Err(e) => {
-                            log::error!("Error building resource derivations {:?}", e);
+                            error!("Error building resource derivations {:?}", e);
                         }
                     }
                 }

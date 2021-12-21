@@ -11,7 +11,7 @@ use lgn_editor_proto::{
     SearchResourcesRequest, SearchResourcesResponse, UndoTransactionRequest,
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
-use log::info;
+use lgn_telemetry::info;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use log::{info, warn};
+use lgn_telemetry::{info, warn};
 
 use crate::create_resource_operation::CreateResourceOperation;
 use crate::delete_resource_operation::DeleteResourceOperation;

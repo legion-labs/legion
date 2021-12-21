@@ -11,7 +11,7 @@ use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     RenderTaskPool, Renderer,
 };
-use log::{error, info, warn};
+use lgn_telemetry::{error, info, warn};
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,
@@ -190,7 +190,7 @@ pub(crate) fn update_streams(
 
                 match &event.info {
                     VideoStreamEventInfo::Color { id, color } => {
-                        log::info!("received color command id={}", id);
+                        info!("received color command id={}", id);
                         render_pass.write().set_color(color.0);
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
@@ -201,11 +201,11 @@ pub(crate) fn update_streams(
                         );
                     }
                     VideoStreamEventInfo::Speed { id, speed } => {
-                        log::info!("received speed command id={}", id);
+                        info!("received speed command id={}", id);
                         render_pass.write().set_speed(*speed);
                     }
                     VideoStreamEventInfo::Input { input } => {
-                        log::info!("received input: {:?}", input);
+                        info!("received input: {:?}", input);
 
                         match input {
                             Input::MouseButtonInput(mouse_button_input) => {

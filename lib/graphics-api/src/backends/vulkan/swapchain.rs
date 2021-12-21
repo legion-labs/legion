@@ -6,6 +6,8 @@ use ash::vk;
 use ash::vk::Extent2D;
 use raw_window_handle::HasRawWindowHandle;
 
+use lgn_telemetry::{debug, error, info, trace};
+
 use super::VulkanRawImage;
 use crate::{
     deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContext, Extents3D, Fence, Format,
@@ -140,14 +142,14 @@ impl VulkanSwapchain {
     }
 
     pub fn destroy(&mut self) {
-        log::trace!("destroying VulkanSwapchain");
+        trace!("destroying VulkanSwapchain");
 
         unsafe {
             ManuallyDrop::drop(&mut self.swapchain);
             self.surface_loader.destroy_surface(self.surface, None);
         }
 
-        log::trace!("destroyed VulkanSwapchain");
+        trace!("destroyed VulkanSwapchain");
     }
 
     pub fn dedicated_present_queue(&self) -> Option<vk::Queue> {
@@ -321,14 +323,14 @@ impl SwapchainVulkanInstance {
             )?;
 
         let surface_format = Self::choose_swapchain_format(&available_formats);
-        log::info!("Surface format: {:?}", surface_format);
+        info!("Surface format: {:?}", surface_format);
 
         let present_mode =
             Self::choose_present_mode(&available_present_modes, present_mode_priority);
-        log::info!("Present mode: {:?}", present_mode);
+        info!("Present mode: {:?}", present_mode);
 
         let extents = Self::choose_extents(&surface_capabilities, window_inner_size);
-        log::info!("Extents: {:?}", extents);
+        info!("Extents: {:?}", extents);
 
         let present_queue_family_index = Self::choose_present_queue_family_index(
             surface,
@@ -472,8 +474,8 @@ impl SwapchainVulkanInstance {
         available_present_modes: &[vk::PresentModeKHR],
         present_mode_priority: &[VkPresentMode],
     ) -> vk::PresentModeKHR {
-        log::info!("Available present modes: {:?}", available_present_modes);
-        log::info!("Preferred present modes: {:?}", present_mode_priority);
+        info!("Available present modes: {:?}", available_present_modes);
+        info!("Preferred present modes: {:?}", present_mode_priority);
 
         let mut best_present_mode = None;
 
@@ -507,21 +509,21 @@ impl SwapchainVulkanInstance {
             }
         }
 
-        log::trace!(
+        trace!(
             "swapchain surface capability min {:?}",
             surface_capabilities.min_image_extent
         );
-        log::trace!(
+        trace!(
             "swapchain surface capability max {:?}",
             surface_capabilities.max_image_extent
         );
-        log::trace!(
+        trace!(
             "swapchain surface capability current {:?}",
             surface_capabilities.current_extent
         );
 
         let mut actual_extent = if surface_capabilities.current_extent.width != std::u32::MAX {
-            log::debug!(
+            debug!(
                 "Swapchain extents chosen by surface capabilities ({} {})",
                 surface_capabilities.current_extent.width,
                 surface_capabilities.current_extent.height,
@@ -534,10 +536,9 @@ impl SwapchainVulkanInstance {
                 .height(window_inner_size.height)
                 .build();
 
-            log::debug!(
+            debug!(
                 "Swapchain extents chosen by inner window size ({} {})",
-                window_inner_size.width,
-                window_inner_size.height,
+                window_inner_size.width, window_inner_size.height,
             );
 
             actual_extent
@@ -560,7 +561,7 @@ impl SwapchainVulkanInstance {
         )
         .max(1);
 
-        log::debug!("chose swapchain extents {:?}", actual_extent);
+        debug!("chose swapchain extents {:?}", actual_extent);
         actual_extent
     }
 
@@ -572,7 +573,7 @@ impl SwapchainVulkanInstance {
         graphics_queue_family_index: u32,
     ) -> VkResult<u32> {
         let graphics_queue_family_supports_present = unsafe {
-            log::debug!("Use the graphics queue family to present");
+            debug!("Use the graphics queue family to present");
             surface_loader.get_physical_device_surface_support(
                 physical_device,
                 graphics_queue_family_index,
@@ -588,7 +589,7 @@ impl SwapchainVulkanInstance {
             for (queue_family_index, _) in all_queue_families.iter().enumerate() {
                 let queue_family_index = queue_family_index as u32;
 
-                log::debug!("Use dedicated present queue family");
+                debug!("Use dedicated present queue family");
                 let supports_present = unsafe {
                     surface_loader.get_physical_device_surface_support(
                         physical_device,
@@ -604,7 +605,7 @@ impl SwapchainVulkanInstance {
             }
 
             // Could not find any present queue family
-            log::error!("Could not find suitable present queue family");
+            error!("Could not find suitable present queue family");
             Err(vk::Result::ERROR_UNKNOWN)
         }
     }
@@ -621,7 +622,7 @@ impl SwapchainVulkanInstance {
         old_swapchain: Option<vk::SwapchainKHR>,
         present_queue_family_index: u32,
     ) -> VkResult<CreateSwapchainResult> {
-        log::trace!("VkSwapchain::create_swapchain");
+        trace!("VkSwapchain::create_swapchain");
         // "simply sticking to this minimum means that we may sometimes have to wait on the driver
         // to complete internal operations before we can acquire another image to render to.
         // Therefore it is recommended to request at least one more image than the minimum"
@@ -650,7 +651,7 @@ impl SwapchainVulkanInstance {
             .clipped(true);
 
         if let Some(old_swapchain) = old_swapchain {
-            log::trace!("include old swapchain in swapchain_create_info");
+            trace!("include old swapchain in swapchain_create_info");
             swapchain_create_info = swapchain_create_info.old_swapchain(old_swapchain);
         }
 
@@ -693,13 +694,13 @@ impl SwapchainVulkanInstance {
 
 impl Drop for SwapchainVulkanInstance {
     fn drop(&mut self) {
-        log::trace!("destroying VkSwapchain");
+        trace!("destroying VkSwapchain");
 
         unsafe {
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);
         }
 
-        log::trace!("destroyed VkSwapchain");
+        trace!("destroyed VkSwapchain");
     }
 }

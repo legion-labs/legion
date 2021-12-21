@@ -1,6 +1,8 @@
 #![allow(clippy::too_many_lines)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use lgn_telemetry::error;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
 use crate::{
@@ -35,7 +37,7 @@ impl CommandBuffer {
         #[cfg(feature = "vulkan")]
         let platform_command_buffer = VulkanCommandBuffer::new(command_pool, command_buffer_def)
             .map_err(|e| {
-                log::error!("Error creating command buffer {:?}", e);
+                error!("Error creating command buffer {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

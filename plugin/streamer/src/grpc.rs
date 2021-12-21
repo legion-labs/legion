@@ -4,7 +4,7 @@ use lgn_streaming_proto::{
     streamer_server::{Streamer, StreamerServer},
     InitializeStreamRequest, InitializeStreamResponse,
 };
-use log::{debug, info, warn};
+use lgn_telemetry::{debug, info, warn};
 use tonic::{Request, Response, Status};
 
 use crate::{streamer::StreamEvent, webrtc::WebRTCServer};

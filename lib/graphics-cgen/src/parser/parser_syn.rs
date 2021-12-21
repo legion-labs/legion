@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use log::{trace, warn};
 use relative_path::RelativePath;
 
 use std::{
@@ -8,6 +7,8 @@ use std::{
     str::FromStr,
 };
 use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
+
+use lgn_telemetry::{trace, warn};
 
 use crate::{
     builder::{DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder},

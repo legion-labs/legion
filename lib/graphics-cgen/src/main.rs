@@ -57,7 +57,7 @@
 
 use anyhow::Result;
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
-use log::LevelFilter;
+use lgn_telemetry::LevelFilter;
 use simple_logger::SimpleLogger;
 
 fn main() -> Result<()> {

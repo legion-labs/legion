@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use lgn_telemetry::error;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanApi;
 #[cfg(not(any(feature = "vulkan")))]
@@ -32,7 +34,7 @@ impl GfxApi {
     pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_api, device_context) = VulkanApi::new(api_def).map_err(|e| {
-            log::error!("Error creating buffer {:?}", e);
+            error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

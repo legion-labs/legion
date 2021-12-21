@@ -14,8 +14,8 @@ use lgn_renderer::{
 };
 use lgn_tasks::TaskPool;
 use lgn_telemetry::prelude::*;
+use lgn_telemetry::{debug, warn};
 use lgn_utils::{memory::write_any, setting_get_or};
-use log::{debug, warn};
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 

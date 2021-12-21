@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use log::warn;
+use lgn_telemetry::warn;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},

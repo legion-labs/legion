@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use clap::{AppSettings, Arg, SubCommand};
-use log::LevelFilter;
+use lgn_telemetry::LevelFilter;
 
 pub(crate) struct Config {
     pub root: PathBuf,

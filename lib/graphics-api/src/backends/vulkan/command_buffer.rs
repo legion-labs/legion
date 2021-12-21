@@ -1,6 +1,8 @@
 #![allow(clippy::too_many_lines)]
 use std::{mem, ptr};
 
+use lgn_telemetry::trace;
+
 use super::internal;
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
@@ -19,7 +21,7 @@ impl VulkanCommandBuffer {
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
         let vk_command_pool = command_pool.vk_command_pool();
-        log::trace!("Creating command buffers from pool {:?}", vk_command_pool);
+        trace!("Creating command buffers from pool {:?}", vk_command_pool);
         let command_buffer_level = if command_buffer_def.is_secondary {
             ash::vk::CommandBufferLevel::SECONDARY
         } else {
@@ -106,7 +108,7 @@ impl CommandBuffer {
                     .texture()
                     .take_is_undefined_layout()
                 {
-                    log::trace!(
+                    trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         color_target,
                         ResourceState::UNDEFINED,
@@ -126,7 +128,7 @@ impl CommandBuffer {
                     .texture()
                     .take_is_undefined_layout()
                 {
-                    log::trace!(
+                    trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         depth_target,
                         ResourceState::UNDEFINED,
@@ -559,7 +561,7 @@ impl CommandBuffer {
             };
 
             let new_layout = internal::resource_state_to_image_layout(barrier.dst_state).unwrap();
-            log::trace!(
+            trace!(
                 "Transition texture {:?} from {:?} to {:?}",
                 barrier.texture,
                 old_layout,

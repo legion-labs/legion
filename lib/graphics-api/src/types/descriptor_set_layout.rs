@@ -1,3 +1,5 @@
+use lgn_telemetry::error;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
 
@@ -82,7 +84,7 @@ impl DescriptorSetLayout {
         #[cfg(feature = "vulkan")]
         let (platform_layout, descriptors) =
             VulkanDescriptorSetLayout::new(device_context, definition).map_err(|e| {
-                log::error!("Error creating platform descriptor set layout {:?}", e);
+                error!("Error creating platform descriptor set layout {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

@@ -6,6 +6,8 @@ use lgn_telemetry::prelude::*;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
+use lgn_telemetry::error;
+
 #[derive(Debug, Serialize)]
 #[serde(tag = "control_msg")]
 enum ControlStreamMessage {
@@ -36,7 +38,7 @@ impl ControlStream {
 
             Ok(async move {
                 if let Err(err) = control_data_channel.send(&buffer).await {
-                    log::error!("Error sending hello message on control stream: {}", err);
+                    error!("Error sending hello message on control stream: {}", err);
                 }
             })
         } else {

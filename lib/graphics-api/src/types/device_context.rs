@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use raw_window_handle::HasRawWindowHandle;
 
+use lgn_telemetry::{error, trace};
+
 use super::deferred_drop::DeferredDropper;
 
 #[cfg(feature = "vulkan")]
@@ -73,14 +75,14 @@ impl std::fmt::Debug for DeviceContext {
 impl Drop for DeviceContextInner {
     fn drop(&mut self) {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
-            log::trace!("destroying device");
+            trace!("destroying device");
             self.deferred_dropper.destroy();
 
             #[cfg(any(feature = "vulkan"))]
             self.platform_device_context.destroy();
 
             //self.surface_loader.destroy_surface(self.surface, None);
-            log::trace!("destroyed device");
+            trace!("destroyed device");
         }
     }
 }
@@ -105,7 +107,7 @@ impl DeviceContextInner {
         let (platform_device_context, device_info) =
             VulkanDeviceContext::new(instance.platform_instance, windowing_mode, video_mode)
                 .map_err(|e| {
-                    log::error!("Error creating device context {:?}", e);
+                    error!("Error creating device context {:?}", e);
                     ash::vk::Result::ERROR_UNKNOWN
                 })?;
 

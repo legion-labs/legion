@@ -2,9 +2,8 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::{info, trace_scope};
 use lgn_utils::{HashMap, HashSet};
-use log::info;
 
 use super::IntoSystemDescriptor;
 use crate::{

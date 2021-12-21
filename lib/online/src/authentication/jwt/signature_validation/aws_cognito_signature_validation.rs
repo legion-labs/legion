@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{bail, Context};
-use log::debug;
+use lgn_telemetry::debug;
 use serde::{Deserialize, Serialize};
 
 use super::{

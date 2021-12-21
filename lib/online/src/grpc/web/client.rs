@@ -2,7 +2,7 @@ use std::task::{Context, Poll};
 
 use http::{HeaderMap, HeaderValue, Method, Request, Response, Version};
 use http_body::{combinators::UnsyncBoxBody, Body};
-use log::{debug, warn};
+use lgn_telemetry::{debug, warn};
 use tonic::codegen::{BoxFuture, StdError};
 use tower::Service;
 

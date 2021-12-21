@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-graphics-api = { path = "../graphics-api" }
 lgn-graphics-cgen-runtime = { path = "../graphics-cgen-runtime", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 # lgn-logger = { path = "../logger", version = "0.1.0" }
 
 anyhow = "1.0"
@@ -16,7 +17,6 @@ bincode = "1.3"
 clap = "2.33"
 fxhash = "0.2"
 heck = "0.4"
-log = "0.4"
 proc-macro2 = "1.0"
 relative-path = "1.6"
 simple_logger = "1.13"

@@ -1,3 +1,5 @@
+use lgn_telemetry::trace;
+
 use crate::{Buffer, BufferDef, DeviceContext, ResourceUsage};
 
 #[derive(Debug)]
@@ -55,7 +57,7 @@ impl VulkanBuffer {
                 .get_buffer_memory_requirements(vk_buffer)
         };
 
-        log::trace!(
+        trace!(
             "Buffer {:?} created with size {}",
             vk_buffer,
             buffer_info.size,
@@ -68,9 +70,9 @@ impl VulkanBuffer {
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext, buffer_def: &BufferDef) {
-        log::trace!("destroying VulkanBuffer");
+        trace!("destroying VulkanBuffer");
 
-        log::trace!(
+        trace!(
             "Buffer {:?} destroying with size {}",
             self.vk_buffer,
             buffer_def.size,
@@ -82,7 +84,7 @@ impl VulkanBuffer {
                 .destroy_buffer(self.vk_buffer, None);
         };
 
-        log::trace!("destroyed VulkanBuffer");
+        trace!("destroyed VulkanBuffer");
     }
 }
 

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use log::error;
+use lgn_telemetry::error;
 
 use crate::{
     DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,

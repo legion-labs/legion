@@ -29,7 +29,6 @@ lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 clap = "2.33"
-log = "0.4"
 anyhow = "1.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]

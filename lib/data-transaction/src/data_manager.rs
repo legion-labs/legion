@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
-use log::info;
+use lgn_telemetry::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -86,7 +86,7 @@ impl DataManager {
                 .load_resource(resource_id, &mut resource_registry)
                 .map_or_else(
                     |err| {
-                        log::warn!("Failed to load {}: {}", resource_id, err);
+                        warn!("Failed to load {}: {}", resource_id, err);
                     },
                     |handle| resource_handles.insert(resource_id, handle),
                 );

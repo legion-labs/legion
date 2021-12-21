@@ -10,12 +10,12 @@ lgn-content-store = { path = "../content-store", version = "0.1.0" }
 lgn-data-runtime-macros = { path = "macros", version = "0.1.0" }
 lgn-data-model = { path = "../data-model" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
+lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
 
 byteorder = "1.4"
 crossbeam-channel = "0.5.1"
 flurry = "0.3"
 hex = "0.4.3"
-log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 erased-serde = "0.3.12"

@@ -67,8 +67,8 @@ use std::process::Stdio;
 use anyhow::Context;
 use config::{CommandConfig, Config};
 use lgn_cli::termination_handler::AsyncTerminationHandler;
+use lgn_telemetry::{debug, info};
 use lgn_telemetry_sink::TelemetryGuard;
-use log::{debug, info};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,

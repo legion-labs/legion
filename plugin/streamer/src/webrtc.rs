@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use interceptor::registry::Registry;
-use log::{debug, info, warn};
+use lgn_telemetry::{debug, info, warn};
 use webrtc::{
     api::{media_engine::MediaEngine, APIBuilder, API},
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
