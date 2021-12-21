@@ -7,9 +7,7 @@ use lgn_input::{
 };
 use lgn_math::{Vec2, Vec3};
 
-use crate::components::PickedComponent;
-
-use super::PickingData;
+use crate::{components::PickedComponent, render_pass::PickingData};
 
 pub struct PickingIdBlock {
     picking_ids: Vec<u32>,
@@ -72,7 +70,7 @@ impl PickingIdBlock {
 }
 
 #[derive(Clone, PartialEq)]
-pub(super) enum PickingState {
+pub(crate) enum PickingState {
     Ready,
     Rendering,
     Waiting,
@@ -183,7 +181,7 @@ impl PickingManager {
         inner.picked_cpu_frame_no
     }
 
-    pub(super) fn picking_state(&self) -> PickingState {
+    pub(crate) fn picking_state(&self) -> PickingState {
         let inner = self.inner.lock().unwrap();
 
         inner.picking_state.clone()
@@ -223,7 +221,7 @@ impl PickingManager {
         inner.screen_rect = *screen_rect;
     }
 
-    pub(super) fn set_picked(&self, picked_data_set: &[PickingData]) {
+    pub(crate) fn set_picked(&self, picked_data_set: &[PickingData]) {
         let inner = &mut *self.inner.lock().unwrap();
 
         inner.closest_world_pos = Vec3::NAN;

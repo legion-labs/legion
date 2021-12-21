@@ -18,7 +18,6 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-
 use crate::RenderContext;
 
 pub struct Renderer {
@@ -63,7 +62,7 @@ impl Renderer {
         // TODO fix this
         let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
         let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
@@ -147,7 +146,11 @@ impl Renderer {
         self.test_transform_data = test;
     }
 
-    pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
+        &self.static_buffer
+    }
+
+    pub fn test_add_update_jobs(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 

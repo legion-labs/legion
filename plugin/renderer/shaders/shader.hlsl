@@ -1,8 +1,10 @@
 // #include "crate://renderer/cgen/hlsl/pipeline_layout/default_pipeline_layout.hlsl"
 
 struct VertexIn {
-    float3 pos : POSITION;
-    float3 normal : NORMAL;   
+    float4 pos : POSITION;
+    float4 normal : NORMAL;
+    float4 color: COLOR;
+    float2 uv_coord : TEXCOORD0;
 };
 
 struct VertexOut {  
@@ -22,27 +24,28 @@ struct EntityTransforms {
 };
 
 ConstantBuffer<ConstData> const_data;
-
 ByteAddressBuffer static_buffer;
 
 struct PushConstData {
-    uint offset;
+    uint vertex_offset;
+    uint world_offset;
     uint is_picked;
 };
 
 [[vk::push_constant]]
 ConstantBuffer<PushConstData> push_constant;
 
-VertexOut main_vs(in VertexIn vertex_in) {
+VertexOut main_vs(uint vertexId: SV_VertexID) {
+    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.offset);
+    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
     float4x4 world = transpose(transform.world);
 
-    float4 pos_view_relative = mul(const_data.view, mul(world, float4(vertex_in.pos, 1.0)));
+    float4 pos_view_relative = mul(const_data.view, mul(world, vertex_in.pos));
     vertex_out.hpos = mul(const_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(const_data.view, mul(world, float4(vertex_in.normal, 0.0))).xyz;
+    vertex_out.normal = mul(const_data.view, mul(world, vertex_in.normal)).xyz;
     return vertex_out;
 }
 

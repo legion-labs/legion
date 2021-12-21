@@ -81,7 +81,7 @@ pub use render_handle::*;
 mod render_context;
 pub use render_context::*;
 
-mod resources;
+pub mod resources;
 
 mod memory;
 
