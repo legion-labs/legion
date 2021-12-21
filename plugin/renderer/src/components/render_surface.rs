@@ -9,11 +9,9 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
-use crate::debug_display::DebugRenderPass;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::picking::PickingRenderPass;
-use crate::render_pass::TmpRenderPass;
+use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
 use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {

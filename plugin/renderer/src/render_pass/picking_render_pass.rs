@@ -17,17 +17,15 @@ use lgn_transform::prelude::Transform;
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
+    picking::{PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
-    static_mesh_render_data::StaticMeshRenderData,
     RenderContext, RenderHandle, Renderer,
 };
 
-use super::{PickingManager, PickingState};
-
 #[derive(Clone, Copy)]
-pub(super) struct PickingData {
-    pub(super) picking_pos: Vec3,
-    pub(super) picking_id: u32,
+pub(crate) struct PickingData {
+    pub(crate) picking_pos: Vec3,
+    pub(crate) picking_id: u32,
 }
 
 impl Default for PickingData {
@@ -492,9 +490,7 @@ impl PickingRenderPass {
 
                 cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-                cmd_buffer
-                    .cmd_draw(static_mesh_component.num_verticies, 0)
-                    .unwrap();
+                cmd_buffer.draw(static_mesh_component.num_verticies, 0);
             }
 
             cmd_buffer.end_render_pass();

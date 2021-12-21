@@ -1,7 +1,7 @@
 use std::num::NonZeroU32;
 
 use lgn_graphics_api::{
-    BlendState, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CompareOp, DepthState,
+    BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef, DescriptorRef,
     DescriptorSetLayoutDef, FillMode, Format, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
     PrimitiveTopology, PushConstantDef, RasterizerState, ResourceUsage, RootSignature,
@@ -14,8 +14,9 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{PickedComponent, RenderSurface, StaticMesh},
+    hl_gfx_api::HLCommandBuffer,
     resources::DefaultMeshes,
-    RenderContext, Renderer, TransientBufferAllocatorHandle,
+    RenderContext, Renderer,
 };
 
 pub struct DebugRenderPass {
@@ -258,11 +259,10 @@ impl DebugRenderPass {
         &self,
         pipeline: &Pipeline,
         constant_data: [f32; 53],
-        cmd_buffer: &CommandBuffer,
-        render_context: &mut RenderContext<'_>,
-        transient_allocator: &mut TransientBufferAllocatorHandle,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        render_context: &RenderContext<'_>,
     ) {
-        cmd_buffer.cmd_bind_pipeline(pipeline).unwrap();
+        cmd_buffer.bind_pipeline(pipeline);
         let descriptor_set_layout = &pipeline
             .root_signature()
             .definition()
@@ -270,6 +270,7 @@ impl DebugRenderPass {
 
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
 
+        let transient_allocator = render_context.transient_buffer_allocator();
         let sub_allocation =
             transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
@@ -293,43 +294,36 @@ impl DebugRenderPass {
         let descriptor_set_handle =
             descriptor_set_writer.flush(render_context.renderer().device_context());
 
-        cmd_buffer
-            .cmd_bind_descriptor_set_handle(
-                PipelineType::Graphics,
-                &self.root_signature,
-                descriptor_set_layout.definition().frequency,
-                descriptor_set_handle,
-            )
-            .unwrap();
+        cmd_buffer.bind_descriptor_set_handle(
+            PipelineType::Graphics,
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency,
+            descriptor_set_handle,
+        );
     }
 
     pub fn render_mesh(
         &self,
         mesh_id: u32,
-        cmd_buffer: &CommandBuffer,
+        cmd_buffer: &HLCommandBuffer<'_>,
         default_meshes: &DefaultMeshes,
     ) {
         let mut push_constant_data: [u32; 1] = [0; 1];
         push_constant_data[0] = default_meshes.mesh_offset_from_id(mesh_id);
 
-        cmd_buffer
-            .cmd_push_constants(&self.root_signature, &push_constant_data)
-            .unwrap();
+        cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-        cmd_buffer
-            .cmd_draw(
-                default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
-                0,
-            )
-            .unwrap();
+        cmd_buffer.draw(
+            default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
+            0,
+        );
     }
 
     pub fn render_ground_plane(
         &self,
         mut constant_data: [f32; 53],
-        cmd_buffer: &CommandBuffer,
-        render_context: &mut RenderContext<'_>,
-        transient_allocator: &mut TransientBufferAllocatorHandle,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
         Mat4::IDENTITY.write_cols_to_slice(&mut constant_data[0..]);
@@ -345,7 +339,6 @@ impl DebugRenderPass {
             constant_data,
             cmd_buffer,
             render_context,
-            transient_allocator,
         );
 
         self.render_mesh(4, cmd_buffer, default_meshes);
@@ -357,9 +350,8 @@ impl DebugRenderPass {
         mesh_id: u32,
         transform: &Transform,
         mut constant_data: [f32; 53],
-        cmd_buffer: &CommandBuffer,
-        render_context: &mut RenderContext<'_>,
-        transient_allocator: &mut TransientBufferAllocatorHandle,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
         let mesh = default_meshes.mesh_from_id(mesh_id);
@@ -402,7 +394,6 @@ impl DebugRenderPass {
             constant_data,
             cmd_buffer,
             render_context,
-            transient_allocator,
         );
 
         self.render_mesh(3, cmd_buffer, default_meshes);
@@ -410,34 +401,32 @@ impl DebugRenderPass {
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
         camera_transform: &Transform,
         default_meshes: &DefaultMeshes,
     ) {
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
-                    load_op: LoadOp::Load,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue::default(),
-                }],
-                &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_stencil_texture_view(),
-                    depth_load_op: LoadOp::Load,
-                    stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::DontCare,
-                    stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
-                }),
-            )
-            .unwrap();
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_surface.render_target_view(),
+                load_op: LoadOp::Load,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue::default(),
+            }],
+            &Some(DepthStencilRenderTargetBinding {
+                texture_view: render_surface.depth_stencil_texture_view(),
+                depth_load_op: LoadOp::Load,
+                stencil_load_op: LoadOp::DontCare,
+                depth_store_op: StoreOp::DontCare,
+                stencil_store_op: StoreOp::DontCare,
+                clear_value: DepthStencilClearValue {
+                    depth: 1.0,
+                    stencil: 0,
+                },
+            }),
+        );
 
         let fov_y_radians: f32 = 45.0;
         let width = render_surface.extents().width() as f32;
@@ -452,19 +441,12 @@ impl DebugRenderPass {
             camera_transform.translation + camera_transform.forward(),
             Vec3::new(0.0, 1.0, 0.0),
         );
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         let mut constant_data: [f32; 53] = [0.0; 53];
         view_matrix.write_cols_to_slice(&mut constant_data[16..]);
         projection_matrix.write_cols_to_slice(&mut constant_data[32..]);
 
-        self.render_ground_plane(
-            constant_data,
-            cmd_buffer,
-            render_context,
-            &mut transient_allocator,
-            default_meshes,
-        );
+        self.render_ground_plane(constant_data, cmd_buffer, render_context, default_meshes);
 
         for (_index, (static_mesh_component, transform, _picked_component)) in
             static_meshes.iter().enumerate()
@@ -475,13 +457,10 @@ impl DebugRenderPass {
                 constant_data,
                 cmd_buffer,
                 render_context,
-                &mut transient_allocator,
                 default_meshes,
             );
         }
 
-        render_context.release_transient_buffer_allocator(transient_allocator);
-
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        cmd_buffer.end_render_pass();
     }
 }

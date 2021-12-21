@@ -87,8 +87,6 @@ mod memory;
 
 pub mod components;
 
-pub mod debug_display;
-
 pub mod picking;
 
 pub mod static_mesh_render_data;

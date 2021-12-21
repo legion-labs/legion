@@ -190,7 +190,7 @@ fn render_update(
         let debug_renderpass = render_surface.debug_renderpass();
         let debug_renderpass = debug_renderpass.write();
         debug_renderpass.render(
-            &mut render_context,
+            &render_context,
             &cmd_buffer,
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
