@@ -1,4 +1,4 @@
-pub use bevy_input::mouse::{MouseButton, MouseWheel};
+pub use bevy_input::mouse::{MouseButton, MouseMotion, MouseWheel};
 use serde::{Deserialize, Serialize};
 
 use crate::ElementState;

@@ -4494,6 +4494,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
+ "bevy_ecs",
  "bytes",
  "crossbeam",
  "futures-lite",

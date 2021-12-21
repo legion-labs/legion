@@ -25,6 +25,7 @@ lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 anyhow = "1.0"
 base64 = "0.13"
+bevy_ecs = { git = "https://github.com/legion-labs/bevy", default-features = false }
 bytes = "1.1"
 crossbeam = "0.8"
 futures-lite = "1.12"
