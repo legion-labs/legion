@@ -242,8 +242,8 @@ impl PickingManager {
 
     pub(super) fn update_picking_components(
         &self,
-        mut commands: Commands<'_, '_>,
-        mut picked_components: Query<'_, '_, (Entity, &mut PickedComponent)>,
+        mut commands: Commands<'_>,
+        mut picked_components: Query<'_, (Entity, &mut PickedComponent)>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 

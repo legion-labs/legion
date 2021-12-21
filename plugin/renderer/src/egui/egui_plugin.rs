@@ -15,7 +15,7 @@ pub struct Egui {
     pub shapes: Vec<epaint::ClippedShape>,
 }
 
-#[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum EguiLabels {
     GatherInput,
     BeginFrame,
@@ -34,7 +34,7 @@ impl EguiPlugin {
 }
 
 impl Plugin for EguiPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, app: &mut AppBuilder) {
         // TODO: remove dependency on window
         if self.has_window {
             app.add_startup_system(on_window_created);
@@ -73,7 +73,7 @@ impl Plugin for EguiPlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn on_window_created(
     mut egui: ResMut<'_, Egui>,
-    mut ev_wnd_created: EventReader<'_, '_, WindowCreated>,
+    mut ev_wnd_created: EventReader<'_, WindowCreated>,
     wnd_list: Res<'_, Windows>,
 ) {
     let mut size = egui::vec2(1280.0, 720.0);
@@ -116,9 +116,9 @@ fn on_windowless_created(mut egui: ResMut<'_, Egui>) {
 
 fn gather_input(
     raw_input: ResMut<'_, RawInput>,
-    mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
-    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut cursor_button: EventReader<'_, MouseButtonInput>,
+    mut mouse_wheel_events: EventReader<'_, MouseWheel>,
+    mut keyboard_input_events: EventReader<'_, KeyboardInput>,
 ) {
     let mut scroll_delta = egui::vec2(0.0, 0.0);
     for mouse_wheel_event in mouse_wheel_events.iter() {
@@ -181,9 +181,9 @@ fn gather_input(
 
 fn gather_input_window(
     mut raw_input: ResMut<'_, RawInput>,
-    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
-    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
+    mut cursor_moved: EventReader<'_, CursorMoved>,
+    mut scale_factor_changed: EventReader<'_, WindowScaleFactorChanged>,
+    mut window_resized_events: EventReader<'_, WindowResized>,
 ) {
     for cursor_moved_event in cursor_moved.iter() {
         raw_input.events.push(Event::PointerMoved(egui::pos2(
