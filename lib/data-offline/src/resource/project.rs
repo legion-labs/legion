@@ -293,9 +293,9 @@ impl Project {
         let metadata_path = self.metadata_path(type_id);
 
         std::fs::remove_file(&resource_path)
-            .with_context(|| format!("deleting '{:?}' of '{}'", resource_path, type_id))?;
+            .with_context(|| format!("Deleting '{:?}' of '{}'", resource_path, type_id))?;
         std::fs::remove_file(&metadata_path)
-            .with_context(|| format!("deleting '{:?}' of '{}'", metadata_path, type_id))?;
+            .with_context(|| format!("Deleting '{:?}' of '{}'", metadata_path, type_id))?;
 
         self.db.local_resources.retain(|x| *x != type_id);
         self.db.remote_resources.retain(|x| *x != type_id);
