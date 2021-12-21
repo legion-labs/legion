@@ -1,7 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const preprocess = require("svelte-preprocess");
+import preprocess from "svelte-preprocess";
 
-module.exports = {
+export default {
   preprocess: preprocess({
     postcss: true,
     typescript: true,
