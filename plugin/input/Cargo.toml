@@ -12,3 +12,5 @@ keywords = ["legion"]
 bevy_input = { git = "https://github.com/legion-labs/bevy", default-features = false, features = [
     "serialize",
 ] }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+serde = { version = "1.0", features = ["derive"] }

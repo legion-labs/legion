@@ -4265,6 +4265,8 @@ name = "lgn-input"
 version = "0.1.0"
 dependencies = [
  "bevy_input",
+ "lgn-math",
+ "serde",
 ]
 
 [[package]]

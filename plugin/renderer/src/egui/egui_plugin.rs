@@ -163,7 +163,7 @@ fn gather_input(
                 });
             }
             if keyboard_input_event.state.is_pressed() {
-                let ch: char = key_code.into();
+                let ch: char = lgn_input::keyboard::to_char(key_code);
                 if ch != 0 as char {
                     events.push(Event::Text(String::from(ch)));
                 }

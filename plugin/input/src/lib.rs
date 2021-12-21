@@ -64,6 +64,5 @@ pub mod prelude {
     pub use bevy_input::prelude::*;
 }
 
-pub mod keyboard {
-    pub use bevy_input::keyboard::{KeyCode, KeyboardInput};
-}
+pub mod keyboard;
+pub mod mouse;
