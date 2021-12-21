@@ -163,11 +163,9 @@ impl DataBuild {
     }
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).map_err(|e| match e {
-            lgn_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Error::NotFound,
-            lgn_data_offline::resource::Error::IOError(_) => Error::IOError,
+        Project::open(project_dir).map_err(|e| match e.downcast_ref::<std::io::Error>() {
+            Some(err) if err.kind() == std::io::ErrorKind::NotFound => Error::NotFound,
+            _ => Error::ProjectError,
         })
     }
 
@@ -188,7 +186,10 @@ impl DataBuild {
         let mut updated_resources = 0;
 
         for resource_id in self.project.resource_list() {
-            let (resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
+            let (resource_hash, resource_deps) = self
+                .project
+                .resource_info(resource_id)
+                .map_err(|_e| Error::IOError)?;
 
             if self.build_index.update_resource(
                 ResourcePathId::from(resource_id),

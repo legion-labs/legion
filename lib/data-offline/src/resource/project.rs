@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::{anyhow, Context};
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
@@ -84,32 +85,6 @@ pub struct Project {
     resource_dir: PathBuf,
 }
 
-#[derive(Debug)]
-/// Error returned by the project.
-pub enum Error {
-    /// Project index parsing error.
-    ParseError,
-    /// Not found.
-    NotFound,
-    /// Specified path is invalid.
-    InvalidPath,
-    /// IO error on the project index file.
-    IOError(std::io::Error), // todo(kstasik): have clearer Open/Read/Write errors that will be easier to handle layer above
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Error::ParseError => write!(f, "Error Parsing Content"),
-            Error::NotFound => write!(f, "Resource Not Found"),
-            Error::InvalidPath => write!(f, "Path Not Found"),
-            Error::IOError(ref err) => err.fmt(f),
-        }
-    }
-}
-
 impl Project {
     /// Returns the default location of the index file in a given directory.
     ///
@@ -131,22 +106,24 @@ impl Project {
     }
 
     /// Creates a new project index file turning the containing directory into a project.
-    pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn create_new(project_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create_new(true)
             .open(&index_path)
-            .map_err(Error::IOError)?;
+            .with_context(|| format!("Creating file '{:?}'", &index_path))?;
 
         let db = ResourceDb::default();
-        serde_json::to_writer(&file, &db).map_err(|_e| Error::ParseError)?;
+        serde_json::to_writer(&file, &db)
+            .with_context(|| format!("Parsing file '{:?}'", &index_path))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
         if !resource_dir.exists() {
-            std::fs::create_dir(&resource_dir).map_err(Error::IOError)?;
+            std::fs::create_dir(&resource_dir)
+                .with_context(|| format!("Creating dir '{:?}'", &resource_dir))?;
         }
 
         Ok(Self {
@@ -158,16 +135,17 @@ impl Project {
     }
 
     /// Opens the project index specified
-    pub fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn open(project_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .append(false)
             .open(&index_path)
-            .map_err(|_e| Error::NotFound)?;
+            .with_context(|| format!("Opening '{:?}'", &index_path))?;
 
-        let db = serde_json::from_reader(&file).map_err(|_e| Error::ParseError)?;
+        let db = serde_json::from_reader(&file)
+            .with_context(|| format!("Parsing file '{:?}'", &index_path))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
@@ -198,7 +176,7 @@ impl Project {
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
-    pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
+    pub fn find_resource(&self, name: &ResourcePathName) -> anyhow::Result<ResourceTypeAndId> {
         // this below would be better expressed as try_map (still experimental).
         let res = self
             .resource_list()
@@ -210,11 +188,13 @@ impl Project {
                         None
                     }
                 }
-                Err(e) => Some(Err(e)),
+                Err(e) => Some(Err(
+                    e.context(format!("Reading meta '{}' of resource: '{}'", id, name))
+                )),
             });
 
         match res {
-            None => Err(Error::NotFound),
+            None => Err(anyhow!("Failed to find resource '{}'", name)),
             Some(e) => e,
         }
     }
@@ -242,7 +222,7 @@ impl Project {
         kind: ResourceType,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
-    ) -> Result<ResourceTypeAndId, Error> {
+    ) -> anyhow::Result<ResourceTypeAndId> {
         let type_id = ResourceTypeAndId {
             t: kind,
             id: ResourceId::new(),
@@ -264,43 +244,58 @@ impl Project {
         type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
-    ) -> Result<ResourceTypeAndId, Error> {
+    ) -> anyhow::Result<ResourceTypeAndId> {
         let meta_path = self.metadata_path(type_id);
         let resource_path = self.resource_path(type_id);
 
+        let resource_err_context = || format!("Adding resource at '{:?}'", &resource_path);
+        let meta_err_context = || format!("Adding resource meta at '{:?}'", &meta_path);
+
         let build_dependencies = {
-            let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
+            let mut resource_file =
+                File::create(&resource_path).with_context(resource_err_context)?;
 
             let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(Error::IOError)?;
+                .with_context(resource_err_context)?;
             build_deps
         };
 
         let content_checksum = {
-            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
+            let mut resource_file =
+                File::open(&resource_path).with_context(resource_err_context)?;
+            content_checksum_from_read(&mut resource_file).with_context(resource_err_context)?
         };
 
-        let meta_file = File::create(&meta_path).map_err(|e| {
-            fs::remove_file(&resource_path).unwrap();
-            Error::IOError(e)
-        })?;
+        let meta_file = File::create(&meta_path)
+            .map_err(|e| {
+                fs::remove_file(&resource_path).unwrap();
+                e
+            })
+            .with_context(meta_err_context)?;
 
         let metadata = Metadata::new_with_dependencies(name, content_checksum, &build_dependencies);
-        serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
+        serde_json::to_writer_pretty(meta_file, &metadata)
+            .map_err(|e| {
+                fs::remove_file(&meta_path).unwrap();
+                fs::remove_file(&resource_path).unwrap();
+                e
+            })
+            .with_context(meta_err_context)?;
 
         self.db.local_resources.push(type_id);
         Ok(type_id)
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+    pub fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> anyhow::Result<()> {
         let resource_path = self.resource_path(type_id);
         let metadata_path = self.metadata_path(type_id);
 
-        std::fs::remove_file(resource_path).map_err(Error::IOError)?;
-        std::fs::remove_file(metadata_path).map_err(Error::IOError)?;
+        std::fs::remove_file(&resource_path)
+            .with_context(|| format!("deleting '{:?}' of '{}'", resource_path, type_id))?;
+        std::fs::remove_file(&metadata_path)
+            .with_context(|| format!("deleting '{:?}' of '{}'", metadata_path, type_id))?;
 
         self.db.local_resources.retain(|x| *x != type_id);
         self.db.remote_resources.retain(|x| *x != type_id);
@@ -313,34 +308,36 @@ impl Project {
         type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
         resources: &mut ResourceRegistry,
-    ) -> Result<(), Error> {
+    ) -> anyhow::Result<()> {
         let resource_path = self.resource_path(type_id);
         let metadata_path = self.metadata_path(type_id);
 
         let mut meta_file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(metadata_path)
-            .map_err(Error::IOError)?;
-        let mut metadata: Metadata =
-            serde_json::from_reader(&meta_file).map_err(|_e| Error::ParseError)?;
+            .open(&metadata_path)
+            .with_context(|| format!("Opening '{:?}'", &metadata_path))?;
+        let mut metadata: Metadata = serde_json::from_reader(&meta_file)
+            .with_context(|| format!("Writing '{:?}'", &metadata_path))?;
 
         let build_dependencies = {
             let mut resource_file = OpenOptions::new()
                 .write(true)
                 .truncate(true)
                 .open(&resource_path)
-                .map_err(Error::IOError)?;
+                .with_context(|| format!("Opening '{:?}'", &resource_path))?;
 
             let (_written, build_deps) = resources
                 .serialize_resource(type_id.t, handle, &mut resource_file)
-                .map_err(Error::IOError)?;
+                .with_context(|| format!("Writing '{:?}'", &resource_path))?;
             build_deps
         };
 
         let content_checksum = {
-            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
+            let mut resource_file = File::open(&resource_path)
+                .with_context(|| format!("Opening '{:?}' to calculate checksum", &resource_path))?;
+            content_checksum_from_read(&mut resource_file)
+                .with_context(|| format!("Reading '{:?}' to calculate checksum", &resource_path))?
         };
 
         metadata.content_checksum = content_checksum;
@@ -348,7 +345,8 @@ impl Project {
 
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+        serde_json::to_writer_pretty(&meta_file, &metadata)
+            .with_context(|| format!("Writing '{:?}'", &metadata_path))?;
         Ok(())
     }
 
@@ -360,13 +358,14 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
         resources: &mut ResourceRegistry,
-    ) -> Result<ResourceHandleUntyped, Error> {
+    ) -> anyhow::Result<ResourceHandleUntyped> {
         let resource_path = self.resource_path(type_id);
 
-        let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
+        let mut resource_file = File::open(&resource_path)
+            .with_context(|| format!("Opening '{:?}'", &resource_path))?;
         let handle = resources
             .deserialize_resource(type_id.t, &mut resource_file)
-            .map_err(Error::IOError)?;
+            .with_context(|| format!("Loading '{}' at '{:?}'", type_id, &resource_path))?;
         Ok(handle)
     }
 
@@ -374,7 +373,7 @@ impl Project {
     pub fn resource_info(
         &self,
         type_id: ResourceTypeAndId,
-    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
+    ) -> anyhow::Result<(ResourceHash, Vec<ResourcePathId>)> {
         let meta = self.read_meta(type_id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
@@ -383,7 +382,7 @@ impl Project {
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, type_id: ResourceTypeAndId) -> Result<ResourcePathName, Error> {
+    pub fn resource_name(&self, type_id: ResourceTypeAndId) -> anyhow::Result<ResourcePathName> {
         let meta = self.read_meta(type_id)?;
         Ok(meta.name)
     }
@@ -405,7 +404,7 @@ impl Project {
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
-    pub fn checkout(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+    pub fn checkout(&mut self, type_id: ResourceTypeAndId) -> anyhow::Result<()> {
         if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == type_id) {
             return Ok(()); // already checked out
         }
@@ -421,15 +420,17 @@ impl Project {
             return Ok(());
         }
 
-        Err(Error::NotFound)
+        Err(anyhow!("Resource '{}' not found", type_id))
     }
 
-    fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
+    fn read_meta(&self, type_id: ResourceTypeAndId) -> anyhow::Result<Metadata> {
         let path = self.metadata_path(type_id);
 
-        let file = File::open(path).map_err(Error::IOError)?;
+        let file =
+            File::open(&path).with_context(|| format!("Opening '{}' at '{:?}'", type_id, &path))?;
 
-        let result = serde_json::from_reader(file).map_err(|_e| Error::ParseError)?;
+        let result = serde_json::from_reader(file)
+            .with_context(|| format!("Reading '{}' at '{:?}'", type_id, &path))?;
         Ok(result)
     }
 
@@ -462,7 +463,7 @@ impl Project {
         &mut self,
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
-    ) -> Result<ResourcePathName, Error> {
+    ) -> anyhow::Result<ResourcePathName> {
         self.checkout(type_id)?;
 
         let mut old_name: Option<ResourcePathName> = None;
@@ -473,7 +474,7 @@ impl Project {
     }
 
     /// Moves `local` resources to `remote` resource list.
-    pub fn commit(&mut self) -> Result<(), Error> {
+    pub fn commit(&mut self) -> anyhow::Result<()> {
         self.db
             .remote_resources
             .append(&mut self.db.local_resources);
@@ -484,11 +485,11 @@ impl Project {
         self.db.pre_serialize();
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
+    fn flush(&mut self) -> anyhow::Result<()> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
         self.pre_serialize();
-        serde_json::to_writer_pretty(&self.file, &self.db).map_err(|_e| Error::ParseError)
+        serde_json::to_writer_pretty(&self.file, &self.db).with_context(|| "Flushing project index")
     }
 }
 
@@ -759,6 +760,23 @@ mod tests {
         let _project = Project::create_new(root.path()).expect("failed to re-create project");
         let same_project = Project::create_new(root.path());
         assert!(same_project.is_err());
+    }
+
+    #[test]
+    fn proj_open() {
+        let root = tempfile::tempdir().unwrap();
+        let proj_dir = root.path();
+
+        assert!(Project::open(proj_dir).is_err());
+
+        {
+            let _proj = Project::create_new(proj_dir).expect("failed to create project");
+        }
+
+        let project = Project::open(proj_dir).expect("to open project");
+        project.delete();
+
+        assert!(Project::open(proj_dir).is_err());
     }
 
     #[test]
