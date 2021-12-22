@@ -70,12 +70,18 @@ impl FileSystem {
         let mut writer = self.inner.mount_points.write().unwrap();
         {
             let mount_points = &*writer;
-            if mount_points.iter().any(|x| x.name == mount_point) {
-                return Err(anyhow!(
-                    "Mount point {} pointing to directory ({}) already exists",
-                    mount_point,
-                    folder
-                ));
+            if let Some(mount_point) = mount_points.iter().find(|x| x.name == mount_point) {
+                if mount_point.path == path {
+                    // already in list, nothing to do
+                    return Ok(());
+                } else {
+                    return Err(anyhow!(
+                        "Mount point {} pointing to directory ({}) already exists (but mapped to {})",
+                        mount_point.name,
+                        folder,
+                        mount_point.path.as_os_str().to_string_lossy()
+                    ));
+                }
             }
         }
 
