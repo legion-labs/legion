@@ -13,5 +13,4 @@ hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to
 normpath = "0.3"
 spirv-reflect = "0.2"
 spirv-tools = "0.7"
-relative-path = "1.6"
 anyhow = "1"

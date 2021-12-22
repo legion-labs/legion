@@ -3537,7 +3537,6 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "named-lock",
  "thiserror",
  "walkdir",
  "which",
@@ -3883,7 +3882,6 @@ dependencies = [
  "itertools",
  "lazy_static",
  "lgn-math",
- "lgn-utils",
  "serde",
  "serde_json",
  "thiserror",
@@ -3902,7 +3900,6 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-utils",
- "rand 0.8.4",
  "serde",
  "serde_json",
  "tempfile",
@@ -4278,7 +4275,6 @@ dependencies = [
  "hassle-rs",
  "lgn-graphics-api",
  "normpath",
- "relative-path",
  "spirv-reflect",
  "spirv-tools",
 ]
@@ -4562,7 +4558,6 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
- "lgn-derive",
  "siphasher",
 ]
 
