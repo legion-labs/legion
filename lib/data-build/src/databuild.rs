@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use lgn_content_store::{ContentStore, HddContentStore};
+use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_reg::CompilerRegistry;
+use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerStub};
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -304,14 +304,16 @@ impl DataBuild {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
-        &mut self,
+        build_index: &mut BuildIndex,
+        cas_addr: ContentStoreAddr,
+        project_dir: &Path,
         compile_node: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         env: &CompilationEnv,
-        compiler_index: usize,
+        compiler: &dyn CompilerStub,
     ) -> Result<
         (
             Vec<CompiledResourceInfo>,
@@ -327,8 +329,7 @@ impl DataBuild {
         ) = {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
-                self.build_index
-                    .find_compiled(compile_node, context_hash, source_hash)
+                build_index.find_compiled(compile_node, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -345,20 +346,18 @@ impl DataBuild {
                 let CompilationOutput {
                     compiled_resources,
                     resource_references,
-                } = self
-                    .compilers
+                } = compiler
                     .compile(
-                        compiler_index,
                         compile_node.clone(),
                         dependencies,
                         derived_deps,
-                        self.content_store.address(),
-                        &self.project.resource_dir(),
+                        cas_addr,
+                        project_dir,
                         env,
                     )
                     .map_err(Error::Compiler)?;
 
-                self.build_index.insert_compiled(
+                build_index.insert_compiled(
                     compile_node,
                     context_hash,
                     source_hash,
@@ -472,11 +471,12 @@ impl DataBuild {
             unique_transforms
                 .into_iter()
                 .map(|transform| {
-                    let (compiler_index, compiler_hash) = self
+                    let compiler = self
                         .compilers
-                        .get_hash(transform, env)
-                        .map_err(|_e| Error::CompilerNotFound)?;
-                    Ok((transform, (compiler_index, compiler_hash)))
+                        .find_compiler(transform)
+                        .ok_or(Error::CompilerNotFound)?;
+                    let compiler_hash = compiler.compiler_hash(env).map_err(|_e| Error::IOError)?;
+                    Ok((transform, (compiler, compiler_hash)))
                 })
                 .collect::<Result<HashMap<_, _>, Error>>()?
         };
@@ -531,7 +531,7 @@ impl DataBuild {
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
-                let (compiler_index, compiler_hash) = *compiler_details.get(&transform).unwrap();
+                let (compiler, compiler_hash) = *compiler_details.get(&transform).unwrap();
 
                 // todo: not sure if transform is the right thing here. resource_path_id better?
                 // transform is already defined by the compiler_hash so it seems redundant.
@@ -587,14 +587,17 @@ impl DataBuild {
 
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
-                let (resource_infos, resource_references, stats) = self.compile_node(
+                let (resource_infos, resource_references, stats) = Self::compile_node(
+                    &mut self.build_index,
+                    self.content_store.address(),
+                    &self.project.resource_dir(),
                     &compile_node,
                     context_hash,
                     source_hash,
                     &dependencies,
                     &accumulated_dependencies,
                     env,
-                    compiler_index,
+                    compiler,
                 )?;
 
                 // we check if the expected named output was produced.

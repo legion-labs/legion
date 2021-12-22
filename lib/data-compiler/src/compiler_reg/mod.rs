@@ -117,48 +117,16 @@ impl fmt::Debug for CompilerRegistry {
 }
 
 impl CompilerRegistry {
-    /// Returns the compiler index and `CompilerHash` for a given transform and
-    /// compilation context.
-    pub fn get_hash(
-        &self,
-        transform: Transform,
-        env: &CompilationEnv,
-    ) -> io::Result<(usize, CompilerHash)> {
+    /// Returns a reference to the compiler
+    pub fn find_compiler(&self, transform: Transform) -> Option<&dyn CompilerStub> {
         if let Some(compiler_index) = self
             .infos
             .iter()
             .position(|info| info.transform == transform)
         {
-            let hash = self.compilers[compiler_index].compiler_hash(env)?;
-            return Ok((compiler_index, hash));
+            return Some(self.compilers[compiler_index].as_ref());
         }
-        Err(io::Error::new(io::ErrorKind::NotFound, ""))
-    }
-
-    /// Compile `compile_path` using compiler at `compiler_index`.
-    #[allow(clippy::too_many_arguments)]
-    pub fn compile(
-        &self,
-        compiler_index: usize,
-        compile_path: ResourcePathId,
-        dependencies: &[ResourcePathId],
-        derived_deps: &[CompiledResource],
-        cas_addr: ContentStoreAddr,
-        project_dir: &Path,
-        env: &CompilationEnv,
-    ) -> Result<CompilationOutput, CompilerError> {
-        if compiler_index >= self.compilers.len() {
-            return Err(CompilerError::InvalidTransform);
-        }
-        let compiler = &self.compilers[compiler_index];
-        compiler.compile(
-            compile_path,
-            dependencies,
-            derived_deps,
-            cas_addr,
-            project_dir,
-            env,
-        )
+        None
     }
 }
 
@@ -172,7 +140,7 @@ mod tests {
 
     use super::CompilerRegistryOptions;
     use crate::{
-        compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError},
+        compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor},
         CompiledResource, CompilerHash, Locale, Platform, Target,
     };
 
@@ -225,7 +193,9 @@ mod tests {
         let destination = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
 
         let transform = Transform::new(source.kind, destination.content_type());
-        let _ = registry.get_hash(transform, &env).expect("valid hash");
+
+        let compiler = registry.find_compiler(transform).expect("valid compiler");
+        let _ = compiler.compiler_hash(&env).expect("valid hash");
     }
 
     #[test]
@@ -240,7 +210,8 @@ mod tests {
             locale: Locale::new("en"),
         };
 
-        let (compiler_index, hash) = registry.get_hash(TEST_TRANSFORM, &env).expect("valid hash");
+        let compiler = registry.find_compiler(TEST_TRANSFORM).expect("a compiler");
+        let hash = compiler.compiler_hash(&env).expect("valid hash");
         assert_eq!(hash, CompilerHash(7));
 
         let source = ResourceTypeAndId {
@@ -251,36 +222,10 @@ mod tests {
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        // testing invalid compiler index
-        {
-            let result = registry.compile(
-                compiler_index + 1,
-                compile_path.clone(),
-                &[],
-                &[],
-                cas.clone(),
-                &proj_dir,
-                &env,
-            );
-
-            assert!(matches!(
-                result.unwrap_err(),
-                CompilerError::InvalidTransform
-            ));
-        }
-
         // testing successful compilation
         {
-            let output = registry
-                .compile(
-                    compiler_index,
-                    compile_path.clone(),
-                    &[],
-                    &[],
-                    cas,
-                    &proj_dir,
-                    &env,
-                )
+            let output = compiler
+                .compile(compile_path.clone(), &[], &[], cas, &proj_dir, &env)
                 .expect("valid output");
 
             assert_eq!(output.compiled_resources.len(), 1);
