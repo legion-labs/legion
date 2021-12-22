@@ -1,5 +1,8 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::{sync::atomic::AtomicU64, sync::Mutex};
 
 use raw_window_handle::HasRawWindowHandle;
 
@@ -52,7 +55,7 @@ pub(crate) struct DeviceContextInner {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+    pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 
     #[cfg(feature = "vulkan")]
     pub(crate) platform_device_context: VulkanDeviceContext,
@@ -156,7 +159,7 @@ impl Clone for DeviceContext {
                     .insert(create_index, create_backtrace);
             }
 
-            log::trace!("Cloned VulkanDeviceContext create_index {}", create_index);
+            trace!("Cloned VulkanDeviceContext create_index {}", create_index);
             create_index
         };
         Self {
