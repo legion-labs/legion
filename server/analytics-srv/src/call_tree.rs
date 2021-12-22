@@ -8,6 +8,8 @@ use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::ScopeDesc;
 use lgn_telemetry_proto::analytics::Span;
+use lgn_telemetry_proto::analytics::SpanBlockLod;
+use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_transit::prelude::*;
 
 trait ThreadBlockProcessor {
@@ -190,50 +192,50 @@ fn compute_scope_hash(name: &str) -> u32 {
     CRC32.checksum(name.as_bytes())
 }
 
-fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, spans: &mut Vec<Span>) -> u32 {
+fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     trace_scope!();
     let span = Span {
         scope_hash: tree.hash,
-        depth,
         begin_ms: tree.begin_ms,
         end_ms: tree.end_ms,
     };
-    spans.push(span);
-    let mut max_depth = depth;
+    lod.tracks
+        .resize((depth + 1) as usize, SpanTrack { spans: vec![] });
+    lod.tracks[depth as usize].spans.push(span);
     for child in &tree.children {
-        max_depth = std::cmp::max(max_depth, make_spans_from_tree(child, depth + 1, spans));
+        make_spans_from_tree(child, depth + 1, lod);
     }
-    max_depth
 }
 
 pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
     trace_scope!();
-    let mut spans = vec![];
-    let mut max_depth = 0;
     if tree.root.is_none() {
         anyhow::bail!("no root in call tree of block {}", block_id);
     }
     let root = tree.root.unwrap();
     let mut begin_ms = root.begin_ms;
     let mut end_ms = root.end_ms;
+    let mut lod = SpanBlockLod {
+        lod_id: 0,
+        tracks: vec![],
+    };
     if root.hash == 0 {
         begin_ms = f64::MAX;
         end_ms = f64::MIN;
         for child in &root.children {
             begin_ms = begin_ms.min(child.begin_ms);
             end_ms = end_ms.max(child.end_ms);
-            max_depth = std::cmp::max(max_depth, make_spans_from_tree(child, 0, &mut spans));
+            make_spans_from_tree(child, 0, &mut lod);
         }
     } else {
-        max_depth = make_spans_from_tree(&root, 0, &mut spans);
+        make_spans_from_tree(&root, 0, &mut lod);
     }
 
     Ok(BlockSpansReply {
         scopes: tree.scopes,
-        spans,
+        lod: Some(lod),
         block_id: block_id.to_owned(),
         begin_ms,
         end_ms,
-        max_depth,
     })
 }

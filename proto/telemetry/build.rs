@@ -6,6 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let proto_filepaths = &[
             "./analytics.proto",
             "./block.proto",
+            "./calltree.proto",
             "./ingestion.proto",
             "./process.proto",
             "./stream.proto",

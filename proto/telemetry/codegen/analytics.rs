@@ -91,12 +91,9 @@ pub struct ListStreamBlocksReply {
 pub struct Span {
     #[prost(uint32, tag = "1")]
     pub scope_hash: u32,
-    /// how many function calls are above this one in the thread
-    #[prost(uint32, tag = "2")]
-    pub depth: u32,
-    #[prost(double, tag = "3")]
+    #[prost(double, tag = "2")]
     pub begin_ms: f64,
-    #[prost(double, tag = "4")]
+    #[prost(double, tag = "3")]
     pub end_ms: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -108,20 +105,31 @@ pub struct BlockSpansRequest {
     #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
 }
+/// one span track contains spans at one height of call stack
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SpanTrack {
+    #[prost(message, repeated, tag = "1")]
+    pub spans: ::prost::alloc::vec::Vec<Span>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SpanBlockLod {
+    #[prost(uint32, tag = "1")]
+    pub lod_id: u32,
+    #[prost(message, repeated, tag = "2")]
+    pub tracks: ::prost::alloc::vec::Vec<SpanTrack>,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansReply {
     #[prost(map = "uint32, message", tag = "1")]
     pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
-    #[prost(message, repeated, tag = "2")]
-    pub spans: ::prost::alloc::vec::Vec<Span>,
+    #[prost(message, optional, tag = "2")]
+    pub lod: ::core::option::Option<SpanBlockLod>,
     #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
     #[prost(double, tag = "4")]
     pub begin_ms: f64,
     #[prost(double, tag = "5")]
     pub end_ms: f64,
-    #[prost(uint32, tag = "6")]
-    pub max_depth: u32,
 }
 /// process_cumulative_call_graph
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -162,13 +162,16 @@
       process,
       stream: threads[streamId].streamInfo,
     });
+    if (!response.lod) {
+      throw new Error(`Error fetching spans for block ${block.blockId}`);
+    }
     scopes = { ...scopes, ...response.scopes };
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 
     let thread = threads[streamId];
     thread.spanBlocks.push(response);
-    thread.maxDepth = Math.max(thread.maxDepth, response.maxDepth);
+    thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
     thread.minMs = Math.min(thread.minMs, response.beginMs);
     thread.maxMs = Math.max(thread.maxMs, response.endMs);
     if (loadingProgression) {
@@ -279,7 +282,13 @@
         return;
       }
 
-      blockSpans.spans.forEach(({ beginMs, endMs, depth, scopeHash }) => {
+      if( !blockSpans.lod ){
+        return;
+      }
+
+      for( let trackIndex = 0; trackIndex < blockSpans.lod.tracks.length; trackIndex += 1 ){
+        let track = blockSpans.lod.tracks[trackIndex];
+        track.spans.forEach(({ beginMs, endMs, scopeHash }) => {
         if (!renderingContext) {
           throw new Error("Rendering context not available");
         }
@@ -297,10 +306,8 @@
         if (callWidth < 0.1) {
           return;
         }
-
-        const offsetY = threadVerticalOffset + depth * 20;
-
-        if (depth % 2 === 0) {
+        const offsetY = threadVerticalOffset + trackIndex * 20;
+        if (trackIndex % 2 === 0) {
           renderingContext.fillStyle = "#fede99";
         } else {
           renderingContext.fillStyle = "#fea446";
@@ -326,6 +333,7 @@
           );
         }
       });
+      }
     });
   }
 

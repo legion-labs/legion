@@ -72,9 +72,8 @@ message ListStreamBlocksReply{
 // Span: represents a function call instance
 message Span{
     uint32 scope_hash = 1;
-    uint32 depth = 2; // how many function calls are above this one in the thread
-    double begin_ms = 3;
-    double end_ms = 4;
+    double begin_ms = 2;
+    double end_ms = 3;
 }
 
 message BlockSpansRequest{
@@ -83,13 +82,22 @@ message BlockSpansRequest{
     string block_id = 3;
 }
 
+// one span track contains spans at one height of call stack
+message SpanTrack{
+    repeated Span spans = 1;
+}
+
+message SpanBlockLOD{
+    uint32 lod_id = 1;
+    repeated SpanTrack tracks = 2;
+}
+
 message BlockSpansReply{
     map<uint32,ScopeDesc> scopes = 1;
-    repeated Span spans = 2;
+    SpanBlockLOD lod = 2;
     string block_id = 3;
     double begin_ms = 4;
     double end_ms = 5;
-    uint32 max_depth = 6;
 }
 
 // process_cumulative_call_graph

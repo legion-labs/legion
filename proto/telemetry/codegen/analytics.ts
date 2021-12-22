@@ -62,8 +62,6 @@ export interface ListStreamBlocksReply {
  */
 export interface Span {
   scopeHash: number;
-  /** how many function calls are above this one in the thread */
-  depth: number;
   beginMs: number;
   endMs: number;
 }
@@ -74,13 +72,22 @@ export interface BlockSpansRequest {
   blockId: string;
 }
 
+/** one span track contains spans at one height of call stack */
+export interface SpanTrack {
+  spans: Span[];
+}
+
+export interface SpanBlockLOD {
+  lodId: number;
+  tracks: SpanTrack[];
+}
+
 export interface BlockSpansReply {
   scopes: { [key: number]: ScopeDesc };
-  spans: Span[];
+  lod: SpanBlockLOD | undefined;
   blockId: string;
   beginMs: number;
   endMs: number;
-  maxDepth: number;
 }
 
 export interface BlockSpansReply_ScopesEntry {
@@ -837,21 +844,18 @@ export const ListStreamBlocksReply = {
   },
 };
 
-const baseSpan: object = { scopeHash: 0, depth: 0, beginMs: 0, endMs: 0 };
+const baseSpan: object = { scopeHash: 0, beginMs: 0, endMs: 0 };
 
 export const Span = {
   encode(message: Span, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.scopeHash !== 0) {
       writer.uint32(8).uint32(message.scopeHash);
     }
-    if (message.depth !== 0) {
-      writer.uint32(16).uint32(message.depth);
-    }
     if (message.beginMs !== 0) {
-      writer.uint32(25).double(message.beginMs);
+      writer.uint32(17).double(message.beginMs);
     }
     if (message.endMs !== 0) {
-      writer.uint32(33).double(message.endMs);
+      writer.uint32(25).double(message.endMs);
     }
     return writer;
   },
@@ -867,12 +871,9 @@ export const Span = {
           message.scopeHash = reader.uint32();
           break;
         case 2:
-          message.depth = reader.uint32();
-          break;
-        case 3:
           message.beginMs = reader.double();
           break;
-        case 4:
+        case 3:
           message.endMs = reader.double();
           break;
         default:
@@ -889,10 +890,6 @@ export const Span = {
       object.scopeHash !== undefined && object.scopeHash !== null
         ? Number(object.scopeHash)
         : 0;
-    message.depth =
-      object.depth !== undefined && object.depth !== null
-        ? Number(object.depth)
-        : 0;
     message.beginMs =
       object.beginMs !== undefined && object.beginMs !== null
         ? Number(object.beginMs)
@@ -908,7 +905,6 @@ export const Span = {
     const obj: any = {};
     message.scopeHash !== undefined &&
       (obj.scopeHash = Math.round(message.scopeHash));
-    message.depth !== undefined && (obj.depth = Math.round(message.depth));
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
     return obj;
@@ -917,7 +913,6 @@ export const Span = {
   fromPartial<I extends Exact<DeepPartial<Span>, I>>(object: I): Span {
     const message = { ...baseSpan } as Span;
     message.scopeHash = object.scopeHash ?? 0;
-    message.depth = object.depth ?? 0;
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
     return message;
@@ -1013,12 +1008,137 @@ export const BlockSpansRequest = {
   },
 };
 
-const baseBlockSpansReply: object = {
-  blockId: "",
-  beginMs: 0,
-  endMs: 0,
-  maxDepth: 0,
+const baseSpanTrack: object = {};
+
+export const SpanTrack = {
+  encode(
+    message: SpanTrack,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.spans) {
+      Span.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SpanTrack {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.spans.push(Span.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SpanTrack {
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
+    return message;
+  },
+
+  toJSON(message: SpanTrack): unknown {
+    const obj: any = {};
+    if (message.spans) {
+      obj.spans = message.spans.map((e) => (e ? Span.toJSON(e) : undefined));
+    } else {
+      obj.spans = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SpanTrack>, I>>(
+    object: I
+  ): SpanTrack {
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
+    return message;
+  },
 };
+
+const baseSpanBlockLOD: object = { lodId: 0 };
+
+export const SpanBlockLOD = {
+  encode(
+    message: SpanBlockLOD,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.lodId !== 0) {
+      writer.uint32(8).uint32(message.lodId);
+    }
+    for (const v of message.tracks) {
+      SpanTrack.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SpanBlockLOD {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.tracks = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.lodId = reader.uint32();
+          break;
+        case 2:
+          message.tracks.push(SpanTrack.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SpanBlockLOD {
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.lodId =
+      object.lodId !== undefined && object.lodId !== null
+        ? Number(object.lodId)
+        : 0;
+    message.tracks = (object.tracks ?? []).map((e: any) =>
+      SpanTrack.fromJSON(e)
+    );
+    return message;
+  },
+
+  toJSON(message: SpanBlockLOD): unknown {
+    const obj: any = {};
+    message.lodId !== undefined && (obj.lodId = Math.round(message.lodId));
+    if (message.tracks) {
+      obj.tracks = message.tracks.map((e) =>
+        e ? SpanTrack.toJSON(e) : undefined
+      );
+    } else {
+      obj.tracks = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SpanBlockLOD>, I>>(
+    object: I
+  ): SpanBlockLOD {
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.lodId = object.lodId ?? 0;
+    message.tracks = object.tracks?.map((e) => SpanTrack.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+const baseBlockSpansReply: object = { blockId: "", beginMs: 0, endMs: 0 };
 
 export const BlockSpansReply = {
   encode(
@@ -1031,8 +1151,8 @@ export const BlockSpansReply = {
         writer.uint32(10).fork()
       ).ldelim();
     });
-    for (const v of message.spans) {
-      Span.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.lod !== undefined) {
+      SpanBlockLOD.encode(message.lod, writer.uint32(18).fork()).ldelim();
     }
     if (message.blockId !== "") {
       writer.uint32(26).string(message.blockId);
@@ -1043,9 +1163,6 @@ export const BlockSpansReply = {
     if (message.endMs !== 0) {
       writer.uint32(41).double(message.endMs);
     }
-    if (message.maxDepth !== 0) {
-      writer.uint32(48).uint32(message.maxDepth);
-    }
     return writer;
   },
 
@@ -1054,7 +1171,6 @@ export const BlockSpansReply = {
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
     message.scopes = {};
-    message.spans = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1068,7 +1184,7 @@ export const BlockSpansReply = {
           }
           break;
         case 2:
-          message.spans.push(Span.decode(reader, reader.uint32()));
+          message.lod = SpanBlockLOD.decode(reader, reader.uint32());
           break;
         case 3:
           message.blockId = reader.string();
@@ -1078,9 +1194,6 @@ export const BlockSpansReply = {
           break;
         case 5:
           message.endMs = reader.double();
-          break;
-        case 6:
-          message.maxDepth = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1098,7 +1211,10 @@ export const BlockSpansReply = {
       acc[Number(key)] = ScopeDesc.fromJSON(value);
       return acc;
     }, {});
-    message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
+    message.lod =
+      object.lod !== undefined && object.lod !== null
+        ? SpanBlockLOD.fromJSON(object.lod)
+        : undefined;
     message.blockId =
       object.blockId !== undefined && object.blockId !== null
         ? String(object.blockId)
@@ -1111,10 +1227,6 @@ export const BlockSpansReply = {
       object.endMs !== undefined && object.endMs !== null
         ? Number(object.endMs)
         : 0;
-    message.maxDepth =
-      object.maxDepth !== undefined && object.maxDepth !== null
-        ? Number(object.maxDepth)
-        : 0;
     return message;
   },
 
@@ -1126,16 +1238,11 @@ export const BlockSpansReply = {
         obj.scopes[k] = ScopeDesc.toJSON(v);
       });
     }
-    if (message.spans) {
-      obj.spans = message.spans.map((e) => (e ? Span.toJSON(e) : undefined));
-    } else {
-      obj.spans = [];
-    }
+    message.lod !== undefined &&
+      (obj.lod = message.lod ? SpanBlockLOD.toJSON(message.lod) : undefined);
     message.blockId !== undefined && (obj.blockId = message.blockId);
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
-    message.maxDepth !== undefined &&
-      (obj.maxDepth = Math.round(message.maxDepth));
     return obj;
   },
 
@@ -1151,11 +1258,13 @@ export const BlockSpansReply = {
       }
       return acc;
     }, {});
-    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
+    message.lod =
+      object.lod !== undefined && object.lod !== null
+        ? SpanBlockLOD.fromPartial(object.lod)
+        : undefined;
     message.blockId = object.blockId ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
-    message.maxDepth = object.maxDepth ?? 0;
     return message;
   },
 };
