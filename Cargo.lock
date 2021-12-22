@@ -4171,7 +4171,6 @@ dependencies = [
 name = "lgn-mp4"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitflags",
  "byteorder",
  "bytes",
