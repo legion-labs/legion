@@ -68,9 +68,7 @@ codegen:
 build-release:
 	cargo build --release
 
-cov:
-	cargo clean
-	cargo build
+cov: rebuild
 	cargo test --no-run
 	cargo test
 
