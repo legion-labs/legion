@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import * as monaco from "monaco-editor";
+
+  import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 
   export let theme: monaco.editor.BuiltinTheme | undefined = undefined;
 

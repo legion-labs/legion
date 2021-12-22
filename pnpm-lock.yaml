@@ -105,6 +105,7 @@ importers:
       eslint: ^8.5.0
       eslint-config-prettier: ^8.3.0
       eslint-plugin-svelte3: ^3.2.1
+      google-protobuf: ^3.19.1
       grpc-web: ^1.3.0
       jest: ^27.4.5
       long: ^5.2.0
@@ -125,13 +126,14 @@ importers:
       vite: ^2.7.4
       vite-tsconfig-paths: ^3.3.17
     dependencies:
-      '@improbable-eng/grpc-web': 0.15.0
+      '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.1
       '@lgn/frontend': link:../../../lib/browser/frontend
       '@lgn/proto-editor': link:../../../proto/editor
       '@lgn/proto-streaming': link:../../../proto/streaming
       '@tauri-apps/api': 1.0.0-beta.8
       browser-headers: 0.4.1
       color-convert: 2.0.1
+      google-protobuf: 3.19.1
       grpc-web: 1.3.0
       long: 5.2.0
       monaco-editor: 0.31.1
@@ -790,6 +792,15 @@ packages:
       google-protobuf: ^3.14.0
     dependencies:
       browser-headers: 0.4.1
+    dev: false
+
+  /@improbable-eng/grpc-web/0.15.0_google-protobuf@3.19.1:
+    resolution: {integrity: sha512-ERft9/0/8CmYalqOVnJnpdDry28q+j+nAlFFARdjyxXDJ+Mhgv9+F600QC8BR9ygOfrXRlAk6CvST2j+JCpQPg==}
+    peerDependencies:
+      google-protobuf: ^3.14.0
+    dependencies:
+      browser-headers: 0.4.1
+      google-protobuf: 3.19.1
     dev: false
 
   /@istanbuljs/load-nyc-config/1.1.0:
@@ -2838,6 +2849,10 @@ packages:
   /globrex/0.1.2:
     resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
     dev: true
+
+  /google-protobuf/3.19.1:
+    resolution: {integrity: sha512-Isv1RlNC+IzZzilcxnlVSf+JvuhxmY7DaxYCBy+zPS9XVuJRtlTTIXR9hnZ1YL1MMusJn/7eSy2swCzZIomQSg==}
+    dev: false
 
   /graceful-fs/4.2.8:
     resolution: {integrity: sha512-qkIilPUYcNhJpd33n0GBXTB1MMPp14TxEsEs0pTrsSVucApsYzW5V+Q8Qxhik6KU3evy+qkAAowTByymK0avdg==}
