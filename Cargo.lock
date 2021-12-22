@@ -4339,6 +4339,7 @@ dependencies = [
  "lgn-utils",
  "raw-window-handle 0.4.2",
  "serde",
+ "strum 0.23.0",
  "vk-mem",
 ]
 
@@ -4615,6 +4616,7 @@ dependencies = [
  "dolly",
  "egui",
  "epaint",
+ "lazy_static",
  "lgn-app",
  "lgn-build-utils",
  "lgn-ecs",

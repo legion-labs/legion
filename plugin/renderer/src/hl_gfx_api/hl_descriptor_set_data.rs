@@ -2,7 +2,7 @@ use bumpalo::Bump;
 use lgn_graphics_api::{
     BufferView, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, ShaderResourceType,
 };
-use lgn_graphics_cgen_runtime::{CGenDescriptorId, CGenDescriptorSetDef, CGenDescriptorSetId};
+use lgn_graphics_cgen_runtime::{CGenDescriptorSetDef};
 
 pub struct DescriptorSetData<'rc> {
     info: &'rc CGenDescriptorSetDef,
@@ -18,7 +18,7 @@ impl<'rc> DescriptorSetData<'rc> {
         }
     }
 
-    pub fn id(&self) -> CGenDescriptorSetId {
+    pub fn id(&self) -> u32 {
         self.info.id
     }
 
@@ -26,12 +26,8 @@ impl<'rc> DescriptorSetData<'rc> {
         self.info.frequency
     }
 
-    pub fn set_constant_buffer(
-        &mut self,
-        id: CGenDescriptorId,
-        const_buffer_view: &'rc BufferView,
-    ) {
-        let descriptor_index = id.0;
+    pub fn set_constant_buffer(&mut self, id: u32, const_buffer_view: &'rc BufferView) {
+        let descriptor_index = id;
         let descriptor_def = &self.info.descriptor_defs[descriptor_index as usize];
         assert_eq!(
             descriptor_def.shader_resource_type,

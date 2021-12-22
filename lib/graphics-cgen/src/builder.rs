@@ -65,6 +65,7 @@ pub struct DescriptorSetBuilder<'mdl> {
     mdl: &'mdl Model,
     product: DescriptorSet,
     names: HashSet<String>,
+    flat_index: u32,
 }
 
 impl<'mdl> DescriptorSetBuilder<'mdl> {
@@ -73,6 +74,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             mdl,
             product: DescriptorSet::new(name, frequency),
             names: HashSet::new(),
+            flat_index: 0
         }
     }
 
@@ -266,9 +268,12 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.names.insert(name.to_string());
         self.product.descriptors.push(Descriptor {
             name: name.to_owned(),
+            flat_index: self.flat_index,
             array_len,
             def,
         });
+
+        self.flat_index += array_len.unwrap_or(1u32);
 
         Ok(self)
     }
@@ -277,7 +282,8 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    pub fn build(self) -> Result<DescriptorSet> {
+    pub fn build(mut self) -> Result<DescriptorSet> {
+        self.product.flat_descriptor_count = self.flat_index;
         Ok(self.product)
     }
 }

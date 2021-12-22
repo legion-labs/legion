@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
+use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 use std::alloc::Layout;
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;
@@ -363,8 +363,11 @@ impl Model {
         let type_id = TypeId::of::<T>();
         let type_index = self.type_map.entry(type_id).or_insert_with(|| {
             let index = self.model_vecs.len();
-            self.model_vecs
-                .push(ModelVec::new(u32::try_from(index).unwrap(), Layout::new::<T>(), drop_ptr::<T>));
+            self.model_vecs.push(ModelVec::new(
+                u32::try_from(index).unwrap(),
+                Layout::new::<T>(),
+                drop_ptr::<T>,
+            ));
             index
         });
 
@@ -390,7 +393,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy, EnumString, EnumIter, IntoStaticStr)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy, EnumIter, IntoStaticStr)]
 pub enum NativeType {
     Float1,
     Float2,
@@ -519,9 +522,41 @@ pub enum DescriptorDef {
     TextureCubeArray(TextureDef),
 }
 
+impl DescriptorDef {
+    pub fn into_shader_resource_type(&self) -> ShaderResourceType {
+        match self {
+            crate::model::DescriptorDef::Sampler => ShaderResourceType::Sampler,
+            crate::model::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
+            crate::model::DescriptorDef::StructuredBuffer(_) => {
+                ShaderResourceType::StructuredBuffer
+            }
+            crate::model::DescriptorDef::RWStructuredBuffer(_) => {
+                ShaderResourceType::RWStructuredBuffer
+            }
+            crate::model::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAdressBuffer,
+            crate::model::DescriptorDef::RWByteAddressBuffer => {
+                ShaderResourceType::RWByteAdressBuffer
+            }
+            crate::model::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
+            crate::model::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
+            crate::model::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,
+            crate::model::DescriptorDef::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
+            crate::model::DescriptorDef::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
+            crate::model::DescriptorDef::RWTexture2DArray(_) => {
+                ShaderResourceType::RWTexture2DArray
+            }
+            crate::model::DescriptorDef::TextureCube(_) => ShaderResourceType::TextureCube,
+            crate::model::DescriptorDef::TextureCubeArray(_) => {
+                ShaderResourceType::TextureCubeArray
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Descriptor {
     pub name: String,
+    pub flat_index: u32,
     pub array_len: Option<u32>,
     pub def: DescriptorDef,
 }
@@ -530,6 +565,7 @@ pub struct Descriptor {
 pub struct DescriptorSet {
     pub name: String,
     pub frequency: u32,
+    pub flat_descriptor_count: u32,
     pub descriptors: Vec<Descriptor>,
 }
 
@@ -542,6 +578,7 @@ impl DescriptorSet {
             name: name.to_owned(),
             frequency,
             descriptors: Vec::new(),
+            flat_descriptor_count: 0,
         }
     }
 }
@@ -598,6 +635,25 @@ impl PipelineLayout {
             PipelineLayoutContent::Pushconstant(_) => None,
         });
         x
+    }
+
+    pub fn find_descriptor_set_by_frequency(
+        &self,
+        model: &Model,
+        frequency: usize,
+    ) -> Option<DescriptorSetRef> {
+        for (_, content) in &self.members {
+            match content {
+                PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                    let ds = ds_ref.get(model);
+                    if ds.frequency as usize == frequency {
+                        return Some(*ds_ref);
+                    }
+                }
+                PipelineLayoutContent::Pushconstant(_) => (),
+            }
+        }
+        None
     }
 }
 

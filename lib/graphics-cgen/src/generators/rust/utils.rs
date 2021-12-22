@@ -13,3 +13,5 @@ pub(super) fn get_rust_typestring<'a>(ty: &'a CGenType) -> &'a str {
     };
     typestring
 }
+
+

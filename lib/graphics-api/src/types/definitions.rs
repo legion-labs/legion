@@ -6,14 +6,17 @@ use std::{
 use lgn_utils::decimal::DecimalF32;
 use serde::{Deserialize, Serialize};
 
-use super::{
+use strum::IntoStaticStr;
+
+use crate::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
-    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PrimitiveTopology,
-    SampleCount, ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
+    DescriptorSetLayout, Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage,
+    MipMapMode, PrimitiveTopology, ResourceFlags, RootSignature, SampleCount, Shader, ShaderModule,
+    ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
-use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of
 /// validation is API-specific.
@@ -431,7 +434,9 @@ pub struct ShaderStageDef {
     pub shader_module: ShaderModule,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, strum::Display, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, IntoStaticStr,
+)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,

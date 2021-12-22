@@ -20,7 +20,7 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::RenderContext;
+use crate::{RenderContext, cgen};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -35,7 +35,7 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-    cgen_runtime: CGenRuntime,
+    // cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
@@ -56,14 +56,16 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let filesystem = FileSystem::new(".")?;
-        filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
+        filesystem.add_mount_point("renderer",  env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
         // this is not compliant with the rules set for code generation, aka no binary
         // files TODO fix this
-        let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
-        let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
+        // let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
+        // let cgen_def = CGenDef{};
+        cgen::initialize(device_context);
+        // let cgen_runtime = CGenRuntime::new(&cgen_def, device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
@@ -102,7 +104,7 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            cgen_runtime,
+            // cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
@@ -197,9 +199,9 @@ impl Renderer {
         pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
     }
 
-    pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
-        &self.cgen_runtime
-    }
+    // pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
+    //     &self.cgen_runtime
+    // }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
         let mut pool = self.descriptor_pools.lock();

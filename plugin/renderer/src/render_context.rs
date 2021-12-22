@@ -49,9 +49,9 @@ impl<'frame> RenderContext<'frame> {
         )
     }
 
-    pub fn cgen_runtime(&self) -> &CGenRuntime {
-        self.renderer.cgen_runtime()
-    }
+    // pub fn cgen_runtime(&self) -> &CGenRuntime {
+    //     self.renderer.cgen_runtime()
+    // }
 
     pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
         HLCommandBuffer::new(&self.cmd_buffer_pool)

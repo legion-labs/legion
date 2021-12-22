@@ -1,7 +1,7 @@
 use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_graphics_cgen_runtime::{
-    CGenDef, CGenDescriptorDef, CGenDescriptorSetDef, CGenDescriptorSetId, CGenPipelineLayoutDef,
-    CGenPipelineLayoutId, CGenTypeDef, CGenTypeId,
+    CGenDef, CGenDescriptorDef, CGenDescriptorSetDef, CGenPipelineLayoutDef, CGenTypeDef,
+    CGenTypeId,
 };
 use relative_path::RelativePath;
 
@@ -15,26 +15,26 @@ use crate::{
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
-    let mut type_defs = Vec::with_capacity(ctx.model.size::<CGenType>());
-    let mut descriptor_set_layout_defs = Vec::with_capacity(ctx.model.size::<DescriptorSet>());
-    let mut root_signature_defs = Vec::with_capacity(ctx.model.size::<PipelineLayout>());
+    /*    let mut type_defs = Vec::with_capacity(ctx.model.size::<CGenType>());
+        let mut descriptor_set_layout_defs = Vec::with_capacity(ctx.model.size::<DescriptorSet>());
+        let mut root_signature_defs = Vec::with_capacity(ctx.model.size::<PipelineLayout>());
 
-    for (_, cgen_type) in ctx.model.ref_iter::<CGenType>().enumerate() {
-        type_defs.push(into_cgen_type(ctx.model, cgen_type));
-    }
+        for (_, cgen_type) in ctx.model.ref_iter::<CGenType>().enumerate() {
+            type_defs.push(into_cgen_type(ctx.model, cgen_type));
+        }
 
-    for (_, descriptor_set) in ctx.model.ref_iter::<DescriptorSet>().enumerate() {
-        descriptor_set_layout_defs.push(into_cgen_descriptor_set(ctx.model, descriptor_set));
-    }
+        for (_, descriptor_set) in ctx.model.ref_iter::<DescriptorSet>().enumerate() {
+            descriptor_set_layout_defs.push(into_cgen_descriptor_set(ctx.model, descriptor_set));
+        }
 
-    for (_, pipeline_layout) in ctx.model.ref_iter::<PipelineLayout>().enumerate() {
-        root_signature_defs.push(into_cgen_pipeline_layout_def(ctx.model, pipeline_layout));
-    }
-
+        for (_, pipeline_layout) in ctx.model.ref_iter::<PipelineLayout>().enumerate() {
+            root_signature_defs.push(into_cgen_pipeline_layout_def(ctx.model, pipeline_layout));
+        }
+    */
     let cgen_def = CGenDef {
-        type_defs,
-        descriptor_set_layout_defs,
-        root_signature_defs,
+        // type_defs,
+        // descriptor_set_layout_defs,
+        // root_signature_defs,
     };
 
     vec![Product::new(
@@ -44,6 +44,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     )]
 }
 
+/*
 fn into_cgen_type(_model: &Model, ty_ref: CGenTypeRef) -> CGenTypeDef {
     CGenTypeDef {
         id: CGenTypeId(ty_ref.id()),
@@ -133,3 +134,4 @@ fn into_cgen_pipeline_layout_def(
         push_constant_type: None,
     }
 }
+*/

@@ -7,7 +7,7 @@ use crate::{
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::ResourceUsage;
-use lgn_graphics_cgen_runtime::fake::{FakeDescriptorID, FakeDescriptorSetData};
+// use lgn_graphics_cgen_runtime::fake::{FakeDescriptorID, FakeDescriptorSetData};
 use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
@@ -323,28 +323,15 @@ fn render_update(
     renderer.flush_update_jobs(&render_context);
 
     // View descriptor set
+    /*
     {
         let transient_allocator = render_context.transient_buffer_allocator();
 
         let view_data = crate::cgen::cgen_type::ViewData::default();
 
-        // view_matrix.write_cols_to_slice(&mut constant_data[0..]);
-        // projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
-
         let sub_allocation =
             transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-        // let bump_allocator = render_context.bump_allocator();
-
-        // let descriptor_heap_partition = render_context
-        //     .descriptor_pool()
-        //     .descriptor_heap_partition_mut();
-
-        // let mut ds_data = FakeDescriptorSetData::new(
-        //     render_context.cgen_runtime(),
-        //     bump_allocator.bumpalo(),
-        //     descriptor_heap_partition,
-        // );
 
         let const_buffer_view = sub_allocation.const_buffer_view();
 
@@ -356,11 +343,8 @@ fn render_update(
         );
         view_descriptor_set_data
             .set_constant_buffer(ViewDescriptorSet::view_data, &const_buffer_view);
-
-        // ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
-
-        // let _descriptor_handle = ds_data.build(render_context.renderer().device_context());
     }
+    */
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
