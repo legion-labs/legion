@@ -138,7 +138,7 @@ fn main() {
         .add_plugin(RendererPlugin::new(
             true,
             matches.is_present(ARG_NAME_EGUI),
-            true,
+            !matches.is_present(ARG_NAME_SNAPSHOT),
         ))
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default());
