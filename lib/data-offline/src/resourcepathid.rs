@@ -54,7 +54,7 @@ impl Transform {
 /// // create a resource and add it to the project
 /// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
 /// let resource_id = project.add_resource(ResourcePathName::new("new resource"),
-///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
+///                    "src_geom", SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
 ///
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);

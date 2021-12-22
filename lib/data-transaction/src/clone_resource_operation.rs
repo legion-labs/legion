@@ -8,6 +8,7 @@ use crate::{Error, LockContext, TransactionOperation};
 
 /// Clone a Resource Operation
 pub struct CloneResourceOperation {
+    source_resource_type_name: &'static str,
     source_resource_id: ResourceTypeAndId,
     clone_resource_id: ResourceTypeAndId,
     clone_path: ResourcePathName,
@@ -16,11 +17,13 @@ pub struct CloneResourceOperation {
 impl CloneResourceOperation {
     /// Create a new Clone a Resource Operation
     pub fn new(
+        source_resource_type_name: &'static str,
         source_resource_id: ResourceTypeAndId,
         clone_resource_id: ResourceTypeAndId,
         clone_path: ResourcePathName,
     ) -> Box<Self> {
         Box::new(Self {
+            source_resource_type_name,
             source_resource_id,
             clone_resource_id,
             clone_path,
@@ -49,6 +52,7 @@ impl TransactionOperation for CloneResourceOperation {
 
         ctx.project.add_resource_with_id(
             self.clone_path.clone(),
+            self.source_resource_type_name,
             self.clone_resource_id.t,
             self.clone_resource_id,
             &clone_handle,

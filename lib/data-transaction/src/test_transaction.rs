@@ -55,7 +55,11 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
         // Create a new Resource, Edit some properties and Commit it
         let transaction = Transaction::new()
-            .add_operation(CreateResourceOperation::new(new_id, resource_path.clone()))
+            .add_operation(CreateResourceOperation::new(
+                TestEntity::TYPENAME,
+                new_id,
+                resource_path.clone(),
+            ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
                 "test_string",
@@ -78,6 +82,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             id: ResourceId::new(),
         };
         let transaction = Transaction::new().add_operation(CloneResourceOperation::new(
+            TestEntity::TYPENAME,
             new_id,
             clone_id,
             clone_name.clone(),
@@ -107,7 +112,8 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         assert!(!project.lock().await.exists(clone_id));
 
         // Delete the created Resource
-        let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
+        let transaction = Transaction::new()
+            .add_operation(DeleteResourceOperation::new(TestEntity::TYPENAME, new_id));
         data_manager.commit_transaction(transaction).await?;
         assert!(!project.lock().await.exists_named(&resource_path));
         assert!(!project.lock().await.exists(new_id));
@@ -140,7 +146,11 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             id: ResourceId::new(),
         };
         let transaction = Transaction::new()
-            .add_operation(CreateResourceOperation::new(new_id, resource_path))
+            .add_operation(CreateResourceOperation::new(
+                TestEntity::TYPENAME,
+                new_id,
+                resource_path,
+            ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
                 "test_string",

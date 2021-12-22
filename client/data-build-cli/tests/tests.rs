@@ -44,6 +44,7 @@ fn build_device() {
         project
             .add_resource(
                 ResourcePathName::new("test_source"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource,
                 &mut resources,
@@ -183,6 +184,7 @@ fn no_intermediate_resource() {
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
+                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource,
                     &mut resources,
@@ -264,6 +266,7 @@ fn with_intermediate_resource() {
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
+                    text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource,
                     &mut resources,

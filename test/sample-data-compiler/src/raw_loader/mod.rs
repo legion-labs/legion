@@ -131,13 +131,22 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
     (project, registry)
 }
 
-fn ext_to_resource_kind(ext: &str) -> ResourceType {
+fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
     match ext {
-        "ent" => offline_data::Entity::TYPE,
-        "ins" => offline_data::Instance::TYPE,
-        "mat" => lgn_graphics_offline::Material::TYPE,
-        "mesh" => offline_data::Mesh::TYPE,
-        "psd" => lgn_graphics_offline::PsdFile::TYPE,
+        "ent" => (offline_data::Entity::TYPENAME, offline_data::Entity::TYPE),
+        "ins" => (
+            offline_data::Instance::TYPENAME,
+            offline_data::Instance::TYPE,
+        ),
+        "mat" => (
+            lgn_graphics_offline::Material::TYPENAME,
+            lgn_graphics_offline::Material::TYPE,
+        ),
+        "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
+        "psd" => (
+            lgn_graphics_offline::PsdFile::TYPENAME,
+            lgn_graphics_offline::PsdFile::TYPE,
+        ),
         _ => panic!(),
     }
 }
@@ -179,15 +188,16 @@ fn build_resource_from_raw(
                 id
             } else {
                 let id = ResourceTypeAndId {
-                    t: kind,
+                    t: kind.1,
                     id: in_resources[i].1,
                 };
                 project
                     .add_resource_with_id(
                         name.clone(),
-                        kind,
+                        kind.0,
+                        kind.1,
                         id,
-                        resources.new_resource(kind).unwrap(),
+                        resources.new_resource(kind.1).unwrap(),
                         resources,
                     )
                     .unwrap()
@@ -208,6 +218,7 @@ fn build_test_entity(
         if let Ok(id) = project.find_resource(&name) {
             id
         } else {
+            let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
                 t: kind,
@@ -230,7 +241,14 @@ fn build_test_entity(
             test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
 
             project
-                .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                .add_resource_with_id(
+                    name.clone(),
+                    kind_name,
+                    kind,
+                    id,
+                    test_entity_handle,
+                    resources,
+                )
                 .unwrap()
         }
     };
@@ -288,6 +306,7 @@ fn build_debug_cubes(
             project
                 .add_resource_with_id(
                     name.clone(),
+                    DebugCube::TYPENAME,
                     DebugCube::TYPE,
                     id,
                     cube_entity_handle,

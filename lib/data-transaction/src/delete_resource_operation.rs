@@ -8,6 +8,7 @@ use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Delete a resource
 pub struct DeleteResourceOperation {
+    resource_type_name: &'static str,
     resource_id: ResourceTypeAndId,
     old_resource_name: Option<ResourcePathName>,
     old_resource_data: Option<Vec<u8>>,
@@ -15,8 +16,9 @@ pub struct DeleteResourceOperation {
 
 impl DeleteResourceOperation {
     /// Return a newly created `DeleteResourceOperation`
-    pub fn new(resource_id: ResourceTypeAndId) -> Box<Self> {
+    pub fn new(resource_type_name: &'static str, resource_id: ResourceTypeAndId) -> Box<Self> {
         Box::new(Self {
+            resource_type_name,
             resource_id,
             old_resource_name: None,
             old_resource_data: None,
@@ -62,6 +64,7 @@ impl TransactionOperation for DeleteResourceOperation {
 
         ctx.project.add_resource_with_id(
             old_resource_name.clone(),
+            self.resource_type_name,
             self.resource_id.t,
             self.resource_id,
             &handle,

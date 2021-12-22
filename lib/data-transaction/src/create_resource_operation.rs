@@ -8,14 +8,20 @@ use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Create a new Resource
 pub struct CreateResourceOperation {
+    resource_type_name: &'static str,
     resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
 }
 
 impl CreateResourceOperation {
     /// Create a new `CreateResourceOperation`
-    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Box<Self> {
+    pub fn new(
+        resource_type_name: &'static str,
+        resource_id: ResourceTypeAndId,
+        resource_path: ResourcePathName,
+    ) -> Box<Self> {
         Box::new(Self {
+            resource_type_name,
             resource_id,
             resource_path,
         })
@@ -40,6 +46,7 @@ impl TransactionOperation for CreateResourceOperation {
 
         ctx.project.add_resource_with_id(
             self.resource_path.clone(),
+            self.resource_type_name,
             self.resource_id.t,
             self.resource_id,
             &handle,
