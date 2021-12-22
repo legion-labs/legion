@@ -1,4 +1,7 @@
 use std::ffi::CStr;
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use ash::extensions::khr;
@@ -64,10 +67,12 @@ pub(crate) struct VulkanDeviceContext {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
+    #[allow(dead_code)]
     next_create_index: AtomicU64,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
+    #[allow(dead_code)]
     all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
