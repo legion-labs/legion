@@ -36,7 +36,7 @@ cd frontend
 And run the application:
 
 ```
-yarn dev
+pnpm dev
 ```
 
 Go to [http://localhost:3000](http://localhost:3000).
@@ -70,7 +70,7 @@ Then the frontend:
 
 ```
 cd frontend
-yarn dev
+pnpm dev
 ```
 
 ## Structure of the application
@@ -82,11 +82,12 @@ including where to find the web-app generated files or development server.
 
 The Tauri application is currently configured to look for its web-app files in
 the `frontend/dist` directory. By default, this directory in empty and will
-be populated by the `yarn build` command that's ran in the `build.rs` file.
+be populated by the `pnpm build` command that's ran in the `build.rs` file.
 
 As an effort to ease the development process, the [build script](./src/build.rs)
 contains instructions to build the web-app automatically before building the
-Rust native application. This is done through the execution of the `yarn build` command inside the [`frontend`](./frontend) folder.
+Rust native application. This is done through the execution of the `pnpm build`
+command inside the [`frontend`](./frontend) folder.
 
 You may of course decide to run this step manually if you so chose, but building
 the Rust native application will always call that step anyway.

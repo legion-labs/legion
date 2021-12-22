@@ -1,15 +1,13 @@
 {
   "private": true,
-  "workspaces": [
-    "client/*/frontend",
-    "lib/*/frontend",
-    "proto/*"
-  ],
+  "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "build": "yarn workspaces run build",
-    "check:all": "yarn workspaces run check:all",
-    "test": "yarn workspaces run test",
-    "analytics:dev": "yarn workspace analytics-web run dev",
-    "editor:dev": "yarn workspace editor run dev"
+    "build": "pnpm -r build",
+    "check:all": "pnpm -r check:all",
+    "clean": "rimraf node_modules && pnpm -r clean",
+    "test": "pnpm -r test",
+    "analytics:dev": "pnpm -C client/analytics-web/frontend dev",
+    "editor:dev": "pnpm -C client/editor/frontend dev",
+    "runtime:dev": "pnpm -C client/runtime/frontend dev"
   }
 }

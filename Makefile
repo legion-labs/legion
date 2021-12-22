@@ -22,7 +22,7 @@ check-env:
 	cmake --version
 	python3 --version
 	ninja --version
-	yarn --version
+	pnpm --version
 
 check-format:
 	cargo fmt --all -- --check
