@@ -1,5 +1,7 @@
 //! Compiler registry defines an interface between different compiler types
 //! (executable, in-process, etc).
+
+use core::fmt;
 use std::{io, path::Path};
 
 use lgn_content_store::ContentStoreAddr;
@@ -104,6 +106,14 @@ impl CompilerRegistryOptions {
 pub struct CompilerRegistry {
     compilers: Vec<Box<dyn CompilerStub>>,
     infos: Option<Vec<CompilerInfo>>,
+}
+
+impl fmt::Debug for CompilerRegistry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompilerRegistry")
+            .field("infos", &self.infos)
+            .finish()
+    }
 }
 
 impl CompilerRegistry {

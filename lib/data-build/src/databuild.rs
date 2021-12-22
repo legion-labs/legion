@@ -93,6 +93,7 @@ fn compute_context_hash(
 ///                         &env,
 ///                      ).expect("compilation output");
 /// ```
+#[derive(Debug)]
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
@@ -166,11 +167,7 @@ impl DataBuild {
     }
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).map_err(|e| match e {
-            lgn_data_offline::resource::Error::ParseError(_, _) => Error::IntegrityFailure,
-            lgn_data_offline::resource::Error::NotFound => Error::NotFound,
-            lgn_data_offline::resource::Error::IOError(_, _) => Error::IOError,
-        })
+        Project::open(project_dir).map_err(Error::from)
     }
 
     /// Accessor for the project associated with this builder.

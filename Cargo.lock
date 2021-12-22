@@ -4100,6 +4100,7 @@ dependencies = [
  "serde_with",
  "tempfile",
  "text-resource",
+ "thiserror",
 ]
 
 [[package]]
