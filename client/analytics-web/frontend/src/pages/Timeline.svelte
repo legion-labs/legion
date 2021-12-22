@@ -26,8 +26,8 @@
     BlockSpansReply,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-    ScopeDesc,
   } from "@lgn/proto-telemetry/codegen/analytics";
+  import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
   import { Block } from "@lgn/proto-telemetry/codegen/block";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { Stream } from "@lgn/proto-telemetry/codegen/stream";
@@ -162,7 +162,7 @@
       process,
       stream: threads[streamId].streamInfo,
     });
-    scopes = {...scopes,...response.scopes};
+    scopes = { ...scopes, ...response.scopes };
     minMs = Math.min(minMs, response.beginMs);
     maxMs = Math.max(maxMs, response.endMs);
 
@@ -187,6 +187,7 @@
   }
 
   function drawCanvas() {
+    updatePixelSize();
     if (!canvas || !renderingContext) {
       return;
     }
@@ -417,6 +418,14 @@
     drawCanvas();
   }
 
+  function updatePixelSize() {
+    if (!canvas) {
+      return;
+    }
+    let vr = getViewRange();
+    pixelSize = (vr[1] - vr[0]) / canvas.width;
+  }
+
   function updateProgess() {
     if (!loadingProgression) {
       return;
@@ -430,6 +439,30 @@
     if (loadingProgression.completed == loadingProgression.requested) {
       loadingProgression = undefined;
     }
+  }
+
+  function LogX(x: number, y: number): number {
+    return Math.log(y) / Math.log(x);
+  }
+
+  function getViewLOD(pixelSizeNs: number): number {
+    return Math.max( 0, Math.floor(LogX(100, pixelSizeNs)));
+  }
+
+  function MergeThresholdForLOD(lod: number): number {
+    return Math.pow(100, lod - 2) / 10;
+  }
+
+  //debug variables (displayed in debug div>
+  let pixelSize = 0;
+  let LOD = 0;
+  let mergeThreshold = 0;
+  $: {
+    LOD = getViewLOD(pixelSize * 1000000);
+  }
+
+  $: {
+    mergeThreshold = MergeThresholdForLOD(LOD);
   }
 </script>
 
@@ -463,7 +496,24 @@
     on:mousedown|preventDefault={onMouseDown}
   />
 
-  <TimeRangeDetails timeRange={currentSelection} {processId} />
+  <div id="rightcolumn">
+    <TimeRangeDetails timeRange={currentSelection} {processId} />
+    <div id="debugdiv">
+      <h3>debug stats</h3>
+      <div>
+        <span>Pixel Size</span>
+        <span>{formatExecutionTime(pixelSize)}</span>
+      </div>
+      <div>
+        <span>LOD</span>
+        <span>{LOD}</span>
+      </div>
+      <div>
+        <span>Merge Threshold</span>
+        <span>{formatExecutionTime(mergeThreshold)}</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <style lang="postcss">
@@ -476,6 +526,10 @@
     display: inline-block;
   }
 
+  #rightcolumn {
+    display: inline-block;
+  }
+
   #totalLoadingProgress {
     margin: auto;
     width: 90%;
@@ -485,5 +539,10 @@
   #loadedProgress {
     width: 0px;
     background-color: #fea446;
+  }
+
+  #debugdiv {
+    margin: 20px 0px 0px 0px;
+    text-align: left;
   }
 </style>

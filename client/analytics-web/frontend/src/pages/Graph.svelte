@@ -13,8 +13,8 @@
     CumulativeCallGraphNode,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-    ScopeDesc,
   } from "@lgn/proto-telemetry/codegen/analytics";
+  import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { formatExecutionTime } from "@/lib/format";
 
@@ -65,7 +65,7 @@
       endMs: params.endMs,
     });
 
-    scopes = {...scopes,...reply.scopes};
+    scopes = { ...scopes, ...reply.scopes };
     nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
     nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;
