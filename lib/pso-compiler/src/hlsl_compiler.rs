@@ -310,6 +310,7 @@ impl HlslCompiler {
         let dxc = &self.inner.dxc;
         let compiler = dxc.create_compiler()?;
         let library = dxc.create_library()?;
+
         let (shader_path, shader_text) = match shader_source {
             ShaderSource::Code(text) => ("_code.hlsl".to_owned(), text.clone()),
             ShaderSource::Path(path) => (
@@ -331,24 +332,6 @@ impl HlslCompiler {
                     x
                 )
             })?;
-
-        let _result = compiler.preprocess(
-            &blob,
-            &shader_path,
-            args,
-            Some(Box::new(FileServerIncludeHandler(
-                self.inner.filesystem.clone(),
-            ))),
-            defines,
-        );
-
-        match _result {
-            Err(result) => {
-                let error_blob = result.0.get_error_buffer().unwrap();
-                println!("{}", library.get_blob_as_string(&error_blob));
-            }
-            Ok(_result) => {}
-        }
 
         let result = compiler.compile(
             &blob,
@@ -464,7 +447,6 @@ mod tests {
     }";
 
     #[test]
-    #[ignore]
     fn compile_vs_shader() {
         let filesystem = FileSystem::new(".").unwrap();
         let compiler = HlslCompiler::new(filesystem).expect(
@@ -497,7 +479,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn compile_ps_shader() {
         let filesystem = FileSystem::new(".").unwrap();
         let compiler = HlslCompiler::new(filesystem).expect(
