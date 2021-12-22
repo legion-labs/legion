@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
 lgn-core = { path = "../core", version = "0.1.0" }
+lgn-config = { path = "../../lib/config", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-grpc = { path = "../grpc", version = "0.1.0" }

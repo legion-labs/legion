@@ -5,6 +5,7 @@ use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::{self, RBGYUVConverter},
 };
+use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_presenter::offscreen_helper::{self, Resolution};
@@ -15,7 +16,7 @@ use lgn_renderer::{
 use lgn_tasks::TaskPool;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry::{debug, warn};
-use lgn_utils::{memory::write_any, setting_get_or};
+use lgn_utils::memory::write_any;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
@@ -111,7 +112,7 @@ impl VideoStream {
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = setting_get_or!("streamer.max_frame_time", 16_000u64);
+        let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 16_000u64);
 
         if elapsed >= max_frame_time {
             warn!(

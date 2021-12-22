@@ -23,7 +23,7 @@ lgn-resource-registry = { path = "../../plugin/resource-registry", version = "0.
 lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
 lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
-lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-config = { path = "../../lib/config", version = "0.1.0" }
 lgn-input = { path = "../../plugin/input" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }

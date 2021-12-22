@@ -4,6 +4,7 @@ use clap::Arg;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
+use lgn_config::Config;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
@@ -14,7 +15,6 @@ use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::TransformPlugin;
-use lgn_utils::Settings;
 
 mod grpc;
 mod plugin;
@@ -24,6 +24,7 @@ use plugin::EditorPlugin;
 fn main() {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
+
     trace_scope!();
 
     const ARG_NAME_ADDR: &str = "addr";
@@ -82,7 +83,7 @@ fn main() {
         )
         .get_matches();
 
-    let settings = Settings::new();
+    let settings = Config::new();
 
     let server_addr = {
         let url = args

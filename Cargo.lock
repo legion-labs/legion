@@ -2003,6 +2003,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-codec-api",
+ "lgn-config",
  "lgn-core",
  "lgn-data-model",
  "lgn-data-offline",
@@ -2018,7 +2019,6 @@ dependencies = [
  "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-transform",
- "lgn-utils",
  "tokio",
  "tonic",
 ]
@@ -3481,7 +3481,6 @@ dependencies = [
  "lgn-derive",
  "lgn-ecs",
  "lgn-telemetry",
- "lgn-transform",
  "lgn-utils",
  "ron",
  "serde",
@@ -3496,13 +3495,13 @@ dependencies = [
  "crossbeam-channel 0.5.1",
  "generic-data",
  "lgn-app",
+ "lgn-config",
  "lgn-content-store",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-runtime",
  "lgn-renderer",
  "lgn-transform",
- "lgn-utils",
  "sample-data-runtime",
  "serde_json",
 ]
@@ -3741,6 +3740,16 @@ dependencies = [
  "lgn-graphics-runtime",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "lgn-config"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "lgn-telemetry",
+ "serde",
+ "toml",
 ]
 
 [[package]]
@@ -4356,6 +4365,7 @@ dependencies = [
  "interceptor",
  "lgn-app",
  "lgn-codec-api",
+ "lgn-config",
  "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
@@ -4528,12 +4538,8 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
- "lazy_static",
  "lgn-derive",
- "log",
- "serde",
  "siphasher",
- "toml",
 ]
 
 [[package]]
@@ -6527,6 +6533,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
+ "lgn-config",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",

@@ -9,7 +9,7 @@ server_addr = "[::1]:50052"
 [streamer]
 max_frame_time = 16_000 #microsec
 
-[test_settings]
+[test_config]
 test_bool = false
 test_int = 1337
 test_float = 1337.1337

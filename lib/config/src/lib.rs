@@ -1,19 +1,80 @@
+//! config create exposes the legion config file to applications
+//!
+
+// BEGIN - Legion Labs lints v0.6
+// do not change or add/remove here, but one can add exceptions after this section
+#![deny(unsafe_code)]
+#![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
+// Rustdoc lints
+#![warn(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_intra_doc_links
+)]
+// Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list
+#![warn(clippy::pedantic)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::if_not_else,
+    clippy::items_after_statements,
+    clippy::missing_panics_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::similar_names,
+    clippy::shadow_unrelated,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix
+)]
+// Clippy nursery lints, still under development
+#![warn(
+    clippy::debug_assert_with_mut_call,
+    clippy::disallowed_method,
+    clippy::disallowed_type,
+    clippy::fallible_impl_from,
+    clippy::imprecise_flops,
+    clippy::mutex_integer,
+    clippy::path_buf_push_overwrite,
+    clippy::string_lit_as_bytes,
+    clippy::use_self,
+    clippy::useless_transmute
+)]
+// Clippy restriction lints, usually not considered bad, but useful in specific cases
+#![warn(
+    clippy::dbg_macro,
+    clippy::exit,
+    clippy::float_cmp_const,
+    clippy::map_err_ignore,
+    clippy::mem_forget,
+    clippy::missing_enforced_import_renames,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::string_to_string,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::verbose_file_reads
+)]
+// END - Legion Labs lints v0.6
+// crate-specific exceptions:
+#![allow(clippy::missing_errors_doc)]
+
 use std::env;
 use std::mem::discriminant;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+
+use lgn_telemetry::warn;
 
 use toml::value::{Table, Value};
 
 const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";
 const LOCAL_CONFIG_FILENAME: &str = "legion_local.toml";
 
-pub struct Settings {
+pub struct Config {
     config_path: PathBuf,
     entries: Table,
 }
 
-impl Settings {
+impl Config {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         // Search for the CONFIG file from the current exec direction,
@@ -44,7 +105,7 @@ impl Settings {
         }
 
         if global_table.is_none() {
-            log::warn!("Config file {:?} not found", DEFAULT_CONFIG_FILENAME);
+            warn!("Config file {:?} not found", DEFAULT_CONFIG_FILENAME);
         }
 
         Self {
@@ -83,7 +144,7 @@ impl Settings {
                     })
             })
             .map_err(|err| {
-                log::warn!("{}", err);
+                warn!("{}", err);
                 err
             })
             .ok()
@@ -99,7 +160,7 @@ impl Settings {
                     .and_then(|table| table.get(variable_name))
             })
             .or_else(|| {
-                log::warn!("Settings entry not found: {}", property_name);
+                warn!("Configs entry not found: {}", property_name);
                 None
             })
     }
@@ -114,7 +175,7 @@ impl Settings {
                     .and_then(|table| table.get_mut(variable_name))
             })
             .or_else(|| {
-                log::warn!("Settings entry not found: {}", property_name);
+                warn!("Configs entry not found: {}", property_name);
                 None
             })
     }
@@ -157,58 +218,56 @@ impl Settings {
 }
 
 lazy_static::lazy_static! {
-    pub static ref SETTINGS : RwLock<Settings> = RwLock::new(Settings::new());
+    pub static ref CONFIGS : RwLock<Config> = RwLock::new(Config::new());
 }
 
 #[macro_export]
-macro_rules! setting_set {
+macro_rules! config_set {
     ($param:literal, $val:expr ) => {
-        $crate::SETTINGS.write().unwrap().set($param, $val)
+        $crate::CONFIGS.write().unwrap().set($param, $val)
     };
 }
 
 #[macro_export]
-macro_rules! setting_get {
+macro_rules! config_get {
     ($param:literal) => {
-        $crate::SETTINGS.read().unwrap().get($param)
+        $crate::CONFIGS.read().unwrap().get($param)
     };
 }
 
 #[macro_export]
-macro_rules! setting_get_or {
+macro_rules! config_get_or {
     ($param:literal, $def:expr) => {
-        $crate::SETTINGS.read().unwrap().get_or($param, $def)
+        $crate::CONFIGS.read().unwrap().get_or($param, $def)
     };
 }
 
 #[test]
-fn test_settings() {
-    let settings = Settings::new();
+fn test_config() {
+    let configs = Config::new();
 
-    settings
-        .get_absolute_path("editor_srv.project_dir")
-        .unwrap();
+    configs.get_absolute_path("editor_srv.project_dir").unwrap();
 
-    let test_string: String = settings.get("test_settings.test_string").unwrap();
+    let test_string: String = configs.get("test_config.test_string").unwrap();
     assert_eq!(test_string, "TestString");
 
-    let test_bool: bool = settings.get("test_settings.test_bool").unwrap();
+    let test_bool: bool = configs.get("test_config.test_bool").unwrap();
     assert!(!test_bool);
 
-    let test_int: i32 = settings.get("test_settings.test_int").unwrap();
+    let test_int: i32 = configs.get("test_config.test_int").unwrap();
     assert_eq!(test_int, 1337);
 
-    let test_float: f32 = settings.get("test_settings.test_float").unwrap();
+    let test_float: f32 = configs.get("test_config.test_float").unwrap();
     assert!((test_float - 1337.1337f32).abs() < f32::EPSILON);
 }
 
 #[test]
-fn test_singleton_settings() {
-    let mut test_int: i32 = setting_get!("test_settings.test_int").unwrap();
+fn test_singleton_configs() {
+    let mut test_int: i32 = config_get!("test_config.test_int").unwrap();
     assert_eq!(test_int, 1337);
 
-    assert!(setting_set!("test_settings.test_int", 1));
+    assert!(config_set!("test_config.test_int", 1));
 
-    test_int = setting_get!("test_settings.test_int").unwrap();
+    test_int = config_get!("test_config.test_int").unwrap();
     assert_eq!(test_int, 1);
 }

@@ -734,7 +734,7 @@ impl App {
     /// Legion also provides a few sets of default plugins. See [`add_plugins`](Self::add_plugins).
     ///
     /// ## Example
-    /// ```
+    /// ```ignore
     /// # use lgn_app::prelude::*;
     /// #
     /// App::new().add_plugin(lgn_transform::TransformPlugin::default());
@@ -784,7 +784,7 @@ impl App {
     /// specific plugins while keeping the rest.
     ///
     /// ## Example
-    /// ```
+    /// ```ignore
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
     /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.

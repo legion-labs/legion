@@ -60,14 +60,15 @@
 mod asset_entities;
 mod asset_handles;
 mod asset_to_ecs;
+mod config;
 mod loading_states;
-mod settings;
 
 use std::{fs::File, path::Path, sync::Arc};
 
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
+pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_runtime::{
@@ -77,20 +78,19 @@ use lgn_ecs::prelude::*;
 use lgn_renderer::resources::DefaultMeshes;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
-pub use settings::{AssetRegistrySettings, DataBuildSettings};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut App) {
-        if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
-            let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
+        if let Some(mut config) = app.world.get_resource_mut::<AssetRegistrySettings>() {
+            let content_store_addr = ContentStoreAddr::from(config.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
-                let manifest = Self::read_or_default(&settings.game_manifest);
+                let manifest = Self::read_or_default(&config.game_manifest);
 
-                if settings.assets_to_load.is_empty() {
-                    settings.assets_to_load = manifest.resources();
+                if config.assets_to_load.is_empty() {
+                    config.assets_to_load = manifest.resources();
                 }
 
                 let mut registry = AssetRegistryOptions::new();
@@ -98,13 +98,13 @@ impl Plugin for AssetRegistryPlugin {
                 registry = lgn_graphics_runtime::add_loaders(registry);
                 registry = generic_data::runtime::add_loaders(registry);
 
-                if let Some(databuild_settings) = &settings.databuild_settings {
+                if let Some(databuild_config) = &config.databuild_config {
                     registry = registry.add_device_build(
                         Box::new(content_store),
-                        ContentStoreAddr::from(settings.content_store_addr.clone()),
+                        ContentStoreAddr::from(config.content_store_addr.clone()),
                         manifest.clone(),
-                        &databuild_settings.build_bin,
-                        &databuild_settings.buildindex,
+                        &databuild_config.build_bin,
+                        &databuild_config.buildindex,
                         false,
                     );
                 } else {
@@ -128,7 +128,7 @@ impl Plugin for AssetRegistryPlugin {
             } else {
                 eprintln!(
                     "Unable to open content storage in {:?}",
-                    settings.content_store_addr
+                    config.content_store_addr
                 );
             }
         } else {
@@ -139,20 +139,20 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     /// Initial plugin setup.
-    /// Request load for all assets specified in settings.
+    /// Request load for all assets specified in config.
     fn setup(
         registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
-        settings: ResMut<'_, AssetRegistrySettings>,
+        config: ResMut<'_, AssetRegistrySettings>,
     ) {
-        for asset_id in &settings.assets_to_load {
+        for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
 
         drop(registry);
-        drop(settings);
+        drop(config);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {

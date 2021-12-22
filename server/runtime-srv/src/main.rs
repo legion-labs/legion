@@ -68,6 +68,7 @@ use instant::Duration;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
+use lgn_config::Config;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
@@ -80,7 +81,6 @@ use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]
 mod standalone;
-use lgn_utils::Settings;
 #[cfg(feature = "standalone")]
 use standalone::build_standalone;
 
@@ -139,7 +139,7 @@ fn main() {
 
     let args = args.get_matches();
 
-    let settings = Settings::new();
+    let settings = Config::new();
 
     let server_addr = {
         let url = args
