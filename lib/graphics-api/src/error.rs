@@ -10,10 +10,6 @@ pub enum GfxError {
     #[cfg(feature = "vulkan")]
     VkError(ash::vk::Result),
     #[cfg(feature = "vulkan")]
-    VkLoadingError(Arc<ash::LoadingError>),
-    #[cfg(feature = "vulkan")]
-    VkCreateInstanceError(Arc<crate::backends::vulkan::VkCreateInstanceError>),
-    #[cfg(feature = "vulkan")]
     VkMemError(Arc<vk_mem::Error>),
 }
 
@@ -24,10 +20,6 @@ impl std::fmt::Display for GfxError {
             GfxError::IoError(e) => e.fmt(f),
             #[cfg(feature = "vulkan")]
             GfxError::VkError(e) => e.fmt(f),
-            #[cfg(feature = "vulkan")]
-            GfxError::VkLoadingError(e) => e.fmt(f),
-            #[cfg(feature = "vulkan")]
-            GfxError::VkCreateInstanceError(e) => e.fmt(f),
             #[cfg(feature = "vulkan")]
             GfxError::VkMemError(e) => e.fmt(f),
         }
@@ -58,20 +50,6 @@ impl From<std::io::Error> for GfxError {
 impl From<ash::vk::Result> for GfxError {
     fn from(result: ash::vk::Result) -> Self {
         Self::VkError(result)
-    }
-}
-
-#[cfg(feature = "vulkan")]
-impl From<ash::LoadingError> for GfxError {
-    fn from(result: ash::LoadingError) -> Self {
-        Self::VkLoadingError(Arc::new(result))
-    }
-}
-
-#[cfg(feature = "vulkan")]
-impl From<crate::backends::vulkan::VkCreateInstanceError> for GfxError {
-    fn from(result: crate::backends::vulkan::VkCreateInstanceError) -> Self {
-        Self::VkCreateInstanceError(Arc::new(result))
     }
 }
 

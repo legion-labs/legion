@@ -10,50 +10,14 @@ use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 use lgn_telemetry::{debug, error, info, log_enabled, trace, warn, Level};
 
 use crate::backends::vulkan::check_extensions_availability;
-use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter};
-use crate::ExtensionMode;
+use crate::backends::vulkan::VkDebugReporter;
+use crate::{ExtensionMode, GfxError, GfxResult};
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {
     pub entry: Arc<ash::Entry>,
     pub instance: ash::Instance,
     pub debug_reporter: Option<VkDebugReporter>,
-}
-
-#[derive(Debug)]
-pub enum VkCreateInstanceError {
-    InstanceError(ash::InstanceError),
-    VkError(vk::Result),
-}
-
-impl std::error::Error for VkCreateInstanceError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            VkCreateInstanceError::InstanceError(ref e) => Some(e),
-            VkCreateInstanceError::VkError(ref e) => Some(e),
-        }
-    }
-}
-
-impl core::fmt::Display for VkCreateInstanceError {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match *self {
-            VkCreateInstanceError::InstanceError(ref e) => e.fmt(fmt),
-            VkCreateInstanceError::VkError(ref e) => e.fmt(fmt),
-        }
-    }
-}
-
-impl From<ash::InstanceError> for VkCreateInstanceError {
-    fn from(result: ash::InstanceError) -> Self {
-        Self::InstanceError(result)
-    }
-}
-
-impl From<vk::Result> for VkCreateInstanceError {
-    fn from(result: vk::Result) -> Self {
-        Self::VkError(result)
-    }
 }
 
 impl VkInstance {
@@ -63,7 +27,7 @@ impl VkInstance {
         app_name: &CString,
         validation_mode: ExtensionMode,
         windowing_mode: ExtensionMode,
-    ) -> Result<Self, VkCreateInstanceError> {
+    ) -> GfxResult<Self> {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
             // Vulkan 1.1+
@@ -83,7 +47,7 @@ impl VkInstance {
         // Only need 1.1 for negative y viewport support, which is also possible to get out of an
         // extension, but at this point I think 1.1 is a reasonable minimum expectation
         if vulkan_version < vk::API_VERSION_1_1 {
-            return Err(VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
+            return Err(GfxError::from(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
         }
 
         // Expected to be 1.1.0 or 1.0.0 depending on what we found in try_enumerate_instance_version
@@ -144,8 +108,17 @@ impl VkInstance {
     ) -> VkResult<VkDebugReporter> {
         info!("Setting up vulkan debug callback");
         let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-            .message_severity(vk::DebugUtilsMessageSeverityFlagsEXT::all())
-            .message_type(DebugUtilsMessageTypeFlagsEXT::all())
+            .message_severity(
+                vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
+                    | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+                    | vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+                    | vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE,
+            )
+            .message_type(
+                DebugUtilsMessageTypeFlagsEXT::GENERAL
+                    | DebugUtilsMessageTypeFlagsEXT::VALIDATION
+                    | DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
+            )
             .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
 
         let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
@@ -162,7 +135,7 @@ impl VkInstance {
         entry: &ash::Entry,
         validation_mode: ExtensionMode,
         windowing_mode: ExtensionMode,
-    ) -> Result<(Vec<&CStr>, Vec<&CStr>), VkCreateInstanceError> {
+    ) -> GfxResult<(Vec<&CStr>, Vec<&CStr>)> {
         let layers = entry.enumerate_instance_layer_properties()?;
         debug!("Available layers: {:#?}", layers);
         let extensions = entry.enumerate_instance_extension_properties()?;
