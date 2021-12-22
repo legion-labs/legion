@@ -242,10 +242,9 @@ impl std::fmt::Display for Error {
 impl From<lgn_data_offline::resource::Error> for Error {
     fn from(err: lgn_data_offline::resource::Error) -> Self {
         match err {
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Self::NotFound,
-            lgn_data_offline::resource::Error::ParseError
-            | lgn_data_offline::resource::Error::IOError(_) => Self::ProjectError,
+            lgn_data_offline::resource::Error::NotFound => Self::NotFound,
+            lgn_data_offline::resource::Error::ParseError(_, _)
+            | lgn_data_offline::resource::Error::IOError(_, _) => Self::ProjectError,
         }
     }
 }

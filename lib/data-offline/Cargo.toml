@@ -14,6 +14,7 @@ lgn-data-model = { path = "../data-model" }
 
 # others
 anyhow = "1.0"
+thiserror = "1.0"
 crossbeam-channel = "0.5.1"
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }

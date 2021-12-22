@@ -167,10 +167,9 @@ impl DataBuild {
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
         Project::open(project_dir).map_err(|e| match e {
-            lgn_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Error::NotFound,
-            lgn_data_offline::resource::Error::IOError(_) => Error::IOError,
+            lgn_data_offline::resource::Error::ParseError(_, _) => Error::IntegrityFailure,
+            lgn_data_offline::resource::Error::NotFound => Error::NotFound,
+            lgn_data_offline::resource::Error::IOError(_, _) => Error::IOError,
         })
     }
 
