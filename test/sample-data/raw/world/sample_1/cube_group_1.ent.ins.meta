@@ -1,7 +1,0 @@
-(
-    name: "world/sample_1/cube_group_1.ent.ins",
-    dependencies: [
-        "prefab/props/cube.ent",
-    ],
-    content_checksum: "da36c49e8bf5e75f791be4d58e5b5d74a0436c29ebb64cddbf4724125e2f3fd9",
-)
