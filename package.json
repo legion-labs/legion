@@ -9,5 +9,8 @@
     "analytics:dev": "pnpm -C client/analytics-web/frontend dev",
     "editor:dev": "pnpm -C client/editor/frontend dev",
     "runtime:dev": "pnpm -C client/runtime/frontend dev"
+  },
+  "dependencies": {
+    "rimraf": "^3.0.2"
   }
 }
