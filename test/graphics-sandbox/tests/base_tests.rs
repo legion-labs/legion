@@ -59,6 +59,9 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
     }
 }
 
+// cargo run --bin lgn-graphics-sandbox -- --snapshot
+// rm ./test/graphics-sandbox/tests/refs/simple-scene/simple-scene.png
+// mv ./simple-scene.png ./test/graphics-sandbox/tests/refs/simple-scene
 #[test]
 fn gpu_simple_scene() {
     let test_name = "simple-scene";

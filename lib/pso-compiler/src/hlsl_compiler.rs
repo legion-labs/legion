@@ -464,7 +464,6 @@ mod tests {
     }";
 
     #[test]
-    #[ignore]
     fn compile_vs_shader() {
         let filesystem = FileSystem::new(".").unwrap();
         let compiler = HlslCompiler::new(filesystem).expect(
@@ -497,7 +496,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn compile_ps_shader() {
         let filesystem = FileSystem::new(".").unwrap();
         let compiler = HlslCompiler::new(filesystem).expect(

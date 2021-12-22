@@ -57,7 +57,7 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
-        let filesystem = FileSystem::new("d:\\")?;
+        let filesystem = FileSystem::new(".")?;
         filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
