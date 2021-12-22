@@ -11,9 +11,8 @@ tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 base64 = "0.13.0"
 
 [build-dependencies]
-lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
-    "proto-codegen",
-] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-proto = { path = "../../lib/build-utils-proto", version = "0.1.0" }
 
 [features]
 run-codegen = []

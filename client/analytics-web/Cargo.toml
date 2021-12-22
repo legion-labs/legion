@@ -21,7 +21,8 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 directories = "4"
 
 [build-dependencies]
-lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../../lib/build-utils-web", version = "0.1.0" }
 tauri-build = "1.0.0-beta.4"
 
 [features]

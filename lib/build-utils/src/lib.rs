@@ -83,11 +83,11 @@
 // crate-specific exceptions:
 #![allow()]
 
-#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
-use std::{ffi::OsStr, process::Command};
 use std::{
+    ffi::OsStr,
     fmt::Formatter,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use bitflags::bitflags;
@@ -129,155 +129,37 @@ impl Context {
             validation_only,
         }
     }
+
+    pub fn codegen_out_dir(&self) -> &Path {
+        &self.codegen_out_dir
+    }
 }
 
-/// Build proto files
+/// run commands in the shell
 ///
 /// # Errors
-/// Returns a generation error or an IO error
+/// Returns a `Error::MissingTool` if the command is not found
+/// Returns a `Error::Build` if the command fails
 ///
-#[cfg(feature = "proto-codegen")]
-pub fn build_protos(
-    context: &Context,
-    protos: &[impl AsRef<Path>],
-    includes: &[impl AsRef<Path>],
-    lang: Language,
-) -> Result<()> {
-    let out_dir = PathBuf::from(&context.codegen_out_dir);
+pub fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result<()> {
+    let command_path = which::which(command_path.as_ref())
+        .map_err(|_err| Error::MissingTool(command_path.as_ref().to_str().unwrap().to_string()))?;
+    let success = Command::new(&command_path)
+        .args(args)
+        .current_dir(dir)
+        .status()?
+        .success();
 
-    if lang.contains(Language::RUST) {
-        tonic_build::configure()
-            .out_dir(&out_dir)
-            .compile(protos, includes)?;
-    }
-    if lang.contains(Language::TYPESCRIPT) {
-        if Path::new("./package.json").exists() {
-            {
-                let lock = named_lock::NamedLock::create("yarn_install").unwrap();
-                let _guard = lock.lock().unwrap();
-                run_cmd("yarn", &["install"], ".")?;
-            }
-            let mut proto_plugin = PathBuf::from("./node_modules/.bin/protoc-gen-ts_proto");
-            if cfg!(windows) {
-                proto_plugin = PathBuf::from(".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd");
-            }
-            if !proto_plugin.exists() {
-                return Err(Error::Build(
-                    "missing `ts-proto` in your package dependency".to_string(),
-                ));
-            }
-            let plugin_arg = format!("--plugin=protoc-gen-ts_proto={}", proto_plugin.display());
-            let proto_out_arg = format!("--ts_proto_out={}", out_dir.display());
-            let mut args = vec![
-                plugin_arg.as_str(),
-                proto_out_arg.as_str(),
-                "--ts_proto_opt=esModuleInterop=true",
-                "--ts_proto_opt=outputClientImpl=grpc-web",
-                "--ts_proto_opt=env=browser",
-                "--ts_proto_opt=lowerCaseServiceMethods=true",
-            ];
-            let includes: Vec<_> = includes
-                .iter()
-                .map(|path| format!("--proto_path={}", path.as_ref().to_str().unwrap()))
-                .collect();
-            let mut include_args: Vec<_> =
-                includes.iter().map(std::string::String::as_str).collect();
-            args.append(&mut include_args);
-
-            let mut protos_args: Vec<_> = protos
-                .iter()
-                .map(|path| path.as_ref().to_str().unwrap())
-                .collect();
-            args.append(&mut protos_args);
-            run_cmd("protoc", &args, ".")?;
-        } else {
-            return Err(Error::Build(
-                "a package.json file needs to be next to the build.rs".to_string(),
-            ));
-        }
-    }
-
-    for proto in protos {
-        println!("cargo:rerun-if-changed={}", proto.as_ref().display());
-    }
-
-    Ok(())
-}
-
-/// Handle the copy/validation of the output files
-///
-/// # Errors
-/// Returns a generation error or an IO error
-///
-#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
-pub fn build_web_app() -> Result<()> {
-    if let Ok(yarn_path) = which::which("yarn") {
-        let frontend_dir = "frontend";
-        {
-            let lock = named_lock::NamedLock::create("yarn_install").unwrap();
-            let _guard = lock.lock().unwrap();
-            run_cmd(&yarn_path, &["install"], frontend_dir)?;
-        }
-        run_cmd(&yarn_path, &["build"], frontend_dir)?;
-
-        // JS ecosystem forces us to have output files in our sources hierarchy
-        // we are filtering files
-        std::fs::read_dir(frontend_dir)
-            .unwrap()
-            .map(|res| res.map(|entry| entry.path()))
-            .filter_map(|path| {
-                if let Ok(path) = path {
-                    if let Some(file_name) = path.file_name() {
-                        if file_name != "dist" && file_name != "node_modules" {
-                            return Some(path);
-                        }
-                    }
-                }
-                None
-            })
-            .for_each(|path| {
-                // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-            });
+    if success {
+        Ok(())
     } else {
-        std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
-        println!("cargo:rerun-if-env-changed=PATH");
+        Err(Error::Build(format!(
+            "Failed to run command {} with {} in {}",
+            command_path.display(),
+            args.join(" "),
+            dir
+        )))
     }
-    Ok(())
-}
-
-/// Build graphics codegen files
-///
-/// # Errors
-/// Returns a generation error or an IO error
-///
-#[cfg(feature = "graphics-cgen")]
-pub fn build_graphics_cgen(context: &Context, root_file: &impl AsRef<Path>) -> Result<()> {
-    // build context
-    let mut out_dir = PathBuf::from(&context.codegen_out_dir);
-    out_dir.push("cgen");
-    let mut ctx_builder = lgn_graphics_cgen::run::CGenContextBuilder::new();
-    ctx_builder.set_root_file(root_file).unwrap();
-    ctx_builder.set_outdir(&out_dir).unwrap();
-
-    // run generation
-    let result = lgn_graphics_cgen::run::run(&ctx_builder.build());
-    match &result {
-        Ok(build_result) => {
-            for input_dependency in &build_result.input_dependencies {
-                println!("cargo:rerun-if-changed={}", input_dependency.display());
-            }
-        }
-        Err(e) => {
-            for msg in e.chain() {
-                eprintln!("{}", msg);
-            }
-        }
-    }
-    result
-        .map(|_| ())
-        .map_err(|e| Error::Build(format!("{:?}", e)))
 }
 
 /// Creates a generation context, and cleans the temporary output folder
@@ -316,28 +198,6 @@ pub fn post_codegen(context: &Context) -> Result<()> {
         )))
     } else {
         Ok(())
-    }
-}
-
-#[cfg(any(feature = "web-appgen", feature = "proto-codegen"))]
-fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result<()> {
-    let command_path = which::which(command_path.as_ref())
-        .map_err(|_err| Error::MissingTool(command_path.as_ref().to_str().unwrap().to_string()))?;
-    let success = Command::new(&command_path)
-        .args(args)
-        .current_dir(dir)
-        .status()?
-        .success();
-
-    if success {
-        Ok(())
-    } else {
-        Err(Error::Build(format!(
-            "Failed to run command {} with {} in {}",
-            command_path.display(),
-            args.join(" "),
-            dir
-        )))
     }
 }
 

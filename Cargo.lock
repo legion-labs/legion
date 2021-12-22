@@ -177,6 +177,7 @@ dependencies = [
  "lgn-app",
  "lgn-async",
  "lgn-build-utils",
+ "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
  "tauri",
@@ -1976,6 +1977,7 @@ dependencies = [
  "lgn-async",
  "lgn-browser",
  "lgn-build-utils",
+ "lgn-build-utils-web",
  "lgn-ecs",
  "lgn-online",
  "lgn-tauri",
@@ -3535,11 +3537,28 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "lgn-graphics-cgen",
  "named-lock",
  "thiserror",
- "tonic-build",
  "walkdir",
+ "which",
+]
+
+[[package]]
+name = "lgn-build-utils-proto"
+version = "0.1.0"
+dependencies = [
+ "lgn-build-utils",
+ "named-lock",
+ "tonic-build",
+ "which",
+]
+
+[[package]]
+name = "lgn-build-utils-web"
+version = "0.1.0"
+dependencies = [
+ "lgn-build-utils",
+ "named-lock",
  "which",
 ]
 
@@ -3994,6 +4013,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "lgn-build-utils",
+ "lgn-build-utils-proto",
  "prost",
  "tokio",
  "tonic",
@@ -4275,6 +4295,7 @@ dependencies = [
  "lgn-build-utils",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
  "lgn-input",
@@ -4316,6 +4337,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "lgn-build-utils",
+ "lgn-build-utils-proto",
  "prost",
  "tokio",
  "tonic",
@@ -4393,6 +4415,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "lgn-build-utils",
+ "lgn-build-utils-proto",
  "prost",
  "tokio",
  "tonic",
@@ -4456,6 +4479,7 @@ dependencies = [
  "anyhow",
  "base64",
  "lgn-build-utils",
+ "lgn-build-utils-proto",
  "lz4",
  "prost",
  "tokio",
@@ -6517,6 +6541,7 @@ dependencies = [
  "lgn-app",
  "lgn-async",
  "lgn-build-utils",
+ "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
  "tauri",

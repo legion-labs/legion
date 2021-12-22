@@ -40,9 +40,8 @@ sqlx = { version = "0.5", features = [
 directories = "4"
 
 [build-dependencies]
-lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
-    "web-appgen",
-] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../../lib/build-utils-web", version = "0.1.0" }
 tauri-build = "1.0.0-beta.4"
 
 [features]

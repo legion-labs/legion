@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "./stream.proto",
         ];
 
-        lgn_build_utils::build_protos(
+        lgn_build_utils_proto::build_protos(
             &context,
             proto_filepaths,
             &["."],

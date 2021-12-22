@@ -15,9 +15,8 @@ tonic = "0.6"
 prost = "0.9"
 
 [build-dependencies]
-lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
-    "proto-codegen",
-] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-proto = { path = "../../lib/build-utils-proto", version = "0.1.0" }
 
 [features]
 run-codegen = []
