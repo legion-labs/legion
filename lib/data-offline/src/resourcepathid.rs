@@ -48,13 +48,13 @@ impl Transform {
 /// # let resources = ResourceRegistryOptions::new().create_registry();
 /// # let mut resources = resources.lock().unwrap();
 /// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
-/// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
+/// # pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
 /// // create a resource and add it to the project
-/// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
-/// let resource_id = project.add_resource(ResourcePathName::new("new resource"),
-///                    "src_geom", SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
+/// let source_geometry_type = ResourceType::new(SOURCE_GEOMETRY.as_bytes());
+/// let resource_handle = resources.new_resource(source_geometry_type).unwrap();
+/// let resource_id = project.add_resource(ResourcePathName::new("new resource"), SOURCE_GEOMETRY, source_geometry_type, &resource_handle, &mut resources).unwrap();
 ///
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
