@@ -2582,7 +2582,6 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
