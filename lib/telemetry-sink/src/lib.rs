@@ -90,4 +90,8 @@ impl TelemetryGuard {
             _guard: TelemetrySystemGuard::new(sink)?,
         })
     }
+    pub fn with_log_level(self, leve_filter: LevelFilter) -> Self {
+        set_max_log_level(leve_filter);
+        self
+    }
 }

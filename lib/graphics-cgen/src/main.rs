@@ -58,7 +58,7 @@
 use anyhow::Result;
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
 use lgn_telemetry::LevelFilter;
-use simple_logger::SimpleLogger;
+use lgn_telemetry_sink::TelemetryGuard;
 
 fn main() -> Result<()> {
     let res = main_internal();
@@ -114,7 +114,8 @@ fn main_internal() -> Result<CGenBuildResult> {
     } else {
         LevelFilter::Warn
     };
-    SimpleLogger::new().with_level(log_level).init().unwrap();
+
+    let _telemety_guard = TelemetryGuard::new().unwrap().with_log_level(log_level);
 
     // initialize context
     let root_file = matches.value_of("input").unwrap();

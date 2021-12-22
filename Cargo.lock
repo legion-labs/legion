@@ -4053,9 +4053,9 @@ dependencies = [
  "lgn-graphics-api",
  "lgn-graphics-cgen-runtime",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "proc-macro2",
  "relative-path",
- "simple_logger",
  "strum 0.23.0",
  "syn",
 ]
