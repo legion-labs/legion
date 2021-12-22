@@ -42,23 +42,31 @@ impl Transform {
 /// runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use lgn_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
-/// # use lgn_data_runtime::ResourceType;
-/// # use std::path::PathBuf;
-/// # let resources = ResourceRegistryOptions::new().create_registry();
-/// # let mut resources = resources.lock().unwrap();
-/// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
-/// # pub const SOURCE_GEOMETRY: &'static str = "src_geom";
-/// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
-/// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
+/// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+/// use lgn_data_runtime::ResourceType;
+/// use lgn_data_offline::ResourcePathId;
+/// use std::path::PathBuf;
+/// let resources = ResourceRegistryOptions::new().create_registry();
+/// let mut resources = resources.lock().unwrap();
+/// let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
+/// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
+/// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
 /// // create a resource and add it to the project
 /// let source_geometry_type = ResourceType::new(SOURCE_GEOMETRY.as_bytes());
 /// let resource_handle = resources.new_resource(source_geometry_type).unwrap();
-/// let resource_id = project.add_resource(ResourcePathName::new("new resource"), SOURCE_GEOMETRY, source_geometry_type, &resource_handle, &mut resources).unwrap();
-///
+/// let resource_id = project
+///     .add_resource(
+///         ResourcePathName::new("new resource"),
+///         SOURCE_GEOMETRY,
+///         source_geometry_type,
+///         &resource_handle,
+///         &mut resources,
+///     )
+///     .unwrap();
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
-/// let target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
+/// let _target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
 /// ```
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {
