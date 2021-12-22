@@ -1,7 +1,6 @@
 //! Telemetry library
 //!
 //! Provides logging, metrics, memory and performance profiling
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -77,22 +76,21 @@ pub mod thread_events;
 pub use dual_time::*;
 pub use event_sink::*;
 pub use event_stream::*;
+pub use log;
 pub use log_block::*;
 pub use metrics_block::*;
 pub use scope::*;
 pub use thread_block::*;
 pub use thread_events::*;
 
-pub use log;
-
 pub mod prelude {
     pub use crate::dispatch::*;
     pub use crate::guard::*;
+    // re-exporting log macros for convenience
+    pub use crate::log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
     pub use crate::log_events::*;
     pub use crate::metric_event::*;
     pub use crate::trace_scope;
-    // re-exporting log macros for convenience
-    pub use crate::log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 }
 
 pub use prelude::*;

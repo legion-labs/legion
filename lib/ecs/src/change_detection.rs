@@ -9,8 +9,8 @@ use crate::{component::ComponentTicks, system::Resource};
 /// ## Example
 /// Using types that implement [`DetectChanges`], such as [`ResMut`], provide
 /// a way to query if a value has been mutated in another system.
-/// Normally change detecting is triggered by either [`DerefMut`] or [`AsMut`], however
-/// it can be manually triggered via [`DetectChanges::set_changed`].
+/// Normally change detecting is triggered by either [`DerefMut`] or [`AsMut`],
+/// however it can be manually triggered via [`DetectChanges::set_changed`].
 ///
 /// ```
 /// use lgn_ecs::prelude::*;
@@ -25,14 +25,13 @@ use crate::{component::ComponentTicks, system::Resource};
 ///    resource.0 = 42; // triggers change detection via [`DerefMut`]
 /// }
 /// ```
-///
 pub trait DetectChanges {
-    /// Returns true if (and only if) this value been added since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this value been added since the last
+    /// execution of this system.
     fn is_added(&self) -> bool;
 
-    /// Returns true if (and only if) this value been changed since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this value been changed since the last
+    /// execution of this system.
     fn is_changed(&self) -> bool;
 
     /// Manually flags this value as having been changed. This normally isn't
@@ -138,13 +137,15 @@ pub(crate) struct Ticks<'a> {
 
 /// Unique mutable borrow of a resource.
 ///
-/// See the [`World`](crate::world::World) documentation to see the usage of a resource.
+/// See the [`World`](crate::world::World) documentation to see the usage of a
+/// resource.
 ///
 /// If you need a shared borrow, use [`Res`](crate::system::Res) instead.
 ///
 /// # Panics
 ///
-/// Panics when used as a [`SystemParam`](crate::system::SystemParam) if the resource does not exist.
+/// Panics when used as a [`SystemParam`](crate::system::SystemParam) if the
+/// resource does not exist.
 ///
 /// Use `Option<ResMut<T>>` instead if the resource might not always exist.
 pub struct ResMut<'a, T: Resource> {
@@ -158,10 +159,11 @@ impl_debug!(ResMut<'a, T>, Resource);
 
 /// Unique borrow of a non-[`Send`] resource.
 ///
-/// Only [`Send`] resources may be accessed with the [`ResMut`] [`SystemParam`](crate::system::SystemParam). In case that the
-/// resource does not implement `Send`, this `SystemParam` wrapper can be used. This will instruct
-/// the scheduler to instead run the system on the main thread so that it doesn't send the resource
-/// over to another thread.
+/// Only [`Send`] resources may be accessed with the [`ResMut`]
+/// [`SystemParam`](crate::system::SystemParam). In case that the resource does
+/// not implement `Send`, this `SystemParam` wrapper can be used. This will
+/// instruct the scheduler to instead run the system on the main thread so that
+/// it doesn't send the resource over to another thread.
 ///
 /// # Panics
 ///

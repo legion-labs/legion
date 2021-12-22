@@ -6,13 +6,12 @@ use std::{
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::ResourcePathId;
 
+use super::CompilerStub;
 use crate::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     CompiledResource, CompilerHash,
 };
-
-use super::CompilerStub;
 
 pub(super) struct BinCompilerStub {
     pub(super) bin_path: PathBuf,

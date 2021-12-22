@@ -14,18 +14,19 @@ use crate::{
 };
 
 /// Extension trait for [`Fetch`] containing methods used by query filters.
-/// This trait exists to allow "short circuit" behaviors for relevant query filter fetches.
+/// This trait exists to allow "short circuit" behaviors for relevant query
+/// filter fetches.
 pub trait FilterFetch: for<'w, 's> Fetch<'w, 's> {
     /// # Safety
     ///
-    /// Must always be called _after_ [`Fetch::set_archetype`]. `archetype_index` must be in the range
-    /// of the current archetype.
+    /// Must always be called _after_ [`Fetch::set_archetype`].
+    /// `archetype_index` must be in the range of the current archetype.
     unsafe fn archetype_filter_fetch(&mut self, archetype_index: usize) -> bool;
 
     /// # Safety
     ///
-    /// Must always be called _after_ [`Fetch::set_table`]. `table_row` must be in the range of the
-    /// current table.
+    /// Must always be called _after_ [`Fetch::set_table`]. `table_row` must be
+    /// in the range of the current table.
     unsafe fn table_filter_fetch(&mut self, table_row: usize) -> bool;
 }
 
@@ -46,8 +47,9 @@ where
 
 /// Filter that selects entities with a component `T`.
 ///
-/// This can be used in a [`Query`](crate::system::Query) if entities are required to have the
-/// component `T` but you don't actually care about components value.
+/// This can be used in a [`Query`](crate::system::Query) if entities are
+/// required to have the component `T` but you don't actually care about
+/// components value.
 ///
 /// This is the negation of [`Without`].
 ///
@@ -295,11 +297,11 @@ unsafe impl<T> ReadOnlyFetch for WithoutFetch<T> {}
 
 /// A filter that tests if any of the given filters apply.
 ///
-/// This is useful for example if a system with multiple components in a query only wants to run
-/// when one or more of the components have changed.
+/// This is useful for example if a system with multiple components in a query
+/// only wants to run when one or more of the components have changed.
 ///
-/// The `And` equivalent to this filter is a [`prim@tuple`] testing that all the contained filters
-/// apply instead.
+/// The `And` equivalent to this filter is a [`prim@tuple`] testing that all the
+/// contained filters apply instead.
 ///
 /// # Examples
 ///
@@ -594,17 +596,18 @@ macro_rules! impl_tick_filter {
 }
 
 impl_tick_filter!(
-    /// Filter that retrieves components of type `T` that have been added since the last execution
-    /// of this system.
+    /// Filter that retrieves components of type `T` that have been added since
+    /// the last execution of this system.
     ///
     /// This filter is useful to do one-time post-processing on components.
     ///
-    /// Because the ordering of systems can change and this filter is only effective on changes
-    /// before the query executes you need to use explicit dependency ordering or ordered stages to
-    /// avoid frame delays.
+    /// Because the ordering of systems can change and this filter is only
+    /// effective on changes before the query executes you need to use
+    /// explicit dependency ordering or ordered stages to avoid frame
+    /// delays.
     ///
-    /// If instead behavior is meant to change on whether the component changed or not
-    /// [`ChangeTrackers`](crate::query::ChangeTrackers) may be used.
+    /// If instead behavior is meant to change on whether the component changed
+    /// or not [`ChangeTrackers`](crate::query::ChangeTrackers) may be used.
     ///
     /// # Examples
     ///
@@ -634,18 +637,20 @@ impl_tick_filter!(
 );
 
 impl_tick_filter!(
-    /// Filter that retrieves components of type `T` that have been changed since the last
-    /// execution of this system.
+    /// Filter that retrieves components of type `T` that have been changed
+    /// since the last execution of this system.
     ///
-    /// This filter is useful for synchronizing components, and as a performance optimization as it
-    /// means that the query contains fewer items for a system to iterate over.
+    /// This filter is useful for synchronizing components, and as a performance
+    /// optimization as it means that the query contains fewer items for a
+    /// system to iterate over.
     ///
-    /// Because the ordering of systems can change and this filter is only effective on changes
-    /// before the query executes you need to use explicit dependency ordering or ordered
-    /// stages to avoid frame delays.
+    /// Because the ordering of systems can change and this filter is only
+    /// effective on changes before the query executes you need to use
+    /// explicit dependency ordering or ordered stages to avoid frame
+    /// delays.
     ///
-    /// If instead behavior is meant to change on whether the component changed or not
-    /// [`ChangeTrackers`](crate::query::ChangeTrackers) may be used.
+    /// If instead behavior is meant to change on whether the component changed
+    /// or not [`ChangeTrackers`](crate::query::ChangeTrackers) may be used.
     ///
     /// # Examples
     ///

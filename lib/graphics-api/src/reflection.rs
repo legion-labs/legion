@@ -1,7 +1,6 @@
+use lgn_telemetry::error;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
-
-use lgn_telemetry::error;
 
 use crate::types::ShaderStageFlags;
 use crate::{GfxResult, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
@@ -15,7 +14,8 @@ pub struct ShaderResourceBindingKey {
 
 /// A data source within a shader. Often a descriptor or push constant.
 ///
-/// A `ShaderResource` may be specified by hand or generated using shader-compiler
+/// A `ShaderResource` may be specified by hand or generated using
+/// shader-compiler
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -52,7 +52,8 @@ impl ShaderResource {
     }
 }
 
-/// Reflection data for a pipeline, created by merging shader stage reflection data
+/// Reflection data for a pipeline, created by merging shader stage reflection
+/// data
 #[derive(Default, Clone, Debug)]
 pub struct PipelineReflection {
     pub shader_resources: Vec<ShaderResource>,

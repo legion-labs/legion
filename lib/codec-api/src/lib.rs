@@ -94,7 +94,8 @@
 
 use std::sync::Arc;
 
-/// Contains the hardware implementation of multiple encoding/decoding algorithms
+/// Contains the hardware implementation of multiple encoding/decoding
+/// algorithms
 pub mod backends;
 
 pub mod formats;

@@ -2,13 +2,12 @@ use std::marker::PhantomData;
 
 use lgn_telemetry::error;
 
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanDescriptorSetWriter;
 use crate::{
     DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,
     MAX_DESCRIPTOR_BINDINGS,
 };
-
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanDescriptorSetWriter;
 
 pub struct DescriptorSetWriter<'frame> {
     pub(crate) descriptor_set: DescriptorSetHandle,

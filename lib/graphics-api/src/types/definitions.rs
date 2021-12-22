@@ -4,7 +4,6 @@ use std::{
 };
 
 use lgn_utils::decimal::DecimalF32;
-
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -16,8 +15,8 @@ use super::{
 use crate::backends::vulkan::VkInstance;
 use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
-/// Controls if an extension is enabled or not. The requirements/behaviors of validation is
-/// API-specific.
+/// Controls if an extension is enabled or not. The requirements/behaviors of
+/// validation is API-specific.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ExtensionMode {
     /// Do not enable the related extensions
@@ -26,19 +25,21 @@ pub enum ExtensionMode {
     /// Enable extensions if available.
     EnabledIfAvailable,
 
-    /// Enable validation, and fail if we cannot enable it or detect that it is not enabled through
-    /// external means. (Details on this are API-specific)
+    /// Enable validation, and fail if we cannot enable it or detect that it is
+    /// not enabled through external means. (Details on this are
+    /// API-specific)
     Enabled,
 }
 
 /// General configuration that all APIs will make best effort to respect
 pub struct ApiDef {
-    /// Used as a hint for drivers for what is being run. There are no special requirements for
-    /// this. It is not visible to end-users.
+    /// Used as a hint for drivers for what is being run. There are no special
+    /// requirements for this. It is not visible to end-users.
     pub app_name: String,
 
-    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
-    /// during development but very expensive. Applications should not ship with validation enabled.
+    /// Used to enable/disable validation at runtime. Not all APIs allow this.
+    /// Validation is helpful during development but very expensive.
+    /// Applications should not ship with validation enabled.
     pub validation_mode: ExtensionMode,
 
     /// Don't enable Window interop extensions
@@ -400,15 +401,16 @@ impl TextureViewDef {
 /// Used to create a `CommandPool`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandPoolDef {
-    /// Set to true if the command buffers allocated from the pool are expected to have very short
-    /// lifetimes
+    /// Set to true if the command buffers allocated from the pool are expected
+    /// to have very short lifetimes
     pub transient: bool,
 }
 
 /// Used to create a `CommandBuffer`
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandBufferDef {
-    /// Secondary command buffers are used to encode a single pass on multiple threads
+    /// Secondary command buffers are used to encode a single pass on multiple
+    /// threads
     pub is_secondary: bool,
 }
 
@@ -589,7 +591,8 @@ pub struct VertexLayout {
     pub buffers: Vec<VertexLayoutBuffer>,
 }
 
-/// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".
+/// Affects depth testing and stencil usage. Commonly used to enable
+/// "Z-buffering".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct DepthState {
@@ -630,7 +633,8 @@ impl Default for DepthState {
     }
 }
 
-/// Affects rasterization, commonly used to enable backface culling or wireframe rendering
+/// Affects rasterization, commonly used to enable backface culling or wireframe
+/// rendering
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RasterizerState {
@@ -746,21 +750,21 @@ impl BlendStateRenderTarget {
     }
 }
 
-/// Affects the way the result of a pixel shader is blended with a value it will overwrite. Commonly
-/// used to enable "alpha-blending".
+/// Affects the way the result of a pixel shader is blended with a value it will
+/// overwrite. Commonly used to enable "alpha-blending".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct BlendState {
     /// Individual blend states for blend targets
     pub render_target_blend_states: Vec<BlendStateRenderTarget>,
 
-    /// Indicates which blend targets to affect. Blend targets with unset bits are left in default
-    /// state.
+    /// Indicates which blend targets to affect. Blend targets with unset bits
+    /// are left in default state.
     pub render_target_mask: BlendStateTargets,
 
-    /// If false, `render_target_blend_states[0]` will apply to all render targets indicated by
-    /// `render_target_mask`. If true, we index into `render_target_blend_states` based on the
-    /// render target's index.
+    /// If false, `render_target_blend_states[0]` will apply to all render
+    /// targets indicated by `render_target_mask`. If true, we index into
+    /// `render_target_blend_states` based on the render target's index.
     pub independent_blend: bool,
 }
 

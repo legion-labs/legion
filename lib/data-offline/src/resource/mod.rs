@@ -1,8 +1,11 @@
 //! Offline management of resources.
 //!
-//! [`Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes both on-disk storage and source control interactions.
+//! [`Project`] keeps track of resources that are part of the project and is
+//! responsible for their storage - which includes both on-disk storage and
+//! source control interactions.
 //!
-//! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
+//! [`ResourceRegistry`] takes responsibility of managing the in-memory
+//! representation of resources.
 
 use std::any::Any;
 use std::io;
@@ -20,10 +23,12 @@ pub trait OfflineResource: Asset {
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
-    /// Interface returning a resource in a default state. Useful when creating a new resource.
+    /// Interface returning a resource in a default state. Useful when creating
+    /// a new resource.
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync>;
 
-    /// Interface returning a list of resources that `resource` depends on for building.
+    /// Interface returning a list of resources that `resource` depends on for
+    /// building.
     fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId>;
 
     /// Interface defining serialization behavior of the resource.

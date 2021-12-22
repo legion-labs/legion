@@ -11,19 +11,20 @@ use lgn_renderer::hl_gfx_api::HLQueue;
 use lgn_renderer::RenderHandle;
 use lgn_telemetry::{debug, error, info, trace};
 
-/// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
-/// optional.
+/// May be implemented to get callbacks related to the swapchain being
+/// created/destroyed. This is optional.
 pub trait SwapchainEventListener {
-    /// Called whenever the swapchain needs to be created (the first time, and in cases where the
-    /// swapchain needs to be recreated)
+    /// Called whenever the swapchain needs to be created (the first time, and
+    /// in cases where the swapchain needs to be recreated)
     fn swapchain_created(
         &mut self,
         device_context: &DeviceContext,
         swapchain: &Swapchain,
     ) -> GfxResult<()>;
 
-    /// Called whenever the swapchain will be destroyed (when `VkSurface` is dropped, and also in cases
-    /// where the swapchain needs to be recreated)
+    /// Called whenever the swapchain will be destroyed (when `VkSurface` is
+    /// dropped, and also in cases where the swapchain needs to be
+    /// recreated)
     fn swapchain_destroyed(
         &mut self,
         device_context: &DeviceContext,
@@ -31,9 +32,10 @@ pub trait SwapchainEventListener {
     ) -> GfxResult<()>;
 }
 
-// This is shared state held within an Arc between the SwapchainHelper and the PresentableFrame.
-// It contains the swapchain, sync primitives required to wait for the GPU to complete work, and
-// sync primitives to allow the helper/presentable frame to communicate.
+// This is shared state held within an Arc between the SwapchainHelper and the
+// PresentableFrame. It contains the swapchain, sync primitives required to wait
+// for the GPU to complete work, and sync primitives to allow the
+// helper/presentable frame to communicate.
 struct SwapchainHelperSharedState {
     sync_frame_index: AtomicUsize,
     image_available_semaphores: Vec<Semaphore>,
@@ -72,11 +74,13 @@ impl SwapchainHelperSharedState {
     }
 }
 
-/// Represents an acquired image from a swapchain. It can move between threads and be submitted by
-/// any thread. The swapchain helper will not provide another image until this one is presented.
+/// Represents an acquired image from a swapchain. It can move between threads
+/// and be submitted by any thread. The swapchain helper will not provide
+/// another image until this one is presented.
 ///
-/// To ease error handling, the swapchain may be submitted with an error. This error will be
-/// returned on the next attempt to acquire a swapchain image (i.e. the main thread).
+/// To ease error handling, the swapchain may be submitted with an error. This
+/// error will be returned on the next attempt to acquire a swapchain image
+/// (i.e. the main thread).
 pub struct PresentableFrame {
     // State that's shared among the swapchain helper and the presentable frame. Mostly immutable,
     // but the swapchain itself is stored in it, wrapped by a mutex
@@ -86,9 +90,10 @@ pub struct PresentableFrame {
 }
 
 impl PresentableFrame {
-    /// An index that starts at 0 on the first present and increments every frame, wrapping back to
-    /// 0 after each swapchain image has been presented once. (See `image_count` on
-    /// `SwapchainHelper`). WARNING: This is not always the returned swapchain image. Swapchain
+    /// An index that starts at 0 on the first present and increments every
+    /// frame, wrapping back to 0 after each swapchain image has been
+    /// presented once. (See `image_count` on `SwapchainHelper`). WARNING:
+    /// This is not always the returned swapchain image. Swapchain
     /// images may be acquired in any order.
     pub fn rotating_frame_index(&self) -> usize {
         // The sync_frame_index can be used as-is for this purpose
@@ -106,8 +111,8 @@ impl PresentableFrame {
         &self.swapchain_image.render_target_view
     }
 
-    /// Submits the given command buffers and schedules the swapchain image to be presented after
-    /// their completion
+    /// Submits the given command buffers and schedules the swapchain image to
+    /// be presented after their completion
     pub fn present(
         mut self,
         queue: &HLQueue<'_>,
@@ -134,7 +139,8 @@ impl PresentableFrame {
         wait_sem: &Semaphore,
         command_buffers: &mut [RenderHandle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
-        // A present can only occur using the result from the previous acquire_next_image call
+        // A present can only occur using the result from the previous
+        // acquire_next_image call
         let shared_state = self.shared_state.as_ref().unwrap();
         let sync_frame_index = shared_state.sync_frame_index.load(Ordering::Relaxed);
         assert!(self.sync_frame_index == sync_frame_index);
@@ -183,10 +189,11 @@ pub enum TryAcquireNextImageResult {
     /// Successfully retrieves a presentable frame
     Success(PresentableFrame),
 
-    /// While this is an "error" being returned as success, it is expected and recoverable while
-    /// other errors usually aren't. This way the ? operator can still be used to bail out the
-    /// unrecoverable errors and the different flavors of "success" should be explicitly handled
-    /// in a match
+    /// While this is an "error" being returned as success, it is expected and
+    /// recoverable while other errors usually aren't. This way the ?
+    /// operator can still be used to bail out the unrecoverable errors and
+    /// the different flavors of "success" should be explicitly handled in a
+    /// match
     DeviceReset,
 }
 
@@ -241,8 +248,8 @@ impl SwapchainHelper {
     ) -> GfxResult<()> {
         debug!("Destroying swapchain helper");
 
-        // If there is a frame in flight, wait until it is submitted. This hopefully means we are
-        // the only holder of this arc and we can unwrap it
+        // If there is a frame in flight, wait until it is submitted. This hopefully
+        // means we are the only holder of this arc and we can unwrap it
         self.wait_until_previous_frame_submitted()?;
 
         if let Some(shared_state) = self.shared_state.take() {
@@ -337,8 +344,9 @@ impl SwapchainHelper {
         let previous_frame_result = self.wait_until_previous_frame_submitted();
 
         //
-        // Block until the next sync frame index finishes submitting. It's not safe to modify
-        // resources associated with it until the last execution of it fully completes.
+        // Block until the next sync frame index finishes submitting. It's not safe to
+        // modify resources associated with it until the last execution of it
+        // fully completes.
         //
         let next_sync_frame = self
             .shared_state
@@ -350,10 +358,12 @@ impl SwapchainHelper {
 
         //
         // Check the result of the previous frame. Possible outcomes:
-        //  - Previous frame was successful: immediately try rendering again with the same swapchain
-        //  - We've never tried rendering before: try rendering with the initial swapchain
-        //  - Previous frame failed but resolvable by rebuilding the swapchain - skip trying to
-        //    render again with the same swapchain
+        //  - Previous frame was successful: immediately try rendering again with the
+        //    same swapchain
+        //  - We've never tried rendering before: try rendering with the initial
+        //    swapchain
+        //  - Previous frame failed but resolvable by rebuilding the swapchain - skip
+        //    trying to render again with the same swapchain
         //  - Previous frame failed with unrecoverable error: bail
         //
         let rebuild_swapchain = match &previous_frame_result {
@@ -364,8 +374,9 @@ impl SwapchainHelper {
                         PresentSuccessResult::Success => false,
                         PresentSuccessResult::SuccessSuboptimal => {
                             debug!("Swapchain is sub-optimal, rebuilding");
-                            //TODO: This can occur persistently when the app is minimized, so ignore
-                            // if the size has not changed. However, we could also consider adding
+                            //TODO: This can occur persistently when the app is minimized, so
+                            // ignore if the size has not changed.
+                            // However, we could also consider adding
                             // a counter to limit the frequency. (A sensible case for this is
                             // resizing a window - to avoid rebuilding swapchain every frame during
                             // the resize.
@@ -389,18 +400,20 @@ impl SwapchainHelper {
         // If we don't have any reason yet to rebuild the swapchain, try to render
         //
         if !rebuild_swapchain {
-            // This case is taken if we have never rendered a frame or if the previous render was successful
+            // This case is taken if we have never rendered a frame or if the previous
+            // render was successful
             let result = self.try_acquire_next_image(window_width, window_height)?;
             if let TryAcquireNextImageResult::Success(presentable_frame) = result {
                 return Ok(presentable_frame);
             }
 
-            // if not successful (TryAcquireNextImageResult::DeviceReset), fall through to
-            // try to recreate the swapchain
+            // if not successful (TryAcquireNextImageResult::DeviceReset), fall
+            // through to try to recreate the swapchain
         };
 
         //
-        // Rebuild the swapchain and try again. Any failure after a rebuild will be fatal
+        // Rebuild the swapchain and try again. Any failure after a rebuild will be
+        // fatal
         //
         self.rebuild_swapchain(window_width, window_height, event_listener)?;
 
@@ -434,10 +447,11 @@ impl SwapchainHelper {
         window_width: u32,
         window_height: u32,
     ) -> GfxResult<TryAcquireNextImageResult> {
-        // If a frame is still outstanding from a previous acquire_next_swapchain_image call, wait
-        // to receive the result of that frame. If the result was an error, return that error now.
-        // This allows us to handle errors from the render thread in the main thread. This wait is
-        // only blocking on getting the previous frame submitted. It's possible the GPU is still
+        // If a frame is still outstanding from a previous acquire_next_swapchain_image
+        // call, wait to receive the result of that frame. If the result was an
+        // error, return that error now. This allows us to handle errors from
+        // the render thread in the main thread. This wait is only blocking on
+        // getting the previous frame submitted. It's possible the GPU is still
         // processing it, and even the frame before it.
         self.wait_until_previous_frame_submitted()?;
 
@@ -451,15 +465,17 @@ impl SwapchainHelper {
             return Ok(TryAcquireNextImageResult::DeviceReset);
         }
 
-        // This index iterates from 0..max_num_frames, wrapping around to 0. This ensures we use a
-        // different set of sync primitives per frame in flight
+        // This index iterates from 0..max_num_frames, wrapping around to 0. This
+        // ensures we use a different set of sync primitives per frame in flight
         let sync_frame_index = shared_state.sync_frame_index.load(Ordering::Relaxed);
 
-        // If this swapchain image is still being process on the GPU, block until it is flushed
+        // If this swapchain image is still being process on the GPU, block until it is
+        // flushed
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
         Fence::wait_for_fences(&self.device_context, &[frame_fence])?;
 
-        // Acquire the next image and signal the image available semaphore when it's ready to use
+        // Acquire the next image and signal the image available semaphore when it's
+        // ready to use
         let image_available_semaphore = &shared_state.image_available_semaphores[sync_frame_index];
         let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore)?;
 

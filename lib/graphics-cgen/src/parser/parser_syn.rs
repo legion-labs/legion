@@ -1,21 +1,19 @@
-use anyhow::{anyhow, Context, Result};
-use relative_path::RelativePath;
-
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
 };
+
+use anyhow::{anyhow, Context, Result};
+use lgn_telemetry::{trace, warn};
+use relative_path::RelativePath;
 use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
 
-use lgn_telemetry::{trace, warn};
-
+use super::ParsingResult;
 use crate::{
     builder::{DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder},
     model::{CGenType, Model},
 };
-
-use super::ParsingResult;
 
 pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {
     assert!(file_path.is_absolute());

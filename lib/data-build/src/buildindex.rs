@@ -39,11 +39,13 @@ impl ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
-    /// The path the resource was compiled from, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")
+    /// The path the resource was compiled from, i.e.:
+    /// "ResourcePathId("anim.fbx").push("anim.offline")
     pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: AssetHash,
     pub(crate) source_hash: AssetHash,
-    /// The path the resource was compiled into, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
+    /// The path the resource was compiled into, i.e.:
+    /// "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_checksum: Checksum,
     pub(crate) compiled_size: usize,
@@ -257,7 +259,8 @@ impl BuildIndex {
         Self::construct_project_path(&self.buildindex_dir, &self.source_content.project_index)
     }
 
-    /// Create an ordered build graph with edges directed towards `compile_path`.
+    /// Create an ordered build graph with edges directed towards
+    /// `compile_path`.
     pub(crate) fn generate_build_graph(
         &self,
         compile_path: ResourcePathId,

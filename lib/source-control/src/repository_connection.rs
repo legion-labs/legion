@@ -1,5 +1,6 @@
-use anyhow::Result;
 use std::{path::PathBuf, sync::Arc};
+
+use anyhow::Result;
 use url::Url;
 
 use crate::{

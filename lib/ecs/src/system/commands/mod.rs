@@ -18,13 +18,13 @@ pub trait Command: Send + Sync + 'static {
     fn write(self, world: &mut World);
 }
 
-/// A list of commands that modify a [`World`], running at the end of the stage where they
-/// have been invoked.
+/// A list of commands that modify a [`World`], running at the end of the stage
+/// where they have been invoked.
 ///
 /// # Usage
 ///
-/// `Commands` is a [`SystemParam`](crate::system::SystemParam), therefore it is declared
-/// as a function parameter:
+/// `Commands` is a [`SystemParam`](crate::system::SystemParam), therefore it is
+/// declared as a function parameter:
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -49,10 +49,12 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Creates a new empty [`Entity`] and returns an [`EntityCommands`] builder for it.
+    /// Creates a new empty [`Entity`] and returns an [`EntityCommands`] builder
+    /// for it.
     ///
     /// To directly spawn an entity with a [`Bundle`] included, you can use
-    /// [`spawn_bundle`](Self::spawn_bundle) instead of `.spawn().insert_bundle()`.
+    /// [`spawn_bundle`](Self::spawn_bundle) instead of
+    /// `.spawn().insert_bundle()`.
     ///
     /// See [`World::spawn`] for more details.
     ///
@@ -89,13 +91,16 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Returns an [`EntityCommands`] for the given `entity` (if it exists) or spawns one if it doesn't exist.
-    /// This will return [None] if the `entity` exists with a different generation.
+    /// Returns an [`EntityCommands`] for the given `entity` (if it exists) or
+    /// spawns one if it doesn't exist. This will return [None] if the
+    /// `entity` exists with a different generation.
     ///
     /// # Note
-    /// Spawning a specific `entity` value is rarely the right choice. Most apps should favor [`Commands::spawn`].
-    /// This method should generally only be used for sharing entities across apps, and only when they have a
-    /// scheme worked out to share an ID space (which doesn't happen by default).
+    /// Spawning a specific `entity` value is rarely the right choice. Most apps
+    /// should favor [`Commands::spawn`]. This method should generally only
+    /// be used for sharing entities across apps, and only when they have a
+    /// scheme worked out to share an ID space (which doesn't happen by
+    /// default).
     pub fn get_or_spawn<'a>(&'a mut self, entity: Entity) -> EntityCommands<'w, 's, 'a> {
         self.add(GetOrSpawn { entity });
         EntityCommands {
@@ -104,20 +109,21 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Spawns a [Bundle] without pre-allocating an [Entity]. The [Entity] will be allocated when
-    /// this [Command] is applied.
+    /// Spawns a [Bundle] without pre-allocating an [Entity]. The [Entity] will
+    /// be allocated when this [Command] is applied.
     pub fn spawn_and_forget(&mut self, bundle: impl Bundle) {
         self.queue.push(Spawn { bundle });
     }
 
     /// Creates a new entity with the components contained in `bundle`.
     ///
-    /// This returns an [`EntityCommands`] builder, which enables inserting more components and
-    /// bundles using a "builder pattern".
+    /// This returns an [`EntityCommands`] builder, which enables inserting more
+    /// components and bundles using a "builder pattern".
     ///
-    /// Note that `bundle` is a [`Bundle`], which is a collection of components. [`Bundle`] is
-    /// automatically implemented for tuples of components. You can also create your own bundle
-    /// types by deriving [`derive@Bundle`].
+    /// Note that `bundle` is a [`Bundle`], which is a collection of components.
+    /// [`Bundle`] is automatically implemented for tuples of components.
+    /// You can also create your own bundle types by deriving
+    /// [`derive@Bundle`].
     ///
     /// # Example
     ///
@@ -203,12 +209,12 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Spawns entities to the [`World`] according to the given iterator (or a type that can
-    /// be converted to it).
+    /// Spawns entities to the [`World`] according to the given iterator (or a
+    /// type that can be converted to it).
     ///
-    /// The end result of this command is equivalent to iterating `bundles_iter` and calling
-    /// [`spawn`](Self::spawn) on each bundle, but it is more performant due to memory
-    /// pre-allocation.
+    /// The end result of this command is equivalent to iterating `bundles_iter`
+    /// and calling [`spawn`](Self::spawn) on each bundle, but it is more
+    /// performant due to memory pre-allocation.
     ///
     /// # Example
     ///
@@ -242,16 +248,19 @@ impl<'w, 's> Commands<'w, 's> {
         self.queue.push(SpawnBatch { bundles_iter });
     }
 
-    /// For a given batch of ([Entity], [Bundle]) pairs, either spawns each [Entity] with the given
-    /// bundle (if the entity does not exist), or inserts the [Bundle] (if the entity already exists).
+    /// For a given batch of ([Entity], [Bundle]) pairs, either spawns each
+    /// [Entity] with the given bundle (if the entity does not exist), or
+    /// inserts the [Bundle] (if the entity already exists).
     ///
     /// This is faster than doing equivalent operations one-by-one.
     ///
     /// # Note
     ///
-    /// Spawning a specific `entity` value is rarely the right choice. Most apps should use [`Commands::spawn_batch`].
-    /// This method should generally only be used for sharing entities across apps, and only when they have a scheme
-    /// worked out to share an ID space (which doesn't happen by default).
+    /// Spawning a specific `entity` value is rarely the right choice. Most apps
+    /// should use [`Commands::spawn_batch`]. This method should generally
+    /// only be used for sharing entities across apps, and only when they have a
+    /// scheme worked out to share an ID space (which doesn't happen by
+    /// default).
     pub fn insert_or_spawn_batch<I, B>(&mut self, bundles_iter: I)
     where
         I: IntoIterator + Send + Sync + 'static,
@@ -261,7 +270,8 @@ impl<'w, 's> Commands<'w, 's> {
         self.queue.push(InsertOrSpawnBatch { bundles_iter });
     }
 
-    /// Inserts a resource to the [`World`], overwriting any previous value of the same type.
+    /// Inserts a resource to the [`World`], overwriting any previous value of
+    /// the same type.
     ///
     /// See [`World::insert_resource`] for more details.
     ///
@@ -422,10 +432,10 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     ///
     /// # Warning
     ///
-    /// It's possible to call this with a bundle, but this is likely not intended and
-    /// [`Self::insert_bundle`] should be used instead. If `with` is called with a bundle, the
-    /// bundle itself will be added as a component instead of the bundles' inner components each
-    /// being added.
+    /// It's possible to call this with a bundle, but this is likely not
+    /// intended and [`Self::insert_bundle`] should be used instead. If
+    /// `with` is called with a bundle, the bundle itself will be added as a
+    /// component instead of the bundles' inner components each being added.
     ///
     /// # Example
     ///
@@ -461,8 +471,8 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
 
     /// Removes a [`Bundle`] of components from the entity.
     ///
-    /// See [`EntityMut::remove_bundle`](crate::world::EntityMut::remove_bundle) for more
-    /// details.
+    /// See [`EntityMut::remove_bundle`](crate::world::EntityMut::remove_bundle)
+    /// for more details.
     ///
     /// # Example
     ///
@@ -494,7 +504,8 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
 
     /// Removes a single component from the entity.
     ///
-    /// See [`EntityMut::remove`](crate::world::EntityMut::remove) for more details.
+    /// See [`EntityMut::remove`](crate::world::EntityMut::remove) for more
+    /// details.
     ///
     /// # Example
     ///
@@ -706,8 +717,8 @@ where
 {
     fn write(self, world: &mut World) {
         if let Some(mut entity_mut) = world.get_entity_mut(self.entity) {
-            // remove intersection to gracefully handle components that were removed before running
-            // this command
+            // remove intersection to gracefully handle components that were removed before
+            // running this command
             entity_mut.remove_bundle_intersection::<T>();
         }
     }

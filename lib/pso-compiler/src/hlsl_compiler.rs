@@ -5,7 +5,6 @@ use hassle_rs::Dxc;
 use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
-
 use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
 };
@@ -128,7 +127,8 @@ impl HlslCompiler {
                 .map(|x| (x.name.as_str(), x.value.as_deref())),
         );
 
-        // dxc.exe -Od -spirv -fspv-target-env=vulkan1.1 -I d:\\temp\\ -E main_vs -H -T vs_6_0 shaders\shader.hlsl
+        // dxc.exe -Od -spirv -fspv-target-env=vulkan1.1 -I d:\\temp\\ -E main_vs -H -T
+        // vs_6_0 shaders\shader.hlsl
 
         let bytecode = self
             .compile_internal(

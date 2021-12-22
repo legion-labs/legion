@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use anyhow::Result;
 use async_trait::async_trait;
-use std::path::Path;
 
 #[async_trait]
 pub trait BlobStorage {

@@ -18,14 +18,16 @@ pub struct CompiledAsset {
     pub size: usize,
 }
 
-/// `Manifest` contains storage information about assets - their checksums and sizes.
+/// `Manifest` contains storage information about assets - their checksums and
+/// sizes.
 ///
 /// It can be safely shared between threads.
 #[derive(Debug, Default, Clone)]
 pub struct Manifest(Arc<flurry::HashMap<ResourceTypeAndId, (Checksum, usize)>>);
 
 impl Manifest {
-    /// Retrieve information about `Asset` identified by a given [`crate::ResourceId`], if available.
+    /// Retrieve information about `Asset` identified by a given
+    /// [`crate::ResourceId`], if available.
     pub fn find(&self, type_id: ResourceTypeAndId) -> Option<(Checksum, usize)> {
         self.0.pin().get(&type_id).copied()
     }

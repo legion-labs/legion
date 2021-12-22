@@ -55,10 +55,12 @@ fn compute_context_hash(
 
 /// Data build interface.
 ///
-/// `DataBuild` provides methods to compile offline resources into runtime format.
+/// `DataBuild` provides methods to compile offline resources into runtime
+/// format.
 ///
-/// Data build uses file-based storage to persist the state of data builds and data compilation.
-/// It requires access to offline resources to retrieve resource metadata - through  [`lgn_data_offline::resource::Project`].
+/// Data build uses file-based storage to persist the state of data builds and
+/// data compilation. It requires access to offline resources to retrieve
+/// resource metadata - through  [`lgn_data_offline::resource::Project`].
 ///
 /// # Example Usage
 ///
@@ -140,7 +142,8 @@ impl DataBuild {
 
     /// Opens the existing build index.
     ///
-    /// If the build index does not exist it creates one if a project is present in the directory.
+    /// If the build index does not exist it creates one if a project is present
+    /// in the directory.
     pub(crate) fn open_or_create(
         config: DataBuildOptions,
         project_dir: &Path,
@@ -183,7 +186,8 @@ impl DataBuild {
         self.build_index.lookup_pathid(id)
     }
 
-    /// Updates the build database with information about resources from provided resource database.
+    /// Updates the build database with information about resources from
+    /// provided resource database.
     pub fn source_pull(&mut self) -> Result<i32, Error> {
         let mut updated_resources = 0;
 
@@ -214,15 +218,19 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Compile `compile_path` resource and all its dependencies in the build graph.
+    /// Compile `compile_path` resource and all its dependencies in the build
+    /// graph.
     ///
-    /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
-    /// The specified `manifest_file` is updated with information about changed assets.
+    /// To compile a given `ResourcePathId` it compiles all its dependent
+    /// derived resources. The specified `manifest_file` is updated with
+    /// information about changed assets.
     ///
-    /// Compilation results are stored in [`ContentStore`](`lgn_content_store::ContentStore`)
-    /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    /// Compilation results are stored in
+    /// [`ContentStore`](`lgn_content_store::ContentStore`) specified in
+    /// [`DataBuildOptions`] used to create this `DataBuild`.
     ///
-    /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
+    /// Provided `target`, `platform` and `locale` define the compilation
+    /// context that can yield different compilation results.
     pub fn compile(
         &mut self,
         compile_path: ResourcePathId,
@@ -293,7 +301,8 @@ impl DataBuild {
         Ok(manifest)
     }
 
-    /// Compile `compile_node` of the build graph and update *build index* one or more compilation results.
+    /// Compile `compile_node` of the build graph and update *build index* one
+    /// or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
@@ -398,13 +407,15 @@ impl DataBuild {
     ///
     /// Graphviz format documentation can be found [here](https://www.graphviz.org/doc/info/lang.html)
     ///
-    /// `std::string::ToString::to_string` can be used as a default `name_parser`.
+    /// `std::string::ToString::to_string` can be used as a default
+    /// `name_parser`.
     pub fn print_build_graph(
         &self,
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
         let build_graph = self.build_index.generate_build_graph(compile_path);
+        #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
             format!("label = \"{}\"", (name_parser)(nr.1))
@@ -419,10 +430,14 @@ impl DataBuild {
         format!("{:?}", dot)
     }
 
-    /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build index* with compilation results.
-    /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
-    /// The returned results can be accessed by  [`lgn_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
+    /// Compile a resource identified by [`ResourcePathId`] and all its
+    /// dependencies and update the *build index* with compilation results.
+    /// Returns a list of (id, checksum, size) of created resources and
+    /// information about their dependencies. The returned results can be
+    /// accessed by  [`lgn_content_store::ContentStore`] specified in
+    /// [`DataBuildOptions`] used to create this `DataBuild`.
+    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
+    // contexts (platform, target, locale, etc).
     #[allow(clippy::too_many_lines)]
     fn compile_path(
         &mut self,
@@ -520,14 +535,16 @@ impl DataBuild {
 
                 let (compiler_index, compiler_hash) = *compiler_details.get(&transform).unwrap();
 
-                // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
+                // todo: not sure if transform is the right thing here. resource_path_id better?
+                // transform is already defined by the compiler_hash so it seems redundant.
                 let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
 
                 let source_hash = {
                     if direct_dependency.is_source() {
                         //
-                        // todo(kstasik): source_hash computation can include filtering of resource types in the future.
-                        // the same resource can have a different source_hash depending on the compiler
+                        // todo(kstasik): source_hash computation can include filtering of resource
+                        // types in the future. the same resource can have a
+                        // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
                         self.build_index
@@ -613,7 +630,8 @@ impl DataBuild {
         })
     }
 
-    /// Create asset files in runtime format containing compiled resources that include reference (load-time dependency) information
+    /// Create asset files in runtime format containing compiled resources that
+    /// include reference (load-time dependency) information
     /// based on provided compilation information.
     /// Currently each resource is linked into a separate *asset file*.
     fn link(

@@ -361,7 +361,8 @@ where
         .min()
     }
 
-    /// Returns the item that gives the maximum value from the specified function.
+    /// Returns the item that gives the maximum value from the specified
+    /// function.
     ///
     /// See [`Iterator::max_by_key()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.max_by_key)
     fn max_by_key<R, F>(mut self, pool: &TaskPool, f: F) -> Option<Self::Item>
@@ -381,8 +382,8 @@ where
         .max_by_key(f)
     }
 
-    /// Returns the item that gives the maximum value with respect to the specified comparison
-    /// function.
+    /// Returns the item that gives the maximum value with respect to the
+    /// specified comparison function.
     ///
     /// See [`Iterator::max_by()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.max_by)
     fn max_by<F>(mut self, pool: &TaskPool, f: F) -> Option<Self::Item>
@@ -401,7 +402,8 @@ where
         .max_by(f)
     }
 
-    /// Returns the item that gives the minimum value from the specified function.
+    /// Returns the item that gives the minimum value from the specified
+    /// function.
     ///
     /// See [`Iterator::min_by_key()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.min_by_key)
     fn min_by_key<R, F>(mut self, pool: &TaskPool, f: F) -> Option<Self::Item>
@@ -421,8 +423,8 @@ where
         .min_by_key(f)
     }
 
-    /// Returns the item that gives the minimum value with respect to the specified comparison
-    /// function.
+    /// Returns the item that gives the minimum value with respect to the
+    /// specified comparison function.
     ///
     /// See [`Iterator::min_by()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.min_by)
     fn min_by<F>(mut self, pool: &TaskPool, f: F) -> Option<Self::Item>

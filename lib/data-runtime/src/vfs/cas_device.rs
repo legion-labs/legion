@@ -3,7 +3,8 @@ use lgn_content_store::ContentStore;
 use super::Device;
 use crate::{manifest::Manifest, ResourceTypeAndId};
 
-/// Content addressable storage device. Resources are accessed through a manifest access table.
+/// Content addressable storage device. Resources are accessed through a
+/// manifest access table.
 pub(crate) struct CasDevice {
     manifest: Manifest,
     content_store: Box<dyn ContentStore>,

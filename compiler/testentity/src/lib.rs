@@ -1,5 +1,6 @@
 // BEGIN - Legion Labs lints v0.6
-// do not change or add/remove here, but one can add exceptions after this section
+// do not change or add/remove here, but one can add exceptions after this
+// section
 #![deny(unsafe_code)]
 #![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
 // Rustdoc lints
@@ -57,6 +58,8 @@
 // TODO: Replace by using Reflection conversion
 //include!(concat!(env!("OUT_DIR"), "/compiler_testentity.rs"));
 
+use std::env;
+
 use lgn_data_compiler::{
     compiler_api::{
         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
@@ -65,7 +68,6 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::Resource;
-use std::env;
 type OfflineType = generic_data::offline::TestEntity;
 type RuntimeType = generic_data::runtime::TestEntity;
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {

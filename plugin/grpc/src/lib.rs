@@ -1,6 +1,7 @@
 //! `gRPC` plugin for Legion's ECS.
 //!
-//! Provides `gRPC` server support to the engine, compatible with the `tonic` crate.
+//! Provides `gRPC` server support to the engine, compatible with the `tonic`
+//! crate.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

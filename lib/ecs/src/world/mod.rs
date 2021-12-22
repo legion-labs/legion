@@ -27,23 +27,24 @@ use crate::{
 mod identifier;
 
 pub use identifier::WorldId;
-/// Stores and exposes operations on [entities](Entity), [components](Component), resources,
-/// and their associated metadata.
+/// Stores and exposes operations on [entities](Entity),
+/// [components](Component), resources, and their associated metadata.
 ///
-/// Each [Entity] has a set of components. Each component can have up to one instance of each
-/// component type. Entity components can be created, updated, removed, and queried using a given
-/// [World].
+/// Each [Entity] has a set of components. Each component can have up to one
+/// instance of each component type. Entity components can be created, updated,
+/// removed, and queried using a given [World].
 ///
 /// # Resources
 ///
-/// Worlds can also store *resources*, which are unique instances of a given type that don't
-/// belong to a specific Entity. There are also *non send resources*, which can only be
-/// accessed on the main thread.
+/// Worlds can also store *resources*, which are unique instances of a given
+/// type that don't belong to a specific Entity. There are also *non send
+/// resources*, which can only be accessed on the main thread.
 ///
 /// ## Usage of global resources
 ///
 /// 1. Insert the resource into the `World`, using [`World::insert_resource`].
-/// 2. Fetch the resource from a system, using [`Res`](crate::system::Res) or [`ResMut`](crate::system::ResMut).
+/// 2. Fetch the resource from a system, using [`Res`](crate::system::Res) or
+/// [`ResMut`](crate::system::ResMut).
 ///
 /// ```
 /// # let mut world = World::default();
@@ -109,8 +110,8 @@ impl World {
     /// # Panics
     ///
     /// If [`usize::MAX`] [`World`]s have been created.
-    /// This guarantee allows System Parameters to safely uniquely identify a [`World`],
-    /// since its [`WorldId`] is unique
+    /// This guarantee allows System Parameters to safely uniquely identify a
+    /// [`World`], since its [`WorldId`] is unique
     #[inline]
     pub fn new() -> Self {
         Self::default()
@@ -164,8 +165,9 @@ impl World {
         &self.bundles
     }
 
-    /// Retrieves a [`WorldCell`], which safely enables multiple mutable World accesses at the same
-    /// time, provided those accesses do not conflict with each other.
+    /// Retrieves a [`WorldCell`], which safely enables multiple mutable World
+    /// accesses at the same time, provided those accesses do not conflict
+    /// with each other.
     #[inline]
     pub fn cell(&mut self) -> WorldCell<'_> {
         WorldCell::new(self)
@@ -175,9 +177,10 @@ impl World {
         self.components.init_component::<T>(&mut self.storages)
     }
 
-    /// Retrieves an [`EntityRef`] that exposes read-only operations for the given `entity`.
-    /// This will panic if the `entity` does not exist. Use [`World::get_entity`] if you want
-    /// to check for entity existence instead of implicitly panic-ing.
+    /// Retrieves an [`EntityRef`] that exposes read-only operations for the
+    /// given `entity`. This will panic if the `entity` does not exist. Use
+    /// [`World::get_entity`] if you want to check for entity existence
+    /// instead of implicitly panic-ing.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -198,14 +201,16 @@ impl World {
     /// ```
     #[inline]
     pub fn entity(&self, entity: Entity) -> EntityRef<'_> {
-        // Lazily evaluate panic!() via unwrap_or_else() to avoid allocation unless failure
+        // Lazily evaluate panic!() via unwrap_or_else() to avoid allocation unless
+        // failure
         self.get_entity(entity)
             .unwrap_or_else(|| panic!("Entity {:?} does not exist", entity))
     }
 
-    /// Retrieves an [`EntityMut`] that exposes read and write operations for the given `entity`.
-    /// This will panic if the `entity` does not exist. Use [`World::get_entity_mut`] if you want
-    /// to check for entity existence instead of implicitly panic-ing.
+    /// Retrieves an [`EntityMut`] that exposes read and write operations for
+    /// the given `entity`. This will panic if the `entity` does not exist.
+    /// Use [`World::get_entity_mut`] if you want to check for entity
+    /// existence instead of implicitly panic-ing.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -226,18 +231,22 @@ impl World {
     /// ```
     #[inline]
     pub fn entity_mut(&mut self, entity: Entity) -> EntityMut<'_> {
-        // Lazily evaluate panic!() via unwrap_or_else() to avoid allocation unless failure
+        // Lazily evaluate panic!() via unwrap_or_else() to avoid allocation unless
+        // failure
         self.get_entity_mut(entity)
             .unwrap_or_else(|| panic!("Entity {:?} does not exist", entity))
     }
 
-    /// Returns an [`EntityMut`] for the given `entity` (if it exists) or spawns one if it doesn't exist.
-    /// This will return [None] if the `entity` exists with a different generation.
+    /// Returns an [`EntityMut`] for the given `entity` (if it exists) or spawns
+    /// one if it doesn't exist. This will return [None] if the `entity`
+    /// exists with a different generation.
     ///
     /// # Note
-    /// Spawning a specific `entity` value is rarely the right choice. Most apps should favor [`World::spawn`].
-    /// This method should generally only be used for sharing entities across apps, and only when they have a
-    /// scheme worked out to share an ID space (which doesn't happen by default).
+    /// Spawning a specific `entity` value is rarely the right choice. Most apps
+    /// should favor [`World::spawn`]. This method should generally only be
+    /// used for sharing entities across apps, and only when they have a
+    /// scheme worked out to share an ID space (which doesn't happen by
+    /// default).
     #[inline]
     pub fn get_or_spawn(&mut self, entity: Entity) -> Option<EntityMut<'_>> {
         self.flush();
@@ -254,9 +263,10 @@ impl World {
         }
     }
 
-    /// Retrieves an [`EntityRef`] that exposes read-only operations for the given `entity`.
-    /// Returns [None] if the `entity` does not exist. Use [`World::entity`] if you don't want
-    /// to unwrap the [`EntityRef`] yourself.
+    /// Retrieves an [`EntityRef`] that exposes read-only operations for the
+    /// given `entity`. Returns [None] if the `entity` does not exist. Use
+    /// [`World::entity`] if you don't want to unwrap the [`EntityRef`]
+    /// yourself.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -282,9 +292,10 @@ impl World {
         Some(EntityRef::new(self, entity, location))
     }
 
-    /// Retrieves an [`EntityMut`] that exposes read and write operations for the given `entity`.
-    /// Returns [None] if the `entity` does not exist. Use [`World::entity_mut`] if you don't want
-    /// to unwrap the [`EntityMut`] yourself.
+    /// Retrieves an [`EntityMut`] that exposes read and write operations for
+    /// the given `entity`. Returns [None] if the `entity` does not exist.
+    /// Use [`World::entity_mut`] if you don't want to unwrap the
+    /// [`EntityMut`] yourself.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -311,8 +322,8 @@ impl World {
         Some(unsafe { EntityMut::new(self, entity, location) })
     }
 
-    /// Spawns a new [`Entity`] and returns a corresponding [`EntityMut`], which can be used
-    /// to add components to the entity or retrieve its id.
+    /// Spawns a new [`Entity`] and returns a corresponding [`EntityMut`], which
+    /// can be used to add components to the entity or retrieve its id.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -347,10 +358,11 @@ impl World {
     /// must be called on an entity that was just allocated
     unsafe fn spawn_at_internal(&mut self, entity: Entity) -> EntityMut<'_> {
         let archetype = self.archetypes.empty_mut();
-        // PERF: consider avoiding allocating entities in the empty archetype unless needed
+        // PERF: consider avoiding allocating entities in the empty archetype unless
+        // needed
         let table_row = self.storages.tables[archetype.table_id()].allocate(entity);
-        // SAFE: no components are allocated by archetype.allocate() because the archetype is
-        // empty
+        // SAFE: no components are allocated by archetype.allocate() because the
+        // archetype is empty
         let location = archetype.allocate(entity, table_row);
         // SAFE: entity index was just allocated
         self.entities
@@ -360,11 +372,12 @@ impl World {
         EntityMut::new(self, entity, location)
     }
 
-    /// Spawns a batch of entities with the same component [Bundle] type. Takes a given [Bundle]
-    /// iterator and returns a corresponding [Entity] iterator.
-    /// This is more efficient than spawning entities and adding components to them individually,
-    /// but it is limited to spawning entities with the same [Bundle] type, whereas spawning
-    /// individually is more flexible.
+    /// Spawns a batch of entities with the same component [Bundle] type. Takes
+    /// a given [Bundle] iterator and returns a corresponding [Entity]
+    /// iterator. This is more efficient than spawning entities and adding
+    /// components to them individually, but it is limited to spawning
+    /// entities with the same [Bundle] type, whereas spawning individually
+    /// is more flexible.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, entity::Entity, world::World};
@@ -390,8 +403,9 @@ impl World {
         SpawnBatchIter::new(self, iter.into_iter())
     }
 
-    /// Retrieves a reference to the given `entity`'s [Component] of the given type.
-    /// Returns [None] if the `entity` does not have a [Component] of the given type.
+    /// Retrieves a reference to the given `entity`'s [Component] of the given
+    /// type. Returns [None] if the `entity` does not have a [Component] of
+    /// the given type.
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
     ///
@@ -413,8 +427,9 @@ impl World {
         self.get_entity(entity)?.get()
     }
 
-    /// Retrieves a mutable reference to the given `entity`'s [Component] of the given type.
-    /// Returns [None] if the `entity` does not have a [Component] of the given type.
+    /// Retrieves a mutable reference to the given `entity`'s [Component] of the
+    /// given type. Returns [None] if the `entity` does not have a
+    /// [Component] of the given type.
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
     ///
@@ -436,9 +451,9 @@ impl World {
         self.get_entity_mut(entity)?.get_mut()
     }
 
-    /// Despawns the given `entity`, if it exists. This will also remove all of the entity's
-    /// [Component]s. Returns `true` if the `entity` is successfully despawned and `false` if
-    /// the `entity` does not exist.
+    /// Despawns the given `entity`, if it exists. This will also remove all of
+    /// the entity's [Component]s. Returns `true` if the `entity` is
+    /// successfully despawned and `false` if the `entity` does not exist.
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
     ///
@@ -473,8 +488,10 @@ impl World {
         self.last_change_tick = self.increment_change_tick();
     }
 
-    /// Returns [`QueryState`] for the given [`WorldQuery`], which is used to efficiently
-    /// run queries on the [World] by storing and reusing the [`QueryState`].
+    /// Returns [`QueryState`] for the given [`WorldQuery`], which is used to
+    /// efficiently run queries on the [World] by storing and reusing the
+    /// [`QueryState`].
+    ///
     /// ```
     /// use lgn_ecs::{component::Component, entity::Entity, world::World};
     ///
@@ -502,7 +519,7 @@ impl World {
     ///    position.y += velocity.y;
     /// }     
     ///
-    /// assert_eq!(world.get::<Position>(entities[0]).unwrap(), &Position { x: 1.0, y: 0.0 });
+    /// assert_eq!(world.get::<Position>(entities[0]).unwrap(), &Position { x:1.0, y: 0.0 });
     /// assert_eq!(world.get::<Position>(entities[1]).unwrap(), &Position { x: 0.0, y: 1.0 });
     /// ```
     ///
@@ -510,7 +527,6 @@ impl World {
     /// sort the results of the query using the desired component as a key.
     /// Note that this requires fetching the whole result set from the query
     /// and allocation of a [Vec] to store it.
-    ///
     /// ```
     /// use lgn_ecs::{component::Component, entity::Entity, world::World};
     ///
@@ -540,10 +556,13 @@ impl World {
         QueryState::new(self)
     }
 
-    /// Returns [`QueryState`] for the given filtered [`WorldQuery`], which is used to efficiently
-    /// run queries on the [`World`] by storing and reusing the [`QueryState`].
+    /// Returns [`QueryState`] for the given filtered [`WorldQuery`], which is
+    /// used to efficiently run queries on the [`World`] by storing and
+    /// reusing the [`QueryState`].
+    ///
     /// ```
-    /// use lgn_ecs::{component::Component, entity::Entity, world::World, query::With};
+    /// use lgn_ecs::{component::Component, entity::Entity, world::World,
+    /// query::With};
     ///
     /// #[derive(Component)]
     /// struct A;
@@ -576,8 +595,9 @@ impl World {
         )
     }
 
-    /// Returns an iterator of entities that had components with the given `component_id` removed
-    /// since the last call to [`World::clear_trackers`].
+    /// Returns an iterator of entities that had components with the given
+    /// `component_id` removed since the last call to
+    /// [`World::clear_trackers`].
     pub fn removed_with_id(
         &self,
         component_id: ComponentId,
@@ -606,8 +626,9 @@ impl World {
         unsafe { self.insert_resource_with_id(component_id, value) };
     }
 
-    /// Removes the resource of a given type and returns it, if it exists. Otherwise returns [None].
-    /// Resources are "unique" data of a given type.
+    /// Removes the resource of a given type and returns it, if it exists.
+    /// Otherwise returns [None]. Resources are "unique" data of a given
+    /// type.
     #[inline]
     pub fn remove_resource<T: Resource>(&mut self) -> Option<T> {
         // SAFE: T is Send + Sync
@@ -633,14 +654,15 @@ impl World {
         if column.is_empty() {
             return None;
         }
-        // SAFE: if a resource column exists, row 0 exists as well. caller takes ownership of the
-        // ptr value / drop is called when T is dropped
+        // SAFE: if a resource column exists, row 0 exists as well. caller takes
+        // ownership of the ptr value / drop is called when T is dropped
         let (ptr, _) = unsafe { column.swap_remove_and_forget_unchecked(0) };
         // SAFE: column is of type T
         Some(unsafe { ptr.cast::<T>().read() })
     }
 
-    /// Returns `true` if a resource of type `T` exists. Otherwise returns `false`.
+    /// Returns `true` if a resource of type `T` exists. Otherwise returns
+    /// `false`.
     #[inline]
     pub fn contains_resource<T: Resource>(&self) -> bool {
         let component_id =
@@ -652,8 +674,9 @@ impl World {
         self.get_populated_resource_column(component_id).is_some()
     }
 
-    /// Gets a reference to the resource of the given type, if it exists. Otherwise returns [None]
-    /// Resources are "unique" data of a given type.
+    /// Gets a reference to the resource of the given type, if it exists.
+    /// Otherwise returns [None] Resources are "unique" data of a given
+    /// type.
     #[inline]
     pub fn get_resource<T: Resource>(&self) -> Option<&T> {
         let component_id = self.components.get_resource_id(TypeId::of::<T>())?;
@@ -694,8 +717,9 @@ impl World {
         ticks.is_changed(self.last_change_tick(), self.read_change_tick())
     }
 
-    /// Gets a mutable reference to the resource of the given type, if it exists. Otherwise returns
-    /// [None] Resources are "unique" data of a given type.
+    /// Gets a mutable reference to the resource of the given type, if it
+    /// exists. Otherwise returns [None] Resources are "unique" data of a
+    /// given type.
     #[inline]
     pub fn get_resource_mut<T: Resource>(&mut self) -> Option<Mut<'_, T>> {
         // SAFE: unique world access
@@ -703,8 +727,8 @@ impl World {
     }
 
     // PERF: optimize this to avoid redundant lookups
-    /// Gets a resource of type `T` if it exists, otherwise inserts the resource using the result of
-    /// calling `func`.
+    /// Gets a resource of type `T` if it exists, otherwise inserts the resource
+    /// using the result of calling `func`.
     #[inline]
     pub fn get_resource_or_insert_with<T: Resource>(
         &mut self,
@@ -716,20 +740,22 @@ impl World {
         self.get_resource_mut().unwrap()
     }
 
-    /// Gets a mutable reference to the resource of the given type, if it exists. Otherwise returns
-    /// [None] Resources are "unique" data of a given type.
+    /// Gets a mutable reference to the resource of the given type, if it
+    /// exists. Otherwise returns [None] Resources are "unique" data of a
+    /// given type.
     ///
     /// # Safety
-    /// This will allow aliased mutable access to the given resource type. The caller must ensure
-    /// that only one mutable access exists at a time.
+    /// This will allow aliased mutable access to the given resource type. The
+    /// caller must ensure that only one mutable access exists at a time.
     #[inline]
     pub unsafe fn get_resource_unchecked_mut<T: Resource>(&self) -> Option<Mut<'_, T>> {
         let component_id = self.components.get_resource_id(TypeId::of::<T>())?;
         self.get_resource_unchecked_mut_with_id(component_id)
     }
 
-    /// Gets a reference to the non-send resource of the given type, if it exists. Otherwise returns
-    /// [None] Resources are "unique" data of a given type.
+    /// Gets a reference to the non-send resource of the given type, if it
+    /// exists. Otherwise returns [None] Resources are "unique" data of a
+    /// given type.
     #[inline]
     pub fn get_non_send_resource<T: 'static>(&self) -> Option<&T> {
         let component_id = self.components.get_resource_id(TypeId::of::<T>())?;
@@ -737,37 +763,45 @@ impl World {
         unsafe { self.get_non_send_with_id(component_id) }
     }
 
-    /// Gets a mutable reference to the non-send resource of the given type, if it exists. Otherwise
-    /// returns [None] Resources are "unique" data of a given type.
+    /// Gets a mutable reference to the non-send resource of the given type, if
+    /// it exists. Otherwise returns [None] Resources are "unique" data of a
+    /// given type.
     #[inline]
     pub fn get_non_send_resource_mut<T: 'static>(&mut self) -> Option<Mut<'_, T>> {
         // SAFE: unique world access
         unsafe { self.get_non_send_resource_unchecked_mut() }
     }
 
-    /// Gets a mutable reference to the non-send resource of the given type, if it exists. Otherwise
-    /// returns [None] Resources are "unique" data of a given type.
+    /// Gets a mutable reference to the non-send resource of the given type, if
+    /// it exists. Otherwise returns [None] Resources are "unique" data of a
+    /// given type.
     ///
     /// # Safety
-    /// This will allow aliased mutable access to the given non-send resource type. The caller must
-    /// ensure that only one mutable access exists at a time.
+    /// This will allow aliased mutable access to the given non-send resource
+    /// type. The caller must ensure that only one mutable access exists at
+    /// a time.
     #[inline]
     pub unsafe fn get_non_send_resource_unchecked_mut<T: 'static>(&self) -> Option<Mut<'_, T>> {
         let component_id = self.components.get_resource_id(TypeId::of::<T>())?;
         self.get_non_send_unchecked_mut_with_id(component_id)
     }
 
-    /// For a given batch of ([Entity], [Bundle]) pairs, either spawns each [Entity] with the given
-    /// bundle (if the entity does not exist), or inserts the [Bundle] (if the entity already exists).
-    /// This is faster than doing equivalent operations one-by-one.
-    /// Returns [Ok] if all entities were successfully inserted into or spawned. Otherwise it returns an [Err]
-    /// with a list of entities that could not be spawned or inserted into. A "spawn or insert" operation can
-    /// only fail if an [Entity] is passed in with an "invalid generation" that conflicts with an existing [Entity].
+    /// For a given batch of ([Entity], [Bundle]) pairs, either spawns each
+    /// [Entity] with the given bundle (if the entity does not exist), or
+    /// inserts the [Bundle] (if the entity already exists). This is faster
+    /// than doing equivalent operations one-by-one. Returns [Ok] if all
+    /// entities were successfully inserted into or spawned. Otherwise it
+    /// returns an [Err] with a list of entities that could not be spawned
+    /// or inserted into. A "spawn or insert" operation can only fail if an
+    /// [Entity] is passed in with an "invalid generation" that conflicts with
+    /// an existing [Entity].
     ///
     /// # Note
-    /// Spawning a specific `entity` value is rarely the right choice. Most apps should use [`World::spawn_batch`].
-    /// This method should generally only be used for sharing entities across apps, and only when they have a scheme
-    /// worked out to share an ID space (which doesn't happen by default).
+    /// Spawning a specific `entity` value is rarely the right choice. Most apps
+    /// should use [`World::spawn_batch`]. This method should generally only
+    /// be used for sharing entities across apps, and only when they have a
+    /// scheme worked out to share an ID space (which doesn't happen by
+    /// default).
     ///
     /// ```
     /// use lgn_ecs::{entity::Entity, world::World, component::Component};
@@ -832,7 +866,8 @@ impl World {
                         SpawnOrInsert::Insert(ref mut inserter, archetype)
                             if location.archetype_id == archetype =>
                         {
-                            // SAFE: `entity` is valid, `location` matches entity, bundle matches inserter
+                            // SAFE: `entity` is valid, `location` matches entity, bundle matches
+                            // inserter
                             unsafe { inserter.insert(entity, location.index, bundle) };
                         }
                         _ => {
@@ -844,7 +879,8 @@ impl World {
                                 location.archetype_id,
                                 change_tick,
                             );
-                            // SAFE: `entity` is valid, `location` matches entity, bundle matches inserter
+                            // SAFE: `entity` is valid, `location` matches entity, bundle matches
+                            // inserter
                             unsafe { inserter.insert(entity, location.index, bundle) };
                             spawn_or_insert =
                                 SpawnOrInsert::Insert(inserter, location.archetype_id);
@@ -863,7 +899,8 @@ impl World {
                             &mut self.storages,
                             change_tick,
                         );
-                        // SAFE: `entity` is valid, `location` matches entity, bundle matches inserter
+                        // SAFE: `entity` is valid, `location` matches entity, bundle matches
+                        // inserter
                         unsafe { spawner.spawn_non_existent(entity, bundle) };
                         spawn_or_insert = SpawnOrInsert::Spawn(spawner);
                     };
@@ -881,9 +918,9 @@ impl World {
         }
     }
 
-    /// Temporarily removes the requested resource from this [World], then re-adds it before
-    /// returning. This enables safe mutable access to a resource while still providing mutable
-    /// world access
+    /// Temporarily removes the requested resource from this [World], then
+    /// re-adds it before returning. This enables safe mutable access to a
+    /// resource while still providing mutable world access
     /// ```
     /// use lgn_ecs::{component::Component, world::{World, Mut}};
     /// #[derive(Component)]
@@ -917,8 +954,8 @@ impl World {
             if column.is_empty() {
                 panic!("resource does not exist: {}", std::any::type_name::<T>());
             }
-            // SAFE: if a resource column exists, row 0 exists as well. caller takes ownership of
-            // the ptr value / drop is called when T is dropped
+            // SAFE: if a resource column exists, row 0 exists as well. caller takes
+            // ownership of the ptr value / drop is called when T is dropped
             unsafe { column.swap_remove_and_forget_unchecked(0) }
         };
         // SAFE: pointer is of type T
@@ -956,7 +993,8 @@ impl World {
 
     /// # Safety
     /// `component_id` must be assigned to a component of type T.
-    /// Caller must ensure this doesn't violate Rust mutability rules for the given resource.
+    /// Caller must ensure this doesn't violate Rust mutability rules for the
+    /// given resource.
     #[inline]
     pub(crate) unsafe fn get_resource_unchecked_mut_with_id<T>(
         &self,
@@ -986,7 +1024,8 @@ impl World {
 
     /// # Safety
     /// `component_id` must be assigned to a component of type T.
-    /// Caller must ensure this doesn't violate Rust mutability rules for the given resource.
+    /// Caller must ensure this doesn't violate Rust mutability rules for the
+    /// given resource.
     #[inline]
     pub(crate) unsafe fn get_non_send_unchecked_mut_with_id<T: 'static>(
         &self,
@@ -997,7 +1036,8 @@ impl World {
     }
 
     /// # Safety
-    /// `component_id` must be valid and correspond to a resource component of type T
+    /// `component_id` must be valid and correspond to a resource component of
+    /// type T
     #[inline]
     unsafe fn insert_resource_with_id<T>(&mut self, component_id: ComponentId, mut value: T) {
         let change_tick = self.change_tick();
@@ -1015,7 +1055,8 @@ impl World {
     }
 
     /// # Safety
-    /// `component_id` must be valid and correspond to a resource component of type T
+    /// `component_id` must be valid and correspond to a resource component of
+    /// type T
     #[inline]
     unsafe fn initialize_resource_internal(&mut self, component_id: ComponentId) -> &mut Column {
         // SAFE: resource archetype always exists
@@ -1084,8 +1125,8 @@ impl World {
     }
 
     /// Empties queued entities and adds them to the empty [Archetype].
-    /// This should be called before doing operations that might operate on queued entities,
-    /// such as inserting a [Component].
+    /// This should be called before doing operations that might operate on
+    /// queued entities, such as inserting a [Component].
     pub(crate) fn flush(&mut self) {
         let empty_archetype = self.archetypes.empty_mut();
         unsafe {
@@ -1093,8 +1134,8 @@ impl World {
             // PERF: consider pre-allocating space for flushed entities
             // SAFE: entity is set to a valid location
             self.entities.flush(|entity, location| {
-                // SAFE: no components are allocated by archetype.allocate() because the archetype
-                // is empty
+                // SAFE: no components are allocated by archetype.allocate() because the
+                // archetype is empty
                 *location = empty_archetype.allocate(entity, table.allocate(entity));
             });
         }

@@ -1,5 +1,6 @@
-use crate::server_request::{execute_request, PingRequest, ServerRequest};
 use anyhow::Result;
+
+use crate::server_request::{execute_request, PingRequest, ServerRequest};
 
 pub async fn ping_console_command(server_uri: &str) -> Result<()> {
     lgn_telemetry::trace_scope!();

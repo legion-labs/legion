@@ -36,7 +36,8 @@ impl FixedTimestepState {
         self.accumulator
     }
 
-    /// The percentage of "step" stored inside the accumulator. Calculated as accumulator / step
+    /// The percentage of "step" stored inside the accumulator. Calculated as
+    /// accumulator / step
     pub fn overstep_percentage(&self) -> f64 {
         self.accumulator / self.step
     }
@@ -170,8 +171,9 @@ impl System for FixedTimestep {
     }
 
     unsafe fn run_unsafe(&mut self, _input: (), world: &World) -> ShouldRun {
-        // SAFE: this system inherits the internal system's component access and archetype component
-        // access, which means the caller has ensured running the internal system is safe
+        // SAFE: this system inherits the internal system's component access and
+        // archetype component access, which means the caller has ensured
+        // running the internal system is safe
         self.internal_system.run_unsafe((), world)
     }
 
@@ -202,11 +204,13 @@ impl System for FixedTimestep {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use instant::Instant;
-    use lgn_ecs::prelude::*;
     use std::ops::{Add, Mul};
     use std::time::Duration;
+
+    use instant::Instant;
+    use lgn_ecs::prelude::*;
+
+    use super::*;
 
     type Count = usize;
     const LABEL: &str = "test_step";

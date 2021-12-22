@@ -15,8 +15,8 @@ impl<'a, T: 'a> AsyncReverseSingleLock<'a, T> {
         }
     }
 
-    /// Unlock the lock if it was previously locked, returning a non-empty option if the lock was
-    /// previously locked.
+    /// Unlock the lock if it was previously locked, returning a non-empty
+    /// option if the lock was previously locked.
     pub fn unlock(&self) -> Option<()> {
         self.wguard
             .lock()

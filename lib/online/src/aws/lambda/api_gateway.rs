@@ -32,7 +32,9 @@ pub struct APIGatewayBaseMethodArn {
 
 /// An API Gateway method ARN.
 ///
-/// This is a string representation of an ARN like: `arn:aws:execute-api:{regionId}:{accountId}:{apiId}/{stage}/{httpVerb}/[{resource}/[{child-resources}]]`
+/// This is a string representation of an ARN like:
+/// `arn:aws:execute-api:{regionId}:{accountId}:{apiId}/{stage}/{httpVerb}/
+/// [{resource}/[{child-resources}]]`
 ///
 /// # Example
 ///

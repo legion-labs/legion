@@ -1,5 +1,5 @@
-//! Base Windowing plugin, provides base events to be sent by the inherent implementation
-//!
+//! Base Windowing plugin, provides base events to be sent by the inherent
+//! implementation
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -63,11 +63,12 @@ mod system;
 mod window;
 mod windows;
 
-pub use crate::raw_window_handle::*;
 pub use event::*;
 pub use system::*;
 pub use window::*;
 pub use windows::*;
+
+pub use crate::raw_window_handle::*;
 
 pub mod prelude {
     #[doc(hidden)]

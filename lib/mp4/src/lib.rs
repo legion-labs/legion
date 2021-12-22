@@ -3,7 +3,6 @@
 //! The priority is put on the live streaming use case
 //! Currently the using minmp4 under the hood, a pure rust representation
 //! is under construction
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

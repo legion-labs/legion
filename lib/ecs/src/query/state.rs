@@ -16,7 +16,8 @@ use crate::{
     world::{World, WorldId},
 };
 
-/// Provides scoped access to a [`World`] state according to a given [`WorldQuery`] and query filter.
+/// Provides scoped access to a [`World`] state according to a given
+/// [`WorldQuery`] and query filter.
 pub struct QueryState<Q: WorldQuery, F: WorldQuery = ()>
 where
     F::Fetch: FilterFetch,
@@ -39,7 +40,8 @@ impl<Q: WorldQuery, F: WorldQuery> QueryState<Q, F>
 where
     F::Fetch: FilterFetch,
 {
-    /// Creates a new [`QueryState`] from a given [`World`] and inherits the result of `world.id()`.
+    /// Creates a new [`QueryState`] from a given [`World`] and inherits the
+    /// result of `world.id()`.
     pub fn new(world: &mut World) -> Self {
         let fetch_state = <Q::State as FetchState>::init(world);
         let filter_state = <F::State as FetchState>::init(world);
@@ -47,14 +49,16 @@ where
         let mut component_access = FilteredAccess::default();
         fetch_state.update_component_access(&mut component_access);
 
-        // Use a temporary empty FilteredAccess for filters. This prevents them from conflicting with the
-        // main Query's `fetch_state` access. Filters are allowed to conflict with the main query fetch
-        // because they are evaluated *before* a specific reference is constructed.
+        // Use a temporary empty FilteredAccess for filters. This prevents them from
+        // conflicting with the main Query's `fetch_state` access. Filters are
+        // allowed to conflict with the main query fetch because they are
+        // evaluated *before* a specific reference is constructed.
         let mut filter_component_access = FilteredAccess::default();
         filter_state.update_component_access(&mut filter_component_access);
 
-        // Merge the temporary filter access with the main access. This ensures that filter access is
-        // properly considered in a global "cross-query" context (both within systems and across systems).
+        // Merge the temporary filter access with the main access. This ensures that
+        // filter access is properly considered in a global "cross-query"
+        // context (both within systems and across systems).
         component_access.extend(&filter_component_access);
 
         let mut state = Self {
@@ -73,10 +77,12 @@ where
         state
     }
 
-    /// Checks if the query is empty for the given [`World`], where the last change and current tick are given.
+    /// Checks if the query is empty for the given [`World`], where the last
+    /// change and current tick are given.
     #[inline]
     pub fn is_empty(&self, world: &World, last_change_tick: u32, change_tick: u32) -> bool {
-        // SAFE: NopFetch does not access any members while &self ensures no one has exclusive access
+        // SAFE: NopFetch does not access any members while &self ensures no one has
+        // exclusive access
         unsafe {
             self.iter_unchecked_manual::<NopFetch<Q::State>>(world, last_change_tick, change_tick)
                 .next()
@@ -84,12 +90,13 @@ where
         }
     }
 
-    /// Takes a query for the given [`World`], checks if the given world is the same as the query, and
-    /// generates new archetypes for the given world.
+    /// Takes a query for the given [`World`], checks if the given world is the
+    /// same as the query, and generates new archetypes for the given world.
     ///
     /// # Panics
     ///
-    /// Panics if the `world.id()` does not equal the current [`QueryState`] internal id.
+    /// Panics if the `world.id()` does not equal the current [`QueryState`]
+    /// internal id.
     pub fn update_archetypes(&mut self, world: &World) {
         self.validate_world(world);
         let archetypes = world.archetypes();
@@ -136,7 +143,8 @@ where
 
     /// Gets the query result for the given [`World`] and [`Entity`].
     ///
-    /// This can only be called for read-only queries, see [`Self::get_mut`] for write-queries.
+    /// This can only be called for read-only queries, see [`Self::get_mut`] for
+    /// write-queries.
     #[inline]
     pub fn get<'w, 's>(
         &'s mut self,
@@ -196,8 +204,8 @@ where
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     #[inline]
     pub unsafe fn get_unchecked<'w, 's>(
         &'s mut self,
@@ -213,13 +221,13 @@ where
         )
     }
 
-    /// Gets the query result for the given [`World`] and [`Entity`], where the last change and
-    /// the current change tick are given.
+    /// Gets the query result for the given [`World`] and [`Entity`], where the
+    /// last change and the current change tick are given.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     pub(crate) unsafe fn get_unchecked_manual<'w, 's, QF: Fetch<'w, 's, State = Q::State>>(
         &'s self,
         world: &'w World,
@@ -253,7 +261,8 @@ where
 
     /// Returns an [`Iterator`] over the query results for the given [`World`].
     ///
-    /// This can only be called for read-only queries, see [`Self::iter_mut`] for write-queries.
+    /// This can only be called for read-only queries, see [`Self::iter_mut`]
+    /// for write-queries.
     #[inline]
     pub fn iter<'w, 's>(
         &'s mut self,
@@ -279,16 +288,18 @@ where
         }
     }
 
-    /// Returns an [`Iterator`] over all possible combinations of `K` query results without repetition.
-    /// This can only be called for read-only queries.
+    /// Returns an [`Iterator`] over all possible combinations of `K` query
+    /// results without repetition. This can only be called for read-only
+    /// queries.
     ///
     ///  For permutations of size K of query returning N results, you will get:
     /// - if K == N: one permutation of all query results
-    /// - if K < N: all possible K-sized combinations of query results, without repetition
+    /// - if K < N: all possible K-sized combinations of query results, without
+    ///   repetition
     /// - if K > N: empty set (no K-sized combinations exist)
     ///
-    /// This can only be called for read-only queries, see [`Self::iter_combinations_mut`] for
-    /// write-queries.
+    /// This can only be called for read-only queries, see
+    /// [`Self::iter_combinations_mut`] for write-queries.
     #[inline]
     pub fn iter_manual<'w, 's>(
         &'s self,
@@ -301,16 +312,18 @@ where
         }
     }
 
-    /// Returns an [`Iterator`] over all possible combinations of `K` query results without repetition.
-    /// This can only be called for read-only queries.
+    /// Returns an [`Iterator`] over all possible combinations of `K` query
+    /// results without repetition. This can only be called for read-only
+    /// queries.
     ///
     ///  For permutations of size K of query returning N results, you will get:
     /// - if K == N: one permutation of all query results
-    /// - if K < N: all possible K-sized combinations of query results, without repetition
+    /// - if K < N: all possible K-sized combinations of query results, without
+    ///   repetition
     /// - if K > N: empty set (no K-sized combinations exist)
     ///
-    /// This can only be called for read-only queries, see [`Self::iter_combinations_mut`] for
-    /// write-queries.
+    /// This can only be called for read-only queries, see
+    /// [`Self::iter_combinations_mut`] for write-queries.
     #[inline]
     pub fn iter_combinations<'w, 's, const K: usize>(
         &'s mut self,
@@ -327,12 +340,13 @@ where
         }
     }
 
-    /// Iterates over all possible combinations of `K` query results for the given [`World`]
-    /// without repetition.
+    /// Iterates over all possible combinations of `K` query results for the
+    /// given [`World`] without repetition.
     ///
     ///  For permutations of size K of query returning N results, you will get:
     /// - if K == N: one permutation of all query results
-    /// - if K < N: all possible K-sized combinations of query results, without repetition
+    /// - if K < N: all possible K-sized combinations of query results, without
+    ///   repetition
     /// - if K > N: empty set (no K-sized combinations exist)
     #[inline]
     pub fn iter_combinations_mut<'w, 's, const K: usize>(
@@ -354,8 +368,8 @@ where
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     #[inline]
     pub unsafe fn iter_unchecked<'w, 's>(
         &'s mut self,
@@ -365,14 +379,14 @@ where
         self.iter_unchecked_manual(world, world.last_change_tick(), world.read_change_tick())
     }
 
-    /// Returns an [`Iterator`] over all possible combinations of `K` query results for the
-    /// given [`World`] without repetition.
+    /// Returns an [`Iterator`] over all possible combinations of `K` query
+    /// results for the given [`World`] without repetition.
     /// This can only be called for read-only queries.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     #[inline]
     pub unsafe fn iter_combinations_unchecked<'w, 's, const K: usize>(
         &'s mut self,
@@ -386,15 +400,15 @@ where
         )
     }
 
-    /// Returns an [`Iterator`] for the given [`World`], where the last change and
-    /// the current change tick are given.
+    /// Returns an [`Iterator`] for the given [`World`], where the last change
+    /// and the current change tick are given.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `self.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `self.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     #[inline]
     pub(crate) unsafe fn iter_unchecked_manual<'w, 's, QF: Fetch<'w, 's, State = Q::State>>(
         &'s self,
@@ -405,16 +419,16 @@ where
         QueryIter::new(world, self, last_change_tick, change_tick)
     }
 
-    /// Returns an [`Iterator`] over all possible combinations of `K` query results for the
-    /// given [`World`] without repetition.
+    /// Returns an [`Iterator`] over all possible combinations of `K` query
+    /// results for the given [`World`] without repetition.
     /// This can only be called for read-only queries.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `self.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `self.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     #[inline]
     pub(crate) unsafe fn iter_combinations_unchecked_manual<
         'w,
@@ -430,10 +444,12 @@ where
         QueryCombinationIter::new(world, self, last_change_tick, change_tick)
     }
 
-    /// Runs `func` on each query result for the given [`World`]. This is faster than the equivalent
-    /// iter() method, but cannot be chained like a normal [`Iterator`].
+    /// Runs `func` on each query result for the given [`World`]. This is faster
+    /// than the equivalent iter() method, but cannot be chained like a
+    /// normal [`Iterator`].
     ///
-    /// This can only be called for read-only queries, see [`Self::for_each_mut`] for write-queries.
+    /// This can only be called for read-only queries, see
+    /// [`Self::for_each_mut`] for write-queries.
     #[inline]
     pub fn for_each<'w, 's, FN: FnMut(<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item)>(
         &'s mut self,
@@ -452,8 +468,9 @@ where
         }
     }
 
-    /// Runs `func` on each query result for the given [`World`]. This is faster than the equivalent
-    /// `iter_mut()` method, but cannot be chained like a normal [`Iterator`].
+    /// Runs `func` on each query result for the given [`World`]. This is faster
+    /// than the equivalent `iter_mut()` method, but cannot be chained like
+    /// a normal [`Iterator`].
     #[inline]
     pub fn for_each_mut<'w, 's, FN: FnMut(<Q::Fetch as Fetch<'w, 's>>::Item)>(
         &'s mut self,
@@ -472,15 +489,16 @@ where
         }
     }
 
-    /// Runs `func` on each query result for the given [`World`]. This is faster than the equivalent
-    /// iter() method, but cannot be chained like a normal [`Iterator`].
+    /// Runs `func` on each query result for the given [`World`]. This is faster
+    /// than the equivalent iter() method, but cannot be chained like a
+    /// normal [`Iterator`].
     ///
     /// This can only be called for read-only queries.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     #[inline]
     pub unsafe fn for_each_unchecked<'w, 's, FN: FnMut(<Q::Fetch as Fetch<'w, 's>>::Item)>(
         &'s mut self,
@@ -496,10 +514,11 @@ where
         );
     }
 
-    /// Runs `func` on each query result in parallel using the given `task_pool`.
+    /// Runs `func` on each query result in parallel using the given
+    /// `task_pool`.
     ///
-    /// This can only be called for read-only queries, see [`Self::par_for_each_mut`] for
-    /// write-queries.
+    /// This can only be called for read-only queries, see
+    /// [`Self::par_for_each_mut`] for write-queries.
     #[inline]
     pub fn par_for_each<
         'w,
@@ -526,7 +545,8 @@ where
         }
     }
 
-    /// Runs `func` on each query result in parallel using the given `task_pool`.
+    /// Runs `func` on each query result in parallel using the given
+    /// `task_pool`.
     #[inline]
     pub fn par_for_each_mut<
         'w,
@@ -553,14 +573,15 @@ where
         }
     }
 
-    /// Runs `func` on each query result in parallel using the given `task_pool`.
+    /// Runs `func` on each query result in parallel using the given
+    /// `task_pool`.
     ///
     /// This can only be called for read-only queries.
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
     #[inline]
     pub unsafe fn par_for_each_unchecked<
         'w,
@@ -584,16 +605,17 @@ where
         );
     }
 
-    /// Runs `func` on each query result for the given [`World`], where the last change and
-    /// the current change tick are given. This is faster than the equivalent
-    /// iter() method, but cannot be chained like a normal [`Iterator`].
+    /// Runs `func` on each query result for the given [`World`], where the last
+    /// change and the current change tick are given. This is faster than
+    /// the equivalent iter() method, but cannot be chained like a normal
+    /// [`Iterator`].
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `self.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `self.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     pub(crate) unsafe fn for_each_unchecked_manual<
         'w,
         's,
@@ -606,8 +628,10 @@ where
         last_change_tick: u32,
         change_tick: u32,
     ) {
-        // NOTE: If you are changing query iteration code, remember to update the following places, where relevant:
-        // QueryIter, QueryIterationCursor, QueryState::for_each_unchecked_manual, QueryState::par_for_each_unchecked_manual
+        // NOTE: If you are changing query iteration code, remember to update the
+        // following places, where relevant: QueryIter, QueryIterationCursor,
+        // QueryState::for_each_unchecked_manual,
+        // QueryState::par_for_each_unchecked_manual
         let mut fetch = QF::init(world, &self.fetch_state, last_change_tick, change_tick);
         let mut filter =
             <F::Fetch as Fetch>::init(world, &self.filter_state, last_change_tick, change_tick);
@@ -644,16 +668,17 @@ where
         }
     }
 
-    /// Runs `func` on each query result in parallel for the given [`World`], where the last change and
-    /// the current change tick are given. This is faster than the equivalent
-    /// iter() method, but cannot be chained like a normal [`Iterator`].
+    /// Runs `func` on each query result in parallel for the given [`World`],
+    /// where the last change and the current change tick are given. This is
+    /// faster than the equivalent iter() method, but cannot be chained like
+    /// a normal [`Iterator`].
     ///
     /// # Safety
     ///
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `self.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `self.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     pub(crate) unsafe fn par_for_each_unchecked_manual<
         'w,
         's,
@@ -668,8 +693,10 @@ where
         last_change_tick: u32,
         change_tick: u32,
     ) {
-        // NOTE: If you are changing query iteration code, remember to update the following places, where relevant:
-        // QueryIter, QueryIterationCursor, QueryState::for_each_unchecked_manual, QueryState::par_for_each_unchecked_manual
+        // NOTE: If you are changing query iteration code, remember to update the
+        // following places, where relevant: QueryIter, QueryIterationCursor,
+        // QueryState::for_each_unchecked_manual,
+        // QueryState::par_for_each_unchecked_manual
         task_pool.scope(|scope| {
             if QF::IS_DENSE && F::Fetch::IS_DENSE {
                 let tables = &world.storages().tables;

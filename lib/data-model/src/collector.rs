@@ -1,5 +1,6 @@
-use crate::{utils::ReflectionError, TypeDefinition, TypeReflection};
 use itertools::Itertools;
+
+use crate::{utils::ReflectionError, TypeDefinition, TypeReflection};
 
 /// Trait to collect reflection data
 pub trait PropertyCollector {

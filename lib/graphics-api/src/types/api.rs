@@ -25,9 +25,10 @@ impl Drop for GfxApi {
 impl GfxApi {
     /// # Safety
     ///
-    /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
-    /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
-    /// behavior on the CPU for reasons other than interacting with the GPU.
+    /// GPU programming is fundamentally unsafe, so all  APIs that interact with
+    /// the GPU should be considered unsafe. However,  APIs are only gated
+    /// by unsafe if they can cause undefined behavior on the CPU for
+    /// reasons other than interacting with the GPU.
     #[allow(unsafe_code)]
     pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]

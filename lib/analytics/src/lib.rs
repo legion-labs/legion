@@ -586,7 +586,8 @@ fn format_log_level(level: u8) -> &'static str {
     }
 }
 
-// find_process_log_entry calls pred(time_ticks,entry_str) with each log entry until pred returns Some(x)
+// find_process_log_entry calls pred(time_ticks,entry_str) with each log entry
+// until pred returns Some(x)
 pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -625,8 +626,8 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
     Ok(found_entry)
 }
 
-// for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log entry until fun returns false
-//mad
+// for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log
+// entry until fun returns false mad
 pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,

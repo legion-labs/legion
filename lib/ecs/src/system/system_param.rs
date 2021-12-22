@@ -25,8 +25,9 @@ use crate::{
 ///
 /// # Derive
 ///
-/// This trait can be derived with the [`derive@super::SystemParam`] macro. The only requirement
-/// is that every struct field must also implement `SystemParam`.
+/// This trait can be derived with the [`derive@super::SystemParam`] macro. The
+/// only requirement is that every struct field must also implement
+/// `SystemParam`.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -56,10 +57,11 @@ pub type SystemParamItem<'w, 's, P> = <<P as SystemParam>::Fetch as SystemParamF
 ///
 /// # Safety
 ///
-/// It is the implementor's responsibility to ensure `system_meta` is populated with the _exact_
-/// [`World`] access used by the `SystemParamState` (and associated [`SystemParamFetch`]).
-/// Additionally, it is the implementor's responsibility to ensure there is no
-/// conflicting access across all `SystemParams`.
+/// It is the implementor's responsibility to ensure `system_meta` is populated
+/// with the _exact_ [`World`] access used by the `SystemParamState` (and
+/// associated [`SystemParamFetch`]). Additionally, it is the implementor's
+/// responsibility to ensure there is no conflicting access across all
+/// `SystemParams`.
 pub unsafe trait SystemParamState: Send + Sync + 'static {
     /// Values of this type can be used to adjust the behavior of the
     /// system parameter. For instance, this can be used to pass
@@ -85,15 +87,17 @@ pub unsafe trait SystemParamState: Send + Sync + 'static {
 /// A [`SystemParamFetch`] that only reads a given [`World`].
 ///
 /// # Safety
-/// This must only be implemented for [`SystemParamFetch`] impls that exclusively read the World passed in to [`SystemParamFetch::get_param`]
+/// This must only be implemented for [`SystemParamFetch`] impls that
+/// exclusively read the World passed in to [`SystemParamFetch::get_param`]
 pub unsafe trait ReadOnlySystemParamFetch {}
 
 pub trait SystemParamFetch<'world, 'state>: SystemParamState {
     type Item;
     /// # Safety
     ///
-    /// This call might access any of the input parameters in an unsafe way. Make sure the data
-    /// access is safe in the context of the system scheduler.
+    /// This call might access any of the input parameters in an unsafe way.
+    /// Make sure the data access is safe in the context of the system
+    /// scheduler.
     unsafe fn get_param(
         state: &'state mut Self,
         system_meta: &SystemMeta,
@@ -118,8 +122,9 @@ where
 {
 }
 
-// SAFE: Relevant query ComponentId and ArchetypeComponentId access is applied to SystemMeta. If
-// this QueryState conflicts with any prior access, a panic will occur.
+// SAFE: Relevant query ComponentId and ArchetypeComponentId access is applied
+// to SystemMeta. If this QueryState conflicts with any prior access, a panic
+// will occur.
 unsafe impl<Q: WorldQuery + 'static, F: WorldQuery + 'static> SystemParamState for QueryState<Q, F>
 where
     F::Fetch: FilterFetch,
@@ -216,7 +221,8 @@ impl<T> Resource for T where T: Send + Sync + 'static {}
 ///
 /// # Panics
 ///
-/// Panics when used as a [`SystemParameter`](SystemParam) if the resource does not exist.
+/// Panics when used as a [`SystemParameter`](SystemParam) if the resource does
+/// not exist.
 ///
 /// Use `Option<Res<T>>` instead if the resource might not always exist.
 pub struct Res<'w, T: Resource> {
@@ -239,14 +245,14 @@ where
 }
 
 impl<'w, T: Resource> Res<'w, T> {
-    /// Returns true if (and only if) this resource been added since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been added since the last
+    /// execution of this system.
     pub fn is_added(&self) -> bool {
         self.ticks.is_added(self.last_change_tick, self.change_tick)
     }
 
-    /// Returns true if (and only if) this resource been changed since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been changed since the last
+    /// execution of this system.
     pub fn is_changed(&self) -> bool {
         self.ticks
             .is_changed(self.last_change_tick, self.change_tick)
@@ -282,8 +288,8 @@ impl<'a, T: Resource> SystemParam for Res<'a, T> {
     type Fetch = ResState<T>;
 }
 
-// SAFE: Res ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this Res
-// conflicts with any prior access, a panic will occur.
+// SAFE: Res ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this Res conflicts with any prior access, a panic will occur.
 unsafe impl<T: Resource> SystemParamState for ResState<T> {
     type Config = ();
 
@@ -393,8 +399,8 @@ impl<'a, T: Resource> SystemParam for ResMut<'a, T> {
     type Fetch = ResMutState<T>;
 }
 
-// SAFE: Res ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this Res
-// conflicts with any prior access, a panic will occur.
+// SAFE: Res ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this Res conflicts with any prior access, a panic will occur.
 unsafe impl<T: Resource> SystemParamState for ResMutState<T> {
     type Config = ();
 
@@ -537,8 +543,9 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
 
 /// A system local [`SystemParam`].
 ///
-/// A local may only be accessed by the system itself and is therefore not visible to other systems.
-/// If two or more systems specify the same local type each will have their own unique local.
+/// A local may only be accessed by the system itself and is therefore not
+/// visible to other systems. If two or more systems specify the same local type
+/// each will have their own unique local.
 ///
 /// # Examples
 ///
@@ -625,7 +632,8 @@ impl<'w, 's, T: Resource + FromWorld> SystemParamFetch<'w, 's> for LocalState<T>
     }
 }
 
-/// A [`SystemParam`] that grants access to the entities that had their `T` [`Component`] removed.
+/// A [`SystemParam`] that grants access to the entities that had their `T`
+/// [`Component`] removed.
 ///
 /// # Examples
 ///
@@ -652,7 +660,8 @@ pub struct RemovedComponents<'a, T: Component> {
 }
 
 impl<'a, T: Component> RemovedComponents<'a, T> {
-    /// Returns an iterator over the entities that had their `T` [`Component`] removed.
+    /// Returns an iterator over the entities that had their `T` [`Component`]
+    /// removed.
     pub fn iter(&self) -> std::iter::Copied<std::slice::Iter<'_, Entity>> {
         self.world.removed_with_id(self.component_id)
     }
@@ -671,8 +680,8 @@ impl<'a, T: Component> SystemParam for RemovedComponents<'a, T> {
     type Fetch = RemovedComponentsState<T>;
 }
 
-// SAFE: no component access. removed component entity collections can be read in parallel and are
-// never mutably borrowed during system execution
+// SAFE: no component access. removed component entity collections can be read
+// in parallel and are never mutably borrowed during system execution
 unsafe impl<T: Component> SystemParamState for RemovedComponentsState<T> {
     type Config = ();
 
@@ -706,10 +715,10 @@ impl<'w, 's, T: Component> SystemParamFetch<'w, 's> for RemovedComponentsState<T
 
 /// Shared borrow of a non-[`Send`] resource.
 ///
-/// Only `Send` resources may be accessed with the [`Res`] [`SystemParam`]. In case that the
-/// resource does not implement `Send`, this `SystemParam` wrapper can be used. This will instruct
-/// the scheduler to instead run the system on the main thread so that it doesn't send the resource
-/// over to another thread.
+/// Only `Send` resources may be accessed with the [`Res`] [`SystemParam`]. In
+/// case that the resource does not implement `Send`, this `SystemParam` wrapper
+/// can be used. This will instruct the scheduler to instead run the system on
+/// the main thread so that it doesn't send the resource over to another thread.
 ///
 /// # Panics
 ///
@@ -736,14 +745,14 @@ where
 }
 
 impl<'w, T: 'static> NonSend<'w, T> {
-    /// Returns true if (and only if) this resource been added since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been added since the last
+    /// execution of this system.
     pub fn is_added(&self) -> bool {
         self.ticks.is_added(self.last_change_tick, self.change_tick)
     }
 
-    /// Returns true if (and only if) this resource been changed since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been changed since the last
+    /// execution of this system.
     pub fn is_changed(&self) -> bool {
         self.ticks
             .is_changed(self.last_change_tick, self.change_tick)
@@ -768,8 +777,9 @@ impl<'a, T: 'static> SystemParam for NonSend<'a, T> {
     type Fetch = NonSendState<T>;
 }
 
-// SAFE: NonSendComponentId and ArchetypeComponentId access is applied to SystemMeta. If this
-// NonSend conflicts with any prior access, a panic will occur.
+// SAFE: NonSendComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this NonSend conflicts with any prior access, a panic will
+// occur.
 unsafe impl<T: 'static> SystemParamState for NonSendState<T> {
     type Config = ();
 
@@ -884,8 +894,9 @@ impl<'a, T: 'static> SystemParam for NonSendMut<'a, T> {
     type Fetch = NonSendMutState<T>;
 }
 
-// SAFE: NonSendMut ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this
-// NonSendMut conflicts with any prior access, a panic will occur.
+// SAFE: NonSendMut ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this NonSendMut conflicts with any prior access, a panic will
+// occur.
 unsafe impl<T: 'static> SystemParamState for NonSendMutState<T> {
     type Config = ();
 

@@ -4,7 +4,8 @@ use fixedbitset::FixedBitSet;
 
 use crate::storage::SparseSetIndex;
 
-/// `Access` keeps track of read and write accesses to values within a collection.
+/// `Access` keeps track of read and write accesses to values within a
+/// collection.
 ///
 /// This is used for ensuring systems are executed soundly.
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -47,7 +48,8 @@ impl<T: SparseSetIndex> Access<T> {
         self.writes.insert(index.sparse_set_index());
     }
 
-    /// Returns true if this `Access` contains a read access for the given index.
+    /// Returns true if this `Access` contains a read access for the given
+    /// index.
     pub fn has_read(&self, index: T) -> bool {
         if self.reads_all {
             true
@@ -56,7 +58,8 @@ impl<T: SparseSetIndex> Access<T> {
         }
     }
 
-    /// Returns true if this `Access` contains a write access for the given index.
+    /// Returns true if this `Access` contains a write access for the given
+    /// index.
     pub fn has_write(&self, index: T) -> bool {
         self.writes.contains(index.sparse_set_index())
     }
@@ -78,7 +81,8 @@ impl<T: SparseSetIndex> Access<T> {
         self.writes.clear();
     }
 
-    /// Extends this `Access` with another, copying all accesses of `other` into this.
+    /// Extends this `Access` with another, copying all accesses of `other` into
+    /// this.
     pub fn extend(&mut self, other: &Self) {
         self.reads_all = self.reads_all || other.reads_all;
         self.reads_and_writes.union_with(&other.reads_and_writes);
@@ -87,8 +91,8 @@ impl<T: SparseSetIndex> Access<T> {
 
     /// Returns true if this `Access` is compatible with `other`.
     ///
-    /// Two `Access` instances are incompatible with each other if one `Access` has a write for
-    /// which the other also has a write or a read.
+    /// Two `Access` instances are incompatible with each other if one `Access`
+    /// has a write for which the other also has a write or a read.
     pub fn is_compatible(&self, other: &Self) -> bool {
         if self.reads_all {
             0 == other.writes.count_ones(..)

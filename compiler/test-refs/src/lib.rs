@@ -1,5 +1,6 @@
 // BEGIN - Legion Labs lints v0.6
-// do not change or add/remove here, but one can add exceptions after this section
+// do not change or add/remove here, but one can add exceptions after this
+// section
 #![deny(unsafe_code)]
 #![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
 // Rustdoc lints
@@ -103,7 +104,8 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
-    // in this test example every build dependency becomes a reference/load-time dependency.
+    // in this test example every build dependency becomes a reference/load-time
+    // dependency.
     let source = context.target_unnamed.clone();
     let references: Vec<_> = context
         .dependencies

@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::path::Path;
+
+use anyhow::{Context, Result};
 
 use crate::{
     clear_local_change, clear_resolve_pending, connect_to_server, fetch_tree_subdir,

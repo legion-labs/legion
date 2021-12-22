@@ -15,15 +15,17 @@ use url::Url;
 use super::{Authenticator, Error, Result};
 
 type AuthClient = Client<HttpsConnector<HttpConnector>>;
-/// An `AwsCognitoClientAuthenticator`'s primary goal is to authenticate a user and return a
-/// `ClientTokenSet` containing the user's id, access and refresh tokens.
+/// An `AwsCognitoClientAuthenticator`'s primary goal is to authenticate a user
+/// and return a `ClientTokenSet` containing the user's id, access and refresh
+/// tokens.
 ///
 /// It can do so by:
-/// - Authenticating the user interactively with the identity provider in a web-browser.
+/// - Authenticating the user interactively with the identity provider in a
+///   web-browser.
 /// - Exchanging a refresh token for a new access token.
 ///
-/// It can also validate a user's access token and return a `UserInfo` struct containing the user's
-/// profile.
+/// It can also validate a user's access token and return a `UserInfo` struct
+/// containing the user's profile.
 pub struct AwsCognitoClientAuthenticator {
     pub domain_name: String,
     pub region: String,
@@ -536,8 +538,8 @@ impl Authenticator for AwsCognitoClientAuthenticator {
 
     /// Get a token set from a refresh token.
     ///
-    /// If the call does not return a new refresh token within the `TokenSet`, the specified
-    /// refresh token will be filled in instead.
+    /// If the call does not return a new refresh token within the `TokenSet`,
+    /// the specified refresh token will be filled in instead.
     async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
         let client = self.client().await;
 

@@ -48,8 +48,8 @@ impl DeferredDropper {
                 inner.buckets[current_render_frame].0.push(object);
             }
         }
-        // Move to the next frame. Now, we can safely free the memory. The GPU should not have any
-        // implicit reference on some API objects/memory.
+        // Move to the next frame. Now, we can safely free the memory. The GPU should
+        // not have any implicit reference on some API objects/memory.
         {
             let next_render_frame = (inner.render_frame_index + 1) % inner.render_frame_capacity;
 

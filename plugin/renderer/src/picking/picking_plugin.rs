@@ -4,9 +4,8 @@ use lgn_input::mouse::MouseButtonInput;
 use lgn_math::Vec2;
 use lgn_window::WindowResized;
 
-use crate::components::{PickedComponent, StaticMesh};
-
 use super::PickingManager;
+use crate::components::{PickedComponent, StaticMesh};
 
 pub struct PickingPlugin {
     has_window: bool,

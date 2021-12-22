@@ -57,9 +57,11 @@ impl SystemMeta {
     }
 }
 
-// TODO: Actually use this in FunctionSystem. We should probably only do this once Systems are constructed using a World reference
-// (to avoid the need for unwrapping to retrieve SystemMeta)
-/// Holds on to persistent state required to drive [`SystemParam`] for a [`System`].  
+// TODO: Actually use this in FunctionSystem. We should probably only do this
+// once Systems are constructed using a World reference (to avoid the need for
+// unwrapping to retrieve SystemMeta)
+/// Holds on to persistent state required to drive [`SystemParam`] for a
+/// [`System`].
 pub struct SystemState<Param: SystemParam> {
     meta: SystemMeta,
     param_state: <Param as SystemParam>::Fetch,
@@ -92,7 +94,8 @@ impl<Param: SystemParam> SystemState<Param> {
         &self.meta
     }
 
-    /// Retrieve the [`SystemParam`] values. This can only be called when all parameters are read-only.
+    /// Retrieve the [`SystemParam`] values. This can only be called when all
+    /// parameters are read-only.
     #[inline]
     pub fn get<'w, 's>(
         &'s mut self,
@@ -102,7 +105,8 @@ impl<Param: SystemParam> SystemState<Param> {
         Param::Fetch: ReadOnlySystemParamFetch,
     {
         self.validate_world_and_update_archetypes(world);
-        // SAFE: Param is read-only and doesn't allow mutable access to World. It also matches the World this SystemState was created with.
+        // SAFE: Param is read-only and doesn't allow mutable access to World. It also
+        // matches the World this SystemState was created with.
         unsafe { self.get_unchecked_manual(world) }
     }
 
@@ -113,14 +117,16 @@ impl<Param: SystemParam> SystemState<Param> {
         world: &'w mut World,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         self.validate_world_and_update_archetypes(world);
-        // SAFE: World is uniquely borrowed and matches the World this SystemState was created with.
+        // SAFE: World is uniquely borrowed and matches the World this SystemState was
+        // created with.
         unsafe { self.get_unchecked_manual(world) }
     }
 
-    /// Applies all state queued up for [`SystemParam`] values. For example, this will apply commands queued up
-    /// by a [`Commands`](`super::Commands`) parameter to the given [`World`].
-    /// This function should be called manually after the values returned by [`SystemState::get`] and [`SystemState::get_mut`]  
-    /// are finished being used.
+    /// Applies all state queued up for [`SystemParam`] values. For example,
+    /// this will apply commands queued up by a [`Commands`](`super::
+    /// Commands`) parameter to the given [`World`]. This function should be
+    /// called manually after the values returned by [`SystemState::get`] and
+    /// [`SystemState::get_mut`] are finished being used.
     pub fn apply(&mut self, world: &mut World) {
         self.param_state.apply(world);
     }
@@ -149,12 +155,14 @@ impl<Param: SystemParam> SystemState<Param> {
         }
     }
 
-    /// Retrieve the [`SystemParam`] values. This will not update archetypes automatically.
+    /// Retrieve the [`SystemParam`] values. This will not update archetypes
+    /// automatically.
     ///
     /// # Safety
-    /// This call might access any of the input parameters in a way that violates Rust's mutability rules. Make sure the data
-    /// access is safe in the context of global [`World`] access. The passed-in [`World`] _must_ be the [`World`] the [`SystemState`] was
-    /// created with.   
+    /// This call might access any of the input parameters in a way that
+    /// violates Rust's mutability rules. Make sure the data access is safe
+    /// in the context of global [`World`] access. The passed-in [`World`]
+    /// _must_ be the [`World`] the [`SystemState`] was created with.   
     #[inline]
     pub unsafe fn get_unchecked_manual<'w, 's>(
         &'s mut self,
@@ -242,8 +250,8 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
 
 /// Conversion trait to turn something into a [`System`].
 ///
-/// Use this to get a system from a function. Also note that every system implements this trait as
-/// well.
+/// Use this to get a system from a function. Also note that every system
+/// implements this trait as well.
 ///
 /// # Examples
 ///
@@ -255,9 +263,9 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
 ///
 /// let system = my_system_function.system();
 /// ```
-// This trait has to be generic because we have potentially overlapping impls, in particular
-// because Rust thinks a type could impl multiple different `FnMut` combinations
-// even though none can currently
+// This trait has to be generic because we have potentially overlapping impls,
+// in particular because Rust thinks a type could impl multiple different
+// `FnMut` combinations even though none can currently
 pub trait IntoSystem<In, Out, Params> {
     type System: System<In = In, Out = Out>;
     /// Turns this value into its corresponding [`System`].
@@ -276,14 +284,16 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 
 /// Wrapper type to mark a [`SystemParam`] as an input.
 ///
-/// [`System`]s may take an optional input which they require to be passed to them when they
-/// are being [`run`](System::run). For [`FunctionSystems`](FunctionSystem) the input may be marked
-/// with this `In` type, but only the first param of a function may be tagged as an input. This also
-/// means a system can only have one or zero input paramaters.
+/// [`System`]s may take an optional input which they require to be passed to
+/// them when they are being [`run`](System::run). For
+/// [`FunctionSystems`](FunctionSystem) the input may be marked with this `In`
+/// type, but only the first param of a function may be tagged as an input. This
+/// also means a system can only have one or zero input paramaters.
 ///
 /// # Examples
 ///
-/// Here is a simple example of a system that takes a [`usize`] returning the square of it.
+/// Here is a simple example of a system that takes a [`usize`] returning the
+/// square of it.
 ///
 /// ```
 /// use lgn_ecs::prelude::*;
@@ -305,9 +315,10 @@ pub struct InputMarker;
 
 /// The [`System`] counter part of an ordinary function.
 ///
-/// You get this by calling [`IntoSystem::system`]  on a function that only accepts
-/// [`SystemParam`]s. The output of the system becomes the functions return type, while the input
-/// becomes the functions [`In`] tagged parameter or `()` if no such parameter exists.
+/// You get this by calling [`IntoSystem::system`]  on a function that only
+/// accepts [`SystemParam`]s. The output of the system becomes the functions
+/// return type, while the input becomes the functions [`In`] tagged parameter
+/// or `()` if no such parameter exists.
 pub struct FunctionSystem<In, Out, Param, Marker, F>
 where
     Param: SystemParam,
@@ -322,8 +333,8 @@ where
 }
 
 impl<In, Out, Param: SystemParam, Marker, F> FunctionSystem<In, Out, Param, Marker, F> {
-    /// Gives mutable access to the systems config via a callback. This is useful to set up system
-    /// [`Local`](crate::system::Local)s.
+    /// Gives mutable access to the systems config via a callback. This is
+    /// useful to set up system [`Local`](crate::system::Local)s.
     ///
     /// # Examples
     ///
@@ -483,8 +494,9 @@ where
 pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync + 'static {
     /// # Safety
     ///
-    /// This call might access any of the input parameters in an unsafe way. Make sure the data
-    /// access is safe in the context of the system scheduler.
+    /// This call might access any of the input parameters in an unsafe way.
+    /// Make sure the data access is safe in the context of the system
+    /// scheduler.
     unsafe fn run(
         &mut self,
         input: In,

@@ -11,14 +11,15 @@ use crate::{
 
 /// An ECS system that can be added to a [Schedule](crate::schedule::Schedule)
 ///
-/// Systems are functions with all arguments implementing [`SystemParam`](crate::system::SystemParam).
+/// Systems are functions with all arguments implementing
+/// [`SystemParam`](crate::system::SystemParam).
 ///
 /// Systems are added to an application using `App::add_system(my_system)`
 /// or similar methods, and will generally run once per pass of the main loop.
 ///
-/// Systems are executed in parallel, in opportunistic order; data access is managed automatically.
-/// It's possible to specify explicit execution order between specific systems,
-/// see [`SystemDescriptor`](crate::schedule::SystemDescriptor).
+/// Systems are executed in parallel, in opportunistic order; data access is
+/// managed automatically. It's possible to specify explicit execution order
+/// between specific systems, see [`SystemDescriptor`](crate::schedule::SystemDescriptor).
 pub trait System: Send + Sync + 'static {
     /// The system's input. See [`In`](crate::system::In) for
     /// [`FunctionSystem`](crate::system::FunctionSystem)s.
@@ -35,17 +36,19 @@ pub trait System: Send + Sync + 'static {
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
     /// Returns true if the system is [`Send`].
     fn is_send(&self) -> bool;
-    /// Runs the system with the given input in the world. Unlike [`System::run`], this function
-    /// takes a shared reference to [`World`] and may therefore break Rust's aliasing rules, making
-    /// it unsafe to call.
+    /// Runs the system with the given input in the world. Unlike
+    /// [`System::run`], this function takes a shared reference to [`World`]
+    /// and may therefore break Rust's aliasing rules, making it unsafe to
+    /// call.
     ///
     /// # Safety
     ///
-    /// This might access world and resources in an unsafe manner. This should only be called in one
-    /// of the following contexts:
-    ///     1. This system is the only system running on the given world across all threads.
-    ///     2. This system only runs in parallel with other systems that do not conflict with the
-    ///        [`System::archetype_component_access()`].
+    /// This might access world and resources in an unsafe manner. This should
+    /// only be called in one of the following contexts:
+    ///     1. This system is the only system running on the given world across
+    /// all threads.     2. This system only runs in parallel with other
+    /// systems that do not conflict with the        [`System::
+    /// archetype_component_access()`].
     unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
     /// Runs the system with the given input in the world.
     fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {

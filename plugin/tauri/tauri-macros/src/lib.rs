@@ -1,7 +1,6 @@
 //! Tauri plugin macros for Legion's ECS.
 //!
 //! Provides Tauri integration into Legion's ECS.
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

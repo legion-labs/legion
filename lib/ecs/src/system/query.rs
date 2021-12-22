@@ -15,34 +15,37 @@ use crate::{
 
 /// Provides scoped access to components in a [`World`].
 ///
-/// Queries enable iteration over entities and their components as well as filtering them
-/// on certain conditions. A query matches its parameters against the world to produce a series
-/// of results. Each *query result* is a tuple of components (the same components defined
-/// in the query) that belong to the same entity.
+/// Queries enable iteration over entities and their components as well as
+/// filtering them on certain conditions. A query matches its parameters against
+/// the world to produce a series of results. Each *query result* is a tuple of
+/// components (the same components defined in the query) that belong to the
+/// same entity.
 ///
-/// Computational cost of queries is reduced by the fact that they have an internal archetype
-/// cache to avoid re-computing archetype matches on each query access.
+/// Computational cost of queries is reduced by the fact that they have an
+/// internal archetype cache to avoid re-computing archetype matches on each
+/// query access.
 ///
-/// Query functionality is based on the [`WorldQuery`] trait. Both tuples of components
-/// (up to 16 elements) and query filters implement this trait.
+/// Query functionality is based on the [`WorldQuery`] trait. Both tuples of
+/// components (up to 16 elements) and query filters implement this trait.
 ///
 /// `Query` accepts two type parameters:
 ///
-/// 1. **Component access:** the components that an entity must have at the same time to yield
-///    a query result.
-/// 2. **Query filters (optional):** a predicate that ignores query results that don't match
-///    its conditions.
+/// 1. **Component access:** the components that an entity must have at the same
+/// time to yield    a query result.
+/// 2. **Query filters (optional):** a predicate that ignores query results that
+/// don't match    its conditions.
 ///
 /// # Usage as system parameter
 ///
-/// A query is defined by declaring it as a system parameter. This section shows the various
-/// use cases of `Query` as a system parameter.
+/// A query is defined by declaring it as a system parameter. This section shows
+/// the various use cases of `Query` as a system parameter.
 ///
 /// ## Immutable component access
 ///
-/// The following example defines a query that gives an iterator over `(&ComponentA, &ComponentB)`
-/// tuples, where `ComponentA` and `ComponentB` belong to the same entity. Accessing components
-/// immutably helps system parallelization.
+/// The following example defines a query that gives an iterator over
+/// `(&ComponentA, &ComponentB)` tuples, where `ComponentA` and `ComponentB`
+/// belong to the same entity. Accessing components immutably helps system
+/// parallelization.
 ///
 /// ```
 /// # use lgn_ecs::component::Component;
@@ -60,9 +63,9 @@ use crate::{
 ///
 /// ## Mutable component access
 ///
-/// The following example is similar to the previous one, with the exception of `ComponentA`
-/// being accessed mutably here. Note that both mutable and immutable accesses are allowed
-/// in the same query.
+/// The following example is similar to the previous one, with the exception of
+/// `ComponentA` being accessed mutably here. Note that both mutable and
+/// immutable accesses are allowed in the same query.
 ///
 /// ```
 /// # use lgn_ecs::component::Component;
@@ -79,18 +82,19 @@ use crate::{
 /// # system.system();
 /// ```
 ///
-/// Two systems cannot be executed in parallel if both access a certain component and
-/// at least one of the accesses is mutable, unless the schedule can verify that no entity
-/// could be found in both queries, as otherwise Rusts mutability Rules would be broken.
+/// Two systems cannot be executed in parallel if both access a certain
+/// component and at least one of the accesses is mutable, unless the schedule
+/// can verify that no entity could be found in both queries, as otherwise Rusts
+/// mutability Rules would be broken.
 ///
-/// Similarly, a system cannot contain two queries that would break Rust's mutability Rules.
-/// If you need such Queries, you can use Filters to make the Queries disjoint or use a
-/// [`QuerySet`](super::QuerySet).
+/// Similarly, a system cannot contain two queries that would break Rust's
+/// mutability Rules. If you need such Queries, you can use Filters to make the
+/// Queries disjoint or use a [`QuerySet`](super::QuerySet).
 ///
 /// ## Entity ID access
 ///
-/// Inserting [`Entity`](crate::entity::Entity) at any position in the type parameter tuple
-/// will give access to the entity ID.
+/// Inserting [`Entity`](crate::entity::Entity) at any position in the type
+/// parameter tuple will give access to the entity ID.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -106,8 +110,9 @@ use crate::{
 ///
 /// ## Query filtering
 ///
-/// The second, optional type parameter of query, is used for filters can be added to filter
-/// out the query results that don't satisfy the given condition.
+/// The second, optional type parameter of query, is used for filters can be
+/// added to filter out the query results that don't satisfy the given
+/// condition.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -124,7 +129,8 @@ use crate::{
 /// # system.system();
 /// ```
 ///
-/// If you need to apply more filters in a single query, group them into a tuple:
+/// If you need to apply more filters in a single query, group them into a
+/// tuple:
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -151,9 +157,10 @@ use crate::{
 ///
 /// ## Optional component access
 ///
-/// A component can be made optional in a query by wrapping it into an [`Option`]. In the
-/// following example, the query will iterate over components of both entities that contain
-/// `ComponentA` and `ComponentB`, and entities that contain `ComponentA` but not `ComponentB`.
+/// A component can be made optional in a query by wrapping it into an
+/// [`Option`]. In the following example, the query will iterate over components
+/// of both entities that contain `ComponentA` and `ComponentB`, and entities
+/// that contain `ComponentA` but not `ComponentB`.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -167,16 +174,16 @@ use crate::{
 /// # system.system();
 /// ```
 ///
-/// If an entity does not contain a component, its corresponding query result value will be
-/// `None`. Optional components increase the number of entities a query has to match against,
-/// therefore they can hurt iteration performance, especially in the worst case scenario where
-/// the query solely consists of only optional components, since all entities will be iterated
-/// over.
+/// If an entity does not contain a component, its corresponding query result
+/// value will be `None`. Optional components increase the number of entities a
+/// query has to match against, therefore they can hurt iteration performance,
+/// especially in the worst case scenario where the query solely consists of
+/// only optional components, since all entities will be iterated over.
 ///
 /// ## Single component access
 ///
-/// If just a single component needs to be accessed, using a tuple as the first type parameter
-/// of `Query` can be omitted.
+/// If just a single component needs to be accessed, using a tuple as the first
+/// type parameter of `Query` can be omitted.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -197,13 +204,14 @@ use crate::{
 ///
 /// # Usage of query results
 ///
-/// Inside the body of the system function, the `Query` is available as a function parameter.
-/// This section shows various methods to access query results.
+/// Inside the body of the system function, the `Query` is available as a
+/// function parameter. This section shows various methods to access query
+/// results.
 ///
 /// ## Iteration over every query result
 ///
-/// The [`iter`](Self::iter) and [`iter_mut`](Self::iter_mut) methods are used to iterate
-/// over every query result. Refer to the
+/// The [`iter`](Self::iter) and [`iter_mut`](Self::iter_mut) methods are used
+/// to iterate over every query result. Refer to the
 /// [`Iterator` API docs](https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html)
 /// for advanced iterator usage.
 ///
@@ -233,15 +241,18 @@ use crate::{
 /// ## Getting the query result for a particular entity
 ///
 /// If you have an [`Entity`] ID, you can use the [`get`](Self::get) or
-/// [`get_mut`](Self::get_mut) methods to access the query result for that particular entity.
+/// [`get_mut`](Self::get_mut) methods to access the query result for that
+/// particular entity.
 ///
 /// ## Getting a single query result
 ///
-/// While it's possible to get a single result from a query by using `iter.next()`, a more
-/// idiomatic approach would use the [`single`](Self::single) or [`single_mut`](Self::single_mut)
-/// methods instead. Keep in mind though that they will return a [`QuerySingleError`] if the
-/// number of query results differ from being exactly one. If that's the case, use `iter.next()`
-/// (or `iter_mut.next()`) to only get the first query result.
+/// While it's possible to get a single result from a query by using
+/// `iter.next()`, a more idiomatic approach would use the
+/// [`single`](Self::single) or [`single_mut`](Self::single_mut)
+/// methods instead. Keep in mind though that they will return a
+/// [`QuerySingleError`] if the number of query results differ from being
+/// exactly one. If that's the case, use `iter.next()` (or `iter_mut.next()`) to
+/// only get the first query result.
 pub struct Query<'world, 'state, Q: WorldQuery, F: WorldQuery = ()>
 where
     F::Fetch: FilterFetch,
@@ -260,8 +271,9 @@ where
     ///
     /// # Safety
     ///
-    /// This will create a query that could violate memory safety rules. Make sure that this is only
-    /// called in ways that ensure the queries have unique mutable access.
+    /// This will create a query that could violate memory safety rules. Make
+    /// sure that this is only called in ways that ensure the queries have
+    /// unique mutable access.
     #[inline]
     pub(crate) unsafe fn new(
         world: &'w World,
@@ -279,13 +291,14 @@ where
 
     /// Returns an [`Iterator`] over the query results.
     ///
-    /// This can only return immutable data (mutable data will be cast to an immutable form).
-    /// See [`Self::iter_mut`] for queries that contain at least one mutable component.
+    /// This can only return immutable data (mutable data will be cast to an
+    /// immutable form). See [`Self::iter_mut`] for queries that contain at
+    /// least one mutable component.
     ///
     /// # Example
     ///
-    /// Here, the `report_names_system` iterates over the `Player` component of every entity
-    /// that contains it:
+    /// Here, the `report_names_system` iterates over the `Player` component of
+    /// every entity that contains it:
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -314,8 +327,8 @@ where
     ///
     /// # Example
     ///
-    /// Here, the `gravity_system` iterates over the `Velocity` component of every entity in
-    /// the world that contains it in order to update it:
+    /// Here, the `gravity_system` iterates over the `Velocity` component of
+    /// every entity in the world that contains it in order to update it:
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -340,12 +353,13 @@ where
         }
     }
 
-    /// Returns an [`Iterator`] over all possible combinations of `K` query results without repetition.
-    /// This can only return immutable data
+    /// Returns an [`Iterator`] over all possible combinations of `K` query
+    /// results without repetition. This can only return immutable data
     ///
     ///  For permutations of size K of query returning N results, you will get:
     /// - if K == N: one permutation of all query results
-    /// - if K < N: all possible K-sized combinations of query results, without repetition
+    /// - if K < N: all possible K-sized combinations of query results, without
+    ///   repetition
     /// - if K > N: empty set (no K-sized combinations exist)
     #[inline]
     pub fn iter_combinations<const K: usize>(
@@ -362,10 +376,12 @@ where
         }
     }
 
-    /// Iterates over all possible combinations of `K` query results without repetition.
+    /// Iterates over all possible combinations of `K` query results without
+    /// repetition.
     ///
-    /// The returned value is not an `Iterator`, because that would lead to aliasing of mutable references.
-    /// In order to iterate it, use `fetch_next` method with `while let Some(..)` loop pattern.
+    /// The returned value is not an `Iterator`, because that would lead to
+    /// aliasing of mutable references. In order to iterate it, use
+    /// `fetch_next` method with `while let Some(..)` loop pattern.
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -403,8 +419,9 @@ where
     ///
     /// # Safety
     ///
-    /// This function makes it possible to violate Rust's aliasing guarantees. You must make sure
-    /// this call does not result in multiple mutable references to the same component
+    /// This function makes it possible to violate Rust's aliasing guarantees.
+    /// You must make sure this call does not result in multiple mutable
+    /// references to the same component
     #[inline]
     pub unsafe fn iter_unsafe(&'s self) -> QueryIter<'w, 's, Q, Q::Fetch, F> {
         // SEMI-SAFE: system runs without conflicts with other systems.
@@ -413,12 +430,12 @@ where
             .iter_unchecked_manual(self.world, self.last_change_tick, self.change_tick)
     }
 
-    /// Iterates over all possible combinations of `K` query results without repetition.
-    /// See [`Query::iter_combinations`].
+    /// Iterates over all possible combinations of `K` query results without
+    /// repetition. See [`Query::iter_combinations`].
     ///
     /// # Safety
-    /// This allows aliased mutability. You must make sure this call does not result in multiple
-    /// mutable references to the same component
+    /// This allows aliased mutability. You must make sure this call does not
+    /// result in multiple mutable references to the same component
     #[inline]
     pub unsafe fn iter_combinations_unsafe<const K: usize>(
         &self,
@@ -432,15 +449,16 @@ where
         )
     }
 
-    /// Runs `f` on each query result. This is faster than the equivalent iter() method, but cannot
-    /// be chained like a normal [`Iterator`].
+    /// Runs `f` on each query result. This is faster than the equivalent iter()
+    /// method, but cannot be chained like a normal [`Iterator`].
     ///
-    /// This can only pass in immutable data, see [`Self::for_each_mut`] for mutable access.
+    /// This can only pass in immutable data, see [`Self::for_each_mut`] for
+    /// mutable access.
     ///
     /// # Example
     ///
-    /// Here, the `report_names_system` iterates over the `Player` component of every entity
-    /// that contains it:
+    /// Here, the `report_names_system` iterates over the `Player` component of
+    /// every entity that contains it:
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -470,13 +488,13 @@ where
         };
     }
 
-    /// Runs `f` on each query result. This is faster than the equivalent iter() method, but cannot
-    /// be chained like a normal [`Iterator`].
+    /// Runs `f` on each query result. This is faster than the equivalent iter()
+    /// method, but cannot be chained like a normal [`Iterator`].
     ///
     /// # Example
     ///
-    /// Here, the `gravity_system` iterates over the `Velocity` component of every entity in
-    /// the world that contains it in order to update it:
+    /// Here, the `gravity_system` iterates over the `Velocity` component of
+    /// every entity in the world that contains it in order to update it:
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -493,8 +511,8 @@ where
     /// ```
     #[inline]
     pub fn for_each_mut<'a, FN: FnMut(<Q::Fetch as Fetch<'a, 'a>>::Item)>(&'a mut self, f: FN) {
-        // SAFE: system runs without conflicts with other systems. same-system queries have runtime
-        // borrow checks when they conflict
+        // SAFE: system runs without conflicts with other systems. same-system queries
+        // have runtime borrow checks when they conflict
         unsafe {
             self.state.for_each_unchecked_manual::<Q::Fetch, FN>(
                 self.world,
@@ -507,8 +525,8 @@ where
 
     /// Runs `f` on each query result in parallel using the given task pool.
     ///
-    /// This can only be called for immutable data, see [`Self::par_for_each_mut`] for
-    /// mutable access.
+    /// This can only be called for immutable data, see
+    /// [`Self::par_for_each_mut`] for mutable access.
     #[inline]
     pub fn par_for_each<FN: Fn(<Q::ReadOnlyFetch as Fetch<'w, 's>>::Item) + Send + Sync + Clone>(
         &'s self,
@@ -516,8 +534,8 @@ where
         batch_size: usize,
         f: FN,
     ) {
-        // SAFE: system runs without conflicts with other systems. same-system queries have runtime
-        // borrow checks when they conflict
+        // SAFE: system runs without conflicts with other systems. same-system queries
+        // have runtime borrow checks when they conflict
         unsafe {
             self.state
                 .par_for_each_unchecked_manual::<Q::ReadOnlyFetch, FN>(
@@ -539,8 +557,8 @@ where
         batch_size: usize,
         f: FN,
     ) {
-        // SAFE: system runs without conflicts with other systems. same-system queries have runtime
-        // borrow checks when they conflict
+        // SAFE: system runs without conflicts with other systems. same-system queries
+        // have runtime borrow checks when they conflict
         unsafe {
             self.state.par_for_each_unchecked_manual::<Q::Fetch, FN>(
                 self.world,
@@ -555,16 +573,17 @@ where
 
     /// Returns the query result for the given [`Entity`].
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
-    /// This can only return immutable data (mutable data will be cast to an immutable form).
-    /// See [`get_mut`](Self::get_mut) for queries that contain at least one mutable component.
+    /// This can only return immutable data (mutable data will be cast to an
+    /// immutable form). See [`get_mut`](Self::get_mut) for queries that
+    /// contain at least one mutable component.
     ///
     /// # Example
     ///
-    /// Here, `get` is used to retrieve the exact query result of the entity specified by the
-    /// `SelectedCharacter` resource.
+    /// Here, `get` is used to retrieve the exact query result of the entity
+    /// specified by the `SelectedCharacter` resource.
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -603,13 +622,13 @@ where
 
     /// Returns the query result for the given [`Entity`].
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
     /// # Example
     ///
-    /// Here, `get_mut` is used to retrieve the exact query result of the entity specified by the
-    /// `PoisonedCharacter` resource.
+    /// Here, `get_mut` is used to retrieve the exact query result of the entity
+    /// specified by the `PoisonedCharacter` resource.
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -644,13 +663,14 @@ where
 
     /// Returns the query result for the given [`Entity`].
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
     /// # Safety
     ///
-    /// This function makes it possible to violate Rust's aliasing guarantees. You must make sure
-    /// this call does not result in multiple mutable references to the same component
+    /// This function makes it possible to violate Rust's aliasing guarantees.
+    /// You must make sure this call does not result in multiple mutable
+    /// references to the same component
     #[inline]
     pub unsafe fn get_unchecked(
         &'s self,
@@ -668,13 +688,13 @@ where
 
     /// Returns a reference to the [`Entity`]'s [`Component`] of the given type.
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
     /// # Example
     ///
-    /// Here, `get_component` is used to retrieve the `Character` component of the entity
-    /// specified by the `SelectedCharacter` resource.
+    /// Here, `get_component` is used to retrieve the `Character` component of
+    /// the entity specified by the `SelectedCharacter` resource.
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -721,15 +741,16 @@ where
         }
     }
 
-    /// Returns a mutable reference to the [`Entity`]'s [`Component`] of the given type.
+    /// Returns a mutable reference to the [`Entity`]'s [`Component`] of the
+    /// given type.
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
     /// # Example
     ///
-    /// Here, `get_component_mut` is used to retrieve the `Health` component of the entity
-    /// specified by the `PoisonedCharacter` resource.
+    /// Here, `get_component_mut` is used to retrieve the `Health` component of
+    /// the entity specified by the `PoisonedCharacter` resource.
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -754,15 +775,17 @@ where
         unsafe { self.get_component_unchecked_mut(entity) }
     }
 
-    /// Returns a mutable reference to the [`Entity`]'s [`Component`] of the given type.
+    /// Returns a mutable reference to the [`Entity`]'s [`Component`] of the
+    /// given type.
     ///
-    /// In case of a nonexisting entity or mismatched component, a [`QueryEntityError`] is
-    /// returned instead.
+    /// In case of a nonexisting entity or mismatched component, a
+    /// [`QueryEntityError`] is returned instead.
     ///
     /// # Safety
     ///
-    /// This function makes it possible to violate Rust's aliasing guarantees. You must make sure
-    /// this call does not result in multiple mutable references to the same component
+    /// This function makes it possible to violate Rust's aliasing guarantees.
+    /// You must make sure this call does not result in multiple mutable
+    /// references to the same component
     #[inline]
     pub unsafe fn get_component_unchecked_mut<T: Component>(
         &self,
@@ -793,11 +816,12 @@ where
         }
     }
 
-    /// Returns a single immutable query result when there is exactly one entity matching
-    /// the query.
+    /// Returns a single immutable query result when there is exactly one entity
+    /// matching the query.
     ///
-    /// This can only return immutable data. Use [`single_mut`](Self::single_mut) for
-    /// queries that contain at least one mutable component.
+    /// This can only return immutable data. Use
+    /// [`single_mut`](Self::single_mut) for queries that contain at least
+    /// one mutable component.
     ///
     /// # Example
     ///
@@ -817,20 +841,22 @@ where
     /// # Panics
     ///
     /// Panics if the number of query results is not exactly one. Use
-    /// [`get_single`](Self::get_single) to return a `Result` instead of panicking.
+    /// [`get_single`](Self::get_single) to return a `Result` instead of
+    /// panicking.
     #[track_caller]
     pub fn single(&'s self) -> <Q::ReadOnlyFetch as Fetch<'w, 's>>::Item {
         self.get_single().unwrap()
     }
 
-    /// Returns a single immutable query result when there is exactly one entity matching
-    /// the query.
+    /// Returns a single immutable query result when there is exactly one entity
+    /// matching the query.
     ///
-    /// This can only return immutable data. Use [`get_single_mut`](Self::get_single_mut)
-    /// for queries that contain at least one mutable component.
+    /// This can only return immutable data. Use
+    /// [`get_single_mut`](Self::get_single_mut) for queries that contain at
+    /// least one mutable component.
     ///
-    /// If the number of query results is not exactly one, a [`QuerySingleError`] is returned
-    /// instead.
+    /// If the number of query results is not exactly one, a
+    /// [`QuerySingleError`] is returned instead.
     ///
     /// # Example
     ///
@@ -870,8 +896,8 @@ where
         }
     }
 
-    /// Returns a single mutable query result when there is exactly one entity matching
-    /// the query.
+    /// Returns a single mutable query result when there is exactly one entity
+    /// matching the query.
     ///
     /// # Example
     ///
@@ -893,17 +919,18 @@ where
     /// # Panics
     ///
     /// Panics if the number of query results is not exactly one. Use
-    /// [`get_single_mut`](Self::get_single_mut) to return a `Result` instead of panicking.
+    /// [`get_single_mut`](Self::get_single_mut) to return a `Result` instead of
+    /// panicking.
     #[track_caller]
     pub fn single_mut(&mut self) -> <Q::Fetch as Fetch<'_, '_>>::Item {
         self.get_single_mut().unwrap()
     }
 
-    /// Returns a single mutable query result when there is exactly one entity matching
-    /// the query.
+    /// Returns a single mutable query result when there is exactly one entity
+    /// matching the query.
     ///
-    /// If the number of query results is not exactly one, a [`QuerySingleError`] is returned
-    /// instead.
+    /// If the number of query results is not exactly one, a
+    /// [`QuerySingleError`] is returned instead.
     ///
     /// # Example
     ///
@@ -941,8 +968,8 @@ where
     ///
     /// # Example
     ///
-    /// Here, the score is increased only if an entity with a `Player` component is present
-    /// in the world:
+    /// Here, the score is increased only if an entity with a `Player` component
+    /// is present in the world:
     ///
     /// ```
     /// # use lgn_ecs::prelude::*;
@@ -965,7 +992,8 @@ where
     }
 }
 
-/// An error that occurs when retrieving a specific [`Entity`]'s component from a [`Query`]
+/// An error that occurs when retrieving a specific [`Entity`]'s component from
+/// a [`Query`]
 #[derive(Error, Debug)]
 pub enum QueryComponentError {
     #[error("This query does not have read access to the requested component.")]
@@ -978,8 +1006,8 @@ pub enum QueryComponentError {
     NoSuchEntity,
 }
 
-/// An error that occurs when evaluating a [`Query`] as a single expected resulted via
-/// [`Query::single`] or [`Query::single_mut`].
+/// An error that occurs when evaluating a [`Query`] as a single expected
+/// resulted via [`Query::single`] or [`Query::single_mut`].
 #[derive(Debug, Error)]
 pub enum QuerySingleError {
     #[error("No entities fit the query {0}")]

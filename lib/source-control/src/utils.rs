@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 
 pub enum SearchResult<T, E> {
@@ -63,7 +63,8 @@ pub fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
 }
 
 pub fn make_path_absolute(p: &Path) -> PathBuf {
-    //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
+    //fs::canonicalize is a trap - it generates crazy unusable "extended length"
+    // paths
     if p.is_absolute() {
         PathBuf::from(path_clean::clean(p.to_str().unwrap()))
     } else {

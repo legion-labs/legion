@@ -1,7 +1,6 @@
 //! Legion Derive
 //!
 //! TODO: write documentation.
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -69,13 +68,14 @@ use lgn_macro_utils::{derive_label, LegionManifest};
 use proc_macro::TokenStream;
 use quote::format_ident;
 
-/// Derives the Bytes trait. Each field must also implements Bytes or this will fail.
+/// Derives the Bytes trait. Each field must also implements Bytes or this will
+/// fail.
 #[proc_macro_derive(Bytes)]
 pub fn derive_bytes(input: TokenStream) -> TokenStream {
     bytes::derive_bytes(input)
 }
 
-/// Generates a dynamic plugin entry point function for the given `Plugin` type.  
+/// Generates a dynamic plugin entry point function for the given `Plugin` type.
 #[proc_macro_derive(DynamicPlugin)]
 pub fn derive_dynamic_plugin(input: TokenStream) -> TokenStream {
     app_plugin::derive_dynamic_plugin(input)

@@ -6,12 +6,15 @@
 //! * **rty** - `ResourceType` <-> String lookup utility.
 //! * **source** - `ResourceId` <-> `ResourcePathName` lookup utility.
 //! * **asset** - Asset file header output.
-//! * **explain** - Prints `ResourcePathId`-related details of a specified `ResourceId`.
-//! * **graph** - Prints a build graph of a specified resource (`ResourcePathId` or `ResourceId`) in Graphviz DOT format.
+//! * **explain** - Prints `ResourcePathId`-related details of a specified
+//!   `ResourceId`.
+//! * **graph** - Prints a build graph of a specified resource (`ResourcePathId`
+//!   or `ResourceId`) in Graphviz DOT format.
 //!
 //! # `rty` - Resource Type Tool
 //!
-//! Various commands to help identify resource types known under a specified source code directory.
+//! Various commands to help identify resource types known under a specified
+//! source code directory.
 //!
 //! It helps with mapping between `Resource::TYPENAME` and `Resource::TYPE`.
 //!
@@ -30,7 +33,8 @@
 //!
 //! ### Encode `Resource::TYPENAME`
 //!
-//! Show the hashed value of a given resource type name (in code under a specified directory).
+//! Show the hashed value of a given resource type name (in code under a
+//! specified directory).
 //!
 //! ```text
 //! $ data-scrape rty lib\ encode psd
@@ -40,7 +44,8 @@
 //!
 //! ### Decode `Resource::TYPE`
 //!
-//! Show a human readable name of a given resource hash (in code under a specified directory).
+//! Show a human readable name of a given resource hash (in code under a
+//! specified directory).
 //!
 //! ```text
 //! $ data-scrape rty lib\ decode 13b5a84e
@@ -50,9 +55,11 @@
 //!
 //! # `source` - Resource Name Tool
 //!
-//! Various commands to help translate between source resource's pathname and its id.
+//! Various commands to help translate between source resource's pathname and
+//! its id.
 //!
-//! It helps with mapping between `ResourceId` and `ResourcePathName` of a **source resource**.
+//! It helps with mapping between `ResourceId` and `ResourcePathName` of a
+//! **source resource**.
 //!
 //! ### List resources
 //!
@@ -87,8 +94,8 @@
 //!
 //! # `asset` - Asset file header display tool
 //!
-//! Display the header content information (resource type, content size, etc) from
-//! either a single asset file, or a directory of asset files.
+//! Display the header content information (resource type, content size, etc)
+//! from either a single asset file, or a directory of asset files.
 //!
 //! ```text
 //! $ data-scrape asset .\test\sample-data\temp\a88c4baf56023f98e12508ae2c4488c9
@@ -116,11 +123,15 @@
 //! ...
 //! ```
 //!
-//! # `explain` - Tool that shows details about specified `ResourceId` or `ResourcePathId`
+//! # `explain` - Tool that shows details about specified `ResourceId` or
+//! `ResourcePathId`
 //!
-//! The tool prints detailed information about the specified `ResourcePathId` - such as the name of the source resource, its type and all transformations with their parameters.
+//! The tool prints detailed information about the specified `ResourcePathId` -
+//! such as the name of the source resource, its type and all transformations
+//! with their parameters.
 //!
-//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occurred during data compilation).
+//! It also accepts `ResourceId` as input - in which case it will try to find
+//! its corresponding `ResourcePathId` (if it occurred during data compilation).
 //!
 //! ## `ResourceId` as input
 //!
@@ -159,9 +170,11 @@
 //!
 //! # `configure` - Scrape tool configuration.
 //!
-//! Creates a configuration file used by `data-scrape` tool to easily find a project file, build index and cache resource type names.
+//! Creates a configuration file used by `data-scrape` tool to easily find a
+//! project file, build index and cache resource type names.
 //!
-//! By default it will point to project and build index located in **sample-data** directory and to the legion workspace's code directories.
+//! By default it will point to project and build index located in
+//! **sample-data** directory and to the legion workspace's code directories.
 //!
 //! ```text
 //! $ data-scrape configure
@@ -623,7 +636,8 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
     types
 }
 
-// Finds all #[resource("name")] attributes in a file and returns (name, hashed name) tuple.
+// Finds all #[resource("name")] attributes in a file and returns (name, hashed
+// name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
     // Quickly bail out without parsing the file

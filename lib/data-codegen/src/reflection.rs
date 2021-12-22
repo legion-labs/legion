@@ -176,7 +176,8 @@ fn get_attribute_literal(
     panic!("Legion proc-macro: invalid literal for attribute");
 }
 
-// Retrieive the token for the "default" attributes. Manually parse token to support tuple, arrays, constants, literal.
+// Retrieive the token for the "default" attributes. Manually parse token to
+// support tuple, arrays, constants, literal.
 fn get_default_token_stream(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
 ) -> Option<TokenStream> {

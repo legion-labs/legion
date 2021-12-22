@@ -78,7 +78,8 @@ fn build_device() {
     let derived = ResourcePathId::from(source_id).push(refs_asset::RefsAsset::TYPE);
     let derived_content = initial_content.chars().rev().collect::<String>();
 
-    // build derived resource first, so that buildindex is aware of the ResourcePathId
+    // build derived resource first, so that buildindex is aware of the
+    // ResourcePathId
     build
         .compile(
             derived.clone(),

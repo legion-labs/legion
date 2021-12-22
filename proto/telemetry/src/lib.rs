@@ -1,5 +1,4 @@
 //! telemetry protocols
-//!
 use std::io::{Read, Write};
 
 use anyhow::{Context, Result};

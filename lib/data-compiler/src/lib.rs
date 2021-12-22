@@ -127,13 +127,16 @@ impl Manifest {
         self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
     }
 
-    /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an offline [`Manifest`].
+    /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an
+    /// offline [`Manifest`].
     ///
-    /// Provided filter functor will be used to determine if a given asset should be included in the manifest.
+    /// Provided filter functor will be used to determine if a given asset
+    /// should be included in the manifest.
     ///
-    /// This is a temporary solution that will be replaced by a **packaging** process.
-    /// For now, we simply create a runtime manifest by filtering out non-asset resources
-    /// and by identifying content by `ResourceId` - which runtime operates on.
+    /// This is a temporary solution that will be replaced by a **packaging**
+    /// process. For now, we simply create a runtime manifest by filtering
+    /// out non-asset resources and by identifying content by `ResourceId` -
+    /// which runtime operates on.
     pub fn into_rt_manifest(
         self,
         filter: fn(&ResourcePathId) -> bool,

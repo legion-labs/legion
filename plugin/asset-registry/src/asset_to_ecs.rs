@@ -102,7 +102,8 @@ impl AssetToECS for runtime_data::Entity {
         }
         entity.insert(GlobalTransform::identity());
 
-        // parent, if it exists, must already be loaded since parents load their children
+        // parent, if it exists, must already be loaded since parents load their
+        // children
         let parent = runtime_entity
             .parent
             .as_ref()

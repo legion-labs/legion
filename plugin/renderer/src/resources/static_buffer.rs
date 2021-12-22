@@ -8,9 +8,8 @@ use lgn_graphics_api::{
 };
 use lgn_math::Mat4;
 
-use crate::{RenderContext, RenderHandle};
-
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
+use crate::{RenderContext, RenderHandle};
 
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,

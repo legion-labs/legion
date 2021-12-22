@@ -13,13 +13,14 @@ use crate::Task;
 /// Used to create a `TaskPool`
 #[derive(Debug, Default, Clone)]
 pub struct TaskPoolBuilder {
-    /// If set, we'll set up the thread pool to use at most n threads. Otherwise use
-    /// the logical core count of the system
+    /// If set, we'll set up the thread pool to use at most n threads. Otherwise
+    /// use the logical core count of the system
     num_threads: Option<usize>,
     /// If set, we'll use the given stack size rather than the system default
     stack_size: Option<usize>,
-    /// Allows customizing the name of the threads - helpful for debugging. If set, threads will
-    /// be named <thread_name> (<thread_index>), i.e. "MyThreadPool (2)"
+    /// Allows customizing the name of the threads - helpful for debugging. If
+    /// set, threads will be named <thread_name> (<thread_index>), i.e.
+    /// "MyThreadPool (2)"
     thread_name: Option<String>,
 }
 
@@ -29,8 +30,8 @@ impl TaskPoolBuilder {
         Self::default()
     }
 
-    /// Override the number of threads created for the pool. If unset, we default to the number
-    /// of logical cores of the system
+    /// Override the number of threads created for the pool. If unset, we
+    /// default to the number of logical cores of the system
     pub fn num_threads(mut self, num_threads: usize) -> Self {
         self.num_threads = Some(num_threads);
         self
@@ -42,8 +43,9 @@ impl TaskPoolBuilder {
         self
     }
 
-    /// Override the name of the threads created for the pool. If set, threads will
-    /// be named <`thread_name`> (<`thread_index`>), i.e. "`MyThreadPool` (2)"
+    /// Override the name of the threads created for the pool. If set, threads
+    /// will be named <`thread_name`> (<`thread_index`>), i.e.
+    /// "`MyThreadPool` (2)"
     pub fn thread_name(mut self, thread_name: String) -> Self {
         self.thread_name = Some(thread_name);
         self
@@ -79,15 +81,16 @@ impl Drop for TaskPoolInner {
     }
 }
 
-/// A thread pool for executing tasks. Tasks are futures that are being automatically driven by
-/// the pool on threads owned by the pool.
+/// A thread pool for executing tasks. Tasks are futures that are being
+/// automatically driven by the pool on threads owned by the pool.
 #[derive(Debug, Clone)]
 pub struct TaskPool {
     /// The executor for the pool
     ///
-    /// This has to be separate from `TaskPoolInner` because we have to create an Arc<Executor> to
-    /// pass into the worker threads, and we must create the worker threads before we can create
-    /// the `Vec<Task<T>>` contained within `TaskPoolInner`
+    /// This has to be separate from `TaskPoolInner` because we have to create
+    /// an Arc<Executor> to pass into the worker threads, and we must create
+    /// the worker threads before we can create the `Vec<Task<T>>` contained
+    /// within `TaskPoolInner`
     executor: Arc<async_executor::Executor<'static>>,
 
     /// Inner state of the pool
@@ -156,9 +159,10 @@ impl TaskPool {
         self.inner.threads.len()
     }
 
-    /// Allows spawning non-static futures on the thread pool. The function takes a callback,
-    /// passing a scope object into it. The scope object provided to the callback can be used
-    /// to spawn tasks. This function will await the completion of all tasks before returning.
+    /// Allows spawning non-static futures on the thread pool. The function
+    /// takes a callback, passing a scope object into it. The scope object
+    /// provided to the callback can be used to spawn tasks. This function
+    /// will await the completion of all tasks before returning.
     ///
     /// This is similar to `rayon::scope` and `crossbeam::scope`
     #[allow(unsafe_code, clippy::useless_transmute)]
@@ -168,10 +172,10 @@ impl TaskPool {
         T: Send + 'static,
     {
         Self::LOCAL_EXECUTOR.with(|local_executor| {
-            // SAFETY: This function blocks until all futures complete, so this future must return
-            // before this function returns. However, rust has no way of knowing
-            // this so we must convert to 'static here to appease the compiler as it is unable to
-            // validate safety.
+            // SAFETY: This function blocks until all futures complete, so this future must
+            // return before this function returns. However, rust has no way of
+            // knowing this so we must convert to 'static here to appease the
+            // compiler as it is unable to validate safety.
             let executor: &async_executor::Executor<'_> = &*self.executor;
             let executor: &'scope async_executor::Executor<'_> =
                 unsafe { mem::transmute(executor) };
@@ -202,10 +206,11 @@ impl TaskPool {
                 // Pin the futures on the stack.
                 pin!(fut);
 
-                // SAFETY: This function blocks until all futures complete, so we do not read/write
-                // the data from futures outside of the 'scope lifetime. However,
-                // rust has no way of knowing this so we must convert to 'static
-                // here to appease the compiler as it is unable to validate safety.
+                // SAFETY: This function blocks until all futures complete, so we do not
+                // read/write the data from futures outside of the 'scope
+                // lifetime. However, rust has no way of knowing this so we must
+                // convert to 'static here to appease the compiler as it is
+                // unable to validate safety.
                 let fut: Pin<&mut (dyn Future<Output = Vec<T>>)> = fut;
                 let fut: Pin<&'static mut (dyn Future<Output = Vec<T>> + 'static)> =
                     unsafe { mem::transmute(fut) };
@@ -228,9 +233,9 @@ impl TaskPool {
         })
     }
 
-    /// Spawns a static future onto the thread pool. The returned Task is a future. It can also be
-    /// cancelled and "detached" allowing it to continue running without having to be polled by the
-    /// end-user.
+    /// Spawns a static future onto the thread pool. The returned Task is a
+    /// future. It can also be cancelled and "detached" allowing it to
+    /// continue running without having to be polled by the end-user.
     pub fn spawn<T>(&self, future: impl Future<Output = T> + Send + 'static) -> Task<T>
     where
         T: Send + 'static,

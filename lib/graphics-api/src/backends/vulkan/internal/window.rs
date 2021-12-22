@@ -1,19 +1,19 @@
 //! Taken from ash-window crate
 
-use ash::{extensions::khr, prelude::*, vk, Entry, Instance};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-use ash::extensions::ext; // portability extensions
+use ash::extensions::ext;
+use ash::{extensions::khr, prelude::*, vk, Entry, Instance};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle}; // portability extensions
 
 // Create a surface from a raw surface handle.
 //
-// `instance` must have created with platform specific surface extensions enabled.
+// `instance` must have created with platform specific surface extensions
+// enabled.
 //
 // # Safety
 //
-// In order for the created [`vk::SurfaceKHR`] to be valid for the duration of its
-// usage, the [`Instance`] this was called on must be dropped later than the
+// In order for the created [`vk::SurfaceKHR`] to be valid for the duration of
+// its usage, the [`Instance`] this was called on must be dropped later than the
 // resulting [`vk::SurfaceKHR`].
 pub(crate) unsafe fn create_surface(
     entry: &Entry,
@@ -116,7 +116,8 @@ pub(crate) unsafe fn create_surface(
     }
 }
 
-// Query the required instance extensions for creating a surface from a window handle.
+// Query the required instance extensions for creating a surface from a window
+// handle.
 //
 // The returned extensions will include all extension dependencies.
 //pub(crate) fn enumerate_required_extensions(
@@ -124,7 +125,8 @@ pub(crate) unsafe fn create_surface(
 //) -> VkResult<Vec<&'static CStr>> {
 //    let extensions = match window_handle.raw_window_handle() {
 //        #[cfg(target_os = "windows")]
-//        RawWindowHandle::Win32(_) => vec![khr::Surface::name(), khr::Win32Surface::name()],
+//        RawWindowHandle::Win32(_) => vec![khr::Surface::name(),
+// khr::Win32Surface::name()],
 //
 //        #[cfg(any(
 //            target_os = "linux",
@@ -133,7 +135,8 @@ pub(crate) unsafe fn create_surface(
 //            target_os = "netbsd",
 //            target_os = "openbsd"
 //        ))]
-//        RawWindowHandle::Wayland(_) => vec![khr::Surface::name(), khr::WaylandSurface::name()],
+//        RawWindowHandle::Wayland(_) => vec![khr::Surface::name(),
+// khr::WaylandSurface::name()],
 //
 //        #[cfg(any(
 //            target_os = "linux",
@@ -142,7 +145,8 @@ pub(crate) unsafe fn create_surface(
 //            target_os = "netbsd",
 //            target_os = "openbsd"
 //        ))]
-//        RawWindowHandle::Xlib(_) => vec![khr::Surface::name(), khr::XlibSurface::name()],
+//        RawWindowHandle::Xlib(_) => vec![khr::Surface::name(),
+// khr::XlibSurface::name()],
 //
 //        #[cfg(any(
 //            target_os = "linux",
@@ -151,16 +155,20 @@ pub(crate) unsafe fn create_surface(
 //            target_os = "netbsd",
 //            target_os = "openbsd"
 //        ))]
-//        RawWindowHandle::Xcb(_) => vec![khr::Surface::name(), khr::XcbSurface::name()],
+//        RawWindowHandle::Xcb(_) => vec![khr::Surface::name(),
+// khr::XcbSurface::name()],
 //
 //        #[cfg(any(target_os = "android"))]
-//        RawWindowHandle::Android(_) => vec![khr::Surface::name(), khr::AndroidSurface::name()],
+//        RawWindowHandle::Android(_) => vec![khr::Surface::name(),
+// khr::AndroidSurface::name()],
 //
 //        #[cfg(any(target_os = "macos"))]
-//        RawWindowHandle::MacOS(_) => vec![khr::Surface::name(), ext::MetalSurface::name()],
+//        RawWindowHandle::MacOS(_) => vec![khr::Surface::name(),
+// ext::MetalSurface::name()],
 //
 //        #[cfg(any(target_os = "ios"))]
-//        RawWindowHandle::IOS(_) => vec![khr::Surface::name(), ext::MetalSurface::name()],
+//        RawWindowHandle::IOS(_) => vec![khr::Surface::name(),
+// ext::MetalSurface::name()],
 //
 //        _ => return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT),
 //    };

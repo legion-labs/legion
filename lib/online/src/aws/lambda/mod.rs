@@ -2,8 +2,8 @@ use lgn_telemetry::{error, info};
 
 pub mod api_gateway;
 
-/// Run a lambda once locally by expecting a JSON event payload on the specified reader, and writing
-/// the JSON event response to the specified writer.
+/// Run a lambda once locally by expecting a JSON event payload on the specified
+/// reader, and writing the JSON event response to the specified writer.
 ///
 /// # Examples
 ///

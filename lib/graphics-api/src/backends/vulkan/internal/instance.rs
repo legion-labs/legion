@@ -6,7 +6,6 @@ use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-
 use lgn_telemetry::{debug, error, info, log_enabled, trace, warn, Level};
 
 use crate::backends::vulkan::check_extensions_availability;
@@ -44,18 +43,19 @@ impl VkInstance {
 
         info!("Found Vulkan version: {:?}", vulkan_version_tuple);
 
-        // Only need 1.1 for negative y viewport support, which is also possible to get out of an
-        // extension, but at this point I think 1.1 is a reasonable minimum expectation
+        // Only need 1.1 for negative y viewport support, which is also possible to get
+        // out of an extension, but at this point I think 1.1 is a reasonable
+        // minimum expectation
         if vulkan_version < vk::API_VERSION_1_1 {
             return Err(GfxError::from(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
         }
 
-        // Expected to be 1.1.0 or 1.0.0 depending on what we found in try_enumerate_instance_version
-        // https://vulkan.lunarg.com/doc/view/1.1.70.1/windows/tutorial/html/16-vulkan_1_1_changes.html
+        // Expected to be 1.1.0 or 1.0.0 depending on what we found in
+        // try_enumerate_instance_version https://vulkan.lunarg.com/doc/view/1.1.70.1/windows/tutorial/html/16-vulkan_1_1_changes.html
 
-        // Info that's exposed to the driver. In a real shipped product, this data might be used by
-        // the driver to make specific adjustments to improve performance
-        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkApplicationInfo.html
+        // Info that's exposed to the driver. In a real shipped product, this data might
+        // be used by the driver to make specific adjustments to improve
+        // performance https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkApplicationInfo.html
         let appinfo = vk::ApplicationInfo::builder()
             .application_name(app_name)
             .application_version(0)

@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 
+use anyhow::{anyhow, Context, Result};
+
 use crate::model::{
     CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType,
     PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef,
     TextureDef,
 };
-use anyhow::{anyhow, Context, Result};
 
 pub struct StructBuilder<'mdl> {
     mdl: &'mdl Model,
@@ -26,7 +27,6 @@ impl<'mdl> StructBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_member(mut self, name: &str, typ: &str, array_len: Option<u32>) -> Result<Self> {
         // check member uniqueness
         if self.names.contains(name) {
@@ -57,7 +57,6 @@ impl<'mdl> StructBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn build(self) -> Result<StructType> {
         Ok(self.product)
     }
@@ -82,7 +81,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_samplers(self, name: &str, array_len: Option<u32>) -> Result<Self> {
         self.add_descriptor(name, array_len, DescriptorDef::Sampler)
     }
@@ -91,7 +89,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_constantbuffer(self, name: &str, inner_type: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let object_id = self
@@ -111,7 +108,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_structuredbuffer(
         self,
         name: &str,
@@ -142,7 +138,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_byteaddressbuffer(
         self,
         name: &str,
@@ -161,7 +156,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_texture(
         self,
         name: &str,
@@ -280,7 +274,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn build(self) -> Result<DescriptorSet> {
         Ok(self.product)
     }
@@ -309,7 +302,6 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
         // check descriptorset exists
         let ds_id = self.mdl.get_object_id::<DescriptorSet>(ty);
@@ -340,7 +332,6 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
         // only one pushconstant is allowed
         if self.has_pushconstant {
@@ -396,7 +387,6 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn build(self) -> Result<PipelineLayout> {
         Ok(self.product)
     }

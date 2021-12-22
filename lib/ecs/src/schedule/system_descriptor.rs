@@ -11,14 +11,16 @@ use crate::{
 /// Systems can be inserted into 4 different groups within the stage:
 /// * Parallel, accepts non-exclusive systems.
 /// * At start, accepts exclusive systems; runs before parallel systems.
-/// * Before commands, accepts exclusive systems; runs after parallel systems, but before their
+/// * Before commands, accepts exclusive systems; runs after parallel systems,
+///   but before their
 /// command buffers are applied.
-/// * At end, accepts exclusive systems; runs after parallel systems' command buffers have
+/// * At end, accepts exclusive systems; runs after parallel systems' command
+///   buffers have
 /// been applied.
 ///
-/// Systems can have one or more labels attached to them; other systems in the same group
-/// can then specify that they have to run before or after systems with that label using the
-/// `before` and `after` methods.
+/// Systems can have one or more labels attached to them; other systems in the
+/// same group can then specify that they have to run before or after systems
+/// with that label using the `before` and `after` methods.
 ///
 /// # Example
 /// ```
@@ -93,7 +95,8 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemCoerced {
     }
 }
 
-/// Encapsulates a parallel system and information on when it runs in a `SystemStage`.
+/// Encapsulates a parallel system and information on when it runs in a
+/// `SystemStage`.
 pub struct ParallelSystemDescriptor {
     pub(crate) system: BoxedSystem<(), ()>,
     pub(crate) run_criteria: Option<RunCriteriaDescriptorOrLabel>,
@@ -115,24 +118,26 @@ fn new_parallel_descriptor(system: BoxedSystem<(), ()>) -> ParallelSystemDescrip
 }
 
 pub trait ParallelSystemDescriptorCoercion<Params> {
-    /// Assigns a run criteria to the system. Can be a new descriptor or a label of a
-    /// run criteria defined elsewhere.
+    /// Assigns a run criteria to the system. Can be a new descriptor or a label
+    /// of a run criteria defined elsewhere.
     fn with_run_criteria<Marker>(
         self,
         run_criteria: impl IntoRunCriteria<Marker>,
     ) -> ParallelSystemDescriptor;
 
-    /// Assigns a label to the system; there can be more than one, and it doesn't have to be unique.
+    /// Assigns a label to the system; there can be more than one, and it
+    /// doesn't have to be unique.
     fn label(self, label: impl SystemLabel) -> ParallelSystemDescriptor;
 
-    /// Specifies that the system should run before systems with the given label.
+    /// Specifies that the system should run before systems with the given
+    /// label.
     fn before(self, label: impl SystemLabel) -> ParallelSystemDescriptor;
 
     /// Specifies that the system should run after systems with the given label.
     fn after(self, label: impl SystemLabel) -> ParallelSystemDescriptor;
 
-    /// Specifies that the system is exempt from execution order ambiguity detection
-    /// with other systems in this set.
+    /// Specifies that the system is exempt from execution order ambiguity
+    /// detection with other systems in this set.
     fn in_ambiguity_set(self, set: impl AmbiguitySetLabel) -> ParallelSystemDescriptor;
 }
 
@@ -226,7 +231,8 @@ pub(crate) enum InsertionPoint {
     AtEnd,
 }
 
-/// Encapsulates an exclusive system and information on when it runs in a `SystemStage`.
+/// Encapsulates an exclusive system and information on when it runs in a
+/// `SystemStage`.
 pub struct ExclusiveSystemDescriptor {
     pub(crate) system: Box<dyn ExclusiveSystem>,
     pub(crate) run_criteria: Option<RunCriteriaDescriptorOrLabel>,
@@ -250,34 +256,38 @@ fn new_exclusive_descriptor(system: Box<dyn ExclusiveSystem>) -> ExclusiveSystem
 }
 
 pub trait ExclusiveSystemDescriptorCoercion {
-    /// Assigns a run criteria to the system. Can be a new descriptor or a label of a
-    /// run criteria defined elsewhere.
+    /// Assigns a run criteria to the system. Can be a new descriptor or a label
+    /// of a run criteria defined elsewhere.
     fn with_run_criteria<Marker>(
         self,
         run_criteria: impl IntoRunCriteria<Marker>,
     ) -> ExclusiveSystemDescriptor;
 
-    /// Assigns a label to the system; there can be more than one, and it doesn't have to be unique.
+    /// Assigns a label to the system; there can be more than one, and it
+    /// doesn't have to be unique.
     fn label(self, label: impl SystemLabel) -> ExclusiveSystemDescriptor;
 
-    /// Specifies that the system should run before systems with the given label.
+    /// Specifies that the system should run before systems with the given
+    /// label.
     fn before(self, label: impl SystemLabel) -> ExclusiveSystemDescriptor;
 
     /// Specifies that the system should run after systems with the given label.
     fn after(self, label: impl SystemLabel) -> ExclusiveSystemDescriptor;
 
-    /// Specifies that the system is exempt from execution order ambiguity detection
-    /// with other systems in this set.
+    /// Specifies that the system is exempt from execution order ambiguity
+    /// detection with other systems in this set.
     fn in_ambiguity_set(self, set: impl AmbiguitySetLabel) -> ExclusiveSystemDescriptor;
 
-    /// Specifies that the system should run with other exclusive systems at the start of stage.
+    /// Specifies that the system should run with other exclusive systems at the
+    /// start of stage.
     fn at_start(self) -> ExclusiveSystemDescriptor;
 
-    /// Specifies that the system should run with other exclusive systems after the parallel
-    /// systems and before command buffer application.
+    /// Specifies that the system should run with other exclusive systems after
+    /// the parallel systems and before command buffer application.
     fn before_commands(self) -> ExclusiveSystemDescriptor;
 
-    /// Specifies that the system should run with other exclusive systems at the end of stage.
+    /// Specifies that the system should run with other exclusive systems at the
+    /// end of stage.
     fn at_end(self) -> ExclusiveSystemDescriptor;
 }
 

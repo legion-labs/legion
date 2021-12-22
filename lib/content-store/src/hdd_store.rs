@@ -8,7 +8,8 @@ use crate::{Checksum, ContentStore, ContentStoreAddr};
 
 /// Disk-based [`ContentStore`] implementation.
 ///
-/// All content is assumed to be stored directly in a directory provided to [`HddContentStore::open`].
+/// All content is assumed to be stored directly in a directory provided to
+/// [`HddContentStore::open`].
 pub struct HddContentStore {
     address: ContentStoreAddr,
 }

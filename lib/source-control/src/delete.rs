@@ -1,6 +1,7 @@
-use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
+
+use anyhow::{Context, Result};
 
 use crate::{
     assert_not_locked, connect_to_server, find_local_change, find_workspace_root,

@@ -589,7 +589,8 @@ impl From<vk::Format> for Format {
     }
 }
 
-// Returns None for formats unlikely to be used for vertices (like ATSC blocks) or undefined
+// Returns None for formats unlikely to be used for vertices (like ATSC blocks)
+// or undefined
 impl Format {
     pub fn is_depth_only(self) -> bool {
         matches!(
@@ -1316,8 +1317,8 @@ impl Format {
 }
 
 //
-// The following represent reasonable defaults with broad hardware support. These lists work well
-// with DeviceContext::find_supported_format()
+// The following represent reasonable defaults with broad hardware support.
+// These lists work well with DeviceContext::find_supported_format()
 //
 pub mod recommended_formats {
     use super::Format;

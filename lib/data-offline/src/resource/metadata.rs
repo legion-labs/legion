@@ -97,7 +97,8 @@ impl Metadata {
     }
 
     pub(crate) fn resource_hash(&self) -> ResourceHash {
-        // todo(kstasik): include the hash of .meta content (excluding asset name) if it ever matters.
+        // todo(kstasik): include the hash of .meta content (excluding asset name) if it
+        // ever matters.
         self.content_checksum.default_hash().into()
     }
 }

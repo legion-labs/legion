@@ -31,8 +31,8 @@ where
     }
 
     fn run(&mut self, world: &mut World) {
-        // The previous value is saved in case this exclusive system is run by another exclusive
-        // system
+        // The previous value is saved in case this exclusive system is run by another
+        // exclusive system
         let saved_last_tick = world.last_change_tick;
         world.last_change_tick = self.last_change_tick;
 

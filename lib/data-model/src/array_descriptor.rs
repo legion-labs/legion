@@ -1,5 +1,6 @@
-use crate::{BaseDescriptor, TypeDefinition, TypeReflection};
 use thiserror::Error;
+
+use crate::{BaseDescriptor, TypeDefinition, TypeReflection};
 
 /// Define the reflection of a Array typpe
 pub struct ArrayDescriptor {

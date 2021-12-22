@@ -218,7 +218,8 @@ pub(crate) fn update_streams(
                                 input_mouse_wheel.send(mouse_wheel.clone());
                             }
                             Input::TouchInput(touch_input) => {
-                                // A bit unsure why, but unlike other events [`legion_input::touch:TouchInput`]
+                                // A bit unsure why, but unlike other events
+                                // [`legion_input::touch:TouchInput`]
                                 // derives Copy (_and_ `Clone`).
                                 input_touch_input.send(*touch_input);
                             }

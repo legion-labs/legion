@@ -17,7 +17,8 @@ pub(crate) struct GRPCServer {
 
 /// Stream represents an established stream.
 impl GRPCServer {
-    /// Instantiate a new `GRPCServer` using the specified `webrtc::WebRTCServer`.
+    /// Instantiate a new `GRPCServer` using the specified
+    /// `webrtc::WebRTCServer`.
     pub(crate) fn new(
         webrtc_server: WebRTCServer,
         stream_events_sender: crossbeam::channel::Sender<StreamEvent>,

@@ -1,16 +1,19 @@
 //! Data compiler interface.
 //!
-//! Data compiler is a binary that takes as input a [`lgn_data_runtime::Resource`] and Resources it depends on and produces
-//! one or more [`lgn_data_runtime::Resource`]s that are stored in a [`ContentStore`]. As a results it creates new
-//! or updates existing [`Manifest`] file containing metadata about the derived resources.
+//! Data compiler is a binary that takes as input a
+//! [`lgn_data_runtime::Resource`] and Resources it depends on and produces
+//! one or more [`lgn_data_runtime::Resource`]s that are stored in a
+//! [`ContentStore`]. As a results it creates new or updates existing
+//! [`Manifest`] file containing metadata about the derived resources.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
 //!
 //! # Data Compiler's main()
 //!
-//! A data compiler binary must use a [`compiler_main`] function provided by this module.
-//! The signature requires data compiler to provide a static [`CompilerDescriptor`] structure defining
-//! the properties of the data compiler.
+//! A data compiler binary must use a [`compiler_main`] function provided by
+//! this module. The signature requires data compiler to provide a static
+//! [`CompilerDescriptor`] structure defining the properties of the data
+//! compiler.
 //!
 //! Below you can see a minimum code required to compile a data compiler:
 //!
@@ -37,9 +40,9 @@
 //!    code: &'static str,
 //!    data: &'static str,
 //!    env: &CompilationEnv,
-//!) -> CompilerHash {
+//! ) -> CompilerHash {
 //!    todo!()
-//!}
+//! }
 //!
 //! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
 //!    todo!()
@@ -97,8 +100,9 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// *Data Compiler's* output.
 ///
-/// Includes data which allows to load and validate [`lgn_data_runtime::Resource`]s stored in [`ContentStore`].
-/// As well as references between resources that define load-time dependencies.
+/// Includes data which allows to load and validate
+/// [`lgn_data_runtime::Resource`]s stored in [`ContentStore`]. As well as
+/// references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
 #[derive(Debug)]
@@ -410,11 +414,12 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
 
 /// The main function of every data compiler.
 ///
-/// This must be called by the data compiler. It will parse and validate command line arguments
-/// and invoke the appropriate function on the `CompilerDescriptor` interface.
-/// The result will be written out to stdout.
+/// This must be called by the data compiler. It will parse and validate command
+/// line arguments and invoke the appropriate function on the
+/// `CompilerDescriptor` interface. The result will be written out to stdout.
 ///
-/// > **NOTE**: Data compiler must not write to stdout because this could break the specific output that is expected.
+/// > **NOTE**: Data compiler must not write to stdout because this could break
+/// the specific output that is expected.
 // TODO: remove the limitation above.
 pub fn compiler_main(
     args: env::Args,

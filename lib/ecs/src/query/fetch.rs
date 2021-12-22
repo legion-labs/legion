@@ -20,28 +20,32 @@ use crate::{
 
 /// Types that can be queried from a [`World`].
 ///
-/// Notable types that implement this trait are `&T` and `&mut T` where `T` implements [`Component`],
-/// allowing you to query for components immutably and mutably accordingly.
+/// Notable types that implement this trait are `&T` and `&mut T` where `T`
+/// implements [`Component`], allowing you to query for components immutably and
+/// mutably accordingly.
 ///
 /// See [`Query`](crate::system::Query) for a primer on queries.
 ///
 /// # Basic `WorldQueries`
 ///
-/// Here is a small list of the most important world queries to know about where `C` stands for a
-/// [`Component`] and `WQ` stands for a [`WorldQuery`]:
+/// Here is a small list of the most important world queries to know about where
+/// `C` stands for a [`Component`] and `WQ` stands for a [`WorldQuery`]:
 /// - `&C`: Queries immutably for the component `C`
 /// - `&mut C`: Queries mutably for the component `C`
-/// - `Option<WQ>`: Queries the inner `WorldQuery` `WQ` but instead of discarding the entity if the world
-///     query fails it returns [`None`]. See [`Query`](crate::system::Query).
-/// - `(WQ1, WQ2, ...)`: Queries all contained world queries allowing to query for more than one thing.
-///     This is the `And` operator for filters. See [`Or`].
+/// - `Option<WQ>`: Queries the inner `WorldQuery` `WQ` but instead of
+///   discarding the entity if the world query fails it returns [`None`]. See
+///   [`Query`](crate::system::Query).
+/// - `(WQ1, WQ2, ...)`: Queries all contained world queries allowing to query
+///   for more than one thing. This is the `And` operator for filters. See
+///   [`Or`].
 /// - `ChangeTrackers<C>`: See the docs of [`ChangeTrackers`].
-/// - [`Entity`]: Using the entity type as a world query will grant access to the entity that is
-///     being queried for. See [`Entity`].
+/// - [`Entity`]: Using the entity type as a world query will grant access to
+///   the entity that is being queried for. See [`Entity`].
 ///
-/// Legion also offers a few filters like [`Added`](crate::query::Added), [`Changed`](crate::query::Changed),
-/// [`With`](crate::query::With), [`Without`](crate::query::Without) and [`Or`].
-/// For more information on these consult the item's corresponding documentation.
+/// Legion also offers a few filters like [`Added`](crate::query::Added),
+/// [`Changed`](crate::query::Changed), [`With`](crate::query::With),
+/// [`Without`](crate::query::Without) and [`Or`]. For more information on these
+/// consult the item's corresponding documentation.
 ///
 /// [`Or`]: crate::query::Or
 pub trait WorldQuery {
@@ -61,8 +65,8 @@ pub trait Fetch<'world, 'state>: Sized {
     ///
     /// # Safety
     ///
-    /// `state` must have been initialized (via [`FetchState::init`]) using the same `world` passed in
-    /// to this function.
+    /// `state` must have been initialized (via [`FetchState::init`]) using the
+    /// same `world` passed in to this function.
     unsafe fn init(
         world: &World,
         state: &Self::State,
@@ -70,60 +74,66 @@ pub trait Fetch<'world, 'state>: Sized {
         change_tick: u32,
     ) -> Self;
 
-    /// Returns true if (and only if) every table of every archetype matched by this Fetch contains
-    /// all of the matched components. This is used to select a more efficient "table iterator"
-    /// for "dense" queries. If this returns true, [`Fetch::set_table`] and [`Fetch::table_fetch`]
-    /// will be called for iterators. If this returns false, [`Fetch::set_archetype`] and
-    /// [`Fetch::archetype_fetch`] will be called for iterators.
+    /// Returns true if (and only if) every table of every archetype matched by
+    /// this Fetch contains all of the matched components. This is used to
+    /// select a more efficient "table iterator" for "dense" queries. If
+    /// this returns true, [`Fetch::set_table`] and [`Fetch::table_fetch`]
+    /// will be called for iterators. If this returns false,
+    /// [`Fetch::set_archetype`] and [`Fetch::archetype_fetch`] will be
+    /// called for iterators.
     const IS_DENSE: bool;
 
-    /// Adjusts internal state to account for the next [`Archetype`]. This will always be called on
-    /// archetypes that match this [`Fetch`].
+    /// Adjusts internal state to account for the next [`Archetype`]. This will
+    /// always be called on archetypes that match this [`Fetch`].
     ///
     /// # Safety
     ///
-    /// `archetype` and `tables` must be from the [`World`] [`Fetch::init`] was called on. `state` must
-    /// be the [`Self::State`] this was initialized with.
+    /// `archetype` and `tables` must be from the [`World`] [`Fetch::init`] was
+    /// called on. `state` must be the [`Self::State`] this was initialized
+    /// with.
     unsafe fn set_archetype(&mut self, state: &Self::State, archetype: &Archetype, tables: &Tables);
 
-    /// Adjusts internal state to account for the next [`Table`]. This will always be called on tables
-    /// that match this [`Fetch`].
+    /// Adjusts internal state to account for the next [`Table`]. This will
+    /// always be called on tables that match this [`Fetch`].
     ///
     /// # Safety
     ///
-    /// `table` must be from the [`World`] [`Fetch::init`] was called on. `state` must be the
-    /// [`Self::State`] this was initialized with.
+    /// `table` must be from the [`World`] [`Fetch::init`] was called on.
+    /// `state` must be the [`Self::State`] this was initialized with.
     unsafe fn set_table(&mut self, state: &Self::State, table: &Table);
 
-    /// Fetch [`Self::Item`] for the given `archetype_index` in the current [`Archetype`]. This must
-    /// always be called after [`Fetch::set_archetype`] with an `archetype_index` in the range of
+    /// Fetch [`Self::Item`] for the given `archetype_index` in the current
+    /// [`Archetype`]. This must always be called after
+    /// [`Fetch::set_archetype`] with an `archetype_index` in the range of
     /// the current [`Archetype`]
     ///
     /// # Safety
-    /// Must always be called _after_ [`Fetch::set_archetype`]. `archetype_index` must be in the range
-    /// of the current archetype
+    /// Must always be called _after_ [`Fetch::set_archetype`].
+    /// `archetype_index` must be in the range of the current archetype
     unsafe fn archetype_fetch(&mut self, archetype_index: usize) -> Self::Item;
 
-    /// Fetch [`Self::Item`] for the given `table_row` in the current [`Table`]. This must always be
-    /// called after [`Fetch::set_table`] with a `table_row` in the range of the current [`Table`]
+    /// Fetch [`Self::Item`] for the given `table_row` in the current [`Table`].
+    /// This must always be called after [`Fetch::set_table`] with a
+    /// `table_row` in the range of the current [`Table`]
     ///
     /// # Safety
     ///
-    /// Must always be called _after_ [`Fetch::set_table`]. `table_row` must be in the range of the
-    /// current table
+    /// Must always be called _after_ [`Fetch::set_table`]. `table_row` must be
+    /// in the range of the current table
     unsafe fn table_fetch(&mut self, table_row: usize) -> Self::Item;
 }
 
-/// State used to construct a Fetch. This will be cached inside [`QueryState`](crate::query::QueryState),
-///  so it is best to move as much data / computation here as possible to reduce the cost of
-/// constructing Fetch.
+/// State used to construct a Fetch. This will be cached inside
+/// [`QueryState`](crate::query::QueryState),  so it is best to move as much
+/// data / computation here as possible to reduce the cost of constructing
+/// Fetch.
 ///
 /// # Safety
 ///
 /// Implementor must ensure that [`FetchState::update_component_access`] and
-/// [`FetchState::update_archetype_component_access`] exactly reflects the results of
-/// [`FetchState::matches_archetype`], [`FetchState::matches_table`], [`Fetch::archetype_fetch`], and
-/// [`Fetch::table_fetch`].
+/// [`FetchState::update_archetype_component_access`] exactly reflects the
+/// results of [`FetchState::matches_archetype`], [`FetchState::matches_table`],
+/// [`Fetch::archetype_fetch`], and [`Fetch::table_fetch`].
 pub unsafe trait FetchState: Send + Sync + Sized {
     fn init(world: &mut World) -> Self;
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>);
@@ -242,8 +252,8 @@ pub struct ReadState<T> {
     marker: PhantomData<T>,
 }
 
-// SAFETY: component access and archetype component access are properly updated to reflect that T is
-// read
+// SAFETY: component access and archetype component access are properly updated
+// to reflect that T is read
 unsafe impl<T: Component> FetchState for ReadState<T> {
     fn init(world: &mut World) -> Self {
         let component_id = world.init_component::<T>();
@@ -444,8 +454,8 @@ pub struct WriteState<T> {
     marker: PhantomData<T>,
 }
 
-// SAFETY: component access and archetype component access are properly updated to reflect that T is
-// written
+// SAFETY: component access and archetype component access are properly updated
+// to reflect that T is written
 unsafe impl<T: Component> FetchState for WriteState<T> {
     fn init(world: &mut World) -> Self {
         let component_id = world.init_component::<T>();
@@ -689,8 +699,8 @@ pub struct OptionState<T: FetchState> {
     state: T,
 }
 
-// SAFETY: component access and archetype component access are properly updated according to the
-// internal Fetch
+// SAFETY: component access and archetype component access are properly updated
+// according to the internal Fetch
 unsafe impl<T: FetchState> FetchState for OptionState<T> {
     fn init(world: &mut World) -> Self {
         Self {
@@ -782,11 +792,13 @@ impl<'w, 's, T: Fetch<'w, 's>> Fetch<'w, 's> for OptionFetch<T> {
 
 /// [`WorldQuery`] that tracks changes and additions for component `T`.
 ///
-/// Wraps a [`Component`] to track whether the component changed for the corresponding entities in
-/// a query since the last time the system that includes these queries ran.
+/// Wraps a [`Component`] to track whether the component changed for the
+/// corresponding entities in a query since the last time the system that
+/// includes these queries ran.
 ///
 /// If you only care about entities that changed or that got added use the
-/// [`Changed`](crate::query::Changed) and [`Added`](crate::query::Added) filters instead.
+/// [`Changed`](crate::query::Changed) and [`Added`](crate::query::Added)
+/// filters instead.
 ///
 /// # Examples
 ///
@@ -831,13 +843,15 @@ impl<T: Component> std::fmt::Debug for ChangeTrackers<T> {
 }
 
 impl<T: Component> ChangeTrackers<T> {
-    /// Returns true if this component has been added since the last execution of this system.
+    /// Returns true if this component has been added since the last execution
+    /// of this system.
     pub fn is_added(&self) -> bool {
         self.component_ticks
             .is_added(self.last_change_tick, self.change_tick)
     }
 
-    /// Returns true if this component has been changed since the last execution of this system.
+    /// Returns true if this component has been changed since the last execution
+    /// of this system.
     pub fn is_changed(&self) -> bool {
         self.component_ticks
             .is_changed(self.last_change_tick, self.change_tick)
@@ -856,8 +870,8 @@ pub struct ChangeTrackersState<T> {
     marker: PhantomData<T>,
 }
 
-// SAFETY: component access and archetype component access are properly updated to reflect that T is
-// read
+// SAFETY: component access and archetype component access are properly updated
+// to reflect that T is read
 unsafe impl<T: Component> FetchState for ChangeTrackersState<T> {
     fn init(world: &mut World) -> Self {
         let component_id = world.init_component::<T>();
@@ -1111,7 +1125,8 @@ all_tuples!(impl_tuple_fetch, 0, 15, F, S);
 
 /// [`Fetch`] that does not actually fetch anything
 ///
-/// Mostly useful when something is generic over the Fetch and you don't want to fetch as you will discard the result
+/// Mostly useful when something is generic over the Fetch and you don't want to
+/// fetch as you will discard the result
 pub struct NopFetch<State> {
     state: PhantomData<State>,
 }

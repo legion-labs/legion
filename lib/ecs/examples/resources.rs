@@ -3,8 +3,8 @@ use std::ops::Deref;
 use lgn_ecs::prelude::*;
 use rand::Rng;
 
-// In this example we add a counter resource and increase it's value in one system,
-// while a different system prints the current count to the console.
+// In this example we add a counter resource and increase it's value in one
+// system, while a different system prints the current count to the console.
 fn main() {
     // Create a world
     let mut world = World::new();

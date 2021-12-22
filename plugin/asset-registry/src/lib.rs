@@ -1,5 +1,4 @@
 //! The asset registry plugin provides loading of runtime assets.
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -249,7 +248,8 @@ impl AssetRegistryPlugin {
                     let asset_id = asset_handle.id();
                     if asset_loading_states.get(asset_id).is_none() {
                         // Received a load event for an untracked asset.
-                        // Most likely, this load has occurred because of loading of dependant resources.
+                        // Most likely, this load has occurred because of loading of dependant
+                        // resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
                         asset_handles.insert(asset_id, asset_handle);
                     }

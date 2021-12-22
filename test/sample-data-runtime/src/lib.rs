@@ -165,8 +165,8 @@ impl dyn Component {
         }
     }
 
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
+    /// Returns some mutable reference to the boxed value if it is of type `T`,
+    /// or `None` if it isn't.
     /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
     #[inline]
     pub fn downcast_mut<T: Component>(&mut self) -> Option<&mut T> {

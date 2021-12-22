@@ -261,7 +261,8 @@ impl CommandBuffer {
     }
 
     pub(crate) fn cmd_bind_pipeline_platform(&self, pipeline: &Pipeline) {
-        //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
+        //TODO: Add verification that the pipeline is compatible with the renderpass
+        // created by the targets
         let pipeline_bind_point =
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
@@ -552,8 +553,9 @@ impl CommandBuffer {
             let subresource_range =
                 image_subresource_range(barrier.texture, barrier.array_slice, barrier.mip_slice);
 
-            // First transition is always from undefined. Doing it here can save downstream code
-            // from having to implement a "first time" path and a "normal" path
+            // First transition is always from undefined. Doing it here can save downstream
+            // code from having to implement a "first time" path and a "normal"
+            // path
             let old_layout = if barrier.texture.take_is_undefined_layout() {
                 ash::vk::ImageLayout::UNDEFINED
             } else {

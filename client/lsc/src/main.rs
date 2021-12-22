@@ -1,5 +1,4 @@
 //! Source control CLI
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -60,10 +59,9 @@
 use std::path::Path;
 
 use clap::{App, AppSettings, Arg, SubCommand};
-use lgn_telemetry_sink::TelemetryGuard;
-
 use lgn_source_control::*;
 use lgn_telemetry::*;
+use lgn_telemetry_sink::TelemetryGuard;
 
 const SUB_COMMAND_INIT_REPOSITORY: &str = "init-repository";
 

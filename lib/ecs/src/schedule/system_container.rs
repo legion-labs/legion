@@ -12,7 +12,8 @@ use crate::{
     system::{ExclusiveSystem, System},
 };
 
-/// System metadata like its name, labels, order requirements and component access.
+/// System metadata like its name, labels, order requirements and component
+/// access.
 pub trait SystemContainer: GraphNode<Label = BoxedSystemLabel> {
     #[doc(hidden)]
     fn dependencies(&self) -> &[usize];

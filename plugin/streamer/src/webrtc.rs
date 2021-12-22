@@ -34,15 +34,18 @@ impl WebRTCServer {
         // Register default codecs
         media_engine.register_default_codecs()?;
 
-        // Create a InterceptorRegistry. This is the user configurable RTP/RTCP Pipeline.
-        // This provides NACKs, RTCP Reports and other features. If you use `webrtc.NewPeerConnection`
-        // this is enabled by default. If you are manually managing You MUST create a InterceptorRegistry
+        // Create a InterceptorRegistry. This is the user configurable RTP/RTCP
+        // Pipeline. This provides NACKs, RTCP Reports and other features. If
+        // you use `webrtc.NewPeerConnection` this is enabled by default. If you
+        // are manually managing You MUST create a InterceptorRegistry
         // for each PeerConnection.
         let mut registry = Registry::new();
 
         // Use the default set of Interceptors
         // Function here became async... https://github.com/webrtc-rs/webrtc/pull/146
-        // registry = webrtc::api::interceptor_registry::register_default_interceptors(registry, &mut media_engine)?;
+        // registry =
+        // webrtc::api::interceptor_registry::register_default_interceptors(registry,
+        // &mut media_engine)?;
         registry = webrtc::api::interceptor_registry::configure_nack(registry, &mut media_engine);
         registry = webrtc::api::interceptor_registry::configure_rtcp_reports(registry);
 
@@ -79,7 +82,8 @@ impl WebRTCServer {
 
         // Block until ICE Gathering is complete, disabling trickle ICE
         // we do this because we only can exchange one signaling message
-        // in a production application you should exchange ICE Candidates via OnICECandidate
+        // in a production application you should exchange ICE Candidates via
+        // OnICECandidate
         let _ = gather_complete.recv().await;
 
         // Output the answer in base64 so we can paste it in browser

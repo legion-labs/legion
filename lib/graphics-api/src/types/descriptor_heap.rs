@@ -2,7 +2,6 @@
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanDescriptorHeap, VulkanDescriptorHeapPartition};
-
 use crate::{
     deferred_drop::Drc, DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext,
     GfxResult,

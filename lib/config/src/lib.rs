@@ -1,5 +1,4 @@
 //! config create exposes the legion config file to applications
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -63,7 +62,6 @@ use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 use lgn_telemetry::warn;
-
 use toml::value::{Table, Value};
 
 const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";

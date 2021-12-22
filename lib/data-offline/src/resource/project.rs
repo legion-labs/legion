@@ -37,22 +37,25 @@ impl ResourceDb {
 
 /// A file-backed state of the project
 ///
-/// This structure captures the state of the project. This includes `remote resources`
-/// pulled from `source-control` as well as `local resources` added/removed/edited locally.
+/// This structure captures the state of the project. This includes `remote
+/// resources` pulled from `source-control` as well as `local resources`
+/// added/removed/edited locally.
 ///
 /// It provides a resource-oriented interface to source-control.
 ///
 /// # Project Index
 ///
-/// The state of the project is read from a file once [`Project`] is opened and kept in memory throughout its lifetime.
-/// The changes are written back to the file once [`Project`] is dropped.
+/// The state of the project is read from a file once [`Project`] is opened and
+/// kept in memory throughout its lifetime. The changes are written back to the
+/// file once [`Project`] is dropped.
 ///
 /// The state of a project consists of two sets of [`ResourceId`]s:
 /// - Local [`ResourceId`] list - locally modified resources.
 /// - Remote [`ResourceId`] list - synced resources.
 ///
-/// A resource consists of a resource content file and a `.meta` file associated to it.
-/// [`ResourceId`] is enough to locate a resource content file and its associated `.meta` file on disk.
+/// A resource consists of a resource content file and a `.meta` file associated
+/// to it. [`ResourceId`] is enough to locate a resource content file and its
+/// associated `.meta` file on disk.
 ///
 /// ## Example directory structure
 ///
@@ -74,9 +77,11 @@ impl ResourceDb {
 /// - Resource's name - [`ResourcePathName`].
 /// - Checksum of resource's content file.
 ///
-/// Note: Resource's [`ResourcePathName`] is only used for display purposes and can be changed freely.
+/// Note: Resource's [`ResourcePathName`] is only used for display purposes and
+/// can be changed freely.
 ///
-/// For more about loading, saving and managing resources in memory see [`ResourceRegistry`]
+/// For more about loading, saving and managing resources in memory see
+/// [`ResourceRegistry`]
 pub struct Project {
     file: std::fs::File,
     db: ResourceDb,
@@ -94,7 +99,8 @@ pub enum Error {
     /// Specified path is invalid.
     InvalidPath,
     /// IO error on the project index file.
-    IOError(std::io::Error), // todo(kstasik): have clearer Open/Read/Write errors that will be easier to handle layer above
+    IOError(std::io::Error), /* todo(kstasik): have clearer Open/Read/Write errors that will be
+                              * easier to handle layer above */
 }
 
 impl std::error::Error for Error {}
@@ -130,7 +136,8 @@ impl Project {
         Self::root_to_index_path(&self.project_dir)
     }
 
-    /// Creates a new project index file turning the containing directory into a project.
+    /// Creates a new project index file turning the containing directory into a
+    /// project.
     pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
@@ -232,7 +239,8 @@ impl Project {
     /// Add a given resource of a given type with an associated `.meta`.
     ///
     /// The created `.meta` file contains a checksum of the resource content.
-    /// `TODO`: the checksum of content needs to be updated when file is modified.
+    /// `TODO`: the checksum of content needs to be updated when file is
+    /// modified.
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
@@ -253,7 +261,8 @@ impl Project {
     /// Add a given resource of a given type and id with an associated `.meta`.
     ///
     /// The created `.meta` file contains a checksum of the resource content.
-    /// `TODO`: the checksum of content needs to be updated when file is modified.
+    /// `TODO`: the checksum of content needs to be updated when file is
+    /// modified.
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
@@ -307,7 +316,8 @@ impl Project {
         Ok(())
     }
 
-    /// Writes the resource behind `handle` from memory to disk and updates the corresponding .meta file.
+    /// Writes the resource behind `handle` from memory to disk and updates the
+    /// corresponding .meta file.
     pub fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
@@ -354,8 +364,9 @@ impl Project {
 
     /// Loads a resource of a given id.
     ///
-    /// In-memory representation of that resource is managed by `ResourceRegistry`.
-    /// In order to update the resource on disk see [`Self::save_resource()`].
+    /// In-memory representation of that resource is managed by
+    /// `ResourceRegistry`. In order to update the resource on disk see
+    /// [`Self::save_resource()`].
     pub fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
@@ -456,8 +467,8 @@ impl Project {
 
     /// Change the name of the resource.
     ///
-    /// Changing the name of the resource if `free`. It does not change its `ResourceId`
-    /// nor it invalidates any build using that asset.
+    /// Changing the name of the resource if `free`. It does not change its
+    /// `ResourceId` nor it invalidates any build using that asset.
     pub fn rename_resource(
         &mut self,
         type_id: ResourceTypeAndId,
@@ -738,12 +749,12 @@ mod tests {
     }
 
     /*
-    // + data-offline/
-    //  - albedo.texture
-    //  - body.material // texture ref
-    //  - hero.geometry // material ref
-    //  - hero.actor // geometry ref, skeleton ref
-    //  - hero.skeleton // no refs
+     * + data-offline/
+     *  - albedo.texture
+     *  - body.material // texture ref
+     *  - hero.geometry // material ref
+     *  - hero.actor // geometry ref, skeleton ref
+     *  - hero.skeleton // no refs
      */
 
     #[test]

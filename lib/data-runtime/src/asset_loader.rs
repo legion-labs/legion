@@ -27,8 +27,9 @@ struct AssetReference {
 ///
 /// Contains the result of loading a single file.
 struct LoadOutput {
-    /// None here means the asset was already loaded before so it doesn't have to be
-    /// loaded again. It will still contribute to reference count though.
+    /// None here means the asset was already loaded before so it doesn't have
+    /// to be loaded again. It will still contribute to reference count
+    /// though.
     assets: Vec<(ResourceTypeAndId, Option<Box<dyn Any + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
@@ -54,9 +55,11 @@ struct LoadState {
     /// Otherwise it is a load of a dependent Resource.
     load_id: Option<LoadId>,
     /// List of Resources in asset file identified by `primary_id`.
-    /// None indicates a skipped secondary resource that was already loaded through another resource file.
+    /// None indicates a skipped secondary resource that was already loaded
+    /// through another resource file.
     assets: Vec<(HandleUntyped, Option<Box<dyn Any + Send + Sync>>)>,
-    /// The list of Resources that need to be loaded before the LoadState can be considered completed.
+    /// The list of Resources that need to be loaded before the LoadState can be
+    /// considered completed.
     references: Vec<HandleUntyped>,
 }
 
@@ -337,7 +340,8 @@ impl AssetLoaderIO {
                 .any(|state| state.primary_handle == primary_handle)
         {
             // todo: we should create a LoadState based on existing load state?
-            // this way the load result will be notified when the resource is actually loaded.
+            // this way the load result will be notified when the resource is actually
+            // loaded.
             return Ok(());
         }
         let asset_data = self
@@ -467,14 +471,16 @@ impl AssetLoaderIO {
                         let loader = self.loaders.get_mut(&asset_id.id().t).unwrap();
                         loader.load_init(boxed.as_mut());
                     }
-                    // if there is no boxed asset here, it means it was already loaded before.
+                    // if there is no boxed asset here, it means it was already
+                    // loaded before.
                 }
 
                 for (handle, _) in &loaded.assets {
                     self.loaded_resources.insert(handle.id());
                 }
 
-                // send primary asset with load_id. all secondary assets without to not cause load notification.
+                // send primary asset with load_id. all secondary assets without to not cause
+                // load notification.
                 let mut asset_iter = loaded.assets.into_iter();
                 let primary_asset = asset_iter.next().unwrap().1.unwrap();
                 self.result_tx

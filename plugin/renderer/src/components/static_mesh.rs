@@ -1,6 +1,7 @@
-use crate::resources::DefaultMeshes;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
+
+use crate::resources::DefaultMeshes;
 #[derive(Component)]
 
 pub struct StaticMesh {

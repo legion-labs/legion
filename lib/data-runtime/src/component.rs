@@ -1,6 +1,7 @@
-use lgn_data_model::{implement_box_dyn_reflection, TypeReflection};
 use std::any::{Any, TypeId};
 use std::ops::DerefMut;
+
+use lgn_data_model::{implement_box_dyn_reflection, TypeReflection};
 
 /// Component Interface
 #[typetag::serde]

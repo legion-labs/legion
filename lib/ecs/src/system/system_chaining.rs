@@ -10,15 +10,18 @@ use crate::{
     world::World,
 };
 
-/// A [`System`] that chains two systems together, creating a new system that routes the output of
-/// the first system into the input of the second system, yielding the output of the second system.
+/// A [`System`] that chains two systems together, creating a new system that
+/// routes the output of the first system into the input of the second system,
+/// yielding the output of the second system.
 ///
-/// Given two systems A and B, A may be chained with B as `A.chain(B)` if the output type of A is
-/// equal to the input type of B.
+/// Given two systems A and B, A may be chained with B as `A.chain(B)` if the
+/// output type of A is equal to the input type of B.
 ///
-/// Note that for [`FunctionSystem`](crate::system::FunctionSystem)s the output is the return value
-/// of the function and the input is the first [`SystemParam`](crate::system::SystemParam) if it is
-/// tagged with [`In`](crate::system::In) or `()` if the function has no designated input parameter.
+/// Note that for [`FunctionSystem`](crate::system::FunctionSystem)s the output
+/// is the return value of the function and the input is the first
+/// [`SystemParam`](crate::system::SystemParam) if it is tagged with
+/// [`In`](crate::system::In) or `()` if the function has no designated input
+/// parameter.
 ///
 /// # Examples
 ///
@@ -110,10 +113,11 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
     }
 }
 
-/// An extension trait providing the [`IntoChainSystem::chain`] method for convenient [`System`]
-/// chaining.
+/// An extension trait providing the [`IntoChainSystem::chain`] method for
+/// convenient [`System`] chaining.
 ///
-/// This trait is blanket implemented for all system pairs that fulfill the chaining requirement.
+/// This trait is blanket implemented for all system pairs that fulfill the
+/// chaining requirement.
 ///
 /// See [`ChainSystem`].
 pub trait IntoChainSystem<ParamA, Payload, SystemB, ParamB, Out>:
@@ -121,8 +125,9 @@ pub trait IntoChainSystem<ParamA, Payload, SystemB, ParamB, Out>:
 where
     SystemB: IntoSystem<Payload, Out, ParamB>,
 {
-    /// Chain this system `A` with another system `B` creating a new system that feeds system A's
-    /// output into system `B`, returning the output of system `B`.
+    /// Chain this system `A` with another system `B` creating a new system that
+    /// feeds system A's output into system `B`, returning the output of
+    /// system `B`.
     fn chain(self, system: SystemB) -> ChainSystem<Self::System, SystemB::System>;
 }
 

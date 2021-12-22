@@ -8,12 +8,11 @@ use std::collections::HashSet;
 use heck::ToSnakeCase;
 use relative_path::{RelativePath, RelativePathBuf};
 
+use self::product::Product;
 use crate::{
     model::{CGenType, DescriptorSet, Model, ModelObject, ModelObjectId},
     run::CGenVariant,
 };
-
-use self::product::Product;
 
 pub type GeneratorFunc = for<'r, 's> fn(&'r GeneratorContext<'s>) -> Vec<Product>;
 pub struct GeneratorContext<'a> {

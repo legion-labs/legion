@@ -73,8 +73,8 @@ impl<'w> EntityRef<'w> {
     }
 
     /// # Safety
-    /// This allows aliased mutability. You must make sure this call does not result in multiple
-    /// mutable references to the same component
+    /// This allows aliased mutability. You must make sure this call does not
+    /// result in multiple mutable references to the same component
     #[inline]
     pub unsafe fn get_unchecked_mut<T: Component>(
         &self,
@@ -156,8 +156,8 @@ impl<'w> EntityMut<'w> {
 
     #[inline]
     pub fn get_mut<T: Component>(&mut self) -> Option<Mut<'w, T>> {
-        // SAFE: world access is unique, entity location is valid, and returned component is of type
-        // T
+        // SAFE: world access is unique, entity location is valid, and returned
+        // component is of type T
         unsafe {
             get_component_and_ticks_with_type(
                 self.world,
@@ -177,8 +177,8 @@ impl<'w> EntityMut<'w> {
     }
 
     /// # Safety
-    /// This allows aliased mutability. You must make sure this call does not result in multiple
-    /// mutable references to the same component
+    /// This allows aliased mutability. You must make sure this call does not
+    /// result in multiple mutable references to the same component
     #[inline]
     pub unsafe fn get_unchecked_mut<T: Component>(&self) -> Option<Mut<'w, T>> {
         get_component_and_ticks_with_type(self.world, TypeId::of::<T>(), self.entity, self.location)
@@ -242,8 +242,8 @@ impl<'w> EntityMut<'w> {
         let old_archetype = &mut archetypes[old_location.archetype_id];
         let mut bundle_components = bundle_info.component_ids.iter().copied();
         let entity = self.entity;
-        // SAFE: bundle components are iterated in order, which guarantees that the component type
-        // matches
+        // SAFE: bundle components are iterated in order, which guarantees that the
+        // component type matches
         let result = unsafe {
             T::from_components(|| {
                 let component_id = bundle_components.next().unwrap();
@@ -276,12 +276,12 @@ impl<'w> EntityMut<'w> {
         Some(result)
     }
 
-    /// Safety: `new_archetype_id` must have the same or a subset of the components
-    /// in `old_archetype_id`. Probably more safety stuff too, audit a call to
-    /// this fn as if the code here was written inline
+    /// Safety: `new_archetype_id` must have the same or a subset of the
+    /// components in `old_archetype_id`. Probably more safety stuff too,
+    /// audit a call to this fn as if the code here was written inline
     ///
-    /// when DROP is true removed components will be dropped otherwise they will be forgotten
-    ///
+    /// when DROP is true removed components will be dropped otherwise they will
+    /// be forgotten
     // We use a const generic here so that we are less reliant on
     // inlining for rustc to optimize out the `match DROP`
     #[allow(clippy::too_many_arguments)]
@@ -450,17 +450,18 @@ impl<'w> EntityMut<'w> {
     }
 
     /// # Safety
-    /// Caller must not modify the world in a way that changes the current entity's location
-    /// If the caller _does_ do something that could change the location, `self.update_location()`
-    /// must be called before using any other methods in `EntityMut`
+    /// Caller must not modify the world in a way that changes the current
+    /// entity's location If the caller _does_ do something that could
+    /// change the location, `self.update_location()` must be called before
+    /// using any other methods in `EntityMut`
     #[inline]
     pub unsafe fn world_mut(&mut self) -> &mut World {
         self.world
     }
 
-    /// Updates the internal entity location to match the current location in the internal [World].
-    /// This is only needed if the user called [`EntityMut::world`], which enables the location to
-    /// change.
+    /// Updates the internal entity location to match the current location in
+    /// the internal [World]. This is only needed if the user called
+    /// [`EntityMut::world`], which enables the location to change.
     pub fn update_location(&mut self) {
         self.location = self.world.entities().get(self.entity).unwrap();
     }
@@ -468,8 +469,8 @@ impl<'w> EntityMut<'w> {
 
 // TODO: move to Storages?
 /// # Safety
-/// `entity_location` must be within bounds of the given archetype and `entity` must exist inside
-/// the archetype
+/// `entity_location` must be within bounds of the given archetype and `entity`
+/// must exist inside the archetype
 #[inline]
 unsafe fn get_component(
     world: &World,
@@ -485,7 +486,8 @@ unsafe fn get_component(
             let table = &world.storages.tables[archetype.table_id()];
             let components = table.get_column(component_id)?;
             let table_row = archetype.entity_table_row(location.index);
-            // SAFE: archetypes only store valid table_rows and the stored component type is T
+            // SAFE: archetypes only store valid table_rows and the stored component type is
+            // T
             Some(components.get_data_unchecked(table_row))
         }
         StorageType::SparseSet => world
@@ -513,7 +515,8 @@ unsafe fn get_component_and_ticks(
             let table = &world.storages.tables[archetype.table_id()];
             let components = table.get_column(component_id)?;
             let table_row = archetype.entity_table_row(location.index);
-            // SAFE: archetypes only store valid table_rows and the stored component type is T
+            // SAFE: archetypes only store valid table_rows and the stored component type is
+            // T
             Some((
                 components.get_data_unchecked(table_row),
                 components.get_ticks_mut_ptr_unchecked(table_row),
@@ -530,14 +533,17 @@ unsafe fn get_component_and_ticks(
 // TODO: move to Storages?
 /// Moves component data out of storage.
 ///
-/// This function leaves the underlying memory unchanged, but the component behind
-/// returned pointer is semantically owned by the caller and will not be dropped in its original location.
-/// Caller is responsible to drop component data behind returned pointer.
+/// This function leaves the underlying memory unchanged, but the component
+/// behind returned pointer is semantically owned by the caller and will not be
+/// dropped in its original location. Caller is responsible to drop component
+/// data behind returned pointer.
 ///
 /// # Safety
-/// - `entity_location` must be within bounds of the given archetype and `entity` must exist inside the archetype
+/// - `entity_location` must be within bounds of the given archetype and
+///   `entity` must exist inside the archetype
 /// - `component_id` must be valid
-/// - The relevant table row **must be removed** by the caller once all components are taken
+/// - The relevant table row **must be removed** by the caller once all
+///   components are taken
 #[inline]
 unsafe fn take_component(
     components: &Components,
@@ -557,7 +563,8 @@ unsafe fn take_component(
             // SAFE: archetypes will always point to valid columns
             let components = table.get_column(component_id).unwrap();
             let table_row = archetype.entity_table_row(location.index);
-            // SAFE: archetypes only store valid table_rows and the stored component type is T
+            // SAFE: archetypes only store valid table_rows and the stored component type is
+            // T
             components.get_data_unchecked(table_row)
         }
         StorageType::SparseSet => storages
@@ -610,12 +617,13 @@ fn contains_component_with_id(
     world.archetypes[location.archetype_id].contains(component_id)
 }
 
-/// Removes a bundle from the given archetype and returns the resulting archetype (or None if the
-/// removal was invalid). in the event that adding the given bundle does not result in an Archetype
-/// change. Results are cached in the Archetype Graph to avoid redundant work.
-/// if `intersection` is false, attempting to remove a bundle with components _not_ contained in the
-/// current archetype will fail, returning None. if `intersection` is true, components in the bundle
-/// but not in the current archetype will be ignored
+/// Removes a bundle from the given archetype and returns the resulting
+/// archetype (or None if the removal was invalid). in the event that adding the
+/// given bundle does not result in an Archetype change. Results are cached in
+/// the Archetype Graph to avoid redundant work. if `intersection` is false,
+/// attempting to remove a bundle with components _not_ contained in the current
+/// archetype will fail, returning None. if `intersection` is true, components
+/// in the bundle but not in the current archetype will be ignored
 ///
 /// # Safety
 /// `archetype_id` must exist and components in `bundle_info` must exist
@@ -627,8 +635,8 @@ unsafe fn remove_bundle_from_archetype(
     bundle_info: &BundleInfo,
     intersection: bool,
 ) -> Option<ArchetypeId> {
-    // check the archetype graph to see if the Bundle has been removed from this archetype in the
-    // past
+    // check the archetype graph to see if the Bundle has been removed from this
+    // archetype in the past
     let remove_bundle_result = {
         let current_archetype = &mut archetypes[archetype_id];
         if intersection {

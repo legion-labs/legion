@@ -10,7 +10,8 @@ pub struct ScopeDesc {
 }
 
 pub struct ScopeGuard {
-    // the value of the function pointer will identity the scope uniquely within that process instance
+    // the value of the function pointer will identity the scope uniquely within that process
+    // instance
     pub get_scope_desc: GetScopeDesc,
     pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
 }

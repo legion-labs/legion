@@ -13,9 +13,9 @@ pub struct VideoQueue {
 }
 
 //enum StdVideoH264ProfileIdc {
-//    std_video_h264_profile_idc_baseline             = 66, /* Only constrained baseline is supported */
-//    std_video_h264_profile_idc_main                 = 77,
-//    std_video_h264_profile_idc_high                 = 100,
+//    std_video_h264_profile_idc_baseline             = 66, /* Only constrained
+// baseline is supported */    std_video_h264_profile_idc_main                 =
+// 77,    std_video_h264_profile_idc_high                 = 100,
 //    std_video_h264_profile_idc_high_444_predictive  = 244,
 //    std_video_h264_profile_idc_invalid              = 0x7FFFFFFF
 //} StdVideoH264ProfileIdc;
@@ -29,7 +29,8 @@ impl VideoQueue {
                     .get_device_proc_addr(device_ctx.vk_device().handle(), name.as_ptr()),
             )
         });
-        // The following functions need to be loaded from the instance rather than from the device
+        // The following functions need to be loaded from the instance rather than from
+        // the device
         {
             let func = unsafe {
                 let cname = ::std::ffi::CStr::from_bytes_with_nul_unchecked(

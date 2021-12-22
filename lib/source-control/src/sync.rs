@@ -1,5 +1,3 @@
-use anyhow::Context;
-use anyhow::Result;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -7,6 +5,8 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use anyhow::Context;
+use anyhow::Result;
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -161,7 +161,8 @@ pub async fn sync_workspace(
             }
         }
     } else {
-        //sync backwards is slower and could be optimized if we had before&after hashes in changes
+        //sync backwards is slower and could be optimized if we had before&after hashes
+        // in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == destination_commit);
         let root_tree = connection.query().read_tree(&ref_commit.root_hash).await?;
@@ -177,7 +178,8 @@ pub async fn sync_workspace(
         for path in to_update {
             to_download.insert(
                 path.clone(),
-                //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
+                //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we
+                // should fail on error
                 match find_file_hash_in_tree(connection, Path::new(&path), &root_tree).await {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),

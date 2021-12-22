@@ -191,8 +191,9 @@ pub enum WindowMode {
     Windowed,
     /// Creates a borderless window that uses the full size of the screen
     BorderlessFullscreen,
-    /// Creates a fullscreen window that will render at desktop resolution. The app will use the closest supported size
-    /// from the given size and scale it to fit the screen.
+    /// Creates a fullscreen window that will render at desktop resolution. The
+    /// app will use the closest supported size from the given size and
+    /// scale it to fit the screen.
     SizedFullscreen,
     /// Creates a fullscreen window that uses the maximum supported size
     Fullscreen,
@@ -314,15 +315,16 @@ impl Window {
 
     /// Modifies the position of the window in physical pixels.
     ///
-    /// Note that the top-left hand corner of the desktop is not necessarily the same as the screen.
-    /// If the user uses a desktop with multiple monitors, the top-left hand corner of the
-    /// desktop is the top-left hand corner of the monitor at the top-left of the desktop. This
+    /// Note that the top-left hand corner of the desktop is not necessarily the
+    /// same as the screen. If the user uses a desktop with multiple
+    /// monitors, the top-left hand corner of the desktop is the top-left
+    /// hand corner of the monitor at the top-left of the desktop. This
     /// automatically un-maximizes the window if it's maximized.
     ///
     /// # Platform-specific
     ///
-    /// - iOS: Can only be called on the main thread. Sets the top left coordinates of the window in
-    ///   the screen space coordinate system.
+    /// - iOS: Can only be called on the main thread. Sets the top left
+    ///   coordinates of the window in the screen space coordinate system.
     /// - Web: Sets the top-left coordinates relative to the viewport.
     /// - Android / Wayland: Unsupported.
     #[inline]
@@ -331,7 +333,8 @@ impl Window {
             .push(WindowCommand::SetPosition { position });
     }
 
-    /// Modifies the minimum and maximum window bounds for resizing in logical pixels.
+    /// Modifies the minimum and maximum window bounds for resizing in logical
+    /// pixels.
     #[inline]
     pub fn set_resize_constraints(&mut self, resize_constraints: WindowResizeConstraints) {
         self.command_queue
@@ -482,7 +485,8 @@ impl Window {
         self.physical_cursor_position
     }
 
-    /// The current mouse position, in logical pixels, taking into account the screen scale factor.
+    /// The current mouse position, in logical pixels, taking into account the
+    /// screen scale factor.
     #[inline]
     #[doc(alias = "mouse position")]
     pub fn cursor_position(&self) -> Option<Vec2> {

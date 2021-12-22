@@ -1,5 +1,5 @@
-//! Types for defining [`Archetype`]s, collections of entities that have the same set of
-//! components.
+//! Types for defining [`Archetype`]s, collections of entities that have the
+//! same set of components.
 
 use std::{
     borrow::Cow,
@@ -244,8 +244,8 @@ impl Archetype {
     }
 
     /// # Safety
-    /// valid component values must be immediately written to the relevant storages
-    /// `table_row` must be valid
+    /// valid component values must be immediately written to the relevant
+    /// storages `table_row` must be valid
     pub unsafe fn allocate(&mut self, entity: Entity, table_row: usize) -> EntityLocation {
         self.entities.push(entity);
         self.table_info.entity_rows.push(table_row);
@@ -261,8 +261,8 @@ impl Archetype {
         self.table_info.entity_rows.reserve(additional);
     }
 
-    /// Removes the entity at `index` by swapping it out. Returns the table row the entity is stored
-    /// in.
+    /// Removes the entity at `index` by swapping it out. Returns the table row
+    /// the entity is stored in.
     pub(crate) fn swap_remove(&mut self, index: usize) -> ArchetypeSwapRemoveResult {
         let is_last = index == self.entities.len() - 1;
         self.entities.swap_remove(index);
@@ -377,8 +377,8 @@ impl Default for Archetypes {
         };
         archetypes.get_id_or_insert(TableId::empty(), Vec::new(), Vec::new());
 
-        // adds the resource archetype. it is "special" in that it is inaccessible via a "hash",
-        // which prevents entities from being added to it
+        // adds the resource archetype. it is "special" in that it is inaccessible via a
+        // "hash", which prevents entities from being added to it
         archetypes.archetypes.push(Archetype::new(
             ArchetypeId::RESOURCE,
             TableId::empty(),
@@ -467,8 +467,9 @@ impl Archetypes {
         self.archetypes.iter()
     }
 
-    /// Gets the archetype id matching the given inputs or inserts a new one if it doesn't exist.
-    /// `table_components` and `sparse_set_components` must be sorted
+    /// Gets the archetype id matching the given inputs or inserts a new one if
+    /// it doesn't exist. `table_components` and `sparse_set_components`
+    /// must be sorted
     ///
     /// # Safety
     /// `TableId` must exist in tables

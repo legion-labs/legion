@@ -1,8 +1,7 @@
 use lgn_graphics_api::PagedBufferAllocation;
 
-use crate::{static_mesh_render_data::StaticMeshRenderData, Renderer};
-
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
+use crate::{static_mesh_render_data::StaticMeshRenderData, Renderer};
 
 pub struct DefaultMeshes {
     static_buffer: UnifiedStaticBuffer,

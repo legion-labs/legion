@@ -118,13 +118,14 @@ pub struct BrowserPlugin<R: Runtime> {
 }
 
 impl<R: Runtime> BrowserPlugin<R> {
-    /// Creates a [`BrowserPlugin`] from an [`url::Url`] and an application name.
-    /// The application name will be used to lookup the `directories::ProjectDirs`.
+    /// Creates a [`BrowserPlugin`] from an [`url::Url`] and an application
+    /// name. The application name will be used to lookup the
+    /// `directories::ProjectDirs`.
     ///
     /// # Errors
     ///
-    /// Returns an error if the Url format is invalid (i.e. compliant with Aws Cognito)
-    /// or if the project directories can't be found.
+    /// Returns an error if the Url format is invalid (i.e. compliant with Aws
+    /// Cognito) or if the project directories can't be found.
     pub fn new(authorization_url: &Url, application: &str) -> anyhow::Result<Self> {
         let authenticator =
             AwsCognitoClientAuthenticator::from_authorization_url(authorization_url)?;
@@ -140,7 +141,8 @@ impl<R: Runtime> BrowserPlugin<R> {
         })
     }
 
-    /// Same as [`BrowserPlugin::new`] but accepts an `str` instead of an [`url::Url`].
+    /// Same as [`BrowserPlugin::new`] but accepts an `str` instead of an
+    /// [`url::Url`].
     ///
     /// # Errors
     ///

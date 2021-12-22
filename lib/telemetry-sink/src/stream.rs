@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-
 use lgn_telemetry::event_block::TelemetryBlock;
 use lgn_telemetry::{
     LogBlock, LogDepsQueue, LogMsgQueueAny, MetricEvent, MetricsBlock, MetricsDepsQueue,

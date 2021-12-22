@@ -6,26 +6,36 @@
 //! * Data containers that generate rust files
 //!
 //! There is 2 ways of handling generated files in the rust ecosystem:
-//! * Relying on `OUT_DIR` environment variable to generate in place any necessary file. (tonic, windows api, ...)
-//! * Generating the files in the repo and committing them to the repo. (rust-analyser, rusoto, ...)
+//! * Relying on `OUT_DIR` environment variable to generate in place any
+//!   necessary file. (tonic, windows api, ...)
+//! * Generating the files in the repo and committing them to the repo.
+//!   (rust-analyser, rusoto, ...)
 //!
-//! We can't generate files in the crate directory and not have them committed, since we have to think about the case of an external dependency being downloaded in the local immutable register.
+//! We can't generate files in the crate directory and not have them committed,
+//! since we have to think about the case of an external dependency being
+//! downloaded in the local immutable register.
 //!
 //! Advantages:
-//! * Improves readability and UX of generated files (Go to definition works in VS Code, looking at code from github)
-//! * Allows inclusion of generated files from other systems (Javasctript, hlsl in a uniform manner) since `OUT_DIR` is only know during the cargo build of a given crate.
+//! * Improves readability and UX of generated files (Go to definition works in
+//!   VS Code, looking at code from github)
+//! * Allows inclusion of generated files from other systems (Javasctript, hlsl
+//!   in a uniform manner) since `OUT_DIR` is only know during the cargo build
+//!   of a given crate.
 //!
 //! Drawbacks:
 //! * Dummy conflict in generated code
-//! * We lose the ability to modify some src files from the github web interface since you
-//! * Confusion about non generated code and generated code (although mitigated by conventions)
+//! * We lose the ability to modify some src files from the github web interface
+//!   since you
+//! * Confusion about non generated code and generated code (although mitigated
+//!   by conventions)
 //!
 //! Restriction and rules:
 //! * We can't have binary files checked in
-//! * Modification of the generated files would not be allowed under any circumstances, the build machines fail if any change was detected
-//! * Files whose generation ca be driven by features, or that are platform dependent would still use `OUT_DIR`.
+//! * Modification of the generated files would not be allowed under any
+//!   circumstances, the build machines fail if any change was detected
+//! * Files whose generation ca be driven by features, or that are platform
+//!   dependent would still use `OUT_DIR`.
 //! * Other cases where the in repo generation doesn't bring much
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -91,7 +101,6 @@ use lgn_build_utils::{run_cmd, Context, Error, Language, Result};
 ///
 /// # Errors
 /// Returns a generation error or an IO error
-///
 pub fn build_protos(
     context: &Context,
     protos: &[impl AsRef<Path>],

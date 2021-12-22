@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
+use lgn_graphics_api::prelude::*;
+
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::RenderContext;
 use crate::Renderer;
-use lgn_graphics_api::prelude::*;
-use std::sync::Arc;
 
 pub struct EguiPass {
     root_signature: RootSignature,

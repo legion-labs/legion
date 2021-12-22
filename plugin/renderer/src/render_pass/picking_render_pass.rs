@@ -9,7 +9,6 @@ use lgn_graphics_api::{
     RootSignature, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags,
     StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;

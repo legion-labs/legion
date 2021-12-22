@@ -11,8 +11,8 @@ use super::{
 use crate::{Error, FourCC, Result};
 
 /// Track Fragment Run Atom
-/// If the duration-is-empty flag is set in the `tf_flags`, there are no track runs.
-/// A track run documents a contiguous set of samples for a track.
+/// If the duration-is-empty flag is set in the `tf_flags`, there are no track
+/// runs. A track run documents a contiguous set of samples for a track.
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct TrunAtom {
     pub version: u8,

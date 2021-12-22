@@ -375,7 +375,8 @@ pub fn flush_metrics_buffer() {
     }
 }
 
-//todo: should be implicit by default but limit the maximum number of tracked threads
+//todo: should be implicit by default but limit the maximum number of tracked
+// threads
 #[inline]
 pub fn init_thread_stream() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {

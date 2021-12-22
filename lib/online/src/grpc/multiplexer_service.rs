@@ -20,8 +20,8 @@ pub trait MultiplexableService: DynClone {
 
 dyn_clone::clone_trait_object!(MultiplexableService);
 
-/// Blanket implementation for all services: makes it possible to use all tonic-generated services
-/// in the `Multiplexer` service.
+/// Blanket implementation for all services: makes it possible to use all
+/// tonic-generated services in the `Multiplexer` service.
 impl<S> MultiplexableService for S
 where
     S: tower::Service<Request<hyper::Body>, Response = Response<BoxBody>> + Clone,
@@ -88,7 +88,8 @@ impl MultiplexerServiceBuilder {
         self
     }
 
-    /// Build a `MultiplexerService` only if it has at least one service to route traffic to.
+    /// Build a `MultiplexerService` only if it has at least one service to
+    /// route traffic to.
     pub fn build(&self) -> Option<MultiplexerService> {
         if self.services.is_empty() {
             None
@@ -98,8 +99,8 @@ impl MultiplexerServiceBuilder {
     }
 }
 
-/// Multiplexer is a routing service that can dynamically be extended with new `gRPC` services at
-/// runtime.
+/// Multiplexer is a routing service that can dynamically be extended with new
+/// `gRPC` services at runtime.
 #[derive(Default, Clone)]
 pub struct MultiplexerService {
     services: Services,

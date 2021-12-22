@@ -1,14 +1,16 @@
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
+use lgn_math::{EulerRot, Quat};
+use lgn_transform::components::Transform;
+
+use crate::debug_display::DebugDisplay;
+use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 use crate::{
     components::PickedComponent,
     egui::egui_plugin::{Egui, EguiPlugin},
     picking::{PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
-use lgn_app::prelude::*;
-use lgn_ecs::prelude::*;
-use lgn_math::{EulerRot, Quat};
-use lgn_transform::components::Transform;
-
 use crate::{
     components::{
         CameraComponent, LightComponent, LightSettings, LightType, RenderSurface,
@@ -17,9 +19,6 @@ use crate::{
     labels::RendererSystemLabel,
     RenderContext, Renderer,
 };
-
-use crate::debug_display::DebugDisplay;
-use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 
 #[derive(Default)]
 pub struct RendererPlugin {

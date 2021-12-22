@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::collections::BTreeSet;
+
+use anyhow::{Context, Result};
 
 use crate::{
     connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,

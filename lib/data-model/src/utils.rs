@@ -1,8 +1,9 @@
+use thiserror::Error;
+
 use crate::{
     type_reflection::{TypeDefinition, TypeReflection},
     BaseDescriptor,
 };
-use thiserror::Error;
 
 /// Internal struct to store `ReflectedPtr`
 pub struct ReflectedPtr<'a> {

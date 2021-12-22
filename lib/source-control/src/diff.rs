@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
+
+use anyhow::{Context, Result};
 
 use crate::{
     connect_to_server, download_temp_file, find_file_hash_at_commit, find_workspace_root,

@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
+use lgn_telemetry::{
+    event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock, ThreadBlock,
+};
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
     telemetry::{
         ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo, UdtMember, UserDefinedType,
     },
-};
-
-use lgn_telemetry::{
-    event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock, ThreadBlock,
 };
 
 use crate::stream::StreamBlock;

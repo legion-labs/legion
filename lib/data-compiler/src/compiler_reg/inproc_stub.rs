@@ -3,14 +3,13 @@ use std::{io, path::Path};
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::ResourcePathId;
 
+use super::CompilerStub;
 use crate::{
     compiler_api::{
         CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
     },
     CompiledResource, CompilerHash,
 };
-
-use super::CompilerStub;
 
 pub(super) struct InProcessCompilerStub {
     pub(super) descriptor: &'static CompilerDescriptor,

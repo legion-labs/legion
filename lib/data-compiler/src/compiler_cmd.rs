@@ -1,9 +1,11 @@
 //! Interface to interact with data compilers.
 //!
-//! Data compiler is a binary that takes as input [`lgn_data_runtime::Resource`]s.
-//! Because each *data compiler* is an external binary interacting with them can be challenging.
+//! Data compiler is a binary that takes as input
+//! [`lgn_data_runtime::Resource`]s. Because each *data compiler* is an external
+//! binary interacting with them can be challenging.
 //!
-//! [`compiler_cmd`] provides utilities that simplify interactions with data compilers.
+//! [`compiler_cmd`] provides utilities that simplify interactions with data
+//! compilers.
 //!
 //! # Examples
 //!
@@ -41,7 +43,7 @@
 //!     let resource_dir = PathBuf::from("./resources/");
 //!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, &env);
 //!     let output = command.execute("my_compiler.exe").expect("compiled resources");
-//!}
+//! }
 //! ```
 //!
 //! For more about data compilers see [`compiler_api`] module.
@@ -56,13 +58,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_offline::ResourcePathId;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     compiler_api::{CompilationEnv, CompilerDescriptor, CompilerInfo},
     CompiledResource, CompilerHash,
 };
-use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::ResourcePathId;
-use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.
 #[derive(Debug, Clone)]
@@ -144,7 +147,8 @@ impl CommandBuilder {
         self
     }
 
-    /// Executes the process returning the stdio output or an error on non-zero exit status.
+    /// Executes the process returning the stdio output or an error on non-zero
+    /// exit status.
     fn exec<T: AsRef<OsStr>>(&self, compiler_path: T) -> io::Result<std::process::Output> {
         let mut command = std::process::Command::new(compiler_path);
         command.args(&self.args);
@@ -212,7 +216,8 @@ impl CompilerInfoCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path`, waits
+    /// for completion, returns the result.
     pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerInfoCmdOutput> {
         let output = self.0.exec(&compiler_path)?;
         CompilerInfoCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
@@ -255,7 +260,8 @@ impl CompilerHashCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path`, waits
+    /// for completion, returns the result.
     pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerHashCmdOutput> {
         let output = self.0.exec(compiler_path)?;
         CompilerHashCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
@@ -331,8 +337,9 @@ impl CompilerCompileCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path` setting the current working directory
-    /// of the compiler to `cwd`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path` setting
+    /// the current working directory of the compiler to `cwd`, waits for
+    /// completion, returns the result.
     pub fn execute(
         &mut self,
         compiler_path: impl AsRef<OsStr>,

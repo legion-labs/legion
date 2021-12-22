@@ -32,7 +32,8 @@ impl<'a> Token<'a> {
 
     /// Convert the token into its claims.
     ///
-    /// This method does not validate the token and should **NOT** be used most of the time.
+    /// This method does not validate the token and should **NOT** be used most
+    /// of the time.
     pub fn into_claims_unsafe<C>(self) -> anyhow::Result<C>
     where
         C: serde::de::DeserializeOwned,
@@ -42,7 +43,8 @@ impl<'a> Token<'a> {
 
     /// Parse the token into claims.
     ///
-    /// This method does not validate the token and should **NOT** be used most of the time.
+    /// This method does not validate the token and should **NOT** be used most
+    /// of the time.
     pub(crate) fn to_claims_unsafe<C>(&self) -> anyhow::Result<C>
     where
         C: serde::de::DeserializeOwned,

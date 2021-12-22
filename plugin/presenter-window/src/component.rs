@@ -147,8 +147,8 @@ impl Presenter for PresenterWindow {
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {
-        // FIXME: if the windows is minimized, we should not resize the RenderSurface and we should not present
-        // the swapchain.
+        // FIXME: if the windows is minimized, we should not resize the RenderSurface
+        // and we should not present the swapchain.
         if self.extents.width() > 1 && self.extents.height() > 1 {
             self.present(render_context, render_surface);
         }

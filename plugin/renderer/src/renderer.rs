@@ -10,10 +10,9 @@ use lgn_graphics_api::{
     RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-
 use lgn_graphics_cgen_runtime::CGenRuntime;
-
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
@@ -22,7 +21,6 @@ use crate::resources::{
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::RenderContext;
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -62,8 +60,8 @@ impl Renderer {
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
-        // this is not compliant with the rules set for code generation, aka no binary files
-        // TODO fix this
+        // this is not compliant with the rules set for code generation, aka no binary
+        // files TODO fix this
         let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
         let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);

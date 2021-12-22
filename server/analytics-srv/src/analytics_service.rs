@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
@@ -29,7 +30,6 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
-use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
 
 use crate::cache::DiskCache;

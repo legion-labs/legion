@@ -1,7 +1,8 @@
 use lgn_ecs::{event::Events, prelude::*};
 
-// In this example a system sends a custom event with a 50/50 chance during any frame.
-// If an event was send, it will be printed by the console in a receiving system.
+// In this example a system sends a custom event with a 50/50 chance during any
+// frame. If an event was send, it will be printed by the console in a receiving
+// system.
 fn main() {
     // Create a new empty world and add the event as a resource
     let mut world = World::new();
@@ -10,10 +11,11 @@ fn main() {
     // Create a schedule and a stage
     let mut schedule = Schedule::default();
 
-    // Events need to be updated in every frame. This update should happen before we use
-    // the events. To guarantee this, we can let the update run in an earlier stage than our logic.
-    // Here we will use a stage called "first" that will always run it's systems before the Stage
-    // called "second". In "first" we update the events and in "second" we run our systems
+    // Events need to be updated in every frame. This update should happen before we
+    // use the events. To guarantee this, we can let the update run in an
+    // earlier stage than our logic. Here we will use a stage called "first"
+    // that will always run it's systems before the Stage called "second". In
+    // "first" we update the events and in "second" we run our systems
     // sending and receiving events.
     let mut first = SystemStage::parallel();
     first.add_system(Events::<MyEvent>::update_system);
@@ -24,7 +26,8 @@ fn main() {
     second.add_system(sending_system.label(EventSystem::Sending));
     second.add_system(receiving_system.after(EventSystem::Sending));
 
-    // Run the "second" Stage after the "first" Stage, so our Events always get updated before we use them
+    // Run the "second" Stage after the "first" Stage, so our Events always get
+    // updated before we use them
     schedule.add_stage_after("first", "second", second);
 
     // Simulate 10 frames of our world

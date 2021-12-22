@@ -1,8 +1,9 @@
 #![allow(unsafe_code)]
 
+use std::sync::Mutex;
+
 use bumpalo::Bump;
 use lgn_math::Vec3;
-use std::sync::Mutex;
 
 struct DisplayListWrapper {
     ptr: *mut DisplayList,

@@ -1,7 +1,7 @@
 //! Tools for controlling system execution.
 //!
-//! When using Legion ECS, systems are usually not run directly, but are inserted into a
-//!  [`Stage`], which then lives within a [`Schedule`].
+//! When using Legion ECS, systems are usually not run directly, but are
+//! inserted into a  [`Stage`], which then lives within a [`Schedule`].
 
 mod executor;
 mod executor_parallel;
@@ -33,10 +33,10 @@ use crate::{system::System, world::World};
 
 /// A container of [`Stage`]s set to be run in a linear order.
 ///
-/// Since `Schedule` implements the [`Stage`] trait, it can be inserted into another schedule.
-/// In this way, the properties of the child schedule can be set differently from the parent.
-/// For example, it can be set to run only once during app execution, while the parent schedule
-/// runs indefinitely.
+/// Since `Schedule` implements the [`Stage`] trait, it can be inserted into
+/// another schedule. In this way, the properties of the child schedule can be
+/// set differently from the parent. For example, it can be set to run only once
+/// during app execution, while the parent schedule runs indefinitely.
 #[derive(Default)]
 pub struct Schedule {
     stages: HashMap<BoxedStageLabel, Box<dyn Stage>>,
@@ -51,7 +51,8 @@ impl Schedule {
         self
     }
 
-    /// Similar to [`add_stage_after`](Self::add_stage_after), but it also returns itself.
+    /// Similar to [`add_stage_after`](Self::add_stage_after), but it also
+    /// returns itself.
     pub fn with_stage_after<S: Stage>(
         mut self,
         target: impl StageLabel,
@@ -62,7 +63,8 @@ impl Schedule {
         self
     }
 
-    /// Similar to [`add_stage_before`](Self::add_stage_before), but it also returns itself.
+    /// Similar to [`add_stage_before`](Self::add_stage_before), but it also
+    /// returns itself.
     pub fn with_stage_before<S: Stage>(
         mut self,
         target: impl StageLabel,
@@ -78,7 +80,8 @@ impl Schedule {
         self
     }
 
-    /// Similar to [`add_system_to_stage`](Self::add_system_to_stage), but it also returns itself.
+    /// Similar to [`add_system_to_stage`](Self::add_system_to_stage), but it
+    /// also returns itself.
     pub fn with_system_in_stage<Params>(
         mut self,
         stage_label: impl StageLabel,
@@ -207,8 +210,9 @@ impl Schedule {
         stage_label: impl StageLabel,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
-        // Use a function instead of a closure to ensure that it is codegend inside legion_ecs instead
-        // of the game. Closures inherit generic parameters from their enclosing function.
+        // Use a function instead of a closure to ensure that it is codegend inside
+        // legion_ecs instead of the game. Closures inherit generic parameters
+        // from their enclosing function.
         #[cold]
         fn stage_not_found(stage_label: &dyn Debug) -> ! {
             panic!(
@@ -257,12 +261,13 @@ impl Schedule {
         })
     }
 
-    /// Fetches the [`Stage`] of type `T` marked with `label`, then executes the provided
-    /// `func` passing the fetched stage to it as an argument.
+    /// Fetches the [`Stage`] of type `T` marked with `label`, then executes the
+    /// provided `func` passing the fetched stage to it as an argument.
     ///
-    /// The `func` argument should be a function or a closure that accepts a mutable reference
-    /// to a struct implementing `Stage` and returns the same type. That means that it should
-    /// also assume that the stage has already been fetched successfully.
+    /// The `func` argument should be a function or a closure that accepts a
+    /// mutable reference to a struct implementing `Stage` and returns the
+    /// same type. That means that it should also assume that the stage has
+    /// already been fetched successfully.
     ///
     /// # Example
     ///
@@ -281,7 +286,8 @@ impl Schedule {
     ///
     /// # Panics
     ///
-    /// Panics if `label` refers to a non-existing stage, or if it's not of type `T`.
+    /// Panics if `label` refers to a non-existing stage, or if it's not of type
+    /// `T`.
     pub fn stage<T: Stage, F: FnOnce(&mut T) -> &mut T>(
         &mut self,
         label: impl StageLabel,
@@ -294,7 +300,8 @@ impl Schedule {
         self
     }
 
-    /// Returns a shared reference to the stage identified by `label`, if it exists.
+    /// Returns a shared reference to the stage identified by `label`, if it
+    /// exists.
     ///
     /// If the requested stage does not exist, `None` is returned instead.
     ///
@@ -315,7 +322,8 @@ impl Schedule {
             .and_then(|stage| stage.downcast_ref::<T>())
     }
 
-    /// Returns a unique, mutable reference to the stage identified by `label`, if it exists.
+    /// Returns a unique, mutable reference to the stage identified by `label`,
+    /// if it exists.
     ///
     /// If the requested stage does not exist, `None` is returned instead.
     ///
@@ -347,7 +355,8 @@ impl Schedule {
         }
     }
 
-    /// Iterates over all of schedule's stages and their labels, in execution order.
+    /// Iterates over all of schedule's stages and their labels, in execution
+    /// order.
     pub fn iter_stages(&self) -> impl Iterator<Item = (&dyn StageLabel, &dyn Stage)> {
         self.stage_order
             .iter()

@@ -11,7 +11,8 @@ pub struct DualTime {
 #[allow(clippy::cast_possible_wrap)]
 pub fn now() -> i64 {
     //_rdtsc does not wait for previous instructions to be retired
-    // we could use __rdtscp if we needed more precision at the cost of slightly higher overhead
+    // we could use __rdtscp if we needed more precision at the cost of slightly
+    // higher overhead
     unsafe { _rdtsc() as i64 }
 }
 

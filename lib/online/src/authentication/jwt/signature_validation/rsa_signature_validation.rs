@@ -12,8 +12,8 @@ impl RsaSignatureValidation {
         Self { key }
     }
 
-    /// Create a new `RsaSignatureValidation` from the RSA key public components in their base64
-    /// representation.
+    /// Create a new `RsaSignatureValidation` from the RSA key public components
+    /// in their base64 representation.
     pub fn new_from_components(n: &str, e: &str) -> anyhow::Result<Self> {
         let n = BigUint::from_bytes_be(
             &base64::decode_config(n, base64::URL_SAFE_NO_PAD)

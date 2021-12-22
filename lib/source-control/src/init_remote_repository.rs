@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::{fs, sync::Arc};
+
+use anyhow::{Context, Result};
 use url::Url;
 
 use crate::{

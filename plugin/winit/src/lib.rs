@@ -1,5 +1,4 @@
 //! Winit plugin
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -224,8 +223,8 @@ where
     event_loop.run(event_handler)
 }
 
-// TODO: It may be worth moving this cfg into a procedural macro so that it can be referenced by
-// a single name instead of being copied around.
+// TODO: It may be worth moving this cfg into a procedural macro so that it can
+// be referenced by a single name instead of being copied around.
 // https://gist.github.com/jakerr/231dee4a138f7a5f25148ea8f39b382e seems to work.
 #[cfg(any(
     target_os = "windows",
@@ -357,7 +356,8 @@ pub fn winit_runner_with(mut app: App) {
                     WindowEvent::CursorMoved { position, .. } => {
                         let mut cursor_moved_events =
                             world.get_resource_mut::<Events<CursorMoved>>().unwrap();
-                        // Bevy flips the y-axis here to use bottom-left corner as origin, but we use top-left
+                        // Bevy flips the y-axis here to use bottom-left corner as origin, but we
+                        // use top-left
                         let physical_position = DVec2::new(position.x, position.y);
                         window
                             .update_cursor_physical_position_from_backend(Some(physical_position));

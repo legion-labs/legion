@@ -5,13 +5,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::Device;
-use crate::{manifest::Manifest, ResourceTypeAndId};
-
 use lgn_content_store::{ContentStore, ContentStoreAddr};
 use lgn_telemetry::info;
 
-/// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
+use super::Device;
+use crate::{manifest::Manifest, ResourceTypeAndId};
+
+/// Storage device that builds resources on demand. Resources are accessed
+/// through a manifest access table.
 pub(crate) struct BuildDevice {
     manifest: RefCell<Manifest>,
     content_store: Box<dyn ContentStore>,

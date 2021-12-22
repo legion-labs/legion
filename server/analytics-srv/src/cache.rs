@@ -1,9 +1,10 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use anyhow::Result;
 use lgn_source_control::disk_blob_storage::DiskBlobStorage;
 use lgn_source_control::BlobStorage;
 use lgn_telemetry::prelude::*;
-use std::path::PathBuf;
 
 pub struct DiskCache {
     storage: DiskBlobStorage,

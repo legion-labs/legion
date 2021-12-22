@@ -5,19 +5,22 @@ use lgn_math::{Mat3, Mat4, Quat, Vec3};
 
 use super::GlobalTransform;
 
-/// Describe the position of an entity. If the entity has a parent, the position is relative
-/// to its parent position.
+/// Describe the position of an entity. If the entity has a parent, the position
+/// is relative to its parent position.
 ///
 /// * To place or move an entity, you should set its [`Transform`].
-/// * To be displayed, an entity must have both a [`Transform`] and a [`GlobalTransform`].
-/// * To get the global position of an entity, you should get its [`GlobalTransform`].
+/// * To be displayed, an entity must have both a [`Transform`] and a
+///   [`GlobalTransform`].
+/// * To get the global position of an entity, you should get its
+///   [`GlobalTransform`].
 ///
 /// ## [`Transform`] and [`GlobalTransform`]
 ///
-/// [`Transform`] is the position of an entity relative to its parent position, or the reference
-/// frame if it doesn't have a [`Parent`](super::Parent).
+/// [`Transform`] is the position of an entity relative to its parent position,
+/// or the reference frame if it doesn't have a [`Parent`](super::Parent).
 ///
-/// [`GlobalTransform`] is the position of an entity relative to the reference frame.
+/// [`GlobalTransform`] is the position of an entity relative to the reference
+/// frame.
 ///
 /// [`GlobalTransform`] is updated from [`Transform`] in the system
 /// [`transform_propagate_system`](crate::transform_propagate_system::transform_propagate_system).
@@ -32,12 +35,14 @@ use super::GlobalTransform;
 ///             set child.global_transform to parent.global_transform * child.transform
 /// ```
 ///
-/// This system runs in stage [`CoreStage::PostUpdate`](crate::CoreStage::PostUpdate). If you
-/// update the[`Transform`] of an entity in this stage or after, you will notice a 1 frame lag
-/// before the [`GlobalTransform`] is updated.
+/// This system runs in stage
+/// [`CoreStage::PostUpdate`](crate::CoreStage::PostUpdate). If you
+/// update the[`Transform`] of an entity in this stage or after, you will notice
+/// a 1 frame lag before the [`GlobalTransform`] is updated.
 #[derive(Component, Debug, PartialEq, Clone, Copy)]
 pub struct Transform {
-    /// Position of the entity. In 2d, the last value of the `Vec3` is used for z-ordering.
+    /// Position of the entity. In 2d, the last value of the `Vec3` is used for
+    /// z-ordering.
     pub translation: Vec3,
     /// Rotation of the entity.
     pub rotation: Quat,
@@ -46,16 +51,16 @@ pub struct Transform {
 }
 
 impl Transform {
-    /// Creates a new [`Transform`] at the position `(x, y, z)`. In 2d, the `z` component
-    /// is used for z-ordering elements: higher `z`-value will be in front of lower
-    /// `z`-value.
+    /// Creates a new [`Transform`] at the position `(x, y, z)`. In 2d, the `z`
+    /// component is used for z-ordering elements: higher `z`-value will be
+    /// in front of lower `z`-value.
     #[inline]
     pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
         Self::from_translation(Vec3::new(x, y, z))
     }
 
-    /// Creates a new identity [`Transform`], with no translation, rotation, and a scale of 1 on
-    /// all axes.
+    /// Creates a new identity [`Transform`], with no translation, rotation, and
+    /// a scale of 1 on all axes.
     #[inline]
     pub const fn identity() -> Self {
         Self {
@@ -65,8 +70,8 @@ impl Transform {
         }
     }
 
-    /// Extracts the translation, rotation, and scale from `matrix`. It must be a 3d affine
-    /// transformation matrix.
+    /// Extracts the translation, rotation, and scale from `matrix`. It must be
+    /// a 3d affine transformation matrix.
     #[inline]
     pub fn from_matrix(matrix: Mat4) -> Self {
         let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
@@ -78,8 +83,8 @@ impl Transform {
         }
     }
 
-    /// Creates a new [`Transform`], with `translation`. Rotation will be 0 and scale 1 on
-    /// all axes.
+    /// Creates a new [`Transform`], with `translation`. Rotation will be 0 and
+    /// scale 1 on all axes.
     #[inline]
     pub fn from_translation(translation: Vec3) -> Self {
         Self {
@@ -88,8 +93,8 @@ impl Transform {
         }
     }
 
-    /// Creates a new [`Transform`], with `rotation`. Translation will be 0 and scale 1 on
-    /// all axes.
+    /// Creates a new [`Transform`], with `rotation`. Translation will be 0 and
+    /// scale 1 on all axes.
     #[inline]
     pub fn from_rotation(rotation: Quat) -> Self {
         Self {
@@ -98,8 +103,8 @@ impl Transform {
         }
     }
 
-    /// Creates a new [`Transform`], with `scale`. Translation will be 0 and rotation 0 on
-    /// all axes.
+    /// Creates a new [`Transform`], with `scale`. Translation will be 0 and
+    /// rotation 0 on all axes.
     #[inline]
     pub fn from_scale(scale: Vec3) -> Self {
         Self {
@@ -108,9 +113,9 @@ impl Transform {
         }
     }
 
-    /// Updates and returns this [`Transform`] by rotating it so that its unit vector in the
-    /// local z direction is toward `target` and its unit vector in the local y direction
-    /// is toward `up`.
+    /// Updates and returns this [`Transform`] by rotating it so that its unit
+    /// vector in the local z direction is toward `target` and its unit
+    /// vector in the local y direction is toward `up`.
     #[inline]
     pub fn looking_at(mut self, target: Vec3, up: Vec3) -> Self {
         self.look_at(target, up);
@@ -138,8 +143,8 @@ impl Transform {
         self
     }
 
-    /// Returns the 3d affine transformation matrix from this transforms translation,
-    /// rotation, and scale.
+    /// Returns the 3d affine transformation matrix from this transforms
+    /// translation, rotation, and scale.
     #[inline]
     pub fn compute_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
@@ -228,15 +233,16 @@ impl Transform {
         value
     }
 
-    /// Changes the `scale` of this [`Transform`], multiplying the current `scale` by
-    /// `scale_factor`.
+    /// Changes the `scale` of this [`Transform`], multiplying the current
+    /// `scale` by `scale_factor`.
     #[inline]
     pub fn apply_non_uniform_scale(&mut self, scale_factor: Vec3) {
         self.scale *= scale_factor;
     }
 
-    /// Rotates this [`Transform`] so that its unit vector in the local z direction is toward
-    /// `target` and its unit vector in the local y direction is toward `up`.
+    /// Rotates this [`Transform`] so that its unit vector in the local z
+    /// direction is toward `target` and its unit vector in the local y
+    /// direction is toward `up`.
     #[inline]
     pub fn look_at(&mut self, target: Vec3, up: Vec3) {
         let forward = Vec3::normalize(self.translation - target);

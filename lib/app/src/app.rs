@@ -21,10 +21,10 @@ lgn_utils::define_label!(AppLabel);
 #[allow(clippy::needless_doctest_main)]
 /// Containers of app logic and data
 ///
-/// Bundles together the necessary elements, like [`World`] and [`Schedule`], to create
-/// an ECS-based application. It also stores a pointer to a
-/// [runner function](App::set_runner), which by default executes the App schedule
-/// once. Apps are constructed with the builder pattern.
+/// Bundles together the necessary elements, like [`World`] and [`Schedule`], to
+/// create an ECS-based application. It also stores a pointer to a
+/// [runner function](App::set_runner), which by default executes the App
+/// schedule once. Apps are constructed with the builder pattern.
 ///
 /// ## Example
 /// Here is a simple "Hello World" Legion app:
@@ -95,10 +95,11 @@ impl App {
         }
     }
 
-    /// Starts the application by calling the app's [runner function](Self::set_runner).
+    /// Starts the application by calling the app's [runner
+    /// function](Self::set_runner).
     ///
-    /// Finalizes the [`App`] configuration. For general usage, see the example on the item
-    /// level documentation.
+    /// Finalizes the [`App`] configuration. For general usage, see the example
+    /// on the item level documentation.
     pub fn run(&mut self) {
         trace_scope!("legion_app");
 
@@ -107,8 +108,8 @@ impl App {
         (runner)(app);
     }
 
-    /// Adds a [`Stage`] with the given `label` to the last position of the app's
-    /// [`Schedule`].
+    /// Adds a [`Stage`] with the given `label` to the last position of the
+    /// app's [`Schedule`].
     ///
     /// # Example
     ///
@@ -124,8 +125,8 @@ impl App {
         self
     }
 
-    /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`], located
-    /// immediately after the stage labeled by `target`.
+    /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`],
+    /// located immediately after the stage labeled by `target`.
     ///
     /// # Example
     ///
@@ -146,8 +147,8 @@ impl App {
         self
     }
 
-    /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`], located
-    /// immediately before the stage labeled by `target`.
+    /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`],
+    /// located immediately before the stage labeled by `target`.
     ///
     /// # Example
     ///
@@ -188,8 +189,8 @@ impl App {
         self
     }
 
-    /// Adds a [startup stage](Self::add_default_stages) with the given `label`, immediately
-    /// after the stage labeled by `target`.
+    /// Adds a [startup stage](Self::add_default_stages) with the given `label`,
+    /// immediately after the stage labeled by `target`.
     ///
     /// The `target` label must refer to a stage inside the startup schedule.
     ///
@@ -219,8 +220,8 @@ impl App {
         self
     }
 
-    /// Adds a [startup stage](Self::add_default_stages) with the given `label`, immediately
-    /// before the stage labeled by `target`.
+    /// Adds a [startup stage](Self::add_default_stages) with the given `label`,
+    /// immediately before the stage labeled by `target`.
     ///
     /// The `target` label must refer to a stage inside the startup schedule.
     ///
@@ -250,12 +251,14 @@ impl App {
         self
     }
 
-    /// Fetches the [`Stage`] of type `T` marked with `label` from the [`Schedule`], then
-    /// executes the provided `func` passing the fetched stage to it as an argument.
+    /// Fetches the [`Stage`] of type `T` marked with `label` from the
+    /// [`Schedule`], then executes the provided `func` passing the fetched
+    /// stage to it as an argument.
     ///
-    /// The `func` argument should be a function or a closure that accepts a mutable reference
-    /// to a struct implementing `Stage` and returns the same type. That means that it should
-    /// also assume that the stage has already been fetched successfully.
+    /// The `func` argument should be a function or a closure that accepts a
+    /// mutable reference to a struct implementing `Stage` and returns the
+    /// same type. That means that it should also assume that the stage has
+    /// already been fetched successfully.
     ///
     /// See [`Schedule::stage`] for more details.
     ///
@@ -283,10 +286,11 @@ impl App {
         self
     }
 
-    /// Adds a system to the [update stage](Self::add_default_stages) of the app's [`Schedule`].
+    /// Adds a system to the [update stage](Self::add_default_stages) of the
+    /// app's [`Schedule`].
     ///
-    /// Refer to the [system module documentation](lgn_ecs::system) to see how a system
-    /// can be defined.
+    /// Refer to the [system module documentation](lgn_ecs::system) to see how a
+    /// system can be defined.
     ///
     /// # Example
     ///
@@ -380,10 +384,13 @@ impl App {
         self
     }
 
-    /// Adds a system to the [startup stage](Self::add_default_stages) of the app's [`Schedule`].
+    /// Adds a system to the [startup stage](Self::add_default_stages) of the
+    /// app's [`Schedule`].
     ///
-    /// * For adding a system that runs for every frame, see [`add_system`](Self::add_system).
-    /// * For adding a system to specific stage, see [`add_system_to_stage`](Self::add_system_to_stage).
+    /// * For adding a system that runs for every frame, see
+    ///   [`add_system`](Self::add_system).
+    /// * For adding a system to specific stage, see
+    ///   [`add_system_to_stage`](Self::add_system_to_stage).
     ///
     /// ## Example
     /// ```
@@ -428,8 +435,8 @@ impl App {
         self.add_startup_system_set_to_stage(StartupStage::Startup, system_set)
     }
 
-    /// Adds a system to the [startup schedule](Self::add_default_stages), in the stage
-    /// identified by `stage_label`.
+    /// Adds a system to the [startup schedule](Self::add_default_stages), in
+    /// the stage identified by `stage_label`.
     ///
     /// `stage_label` must refer to a stage inside the startup schedule.
     ///
@@ -456,8 +463,9 @@ impl App {
         self
     }
 
-    /// Adds a [`SystemSet`] to the [startup schedule](Self::add_default_stages), in the stage
-    /// identified by `stage_label`.
+    /// Adds a [`SystemSet`] to the [startup
+    /// schedule](Self::add_default_stages), in the stage identified by
+    /// `stage_label`.
     ///
     /// `stage_label` must refer to a stage inside the startup schedule.
     ///
@@ -493,9 +501,10 @@ impl App {
     }
 
     /// Adds a new [State] with the given `initial` value.
-    /// This inserts a new `State<T>` resource and adds a new "driver" to [`CoreStage::Update`].
-    /// Each stage that uses `State<T>` for system run criteria needs a driver. If you need to use
-    /// your state in a different stage, consider using [`Self::add_state_to_stage`] or manually
+    /// This inserts a new `State<T>` resource and adds a new "driver" to
+    /// [`CoreStage::Update`]. Each stage that uses `State<T>` for system
+    /// run criteria needs a driver. If you need to use your state in a
+    /// different stage, consider using [`Self::add_state_to_stage`] or manually
     /// adding [`State::get_driver`] to additional stages you need it in.
     pub fn add_state<T>(&mut self, initial: T) -> &mut Self
     where
@@ -505,9 +514,10 @@ impl App {
     }
 
     /// Adds a new [State] with the given `initial` value.
-    /// This inserts a new `State<T>` resource and adds a new "driver" to the given stage.
-    /// Each stage that uses `State<T>` for system run criteria needs a driver. If you need to use
-    /// your state in more than one stage, consider manually adding [`State::get_driver`] to the
+    /// This inserts a new `State<T>` resource and adds a new "driver" to the
+    /// given stage. Each stage that uses `State<T>` for system run criteria
+    /// needs a driver. If you need to use your state in more than one
+    /// stage, consider manually adding [`State::get_driver`] to the
     /// stages you need it in.
     pub fn add_state_to_stage<T>(&mut self, stage: impl StageLabel, initial: T) -> &mut Self
     where
@@ -517,33 +527,39 @@ impl App {
             .add_system_set_to_stage(stage, State::<T>::get_driver())
     }
 
-    /// Adds utility stages to the [`Schedule`], giving it a standardized structure.
+    /// Adds utility stages to the [`Schedule`], giving it a standardized
+    /// structure.
     ///
-    /// Adding those stages is necessary to make some core engine features work, like
-    /// adding systems without specifying a stage, or registering events. This is however
-    /// done by default by calling `App::default`, which is in turn called by
-    /// [`App::new`].
+    /// Adding those stages is necessary to make some core engine features work,
+    /// like adding systems without specifying a stage, or registering
+    /// events. This is however done by default by calling `App::default`,
+    /// which is in turn called by [`App::new`].
     ///
     /// # The stages
     ///
-    /// All the added stages, with the exception of the startup stage, run every time the
-    /// schedule is invoked. The stages are the following, in order of execution:
-    /// - **First:** Runs at the very start of the schedule execution cycle, even before the
-    ///   startup stage.
-    /// - **Startup:** This is actually a schedule containing sub-stages. Runs only once
-    ///   when the app starts.
-    ///     - **Pre-startup:** Intended for systems that need to run before other startup systems.
-    ///     - **Startup:** The main startup stage. Startup systems are added here by default.
-    ///     - **Post-startup:** Intended for systems that need to run after other startup systems.
-    /// - **Pre-update:** Often used by plugins to prepare their internal state before the
-    ///   update stage begins.
-    /// - **Update:** Intended for user defined logic. Systems are added here by default.
-    /// - **Post-update:** Often used by plugins to finalize their internal state after the
-    ///   world changes that happened during the update stage.
+    /// All the added stages, with the exception of the startup stage, run every
+    /// time the schedule is invoked. The stages are the following, in order
+    /// of execution:
+    /// - **First:** Runs at the very start of the schedule execution cycle,
+    ///   even before the startup stage.
+    /// - **Startup:** This is actually a schedule containing sub-stages. Runs
+    ///   only once when the app starts.
+    ///     - **Pre-startup:** Intended for systems that need to run before
+    ///       other startup systems.
+    ///     - **Startup:** The main startup stage. Startup systems are added
+    ///       here by default.
+    ///     - **Post-startup:** Intended for systems that need to run after
+    ///       other startup systems.
+    /// - **Pre-update:** Often used by plugins to prepare their internal state
+    ///   before the update stage begins.
+    /// - **Update:** Intended for user defined logic. Systems are added here by
+    ///   default.
+    /// - **Post-update:** Often used by plugins to finalize their internal
+    ///   state after the world changes that happened during the update stage.
     /// - **Last:** Runs right before the end of the schedule execution cycle.
     ///
-    /// The labels for those stages are defined in the [`CoreStage`] and [`StartupStage`]
-    /// `enum`s.
+    /// The labels for those stages are defined in the [`CoreStage`] and
+    /// [`StartupStage`] `enum`s.
     ///
     /// # Example
     ///
@@ -571,7 +587,8 @@ impl App {
     /// Setup the application to manage events of type `T`.
     ///
     /// This is done by adding a `Resource` of type `Events::<T>`,
-    /// and inserting a `Events::<T>::update_system` system into `CoreStage::First`.
+    /// and inserting a `Events::<T>::update_system` system into
+    /// `CoreStage::First`.
     ///
     /// See [`Events`](lgn_ecs::event::Events) for defining events.
     ///
@@ -594,12 +611,15 @@ impl App {
             .add_system_to_stage(CoreStage::First, Events::<T>::update_system)
     }
 
-    /// Inserts a resource to the current [App] and overwrites any resource previously added of the same type.
+    /// Inserts a resource to the current [App] and overwrites any resource
+    /// previously added of the same type.
     ///
-    /// A resource in Legion represents globally unique data. Resources must be added to Legion Apps
-    /// before using them. This happens with [`insert_resource`](Self::insert_resource).
+    /// A resource in Legion represents globally unique data. Resources must be
+    /// added to Legion Apps before using them. This happens with
+    /// [`insert_resource`](Self::insert_resource).
     ///
-    /// See also `init_resource` for resources that implement `Default` or [`FromWorld`].
+    /// See also `init_resource` for resources that implement `Default` or
+    /// [`FromWorld`].
     ///
     /// ## Example
     /// ```
@@ -622,8 +642,8 @@ impl App {
 
     /// Inserts a non-send resource to the app
     ///
-    /// You usually want to use `insert_resource`, but there are some special cases when a resource must
-    /// be non-send.
+    /// You usually want to use `insert_resource`, but there are some special
+    /// cases when a resource must be non-send.
     ///
     /// ## Example
     /// ```
@@ -673,9 +693,10 @@ impl App {
     where
         R: FromWorld + Send + Sync + 'static,
     {
-        // PERF: We could avoid double hashing here, since the `from_resources` call is guaranteed
-        // not to modify the map. However, we would need to be borrowing resources both
-        // mutably and immutably, so we would need to be extremely certain this is correct
+        // PERF: We could avoid double hashing here, since the `from_resources` call is
+        // guaranteed not to modify the map. However, we would need to be
+        // borrowing resources both mutably and immutably, so we would need to
+        // be extremely certain this is correct
         if !self.world.contains_resource::<R>() {
             let resource = R::from_world(&mut self.world);
             self.insert_resource(resource);
@@ -683,7 +704,8 @@ impl App {
         self
     }
 
-    /// Initialize a non-send resource in the current [`App`], if it does not exist yet.
+    /// Initialize a non-send resource in the current [`App`], if it does not
+    /// exist yet.
     ///
     /// Adds a resource that implements `Default` or [`FromWorld`] trait.
     pub fn init_non_send_resource<R>(&mut self) -> &mut Self
@@ -700,12 +722,12 @@ impl App {
 
     /// Sets the function that will be called when the app is run.
     ///
-    /// The runner function (`run_fn`) is called only once by [`App::run`]. If the
-    /// presence of a main loop in the app is desired, it is responsibility of the runner
-    /// function to provide it.
+    /// The runner function (`run_fn`) is called only once by [`App::run`]. If
+    /// the presence of a main loop in the app is desired, it is
+    /// responsibility of the runner function to provide it.
     ///
-    /// The runner function is usually not set manually, but by Legion integrated plugins
-    /// (e.g. winit plugin).
+    /// The runner function is usually not set manually, but by Legion
+    /// integrated plugins (e.g. winit plugin).
     ///
     /// ## Example
     /// ```
@@ -728,10 +750,12 @@ impl App {
 
     /// Adds a single plugin
     ///
-    /// One of Legion's core principles is modularity. All Legion engine features are implemented
-    /// as plugins. This includes internal features like the renderer.
+    /// One of Legion's core principles is modularity. All Legion engine
+    /// features are implemented as plugins. This includes internal features
+    /// like the renderer.
     ///
-    /// Legion also provides a few sets of default plugins. See [`add_plugins`](Self::add_plugins).
+    /// Legion also provides a few sets of default plugins. See
+    /// [`add_plugins`](Self::add_plugins).
     ///
     /// ## Example
     /// ```ignore
@@ -754,7 +778,8 @@ impl App {
     /// Legion plugins can be grouped into a set of plugins. Legion provides
     /// built-in `PluginGroups` that provide core engine functionality.
     ///
-    /// The plugin groups available by default are `DefaultPlugins` and `MinimalPlugins`.
+    /// The plugin groups available by default are `DefaultPlugins` and
+    /// `MinimalPlugins`.
     ///
     /// ## Example
     /// ```
@@ -833,7 +858,8 @@ impl App {
         self
     }
 
-    /// Retrieves a "sub app" stored inside this [App]. This will panic if the sub app does not exist.
+    /// Retrieves a "sub app" stored inside this [App]. This will panic if the
+    /// sub app does not exist.
     pub fn sub_app(&mut self, label: impl AppLabel) -> &mut Self {
         match self.get_sub_app(label) {
             Ok(app) => app,
@@ -842,8 +868,8 @@ impl App {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    /// Retrieves a "sub app" inside this [App] with the given label, if it exists. Otherwise returns
-    /// an [Err] containing the given label.
+    /// Retrieves a "sub app" inside this [App] with the given label, if it
+    /// exists. Otherwise returns an [Err] containing the given label.
     pub fn get_sub_app(&mut self, label: impl AppLabel) -> Result<&mut Self, impl AppLabel> {
         self.sub_apps
             .get_mut((&label) as &dyn AppLabel)
@@ -856,6 +882,7 @@ fn run_once(mut app: App) {
     app.update();
 }
 
-/// An event that indicates the app should exit. This will fully exit the app process.
+/// An event that indicates the app should exit. This will fully exit the app
+/// process.
 #[derive(Debug, Clone)]
 pub struct AppExit;

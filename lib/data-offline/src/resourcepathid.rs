@@ -20,21 +20,26 @@ impl Transform {
 
 /// Identifier of a path in a build graph.
 ///
-/// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
-/// the `ResourcePathId` uniquely identifies any resource/node in the build graph.
+/// Considering a build graph where nodes represent *resources* and edges
+/// representing *transformations* between resources the `ResourcePathId`
+/// uniquely identifies any resource/node in the build graph.
 ///
-/// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type between two resource types.
+/// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type
+/// between two resource types.
 ///
-/// Each node in the graph can optionally contain a `name` property allowing to identify a specific compilation output
-/// at a given node.
+/// Each node in the graph can optionally contain a `name` property allowing to
+/// identify a specific compilation output at a given node.
 ///
-/// `ResourcePathId` identifies a concrete source resource with a `ResourceId` - that also defines `ResourceType` of that resource.
-/// Furthermore, it defines an ordered list of `ContentType`s this *source resource* must be transformed into during the data build process.
+/// `ResourcePathId` identifies a concrete source resource with a `ResourceId` -
+/// that also defines `ResourceType` of that resource. Furthermore, it defines
+/// an ordered list of `ContentType`s this *source resource* must be transformed
+/// into during the data build process.
 ///
 /// # Example
 ///
-/// The following example illustrates creation of *source resource* containing geometry and
-/// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
+/// The following example illustrates creation of *source resource* containing
+/// geometry and definition of a path representing a *derived resource* of a
+/// runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
 /// # use lgn_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
@@ -150,7 +155,8 @@ impl<'de> Deserialize<'de> for ResourcePathId {
 }
 
 impl ResourcePathId {
-    /// Appends a new node to the build path represented by this `ResourcePathId`.
+    /// Appends a new node to the build path represented by this
+    /// `ResourcePathId`.
     ///
     /// The node is identified by the appended `kind`.
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
@@ -160,7 +166,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Appends a new node to the build path represented by this `ResourcePathId`.
+    /// Appends a new node to the build path represented by this
+    /// `ResourcePathId`.
     ///
     /// The node is identified by the appended tuple of (`kind`, `name`).
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
@@ -172,7 +179,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Create a new [`ResourcePathId`] by changing the last node's `name` property.
+    /// Create a new [`ResourcePathId`] by changing the last node's `name`
+    /// property.
     pub fn new_named(&self, name: &str) -> Self {
         assert!(!self.is_source(), "Source path cannot be named");
         let mut cloned = self.clone();
@@ -190,7 +198,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Returns true if last transformation contains `name` part, false otherwise.
+    /// Returns true if last transformation contains `name` part, false
+    /// otherwise.
     pub fn is_named(&self) -> bool {
         if let Some((_, name)) = self.transforms.last() {
             !name.is_none()
@@ -229,12 +238,14 @@ impl ResourcePathId {
 
     /// Returns true if the path identifies a `source resource`.
     ///
-    /// Source resource has no transformations attached to it and is backed by user-defined data.
+    /// Source resource has no transformations attached to it and is backed by
+    /// user-defined data.
     pub fn is_source(&self) -> bool {
         self.transforms.is_empty()
     }
 
-    /// Returns the last transformation that must be applied to produce the resource.
+    /// Returns the last transformation that must be applied to produce the
+    /// resource.
     ///
     /// Returns None if self is a `source resource`.
     pub fn last_transform(&self) -> Option<Transform> {
@@ -251,7 +262,8 @@ impl ResourcePathId {
         }
     }
 
-    /// Returns a `ResourcePathId` that represents a direct dependency in the build graph.
+    /// Returns a `ResourcePathId` that represents a direct dependency in the
+    /// build graph.
     ///
     /// None if self represents a source dependency.
     pub fn direct_dependency(&self) -> Option<Self> {
@@ -275,7 +287,8 @@ impl ResourcePathId {
         }
     }
 
-    /// Produces an iterator over transformations contained within the resource path.
+    /// Produces an iterator over transformations contained within the resource
+    /// path.
     ///
     /// # Example
     ///

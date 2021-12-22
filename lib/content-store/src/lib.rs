@@ -122,10 +122,12 @@ impl fmt::Display for ContentStoreAddr {
     }
 }
 
-/// A content-addressable storage interface for dealing with compilation results.
+/// A content-addressable storage interface for dealing with compilation
+/// results.
 ///
-/// [`ContentStore`] functions as a *content-addressable storage* - using the [`crate::content_checksum`]
-/// function to calculate the checksum of stored content.
+/// [`ContentStore`] functions as a *content-addressable storage* - using the
+/// [`crate::content_checksum`] function to calculate the checksum of stored
+/// content.
 // todo: change Option to Error
 pub trait ContentStore: Send {
     /// Write content to the backing storage.
@@ -139,16 +141,16 @@ pub trait ContentStore: Send {
 
     /// Returns the description of the content if it exists.
     ///
-    /// This default implementation is quite inefficient as it involves reading the content's
-    /// content to calculate its checksum.
+    /// This default implementation is quite inefficient as it involves reading
+    /// the content's content to calculate its checksum.
     fn exists(&self, id: Checksum) -> bool {
         self.read(id).is_some()
     }
 
     /// Stores the content and validates its validity afterwards.
     ///
-    /// This method calls [`write`](#method.write) to store the content and [`read`](#method.read) afterwards
-    /// to perform the validation.
+    /// This method calls [`write`](#method.write) to store the content and
+    /// [`read`](#method.read) afterwards to perform the validation.
     fn store(&mut self, data: &[u8]) -> Option<Checksum> {
         let id = content_checksum(data);
         self.write(id, data)?;

@@ -8,15 +8,18 @@ use super::Transform;
 /// Describe the position of an entity relative to the reference frame.
 ///
 /// * To place or move an entity, you should set its [`Transform`].
-/// * To be displayed, an entity must have both a [`Transform`] and a [`GlobalTransform`].
-/// * To get the global position of an entity, you should get its [`GlobalTransform`].
+/// * To be displayed, an entity must have both a [`Transform`] and a
+///   [`GlobalTransform`].
+/// * To get the global position of an entity, you should get its
+///   [`GlobalTransform`].
 ///
 /// ## [`Transform`] and [`GlobalTransform`]
 ///
-/// [`Transform`] is the position of an entity relative to its parent position, or the reference
-/// frame if it doesn't have a [`Parent`](super::Parent).
+/// [`Transform`] is the position of an entity relative to its parent position,
+/// or the reference frame if it doesn't have a [`Parent`](super::Parent).
 ///
-/// [`GlobalTransform`] is the position of an entity relative to the reference frame.
+/// [`GlobalTransform`] is the position of an entity relative to the reference
+/// frame.
 ///
 /// [`GlobalTransform`] is updated from [`Transform`] in the system
 /// [`transform_propagate_system`](crate::transform_propagate_system::transform_propagate_system).
@@ -31,9 +34,10 @@ use super::Transform;
 ///             set child.global_transform to parent.global_transform * child.transform
 /// ```
 ///
-/// This system runs in stage [`CoreStage::PostUpdate`](crate::CoreStage::PostUpdate). If you
-/// update the[`Transform`] of an entity in this stage or after, you will notice a 1 frame lag
-/// before the [`GlobalTransform`] is updated.
+/// This system runs in stage
+/// [`CoreStage::PostUpdate`](crate::CoreStage::PostUpdate). If you
+/// update the[`Transform`] of an entity in this stage or after, you will notice
+/// a 1 frame lag before the [`GlobalTransform`] is updated.
 #[derive(Component, Debug, PartialEq, Clone, Copy)]
 pub struct GlobalTransform {
     pub translation: Vec3,
@@ -48,8 +52,8 @@ impl GlobalTransform {
         Self::from_translation(Vec3::new(x, y, z))
     }
 
-    /// Creates a new identity [`GlobalTransform`], with no translation, rotation, and a scale of 1
-    /// on all axes.
+    /// Creates a new identity [`GlobalTransform`], with no translation,
+    /// rotation, and a scale of 1 on all axes.
     #[inline]
     pub const fn identity() -> Self {
         Self {
@@ -126,8 +130,8 @@ impl GlobalTransform {
         self
     }
 
-    /// Returns the 3d affine transformation matrix from this transforms translation,
-    /// rotation, and scale.
+    /// Returns the 3d affine transformation matrix from this transforms
+    /// translation, rotation, and scale.
     #[inline]
     pub fn compute_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)

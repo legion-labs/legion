@@ -1,5 +1,4 @@
 use ash::vk;
-
 use lgn_telemetry::trace;
 
 use super::VulkanSwapchain;
@@ -50,9 +49,9 @@ impl VulkanQueue {
     ) -> GfxResult<bool> {
         let is_suboptimal =
             if let Some(dedicated_present_queue) = swapchain.dedicated_present_queue() {
-                // Because of the way we search for present-compatible queues, we don't necessarily have
-                // the same underlying mutex in all instances of a dedicated present queue. So fallback
-                // to a single global lock
+                // Because of the way we search for present-compatible queues, we don't
+                // necessarily have the same underlying mutex in all instances of a
+                // dedicated present queue. So fallback to a single global lock
                 let _dedicated_present_lock = device_context
                     .dedicated_present_queue_lock()
                     .lock()
@@ -167,8 +166,8 @@ impl VulkanQueue {
             .swapchains(&swapchains)
             .image_indices(&image_indices);
 
-        //TODO: PresentInfoKHRBuilder::results() is only useful for presenting multiple swapchains -
-        // presumably that's for multiwindow cases.
+        //TODO: PresentInfoKHRBuilder::results() is only useful for presenting multiple
+        // swapchains - presumably that's for multiwindow cases.
 
         let result = self.present_to_given_or_dedicated_queue(
             device_context,

@@ -1,10 +1,10 @@
-use anyhow::Result;
-use relative_path::{RelativePath, RelativePathBuf};
 use std::io::Write;
 
-use crate::run::CGenContext;
+use anyhow::Result;
+use relative_path::{RelativePath, RelativePathBuf};
 
 use super::CGenVariant;
+use crate::run::CGenContext;
 
 #[derive(Debug)]
 pub struct Product {
@@ -34,7 +34,6 @@ impl Product {
     ///
     /// # Errors
     /// Todo.
-    ///
     pub fn write_to_disk(&self, context: &CGenContext) -> Result<()> {
         // create output folder if needed
         let final_path = self.path.to_path(context.out_dir(self.variant));

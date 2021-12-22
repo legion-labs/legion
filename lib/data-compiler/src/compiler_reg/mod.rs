@@ -1,4 +1,5 @@
-//! Compiler registry defines an interface between different compiler types (executable, in-process, etc).
+//! Compiler registry defines an interface between different compiler types
+//! (executable, in-process, etc).
 use std::{io, path::Path};
 
 use lgn_content_store::ContentStoreAddr;
@@ -12,7 +13,8 @@ use crate::{
     CompiledResource, CompilerHash,
 };
 
-/// Interface allowing to support multiple types of compilers - in-process, external executables.
+/// Interface allowing to support multiple types of compilers - in-process,
+/// external executables.
 pub trait CompilerStub: Send + Sync {
     /// Returns information about the compiler.
     fn info(&self) -> io::Result<CompilerInfo>;
@@ -20,7 +22,8 @@ pub trait CompilerStub: Send + Sync {
     /// Returns the `CompilerHash` for the given compilation context.
     fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash>;
 
-    /// Triggers compilation of provided `compile_path` and returns the information about compilation output.
+    /// Triggers compilation of provided `compile_path` and returns the
+    /// information about compilation output.
     #[allow(clippy::too_many_arguments)]
     fn compile(
         &self,
@@ -39,7 +42,8 @@ use inproc_stub::InProcessCompilerStub;
 mod binary_stub;
 use binary_stub::BinCompilerStub;
 
-/// Options and flags which can be used to configure how a compiler registry is created.
+/// Options and flags which can be used to configure how a compiler registry is
+/// created.
 #[derive(Default)]
 pub struct CompilerRegistryOptions {
     compilers: Vec<Box<dyn CompilerStub>>,
@@ -103,7 +107,8 @@ pub struct CompilerRegistry {
 }
 
 impl CompilerRegistry {
-    /// Returns the compiler index and `CompilerHash` for a given transform and compilation context.
+    /// Returns the compiler index and `CompilerHash` for a given transform and
+    /// compilation context.
     pub fn get_hash(
         &self,
         transform: Transform,
@@ -154,12 +159,11 @@ mod tests {
     use lgn_data_offline::{ResourcePathId, Transform};
     use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 
+    use super::CompilerRegistryOptions;
     use crate::{
         compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError},
         CompiledResource, CompilerHash, Locale, Platform, Target,
     };
-
-    use super::CompilerRegistryOptions;
 
     const TEST_TRANSFORM: Transform =
         Transform::new(ResourceType::new(b"input"), ResourceType::new(b"output"));

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use lgn_data_model::{
     json_utils::{self, get_property_as_json_string},
     TypeDefinition,
@@ -12,7 +14,6 @@ use lgn_editor_proto::{
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
 use lgn_telemetry::info;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
@@ -21,7 +22,8 @@ pub(crate) struct GRPCServer {
 }
 
 impl GRPCServer {
-    /// Instanciate a new `GRPCServer` using the specified `webrtc::WebRTCServer`.
+    /// Instanciate a new `GRPCServer` using the specified
+    /// `webrtc::WebRTCServer`.
     pub(crate) fn new(data_manager: Arc<Mutex<DataManager>>) -> Self {
         Self { data_manager }
     }
@@ -124,7 +126,8 @@ impl Editor for GRPCServer {
             properties: Vec::new(),
         };
 
-        // Refresh for Reflection interface. Might not be present for type with no properties
+        // Refresh for Reflection interface. Might not be present for type with no
+        // properties
         if let Some(reflection) = ctx
             .resource_registry
             .get_resource_reflection(resource_id.t, handle)

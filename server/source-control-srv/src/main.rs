@@ -58,14 +58,15 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
 use anyhow::{Context, Result};
 use http::response::Response;
 use hyper::body::Body;
 use lgn_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
 #[allow(clippy::wildcard_imports)]
 use lgn_source_control::{sql::SqlConnectionPool, *};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use warp::Filter;
 
 #[macro_use]

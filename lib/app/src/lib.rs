@@ -1,7 +1,7 @@
 //! Legion App
 //!
-//! This crate is about everything concerning the highest-level, application layer of a Legion
-//! app.
+//! This crate is about everything concerning the highest-level, application
+//! layer of a Legion app.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -88,17 +88,19 @@ use lgn_ecs::schedule::StageLabel;
 pub enum CoreStage {
     /// Runs only once at the beginning of the app.
     ///
-    /// Consists of the sub-stages defined in [`StartupStage`]. Systems added here are
-    /// referred to as "startup systems".
+    /// Consists of the sub-stages defined in [`StartupStage`]. Systems added
+    /// here are referred to as "startup systems".
     Startup,
     /// Name of app stage that runs before all other app stages
     First,
-    /// Name of app stage responsible for performing setup before an update. Runs before UPDATE.
+    /// Name of app stage responsible for performing setup before an update.
+    /// Runs before UPDATE.
     PreUpdate,
-    /// Name of app stage responsible for doing most app logic. Systems should be registered here
-    /// by default.
+    /// Name of app stage responsible for doing most app logic. Systems should
+    /// be registered here by default.
     Update,
-    /// Name of app stage responsible for processing the results of UPDATE. Runs after UPDATE.
+    /// Name of app stage responsible for processing the results of UPDATE. Runs
+    /// after UPDATE.
     PostUpdate,
     /// Name of app stage that runs after all other app stages
     Last,

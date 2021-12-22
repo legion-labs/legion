@@ -22,7 +22,8 @@ struct SystemSchedulingMetadata {
     dependants: Vec<usize>,
     /// Total amount of dependencies this system has.
     dependencies_total: usize,
-    /// Amount of unsatisfied dependencies, when it reaches 0 the system is queued to be started.
+    /// Amount of unsatisfied dependencies, when it reaches 0 the system is
+    /// queued to be started.
     dependencies_now: usize,
     /// Archetype-component access information.
     archetype_component_access: Access<ArchetypeComponentId>,
@@ -47,9 +48,11 @@ pub struct ParallelExecutor {
     non_send_running: bool,
     /// Systems that should run this iteration.
     should_run: FixedBitSet,
-    /// Compound archetype-component access information of currently running systems.
+    /// Compound archetype-component access information of currently running
+    /// systems.
     active_archetype_component_access: Access<ArchetypeComponentId>,
-    /// Scratch space to avoid reallocating a vector when updating dependency counters.
+    /// Scratch space to avoid reallocating a vector when updating dependency
+    /// counters.
     dependants_scratch: Vec<usize>,
     #[cfg(test)]
     events_sender: Option<Sender<SchedulingEvent>>,
@@ -148,8 +151,9 @@ impl ParallelSystemExecutor for ParallelExecutor {
 }
 
 impl ParallelExecutor {
-    /// Calls `system.new_archetype()` for each archetype added since the last call to
-    /// [`update_archetypes`] and updates cached `archetype_component_access`.
+    /// Calls `system.new_archetype()` for each archetype added since the last
+    /// call to [`update_archetypes`] and updates cached
+    /// `archetype_component_access`.
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
         trace_scope!("update_archetypes");
         let archetypes = world.archetypes();
@@ -168,8 +172,9 @@ impl ParallelExecutor {
         }
     }
 
-    /// Populates `should_run` bitset, spawns tasks for systems that should run this iteration,
-    /// queues systems with no dependencies to run (or skip) at next opportunity.
+    /// Populates `should_run` bitset, spawns tasks for systems that should run
+    /// this iteration, queues systems with no dependencies to run (or skip)
+    /// at next opportunity.
     fn prepare_systems<'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
@@ -213,7 +218,8 @@ impl ParallelExecutor {
                     scope.spawn_local(task);
                 }
             }
-            // Queue the system if it has no dependencies, otherwise reset its dependency counter.
+            // Queue the system if it has no dependencies, otherwise reset its dependency
+            // counter.
             if system_data.dependencies_total == 0 {
                 self.queued.insert(index);
             } else {
@@ -222,7 +228,8 @@ impl ParallelExecutor {
         }
     }
 
-    /// Determines if the system with given index has no conflicts with already running systems.
+    /// Determines if the system with given index has no conflicts with already
+    /// running systems.
     fn can_start_now(&self, index: usize) -> bool {
         let system_data = &self.system_metadata[index];
         // Non-send systems are considered conflicting with each other.
@@ -232,9 +239,10 @@ impl ParallelExecutor {
                 .is_compatible(&self.active_archetype_component_access)
     }
 
-    /// Starts all non-conflicting queued systems, moves them from `queued` to `running`,
-    /// adds their access information to active access information;
-    /// processes queued systems that shouldn't run this iteration as completed immediately.
+    /// Starts all non-conflicting queued systems, moves them from `queued` to
+    /// `running`, adds their access information to active access
+    /// information; processes queued systems that shouldn't run this
+    /// iteration as completed immediately.
     async fn process_queued_systems(&mut self) {
         #[cfg(test)]
         let mut started_systems = 0;
@@ -273,8 +281,8 @@ impl ParallelExecutor {
         self.queued.intersect_with(&self.should_run);
     }
 
-    /// Unmarks the system give index as running, caches indices of its dependants
-    /// in the `dependants_scratch`.
+    /// Unmarks the system give index as running, caches indices of its
+    /// dependants in the `dependants_scratch`.
     fn process_finished_system(&mut self, index: usize) {
         let system_data = &self.system_metadata[index];
         if !system_data.is_send {
@@ -294,8 +302,8 @@ impl ParallelExecutor {
         }
     }
 
-    /// Drains `dependants_scratch`, decrementing dependency counters and enqueueing any
-    /// systems that become able to run.
+    /// Drains `dependants_scratch`, decrementing dependency counters and
+    /// enqueueing any systems that become able to run.
     fn update_counters_and_queue_systems(&mut self) {
         for index in self.dependants_scratch.drain(..) {
             let dependant_data = &mut self.system_metadata[index];

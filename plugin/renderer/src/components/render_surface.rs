@@ -237,8 +237,8 @@ impl RenderSurface {
     }
 
     //
-    // TODO: change that asap. Acquire can't be called more than once per frame. This would result
-    // in a crash.
+    // TODO: change that asap. Acquire can't be called more than once per frame.
+    // This would result in a crash.
     //
     pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;

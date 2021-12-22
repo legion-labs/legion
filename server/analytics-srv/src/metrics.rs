@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+use std::path::Path;
+
 use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_telemetry_proto::analytics::MetricDataPoint;
 use lgn_telemetry_proto::analytics::MetricDesc;
 use lgn_transit::prelude::*;
-use std::collections::HashMap;
-use std::path::Path;
 
 #[allow(clippy::cast_precision_loss)]
 pub async fn get_process_metrics_time_range(

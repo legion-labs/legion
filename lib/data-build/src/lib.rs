@@ -1,35 +1,44 @@
 //! Data build module of data processing pipeline.
 //!
-//! > **WORK IN PROGRESS**: *This document describes the current state of the implementation
-//! > and highlights near future development plans.*
+//! > **WORK IN PROGRESS**: *This document describes the current state of the
+//! implementation > and highlights near future development plans.*
 //!
-//! Data build module is part of the engine's data processing pipeline. Its main responsibility
-//! is to transform the resources from the `offline format` used by the editor
-//! into a `runtime format` which is consumed by the engine.
+//! Data build module is part of the engine's data processing pipeline. Its main
+//! responsibility is to transform the resources from the `offline format` used
+//! by the editor into a `runtime format` which is consumed by the engine.
 //!
-//! Runtime data generation is handled by a collection of `data compilers` - limited in scope modules
-//! dedicated to processing a given type of *input resource and its dependencies*. One such process
-//! can produce **many** outputs in form of **derived resources** - either as a supporting *intermediate* data format
-//! or data format ready to be consumed by the runtime engine.
+//! Runtime data generation is handled by a collection of `data compilers` -
+//! limited in scope modules dedicated to processing a given type of *input
+//! resource and its dependencies*. One such process can produce **many**
+//! outputs in form of **derived resources** - either as a supporting
+//! *intermediate* data format or data format ready to be consumed by the
+//! runtime engine.
 //!
 //! Data compilation is:
 //! - **Hermetic** - dependent only on a known set of inputs.
-//! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
+//! - **Deterministic** - the result is bit-by-bit reproducible given the same
+//!   set of inputs.
 //!
-//! All the results of data-compilation are stored in a [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
+//! All the results of data-compilation are stored in a
+//! [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
-//! To support incremental building the data build is persisted on disk in `source.index` and `output.index` files.
-//! Those files contain:
-//! - **source.index** - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - **output.index** - Records of derived resources that are stored in a [`ContentStore`](`lgn_content_store::ContentStore`).
+//! To support incremental building the data build is persisted on disk in
+//! `source.index` and `output.index` files. Those files contain:
+//! - **source.index** - The build-oriented data structure describing resources
+//!   and build dependencies in the [`project`] that is being built.
+//! - **output.index** - Records of derived resources that are stored in a
+//!   [`ContentStore`](`lgn_content_store::ContentStore`).
 //!
-//! For other parts of the data pipeline see [`lgn_data_offline`], [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
+//! For other parts of the data pipeline see [`lgn_data_offline`],
+//! [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
 //!
 //! # Structure on disk
 //!
-//! An example of a [`project`] with 1 source file, 2 offline resources and 2 derived resources on disk looks as follows.
-//! (where **temp/** is an build output directory acting as a *local content store*)
+//! An example of a [`project`] with 1 source file, 2 offline resources and 2
+//! derived resources on disk looks as follows. (where **temp/** is an build
+//! output directory acting as a *local content store*)
+//!
 //! ```markdown
 //!  ./
 //!  | + source/
@@ -52,38 +61,53 @@
 //!
 //! The build process consists of the following steps:
 //!
-//! 1. An update of the `build index` with changes found in the corresponding [`project`].
-//! 2. Processing of data build input arguments:
+//! 1. An update of the `build index` with changes found in the corresponding
+//! [`project`]. 2. Processing of data build input arguments:
 //!     - Find and validate the **source resource** in the [`project`].
-//!     - Validating **build input parameters**: `platform`, `target`, `environment`, `locale`.
-//! 3. Building a **build graph** from input **compile path** and all its dependencies.
-//! 4. Gather information about all required **data compilers**.
-//!     - The information includes **Compiler Hash** based on **build input parameters**
-//! 5. Process **build graph** nodes (*source* and *target* tuples) in order of dependencies:
-//!     - Compute **Context Hash** using **Compiler Hash** and **Databuild Version**
-//!     - Compute **Source Hash** in 2 ways depending on the *source build graph node*:
-//!         - when it is a **source resource**: use a hash of the checksum of its content and all content of its dependencies.
-//!         - when it is a **derived resource**: use the checksum of the output of it's *source build graph node*.
-//! 6. Check the `build index` if there is already existing output for given (**Context Hash**, **Source Hash**) tuple.
-//! 7. If not, compile the resource:
-//!     - Store the resulting resource in [`ContentStore`](`lgn_content_store::ContentStore`) and a record an entry in `build index`.
+//!     - Validating **build input parameters**: `platform`, `target`,
+//!       `environment`, `locale`.
+//! 3. Building a **build graph** from input **compile path** and all its
+//! dependencies. 4. Gather information about all required **data compilers**.
+//!     - The information includes **Compiler Hash** based on **build input
+//!       parameters**
+//! 5. Process **build graph** nodes (*source* and *target* tuples) in order of
+//! dependencies:
+//!     - Compute **Context Hash** using **Compiler Hash** and **Databuild
+//!       Version**
+//!     - Compute **Source Hash** in 2 ways depending on the *source build graph
+//!       node*:
+//!         - when it is a **source resource**: use a hash of the checksum of
+//!           its content and all content of its dependencies.
+//!         - when it is a **derived resource**: use the checksum of the output
+//!           of it's *source build graph node*.
+//! 6. Check the `build index` if there is already existing output for given
+//! (**Context Hash**, **Source Hash**) tuple. 7. If not, compile the resource:
+//!     - Store the resulting resource in
+//!       [`ContentStore`](`lgn_content_store::ContentStore`) and a record an
+//!       entry in `build index`.
 //!     - Add the compiled resource to the resulting `manifest file`.
 //!
 //! # `SourceHash` and `ContextHash`
 //!
-//! The role of the two ids is two allow for incremental data compilation. They are the signature of the resource and the signature of the
-//! context for which they are compiled for. Both values are used in `build index` to cache the compilation results and to be able to retrieve
-//! the results in consecutive builds. Both are created from number of sources:
+//! The role of the two ids is two allow for incremental data compilation. They
+//! are the signature of the resource and the signature of the context for which
+//! they are compiled for. Both values are used in `build index` to cache the
+//! compilation results and to be able to retrieve the results in consecutive
+//! builds. Both are created from number of sources:
 //!
 //! #### `SourceHash` - the signature of the compilation source data
 //!
-//! It identifies the content of a resource being compiled. It is defined in two ways, depending on the resource it describes:
+//! It identifies the content of a resource being compiled. It is defined in two
+//! ways, depending on the resource it describes:
 //!
 //! * For **source resource**:
 //!     * checksum of the resource's content (available in [`.meta`] file).
-//!     * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
+//!     * checksum of content of each of the resource's dependencies (list of
+//!       dependencies is in [`.meta`] file)
 //! * For **derived resource**:
-//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
+//!     * checksum of the output of the directly dependent data compilation (as
+//!       described in the
+//!       [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -97,7 +121,8 @@
 //!   * Compilation locale - i.e.: Language, Region, etc.
 //! * Data-build process version.
 //!
-//! > **TODO**: The above does not take into account `feature switches` that would give  more granular control on the behavior of the data compiler.
+//! > **TODO**: The above does not take into account `feature switches` that
+//! would give  more granular control on the behavior of the data compiler.
 //!
 //! [`.meta`]: ../resources/index.html#resource-meta-file
 //! [`project`]: ../resources/index.html#project-index

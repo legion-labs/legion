@@ -1,7 +1,8 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSemaphore;
 use crate::{deferred_drop::Drc, DeviceContext};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,

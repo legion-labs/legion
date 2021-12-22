@@ -3,10 +3,10 @@
 //! Feeds data to the analytics-web interface.
 //!
 //! Env variables:
-//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local telemetry directory
-//!  - `LEGION_TELEMETRY_CACHE_DIRECTORY` : local directory where reusable computations will be stored
-//!
-//!
+//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local telemetry
+//!    directory
+//!  - `LEGION_TELEMETRY_CACHE_DIRECTORY` : local directory where reusable
+//!    computations will be stored
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

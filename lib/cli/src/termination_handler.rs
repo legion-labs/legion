@@ -11,7 +11,8 @@ lazy_static! {
         AsyncReverseSingleLock::new(&TERMINATION_RWLOCK);
 }
 
-/// `ReverseSingleLock` is a lock that is created locked and that can only be unlocked once.
+/// `ReverseSingleLock` is a lock that is created locked and that can only be
+/// unlocked once.
 pub struct AsyncTerminationHandler {
     rwlock: &'static AsyncReverseSingleLock<'static, ()>,
 }

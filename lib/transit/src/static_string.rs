@@ -2,7 +2,8 @@ use lgn_utils::memory::{read_any, write_any};
 
 use crate::{InProcSerialize, Reflect, UserDefinedType};
 
-// StaticString serializes the value of the pointer and the contents of the string
+// StaticString serializes the value of the pointer and the contents of the
+// string
 #[derive(Debug)]
 pub struct StaticString {
     pub len: u32,

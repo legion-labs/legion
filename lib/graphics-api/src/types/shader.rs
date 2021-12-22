@@ -10,9 +10,10 @@ use crate::{
 
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
 ///
-/// This struct can be serialized/deserialized and is intended to allow asset pipeline to store
-/// a shader module to be created at runtime. The package can optionally include data for multiple
-/// APIs allowing a single file to be used with whatever API is found at runtime.
+/// This struct can be serialized/deserialized and is intended to allow asset
+/// pipeline to store a shader module to be created at runtime. The package can
+/// optionally include data for multiple APIs allowing a single file to be used
+/// with whatever API is found at runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum ShaderPackage {

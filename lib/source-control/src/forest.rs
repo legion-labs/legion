@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 
 use crate::sql::execute_sql;
 
-// a Forest struct could eventually contain a MRU cache of recently fetched trees
+// a Forest struct could eventually contain a MRU cache of recently fetched
+// trees
 
 pub async fn init_forest_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql =

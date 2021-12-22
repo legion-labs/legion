@@ -105,8 +105,8 @@ pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn
             let mut paths = std::fs::read_dir(directory)?
                 .map(|result| result.map(|entry| entry.path()))
                 .collect::<Result<Vec<_>, std::io::Error>>()?;
-            // Since the order in which read_dir returns entries is platform+filesystem dependent,
-            // sort to guarantee determinism
+            // Since the order in which read_dir returns entries is platform+filesystem
+            // dependent, sort to guarantee determinism
             paths.sort();
             for path in paths {
                 let filename = path.file_name().unwrap().to_ascii_lowercase();

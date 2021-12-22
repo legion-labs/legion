@@ -9,8 +9,8 @@ use crate::{
 
 /// An [`Iterator`] over query results of a [`Query`](crate::system::Query).
 ///
-/// This struct is created by the [`Query::iter`](crate::system::Query::iter) and
-/// [`Query::iter_mut`](crate::system::Query::iter_mut) methods.
+/// This struct is created by the [`Query::iter`](crate::system::Query::iter)
+/// and [`Query::iter_mut`](crate::system::Query::iter_mut) methods.
 pub struct QueryIter<'w, 's, Q: WorldQuery, QF: Fetch<'w, 's, State = Q::State>, F: WorldQuery>
 where
     F::Fetch: FilterFetch,
@@ -33,10 +33,10 @@ where
     QF: Fetch<'w, 's, State = Q::State>,
 {
     /// # Safety
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `query_state.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `query_state.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     pub(crate) unsafe fn new(
         world: &'w World,
         query_state: &'s QueryState<Q, F>,
@@ -78,9 +78,12 @@ where
 {
     type Item = QF::Item;
 
-    // NOTE: If you are changing query iteration code, remember to update the following places, where relevant:
-    // QueryIter, QueryIterationCursor, QueryState::for_each_unchecked_manual, QueryState::par_for_each_unchecked_manual
-    // We can't currently reuse QueryIterationCursor in QueryIter for performance reasons. See #1763 for context.
+    // NOTE: If you are changing query iteration code, remember to update the
+    // following places, where relevant: QueryIter, QueryIterationCursor,
+    // QueryState::for_each_unchecked_manual,
+    // QueryState::par_for_each_unchecked_manual We can't currently reuse
+    // QueryIterationCursor in QueryIter for performance reasons. See #1763 for
+    // context.
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
@@ -140,8 +143,8 @@ where
     }
 
     // NOTE: For unfiltered Queries this should actually return a exact size hint,
-    // to fulfil the ExactSizeIterator invariant, but this isn't practical without specialization.
-    // For more information see Issue #1686.
+    // to fulfil the ExactSizeIterator invariant, but this isn't practical without
+    // specialization. For more information see Issue #1686.
     fn size_hint(&self) -> (usize, Option<usize>) {
         let max_size = self
             .query_state
@@ -174,10 +177,10 @@ where
     F::Fetch: FilterFetch,
 {
     /// # Safety
-    /// This does not check for mutable query correctness. To be safe, make sure mutable queries
-    /// have unique access to the components they query.
-    /// This does not validate that `world.id()` matches `query_state.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// This does not check for mutable query correctness. To be safe, make sure
+    /// mutable queries have unique access to the components they query.
+    /// This does not validate that `world.id()` matches `query_state.world_id`.
+    /// Calling this on a `world` with a mismatched `WorldId` is unsound.
     pub(crate) unsafe fn new(
         world: &'w World,
         query_state: &'s QueryState<Q, F>,
@@ -185,7 +188,8 @@ where
         change_tick: u32,
     ) -> Self {
         // Initialize array with cursors.
-        // There is no FromIterator on arrays, so instead initialize it manually with MaybeUninit
+        // There is no FromIterator on arrays, so instead initialize it manually with
+        // MaybeUninit
 
         // TODO: use MaybeUninit::uninit_array if it stabilizes
         let mut cursors: [MaybeUninit<QueryIterationCursor<'w, 's, Q, QF, F>>; K] =
@@ -223,9 +227,9 @@ where
 
     /// Safety:
     /// The lifetime here is not restrictive enough for Fetch with &mut access,
-    /// as calling `fetch_next_aliased_unchecked` multiple times can produce multiple
-    /// references to the same component, leading to unique reference aliasing.
-    ///.
+    /// as calling `fetch_next_aliased_unchecked` multiple times can produce
+    /// multiple references to the same component, leading to unique
+    /// reference aliasing. .
     /// It is always safe for shared access.
     unsafe fn fetch_next_aliased_unchecked(&mut self) -> Option<[QF::Item; K]>
     where
@@ -286,7 +290,8 @@ where
 
 // Iterator type is intentionally implemented only for read-only access.
 // Doing so for mutable references would be unsound, because  calling `next`
-// multiple times would allow multiple owned references to the same data to exist.
+// multiple times would allow multiple owned references to the same data to
+// exist.
 #[allow(clippy::type_repetition_in_bounds)]
 impl<'w, 's, Q: WorldQuery, QF, F: WorldQuery, const K: usize> Iterator
     for QueryCombinationIter<'w, 's, Q, QF, F, K>
@@ -303,8 +308,8 @@ where
     }
 
     // NOTE: For unfiltered Queries this should actually return a exact size hint,
-    // to fulfil the ExactSizeIterator invariant, but this isn't practical without specialization.
-    // For more information see Issue #1686.
+    // to fulfil the ExactSizeIterator invariant, but this isn't practical without
+    // specialization. For more information see Issue #1686.
     fn size_hint(&self) -> (usize, Option<usize>) {
         if K == 0 {
             return (0, Some(0));
@@ -337,7 +342,8 @@ where
 // (1) pre-computed archetype matches
 // (2) each archetype pre-computes length
 // (3) there are no per-entity filters
-// TODO: add an ArchetypeOnlyFilter that enables us to implement this for filters like With<T>
+// TODO: add an ArchetypeOnlyFilter that enables us to implement this for
+// filters like With<T>
 impl<'w, 's, Q: WorldQuery, QF> ExactSizeIterator for QueryIter<'w, 's, Q, QF, ()>
 where
     QF: Fetch<'w, 's, State = Q::State>,
@@ -446,9 +452,12 @@ where
         }
     }
 
-    // NOTE: If you are changing query iteration code, remember to update the following places, where relevant:
-    // QueryIter, QueryIterationCursor, QueryState::for_each_unchecked_manual, QueryState::par_for_each_unchecked_manual
-    // We can't currently reuse QueryIterationCursor in QueryIter for performance reasons. See #1763 for context.
+    // NOTE: If you are changing query iteration code, remember to update the
+    // following places, where relevant: QueryIter, QueryIterationCursor,
+    // QueryState::for_each_unchecked_manual,
+    // QueryState::par_for_each_unchecked_manual We can't currently reuse
+    // QueryIterationCursor in QueryIter for performance reasons. See #1763 for
+    // context.
     #[inline(always)]
     unsafe fn next(
         &mut self,

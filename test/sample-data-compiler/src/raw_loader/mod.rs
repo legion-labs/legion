@@ -142,12 +142,14 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
     }
 }
 
-/// Creates resources for all `file_paths` containing default values (empty content).
+/// Creates resources for all `file_paths` containing default values (empty
+/// content).
 ///
 /// The content of resources is loaded later.
 ///
-/// This is done because we need to assign `ResourceId` for all resources before we load them
-/// in order to resolve references from a `ResourcePathName` (/path/to/resource) to `ResourceId` (125463453).
+/// This is done because we need to assign `ResourceId` for all resources before
+/// we load them in order to resolve references from a `ResourcePathName`
+/// (/path/to/resource) to `ResourceId` (125463453).
 fn create_or_find_default(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],

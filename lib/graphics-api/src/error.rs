@@ -2,7 +2,8 @@ use std::{error::Error, sync::Arc};
 
 pub type GfxResult<T> = Result<T, GfxError>;
 
-/// Generic error that contains all the different kinds of errors that may occur when using the API
+/// Generic error that contains all the different kinds of errors that may occur
+/// when using the API
 #[derive(Debug, Clone)]
 pub enum GfxError {
     StringError(String),

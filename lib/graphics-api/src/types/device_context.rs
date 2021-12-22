@@ -4,15 +4,12 @@ use std::sync::Arc;
 #[cfg(feature = "track-device-contexts")]
 use std::{sync::atomic::AtomicU64, sync::Mutex};
 
+use lgn_telemetry::trace;
 use raw_window_handle::HasRawWindowHandle;
 
-use lgn_telemetry::trace;
-
 use super::deferred_drop::DeferredDropper;
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDeviceContext;
-
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, DeviceInfo, ExtensionMode, Fence, GfxResult,
@@ -21,10 +18,11 @@ use crate::{
     ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
-/// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
-/// spec to understand precisely what these types mean
+/// Used to specify which type of physical device is preferred. It's recommended
+/// to read the Vulkan spec to understand precisely what these types mean
 ///
-/// Values here match `VkPhysicalDeviceType`, `DiscreteGpu` is the recommended default
+/// Values here match `VkPhysicalDeviceType`, `DiscreteGpu` is the recommended
+/// default
 #[derive(Copy, Clone, Debug)]
 pub enum PhysicalDeviceType {
     /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_OTHER`

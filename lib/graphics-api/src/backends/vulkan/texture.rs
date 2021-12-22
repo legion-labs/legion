@@ -2,7 +2,6 @@ use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
-
 use lgn_telemetry::{error, trace};
 
 use crate::{
@@ -10,9 +9,10 @@ use crate::{
     TextureSubResource,
 };
 
-// This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
-// or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
-// will not destroy the image when VulkanRawImage is dropped
+// This is used to allow the underlying image/allocation to be removed from a
+// VulkanTexture, or to init a VulkanTexture with an existing image/allocation.
+// If the allocation is none, we will not destroy the image when VulkanRawImage
+// is dropped
 #[derive(Debug)]
 pub(crate) struct VulkanRawImage {
     pub(crate) vk_image: vk::Image,
@@ -126,8 +126,8 @@ impl VulkanTexture {
                 vk::MemoryPropertyFlags::empty()
             };
 
-            //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the format for
-            // the various ways we might use it
+            //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the
+            // format for the various ways we might use it
             let allocation_create_info = vk_mem::AllocationCreateInfo {
                 usage: texture_def.mem_usage.into(),
                 flags: vk_mem::AllocationCreateFlags::NONE,

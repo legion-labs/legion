@@ -1,12 +1,13 @@
 //! Tools for controlling behavior in an ECS application.
 //!
-//! Systems define how an ECS based application behaves. They have to be registered to a
-//! [`SystemStage`](crate::schedule::SystemStage) to be able to run. A system is usually
-//! written as a normal function that will be automatically converted into a system.
+//! Systems define how an ECS based application behaves. They have to be
+//! registered to a [`SystemStage`](crate::schedule::SystemStage) to be able to
+//! run. A system is usually written as a normal function that will be
+//! automatically converted into a system.
 //!
-//! System functions can have parameters, through which one can query and mutate Legion ECS state.
-//! Only types that implement [`SystemParam`] can be used, automatically fetching data from
-//! the [`World`](crate::world::World).
+//! System functions can have parameters, through which one can query and mutate
+//! Legion ECS state. Only types that implement [`SystemParam`] can be used,
+//! automatically fetching data from the [`World`](crate::world::World).
 //!
 //! System functions often look like this:
 //!
@@ -35,14 +36,14 @@
 //!
 //! # System ordering
 //!
-//! While the execution of systems is usually parallel and not deterministic, there are two
-//! ways to determine a certain degree of execution order:
+//! While the execution of systems is usually parallel and not deterministic,
+//! there are two ways to determine a certain degree of execution order:
 //!
-//! - **System Stages:** They determine hard execution synchronization boundaries inside of
-//!   which systems run in parallel by default.
-//! - **Labeling:** First, systems are labeled upon creation by calling `.label()`. Then,
-//!   methods such as `.before()` and `.after()` are appended to systems to determine
-//!   execution order in respect to other systems.
+//! - **System Stages:** They determine hard execution synchronization
+//!   boundaries inside of which systems run in parallel by default.
+//! - **Labeling:** First, systems are labeled upon creation by calling
+//!   `.label()`. Then, methods such as `.before()` and `.after()` are appended
+//!   to systems to determine execution order in respect to other systems.
 //!
 //! # System parameter list
 //! Following is the complete list of accepted types as system parameters:
@@ -60,9 +61,11 @@
 //! - [`SystemChangeTick`]
 //! - [`Archetypes`](crate::archetype::Archetypes) (Provides Archetype metadata)
 //! - [`Bundles`](crate::bundle::Bundles) (Provides Bundles metadata)
-//! - [`Components`](crate::component::Components) (Provides Components metadata)
+//! - [`Components`](crate::component::Components) (Provides Components
+//!   metadata)
 //! - [`Entities`](crate::entity::Entities) (Provides Entities metadata)
-//! - All tuples between 1 to 16 elements where each element implements [`SystemParam`]
+//! - All tuples between 1 to 16 elements where each element implements
+//!   [`SystemParam`]
 //! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
 
 mod commands;
@@ -692,8 +695,8 @@ mod tests {
         let mut system_state: SystemState<(ResMut<'_, A>, Query<'_, '_, &mut B>)> =
             SystemState::new(&mut world);
 
-        // The following line shouldn't compile because the parameters used are not ReadOnlySystemParam
-        // let (a, query) = system_state.get(&world);
+        // The following line shouldn't compile because the parameters used are not
+        // ReadOnlySystemParam let (a, query) = system_state.get(&world);
 
         let (a, mut query) = system_state.get_mut(&mut world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
@@ -772,7 +775,8 @@ mod tests {
         }
     }
 
-    /// this test exists to show that read-only world-only queries can return data that lives as long as 'world
+    /// this test exists to show that read-only world-only queries can return
+    /// data that lives as long as 'world
     #[test]
     #[allow(unused)]
     fn long_life_test() {

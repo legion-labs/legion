@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 use ash::extensions::khr;
 use ash::vk;
 use fnv::FnvHashMap;
-
 use lgn_telemetry::{debug, info, trace, warn};
 
 use super::{
@@ -400,7 +399,8 @@ fn query_physical_device_info(
     }
 }
 
-//TODO: Could improve this by looking at vendor/device ID, VRAM size, supported feature set, etc.
+//TODO: Could improve this by looking at vendor/device ID, VRAM size, supported
+// feature set, etc.
 #[allow(clippy::too_many_lines)]
 fn find_queue_families(
     all_queue_families: &[ash::vk::QueueFamilyProperties],
@@ -435,7 +435,8 @@ fn find_queue_families(
     // Find a compute queue family in the following order of preference:
     // - Doesn't support graphics
     // - Supports graphics but hasn't already been claimed by graphics
-    // - Fallback to using the graphics queue family as it's guaranteed to support compute
+    // - Fallback to using the graphics queue family as it's guaranteed to support
+    //   compute
     //
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
         let queue_family_index = queue_family_index as u32;
@@ -445,20 +446,22 @@ fn find_queue_families(
             queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
 
         if !supports_graphics && supports_compute {
-            // Ideally we want to find a dedicated compute queue (i.e. doesn't support graphics)
+            // Ideally we want to find a dedicated compute queue (i.e. doesn't support
+            // graphics)
             compute_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_compute
             && compute_queue_family_index.is_none()
             && Some(queue_family_index) != graphics_queue_family_index
         {
-            // Otherwise accept the first queue that supports compute that is NOT the graphics queue
+            // Otherwise accept the first queue that supports compute that is NOT the
+            // graphics queue
             compute_queue_family_index = Some(queue_family_index);
         }
     }
 
-    // If we didn't find a compute queue family != graphics queue family, settle for using the
-    // graphics queue family. It's guaranteed to support compute.
+    // If we didn't find a compute queue family != graphics queue family, settle for
+    // using the graphics queue family. It's guaranteed to support compute.
     if compute_queue_family_index.is_none() {
         compute_queue_family_index = graphics_queue_family_index;
     }
@@ -467,7 +470,8 @@ fn find_queue_families(
     // Find a transfer queue family in the following order of preference:
     // - Doesn't support graphics or compute
     // - Supports graphics but hasn't already been claimed by compute or graphics
-    // - Fallback to using the graphics queue family as it's guaranteed to support transfers
+    // - Fallback to using the graphics queue family as it's guaranteed to support
+    //   transfers
     //
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
         let queue_family_index = queue_family_index as u32;
@@ -487,13 +491,14 @@ fn find_queue_families(
             && Some(queue_family_index) != graphics_queue_family_index
             && Some(queue_family_index) != compute_queue_family_index
         {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             transfer_queue_family_index = Some(queue_family_index);
         }
     }
 
-    // If we didn't find a transfer queue family != graphics queue family, settle for using the
-    // graphics queue family. It's guaranteed to support transfer.
+    // If we didn't find a transfer queue family != graphics queue family, settle
+    // for using the graphics queue family. It's guaranteed to support transfer.
     if transfer_queue_family_index.is_none() {
         transfer_queue_family_index = graphics_queue_family_index;
     }
@@ -519,7 +524,8 @@ fn find_queue_families(
             decode_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_decode && decode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             decode_queue_family_index = Some(queue_family_index);
         }
     }
@@ -545,7 +551,8 @@ fn find_queue_families(
             encode_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_decode && encode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             encode_queue_family_index = Some(queue_family_index);
         }
     }
@@ -593,7 +600,8 @@ fn create_logical_device(
         .map(|name| name.as_ptr())
         .collect();
 
-    // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)
+    // Add VK_KHR_portability_subset if the extension exists (this is mandated by
+    // spec)
     for extension in &physical_device_info.extension_properties {
         let extension_name = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
 
@@ -603,8 +611,8 @@ fn create_logical_device(
         }
     }
 
-    // Features enabled here by default are supported very widely (only unsupported devices on
-    // vulkan.gpuinfo.org are SwiftShader, a software renderer.
+    // Features enabled here by default are supported very widely (only unsupported
+    // devices on vulkan.gpuinfo.org are SwiftShader, a software renderer.
     let features = vk::PhysicalDeviceFeatures::builder()
         .sampler_anisotropy(true)
         .sample_rate_shading(true)

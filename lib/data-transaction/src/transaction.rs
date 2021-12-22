@@ -47,7 +47,8 @@ impl Transaction {
             }
         }
 
-        // If an ops failed, save the error state to rollback all the previous transaction's operations
+        // If an ops failed, save the error state to rollback all the previous
+        // transaction's operations
         if let Some((op_err, rollback_index)) = rollback_state {
             warn!("Transaction {} failed to commit: {}", &self.id, op_err);
             for op in self.operations.iter().take(rollback_index).rev() {

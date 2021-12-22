@@ -19,7 +19,8 @@ impl<T> StateData for T where T: Send + Sync + Clone + Eq + Debug + Hash + 'stat
 /// * Push pushes a new state to the state stack, pausing the previous state
 /// * Pop removes the current state, and unpauses the last paused state
 /// * Set replaces the active state with a new one
-/// * Replace unwinds the state stack, and replaces the entire stack with a single new state
+/// * Replace unwinds the state stack, and replaces the entire stack with a
+///   single new state
 #[derive(Debug)]
 pub struct State<T: StateData> {
     transition: Option<StateTransition<T>>,
@@ -252,8 +253,8 @@ where
 
     /// Creates a driver set for the State.
     ///
-    /// Important note: this set must be inserted **before** all other state-dependant sets to work
-    /// properly!
+    /// Important note: this set must be inserted **before** all other
+    /// state-dependant sets to work properly!
     pub fn get_driver() -> SystemSet {
         SystemSet::default().with_run_criteria(state_cleaner::<T>.label(DriverLabel::of::<T>()))
     }
@@ -267,9 +268,9 @@ where
         }
     }
 
-    /// Schedule a state change that replaces the active state with the given state.
-    /// This will fail if there is a scheduled operation, or if the given `state` matches the
-    /// current state
+    /// Schedule a state change that replaces the active state with the given
+    /// state. This will fail if there is a scheduled operation, or if the
+    /// given `state` matches the current state
     pub fn set(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -283,8 +284,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::set`], but if there is already a next state, it will be overwritten
-    /// instead of failing
+    /// Same as [`Self::set`], but if there is already a next state, it will be
+    /// overwritten instead of failing
     pub fn overwrite_set(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -294,9 +295,9 @@ where
         Ok(())
     }
 
-    /// Schedule a state change that replaces the full stack with the given state.
-    /// This will fail if there is a scheduled operation, or if the given `state` matches the
-    /// current state
+    /// Schedule a state change that replaces the full stack with the given
+    /// state. This will fail if there is a scheduled operation, or if the
+    /// given `state` matches the current state
     pub fn replace(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -310,8 +311,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::replace`], but if there is already a next state, it will be overwritten
-    /// instead of failing
+    /// Same as [`Self::replace`], but if there is already a next state, it will
+    /// be overwritten instead of failing
     pub fn overwrite_replace(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -321,7 +322,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::set`], but does a push operation instead of a next operation
+    /// Same as [`Self::set`], but does a push operation instead of a next
+    /// operation
     pub fn push(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -335,8 +337,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::push`], but if there is already a next state, it will be overwritten
-    /// instead of failing
+    /// Same as [`Self::push`], but if there is already a next state, it will be
+    /// overwritten instead of failing
     pub fn overwrite_push(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
@@ -346,7 +348,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::set`], but does a pop operation instead of a set operation
+    /// Same as [`Self::set`], but does a pop operation instead of a set
+    /// operation
     pub fn pop(&mut self) -> Result<(), StateError> {
         if self.scheduled.is_some() {
             return Err(StateError::StateAlreadyQueued);
@@ -360,8 +363,8 @@ where
         Ok(())
     }
 
-    /// Same as [`Self::pop`], but if there is already a next state, it will be overwritten
-    /// instead of failing
+    /// Same as [`Self::pop`], but if there is already a next state, it will be
+    /// overwritten instead of failing
     pub fn overwrite_pop(&mut self) -> Result<(), StateError> {
         if self.stack.len() == 1 {
             return Err(StateError::StackEmpty);

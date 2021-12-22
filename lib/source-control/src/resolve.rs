@@ -1,9 +1,10 @@
-use anyhow::{Context, Result};
-use sqlx::Row;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
+
+use anyhow::{Context, Result};
+use sqlx::Row;
 
 use crate::{
     connect_to_server, download_temp_file, fetch_tree_subdir, find_workspace_root,

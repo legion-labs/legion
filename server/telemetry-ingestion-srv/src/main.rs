@@ -1,10 +1,11 @@
 //! Telemetry Ingestion Server
 //!
-//! Accepts telemetry data throough grpc, stores the metadata in sqlite and the raw event payload in local binary files.
+//! Accepts telemetry data throough grpc, stores the metadata in sqlite and the
+//! raw event payload in local binary files.
 //!
 //! Env variables:
-//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local directory where data will be dumped
-//!
+//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local directory where
+//!    data will be dumped
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

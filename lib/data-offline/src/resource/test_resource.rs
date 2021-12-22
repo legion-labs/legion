@@ -1,6 +1,7 @@
 //! This module defines a test resource.
 //!
-//! It is used to test the data compilation process until we have a proper resource available.
+//! It is used to test the data compilation process until we have a proper
+//! resource available.
 
 use std::{any::Any, io, str::FromStr};
 

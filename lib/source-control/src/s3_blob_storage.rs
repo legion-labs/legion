@@ -1,9 +1,10 @@
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use http::Uri;
-use std::io::Write;
-use std::path::{Path, PathBuf};
 
 use crate::utils::{lz4_decompress, lz4_read, lz4_read_bin};
 use crate::{compute_file_hash, BlobStorage};

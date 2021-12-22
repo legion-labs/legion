@@ -1,9 +1,7 @@
+use super::buffer_allocation::BufferSubAllocation;
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocation};
-
 use crate::{deferred_drop::Drc, Buffer, DeviceContext, MemoryUsage};
-
-use super::buffer_allocation::BufferSubAllocation;
 
 pub struct BufferMappingInfo {
     pub allocation: MemoryAllocation,

@@ -1,5 +1,4 @@
 //! Graphics code generation runtime
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -200,8 +199,10 @@ impl CGenRuntime {
     //     T: DescriptorSetLayoutStaticInfo,
     //     T::DescriptorID: ToIndex + Copy,
     // {
-    //     let cgen_descriptor_set_def = self.get_descriptor_set_def(T::descriptor_set_layout_id());
-    //     let descriptor_set_layout = self.get_descriptor_set_layout(T::descriptor_set_layout_id());
+    //     let cgen_descriptor_set_def =
+    // self.get_descriptor_set_def(T::descriptor_set_layout_id());
+    //     let descriptor_set_layout =
+    // self.get_descriptor_set_layout(T::descriptor_set_layout_id());
     //     DescriptorSetData::<'_, T>::new(self, bump, descriptor_heap_partition)
     // }
 

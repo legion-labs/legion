@@ -13,24 +13,30 @@ use crate::{
     system::Resource,
 };
 
-/// A component is data associated with an [`Entity`](crate::entity::Entity). Each entity can have
-/// multiple different types of components, but only one of them per type.
+/// A component is data associated with an [`Entity`](crate::entity::Entity).
+/// Each entity can have multiple different types of components, but only one of
+/// them per type.
 ///
-/// Any type that is `Send + Sync + 'static` can implement `Component` using `#[derive(Component)]`.
+/// Any type that is `Send + Sync + 'static` can implement `Component` using
+/// `#[derive(Component)]`.
 ///
-/// In order to use foreign types as components, wrap them using a newtype pattern.
+/// In order to use foreign types as components, wrap them using a newtype
+/// pattern.
+///
 /// ```
 /// # use lgn_ecs::component::Component;
 /// use std::time::Duration;
 /// #[derive(Component)]
 /// struct Cooldown(Duration);
 /// ```
-/// Components are added with new entities using [`Commands::spawn`](crate::system::Commands::spawn),
-/// or to existing entities with [`EntityCommands::insert`](crate::system::EntityCommands::insert),
+///
+/// Components are added with new entities using
+/// [`Commands::spawn`](crate::system::Commands::spawn), or to existing entities
+/// with [`EntityCommands::insert`](crate::system::EntityCommands::insert),
 /// or their [`World`](crate::world::World) equivalents.
 ///
-/// Components can be accessed in systems by using a [`Query`](crate::system::Query)
-/// as one of the arguments.
+/// Components can be accessed in systems by using a
+/// [`Query`](crate::system::Query) as one of the arguments.
 ///
 /// Components can be grouped together into a [`Bundle`](crate::bundle::Bundle).
 pub trait Component: Send + Sync + 'static {
@@ -58,7 +64,8 @@ mod sealed {
     impl Sealed for super::SparseStorage {}
 }
 
-// ECS dependencies cannot derive Component, so we must implement it manually for relevant structs.
+// ECS dependencies cannot derive Component, so we must implement it manually
+// for relevant structs.
 impl<T> Component for lgn_tasks::Task<T>
 where
     Self: Send + Sync + 'static,
@@ -79,8 +86,8 @@ where
 /// ```
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum StorageType {
-    /// Provides fast and cache-friendly iteration, but slower addition and removal of components.
-    /// This is the default storage type.
+    /// Provides fast and cache-friendly iteration, but slower addition and
+    /// removal of components. This is the default storage type.
     Table,
     /// Provides fast addition and removal of components, but slower iteration.
     SparseSet,
@@ -180,7 +187,8 @@ pub struct ComponentDescriptor {
 }
 
 impl ComponentDescriptor {
-    // SAFETY: The pointer points to a valid value of type `T` and it is safe to drop this value.
+    // SAFETY: The pointer points to a valid value of type `T` and it is safe to
+    // drop this value.
     unsafe fn drop_ptr<T>(x: *mut u8) {
         x.cast::<T>().drop_in_place();
     }
@@ -355,9 +363,9 @@ pub struct ComponentTicks {
 impl ComponentTicks {
     #[inline]
     pub fn is_added(&self, last_change_tick: u32, change_tick: u32) -> bool {
-        // The comparison is relative to `change_tick` so that we can detect changes over the whole
-        // `u32` range. Comparing directly the ticks would limit to half that due to overflow
-        // handling.
+        // The comparison is relative to `change_tick` so that we can detect changes
+        // over the whole `u32` range. Comparing directly the ticks would limit
+        // to half that due to overflow handling.
         let component_delta = change_tick.wrapping_sub(self.added);
         let system_delta = change_tick.wrapping_sub(last_change_tick);
 
@@ -385,8 +393,9 @@ impl ComponentTicks {
     }
 
     /// Manually sets the change tick.
-    /// Usually, this is done automatically via the [`DerefMut`](std::ops::DerefMut) implementation
-    /// on [`Mut`](crate::world::Mut) or [`ResMut`](crate::system::ResMut) etc.
+    /// Usually, this is done automatically via the
+    /// [`DerefMut`](std::ops::DerefMut) implementation on
+    /// [`Mut`](crate::world::Mut) or [`ResMut`](crate::system::ResMut) etc.
     ///
     /// # Example
     /// ```rust,no_run

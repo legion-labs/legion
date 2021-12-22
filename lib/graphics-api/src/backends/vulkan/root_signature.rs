@@ -1,7 +1,6 @@
 use std::cmp;
 
 use ash::vk;
-
 use lgn_telemetry::trace;
 
 use crate::{

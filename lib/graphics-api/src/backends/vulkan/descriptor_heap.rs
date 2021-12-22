@@ -283,8 +283,8 @@ impl DescriptorHeapPartition {
     //     let device = self.inner.heap.inner.device_context.vk_device();
     //     let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
     //         .set_layouts(&[descriptor_set_layout.vk_layout()])
-    //         .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
-    //         .build();
+    //         .descriptor_pool(self.inner.platform_descriptor_heap_partition.
+    // vk_pool)         .build();
 
     //     let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 

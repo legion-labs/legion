@@ -1,16 +1,15 @@
 #![allow(unsafe_code)]
 
-use anyhow::{anyhow, Result};
 use std::alloc::Layout;
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-
 use std::mem::forget;
 use std::ptr::{null, NonNull};
+
+use anyhow::{anyhow, Result};
 use strum::{AsRefStr, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -226,7 +225,6 @@ impl Model {
     ///
     /// # Errors
     /// todo
-    ///
     pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelObjectId> {
         let key = ModelKey::new(key);
         if self.key_map.contains_key(&key) {

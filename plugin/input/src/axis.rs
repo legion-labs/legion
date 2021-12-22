@@ -34,7 +34,8 @@ where
     ///
     /// If the input device wasn't present before, [None] is returned.
     ///
-    /// If the input device was present, the position data is updated, and the old value is returned.
+    /// If the input device was present, the position data is updated, and the
+    /// old value is returned.
     pub fn set(&mut self, input_device: T, position_data: f32) -> Option<f32> {
         let new_position_data = position_data.clamp(Self::MIN, Self::MAX);
         self.axis_data.insert(input_device, new_position_data)

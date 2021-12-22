@@ -1,6 +1,5 @@
-//! Abstract input events, acts like an intermediary on between another plugin generating
-//! events and another plugin consuming them
-//!
+//! Abstract input events, acts like an intermediary on between another plugin
+//! generating events and another plugin consuming them
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

@@ -62,7 +62,6 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// File does not exists or invalid path..
-    ///
     pub fn set_root_file(&mut self, root_file: &impl AsRef<Path>) -> Result<()> {
         let abs_path = to_abs_path(root_file)?;
         if !abs_path.exists() || !abs_path.is_file() {
@@ -79,7 +78,6 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// Invalid path.
-    ///
     pub fn set_outdir(&mut self, outdir: &impl AsRef<Path>) -> Result<()> {
         self.context.outdir = to_abs_path(outdir)?;
 
@@ -95,7 +93,6 @@ impl CGenContextBuilder {
 ///
 /// # Errors
 /// Returns an error.
-///
 pub fn run(context: &CGenContext) -> Result<CGenBuildResult> {
     // todo: timing
     run_internal(context)

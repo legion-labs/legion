@@ -15,8 +15,8 @@ pub struct AwsCognitoSignatureValidation {
 }
 
 impl AwsCognitoSignatureValidation {
-    /// Create a new AWS cognito signature validation by fetching the signing key from the given
-    /// region and user pool id.
+    /// Create a new AWS cognito signature validation by fetching the signing
+    /// key from the given region and user pool id.
     pub async fn new(region: &str, aws_cognito_user_pool_id: &str) -> anyhow::Result<Self> {
         let url = format!(
             "https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json",

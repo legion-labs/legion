@@ -18,7 +18,8 @@ use crate::formats::YUVSource;
 
 /// Convenience wrapper with guaranteed function pointers for easy access.
 ///
-/// This struct automatically handles `WelsCreateSVCEncoder` and `WelsDestroySVCEncoder`.
+/// This struct automatically handles `WelsCreateSVCEncoder` and
+/// `WelsDestroySVCEncoder`.
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct EncoderRawAPI {
@@ -117,7 +118,8 @@ impl EncoderRawAPI {
 
 impl Drop for EncoderRawAPI {
     fn drop(&mut self) {
-        // Safe because when we drop the pointer must have been initialized, and we aren't clone.
+        // Safe because when we drop the pointer must have been initialized, and we
+        // aren't clone.
         unsafe {
             WelsDestroySVCEncoder(self.encoder_ptr);
         }
@@ -311,7 +313,8 @@ impl Encoder {
     ///
     /// # Safety
     ///
-    /// You must not set parameters the encoder relies on, we recommend checking the source.
+    /// You must not set parameters the encoder relies on, we recommend checking
+    /// the source.
     pub unsafe fn raw_api(&mut self) -> &mut EncoderRawAPI {
         &mut self.raw_api
     }

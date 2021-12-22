@@ -21,6 +21,7 @@ pub trait AssetLoader {
     /// have been loaded.
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync));
 
-    /// An asset loader can keep a reference to the asset registry, for use in asset initialization
+    /// An asset loader can keep a reference to the asset registry, for use in
+    /// asset initialization
     fn register_registry(&mut self, _registry: Arc<AssetRegistry>) {}
 }

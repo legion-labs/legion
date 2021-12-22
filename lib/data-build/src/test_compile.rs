@@ -197,9 +197,9 @@ fn compile_change_no_deps() {
     assert_ne!(original_checksum, modified_checksum);
 }
 
-/// Creates a project with 5 resources with dependencies setup as depicted below.
-/// t(A) depicts a dependency on a `derived resource A` transformed  by `t`.
-/// Returns an array of resources from A to E where A is at index 0.
+/// Creates a project with 5 resources with dependencies setup as depicted
+/// below. t(A) depicts a dependency on a `derived resource A` transformed  by
+/// `t`. Returns an array of resources from A to E where A is at index 0.
 //
 // t(A) -> A -> t(B) -> B -> t(C) -> C
 //         |            |
@@ -490,8 +490,9 @@ fn named_path_cache_use() {
     let integer_path_1 = split_text1_path.push(integer_asset::IntegerAsset::TYPE);
 
     //
-    // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer path 0"
-    //                    -> text_resource("text_1") -> integer_asset <= "integer path 1"
+    // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer
+    // path 0"                    -> text_resource("text_1") -> integer_asset <=
+    // "integer path 1"
     //
 
     // compile "integer path 0"
@@ -731,7 +732,8 @@ fn link() {
 
     build.source_pull().unwrap();
 
-    // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
+    // for now each resource is a separate file so we need to validate that the
+    // compile output and link output produce the same number of resources
 
     let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
@@ -754,7 +756,8 @@ fn link() {
             .any(|compiled| compiled.checksum == obj.compiled_checksum));
     }
 
-    // ... and each output resource need to exist as exactly one resource object (although having different checksum).
+    // ... and each output resource need to exist as exactly one resource object
+    // (although having different checksum).
     for output in link_output {
         assert_eq!(
             compile_output

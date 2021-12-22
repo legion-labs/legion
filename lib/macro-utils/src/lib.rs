@@ -131,7 +131,8 @@ fn parse_str<T: syn::parse::Parse>(path: &str) -> T {
 ///
 /// # Args
 ///
-/// - `input`: The [`syn::DeriveInput`] for struct that is deriving the label trait
+/// - `input`: The [`syn::DeriveInput`] for struct that is deriving the label
+///   trait
 /// - `trait_path`: The path [`syn::Path`] to the label trait
 #[allow(clippy::needless_pass_by_value)]
 pub fn derive_label(input: syn::DeriveInput, trait_path: syn::Path) -> TokenStream {

@@ -49,7 +49,8 @@ impl InProcSerialize for LogDynMsgEvent {
     }
 }
 
-//todo: change this interface to make clear that there are two serialization strategies: pod and custom
+//todo: change this interface to make clear that there are two serialization
+// strategies: pod and custom
 impl Reflect for LogDynMsgEvent {
     fn reflect() -> UserDefinedType {
         UserDefinedType {

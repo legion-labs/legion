@@ -298,7 +298,8 @@ where
     }
 }
 
-// parse_object_buffer calls fun for each object in the buffer until fun returns `false`
+// parse_object_buffer calls fun for each object in the buffer until fun returns
+// `false`
 pub fn parse_object_buffer<F, S>(
     dependencies: &HashMap<u64, Value, S>,
     udts: &[UserDefinedType],

@@ -3,7 +3,6 @@
 //!
 //! * Tracking Issue: [legion/crate/#xx](https://github.com/legion-labs/legion/issues/xx)
 //! * Design Doc: [legion/book/project-resources](/book/todo.html)
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

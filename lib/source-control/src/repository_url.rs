@@ -1,10 +1,11 @@
-use anyhow::Result;
-use reqwest::Url;
 use std::{
     cell::RefCell,
     path::{Path, PathBuf},
     str::FromStr,
 };
+
+use anyhow::Result;
+use reqwest::Url;
 
 /// A repository URL.
 ///

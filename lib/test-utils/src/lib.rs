@@ -1,4 +1,5 @@
-//! legion-test-utils : provides utility functions to help you build integration & unit tests
+//! legion-test-utils : provides utility functions to help you build integration
+//! & unit tests
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -99,7 +100,8 @@ fn force_delete_all(dir: &Path) {
     .unwrap();
 }
 
-// create_test_dir creates a directory (or cleans its contents) under the `target` folder that will outlive the execution of the test.
+// create_test_dir creates a directory (or cleans its contents) under the
+// `target` folder that will outlive the execution of the test.
 pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
     trace_scope!();
     let path = parent_path.join(test_name);
@@ -111,7 +113,8 @@ pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
     path
 }
 
-// syscall will execute `command` from the `wd` directory and validate that the error code matches `should_succeed`
+// syscall will execute `command` from the `wd` directory and validate that the
+// error code matches `should_succeed`
 pub fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
     trace_scope!();
     println!("{} {}", command, args.join(" "));
