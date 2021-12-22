@@ -1,5 +1,3 @@
-use lgn_telemetry::error;
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanRootSignature;
 use crate::deferred_drop::Drc;
@@ -36,7 +34,7 @@ impl RootSignature {
         #[cfg(feature = "vulkan")]
         let platform_root_signature = VulkanRootSignature::new(device_context, definition)
             .map_err(|e| {
-                error!("Error creating platform root signature {:?}", e);
+                lgn_telemetry::error!("Error creating platform root signature {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

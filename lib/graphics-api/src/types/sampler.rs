@@ -1,5 +1,3 @@
-use lgn_telemetry::error;
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSampler;
 use crate::deferred_drop::Drc;
@@ -28,7 +26,7 @@ impl Sampler {
     pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_sampler = VulkanSampler::new(device_context, sampler_def).map_err(|e| {
-            error!("Error creating platform sampler {:?}", e);
+            lgn_telemetry::error!("Error creating platform sampler {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

@@ -1,5 +1,3 @@
-use lgn_telemetry::error;
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanShaderModule;
 use crate::{deferred_drop::Drc, DeviceContext, GfxResult, ShaderModuleDef};
@@ -28,7 +26,7 @@ impl ShaderModule {
         #[cfg(feature = "vulkan")]
         let platform_shader_module =
             VulkanShaderModule::new(device_context, data).map_err(|e| {
-                error!("Error creating vulkan shader module {:?}", e);
+                lgn_telemetry::error!("Error creating vulkan shader module {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

@@ -1,7 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use lgn_telemetry::error;
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanFence;
 use crate::{DeviceContext, FenceStatus, GfxResult};
@@ -33,7 +31,7 @@ impl Fence {
     pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_fence = VulkanFence::new(device_context).map_err(|e| {
-            error!("Error creating platform fence {:?}", e);
+            lgn_telemetry::error!("Error creating platform fence {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

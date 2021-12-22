@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use raw_window_handle::HasRawWindowHandle;
 
-use lgn_telemetry::{error, trace};
+use lgn_telemetry::trace;
 
 use super::deferred_drop::DeferredDropper;
 
@@ -107,7 +107,7 @@ impl DeviceContextInner {
         let (platform_device_context, device_info) =
             VulkanDeviceContext::new(instance.platform_instance, windowing_mode, video_mode)
                 .map_err(|e| {
-                    error!("Error creating device context {:?}", e);
+                    lgn_telemetry::error!("Error creating device context {:?}", e);
                     ash::vk::Result::ERROR_UNKNOWN
                 })?;
 
