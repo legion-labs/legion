@@ -5557,9 +5557,9 @@ dependencies = [
 
 [[package]]
 name = "openh264-sys2"
-version = "0.2.9"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbb912ebb6be934f8d888db1e878f77d933d53a4c993cc0c09e87f569ca93ef6"
+checksum = "2f8e6e197864f4b98d40b0f84ba28175e7b1c405e4a6c118b52f733dece5d075"
 dependencies = [
  "cc",
  "nasm-rs",
@@ -7595,9 +7595,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.82"
+version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8daf5dd0bb60cbd4137b1b587d2fc0ae729bc07cf01cd70b36a1ed5ade3b9d59"
+checksum = "23a1dfb999630e338648c83e91c59a4e9fb7620f520c3194b6b89e276f2f1959"
 dependencies = [
  "proc-macro2",
  "quote",
