@@ -1,0 +1,16 @@
+[package]
+name = "lgn-monorepo"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
+clap = { version = "3.0.0-rc.7", features = ["derive"] }
+anyhow = "1.0.0"
+serde = "1.0.131"
+indexmap = "1.7.0"
+camino = "1.0.5"

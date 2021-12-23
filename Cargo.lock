@@ -181,7 +181,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -989,6 +989,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "camino"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52d74260d9bf6944e2208aa46841b4b8f0d7ffc0849a06837b2f510337f86b2b"
+
+[[package]]
 name = "cargo-manifest"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1097,9 +1103,39 @@ dependencies = [
  "atty",
  "bitflags",
  "strsim 0.8.0",
- "textwrap",
+ "textwrap 0.11.0",
  "unicode-width",
  "vec_map",
+]
+
+[[package]]
+name = "clap"
+version = "3.0.0-rc.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9468f8012246b0836c6fd11725102b0844254985f2462b6c637d50040ef49df0"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
+ "strsim 0.10.0",
+ "termcolor",
+ "textwrap 0.14.2",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.0.0-rc.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b72e1af32a4de4d21a43d26de33fe69c00e895371bd8b1523d674f011b610467"
+dependencies = [
+ "heck 0.3.3",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1990,7 +2026,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "clap",
+ "clap 2.34.0",
  "directories",
  "json",
  "lgn-analytics",
@@ -2021,7 +2057,7 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -3849,7 +3885,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap",
+ "clap 2.34.0",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -3883,7 +3919,7 @@ version = "0.1.0"
 dependencies = [
  "binary-resource",
  "bincode",
- "clap",
+ "clap 2.34.0",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-offline",
@@ -4074,7 +4110,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "clap",
+ "clap 2.34.0",
  "fxhash",
  "heck 0.4.0",
  "lgn-graphics-api",
@@ -4132,7 +4168,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap",
+ "clap 2.34.0",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
@@ -4193,6 +4229,19 @@ name = "lgn-math"
 version = "0.1.0"
 dependencies = [
  "glam",
+]
+
+[[package]]
+name = "lgn-monorepo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "clap 3.0.0-rc.7",
+ "indexmap",
+ "lgn-telemetry",
+ "lgn-telemetry-sink",
+ "serde",
 ]
 
 [[package]]
@@ -4744,7 +4793,7 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "lgn-source-control",
  "lgn-telemetry",
  "lgn-telemetry-sink",
@@ -5628,6 +5677,15 @@ checksum = "fb233f06c2307e1f5ce2ecad9f8121cffbbee2c95428f44ea85222e460d0d213"
 dependencies = [
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "os_str_bytes"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -6566,7 +6624,7 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -6583,7 +6641,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap",
+ "clap 2.34.0",
  "instant",
  "lgn-app",
  "lgn-asset-registry",
@@ -6760,7 +6818,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap",
+ "clap 2.34.0",
  "generic-data",
  "lgn-content-store",
  "lgn-data-build",
@@ -7857,7 +7915,7 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -7915,6 +7973,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termcolor"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "terminal_size"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7942,6 +8009,12 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thin-slice"
@@ -8584,7 +8657,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 2.34.0",
  "lgn-cli",
  "lgn-telemetry",
  "lgn-telemetry-sink",

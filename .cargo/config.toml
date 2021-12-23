@@ -4,8 +4,9 @@ email = "devs@legionlabs.com"
 vcs = "none"
 
 [alias]
-cg = "build --features=run-codegen"
-codegen = "build --features=run-codegen"
+mr = "run -q --package lgn-monorepo --bin lgn-monorepo --"
+mr-clippy = "run -q --package lgn-monorepo --bin lgn-monorepo -- clippy"
+mrc = "mr-clippy"
 
 [build]
 # 
