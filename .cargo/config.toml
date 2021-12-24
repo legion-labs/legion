@@ -4,9 +4,10 @@ email = "devs@legionlabs.com"
 vcs = "none"
 
 [alias]
-mr = "run -q --package lgn-monorepo --bin lgn-monorepo --"
-mr-clippy = "run -q --package lgn-monorepo --bin lgn-monorepo -- clippy"
-mrc = "mr-clippy"
+mr = "run -q --release --package lgn-monorepo --bin lgn-monorepo --"
+mr-clippy = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
+mr-list = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- list"
+changed-since = "run -q --package lgn-monorepo --bin lgn-monorepo -- changed-since"
 
 [build]
 # 

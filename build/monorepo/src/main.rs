@@ -60,21 +60,31 @@
 #![allow(clippy::struct_excessive_bools)]
 
 mod cargo;
+mod changed_since;
 mod clippy;
 mod config;
 mod context;
+mod error;
+mod git;
+//mod hash;
+mod list;
+//mod package;
+mod term;
 mod utils;
-
-type Result<T> = anyhow::Result<T>;
 
 use clap::{Parser, Subcommand};
 use lgn_telemetry::TelemetryThreadGuard;
 use lgn_telemetry_sink::TelemetryGuard;
 
+use error::Error;
+
+/// A convenience type alias to return `Error`s from functions.
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Legion CLI
 #[derive(Parser)]
 #[clap(name = "lgn-monorepo")]
-#[clap(about = "Legion CLI")]
+#[clap(about = "Legion Monorepo CLI")]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -85,6 +95,18 @@ enum Commands {
     /// Clones repos
     #[clap(name = "clippy")]
     Clippy(clippy::Args),
+
+    /// Only list the packages with changes since the specified Git reference
+    #[clap(name = "list")]
+    List(list::Args),
+
+    /// List packages changed since merge base with the given commit
+    ///
+    /// Note that this compares against the merge base (common ancestor) of the specified commit.
+    /// For example, if origin/master is specified, the current working directory will be compared
+    /// against the point at which it branched off of origin/master.
+    #[clap(name = "changed-since")]
+    ChangedSince(changed_since::Args),
 }
 
 fn main() -> Result<()> {
@@ -95,7 +117,9 @@ fn main() -> Result<()> {
     let context = context::Context::new()?;
 
     match &args.command {
-        Commands::Clippy(args) => clippy::run(args, context)?,
+        Commands::Clippy(args) => clippy::run(args, &context)?,
+        Commands::List(args) => list::run(args, &context)?,
+        Commands::ChangedSince(args) => changed_since::run(args, &context)?,
     };
     Ok(())
 }

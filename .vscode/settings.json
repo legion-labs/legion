@@ -1,6 +1,6 @@
 {
     "editor.formatOnSave": true,
-    "rust-analyzer.checkOnSave.command": "mr-clippy",
+    "rust-analyzer.checkOnSave.command": "clippy",
     "rust-analyzer.cargo.loadOutDirsFromCheck": true,
     "rust-analyzer.cargo.runBuildScripts": true,
     "rust-analyzer.diagnostics.disabled": [

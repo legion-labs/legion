@@ -38,6 +38,8 @@ opt-level = 3
 
 [workspace.metadata.monorepo]
 
+[workspace.metadata.monorepo.cargo-config]
+
 [workspace.metadata.monorepo.crate-attributes]
 license = "MIT OR Apache-2.0"
 

@@ -15,7 +15,7 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
-pub fn run(args: &Args, ctx: Context) -> Result<()> {
+pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let pass_through_args = vec!["-D".into(), "warnings".into()];
     // TODO
     //let mut pass_through_args = vec!["-D".into(), "warnings".into()];

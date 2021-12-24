@@ -3,13 +3,12 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Instant;
 
-use anyhow::anyhow;
 use indexmap::IndexMap;
 use lgn_telemetry::{info, warn};
 
 use crate::config::CargoConfig;
 use crate::utils::project_root;
-use crate::Result;
+use crate::{Error, Result};
 
 mod build_args;
 pub use build_args::*;
@@ -218,7 +217,7 @@ impl Cargo {
         }
 
         let now = Instant::now();
-        let output = self.inner.output()?;
+        let output = self.inner.output().map_err(Error::from_source)?;
         // once the command has been executed we log it's success or failure.
         if log {
             if output.status.success() {
@@ -236,7 +235,7 @@ impl Cargo {
             }
         }
         if !output.status.success() {
-            return Err(anyhow!("failed to run cargo command"));
+            return Err(Error::new("failed to run cargo command"));
         }
         Ok(output)
     }
