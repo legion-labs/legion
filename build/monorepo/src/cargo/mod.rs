@@ -1,3 +1,7 @@
+// Copyright (c) The Diem Core Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+use std::env::var_os;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
@@ -6,8 +10,8 @@ use std::time::Instant;
 use indexmap::IndexMap;
 use lgn_telemetry::{info, warn};
 
-use crate::config::CargoConfig;
-use crate::utils::project_root;
+use crate::context::Context;
+use crate::installer::install_cargo_component_if_needed;
 use crate::{Error, Result};
 
 mod build_args;
@@ -15,6 +19,8 @@ pub use build_args::*;
 
 mod selected_packages;
 pub use selected_packages::*;
+
+const SECRET_ENVS: &[&str] = &["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"];
 
 pub struct Cargo {
     inner: Command,
@@ -30,49 +36,41 @@ impl Drop for Cargo {
 }
 
 impl Cargo {
-    pub fn new<S: AsRef<OsStr>>(
-        cargo_config: &CargoConfig,
-        command: S,
-        skip_sccache: bool,
-    ) -> Self {
+    pub fn new<S: AsRef<OsStr>>(ctx: &Context, command: S, skip_sccache: bool) -> Self {
         let mut inner = Command::new("cargo");
         //sccache apply
-        // TODO
-        //let envs: IndexMap<OsString, Option<OsString>> = if !skip_sccache {
-        //    let result = apply_sccache_if_possible(cargo_config);
-        //    match result {
-        //        Ok(env) => env
-        //            .iter()
-        //            .map(|(key, option)| {
-        //                if let Some(val) = option {
-        //                    (
-        //                        OsString::from(key.to_owned()),
-        //                        Some(OsString::from(val.to_owned())),
-        //                    )
-        //                } else {
-        //                    (OsString::from(key.to_owned()), None)
-        //                }
-        //            })
-        //            .collect(),
-        //        Err(hmm) => {
-        //            warn!("Could not install sccache: {}", hmm);
-        //            IndexMap::new()
-        //        }
-        //    }
-        //} else {
-        //    IndexMap::new()
-        //};
-        let envs = IndexMap::<OsString, Option<OsString>>::new();
-        // TODO
-        //let on_drop = if !skip_sccache && sccache_should_run(cargo_config, false) {
-        //    || {
-        //        log_sccache_stats();
-        //        stop_sccache_server();
-        //    }
-        //} else {
-        //    || ()
-        //};
-        let on_drop = || ();
+        let envs: IndexMap<OsString, Option<OsString>> = if !skip_sccache {
+            let result = apply_sccache_if_possible(ctx);
+            match result {
+                Ok(env) => env
+                    .iter()
+                    .map(|(key, option)| {
+                        if let Some(val) = option {
+                            (
+                                OsString::from(key.to_owned()),
+                                Some(OsString::from(val.clone())),
+                            )
+                        } else {
+                            (OsString::from(key.to_owned()), None)
+                        }
+                    })
+                    .collect(),
+                Err(hmm) => {
+                    warn!("Could not install sccache: {}", hmm);
+                    IndexMap::new()
+                }
+            }
+        } else {
+            IndexMap::new()
+        };
+        let on_drop = if !skip_sccache && sccache_should_run(ctx, false) {
+            || {
+                log_sccache_stats();
+                stop_sccache_server();
+            }
+        } else {
+            || ()
+        };
         inner.arg(command);
         Self {
             inner,
@@ -93,22 +91,21 @@ impl Cargo {
     }
 
     pub fn packages(&mut self, packages: &SelectedPackages<'_>) -> &mut Self {
-        // TODO
-        //match &packages.includes {
-        //    SelectedInclude::Workspace => {
-        //        self.inner.arg("--workspace");
-        //        for &e in &packages.excludes {
-        //            self.inner.args(&["--exclude", e]);
-        //        }
-        //    }
-        //    SelectedInclude::Includes(includes) => {
-        //        for &p in includes {
-        //            if !packages.excludes.contains(p) {
-        //                self.inner.args(&["--package", p]);
-        //            }
-        //        }
-        //    }
-        //}
+        match &packages.includes {
+            SelectedInclude::Workspace => {
+                self.inner.arg("--workspace");
+                for &e in &packages.excludes {
+                    self.inner.args(&["--exclude", e]);
+                }
+            }
+            SelectedInclude::Includes(includes) => {
+                for &p in includes {
+                    if !packages.excludes.contains(p) {
+                        self.inner.args(&["--package", p]);
+                    }
+                }
+            }
+        }
         self
     }
 
@@ -176,6 +173,7 @@ impl Cargo {
 
     /// Runs this command, capturing the standard output into a `Vec<u8>`.
     /// Standard error is forwarded.
+    #[allow(dead_code)]
     pub fn run_with_output(&mut self) -> Result<Vec<u8>> {
         self.inner.stderr(Stdio::inherit());
         self.do_run(true).map(|o| o.stdout)
@@ -195,12 +193,11 @@ impl Cargo {
         if log {
             self.env_additions.iter().for_each(|(name, value_option)| {
                 if let Some(env_val) = value_option {
-                    // TODO
-                    //if SECRET_ENVS.contains(&name.to_str().unwrap_or_default()) {
-                    //    info!("export {:?}=********", name);
-                    //} else {
-                    //    info!("export {:?}={:?}", name, env_val);
-                    //}
+                    if SECRET_ENVS.contains(&name.to_str().unwrap_or_default()) {
+                        info!("export {:?}=********", name);
+                    } else {
+                        info!("export {:?}={:?}", name, env_val);
+                    }
                 } else {
                     info!("unset {:?}", name);
                 }
@@ -243,34 +240,28 @@ impl Cargo {
 
 pub enum CargoCommand<'a> {
     Bench {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
         env: &'a [(&'a str, Option<&'a str>)],
     },
     Check {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
     },
     Clippy {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
     },
     Fix {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
     },
     Test {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
         env: &'a [(&'a str, Option<&'a str>)],
         skip_sccache: bool,
     },
     Build {
-        cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
         env: &'a [(&'a str, Option<&'a str>)],
@@ -279,56 +270,48 @@ pub enum CargoCommand<'a> {
 }
 
 impl<'a> CargoCommand<'a> {
-    pub fn cargo_config(&self) -> &CargoConfig {
-        match self {
-            CargoCommand::Bench { cargo_config, .. } => cargo_config,
-            CargoCommand::Check { cargo_config, .. } => cargo_config,
-            CargoCommand::Clippy { cargo_config, .. } => cargo_config,
-            CargoCommand::Fix { cargo_config, .. } => cargo_config,
-            CargoCommand::Test { cargo_config, .. } => cargo_config,
-            CargoCommand::Build { cargo_config, .. } => cargo_config,
-        }
-    }
-
     pub fn skip_sccache(&self) -> bool {
         match self {
-            CargoCommand::Build { skip_sccache, .. } => *skip_sccache,
-            CargoCommand::Test { skip_sccache, .. } => *skip_sccache,
+            CargoCommand::Build { skip_sccache, .. } | CargoCommand::Test { skip_sccache, .. } => {
+                *skip_sccache
+            }
             _ => false,
         }
     }
 
-    pub fn run_on_packages(&self, packages: &SelectedPackages<'_>) -> Result<()> {
+    pub fn run_on_packages(&self, ctx: &Context, packages: &SelectedPackages<'_>) -> Result<()> {
         // Early return if we have no packages to run.
-        // TODO
-        //if !packages.should_invoke() {
-        //    info!("no packages to {}: exiting early", self.as_str());
-        //    return Ok(());
-        //}
+        if !packages.should_invoke() {
+            info!("no packages to {}: exiting early", self.as_str());
+            return Ok(());
+        }
 
-        let mut cargo = self.prepare_cargo(packages);
+        let mut cargo = self.prepare_cargo(ctx, packages);
         cargo.run()
     }
 
     /// Runs this command on the selected packages, returning the standard output as a bytestring.
-    pub fn run_capture_stdout(&self, packages: &SelectedPackages<'_>) -> Result<Vec<u8>> {
+    #[allow(dead_code)]
+    pub fn run_capture_stdout(
+        &self,
+        ctx: &Context,
+        packages: &SelectedPackages<'_>,
+    ) -> Result<Vec<u8>> {
         // Early return if we have no packages to run.
-        // TODO
-        //if !packages.should_invoke() {
-        if false {
+        if !packages.should_invoke() {
             info!("no packages to {}: exiting early", self.as_str());
             Ok(vec![])
         } else {
-            let mut cargo = self.prepare_cargo(packages);
+            let mut cargo = self.prepare_cargo(ctx, packages);
             cargo.args(&["--message-format", "json-render-diagnostics"]);
             Ok(cargo.run_with_output()?)
         }
     }
 
-    fn prepare_cargo(&self, packages: &SelectedPackages<'_>) -> Cargo {
-        let mut cargo = Cargo::new(self.cargo_config(), self.as_str(), self.skip_sccache());
+    fn prepare_cargo(&self, ctx: &Context, packages: &SelectedPackages<'_>) -> Cargo {
+        let mut cargo = Cargo::new(ctx, self.as_str(), self.skip_sccache());
         cargo
-            .current_dir(project_root())
+            .current_dir(ctx.workspace_root())
             .args(self.direct_args())
             .packages(packages)
             .pass_through(self.pass_through_args())
@@ -350,34 +333,161 @@ impl<'a> CargoCommand<'a> {
 
     fn pass_through_args(&self) -> &[OsString] {
         match self {
-            CargoCommand::Bench { args, .. } => args,
+            CargoCommand::Bench { args, .. }
+            | CargoCommand::Clippy { args, .. }
+            | CargoCommand::Fix { args, .. }
+            | CargoCommand::Test { args, .. }
+            | CargoCommand::Build { args, .. } => args,
             CargoCommand::Check { .. } => &[],
-            CargoCommand::Clippy { args, .. } => args,
-            CargoCommand::Fix { args, .. } => args,
-            CargoCommand::Test { args, .. } => args,
-            CargoCommand::Build { args, .. } => args,
         }
     }
 
     fn direct_args(&self) -> &[OsString] {
         match self {
-            CargoCommand::Bench { direct_args, .. } => direct_args,
-            CargoCommand::Check { direct_args, .. } => direct_args,
-            CargoCommand::Clippy { direct_args, .. } => direct_args,
-            CargoCommand::Fix { direct_args, .. } => direct_args,
-            CargoCommand::Test { direct_args, .. } => direct_args,
-            CargoCommand::Build { direct_args, .. } => direct_args,
+            CargoCommand::Bench { direct_args, .. }
+            | CargoCommand::Check { direct_args, .. }
+            | CargoCommand::Clippy { direct_args, .. }
+            | CargoCommand::Fix { direct_args, .. }
+            | CargoCommand::Test { direct_args, .. }
+            | CargoCommand::Build { direct_args, .. } => direct_args,
         }
     }
 
     pub fn get_extra_env(&self) -> &[(&str, Option<&str>)] {
         match self {
-            CargoCommand::Bench { env, .. } => env,
-            CargoCommand::Check { .. } => &[],
-            CargoCommand::Clippy { .. } => &[],
-            CargoCommand::Fix { .. } => &[],
-            CargoCommand::Test { env, .. } => env,
-            CargoCommand::Build { env, .. } => env,
+            CargoCommand::Bench { env, .. }
+            | CargoCommand::Test { env, .. }
+            | CargoCommand::Build { env, .. } => env,
+            CargoCommand::Check { .. } | CargoCommand::Clippy { .. } | CargoCommand::Fix { .. } => {
+                &[]
+            }
         }
     }
+}
+
+/// If the project is configured for sccache, and the env variable `SKIP_SCCACHE` is unset then returns true.
+/// If the `warn_if_not_correct_location` parameter is set to true, warnings will be logged if the project is configured for sccache
+/// but the `CARGO_HOME` or project root are not in the right locations.
+pub fn sccache_should_run(ctx: &Context, warn_if_not_correct_location: bool) -> bool {
+    if var_os("SKIP_SCCACHE").is_none() {
+        if let Some(sccache_config) = &ctx.config().cargo_config.sccache {
+            // Are we work on items in the right location:
+            // See: https://github.com/mozilla/sccache#known-caveats
+            let correct_location = var_os("CARGO_HOME").unwrap_or_default()
+                == sccache_config.required_cargo_home.as_str()
+                && sccache_config.required_git_home == ctx.workspace_root();
+            if !correct_location && warn_if_not_correct_location {
+                warn!("You will not benefit from sccache in this build!!!");
+                warn!(
+                    "To get the best experience, please move your diem source code to {} and your set your CARGO_HOME to be {}, simply export it in your .profile or .bash_rc",
+                    &sccache_config.required_git_home, &sccache_config.required_cargo_home
+                );
+                warn!(
+                    "Current diem root is '{}',  and current CARGO_HOME is '{}'",
+                    ctx.workspace_root(),
+                    var_os("CARGO_HOME").unwrap_or_default().to_string_lossy()
+                );
+            }
+            correct_location
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+/// Logs the output of "sccache --show-stats"
+pub fn log_sccache_stats() {
+    info!("Sccache statistics:");
+    let mut sccache = Command::new("sccache");
+    sccache.arg("--show-stats");
+    sccache.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+    if let Err(error) = sccache.output() {
+        warn!("Could not log sccache statistics: {}", error);
+    }
+}
+
+pub fn stop_sccache_server() {
+    let mut sccache = Command::new("sccache");
+    sccache.arg("--stop-server");
+    sccache.stdout(Stdio::piped()).stderr(Stdio::piped());
+    match sccache.output() {
+        Ok(output) => {
+            if output.status.success() {
+                info!("Stopped already running sccache.");
+            } else {
+                let std_err = String::from_utf8_lossy(&output.stderr);
+                //sccache will fail
+                if !std_err.contains("couldn't connect to server") {
+                    warn!("Failed to stopped already running sccache.");
+                    warn!("status: {}", output.status);
+                    warn!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    warn!("stderr: {}", std_err);
+                }
+            }
+        }
+        Err(error) => {
+            warn!("Failed to stop running sccache: {}", error);
+        }
+    }
+}
+
+pub fn apply_sccache_if_possible(ctx: &Context) -> Result<Vec<(&str, Option<String>)>> {
+    let mut envs = vec![];
+    if sccache_should_run(ctx, true) {
+        if let Some(sccache_config) = &ctx.config().cargo_config.sccache {
+            if !install_cargo_component_if_needed(ctx, "sccache", &sccache_config.installer) {
+                return Err(Error::new("Failed to install sccache, bailing"));
+            }
+            stop_sccache_server();
+            envs.push(("RUSTC_WRAPPER", Some("sccache".to_owned())));
+            envs.push(("CARGO_INCREMENTAL", Some("false".to_owned())));
+            envs.push(("SCCACHE_BUCKET", Some(sccache_config.bucket.clone())));
+            if let Some(ssl) = &sccache_config.ssl {
+                envs.push((
+                    "SCCACHE_S3_USE_SSL",
+                    if *ssl {
+                        Some("true".to_owned())
+                    } else {
+                        Some("false".to_owned())
+                    },
+                ));
+            }
+
+            if let Some(url) = &sccache_config.endpoint {
+                envs.push(("SCCACHE_ENDPOINT", Some(url.clone())));
+            }
+
+            if let Some(extra_envs) = &sccache_config.envs {
+                for (key, value) in extra_envs {
+                    envs.push((key, Some(value.clone())));
+                }
+            }
+
+            if let Some(region) = &sccache_config.region {
+                envs.push(("SCCACHE_REGION", Some(region.clone())));
+            }
+
+            if let Some(prefix) = &sccache_config.prefix {
+                envs.push(("SCCACHE_S3_KEY_PREFIX", Some(prefix.clone())));
+            }
+            let access_key_id =
+                var_os("SCCACHE_AWS_ACCESS_KEY_ID").map(|val| val.to_string_lossy().to_string());
+            let access_key_secret = var_os("SCCACHE_AWS_SECRET_ACCESS_KEY")
+                .map(|val| val.to_string_lossy().to_string());
+            // if either the access or secret key is not set, attempt to perform a public read.
+            // do not set this flag if attempting to write, as it will prevent the use of the aws creds.
+            if (access_key_id.is_none() || access_key_secret.is_none())
+                && sccache_config.public.unwrap_or(true)
+            {
+                envs.push(("SCCACHE_S3_PUBLIC", Some("true".to_owned())));
+            }
+
+            //Note: that this is also used to _unset_ AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
+            envs.push(("AWS_ACCESS_KEY_ID", access_key_id));
+            envs.push(("AWS_SECRET_ACCESS_KEY", access_key_secret));
+        }
+    }
+    Ok(envs)
 }

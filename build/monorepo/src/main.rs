@@ -59,18 +59,25 @@
 // crate-specific exceptions:
 #![allow(clippy::struct_excessive_bools)]
 
+mod bench;
+mod build;
 mod cargo;
 mod changed_since;
+mod check;
 mod clippy;
 mod config;
 mod context;
 mod error;
+mod fix;
+mod fmt;
 mod git;
-//mod hash;
-mod list;
-//mod package;
+mod installer;
 mod term;
+mod test;
+mod tools;
 mod utils;
+//mod hash;
+//mod package;
 
 use clap::{Parser, Subcommand};
 use lgn_telemetry::TelemetryThreadGuard;
@@ -92,14 +99,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Clones repos
-    #[clap(name = "clippy")]
-    Clippy(clippy::Args),
-
-    /// Only list the packages with changes since the specified Git reference
-    #[clap(name = "list")]
-    List(list::Args),
-
+    /// Run `cargo bench`
+    #[clap(name = "bench")]
+    Bench(bench::Args),
+    /// Run `cargo build`
+    // the argument must be Boxed due to it's size and clippy (it's quite large by comparison to others.)
+    #[clap(name = "build")]
+    Build(build::Args),
+    /// Run `cargo check`
+    #[clap(name = "check")]
+    Check(check::Args),
     /// List packages changed since merge base with the given commit
     ///
     /// Note that this compares against the merge base (common ancestor) of the specified commit.
@@ -107,6 +116,22 @@ enum Commands {
     /// against the point at which it branched off of origin/master.
     #[clap(name = "changed-since")]
     ChangedSince(changed_since::Args),
+    /// Run `cargo clippy`
+    #[clap(name = "clippy")]
+    Clippy(clippy::Args),
+    /// Only list the packages with changes since the specified Git reference
+    /// Run `cargo fix`
+    #[clap(name = "fix")]
+    Fix(fix::Args),
+    /// Run `cargo fmt`
+    #[clap(name = "fmt")]
+    Fmt(fmt::Args),
+    /// Run `cargo tests`
+    #[clap(name = "test")]
+    Test(test::Args),
+    /// Run tests
+    #[clap(name = "tools")]
+    Tools(tools::Args),
 }
 
 fn main() -> Result<()> {
@@ -114,12 +139,18 @@ fn main() -> Result<()> {
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     let args = Cli::parse();
-    let context = context::Context::new()?;
+    let ctx = context::Context::new()?;
 
-    match &args.command {
-        Commands::Clippy(args) => clippy::run(args, &context)?,
-        Commands::List(args) => list::run(args, &context)?,
-        Commands::ChangedSince(args) => changed_since::run(args, &context)?,
+    match args.command {
+        Commands::Build(args) => build::run(&args, &ctx)?,
+        Commands::Bench(args) => bench::run(args, &ctx)?,
+        Commands::Check(args) => check::run(&args, &ctx)?,
+        Commands::Clippy(args) => clippy::run(&args, &ctx)?,
+        Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,
+        Commands::Fix(args) => fix::run(args, &ctx)?,
+        Commands::Fmt(args) => fmt::run(args, &ctx)?,
+        Commands::Test(args) => test::run(args, &ctx)?,
+        Commands::Tools(args) => tools::run(&args, &ctx)?,
     };
     Ok(())
 }

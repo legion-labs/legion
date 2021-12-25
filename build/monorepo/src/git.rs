@@ -42,6 +42,7 @@ impl GitCli {
     /// Returns the files tracked by Git in this working copy.
     ///
     /// The return value can be iterated on to get a list of paths.
+    #[allow(dead_code)]
     pub fn tracked_files(&self) -> Result<&Utf8Paths0> {
         self.tracked_files.get_or_try_init(|| {
             // TODO: abstract out SCM and command-running functionality.
@@ -58,9 +59,8 @@ impl GitCli {
                 )));
             }
 
-            Utf8Paths0::from_bytes(output.stdout).map_err(|(content, err)| {
-                Error::new("failed to concert output to utf8").with_source(err)
-            })
+            Utf8Paths0::from_bytes(output.stdout)
+                .map_err(|(_, err)| Error::new("failed to concert output to utf8").with_source(err))
         })
     }
 
@@ -117,9 +117,8 @@ impl GitCli {
             )));
         }
 
-        Utf8Paths0::from_bytes(output.stdout).map_err(|(content, err)| {
-            Error::new("failed to concert output to utf8").with_source(err)
-        })
+        Utf8Paths0::from_bytes(output.stdout)
+            .map_err(|(_, err)| Error::new("failed to concert output to utf8").with_source(err))
     }
 
     /// Returns a package graph for the given commit, using a scratch repo if necessary.
@@ -261,7 +260,7 @@ impl GitHash {
     /// Creates a new Git hash from a hex-encoded string.
     pub fn from_hex(hex: impl AsRef<[u8]>) -> Result<Self> {
         let hex = hex.as_ref();
-        Ok(GitHash(hex::FromHex::from_hex(hex).map_err(|err| {
+        Ok(Self(hex::FromHex::from_hex(hex).map_err(|err| {
             Error::new(format!("parsing a Git hash: {:?}", hex)).with_source(err)
         })?))
     }

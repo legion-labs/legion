@@ -1,6 +1,15 @@
+// Copyright (c) The Diem Core Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+use clap::{ArgEnum, Args};
 use std::ffi::OsString;
 
-use clap::Args;
+#[derive(ArgEnum, Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Coloring {
+    Auto,
+    Always,
+    Never,
+}
 
 /// Arguments for controlling cargo build and other similar commands (like check).
 #[derive(Debug, Args)]
@@ -71,10 +80,9 @@ pub struct BuildArgs {
     #[clap(long, short, parse(from_occurrences))]
     /// Use verbose output (-vv very verbose/build.rs output)
     pub(crate) verbose: usize,
-    // TODO
-    //#[clap(long, possible_values = &Coloring::variants(), default_value="Auto")]
-    ///// Coloring: auto, always, never
-    //pub(crate) color: Coloring,
+    #[clap(long, arg_enum, default_value = "auto")]
+    /// Coloring: auto, always, never
+    pub(crate) color: Coloring,
     #[clap(long)]
     /// Require Cargo.lock and cache are up to date
     pub(crate) frozen: bool,
@@ -87,6 +95,7 @@ pub struct BuildArgs {
 }
 
 impl BuildArgs {
+    #[allow(clippy::too_many_lines)]
     pub fn add_args(&self, direct_args: &mut Vec<OsString>) {
         if self.quiet {
             direct_args.push(OsString::from("--quiet"));
@@ -181,11 +190,15 @@ impl BuildArgs {
         if self.verbose > 0 {
             direct_args.push(OsString::from(format!("-{}", "v".repeat(self.verbose))));
         };
-        // TODO
-        //if self.color.to_string() != Coloring::Auto.to_string() {
-        //    direct_args.push(OsString::from("--color"));
-        //    direct_args.push(OsString::from(self.color.to_string()));
-        //};
+        if self.color != Coloring::Auto {
+            direct_args.push(OsString::from("--color"));
+            direct_args.push(OsString::from(
+                self.color
+                    .to_possible_value()
+                    .expect("No skipped value allowed")
+                    .get_name(),
+            ));
+        };
         if self.frozen {
             direct_args.push(OsString::from("--frozen"));
         };

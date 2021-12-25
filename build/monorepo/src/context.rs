@@ -1,90 +1,119 @@
-use std::path::PathBuf;
+// Copyright (c) The Diem Core Contributors
+// SPDX-License-Identifier: Apache-2.0
 
-use camino::Utf8Path;
-use git2::Repository;
+use camino::{Utf8Path, Utf8PathBuf};
 use guppy::graph::PackageGraph;
+use once_cell::sync::OnceCell;
 
 use crate::config::MonorepoConfig;
 use crate::git::GitCli;
-use crate::utils::project_root;
+use crate::installer::Installer;
 use crate::Error;
 use crate::Result;
 
 pub struct Context {
+    workspace_root: &'static Utf8Path,
+    current_dir: Utf8PathBuf,
+    current_rel_dir: Utf8PathBuf,
     config: MonorepoConfig,
-    package_graph: PackageGraph,
-    git_cli: GitCli,
+    installer: Installer,
+    package_graph: OnceCell<PackageGraph>,
+    git_cli: OnceCell<GitCli>,
 }
 
 impl Context {
     pub fn new() -> Result<Self> {
-        let mut cmd = guppy::MetadataCommand::new();
-        let package_graph = guppy::graph::PackageGraph::from_command(&mut cmd).map_err(|err| {
-            Error::new(format!("failed to parse package graph {}", err)).with_source(err)
-        })?;
-        let config = MonorepoConfig::new(package_graph.workspace().root()).map_err(|err| {
-            Error::new(format!("failed to parse workspace manifest {}", err)).with_source(err)
-        })?;
-        let git_cli = GitCli::new(project_root())?;
+        const X_DEPTH: usize = 2;
+        let workspace_root = Utf8Path::new(&env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .nth(X_DEPTH)
+            .unwrap();
+
+        let current_dir: Utf8PathBuf = std::env::current_dir()
+            .map_err(|err| Error::new("error while fetching current dir").with_source(err))?
+            .try_into()
+            .map_err(|err| Error::new("current dir is not valid UTF-8").with_source(err))?;
+
+        let current_rel_dir = match current_dir.strip_prefix(workspace_root) {
+            Ok(rel_dir) => rel_dir.to_path_buf(),
+            Err(_) => {
+                return Err(Error::new(format!(
+                    "Current directory {} not in workspace {}",
+                    current_dir, workspace_root,
+                )))
+            }
+        };
+
+        let config = MonorepoConfig::new(workspace_root)?;
+        let installer = Installer::new(config.tools());
+
         Ok(Self {
+            workspace_root,
+            current_dir,
+            current_rel_dir,
             config,
-            package_graph,
-            git_cli,
+            installer,
+            package_graph: OnceCell::new(),
+            git_cli: OnceCell::new(),
         })
     }
     pub fn config(&self) -> &MonorepoConfig {
         &self.config
     }
 
-    pub fn package_graph(&self) -> &PackageGraph {
-        &self.package_graph
+    /// Returns a reference to Installer, configured to install versions from config.
+    pub fn installer(&self) -> &Installer {
+        &self.installer
     }
 
-    pub fn git_cli(&self) -> &GitCli {
-        &self.git_cli
-    }
-
-    fn workspace_root(&self) -> &Utf8Path {
-        self.package_graph.workspace().root()
-    }
-
-    fn git_repository(&self) -> Result<Repository> {
-        Repository::open(self.workspace_root())
-            .map_err(|err| Error::new("failed to open Git repository").with_source(err))
-    }
-
-    pub fn get_changed_files(&self, start: &str) -> Result<Vec<PathBuf>> {
-        let repo = self.git_repository()?;
-        let start = repo
-            .revparse_single(start)
-            .map_err(|err| Error::new("failed to parse Git revision").with_source(err))?
-            .as_commit()
-            .ok_or_else(|| Error::new("reference is not a commit"))?
-            .tree()
-            .unwrap();
-
-        let diff = repo
-            .diff_tree_to_workdir(Some(&start), None)
-            .map_err(|err| Error::new("failed to generate diff").with_source(err))?;
-
-        let prefix = repo
-            .path()
-            .parent()
-            .ok_or_else(|| Error::new("failed to determine Git repository path"))?;
-
-        let mut result = Vec::new();
-
-        diff.print(git2::DiffFormat::NameOnly, |_, _, l| {
-            let path = prefix.join(PathBuf::from(
-                std::str::from_utf8(l.content()).unwrap().trim_end(),
-            ));
-
-            result.push(path);
-
-            true
+    pub fn package_graph(&self) -> Result<&PackageGraph> {
+        self.package_graph.get_or_try_init(|| {
+            let mut cmd = guppy::MetadataCommand::new();
+            cmd.current_dir(self.workspace_root);
+            guppy::graph::PackageGraph::from_command(&mut cmd)
+                .map_err(|err| Error::new("").with_source(err))
         })
-        .map_err(|err| Error::new("failed to print diff").with_source(err))?;
+    }
 
-        Ok(result)
+    pub fn git_cli(&self) -> Result<&GitCli> {
+        self.git_cli
+            .get_or_try_init(|| GitCli::new(self.workspace_root()))
+    }
+
+    pub fn workspace_root(&self) -> &'static Utf8Path {
+        self.workspace_root
+    }
+
+    /// Returns the current working directory for this process.
+    #[allow(dead_code)]
+    pub fn current_dir(&self) -> &Utf8Path {
+        &self.current_dir
+    }
+
+    /// Returns the current working directory for this process, relative to the project root.
+    pub fn current_rel_dir(&self) -> &Utf8Path {
+        &self.current_rel_dir
+    }
+
+    /// Returns true if x has been run from the project root.
+    pub fn current_dir_is_root(&self) -> bool {
+        self.current_rel_dir == ""
+    }
+
+    /// For a given list of workspace packages, returns a tuple of (known, unknown) packages.
+    ///
+    /// Initializes the package graph if it isn't already done so, and returns an error if the
+    pub fn partition_workspace_names<'a, B>(
+        &self,
+        names: impl IntoIterator<Item = &'a str>,
+    ) -> Result<(B, B)>
+    where
+        B: Default + Extend<&'a str>,
+    {
+        let workspace = self.package_graph()?.workspace();
+        let (known, unknown) = names
+            .into_iter()
+            .partition(|name| workspace.contains_name(name));
+        Ok((known, unknown))
     }
 }

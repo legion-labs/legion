@@ -2,3 +2,4 @@
 channel = "1.57.0"
 profile = "default"
 targets = ["x86_64-unknown-linux-musl"]
+components = ["llvm-tools-preview"]
