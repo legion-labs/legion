@@ -72,10 +72,13 @@ mod fix;
 mod fmt;
 mod git;
 mod installer;
+mod lint;
 mod term;
 mod test;
 mod tools;
 mod utils;
+
+//mod sources;
 //mod hash;
 //mod package;
 
@@ -99,6 +102,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    // Cargo commands:
     /// Run `cargo bench`
     #[clap(name = "bench")]
     Bench(bench::Args),
@@ -109,13 +113,6 @@ enum Commands {
     /// Run `cargo check`
     #[clap(name = "check")]
     Check(check::Args),
-    /// List packages changed since merge base with the given commit
-    ///
-    /// Note that this compares against the merge base (common ancestor) of the specified commit.
-    /// For example, if origin/master is specified, the current working directory will be compared
-    /// against the point at which it branched off of origin/master.
-    #[clap(name = "changed-since")]
-    ChangedSince(changed_since::Args),
     /// Run `cargo clippy`
     #[clap(name = "clippy")]
     Clippy(clippy::Args),
@@ -129,9 +126,21 @@ enum Commands {
     /// Run `cargo tests`
     #[clap(name = "test")]
     Test(test::Args),
-    /// Run tests
+
+    // Non Cargo commands:
+    /// List packages changed since merge base with the given commit
+    ///
+    /// Note that this compares against the merge base (common ancestor) of the specified commit.
+    /// For example, if origin/master is specified, the current working directory will be compared
+    /// against the point at which it branched off of origin/master.
+    #[clap(name = "changed-since")]
+    ChangedSince(changed_since::Args),
+    /// Run tools installation
     #[clap(name = "tools")]
     Tools(tools::Args),
+    /// Run tools installation
+    #[clap(name = "lint")]
+    Lint(lint::Args),
 }
 
 fn main() -> Result<()> {
@@ -146,10 +155,12 @@ fn main() -> Result<()> {
         Commands::Bench(args) => bench::run(args, &ctx)?,
         Commands::Check(args) => check::run(&args, &ctx)?,
         Commands::Clippy(args) => clippy::run(&args, &ctx)?,
-        Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,
         Commands::Fix(args) => fix::run(args, &ctx)?,
         Commands::Fmt(args) => fmt::run(args, &ctx)?,
         Commands::Test(args) => test::run(args, &ctx)?,
+
+        Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,
+        Commands::Lint(args) => lint::run(&args, &ctx)?,
         Commands::Tools(args) => tools::run(&args, &ctx)?,
     };
     Ok(())

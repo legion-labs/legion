@@ -4,7 +4,7 @@
 use crate::git::GitCli;
 use crate::{context::Context, Error, Result};
 use determinator::Determinator;
-use guppy::graph::{DependencyDirection, PackageSet};
+use guppy::graph::{cargo::CargoResolverVersion, DependencyDirection, PackageSet};
 use lgn_telemetry::trace;
 
 #[derive(Debug, clap::Args)]
@@ -61,8 +61,10 @@ pub(crate) fn changed_since_impl<'g>(
 
     trace!("running determinator");
     let mut determinator = Determinator::new(&old_graph, new_graph);
+    let mut cargo_options = Determinator::default_cargo_options();
     determinator
         .add_changed_paths(&files_changed)
+        .set_cargo_options(cargo_options.set_resolver(CargoResolverVersion::V2))
         .set_rules(&ctx.config().determinator)
         .map_err(|err| Error::new("failed setting the rules").with_source(err))?;
 

@@ -42,7 +42,6 @@ impl GitCli {
     /// Returns the files tracked by Git in this working copy.
     ///
     /// The return value can be iterated on to get a list of paths.
-    #[allow(dead_code)]
     pub fn tracked_files(&self) -> Result<&Utf8Paths0> {
         self.tracked_files.get_or_try_init(|| {
             // TODO: abstract out SCM and command-running functionality.

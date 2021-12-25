@@ -11,7 +11,10 @@ exceptions = [
 bans = [{ name = "aaa", suggestion = "use aaa instead" }]
 
 [clippy]
-deny = ["warnings"]
+deny = [
+    "unsafe_code",
+    "warnings"
+]
 warn = [
     "future_incompatible",
     "nonstandard_style",
@@ -60,10 +63,6 @@ allow = [
     "clippy::unreadable_literal",
     "clippy::unseparated_literal_suffix",
 ]
-
-[[determinator.path-rule]]
-globs = [".github/**/*"]
-mark-changed = "all"
 
 [[determinator.path-rule]]
 globs = [".github/**/*"]
