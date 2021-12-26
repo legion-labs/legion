@@ -1,28 +1,18 @@
-[monorepo]
-
 [cargo-config]
 
 [crate-attributes]
 license = "MIT OR Apache-2.0"
 exceptions = [
+    # Containes code under Apache-2.0 license, from the Diem project
     "lgn-monorepo",
 ]
+
 [direct-deps]
 bans = [{ name = "aaa", suggestion = "use aaa instead" }]
 
 [clippy]
-deny = [
-    "unsafe_code",
-    "warnings"
-]
+deny = []
 warn = [
-    "future_incompatible",
-    "nonstandard_style",
-    "rust_2018_idioms",
-    # Rustdoc lints
-    "rustdoc::broken_intra_doc_links",
-    "rustdoc::missing_crate_level_docs",
-    "rustdoc::private_intra_doc_links",
     # Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list below
     "clippy::pedantic",
     # Clippy nursery lints, still under development
