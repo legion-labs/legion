@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use lgn_telemetry::{
-    event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock, ThreadBlock,
+    error, event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
+    ThreadBlock,
 };
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
@@ -138,7 +139,7 @@ impl EventSink for GRPCEventSink {
             start_ticks: process_info.start_ticks,
             parent_process_id: process_info.parent_process_id,
         })) {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
@@ -157,13 +158,13 @@ impl EventSink for GRPCEventSink {
             .sender
             .send(SinkEvent::InitStream(get_stream_info(log_stream)))
         {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
     fn on_process_log_block(&self, log_block: Arc<LogBlock>) {
         if let Err(e) = self.sender.send(SinkEvent::ProcessLogBlock(log_block)) {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
@@ -172,7 +173,7 @@ impl EventSink for GRPCEventSink {
             .sender
             .send(SinkEvent::InitStream(get_stream_info(metrics_stream)))
         {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
@@ -181,7 +182,7 @@ impl EventSink for GRPCEventSink {
             .sender
             .send(SinkEvent::ProcessMetricsBlock(metrics_block))
         {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
@@ -190,7 +191,7 @@ impl EventSink for GRPCEventSink {
             .sender
             .send(SinkEvent::InitStream(get_stream_info(thread_stream)))
         {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 
@@ -199,7 +200,7 @@ impl EventSink for GRPCEventSink {
             .sender
             .send(SinkEvent::ProcessThreadBlock(thread_block))
         {
-            dbg!(e);
+            error!("{}", e);
         }
     }
 }

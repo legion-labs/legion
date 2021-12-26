@@ -1,3 +1,4 @@
+#[allow(clippy::unnecessary_wraps)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "run-codegen")]
     {
