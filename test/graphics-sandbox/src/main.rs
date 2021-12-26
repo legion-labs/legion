@@ -1,3 +1,5 @@
+//! Test sandbox for graphics programmers
+
 use std::collections::HashMap;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};

@@ -1,3 +1,6 @@
+//! Perf report generation
+//!
+
 mod edition_latency;
 use std::path::Path;
 

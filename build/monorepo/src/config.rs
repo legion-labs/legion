@@ -11,6 +11,7 @@ pub struct MonorepoConfig {
     pub cargo_config: CargoConfig,
     pub determinator: DeterminatorRules,
     pub clippy: Clippy,
+    pub rustdoc: RustDoc,
     pub grcov: CargoTool,
 }
 
@@ -99,6 +100,15 @@ pub struct CargoInstallation {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Clippy {
+    pub allow: Vec<String>,
+    pub warn: Vec<String>,
+    pub deny: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct RustDoc {
+    pub entry_point: String,
     pub allow: Vec<String>,
     pub warn: Vec<String>,
     pub deny: Vec<String>,

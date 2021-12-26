@@ -1,3 +1,5 @@
+//! lambda code test, going to be moved once we use it
+
 mod handler;
 
 use anyhow::Result;

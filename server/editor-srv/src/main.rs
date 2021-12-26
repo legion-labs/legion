@@ -1,3 +1,6 @@
+//! Editor server executable
+//!
+
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::Arg;

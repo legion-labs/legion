@@ -251,6 +251,11 @@ pub enum CargoCommand<'a> {
         direct_args: &'a [OsString],
         args: &'a [OsString],
     },
+    Doc {
+        direct_args: &'a [OsString],
+        args: &'a [OsString],
+        env: &'a [(&'a str, Option<&'a str>)],
+    },
     Fix {
         direct_args: &'a [OsString],
         args: &'a [OsString],
@@ -325,6 +330,7 @@ impl<'a> CargoCommand<'a> {
             CargoCommand::Bench { .. } => "bench",
             CargoCommand::Check { .. } => "check",
             CargoCommand::Clippy { .. } => "clippy",
+            CargoCommand::Doc { .. } => "doc",
             CargoCommand::Fix { .. } => "fix",
             CargoCommand::Test { .. } => "test",
             CargoCommand::Build { .. } => "build",
@@ -335,6 +341,7 @@ impl<'a> CargoCommand<'a> {
         match self {
             CargoCommand::Bench { args, .. }
             | CargoCommand::Clippy { args, .. }
+            | CargoCommand::Doc { args, .. }
             | CargoCommand::Fix { args, .. }
             | CargoCommand::Test { args, .. }
             | CargoCommand::Build { args, .. } => args,
@@ -347,6 +354,7 @@ impl<'a> CargoCommand<'a> {
             CargoCommand::Bench { direct_args, .. }
             | CargoCommand::Check { direct_args, .. }
             | CargoCommand::Clippy { direct_args, .. }
+            | CargoCommand::Doc { direct_args, .. }
             | CargoCommand::Fix { direct_args, .. }
             | CargoCommand::Test { direct_args, .. }
             | CargoCommand::Build { direct_args, .. } => direct_args,
@@ -356,8 +364,9 @@ impl<'a> CargoCommand<'a> {
     pub fn get_extra_env(&self) -> &[(&str, Option<&str>)] {
         match self {
             CargoCommand::Bench { env, .. }
-            | CargoCommand::Test { env, .. }
-            | CargoCommand::Build { env, .. } => env,
+            | CargoCommand::Build { env, .. }
+            | CargoCommand::Doc { env, .. }
+            | CargoCommand::Test { env, .. } => env,
             CargoCommand::Check { .. } | CargoCommand::Clippy { .. } | CargoCommand::Fix { .. } => {
                 &[]
             }

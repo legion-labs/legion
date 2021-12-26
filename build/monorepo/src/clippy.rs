@@ -17,7 +17,7 @@ pub struct Args {
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let mut pass_through_args: Vec<OsString> = vec![];
     for lint in &ctx.config().clippy.deny {
-        pass_through_args.push("-A".into());
+        pass_through_args.push("-D".into());
         pass_through_args.push(lint.into());
     }
     for lint in &ctx.config().clippy.allow {

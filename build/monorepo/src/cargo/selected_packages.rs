@@ -149,6 +149,18 @@ impl<'a> SelectedPackages<'a> {
             }
         }
     }
+
+    pub fn includes_package(&self, package: &str) -> bool {
+        match &self.includes {
+            SelectedInclude::Workspace => true,
+            SelectedInclude::Includes(includes) => {
+                // If everything in the include set is excluded, a command invocation isn't needed.
+                includes
+                    .iter()
+                    .any(|p| !self.excludes.contains(p) && *p == package)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

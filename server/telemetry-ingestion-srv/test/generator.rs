@@ -1,3 +1,5 @@
+//! Generator test
+
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_sink::TelemetryGuard;
 

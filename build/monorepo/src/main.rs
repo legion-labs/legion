@@ -67,6 +67,7 @@ mod check;
 mod clippy;
 mod config;
 mod context;
+mod doc;
 mod error;
 mod fix;
 mod fmt;
@@ -116,6 +117,9 @@ enum Commands {
     /// Run `cargo clippy`
     #[clap(name = "clippy")]
     Clippy(clippy::Args),
+    /// Run `cargo doc`
+    #[clap(name = "doc")]
+    Doc(doc::Args),
     /// Only list the packages with changes since the specified Git reference
     /// Run `cargo fix`
     #[clap(name = "fix")]
@@ -155,6 +159,7 @@ fn main() -> Result<()> {
         Commands::Bench(args) => bench::run(args, &ctx)?,
         Commands::Check(args) => check::run(&args, &ctx)?,
         Commands::Clippy(args) => clippy::run(&args, &ctx)?,
+        Commands::Doc(args) => doc::run(args, &ctx)?,
         Commands::Fix(args) => fix::run(args, &ctx)?,
         Commands::Fmt(args) => fmt::run(args, &ctx)?,
         Commands::Test(args) => test::run(args, &ctx)?,

@@ -1,3 +1,6 @@
+//! Streaming protocol library.
+//!
+
 #![allow(
     clippy::missing_errors_doc,
     clippy::doc_markdown,
