@@ -45,7 +45,7 @@ impl Context {
         };
 
         let config = MonorepoConfig::new(workspace_root)?;
-        let installer = Installer::new(config.tools());
+        let installer = Installer::new(config.cargo_installs.clone());
 
         Ok(Self {
             workspace_root,

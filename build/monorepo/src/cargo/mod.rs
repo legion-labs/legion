@@ -11,7 +11,6 @@ use indexmap::IndexMap;
 use lgn_telemetry::{info, warn};
 
 use crate::context::Context;
-use crate::installer::install_cargo_component_if_needed;
 use crate::{Error, Result};
 
 mod build_args;
@@ -446,7 +445,7 @@ pub fn apply_sccache_if_possible(ctx: &Context) -> Result<Vec<(&str, Option<Stri
     let mut envs = vec![];
     if sccache_should_run(ctx, true) {
         if let Some(sccache_config) = &ctx.config().cargo_config.sccache {
-            if !install_cargo_component_if_needed(ctx, "sccache", &sccache_config.installer) {
+            if !ctx.installer().install_via_cargo_if_needed(ctx, "sccache") {
                 return Err(Error::new("Failed to install sccache, bailing"));
             }
             stop_sccache_server();

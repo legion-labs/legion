@@ -3,29 +3,21 @@
 
 use crate::{cargo::Cargo, config::CargoInstallation, context::Context, ignore_step};
 use lgn_telemetry::{error, info};
-use std::process::Command;
+use std::{collections::HashMap, process::Command};
 
 pub struct Installer {
-    cargo_installations: Vec<(String, CargoInstallation)>,
+    cargo_installations: HashMap<String, CargoInstallation>,
 }
 
 impl Installer {
-    pub fn new(cargo_installations: Vec<(String, CargoInstallation)>) -> Self {
+    pub fn new(cargo_installations: HashMap<String, CargoInstallation>) -> Self {
         Self {
             cargo_installations,
         }
     }
 
-    // Given the name of a tool in the tools list, return the version.
-    fn cargo_installation(&self, name: &str) -> Option<&CargoInstallation> {
-        self.cargo_installations
-            .as_slice()
-            .iter()
-            .find_map(|(x, y)| if x.eq(&name) { Some(y) } else { None })
-    }
-
     pub fn install_via_cargo_if_needed(&self, ctx: &Context, name: &str) -> bool {
-        match &self.cargo_installation(name) {
+        match &self.cargo_installations.get(name) {
             Some(cargo_installation) => {
                 install_cargo_component_if_needed(ctx, name, cargo_installation)
             }
@@ -38,7 +30,7 @@ impl Installer {
 
     #[allow(dead_code)]
     fn check_cargo_component(&self, name: &str) -> bool {
-        match &self.cargo_installation(name) {
+        match &self.cargo_installations.get(name) {
             Some(cargo_installation) => {
                 check_installed_cargo_component(name, &cargo_installation.version)
             }
@@ -52,7 +44,6 @@ impl Installer {
     pub fn check_all(&self) -> bool {
         let iter = self
             .cargo_installations
-            .as_slice()
             .iter()
             .map(|(name, installation)| (name, &installation.version))
             .collect::<Vec<(&String, &String)>>();
@@ -60,11 +51,15 @@ impl Installer {
     }
 
     pub fn install_all(&self, ctx: &Context) -> bool {
-        install_all_cargo_components(ctx, self.cargo_installations.as_slice())
+        let iter = self
+            .cargo_installations
+            .iter()
+            .collect::<Vec<(&String, &CargoInstallation)>>();
+        install_all_cargo_components(ctx, iter.as_slice())
     }
 }
 
-pub fn install_cargo_component_if_needed(
+fn install_cargo_component_if_needed(
     ctx: &Context,
     name: &str,
     installation: &CargoInstallation,
@@ -123,7 +118,7 @@ fn check_installed_cargo_component(name: &str, version: &str) -> bool {
     found
 }
 
-fn install_all_cargo_components(ctx: &Context, tools: &[(String, CargoInstallation)]) -> bool {
+fn install_all_cargo_components(ctx: &Context, tools: &[(&String, &CargoInstallation)]) -> bool {
     let mut success: bool = true;
     for (name, installation) in tools {
         success &= install_cargo_component_if_needed(ctx, name, installation);

@@ -1,11 +1,10 @@
 [cargo-config]
 
-[crate-attributes]
-license = "MIT OR Apache-2.0"
-exceptions = [
-    # Containes code under Apache-2.0 license, from the Diem project
-    "lgn-monorepo",
-]
+[cargo-installs]
+cargo-deny = { version = "0.11.0" }
+grcov = { version = "0.8.4" }
+mdbook = { version = "0.4.14" }
+sccache = { version = "0.2.15" }
 
 [direct-deps]
 bans = [{ name = "aaa", suggestion = "use aaa instead" }]
@@ -73,6 +72,3 @@ allow = [
 [[determinator.path-rule]]
 globs = [".github/**/*"]
 mark-changed = "all"
-
-[grcov.installer]
-version = "0.8.2"

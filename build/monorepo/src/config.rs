@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use camino::Utf8Path;
 use determinator::rules::DeterminatorRules;
@@ -12,7 +12,7 @@ pub struct MonorepoConfig {
     pub determinator: DeterminatorRules,
     pub clippy: Clippy,
     pub rustdoc: RustDoc,
-    pub grcov: CargoTool,
+    pub cargo_installs: HashMap<String, CargoInstallation>,
 }
 
 impl MonorepoConfig {
@@ -21,17 +21,15 @@ impl MonorepoConfig {
         let contents = fs::read(&monorepo_file).map_err(|err| {
             Error::new(format!("could not read config file {}", &monorepo_file)).with_source(err)
         })?;
-        toml::from_slice(&contents).map_err(|err| {
+        let mut config: Self = toml::from_slice(&contents).map_err(|err| {
             Error::new(format!("failed to parse config file {}", &monorepo_file)).with_source(err)
-        })
-    }
-
-    pub fn tools(&self) -> Vec<(String, CargoInstallation)> {
-        let mut tools = vec![("grcov".to_owned(), self.grcov.installer.clone())];
-        if let Some(sccache) = &self.cargo_config.sccache {
-            tools.push(("sccache".to_owned(), sccache.installer.clone()));
+        })?;
+        if let Some(sscache) = &config.cargo_config.sccache {
+            config
+                .cargo_installs
+                .insert("sccache".to_owned(), sscache.installer.clone());
         }
-        tools
+        Ok(config)
     }
 }
 
@@ -47,7 +45,7 @@ pub struct CargoConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct CargoTool {
+pub struct CargoInstalls {
     pub installer: CargoInstallation,
 }
 
