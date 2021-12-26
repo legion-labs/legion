@@ -7,6 +7,7 @@ members = [
     "proto/*",
     "test/*",
     "compiler/*",
+    "build/monorepo",
 ]
 exclude = []
 
@@ -30,3 +31,7 @@ panic = 'abort'
 # Further application will come with this: https://github.com/ralfbiedert/openh264-rust/pull/11
 [profile.dev.package.openh264-sys2]
 opt-level = 3
+
+# Comment this when you need to debug monorepo executable
+#[profile.dev.package.lgn-monorepo]
+#opt-level = 3

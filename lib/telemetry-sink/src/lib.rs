@@ -84,7 +84,12 @@ impl TelemetryGuard {
             Ok(url) => Arc::new(GRPCEventSink::new(&url)),
             Err(_no_url_in_env) => Arc::new(SimpleLoggerEventSink::new()),
         };
+        #[cfg(debug_assertions)]
         set_max_log_level(LevelFilter::Info);
+
+        #[cfg(not(debug_assertions))]
+        set_max_log_level(LevelFilter::Warn);
+
         Ok(Self {
             _guard: TelemetrySystemGuard::new(sink)?,
         })
