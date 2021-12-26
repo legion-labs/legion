@@ -1,19 +1,23 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use lgn_telemetry::*;
+use lgn_telemetry::{
+    flush_log_buffer, flush_metrics_buffer, get_process_id, info, init_event_dispatch,
+    init_thread_stream, record_float_metric, record_int_metric, set_max_log_level, trace_scope,
+    LevelFilter, MetricDesc,
+};
 mod debug_event_sink;
 use debug_event_sink::{expect, DebugEventSink, SharedState, State};
 
 fn test_log_str(state: &SharedState) {
     for x in 1..5 {
         info!("test");
-        expect(state, Some(State::Log(String::from("test"))));
+        expect(state, &Some(State::Log(String::from("test"))));
         info!("test {}", x);
-        expect(state, Some(State::Log(format!("test {}", x))));
+        expect(state, &Some(State::Log(format!("test {}", x))));
     }
     flush_log_buffer();
-    expect(state, Some(State::ProcessLogBlock(7)));
+    expect(state, &Some(State::ProcessLogBlock(7)));
 }
 
 fn get_tsc_frequency() -> Result<u64, String> {
@@ -26,10 +30,9 @@ fn get_tsc_frequency() -> Result<u64, String> {
     let cpuid = CpuId::new();
     let cpu_brand = cpuid
         .get_processor_brand_string()
-        .map(|b| b.as_str().to_owned())
-        .unwrap_or_else(|| "unknown".to_owned());
+        .map_or_else(|| "unknown".to_owned(), |b| b.as_str().to_owned());
 
-    dbg!(&cpu_brand);
+    println!("CPU brand: {:?}", &cpu_brand);
 
     match cpuid.get_tsc_info() {
         Some(tsc_info) => match tsc_info.tsc_frequency() {
@@ -58,7 +61,7 @@ fn test_log_thread(state: &SharedState) {
         t.join().unwrap();
     }
     flush_log_buffer();
-    expect(state, Some(State::ProcessThreadBlock(723)));
+    expect(state, &Some(State::ProcessThreadBlock(723)));
 }
 
 fn test_metrics(state: &SharedState) {
@@ -66,11 +69,11 @@ fn test_metrics(state: &SharedState) {
         name: "Frame Time",
         unit: "ticks",
     };
-    dbg!(&FRAME_TIME_METRIC);
+    println!("{:?}", &FRAME_TIME_METRIC);
     record_int_metric(&FRAME_TIME_METRIC, 1000);
     record_float_metric(&FRAME_TIME_METRIC, 1.0);
     flush_metrics_buffer();
-    expect(state, Some(State::ProcessMetricsBlock(2)));
+    expect(state, &Some(State::ProcessMetricsBlock(2)));
 }
 
 #[test]

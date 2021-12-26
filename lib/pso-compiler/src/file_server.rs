@@ -23,6 +23,11 @@ pub struct FileSystem {
 }
 
 impl FileSystem {
+    /// Creates a new file system.
+    ///
+    /// # Errors
+    /// fails if the root path does not exist.
+    ///
     pub fn new(root_folder: &str) -> Result<Self> {
         let root_path = BasePathBuf::new(Path::new(root_folder)).unwrap();
         let root_path = root_path.normalize().unwrap();
@@ -48,6 +53,11 @@ impl FileSystem {
         })
     }
 
+    /// Mounts a folder to the file system.
+    ///
+    /// # Errors
+    /// fails if the folder does not exist.
+    ///
     pub fn add_mount_point(&self, mount_point: &str, folder: &str) -> Result<()> {
         let path = BasePathBuf::new(Path::new(folder)).unwrap();
         let path = path.normalize().unwrap();
@@ -74,14 +84,13 @@ impl FileSystem {
                 if mount_point.path == path {
                     // already in list, nothing to do
                     return Ok(());
-                } else {
-                    return Err(anyhow!(
-                        "Mount point {} pointing to directory ({}) already exists (but mapped to {})",
-                        mount_point.name,
-                        folder,
-                        mount_point.path.as_os_str().to_string_lossy()
-                    ));
                 }
+                return Err(anyhow!(
+                    "Mount point {} pointing to directory ({}) already exists (but mapped to {})",
+                    mount_point.name,
+                    folder,
+                    mount_point.path.as_os_str().to_string_lossy()
+                ));
             }
         }
 
@@ -92,6 +101,11 @@ impl FileSystem {
         Ok(())
     }
 
+    /// Removes a mount point from the file system.
+    ///
+    /// # Errors
+    /// fails if the mount point does not exist.
+    ///
     pub fn translate_path(&self, path: &str) -> Result<BasePathBuf> {
         let protocol = "crate://";
         if !path.starts_with(protocol) {
@@ -116,6 +130,11 @@ impl FileSystem {
         Ok(base_path)
     }
 
+    /// Translates a path to a file name.
+    ///
+    /// # Errors
+    /// fails if the path does not exist.
+    ///
     pub fn get_file_content(&self, path: &str) -> Result<String> {
         let abs_path = self.translate_path(path).unwrap();
         if !abs_path.is_absolute() {
@@ -144,7 +163,7 @@ impl DxcIncludeHandler for FileServerIncludeHandler {
         let inc_path = if let Some(pos) = filename.find("crate://") {
             &filename[pos..]
         } else {
-            todo!()
+            todo!();
         };
 
         let result = self.0.get_file_content(inc_path);

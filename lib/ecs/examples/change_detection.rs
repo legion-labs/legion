@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)]
+
 use std::ops::Deref;
 
 use lgn_ecs::prelude::*;
@@ -65,7 +67,7 @@ enum SimulationSystem {
 // The entity will start with an age of 0 frames
 // If an entity gets spawned, we increase the counter in the EntityCounter
 // resource
-fn spawn_entities(mut commands: Commands, mut entity_counter: ResMut<EntityCounter>) {
+fn spawn_entities(mut commands: Commands<'_, '_>, mut entity_counter: ResMut<'_, EntityCounter>) {
     if rand::thread_rng().gen_bool(0.6) {
         let entity_id = commands.spawn().insert(Age::default()).id();
         println!("    spawning {:?}", entity_id);
@@ -81,8 +83,8 @@ fn spawn_entities(mut commands: Commands, mut entity_counter: ResMut<EntityCount
 // so we don't actually need the `Changed` here, but it is still used for the
 // purpose of demonstration.
 fn print_changed_entities(
-    entity_with_added_component: Query<Entity, Added<Age>>,
-    entity_with_mutated_component: Query<(Entity, &Age), Changed<Age>>,
+    entity_with_added_component: Query<'_, '_, Entity, Added<Age>>,
+    entity_with_mutated_component: Query<'_, '_, (Entity, &Age), Changed<Age>>,
 ) {
     for entity in entity_with_added_component.iter() {
         println!("    {:?} has it's first birthday!", entity);
@@ -93,7 +95,7 @@ fn print_changed_entities(
 }
 
 // This system iterates over all entities and increases their age in every frame
-fn age_all_entities(mut entities: Query<&mut Age>) {
+fn age_all_entities(mut entities: Query<'_, '_, &mut Age>) {
     for mut age in entities.iter_mut() {
         age.frames += 1;
     }
@@ -101,7 +103,7 @@ fn age_all_entities(mut entities: Query<&mut Age>) {
 
 // This system iterates over all entities in every frame and despawns entities
 // older than 2 frames
-fn remove_old_entities(mut commands: Commands, entities: Query<(Entity, &Age)>) {
+fn remove_old_entities(mut commands: Commands<'_, '_>, entities: Query<'_, '_, (Entity, &Age)>) {
     for (entity, age) in entities.iter() {
         if age.frames > 2 {
             println!("    despawning {:?} due to age > 2", entity);
@@ -112,7 +114,7 @@ fn remove_old_entities(mut commands: Commands, entities: Query<(Entity, &Age)>) 
 
 // This system will print the new counter value everytime it was changed since
 // the last execution of the system.
-fn print_counter_when_changed(entity_counter: Res<EntityCounter>) {
+fn print_counter_when_changed(entity_counter: Res<'_, EntityCounter>) {
     if entity_counter.is_changed() {
         println!(
             "    total number of entities spawned: {}",

@@ -1,4 +1,4 @@
-use std::ops::Deref;
+#![allow(clippy::needless_pass_by_value)]
 
 use lgn_ecs::prelude::*;
 use rand::Rng;
@@ -39,13 +39,13 @@ enum CounterSystem {
     Increase,
 }
 
-fn increase_counter(mut counter: ResMut<Counter>) {
+fn increase_counter(mut counter: ResMut<'_, Counter>) {
     if rand::thread_rng().gen_bool(0.5) {
         counter.value += 1;
         println!("    Increased counter value");
     }
 }
 
-fn print_counter(counter: Res<Counter>) {
-    println!("    {:?}", counter.deref());
+fn print_counter(counter: Res<'_, Counter>) {
+    println!("    {:?}", &*counter);
 }

@@ -1,5 +1,7 @@
 //! Test sandbox for graphics programmers
 
+#![allow(clippy::needless_pass_by_value)]
+
 use std::collections::HashMap;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
@@ -125,12 +127,10 @@ fn main() {
 
     let width = matches
         .value_of(ARG_NAME_WIDTH)
-        .map(|s| s.parse::<f32>().unwrap())
-        .unwrap_or(1280.0);
+        .map_or(1280.0, |s| s.parse::<f32>().unwrap());
     let height = matches
         .value_of(ARG_NAME_HEIGHT)
-        .map(|s| s.parse::<f32>().unwrap())
-        .unwrap_or(720.0);
+        .map_or(720.0, |s| s.parse::<f32>().unwrap());
     let setup_name = matches
         .value_of(ARG_NAME_SETUP_NAME)
         .unwrap_or("simple-scene");
@@ -180,12 +180,12 @@ fn main() {
 }
 
 fn on_window_created(
-    mut commands: Commands,
-    mut ev_wnd_created: EventReader<WindowCreated>,
-    wnd_list: Res<Windows>,
-    winit_wnd_list: Res<WinitWindows>,
-    renderer: Res<Renderer>,
-    mut render_surfaces: ResMut<RenderSurfaces>,
+    mut commands: Commands<'_, '_>,
+    mut ev_wnd_created: EventReader<'_, '_, WindowCreated>,
+    wnd_list: Res<'_, Windows>,
+    winit_wnd_list: Res<'_, WinitWindows>,
+    renderer: Res<'_, Renderer>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
@@ -200,11 +200,11 @@ fn on_window_created(
 }
 
 fn on_window_resized(
-    mut ev_wnd_resized: EventReader<WindowResized>,
-    wnd_list: Res<Windows>,
-    renderer: Res<Renderer>,
-    mut q_render_surfaces: Query<&mut RenderSurface>,
-    render_surfaces: Res<RenderSurfaces>,
+    mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
+    wnd_list: Res<'_, Windows>,
+    renderer: Res<'_, Renderer>,
+    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    render_surfaces: Res<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -224,10 +224,10 @@ fn on_window_resized(
 }
 
 fn on_window_close_requested(
-    mut commands: Commands,
-    mut ev_wnd_destroyed: EventReader<WindowCloseRequested>,
-    query_render_surface: Query<(Entity, &RenderSurface)>,
-    mut render_surfaces: ResMut<RenderSurfaces>,
+    mut commands: Commands<'_, '_>,
+    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_destroyed.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -244,11 +244,11 @@ fn on_window_close_requested(
 }
 
 fn presenter_snapshot_system(
-    mut commands: Commands,
-    snapshot_descriptor: Res<SnapshotDescriptor>,
-    renderer: Res<Renderer>,
+    mut commands: Commands<'_, '_>,
+    snapshot_descriptor: Res<'_, SnapshotDescriptor>,
+    renderer: Res<'_, Renderer>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
-    mut frame_counter: Local<SnapshotFrameCounter>,
+    mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
         let mut render_surface = RenderSurface::new(
@@ -281,7 +281,7 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
     // sphere 1
     commands
         .spawn()
@@ -377,7 +377,7 @@ fn init_light_test(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes
         .insert(CameraComponent::default_transform());
 }
 
-fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
     // plane
     commands
         .spawn()
@@ -436,9 +436,9 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
 }
 
 fn on_snapshot_app_exit(
-    mut commands: Commands,
-    mut app_exit: EventReader<AppExit>,
-    query_render_surface: Query<(Entity, &RenderSurface)>,
+    mut commands: Commands<'_, '_>,
+    mut app_exit: EventReader<'_, '_, AppExit>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
 ) {
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
@@ -456,7 +456,7 @@ fn camera_control(
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
-    mut camera_moving: Local<CameraMoving>,
+    mut camera_moving: Local<'_, CameraMoving>,
 ) {
     for mouse_button_input_event in mouse_button_input_events.iter() {
         if mouse_button_input_event.button == MouseButton::Right {

@@ -5,7 +5,7 @@ use std::{
     process::Command,
 };
 
-use lgn_test_utils::*;
+use lgn_test_utils::rgba_image_diff;
 
 static GRAPHICS_SANDBOX_CLI_EXE: &str = env!("CARGO_BIN_EXE_lgn-graphics-sandbox");
 static GRAPHICS_SANDBOX_TEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -43,7 +43,7 @@ struct SnapshotData {
 
 /// Load the image using `png`
 fn load_image(path: &Path) -> io::Result<SnapshotData> {
-    use png::ColorType::*;
+    use png::ColorType::Rgba;
     let decoder = png::Decoder::new(File::open(path)?);
     let mut reader = decoder.read_info()?;
     let mut img_data = vec![0; reader.output_buffer_size()];

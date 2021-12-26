@@ -1,10 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use lgn_telemetry::*;
+use lgn_telemetry::{
+    log, EventSink, Level, LogBlock, LogMsgQueueAny, LogStream, MetricsBlock, MetricsMsgQueueAny,
+    MetricsStream, ProcessInfo, ThreadBlock, ThreadEventQueueAny, ThreadStream,
+};
 use lgn_transit::HeterogeneousQueue;
-use LogMsgQueueAny::*;
-use MetricsMsgQueueAny::*;
-use ThreadEventQueueAny::*;
+use LogMsgQueueAny::{LogDynMsgEvent, LogMsgEvent};
+use MetricsMsgQueueAny::{FloatMetricEvent, IntegerMetricEvent};
+use ThreadEventQueueAny::{BeginScopeEvent, EndScopeEvent};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum State {
@@ -92,7 +95,7 @@ impl EventSink for DebugEventSink {
     }
 }
 
-pub fn expect(state: &SharedState, expected: Option<State>) {
+pub fn expect(state: &SharedState, expected: &Option<State>) {
     let state = state.lock().unwrap().take();
-    assert_eq!(state, expected);
+    assert_eq!(state, *expected);
 }

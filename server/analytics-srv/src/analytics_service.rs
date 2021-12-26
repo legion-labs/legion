@@ -324,7 +324,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         info!("search_processes");
         let inner = request.into_inner();
-        dbg!(&inner.search);
+        debug!("{}", &inner.search);
         match self.search_processes_impl(&inner.search).await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };

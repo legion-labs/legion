@@ -54,6 +54,11 @@ pub struct HlslCompiler {
 }
 
 impl HlslCompiler {
+    /// Create a new HLSL compiler.
+    ///
+    /// # Errors
+    /// fails if the Dxc library cannot be loaded.
+    ///
     pub fn new(filesystem: FileSystem) -> Result<Self> {
         Ok(Self {
             inner: Arc::new(HlslCompilerInner {
@@ -78,6 +83,11 @@ impl HlslCompiler {
     //     })
     // }
 
+    /// Compile an HLSL shader.
+    ///
+    /// # Errors
+    /// fails if the shader cannot be compiled.
+    ///
     pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
         // For each compilation target
         let mut spirv_binaries = Vec::with_capacity(params.entry_points.len());
@@ -213,7 +223,7 @@ impl HlslCompiler {
         }
     }
 
-    /// Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
+    /// Reference: <https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst>
     fn to_shader_resource_type(
         descriptor_binding: &ReflectDescriptorBinding,
     ) -> ShaderResourceType {

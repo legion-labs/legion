@@ -13,7 +13,7 @@ pub fn target_dir() -> PathBuf {
             }
             path
         })
-        .unwrap_or_else(|| panic!("cannot find test directory"))
+        .expect("available test directory")
 }
 
 pub fn compiler_exe(name: &str) -> PathBuf {

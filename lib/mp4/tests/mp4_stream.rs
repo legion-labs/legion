@@ -16,10 +16,9 @@ fn test_add() {
             {
                 if start != 0 {
                     return (&stream[start..current], &stream[current..]);
-                } else {
-                    start = current + 4;
                 }
                 current += 4;
+                start = current;
             } else {
                 current += 1;
             }

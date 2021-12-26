@@ -22,8 +22,12 @@ warn = [
 allow = []
 
 [clippy]
-deny = []
+deny = ["unsafe_code"]
 warn = [
+    # Rustc lints
+    "future_incompatible",
+    "nonstandard_style",
+    "rust_2018_idioms",
     # Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list below
     "clippy::pedantic",
     # Clippy nursery lints, still under development
@@ -63,6 +67,7 @@ allow = [
     "clippy::shadow_unrelated",
     "clippy::unreadable_literal",
     "clippy::unseparated_literal_suffix",
+    "clippy::too_many_lines",
 ]
 
 [[determinator.path-rule]]

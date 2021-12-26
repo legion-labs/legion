@@ -15,9 +15,10 @@ pub fn target_dir() -> PathBuf {
             }
             path
         })
-        .unwrap_or_else(|| panic!("cannot find test directory"))
+        .expect("a test directory")
 }
 
+#[must_use]
 pub fn data_build_exe() -> PathBuf {
     target_dir().join(format!("data-build{}", env::consts::EXE_SUFFIX))
 }
