@@ -20,12 +20,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         pass_through_args.push("-D".into());
         pass_through_args.push(lint.into());
     }
-    for lint in &ctx.config().clippy.allow {
-        pass_through_args.push("-A".into());
-        pass_through_args.push(lint.into());
-    }
     for lint in &ctx.config().clippy.warn {
         pass_through_args.push("-W".into());
+        pass_through_args.push(lint.into());
+    }
+    for lint in &ctx.config().clippy.allow {
+        pass_through_args.push("-A".into());
         pass_through_args.push(lint.into());
     }
     pass_through_args.extend(args.args.clone());

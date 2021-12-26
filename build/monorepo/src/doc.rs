@@ -32,12 +32,12 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         rustodc_flags.push("-D".into());
         rustodc_flags.push(lint.into());
     }
-    for lint in &ctx.config().rustdoc.allow {
-        rustodc_flags.push("-A".into());
-        rustodc_flags.push(lint.into());
-    }
     for lint in &ctx.config().rustdoc.warn {
         rustodc_flags.push("-W".into());
+        rustodc_flags.push(lint.into());
+    }
+    for lint in &ctx.config().rustdoc.allow {
+        rustodc_flags.push("-A".into());
         rustodc_flags.push(lint.into());
     }
     let rustodc_flags = rustodc_flags.join(" ");
