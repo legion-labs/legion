@@ -15,7 +15,7 @@ lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-online = { path = "../../lib/online", version = "0.1.0" }
 lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 anyhow = "1.0.44"
-clap = "2.33"
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
 url = "2.2.2"
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 directories = "4"

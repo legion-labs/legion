@@ -181,7 +181,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -2104,7 +2104,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "directories",
  "json",
  "lgn-analytics",
@@ -4020,7 +4020,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -4943,7 +4943,7 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "lgn-source-control",
  "lgn-telemetry",
  "lgn-telemetry-sink",
@@ -6783,7 +6783,7 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "directories",
  "lgn-app",
  "lgn-async",

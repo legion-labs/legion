@@ -14,7 +14,7 @@ anyhow = "1.0.0"
 atty = "0.2.14"
 camino = "1.0.5"
 cargo_toml = "0.10"
-clap = { version = "3.0.0-rc.7", features = ["derive"] }
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
 determinator = "0.7.0"
 guppy = "0.12.4"
 hex = "0.4.3"

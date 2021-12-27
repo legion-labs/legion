@@ -251,7 +251,7 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use clap::{AppSettings, Arg, SubCommand};
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::Checksum;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
@@ -262,179 +262,199 @@ use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 mod config;
 use config::Config;
 
+#[derive(Parser, Debug)]
+#[clap(name = "Data Scraper")]
+#[clap(about = "Data scraping utility", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Parse code for ResourceType information
+    #[clap(name = "rty")]
+    Rty {
+        /// Path in to code root.
+        path: Option<PathBuf>,
+        #[clap(subcommand)]
+        command: RtyCommands,
+    },
+    /// Explain
+    #[clap(name = "explain")]
+    Explain {
+        /// Id to explain
+        id: String,
+    },
+    /// Parse project index for source resource information
+    #[clap(name = "source")]
+    Source {
+        /// Path to directory containing the project
+        path: Option<PathBuf>,
+        #[clap(subcommand)]
+        command: SourceCommands,
+    },
+    /// Parse asset file, or folder, to extract asset meta-data
+    #[clap(name = "asset")]
+    Asset {
+        /// Path to single asset file, or directory containing several asset files
+        path: PathBuf,
+    },
+    /// Print Graphviz representation of a build graph in DOT format
+    #[clap(name = "graph")]
+    Graph {
+        /// Compile path (either ResourcePathId or ResourceId) to print the graph of
+        id: String,
+    },
+    /// Creates a configuration file containing paths to relevant locations
+    #[clap(name = "configure")]
+    Configure {
+        /// Paths to code directories to scan for resource types
+        #[clap(long, use_delimiter = true)]
+        code_path: Option<Vec<PathBuf>>,
+        /// Path to project index to be able to resolve ResourcePathName
+        #[clap(long)]
+        project: Option<PathBuf>,
+        /// Path to build index to be able to resolve ResourcePathId
+        #[clap(long = "buildindex")]
+        build_index: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum RtyCommands {
+    /// List all resource types in the project
+    #[clap(name = "list")]
+    List,
+    /// Encodes human readable resource name to hash value.
+    #[clap(name = "encode")]
+    Encode {
+        /// Human readable resource name - Resource::TYPENAME
+        name: String,
+    },
+    /// Decodes hash value of resource type to human readable name.
+    #[clap(name = "decode")]
+    Decode {
+        /// ResourceType hash - Resource::TYPE
+        ty: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum SourceCommands {
+    /// List all source resource information
+    #[clap(name = "list")]
+    List,
+    /// Finds a name of a given ResourceId
+    #[clap(name = "name")]
+    Name {
+        /// ResourceId to find a name of
+        id: String,
+    },
+    /// Find the id of a given ResourcePathName
+    #[clap(name = "id")]
+    Id {
+        /// ResourcePathName to find id of
+        name: String,
+    },
+}
+
 #[allow(clippy::too_many_lines)]
 fn main() -> Result<(), String> {
-    let matches = clap::App::new("Data Scraper")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Data scraping utility")
-        .subcommand(
-            SubCommand::with_name("rty")
-                .about("Parse code for ResourceType information")
-                .arg(Arg::with_name("path").help("Path in to code root."))
-                .subcommand(SubCommand::with_name("list"))
-                .subcommand(
-                    SubCommand::with_name("encode")
-                        .arg(
-                            Arg::with_name("name")
-                                .help("Human readable resource name - Resource::TYPENAME")
-                                .required(true),
-                        )
-                        .about("Encodes human readable resource name to hash value."),
-                )
-                .subcommand(
-                    SubCommand::with_name("decode")
-                        .arg(
-                            Arg::with_name("ty")
-                                .help("ResourceType hash - Resource::TYPE")
-                                .required(true),
-                        )
-                        .about("Decodes hash value of resource type to human readable name"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("explain")
-                .arg(Arg::with_name("id").help("Id to explain").required(true)),
-        )
-        .subcommand(
-            SubCommand::with_name("source")
-                .about("Parse project index for source resource information")
-                .arg(Arg::with_name("path").help("Path to directory containing the project"))
-                .subcommand(SubCommand::with_name("list"))
-                .subcommand(
-                    SubCommand::with_name("name")
-                        .arg(
-                            Arg::with_name("id")
-                                .help("ResourceId to find a name of")
-                                .required(true),
-                        )
-                        .help("Finds a name of a given ResourceId"),
-                )
-                .subcommand(
-                    SubCommand::with_name("id")
-                        .arg(
-                            Arg::with_name("name")
-                                .help("ResourcePathName to find id of")
-                                .required(true),
-                        )
-                        .help("Find the id of a given ResourcePathName"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("asset")
-                .about("Parse asset file, or folder, to extract asset meta-data")
-                .arg(Arg::with_name("path").help(
-                    "Path to single asset file, or directory containing several asset files",
-                )),
-        )
-        .subcommand(
-            SubCommand::with_name("graph")
-                .about("Print Graphviz representation of a build graph in DOT format")
-                .arg(Arg::with_name("id").takes_value(true).help(
-                    "Compile path (either ResourcePathId or ResourceId) to print the graph of.",
-                )),
-        )
-        .subcommand(
-            SubCommand::with_name("configure")
-                .about("Creates a configuration file containing paths to relevant locations")
-                .arg(
-                    Arg::with_name("code_path")
-                        .long("code_path")
-                        .help("Paths to code directories to scan for resource types")
-                        .use_delimiter(true),
-                )
-                .arg(
-                    Arg::with_name("project")
-                        .long("project")
-                        .takes_value(true)
-                        .help("Path to project index to be able to resolve ResourcePathName."),
-                )
-                .arg(
-                    Arg::with_name("buildindex")
-                        .long("buildindex")
-                        .takes_value(true)
-                        .help("Path to build index to be able to resolve ResourcePathId"),
-                ),
-        )
-        .get_matches();
+    let args = Cli::parse();
 
     //
     // try opening the configuration file first.
     //
     let config = Config::read(Config::default_path()).ok();
 
-    if let ("rty", Some(cmd_args)) = matches.subcommand() {
-        let code_dir = cmd_args
-            .value_of("path")
-            .map_or_else(|| std::env::current_dir().unwrap(), PathBuf::from);
-
-        match cmd_args.subcommand() {
-            ("list", _) => {
-                for (name, ty) in ResourceTypeIterator::new(find_files(&code_dir, &["rs"])) {
-                    println!("{} = {}", name, ty);
+    match args.command {
+        Commands::Rty { path, command } => {
+            let code_dir = path.unwrap_or_else(|| std::env::current_dir().unwrap());
+            match command {
+                RtyCommands::List => {
+                    for (name, ty) in ResourceTypeIterator::new(find_files(&code_dir, &["rs"])) {
+                        println!("{} = {}", name, ty);
+                    }
                 }
-            }
-            ("encode", Some(cmd_args)) => {
-                let searched_name = cmd_args.value_of("name").unwrap();
-
-                if let Some((name, ty)) = ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
-                    .find(|(name, _)| name == searched_name)
-                {
-                    println!("{} = {}", name, ty);
+                RtyCommands::Encode { name } => {
+                    if let Some((name, ty)) =
+                        ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
+                            .find(|(n, _)| *n == name)
+                    {
+                        println!("{} = {}", name, ty);
+                    }
                 }
-            }
-            ("decode", Some(cmd_args)) => {
-                let searched_ty = cmd_args.value_of("ty").unwrap();
-                let searched_ty = ResourceType::from_str(searched_ty).unwrap();
-                if let Some((name, ty)) = ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
-                    .find(|(_, ty)| ty == &searched_ty)
-                {
-                    println!("{} = {}", name, ty);
+                RtyCommands::Decode { ty } => {
+                    let searched_ty = ResourceType::from_str(&ty).unwrap();
+                    if let Some((name, ty)) =
+                        ResourceTypeIterator::new(find_files(&code_dir, &["rs"]))
+                            .find(|(_, ty)| ty == &searched_ty)
+                    {
+                        println!("{} = {}", name, ty);
+                    }
                 }
-            }
-            _ => {
-                println!("{}", cmd_args.usage());
             }
         }
-    } else if let ("source", Some(cmd_args)) = matches.subcommand() {
-        let proj_file = cmd_args
-            .value_of("path")
-            .map_or_else(|| std::env::current_dir().unwrap(), PathBuf::from);
+        Commands::Explain { id } => {
+            if let Some(config) = config {
+                let (build, project) = config.open()?;
+                let rid = {
+                    if let Ok(rid) = ResourcePathId::from_str(&id) {
+                        rid
+                    } else if let Ok(resource_id) = id.parse() {
+                        if let Some(rid) = build.lookup_pathid(resource_id) {
+                            rid
+                        } else {
+                            return Err(format!(
+                                "Failed to find a source ResourcePathId for ResourceId '{}'",
+                                resource_id
+                            ));
+                        }
+                    } else {
+                        return Err(format!("Failed to parse id: '{}'", id));
+                    }
+                };
 
-        let project = Project::open(proj_file).map_err(|e| e.to_string())?;
-
-        match cmd_args.subcommand() {
-            ("list", _) => {
-                for id in project.resource_list() {
-                    let name = project.resource_name(id).map_err(|e| e.to_string())?;
-                    println!("{} = {}", name, id);
-                }
-            }
-            ("name", Some(cmd_args)) => {
-                let id = cmd_args.value_of("id").unwrap();
-                let id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
-                if let Ok(name) = project.resource_name(id) {
-                    println!("{} = {}", name, id);
-                } else {
-                    println!("None");
-                }
-            }
-            ("id", Some(cmd_args)) => {
-                let name = cmd_args.value_of("name").unwrap();
-                let name = ResourcePathName::from(name);
-                if let Ok(id) = project.find_resource(&name) {
-                    println!("{} = {}", name, id);
-                } else {
-                    println!("None");
-                }
-            }
-            _ => {
-                println!("{}", cmd_args.usage());
+                let pretty = pretty_name_from_pathid(&rid, &project, &config);
+                println!("Explained: \t{}", pretty);
+                println!("ResourcePathId: {}", rid);
+            } else {
+                return Err(
+                    "Configuration not found. Run 'data-scrape configure' first.".to_string(),
+                );
             }
         }
-    } else if let ("asset", Some(cmd_args)) = matches.subcommand() {
-        if let Some(path) = cmd_args.value_of("path") {
-            let path = Path::new(path);
+        Commands::Source { path, command } => {
+            let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
+            let project = Project::open(proj_file).map_err(|e| e.to_string())?;
+            match command {
+                SourceCommands::List => {
+                    for id in project.resource_list() {
+                        let name = project.resource_name(id).map_err(|e| e.to_string())?;
+                        println!("{} = {}", name, id);
+                    }
+                }
+                SourceCommands::Name { id } => {
+                    let id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
+                    if let Ok(name) = project.resource_name(id) {
+                        println!("{} = {}", name, id);
+                    } else {
+                        println!("None");
+                    }
+                }
+                SourceCommands::Id { name } => {
+                    let name = ResourcePathName::from(name);
+                    if let Ok(id) = project.find_resource(&name) {
+                        println!("{} = {}", name, id);
+                    } else {
+                        println!("None");
+                    }
+                }
+            }
+        }
+        Commands::Asset { path } => {
             if path.is_file() {
                 parse_asset_file(path, &config);
             } else if path.is_dir() {
@@ -445,107 +465,78 @@ fn main() -> Result<(), String> {
                     }
                 }
             }
-        } else {
-            println!("{}", cmd_args.usage());
         }
-    } else if let ("explain", Some(cmd_args)) = matches.subcommand() {
-        if let Some(config) = config {
-            let (build, project) = config.open()?;
-            let text_id = cmd_args.value_of("id").unwrap();
-
-            let rid = {
-                if let Ok(rid) = ResourcePathId::from_str(text_id) {
-                    rid
-                } else if let Ok(resource_id) = text_id.parse() {
-                    if let Some(rid) = build.lookup_pathid(resource_id) {
-                        rid
+        Commands::Graph { id } => {
+            if let Some(config) = config {
+                let (build, project) = config.open()?;
+                let rid = {
+                    if let Ok(resource_id) = id.parse() {
+                        build
+                            .lookup_pathid(resource_id)
+                            .ok_or(format!("ResourceId '{}' not found", resource_id))?
                     } else {
-                        return Err(format!(
-                            "Failed to find a source ResourcePathId for ResourceId '{}'",
-                            resource_id
-                        ));
+                        ResourcePathId::from_str(&id)
+                            .map_err(|_e| format!("Invalid ResourcePathId '{}'", id))?
                     }
-                } else {
-                    return Err(format!("Failed to parse id: '{}'", text_id));
-                }
-            };
-
-            let pretty = pretty_name_from_pathid(&rid, &project, &config);
-            println!("Explained: \t{}", pretty);
-            println!("ResourcePathId: {}", rid);
-        } else {
-            return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
+                };
+                let output = build
+                    .print_build_graph(rid, |rid| pretty_name_from_pathid(rid, &project, &config));
+                println!("{}", output);
+            } else {
+                return Err(
+                    "Configuration not found. Run 'data-scrape configure' first.".to_string(),
+                );
+            }
         }
-    } else if let ("graph", Some(cmd_args)) = matches.subcommand() {
-        let text_id = cmd_args.value_of("id").unwrap();
-        if let Some(config) = config {
-            let (build, project) = config.open()?;
-            let rid = {
-                if let Ok(resource_id) = text_id.parse() {
-                    build
-                        .lookup_pathid(resource_id)
-                        .ok_or(format!("ResourceId '{}' not found", resource_id))?
-                } else {
-                    ResourcePathId::from_str(text_id)
-                        .map_err(|_e| format!("Invalid ResourcePathId '{}'", text_id))?
-                }
-            };
-            let output =
-                build.print_build_graph(rid, |rid| pretty_name_from_pathid(rid, &project, &config));
-            println!("{}", output);
-        } else {
-            return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
-        }
-    } else if let ("configure", Some(cmd_args)) = matches.subcommand() {
-        let config_path = Config::default_path();
-        let workspace_dir = Config::workspace_dir();
+        Commands::Configure {
+            code_path,
+            project,
+            build_index,
+        } => {
+            let config_path = Config::default_path();
+            let workspace_dir = Config::workspace_dir();
 
-        let code_paths = cmd_args.values_of("code_path").map_or_else(
-            || {
+            let code_paths = code_path.unwrap_or_else(|| {
                 vec![
                     workspace_dir.join("lib/"),
                     workspace_dir.join("client/"),
                     workspace_dir.join("test/"),
                 ]
-            },
-            |args| args.into_iter().map(PathBuf::from).collect::<Vec<_>>(),
-        );
+            });
 
-        let buildindex = cmd_args
-            .value_of("buildindex")
-            .map_or(workspace_dir.join("test/sample-data/temp/"), PathBuf::from);
+            let build_index =
+                build_index.unwrap_or_else(|| workspace_dir.join("test/sample-data/temp/"));
 
-        let project = cmd_args.value_of("project").map_or(
-            workspace_dir.join("test/sample-data/project.index"),
-            PathBuf::from,
-        );
+            let project =
+                project.unwrap_or_else(|| workspace_dir.join("test/sample-data/project.index"));
 
-        let type_map = {
-            let mut t = BTreeMap::<ResourceType, String>::new();
-            for dir in &code_paths {
-                for (name, ty) in ResourceTypeIterator::new(find_files(&dir, &["rs"])) {
-                    t.insert(ty, name);
+            let type_map = {
+                let mut t = BTreeMap::<ResourceType, String>::new();
+                for dir in &code_paths {
+                    for (name, ty) in ResourceTypeIterator::new(find_files(&dir, &["rs"])) {
+                        t.insert(ty, name);
+                    }
                 }
-            }
-            t
-        };
+                t
+            };
 
-        let config = Config {
-            code_paths,
-            project,
-            buildindex,
-            type_map,
-        };
+            let config = Config {
+                code_paths,
+                project,
+                buildindex: build_index,
+                type_map,
+            };
 
-        config
-            .write(&config_path)
-            .map_err(|e| format!("failed with: '{}'", e))?;
+            config
+                .write(&config_path)
+                .map_err(|e| format!("failed with: '{}'", e))?;
 
-        println!("Configuration '{:?}' created!", config_path);
-        println!("\tCode Paths: {:?}.", config.code_paths);
-        println!("\tProject: {:?}.", config.project);
-        println!("\tBuild Index: {:?}.", config.buildindex);
-        println!("\tResource Type Count: {}.", config.type_map.len());
+            println!("Configuration '{:?}' created!", config_path);
+            println!("\tCode Paths: {:?}.", config.code_paths);
+            println!("\tProject: {:?}.", config.project);
+            println!("\tBuild Index: {:?}.", config.buildindex);
+            println!("\tResource Type Count: {}.", config.type_map.len());
+        }
     }
     Ok(())
 }

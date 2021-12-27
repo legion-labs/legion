@@ -57,7 +57,7 @@
 
 use std::{path::PathBuf, str::FromStr};
 
-use clap::{AppSettings, Arg, SubCommand};
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
@@ -66,194 +66,151 @@ use lgn_data_compiler::{
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 
-const ARG_NAME_RESOURCE_PATH: &str = "resource";
-const ARG_NAME_BUILDINDEX: &str = "buildindex";
-const ARG_NAME_PROJECT: &str = "project";
-const ARG_NAME_CAS: &str = "cas";
-const ARG_NAME_MANIFEST: &str = "manifest";
-const ARG_RUNTIME_FLAG: &str = "rt";
-const ARG_NAME_TARGET: &str = "target";
-const ARG_NAME_PLATFORM: &str = "platform";
-const ARG_NAME_LOCALE: &str = "locale";
+#[derive(Parser, Debug)]
+#[clap(name = "Data Build")]
+#[clap(about = "Data Build CLI", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Create build index at a specified location
+    #[clap(name = "create")]
+    Create {
+        /// New build index path.
+        build_index: PathBuf,
+        /// Source project path.
+        #[clap(long)]
+        project: PathBuf,
+    },
+    /// Compile input resource
+    #[clap(name = "compile")]
+    Compile {
+        /// Path in build graph to compile.
+        resource: String,
+        /// BBuild index file.
+        #[clap(long = "buildindex")]
+        build_index: PathBuf,
+        /// Compiled Asset Store addresses where assets will be output.
+        #[clap(long)]
+        cas: String,
+        /// Manifest file path.
+        #[clap(long)]
+        manifest: Option<PathBuf>,
+        /// Accept ResourceId as the compilation input and output a runtime manifest.
+        #[clap(long = "rt")]
+        runtime_flag: bool,
+        /// Build target (Game, Server, etc).
+        #[clap(long)]
+        target: String,
+        /// Build platform (Windows, Unix, etc).
+        #[clap(long)]
+        platform: String,
+        /// Build localization (en, fr, etc).
+        #[clap(long)]
+        locale: String,
+    },
+}
 
 #[allow(clippy::too_many_lines)]
 fn main() -> Result<(), String> {
-    let matches = clap::App::new("Data Build")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Data Build CLI")
-        .subcommand(
-            SubCommand::with_name("create")
-                .about("Create build index at a specified location")
-                .arg(
-                    Arg::with_name(ARG_NAME_BUILDINDEX)
-                        .required(true)
-                        .help("New build index path."),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_PROJECT)
-                        .required(true)
-                        .takes_value(true)
-                        .long(ARG_NAME_PROJECT)
-                        .help("Source project path."),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("compile")
-                .about("Compile input resource.")
-                .arg(
-                    Arg::with_name(ARG_NAME_RESOURCE_PATH)
-                        .required(true)
-                        .help("Path in build graph to compile."),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_BUILDINDEX)
-                        .takes_value(true)
-                        .required(true)
-                        .long(ARG_NAME_BUILDINDEX)
-                        .help("Build index file."),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_CAS)
-                        .takes_value(true)
-                        .long(ARG_NAME_CAS)
-                        .required(true)
-                        .multiple(true)
-                        .help("Compiled Asset Store addresses where assets will be output."),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_MANIFEST)
-                        .takes_value(true)
-                        .long(ARG_NAME_MANIFEST)
-                        .help("Manifest file path."),
-                )
-                .arg(
-                    Arg::with_name(ARG_RUNTIME_FLAG)
-                        .long(ARG_RUNTIME_FLAG)
-                        .help(
-                        "Accept ResourceId as the compilation input and output a runtime manifest.",
-                    ),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_TARGET)
-                        .required(true)
-                        .takes_value(true)
-                        .long(ARG_NAME_TARGET)
-                        .help("Build target (Game, Server, etc)."),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_PLATFORM)
-                        .required(true)
-                        .takes_value(true)
-                        .long(ARG_NAME_PLATFORM)
-                        .help("Build platform (Windows, Unix, etc)"),
-                )
-                .arg(
-                    Arg::with_name(ARG_NAME_LOCALE)
-                        .required(true)
-                        .takes_value(true)
-                        .long(ARG_NAME_LOCALE)
-                        .help("Build localization (en, fr, etc)"),
-                ),
-        )
-        .get_matches();
+    let args = Cli::parse();
 
-    if let ("create", Some(cmd_args)) = matches.subcommand() {
-        let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
-        let project_path = PathBuf::from(cmd_args.value_of(ARG_NAME_PROJECT).unwrap());
+    match args.command {
+        Commands::Create {
+            build_index,
+            project,
+        } => {
+            let mut build = DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
+                .content_store(&ContentStoreAddr::from("."))
+                .create(project)
+                .map_err(|e| format!("failed creating build index {}", e))?;
 
-        let mut build = DataBuildOptions::new(&buildindex_path, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from("."))
-            .create(project_path)
-            .map_err(|e| format!("failed creating build index {}", e))?;
-
-        if let Err(e) = build.source_pull() {
-            eprintln!("Source Pull failed with '{}'", e);
-            let _res = std::fs::remove_file(buildindex_path);
-        }
-    } else if let ("compile", Some(cmd_args)) = matches.subcommand() {
-        let derived = cmd_args.value_of(ARG_NAME_RESOURCE_PATH).unwrap();
-        let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
-        let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
-        let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
-        let target =
-            Target::from_str(target).map_err(|_e| format!("Invalid Target '{}'", target))?;
-        let platform = Platform::from_str(platform)
-            .map_err(|_e| format!("Invalid Platform '{}'", platform))?;
-        let locale = Locale::new(locale);
-        let content_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
-        let buildindex_dir = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
-        let runtime_flag = cmd_args.is_present(ARG_RUNTIME_FLAG);
-
-        let manifest_file = {
-            if let Some(manifest) = cmd_args.value_of(ARG_NAME_MANIFEST) {
-                let manifest_file = PathBuf::from_str(manifest)
-                    .map_err(|_e| format!("Invalid Manifest name '{}'", manifest))?;
-                Some(manifest_file)
-            } else {
-                None
+            if let Err(e) = build.source_pull() {
+                eprintln!("Source Pull failed with '{}'", e);
+                let _res = std::fs::remove_file(build_index);
             }
-        };
+        }
+        Commands::Compile {
+            resource,
+            build_index,
+            cas,
+            manifest,
+            runtime_flag,
+            target,
+            platform,
+            locale,
+        } => {
+            let target =
+                Target::from_str(&target).map_err(|_e| format!("Invalid Target '{}'", target))?;
+            let platform = Platform::from_str(&platform)
+                .map_err(|_e| format!("Invalid Platform '{}'", platform))?;
+            let locale = Locale::new(&locale);
+            let content_store_path = ContentStoreAddr::from(cas.as_str());
 
-        let compilers = {
-            if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
-                if exe_dir.pop() && exe_dir.is_dir() {
-                    CompilerRegistryOptions::from_dir(&exe_dir)
+            let compilers = {
+                if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
+                    if exe_dir.pop() && exe_dir.is_dir() {
+                        CompilerRegistryOptions::from_dir(&exe_dir)
+                    } else {
+                        CompilerRegistryOptions::default()
+                    }
                 } else {
                     CompilerRegistryOptions::default()
                 }
-            } else {
-                CompilerRegistryOptions::default()
-            }
-        };
+            };
 
-        let mut build = DataBuildOptions::new(buildindex_dir, compilers)
-            .content_store(&content_store_path)
-            .open()
-            .map_err(|e| format!("Failed to open build index: '{}'", e))?;
+            let mut build = DataBuildOptions::new(build_index, compilers)
+                .content_store(&content_store_path)
+                .open()
+                .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
-        let derived = {
+            let derived = {
+                if runtime_flag {
+                    let id = resource
+                        .parse::<ResourceTypeAndId>()
+                        .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", resource))?;
+                    build.lookup_pathid(id).ok_or(format!(
+                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
+                        id
+                    ))?
+                } else {
+                    ResourcePathId::from_str(&resource)
+                        .map_err(|_e| format!("Invalid Resource (ResourcePathId) '{}'", resource))?
+                }
+            };
+
+            //
+            // for now, each time we build we make sure we have a fresh input data indexed
+            // by doing a source_pull. this should most likely be executed only on demand.
+            //
+            build
+                .source_pull()
+                .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
+
+            let output = build
+                .compile(
+                    derived,
+                    manifest,
+                    &CompilationEnv {
+                        target,
+                        platform,
+                        locale,
+                    },
+                )
+                .map_err(|e| format!("Compilation Failed: '{}'", e))?;
+
             if runtime_flag {
-                let id = derived
-                    .parse::<ResourceTypeAndId>()
-                    .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", derived))?;
-                build.lookup_pathid(id).ok_or(format!(
-                    "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                    id
-                ))?
+                let output = output.into_rt_manifest(|_| true);
+                let output = serde_json::to_string(&output).unwrap();
+                println!("{}", output);
             } else {
-                ResourcePathId::from_str(derived)
-                    .map_err(|_e| format!("Invalid Resource (ResourcePathId) '{}'", derived))?
+                let output = serde_json::to_string(&output).unwrap();
+                println!("{}", output);
             }
-        };
-
-        //
-        // for now, each time we build we make sure we have a fresh input data indexed
-        // by doing a source_pull. this should most likely be executed only on demand.
-        //
-        build
-            .source_pull()
-            .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
-
-        let output = build
-            .compile(
-                derived,
-                manifest_file,
-                &CompilationEnv {
-                    target,
-                    platform,
-                    locale,
-                },
-            )
-            .map_err(|e| format!("Compilation Failed: '{}'", e))?;
-
-        if runtime_flag {
-            let output = output.into_rt_manifest(|_| true);
-            let output = serde_json::to_string(&output).unwrap();
-            println!("{}", output);
-        } else {
-            let output = serde_json::to_string(&output).unwrap();
-            println!("{}", output);
         }
     }
     Ok(())
