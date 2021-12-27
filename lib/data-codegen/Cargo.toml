@@ -9,5 +9,5 @@ license = "MIT OR Apache-2.0"
 lgn-utils = { path = "../utils", version = "0.1.0" }
 syn = { version = "1.0", features = ["extra-traits", "full"] }
 quote = "1.0"
-proc-macro2 = "1.0.33"
+proc-macro2 = "1.0.35"
 toml = "0.5.8"
