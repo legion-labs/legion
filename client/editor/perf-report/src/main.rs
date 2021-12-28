@@ -14,7 +14,6 @@ use lgn_analytics::prelude::*;
 #[clap(setting(AppSettings::ArgRequiredElseHelp))]
 struct Cli {
     /// local path to folder containing telemetry.db3
-    #[clap(long)]
     db: String,
 
     #[clap(subcommand)]

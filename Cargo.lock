@@ -4054,7 +4054,7 @@ version = "0.1.0"
 dependencies = [
  "binary-resource",
  "bincode",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-offline",
@@ -8094,7 +8094,7 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap 3.0.0-rc.8",
  "fs_extra",
  "json",
  "lgn-analytics",

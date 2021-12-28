@@ -61,12 +61,12 @@ mod process_metrics;
 mod process_search;
 mod process_thread_events;
 
-use std::path::Path;
+use std::path::PathBuf;
 
-use anyhow::{bail, Result};
-use clap::{App, AppSettings, Arg, SubCommand};
+use anyhow::Result;
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_analytics::alloc_sql_pool;
-use lgn_telemetry::{info, TelemetryThreadGuard};
+use lgn_telemetry::TelemetryThreadGuard;
 use lgn_telemetry_sink::TelemetryGuard;
 use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
@@ -78,119 +78,99 @@ use crate::{
     process_thread_events::{print_chrome_trace, print_process_thread_events},
 };
 
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Telemetry Dump")]
+#[clap(about = "CLI to query a local telemetry data lake", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    /// local path to folder containing telemetry.db3
+    db: PathBuf,
+
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Prints a list of recent processes
+    #[clap(name = "recent-processes")]
+    RecentProcesses,
+    /// Prints a list of recent processes matching the provided string
+    #[clap(name = "find-processes")]
+    FindProcesses {
+        /// executable name filter
+        filter: String,
+    },
+    /// Lists the process and its subprocesses
+    #[clap(name = "process-tree")]
+    ProcessTree {
+        /// process guid
+        process_id: String,
+    },
+    /// Prints the logs of recent processes
+    #[clap(name = "logs-by-process")]
+    LogsByProcess,
+    /// Prints the log streams of the process
+    #[clap(name = "process-log")]
+    ProcessLog {
+        /// process guid
+        process_id: String,
+    },
+    /// Prints the thread streams of the process
+    #[clap(name = "process-thread-events")]
+    ProcessThreadEvents {
+        /// process guid
+        process_id: String,
+    },
+    /// Outputs a file compatible with chrome://tracing/
+    #[clap(name = "print-chrome-trace")]
+    PrintChromeTrace {
+        /// process guid
+        process_id: String,
+    },
+    /// Prints the metrics streams of the process
+    #[clap(name = "process-metrics")]
+    ProcessMetrics {
+        /// process guid
+        process_id: String,
+    },
+}
+
 #[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
-    let matches = App::new("Legion Telemetry Dump")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("CLI to query a local telemetry data lake")
-        .arg(
-            Arg::with_name("db")
-                .required(true)
-                .help("local path to folder containing telemetry.db3"),
-        )
-        .subcommand(
-            SubCommand::with_name("recent-processes").about("prints a list of recent processes"),
-        )
-        .subcommand(
-            SubCommand::with_name("find-processes")
-                .about("prints a list of recent processes matching the provided string")
-                .arg(
-                    Arg::with_name("filter")
-                        .required(true)
-                        .help("executable name filter"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("process-tree")
-                .about("lists the process and its subprocesses")
-                .arg(
-                    Arg::with_name("process-id")
-                        .required(true)
-                        .help("process guid"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("logs-by-process").about("prints the logs of recent processes"),
-        )
-        .subcommand(
-            SubCommand::with_name("process-log")
-                .about("prints the log streams of the process")
-                .arg(
-                    Arg::with_name("process-id")
-                        .required(true)
-                        .help("process guid"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("process-thread-events")
-                .about("prints the thread streams of the process")
-                .arg(
-                    Arg::with_name("process-id")
-                        .required(true)
-                        .help("process guid"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("print-chrome-trace")
-                .about("outputs a file compatible with chrome://tracing/")
-                .arg(
-                    Arg::with_name("process-id")
-                        .required(true)
-                        .help("process guid"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("process-metrics")
-                .about("prints the metrics streams of the process")
-                .arg(
-                    Arg::with_name("process-id")
-                        .required(true)
-                        .help("process guid"),
-                ),
-        )
-        .get_matches();
 
-    let data_path = Path::new(matches.value_of("db").unwrap());
-    let pool = alloc_sql_pool(data_path).await.unwrap();
+    let args = Cli::parse();
+
+    let data_path = args.db;
+    let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
-    match matches.subcommand() {
-        ("recent-processes", Some(_command_match)) => {
+    match args.command {
+        Commands::RecentProcesses => {
             print_recent_processes(&mut connection).await;
         }
-        ("find-processes", Some(command_match)) => {
-            let filter = command_match.value_of("filter").unwrap();
-            print_process_search(&mut connection, filter).await;
+        Commands::FindProcesses { filter } => {
+            print_process_search(&mut connection, &filter).await;
         }
-        ("process-tree", Some(command_match)) => {
-            let process_id = command_match.value_of("process-id").unwrap();
-            print_process_tree(&pool, process_id).await?;
+        Commands::ProcessTree { process_id } => {
+            print_process_tree(&pool, &process_id).await?;
         }
-        ("logs-by-process", Some(_command_match)) => {
-            print_logs_by_process(&mut connection, data_path).await?;
+        Commands::LogsByProcess => {
+            print_logs_by_process(&mut connection, &data_path).await?;
         }
-        ("process-log", Some(command_match)) => {
-            let process_id = command_match.value_of("process-id").unwrap();
-            print_process_log(&mut connection, data_path, process_id).await?;
+        Commands::ProcessLog { process_id } => {
+            print_process_log(&mut connection, &data_path, &process_id).await?;
         }
-        ("process-thread-events", Some(command_match)) => {
-            let process_id = command_match.value_of("process-id").unwrap();
-            print_process_thread_events(&mut connection, data_path, process_id).await?;
+        Commands::ProcessThreadEvents { process_id } => {
+            print_process_thread_events(&mut connection, &data_path, &process_id).await?;
         }
-        ("print-chrome-trace", Some(command_match)) => {
-            let process_id = command_match.value_of("process-id").unwrap();
-            print_chrome_trace(&pool, data_path, process_id).await?;
+        Commands::PrintChromeTrace { process_id } => {
+            print_chrome_trace(&pool, &data_path, &process_id).await?;
         }
-        ("process-metrics", Some(command_match)) => {
-            let process_id = command_match.value_of("process-id").unwrap();
-            print_process_metrics(&mut connection, data_path, process_id).await?;
-        }
-        (command_name, _args) => {
-            info!("unknown subcommand match");
-            bail!("unknown subcommand match: {:?}", &command_name);
+        Commands::ProcessMetrics { process_id } => {
+            print_process_metrics(&mut connection, &data_path, &process_id).await?;
         }
     }
     Ok(())

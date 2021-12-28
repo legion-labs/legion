@@ -199,7 +199,6 @@ pub(crate) const COMMAND_NAME_COMPILE: &str = "compile";
 pub(crate) const COMMAND_ARG_PLATFORM: &str = "platform";
 pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
-pub(crate) const COMMAND_ARG_RESOURCE_PATH: &str = "resource";
 pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
 pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
 pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
@@ -310,14 +309,14 @@ impl CompilerCompileCmd {
         builder.arg(COMMAND_NAME_COMPILE);
         builder.arg(compile_path.to_string());
         if !source_deps.is_empty() {
-            builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
             for res in source_deps {
+                builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
                 builder.arg(res.to_string());
             }
         }
         if !derived_deps.is_empty() {
-            builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
             for res in derived_deps {
+                builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
                 builder.arg(res.to_string());
             }
         }

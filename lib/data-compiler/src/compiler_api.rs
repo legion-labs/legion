@@ -71,7 +71,7 @@ use std::{
     str::FromStr,
 };
 
-use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::AssetRegistryOptions;
@@ -81,9 +81,8 @@ use crate::{
     compiler_cmd::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_RESOURCE_PATH,
-        COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH,
-        COMMAND_NAME_INFO,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
+        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
@@ -327,9 +326,9 @@ impl CompilerDescriptor {
     }
 }
 
-fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
-    match matches.subcommand() {
-        (COMMAND_NAME_INFO, _) => {
+fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
+    match command {
+        Commands::Info => {
             serde_json::to_writer_pretty(
                 stdout(),
                 &CompilerInfoCmdOutput::from_descriptor(descriptor),
@@ -337,15 +336,15 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
         }
-        (COMMAND_NAME_COMPILER_HASH, Some(cmd_args)) => {
-            let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
-            let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
-            let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
-
-            let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
+        Commands::CompilerHash {
+            target,
+            platform,
+            locale,
+        } => {
+            let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
-                Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
-            let locale = Locale::new(locale);
+                Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
+            let locale = Locale::new(&locale);
 
             let env = CompilationEnv {
                 target,
@@ -359,31 +358,31 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
         }
-        (COMMAND_NAME_COMPILE, Some(cmd_args)) => {
-            let derived = cmd_args.value_of(COMMAND_ARG_RESOURCE_PATH).unwrap();
-            let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
-            let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
-            let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
-
-            let derived =
-                ResourcePathId::from_str(derived).map_err(|_e| CompilerError::InvalidResourceId)?;
-            let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
+        Commands::Compile {
+            resource: resource_path,
+            src_deps,
+            der_deps,
+            resource_dir,
+            compiled_asset_store,
+            target,
+            platform,
+            locale,
+        } => {
+            let derived = ResourcePathId::from_str(&resource_path)
+                .map_err(|_e| CompilerError::InvalidResourceId)?;
+            let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
-                Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
-            let locale = Locale::new(locale);
-            let dependencies: Vec<ResourcePathId> = cmd_args
-                .values_of(COMMAND_ARG_SRC_DEPS)
-                .unwrap_or_default()
+                Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
+            let locale = Locale::new(&locale);
+            let dependencies: Vec<ResourcePathId> = src_deps
+                .iter()
                 .filter_map(|s| ResourcePathId::from_str(s).ok())
                 .collect();
-            let derived_deps: Vec<CompiledResource> = cmd_args
-                .values_of(COMMAND_ARG_DER_DEPS)
-                .unwrap_or_default()
+            let derived_deps: Vec<CompiledResource> = der_deps
+                .iter()
                 .filter_map(|s| CompiledResource::from_str(s).ok())
                 .collect();
-            let cas_dir = cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap();
-            let cas_addr = ContentStoreAddr::from(cas_dir);
-            let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
+            let cas_addr = ContentStoreAddr::from(compiled_asset_store.as_str());
 
             let env = CompilationEnv {
                 target,
@@ -408,8 +407,63 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
         }
-        _ => Err(CompilerError::UnknownCommand),
     }
+}
+
+#[derive(Parser, Debug)]
+#[clap(name = "TODO: compiler name")]
+#[clap(about = "CLI to query a local telemetry data lake", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Information about the compiler.
+    #[clap(name = COMMAND_NAME_INFO)]
+    Info,
+    /// Compiler Hash list based on provided build context information.
+    #[clap(name = COMMAND_NAME_COMPILER_HASH)]
+    CompilerHash {
+        /// Build target (Game, Server, etc).
+        #[clap(long)]
+        target: String,
+        /// Build platform (Windows, Unix, etc).
+        #[clap(long)]
+        platform: String,
+        /// Build localization (en, fr, etc).
+        #[clap(long)]
+        locale: String,
+    },
+    /// Compile given resource.
+    #[clap(name = COMMAND_NAME_COMPILE)]
+    Compile {
+        /// Resource to compile.
+        resource: String,
+        /// Source dependencies.
+        #[clap(long = COMMAND_ARG_SRC_DEPS)]
+        src_deps: Vec<String>,
+        /// Derived dependencies.
+        #[clap(long = COMMAND_ARG_DER_DEPS)]
+        der_deps: Vec<String>,
+        /// Resource directory.
+        #[clap(long = COMMAND_ARG_RESOURCE_DIR)]
+        resource_dir: PathBuf,
+        /// Compiled asset store.
+        #[clap(long = COMMAND_ARG_COMPILED_ASSET_STORE)]
+        compiled_asset_store: String,
+        /// Build target (Game, Server, etc).
+        #[clap(long = COMMAND_ARG_TARGET)]
+        target: String,
+        /// Build platform (Windows, Unix, etc).
+        #[clap(long = COMMAND_ARG_PLATFORM)]
+        platform: String,
+        /// Build localization (en, fr, etc).
+        #[clap(long = COMMAND_ARG_LOCALE)]
+        locale: String,
+    },
 }
 
 /// The main function of every data compiler.
@@ -425,100 +479,11 @@ pub fn compiler_main(
     args: env::Args,
     descriptor: &CompilerDescriptor,
 ) -> Result<(), CompilerError> {
-    let matches = clap::App::new("todo: compiler name")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(descriptor.code_version)
-        .about("todo: about")
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_INFO).about("Information about the compiler."),
-        )
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_COMPILER_HASH)
-                .about("Compiler Hash list based on provided build context information.")
-                .arg(
-                    Arg::with_name(COMMAND_ARG_TARGET)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_TARGET)
-                        .help("Build target (Game, Server, etc)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_PLATFORM)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_PLATFORM)
-                        .help("Build platform (Windows, Unix, etc)"),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_LOCALE)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_LOCALE)
-                        .help("Build localization (en, fr, etc)"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_COMPILE)
-                .about("Compile given resource.")
-                .arg(
-                    Arg::with_name(COMMAND_ARG_RESOURCE_PATH)
-                        .required(true)
-                        .help("Path in build graph to compile."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_SRC_DEPS)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_SRC_DEPS)
-                        .multiple(true)
-                        .help("Source dependencies to include."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_DER_DEPS)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_DER_DEPS)
-                        .multiple(true)
-                        .help("List of derived dependencies (id, hash, size)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_RESOURCE_DIR)
-                        .takes_value(true)
-                        .required(true)
-                        .long(COMMAND_ARG_RESOURCE_DIR)
-                        .help("Root resource directory."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_COMPILED_ASSET_STORE)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_COMPILED_ASSET_STORE)
-                        .required(true)
-                        .multiple(true)
-                        .help("Content Store addresses where resources will be output."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_TARGET)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_TARGET)
-                        .help("Build target (Game, Server, etc)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_PLATFORM)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_PLATFORM)
-                        .help("Build platform (Windows, Unix, etc)"),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_LOCALE)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_LOCALE)
-                        .help("Build localization (en, fr, etc)"),
-                ),
-        )
-        .get_matches_from(args);
-
-    let result = run(&matches, descriptor);
+    let args = Cli::try_parse_from(args).map_err(|err| {
+        eprintln!("{}", err);
+        CompilerError::InvalidArgs
+    })?;
+    let result = run(args.command, descriptor);
     if let Err(error) = &result {
         eprintln!("Compiler Failed With: '{:?}'", error);
     }
