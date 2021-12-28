@@ -24,7 +24,7 @@ serde = { version = "1.0", features = ["serde_derive"] }
 crossbeam-channel = "0.5"
 
 # vulkan backend
-ash = { version = ">= 0.33", optional = true }
+ash = { version = ">= 0.33", features = ["linked"], optional = true }
 vk-mem = { git = "https://github.com/legion-labs/vk-mem-rs", branch = "ash-fixes", optional = true }
 
 [package.metadata.docs.rs]

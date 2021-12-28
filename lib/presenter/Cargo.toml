@@ -17,7 +17,7 @@ instant = "0.1"
 anyhow = "1.0"
 
 # vulkan backend
-ash = { version = ">= 0.33", optional = true }
+ash = { version = ">= 0.33", features = ["linked"], optional = true }
 
 [features]
 default = []
