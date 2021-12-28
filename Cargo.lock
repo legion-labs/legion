@@ -181,7 +181,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.0-rc.8",
+ "clap",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -1141,21 +1141,6 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
-dependencies = [
- "ansi_term",
- "atty",
- "bitflags",
- "strsim 0.8.0",
- "textwrap 0.11.0",
- "unicode-width",
- "vec_map",
-]
-
-[[package]]
-name = "clap"
 version = "3.0.0-rc.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "484f17839417b695a6f4a75c20e49820ba0a1d00aa41ebd8ba0e5dfe0fbc3b74"
@@ -1168,7 +1153,7 @@ dependencies = [
  "os_str_bytes",
  "strsim 0.10.0",
  "termcolor",
- "textwrap 0.14.2",
+ "textwrap",
 ]
 
 [[package]]
@@ -2104,7 +2089,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "clap 3.0.0-rc.8",
+ "clap",
  "directories",
  "json",
  "lgn-analytics",
@@ -2135,7 +2120,7 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.0-rc.8",
+ "clap",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -4020,7 +4005,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.0.0-rc.8",
+ "clap",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -4054,7 +4039,7 @@ version = "0.1.0"
 dependencies = [
  "binary-resource",
  "bincode",
- "clap 3.0.0-rc.8",
+ "clap",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-offline",
@@ -4245,7 +4230,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "clap 3.0.0-rc.8",
+ "clap",
  "fxhash",
  "heck 0.4.0",
  "lgn-graphics-api",
@@ -4303,7 +4288,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 2.34.0",
+ "clap",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
@@ -4374,7 +4359,7 @@ dependencies = [
  "atty",
  "camino",
  "cargo_toml",
- "clap 3.0.0-rc.8",
+ "clap",
  "determinator",
  "guppy",
  "hex",
@@ -4943,7 +4928,7 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.0-rc.8",
+ "clap",
  "lgn-source-control",
  "lgn-telemetry",
  "lgn-telemetry-sink",
@@ -6783,7 +6768,7 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.0-rc.8",
+ "clap",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -6800,7 +6785,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.0.0-rc.8",
+ "clap",
  "instant",
  "lgn-app",
  "lgn-asset-registry",
@@ -6977,7 +6962,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 2.34.0",
+ "clap",
  "generic-data",
  "lgn-content-store",
  "lgn-data-build",
@@ -7684,12 +7669,6 @@ dependencies = [
 
 [[package]]
 name = "strsim"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
-name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
@@ -8094,7 +8073,7 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.0-rc.8",
+ "clap",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -8178,15 +8157,6 @@ dependencies = [
  "lgn-data-runtime",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -8733,12 +8703,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8895849a949e7845e06bd6dc1aa51731a103c42707010a5b591c0038fb73385b"
 
 [[package]]
-name = "unicode-width"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
-
-[[package]]
 name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8814,12 +8778,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
-
-[[package]]
 name = "version-compare"
 version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8852,7 +8810,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap",
  "lgn-cli",
  "lgn-telemetry",
  "lgn-telemetry-sink",
