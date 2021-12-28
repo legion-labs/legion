@@ -8,6 +8,7 @@ members = [
     "test/*",
     "compiler/*",
     "build/monorepo",
+    "build/workspace-hack",
 ]
 exclude = []
 

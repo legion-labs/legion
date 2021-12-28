@@ -72,6 +72,7 @@ mod error;
 mod fix;
 mod fmt;
 mod git;
+mod hakari;
 mod installer;
 mod lint;
 mod term;
@@ -139,6 +140,9 @@ enum Commands {
     /// against the point at which it branched off of origin/master.
     #[clap(name = "changed-since")]
     ChangedSince(changed_since::Args),
+    /// Generate the workspace hack dependencies
+    #[clap(name = "hakari")]
+    Hakari,
     /// Run tools installation
     #[clap(name = "tools")]
     Tools(tools::Args),
@@ -165,6 +169,7 @@ fn main() -> Result<()> {
         Commands::Test(args) => test::run(args, &ctx)?,
 
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,
+        Commands::Hakari => hakari::run(&ctx)?,
         Commands::Lint(args) => lint::run(&args, &ctx)?,
         Commands::Tools(args) => tools::run(&args, &ctx)?,
     };

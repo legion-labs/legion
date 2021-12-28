@@ -5,7 +5,7 @@ use crate::context::Context;
 use crate::{action_step, Error, Result};
 
 pub fn run(ctx: &Context) -> Result<()> {
-    action_step!("Monorepo", "Running rules determitation");
+    action_step!("Monorepo", "Running rules determination");
     let git_cli = ctx.git_cli().map_err(|err| {
         err.with_explanation("changed-since` must be run within a project cloned from a git repo.")
     })?;
