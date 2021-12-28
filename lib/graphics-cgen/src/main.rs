@@ -55,10 +55,29 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 
+use std::path::PathBuf;
+
 use anyhow::Result;
+use clap::{AppSettings, Parser};
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
 use lgn_telemetry::LevelFilter;
 use lgn_telemetry_sink::TelemetryGuard;
+
+#[derive(Parser, Debug)]
+#[clap(name = "graphics-cgen")]
+#[clap(about = "Graphics code generator", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    /// Verbose mode
+    #[clap(long, short)]
+    verbose: bool,
+    /// Sets the input file to use
+    #[clap(long, short)]
+    input: PathBuf,
+    /// Sets the output folder for code generation
+    #[clap(long, short)]
+    output: PathBuf,
+}
 
 fn main() -> Result<()> {
     let res = main_internal();
@@ -81,35 +100,9 @@ fn main() -> Result<()> {
 
 fn main_internal() -> Result<CGenBuildResult> {
     // read command line arguments
-    let matches = clap::App::new("graphics-cgen")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("Legion Labs")
-        .about("Graphics code generator")
-        .arg(
-            clap::Arg::with_name("verbose")
-                .short("v")
-                .long("verbose")
-                .help("Verbose mode"),
-        )
-        .arg(
-            clap::Arg::with_name("input")
-                .help("Sets the input file to use")
-                .short("i")
-                .long("input")
-                .required(true)
-                .takes_value(true),
-        )
-        .arg(
-            clap::Arg::with_name("outdir")
-                .help("Sets the output folder for code generation")
-                .short("o")
-                .required(true)
-                .takes_value(true),
-        )
-        .get_matches();
+    let args = Cli::parse();
 
-    // initialize logger
-    let log_level = if matches.is_present("verbose") {
+    let log_level = if args.verbose {
         LevelFilter::Trace
     } else {
         LevelFilter::Warn
@@ -118,11 +111,9 @@ fn main_internal() -> Result<CGenBuildResult> {
     let _telemety_guard = TelemetryGuard::new().unwrap().with_log_level(log_level);
 
     // initialize context
-    let root_file = matches.value_of("input").unwrap();
-    let outdir = matches.value_of("outdir").unwrap();
     let mut ctx_builder = CGenContextBuilder::new();
-    ctx_builder.set_root_file(&root_file)?;
-    ctx_builder.set_outdir(&outdir)?;
+    ctx_builder.set_root_file(&args.input)?;
+    ctx_builder.set_outdir(&args.output)?;
 
     // run the generation
     run(&ctx_builder.build())

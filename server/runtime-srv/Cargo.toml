@@ -27,7 +27,7 @@ lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 
 # other
-clap = "2.33"
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [features]

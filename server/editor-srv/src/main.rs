@@ -3,7 +3,8 @@
 
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use clap::Arg;
+use clap::Parser;
+
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
@@ -24,80 +25,49 @@ mod plugin;
 
 use plugin::EditorPlugin;
 
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Labs editor server")]
+#[clap(about = "Editor server.", version, author)]
+struct Args {
+    /// The address to listen on
+    #[clap(long)]
+    addr: Option<String>,
+    /// Path to folder containing the project index
+    #[clap(long)]
+    project: Option<String>,
+    /// Path to folder containing the content storage files
+    #[clap(long)]
+    cas: Option<String>,
+    /// Path to the game manifest
+    #[clap(long)]
+    manifest: Option<String>,
+    /// Path to the build index directory
+    #[clap(long = "buildindex")]
+    build_index: Option<String>,
+    #[clap(long)]
+    egui: bool,
+}
+
 fn main() {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     trace_scope!();
 
-    const ARG_NAME_ADDR: &str = "addr";
-    const ARG_NAME_PROJECT: &str = "project";
-    const ARG_NAME_CAS: &str = "cas";
-    const ARG_NAME_MANIFEST: &str = "manifest";
-    const ARG_NAME_BUILDINDEX: &str = "buildindex";
-    const ARG_NAME_DATABUILD_CLI: &str = "databuild";
-    const ARG_NAME_EGUI: &str = "egui";
-
-    let args = clap::App::new("Legion Labs editor server")
-        .author(clap::crate_authors!())
-        .version(clap::crate_version!())
-        .about("Editor server.")
-        .arg(
-            Arg::with_name(ARG_NAME_ADDR)
-                .long(ARG_NAME_ADDR)
-                .takes_value(true)
-                .help("The address to listen on"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_PROJECT)
-                .long(ARG_NAME_PROJECT)
-                .takes_value(true)
-                .help("Path to folder containing the project index"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_CAS)
-                .long(ARG_NAME_CAS)
-                .takes_value(true)
-                .help("Path to folder containing the content storage files"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_MANIFEST)
-                .long(ARG_NAME_MANIFEST)
-                .takes_value(true)
-                .help("Path to the game manifest"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_BUILDINDEX)
-                .long(ARG_NAME_BUILDINDEX)
-                .takes_value(true)
-                .help("Path to the build index directory"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_DATABUILD_CLI)
-                .long(ARG_NAME_DATABUILD_CLI)
-                .takes_value(true)
-                .help("Path to data build command line interface"),
-        )
-        .arg(
-            Arg::with_name(ARG_NAME_EGUI)
-                .long(ARG_NAME_EGUI)
-                .takes_value(false)
-                .help("If supplied, starts with egui enabled"),
-        )
-        .get_matches();
+    let args = Args::parse();
 
     let settings = Config::new();
 
     let server_addr = {
         let url = args
-            .value_of(ARG_NAME_ADDR)
-            .unwrap_or_else(|| settings.get_or("editor_srv.server_addr", "[::1]:50051"));
+            .addr
+            .unwrap_or_else(|| settings.get_or("editor_srv.server_addr", "[::1]:50051".to_owned()));
         url.parse::<SocketAddr>()
             .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
     };
 
     let project_folder = {
-        if let Some(params) = args.value_of(ARG_NAME_PROJECT) {
+        if let Some(params) = args.project {
             PathBuf::from(params)
         } else {
             settings
@@ -107,10 +77,10 @@ fn main() {
     };
 
     let content_store_path = args
-        .value_of(ARG_NAME_CAS)
+        .cas
         .map_or_else(|| project_folder.join("temp"), PathBuf::from);
 
-    let game_manifest_path = args.value_of(ARG_NAME_MANIFEST).map_or_else(
+    let game_manifest_path = args.manifest.map_or_else(
         || project_folder.join("runtime").join("game.manifest"),
         PathBuf::from,
     );
@@ -135,11 +105,7 @@ fn main() {
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(
-            false,
-            args.is_present(ARG_NAME_EGUI),
-            false,
-        ))
+        .add_plugin(RendererPlugin::new(false, args.egui, false))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())

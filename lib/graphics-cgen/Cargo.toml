@@ -14,7 +14,7 @@ lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 
 anyhow = "1.0"
 bincode = "1.3"
-clap = "2.33"
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
 fxhash = "0.2"
 heck = "0.4"
 proc-macro2 = "1.0"
