@@ -29,6 +29,7 @@ panic = 'abort'
 
 # this is one of the real time-critical sections of the code
 # We want it optimal even even in dev mode
-# Further application will come with this: https://github.com/ralfbiedert/openh264-rust/pull/11
 [profile.dev.package.openh264-sys2]
 opt-level = 3
+debug = true
+debug-assertions = false
