@@ -144,6 +144,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else if old_top.hash == 0 {
+                self.record_scope_desc(hash, scope_name);
                 old_top.hash = hash;
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
@@ -199,8 +200,10 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
         begin_ms: tree.begin_ms,
         end_ms: tree.end_ms,
     };
-    lod.tracks
-        .resize((depth + 1) as usize, SpanTrack { spans: vec![] });
+    if lod.tracks.len() <= depth as usize {
+        lod.tracks.push(SpanTrack { spans: vec![] });
+    }
+    assert!(lod.tracks.len() > depth as usize);
     lod.tracks[depth as usize].spans.push(span);
     for child in &tree.children {
         make_spans_from_tree(child, depth + 1, lod);
