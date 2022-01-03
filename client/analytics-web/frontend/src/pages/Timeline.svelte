@@ -109,8 +109,8 @@
     }
 
     processList.push(process);
-    await fetchStreams(process);
     currentProcess = process;
+    await fetchStreams(process);
     await fetchChildren();
     loadingProgression = { requested: blockList.length, completed: 0 };
     blockList.forEach((block) => fetchBlockSpans(block));
@@ -152,6 +152,18 @@
 
   async function fetchBlocks(streamId: string) {
     const { blocks } = await client.list_stream_blocks({ streamId });
+    if ( !currentProcess?.startTime ){
+      throw new Error("Parent process start time undefined");
+    }
+    const parentStartTime = Date.parse(currentProcess?.startTime);
+    blocks.forEach( block => {
+      let blockStartTime = Date.parse(block.beginTime);
+      let beginMs = blockStartTime - parentStartTime;
+      let blockEndTime = Date.parse(block.endTime);
+      let endMs = blockEndTime - parentStartTime;
+      minMs = Math.min(minMs, beginMs);
+      maxMs = Math.max(maxMs, endMs);
+    } );
     blockList = blockList.concat(blocks);
   }
 
@@ -168,13 +180,12 @@
       blockId: block.blockId,
       process,
       stream: threads[streamId].streamInfo,
+      lodId: 0,
     });
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${block.blockId}`);
     }
     scopes = { ...scopes, ...response.scopes };
-    minMs = Math.min(minMs, response.beginMs);
-    maxMs = Math.max(maxMs, response.endMs);
 
     let thread = threads[streamId];
     thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
