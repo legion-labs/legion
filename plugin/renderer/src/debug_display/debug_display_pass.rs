@@ -1,7 +1,6 @@
 use crate::components::{CameraComponent, RenderSurface};
 use lgn_graphics_api::prelude::*;
 use lgn_math::{Mat4, Vec3};
-use lgn_transform::components::Transform;
 
 use crate::debug_display::{DebugDisplay, DebugPrimitiveType};
 use crate::hl_gfx_api::HLCommandBuffer;
