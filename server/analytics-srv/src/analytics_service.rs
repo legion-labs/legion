@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
+use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
@@ -35,6 +36,7 @@ use tonic::{Request, Response, Status};
 use crate::cache::DiskCache;
 use crate::call_tree::compute_block_call_tree;
 use crate::call_tree::compute_block_spans;
+use crate::call_tree::reduce_lod;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::metrics;
 
@@ -138,20 +140,42 @@ impl AnalyticsService {
             .await
     }
 
+    async fn compute_spans_lod(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
+        lod_id: u32,
+    ) -> Result<BlockSpansReply> {
+        if lod_id == 0 {
+            let tree = self.get_call_tree(process, stream, block_id).await?;
+            return compute_block_spans(tree, block_id);
+        }
+        let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
+        let lod0 = lod0_reply.lod.unwrap();
+        let reduced = reduce_lod(&lod0, lod_id);
+        Ok(BlockSpansReply {
+            scopes: lod0_reply.scopes,
+            lod: Some(reduced),
+            block_id: block_id.to_owned(),
+            begin_ms: lod0_reply.begin_ms,
+            end_ms: lod0_reply.end_ms,
+        })
+    }
+
+    #[async_recursion]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
-        _lod_id: u32,
+        lod_id: u32,
     ) -> Result<BlockSpansReply> {
-        let cache_item_name = format!("spans_{}", block_id);
+        let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
         self.cache
             .get_or_put(&cache_item_name, async {
-                compute_block_spans(
-                    self.get_call_tree(process, stream, block_id).await?,
-                    block_id,
-                )
+                self.compute_spans_lod(process, stream, block_id, lod_id)
+                    .await
             })
             .await
     }

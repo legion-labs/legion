@@ -64,7 +64,10 @@
   let threads: Record<string, Thread> = {};
   let blockSpans: Record<string, BlockSpanData> = {};
   let blockList: Block[] = [];
-  let scopes: Record<number, ScopeDesc> = {};
+  let scopes: Record<number, ScopeDesc> = {0: { name: "",
+                                                filename: "",
+                                                line: 0,
+                                                hash: 0} };
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
@@ -113,6 +116,10 @@
     await fetchStreams(process);
     await fetchChildren();
     loadingProgression = { requested: blockList.length, completed: 0 };
+    fetchPreferedLods();
+  }
+
+  function fetchPreferedLods(){
     blockList.forEach((block) => fetchBlockSpans(block));
   }
 
@@ -150,37 +157,80 @@
     await Promise.all(promises);
   }
 
-  async function fetchBlocks(streamId: string) {
-    const { blocks } = await client.list_stream_blocks({ streamId });
+  function RFC3339ToMs(time: string): number{
     if ( !currentProcess?.startTime ){
       throw new Error("Parent process start time undefined");
     }
     const parentStartTime = Date.parse(currentProcess?.startTime);
+    let parsed = Date.parse(time);
+    return parsed - parentStartTime;
+  }
+
+  async function fetchBlocks(streamId: string) {
+    const { blocks } = await client.list_stream_blocks({ streamId });
     blocks.forEach( block => {
-      let blockStartTime = Date.parse(block.beginTime);
-      let beginMs = blockStartTime - parentStartTime;
-      let blockEndTime = Date.parse(block.endTime);
-      let endMs = blockEndTime - parentStartTime;
+      let beginMs = RFC3339ToMs(block.beginTime);
+      let endMs = RFC3339ToMs(block.endTime);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
     } );
     blockList = blockList.concat(blocks);
   }
 
+  function computePreferedBlockLod(block: Block): number{
+    const beginBlock = RFC3339ToMs(block.beginTime);
+    const endBlock = RFC3339ToMs(block.endTime);
+    return computePreferedLodFromTimeRange( beginBlock, endBlock );
+  }
+
+  function computePreferedLodFromTimeRange(beginMs: number, endMs: number): number{
+    if (!canvas) {
+      throw new Error("Canvas undefined");
+    }
+    const initialPixelSize = (maxMs - minMs) / canvas.width;
+    const vr = getViewRange();
+    if (beginMs > vr[1] || endMs < vr[0]){
+      return getViewLOD(initialPixelSize);
+    }
+    const currentPixelSize = (vr[1] - vr[0]) / canvas.width;
+    return getViewLOD(currentPixelSize);
+  }
+
+  function findBestLod(spanData: BlockSpanData, processOffsetMs: number){
+    const preferedLod = computePreferedLodFromTimeRange(spanData.beginMs + processOffsetMs,
+                                                        spanData.endMs + processOffsetMs);
+    return spanData.lods.reduce( (lhs, rhs) => {
+      if ( Math.abs( lhs.lodId - preferedLod ) < Math.abs( rhs.lodId - preferedLod ) ){
+        return lhs;
+      }
+      else{
+        return rhs;
+      }
+    } );
+  }
+
   async function fetchBlockSpans(block: Block) {
     const streamId = block.streamId;
-
     const process = findStreamProcess(streamId);
-
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
+    }
+
+    const preferedLod = computePreferedBlockLod(block);
+    if (blockSpans.hasOwnProperty(block.blockId)){
+      let spans = blockSpans[block.blockId];
+      if ( spans.lods.hasOwnProperty(preferedLod) ){
+        return;
+      }
+      spans.lods[preferedLod] = {lodId: preferedLod,
+                                 tracks: []}; //hacky way to not request the same lods
     }
 
     const response = await client.block_spans({
       blockId: block.blockId,
       process,
       stream: threads[streamId].streamInfo,
-      lodId: 0,
+      lodId: preferedLod,
     });
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${block.blockId}`);
@@ -298,7 +348,7 @@
 
     thread.block_ids.forEach((block_id) => {
       let blockSpanData = blockSpans[block_id];
-      let lodToRender = blockSpanData.lods[0];
+      let lodToRender = findBestLod(blockSpanData, offsetMs);
       if (
         blockSpanData.beginMs + offsetMs > end ||
         blockSpanData.endMs + offsetMs < begin
@@ -438,6 +488,7 @@
       PanOnMouseMove(event)
     ) {
       currentSelection = selectionState.selectedRange;
+      fetchPreferedLods();
       drawCanvas();
     }
   }
@@ -447,6 +498,7 @@
       throw new Error("Canvas can't be found");
     }
     viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
+    fetchPreferedLods();
     drawCanvas();
   }
 
@@ -477,7 +529,8 @@
     return Math.log(y) / Math.log(x);
   }
 
-  function getViewLOD(pixelSizeNs: number): number {
+  function getViewLOD(pixelSizeMs: number): number {
+    const pixelSizeNs = pixelSizeMs * 1000000;
     return Math.max( 0, Math.floor(LogX(100, pixelSizeNs)));
   }
 
@@ -490,7 +543,7 @@
   let LOD = 0;
   let mergeThreshold = 0;
   $: {
-    LOD = getViewLOD(pixelSize * 1000000);
+    LOD = getViewLOD(pixelSize);
   }
 
   $: {

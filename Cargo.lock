@@ -160,6 +160,7 @@ name = "analytics-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
  "chrono",
  "crc",
  "lgn-analytics",

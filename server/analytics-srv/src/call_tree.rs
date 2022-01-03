@@ -242,3 +242,30 @@ pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<Bloc
         end_ms,
     })
 }
+
+#[allow(clippy::cast_possible_wrap)]
+pub(crate) fn reduce_lod(lod0: &SpanBlockLod, lod_id: u32) -> SpanBlockLod {
+    let merge_threshold = 100.0_f64.powi(lod_id as i32 - 2) / 10.0;
+    let mut tracks = vec![];
+    for track in &lod0.tracks {
+        let mut reduced_spans = vec![];
+        let mut current_acc = track.spans[0].clone();
+        let mut index = 1;
+        while index < track.spans.len() {
+            let span = track.spans[index].clone();
+            if span.end_ms - current_acc.begin_ms > merge_threshold {
+                reduced_spans.push(current_acc);
+                current_acc = span;
+            } else {
+                current_acc.scope_hash = 0;
+                current_acc.end_ms = span.end_ms;
+            }
+            index += 1;
+        }
+        reduced_spans.push(current_acc);
+        tracks.push(SpanTrack {
+            spans: reduced_spans,
+        });
+    }
+    SpanBlockLod { lod_id, tracks }
+}
