@@ -14,7 +14,7 @@ use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     picking::{PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
@@ -362,7 +362,7 @@ impl PickingRenderPass {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
-        camera_transform: &Transform,
+        camera: &CameraComponent,
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
@@ -396,19 +396,9 @@ impl PickingRenderPass {
                 .definition()
                 .descriptor_set_layouts[0];
 
-            let fov_y_radians: f32 = 45.0;
-            let width = render_surface.extents().width() as f32;
-            let height = render_surface.extents().height() as f32;
-            let aspect_ratio: f32 = width / height;
-            let z_near: f32 = 0.01;
-            let z_far: f32 = 100.0;
-            let projection_matrix =
-                Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
-
-            let view_matrix = Mat4::look_at_lh(
-                camera_transform.translation,
-                camera_transform.translation + camera_transform.forward(),
-                Vec3::new(0.0, 1.0, 0.0),
+            let (view_matrix, projection_matrix) = camera.build_view_projection(
+                render_surface.extents().width() as f32,
+                render_surface.extents().height() as f32,
             );
 
             let view_proj_matrix = projection_matrix * view_matrix;

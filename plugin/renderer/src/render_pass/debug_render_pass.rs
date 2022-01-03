@@ -13,7 +13,7 @@ use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     resources::DefaultMeshes,
     RenderContext, Renderer,
@@ -405,7 +405,7 @@ impl DebugRenderPass {
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
-        camera_transform: &Transform,
+        camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer.begin_render_pass(
@@ -428,18 +428,9 @@ impl DebugRenderPass {
             }),
         );
 
-        let fov_y_radians: f32 = 45.0;
-        let width = render_surface.extents().width() as f32;
-        let height = render_surface.extents().height() as f32;
-        let aspect_ratio: f32 = width / height;
-        let z_near: f32 = 0.01;
-        let z_far: f32 = 100.0;
-        let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
-
-        let view_matrix = Mat4::look_at_lh(
-            camera_transform.translation,
-            camera_transform.translation + camera_transform.forward(),
-            Vec3::new(0.0, 1.0, 0.0),
+        let (view_matrix, projection_matrix) = camera.build_view_projection(
+            render_surface.extents().width() as f32,
+            render_surface.extents().height() as f32,
         );
 
         let mut constant_data: [f32; 53] = [0.0; 53];

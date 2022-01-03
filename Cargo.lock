@@ -2092,6 +2092,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dolly"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc90faadd2147490aedcee30f3a4187165ad282ae62a949113edb2713873e94c"
+dependencies = [
+ "glam",
+]
+
+[[package]]
 name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4596,6 +4605,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bumpalo",
+ "dolly",
  "egui",
  "epaint",
  "lgn-app",

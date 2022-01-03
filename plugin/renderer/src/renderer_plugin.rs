@@ -57,11 +57,11 @@ impl Plugin for RendererPlugin {
         // Update
         if self.runs_dynamic_systems {
             app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
-            app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+            //app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(camera_control.system());
+        app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
             SystemSet::new()
@@ -294,9 +294,9 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0].0
             } else {
-                &default_camera
+                todo!() //&default_camera
             },
         );
 
@@ -308,9 +308,9 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                &q_cameras[0].0
             } else {
-                &default_camera
+                todo!() //&default_camera
             },
             q_lights.as_slice(),
             &light_settings,
@@ -324,9 +324,9 @@ fn render_update(
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0].0
             } else {
-                &default_camera
+                todo!() //&default_camera
             },
             &default_meshes,
         );
@@ -339,9 +339,9 @@ fn render_update(
             render_surface.as_mut(),
             debug_display.as_mut(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0].0
             } else {
-                &default_camera
+                todo!() //&default_camera
             },
         );
 
