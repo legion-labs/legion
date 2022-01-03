@@ -2,7 +2,7 @@ use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{ModelObject, PipelineLayout, PipelineLayoutRef},
+    model::{PipelineLayout, PipelineLayoutRef},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {

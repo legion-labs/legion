@@ -45,7 +45,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
     pub fn set_descriptors_by_index_platform(
         &mut self,
         descriptor_index: usize,
-        update_datas: &[DescriptorRef<'frame>],
+        update_datas: &[DescriptorRef<'_>],
     ) -> GfxResult<()> {
         let descriptor = self.descriptor_set_layout.descriptor(descriptor_index);
         let descriptor_binding = descriptor.binding;

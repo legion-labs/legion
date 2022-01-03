@@ -1,16 +1,11 @@
-use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
+
 use lgn_graphics_cgen_runtime::{
-    CGenDef, CGenDescriptorDef, CGenDescriptorSetDef, CGenPipelineLayoutDef, CGenTypeDef,
-    CGenTypeId,
+    CGenDef
 };
 use relative_path::RelativePath;
 
 use crate::{
-    generators::{product::Product, GeneratorContext},
-    model::{
-        CGenType, CGenTypeRef, DescriptorSet, DescriptorSetRef, Model, PipelineLayout,
-        PipelineLayoutRef,
-    },
+    generators::{product::Product, GeneratorContext},    
     run::CGenVariant,
 };
 

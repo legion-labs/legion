@@ -1,4 +1,7 @@
-use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWriter, QueueType};
+use lgn_graphics_api::{
+    DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
+    DescriptorSetWriter, QueueType,
+};
 use lgn_graphics_cgen_runtime::CGenRuntime;
 
 use crate::{
@@ -49,10 +52,6 @@ impl<'frame> RenderContext<'frame> {
         )
     }
 
-    // pub fn cgen_runtime(&self) -> &CGenRuntime {
-    //     self.renderer.cgen_runtime()
-    // }
-
     pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
         HLCommandBuffer::new(&self.cmd_buffer_pool)
     }
@@ -72,6 +71,21 @@ impl<'frame> RenderContext<'frame> {
             .allocate_descriptor_set(descriptor_set_layout, bump)
         {
             writer
+        } else {
+            todo!("Descriptor OOM! ")
+        }
+    }
+
+    pub fn write_descriptor_set(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+    ) -> DescriptorSetHandle {
+        let bump = self.bump_allocator().bumpalo();
+        if let Ok(handle) = self
+            .descriptor_pool
+            .write_descriptor_set(descriptor_set, bump)
+        {
+            handle
         } else {
             todo!("Descriptor OOM! ")
         }

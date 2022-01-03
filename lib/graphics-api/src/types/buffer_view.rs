@@ -149,6 +149,10 @@ impl BufferView {
         })
     }
 
+    pub fn definition(&self) -> &BufferViewDef {
+        &self.inner.definition
+    }
+
     pub(crate) fn buffer(&self) -> &Buffer {
         &self.inner.buffer
     }

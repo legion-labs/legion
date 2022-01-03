@@ -10,7 +10,7 @@ use relative_path::{RelativePath, RelativePathBuf};
 
 use self::product::Product;
 use crate::{
-    model::{CGenType, CGenTypeRef, DescriptorSet, Model, ModelObject, PipelineLayout},
+    model::{CGenType, CGenTypeRef, DescriptorSet, Model, ModelObject},
     run::CGenVariant,
 };
 

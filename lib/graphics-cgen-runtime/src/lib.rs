@@ -56,12 +56,12 @@
 // crate-specific exceptions:
 #![allow(unreachable_code)]
 
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 use lgn_graphics_api::{
-    BufferView, DescriptorDef, DescriptorHeapPartition, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetLayoutDef, DescriptorSetWriter, DeviceContext, PushConstantDef, RootSignature,
-    RootSignatureDef, Sampler, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
+    BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
+    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType, TextureView,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use serde::{Deserialize, Serialize};
 
@@ -100,7 +100,8 @@ pub struct CGenTypeDef {
 pub struct CGenDescriptorDef {
     pub name: &'static str,
     pub shader_resource_type: lgn_graphics_api::ShaderResourceType,
-    pub flat_index: u32,
+    pub flat_index_start: u32,
+    pub flat_index_end: u32,
     pub array_size: u32,
 }
 
@@ -110,36 +111,56 @@ pub trait ValueWrapper {
 
 impl ValueWrapper for &BufferView {
     fn validate(&self, def: &CGenDescriptorDef) -> bool {
-        false
+        match def.shader_resource_type {
+            ShaderResourceType::ConstantBuffer => {
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBufferView
+            }
+            ShaderResourceType::ByteAdressBuffer | ShaderResourceType::StructuredBuffer => {
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResourceView
+            }
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
+                self.definition().gpu_view_type
+                    == lgn_graphics_api::GPUViewType::UnorderedAccessView
+            }
+            ShaderResourceType::Sampler
+            | ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => false,
+        }
     }
 }
 
 impl ValueWrapper for &[&BufferView] {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for &Sampler {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for &[&Sampler] {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for &TextureView {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for &[&TextureView] {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
 }
@@ -236,12 +257,12 @@ struct CGenRuntimeInner {
 
 #[derive(Clone)]
 pub struct CGenRuntime {
-    inner: Arc<CGenRuntimeInner>,
+    _inner: Arc<CGenRuntimeInner>,
 }
 
 impl CGenRuntime {
     #[allow(clippy::todo)]
-    pub fn new(cgen_def: &CGenDef, device_context: &lgn_graphics_api::DeviceContext) -> Self {
+    pub fn new(_cgen_def: &CGenDef, _device_context: &lgn_graphics_api::DeviceContext) -> Self {
         /*
         let definition: CGenDef = bincode::deserialize(cgen_def).unwrap();
 
@@ -300,7 +321,7 @@ impl CGenRuntime {
         }*/
 
         Self {
-            inner: Arc::new(CGenRuntimeInner {
+            _inner: Arc::new(CGenRuntimeInner {
                 // definition,
                 // descriptor_set_layouts,
                 // root_signatures,

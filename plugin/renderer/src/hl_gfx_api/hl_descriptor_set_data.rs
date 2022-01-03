@@ -14,7 +14,7 @@ impl<'rc> DescriptorSetData<'rc> {
         Self {
             info,
             descriptor_refs: bump
-                .alloc_slice_fill_default::<DescriptorRef>(info.descriptor_flat_count as usize),
+                .alloc_slice_fill_default::<DescriptorRef<'_>>(info.descriptor_flat_count as usize),
         }
     }
 
@@ -33,7 +33,7 @@ impl<'rc> DescriptorSetData<'rc> {
             descriptor_def.shader_resource_type,
             ShaderResourceType::ConstantBuffer
         );
-        self.descriptor_refs[descriptor_def.flat_index as usize] =
+        self.descriptor_refs[descriptor_def.flat_index_start as usize] =
             DescriptorRef::BufferView(const_buffer_view);
     }
 

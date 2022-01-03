@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use lgn_graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetLayout,
-    DescriptorSetWriter, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider,
+    DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter, GfxResult,
 };
 
 use super::OnFrameEventHandler;
@@ -38,7 +38,15 @@ impl DescriptorPool {
         bump: &'frame Bump,
     ) -> GfxResult<DescriptorSetWriter<'frame>> {
         self.descriptor_heap_partition
-            .write_descriptor_set(descriptor_set_layout, bump)
+            .get_writer(descriptor_set_layout, bump)
+    }
+
+    pub fn write_descriptor_set<'frame>(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+        bump: &'frame Bump,
+    ) -> GfxResult<DescriptorSetHandle> {
+        self.descriptor_heap_partition.write(descriptor_set, bump)
     }
 
     fn reset(&self) {

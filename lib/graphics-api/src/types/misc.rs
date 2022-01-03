@@ -721,6 +721,7 @@ pub struct CmdCopyTextureParams {
 }
 
 /// Wraps all the possible types used to fill a `DescriptorSet`
+#[derive(Clone, Copy)]
 pub enum DescriptorRef<'a> {
     Undefined,
     Sampler(&'a Sampler),

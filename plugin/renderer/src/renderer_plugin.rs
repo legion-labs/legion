@@ -1,10 +1,12 @@
 use crate::{
+    cgen::{self, descriptor_set::ViewDescriptorSet},
     components::{ManipulatorComponent, PickedComponent},
     egui::egui_plugin::{Egui, EguiPlugin},
+    hl_gfx_api::DescriptorSetData,    
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
-use lgn_app::prelude::*;
+use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::ResourceUsage;
 // use lgn_graphics_cgen_runtime::fake::{FakeDescriptorID, FakeDescriptorSetData};
@@ -323,7 +325,6 @@ fn render_update(
     renderer.flush_update_jobs(&render_context);
 
     // View descriptor set
-    /*
     {
         let transient_allocator = render_context.transient_buffer_allocator();
 
@@ -332,19 +333,13 @@ fn render_update(
         let sub_allocation =
             transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-
         let const_buffer_view = sub_allocation.const_buffer_view();
 
-        let mut view_descriptor_set_data = DescriptorSetData::new(
-            render_context
-                .cgen_runtime()
-                .get_descriptor_set_def(ViewDescriptorSet::id()),
-            render_context.bump_allocator().bumpalo(),
-        );
-        view_descriptor_set_data
-            .set_constant_buffer(ViewDescriptorSet::view_data, &const_buffer_view);
+        let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
+        view_descriptor_set.set_view_data(&const_buffer_view);
+
+        let handle = render_context.write_descriptor_set(&view_descriptor_set);
     }
-    */
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {

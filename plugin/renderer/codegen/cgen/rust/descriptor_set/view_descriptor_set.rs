@@ -7,6 +7,7 @@ use lgn_graphics_api::DescriptorRef;
 use lgn_graphics_api::Sampler;
 use lgn_graphics_api::BufferView;
 use lgn_graphics_api::TextureView;
+use lgn_graphics_api::DescriptorSetDataProvider;
 use lgn_graphics_cgen_runtime::CGenDescriptorSetInfo;
 use lgn_graphics_cgen_runtime::CGenDescriptorDef;
 use lgn_graphics_cgen_runtime::CGenDescriptorSetDef;
@@ -15,7 +16,8 @@ static descriptor_defs: [CGenDescriptorDef; 1] = [
 	CGenDescriptorDef {
 		name: "view_data",
 		shader_resource_type: ShaderResourceType::ConstantBuffer,
-		flat_index: 0,
+		flat_index_start: 0,
+		flat_index_end: 1,
 		array_size: 0,
 	}, 
 ];
@@ -47,13 +49,37 @@ impl<'a> ViewDescriptorSet<'a> {
 		None => unreachable!(),
 		}}
 	}
+	
 	pub const fn id() -> u32 { 0  }
+	
 	pub const fn frequency() -> u32 { 0  }
+	
 	pub fn def() -> &'static CGenDescriptorSetDef { &descriptor_set_def }
+	
+	pub fn new() -> Self { Self::default() }
 	
 	pub fn set_view_data(&mut self, value:  &'a BufferView) {
 		assert!(descriptor_set_def.descriptor_defs[0].validate(value));
 		self.descriptor_refs[0] = DescriptorRef::BufferView(value);
+	}
+	
+}
+
+impl<'a> Default for ViewDescriptorSet<'a> {
+	fn default() -> Self {
+		Self {descriptor_refs: [DescriptorRef::<'a>::default(); 1], }
+	}
+}
+
+impl<'a> DescriptorSetDataProvider for ViewDescriptorSet<'a> {
+	fn layout(&self) -> &'static DescriptorSetLayout {
+		Self::descriptor_set_layout()
+	}
+	
+	fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'a>] {
+		&self.descriptor_refs[
+                descriptor_defs[descriptor_index].flat_index_start as usize .. descriptor_defs[descriptor_index].flat_index_end as usize
+             ]
 	}
 	
 }
