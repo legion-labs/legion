@@ -24,7 +24,7 @@ lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 
-clap = { version = "3.0.0-rc.8", features = ["derive"] }
+clap = { version = "3.0", features = ["derive"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../../plugin/winit", features = ["x11"] }
