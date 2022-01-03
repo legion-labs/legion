@@ -4151,11 +4151,14 @@ dependencies = [
 name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "binary-resource",
  "bincode",
  "clap",
+ "erased-serde",
  "integer-asset",
  "lgn-content-store",
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-utils",
