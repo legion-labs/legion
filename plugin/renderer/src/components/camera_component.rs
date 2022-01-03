@@ -1,4 +1,3 @@
-use crate::egui::egui_plugin::Egui;
 use dolly::prelude::{Position, Smooth, YawPitch};
 use dolly::rig::CameraRig;
 use lgn_ecs::prelude::*;
@@ -73,23 +72,19 @@ impl Default for CameraComponent {
 
 pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
     // camera
-    commands
-        .spawn()
-        .insert(CameraComponent::default())
-        .insert(CameraComponent::default_transform());
+    commands.spawn().insert(CameraComponent::default());
 }
 
 #[derive(Default)]
 pub(crate) struct CameraMoving(bool);
 
 pub(crate) fn camera_control(
-    mut q_cameras: Query<'_, '_, (&mut CameraComponent, &mut Transform)>,
+    mut q_cameras: Query<'_, '_, &mut CameraComponent>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
     mut camera_moving: Local<'_, CameraMoving>,
-    egui: Res<Egui>,
 ) {
     for mouse_button_input_event in mouse_button_input_events.iter() {
         if mouse_button_input_event.button == MouseButton::Right {
@@ -103,21 +98,12 @@ pub(crate) fn camera_control(
         return;
     }
 
-    let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
+    let mut camera = q_cameras.iter_mut().next().unwrap();
 
     if !camera_moving.0 {
         camera.camera_rig.update(FRAME_TIME);
         return;
     }
-
-    egui::Window::new("Scene ").show(&egui.ctx, |ui| {
-        ui.label(format!(
-            "{:?}, len: {}",
-            transform.forward(),
-            transform.forward().length()
-        ));
-        ui.label(format!("{:?}", transform));
-    });
 
     let mut camera_translation_change = Vec3::ZERO;
 

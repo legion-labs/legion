@@ -57,7 +57,7 @@ impl Plugin for RendererPlugin {
         // Update
         if self.runs_dynamic_systems {
             app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
-            //app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+            app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
@@ -258,7 +258,7 @@ fn render_update(
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
-    q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
+    q_cameras: Query<'_, '_, &CameraComponent>,
     light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
@@ -276,10 +276,8 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &LightComponent)>>();
 
-    let default_camera = CameraComponent::default_transform();
-    let q_cameras = q_cameras
-        .iter()
-        .collect::<Vec<(&CameraComponent, &Transform)>>();
+    let default_camera = CameraComponent::default();
+    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
 
     renderer.flush_update_jobs(&render_context);
 
@@ -294,9 +292,9 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].0
+                q_cameras[0]
             } else {
-                todo!() //&default_camera
+                &default_camera
             },
         );
 
@@ -308,9 +306,9 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                &q_cameras[0].0
+                q_cameras[0]
             } else {
-                todo!() //&default_camera
+                &default_camera
             },
             q_lights.as_slice(),
             &light_settings,
@@ -324,9 +322,9 @@ fn render_update(
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].0
+                q_cameras[0]
             } else {
-                todo!() //&default_camera
+                &default_camera
             },
             &default_meshes,
         );
@@ -339,9 +337,9 @@ fn render_update(
             render_surface.as_mut(),
             debug_display.as_mut(),
             if !q_cameras.is_empty() {
-                q_cameras[0].0
+                q_cameras[0]
             } else {
-                todo!() //&default_camera
+                &default_camera
             },
         );
 

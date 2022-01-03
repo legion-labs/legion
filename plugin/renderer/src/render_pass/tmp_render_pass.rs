@@ -6,10 +6,7 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_math::{Mat4, Vec3};
 use lgn_transform::prelude::Transform;
-
-use dolly::rig::CameraRig;
 
 use crate::{
     components::{
