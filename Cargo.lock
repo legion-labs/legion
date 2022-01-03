@@ -1057,17 +1057,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo_toml"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "363c7cfaa15f101415c4ac9e68706ca4a2277773932828b33f96e59d28c68e62"
-dependencies = [
- "serde",
- "serde_derive",
- "toml",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4471,7 +4460,6 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "cargo_toml",
  "clap",
  "determinator",
  "guppy",
@@ -4486,10 +4474,8 @@ dependencies = [
  "semver 1.0.4",
  "serde",
  "serde_json",
- "sha2 0.10.0",
  "termcolor",
  "thiserror",
- "tinytemplate",
  "toml",
  "toml_edit",
 ]
@@ -8401,16 +8387,6 @@ checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 name = "tinycom"
 version = "0.1.0"
 source = "git+https://github.com/legion-labs/tinycom-rs.git?branch=main#845d958e39dba1a7c567df79893099e32c43727f"
-
-[[package]]
-name = "tinytemplate"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "tinyvec"
