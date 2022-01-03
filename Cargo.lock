@@ -4082,7 +4082,6 @@ dependencies = [
 name = "lgn-data-build"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "byteorder",
  "hex",

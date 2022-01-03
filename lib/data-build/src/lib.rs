@@ -223,7 +223,7 @@ pub enum Error {
     InvalidProject(PathBuf),
     /// Manifest file error.
     #[error("Manifest file error.")]
-    InvalidManifest(anyhow::Error),
+    InvalidManifest(Box<dyn std::error::Error + Send + Sync>),
     /// Asset linking failed.
     #[error("Asset linking failed.")]
     LinkFailed,
