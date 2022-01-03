@@ -184,6 +184,8 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
+use std::path::PathBuf;
+
 use lgn_data_compiler::compiler_api::CompilerError;
 use thiserror::Error;
 
@@ -202,24 +204,26 @@ pub enum Error {
     /// IO error.
     #[error("IO error.")]
     IOError,
-    /// Index integrity error.
-    #[error("Index integrity error.")]
-    IntegrityFailure,
     /// Circular dependency in build graph.
     #[error("Circular dependency in build graph.")]
     CircularDependency,
     /// Index version mismatch.
-    #[error("Index version mismatch.")]
-    VersionMismatch,
+    #[error("Index version mismatch: '{value}', expected: '{expected}'")]
+    VersionMismatch {
+        /// Current version value.
+        value: String,
+        /// Expected version value.
+        expected: String,
+    },
     /// Content Store invalid.
     #[error("Content Store invalid.")]
     InvalidContentStore,
     /// Project invalid.
     #[error("Project invalid.")]
-    InvalidProject,
+    InvalidProject(PathBuf),
     /// Manifest file error.
     #[error("Manifest file error.")]
-    InvalidManifest,
+    InvalidManifest(anyhow::Error),
     /// Asset linking failed.
     #[error("Asset linking failed.")]
     LinkFailed,

@@ -31,7 +31,11 @@ fn invalid_project() {
             .content_store(&cas_addr)
             .create(&project_dir);
 
-        assert!(matches!(build, Err(Error::InvalidProject)), "{:?}", build);
+        assert!(
+            matches!(build, Err(Error::InvalidProject(_))),
+            "{:?}",
+            build
+        );
     }
 
     // corrupted project file

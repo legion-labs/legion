@@ -221,11 +221,21 @@ impl BuildIndex {
             Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
 
         if !project_path.exists() {
-            return Err(Error::InvalidProject);
+            return Err(Error::InvalidProject(project_path));
         }
 
-        if source_content.version != version || output_content.version != version {
-            return Err(Error::VersionMismatch);
+        if source_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: source_content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        if output_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: output_content.version,
+                expected: version.to_owned(),
+            });
         }
 
         Ok(Self {
@@ -239,7 +249,7 @@ impl BuildIndex {
 
     pub(crate) fn open_project(&self) -> Result<Project, Error> {
         let project_path = self.project_path()?;
-        Project::open(project_path).map_err(|_e| Error::InvalidProject)
+        Project::open(&project_path).map_err(|_e| Error::InvalidProject(project_path))
     }
 
     /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
@@ -249,7 +259,7 @@ impl BuildIndex {
     ) -> Result<PathBuf, Error> {
         let project_path = buildindex_dir.join(projectindex_path);
         if !project_path.exists() {
-            Err(Error::InvalidProject)
+            Err(Error::InvalidProject(project_path))
         } else {
             Ok(project_path)
         }

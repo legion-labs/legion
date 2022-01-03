@@ -249,8 +249,8 @@ impl DataBuild {
                     if file.metadata().unwrap().len() == 0 {
                         (Manifest::default(), Some(file))
                     } else {
-                        let manifest_content: Manifest =
-                            serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                        let manifest_content: Manifest = serde_json::from_reader(&file)
+                            .map_err(|e| Error::InvalidManifest(e.into()))?;
                         (manifest_content, Some(file))
                     }
                 } else {
@@ -259,7 +259,7 @@ impl DataBuild {
                         .write(true)
                         .create_new(true)
                         .open(manifest_file)
-                        .map_err(|_e| Error::InvalidManifest)?;
+                        .map_err(|e| Error::InvalidManifest(e.into()))?;
 
                     (Manifest::default(), Some(file))
                 }
@@ -292,7 +292,8 @@ impl DataBuild {
             file.set_len(0).unwrap();
             file.seek(std::io::SeekFrom::Start(0)).unwrap();
             manifest.pre_serialize();
-            serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+            serde_json::to_writer_pretty(&file, &manifest)
+                .map_err(|e| Error::InvalidManifest(e.into()))?;
         }
         Ok(manifest)
     }
