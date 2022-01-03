@@ -70,6 +70,7 @@ export interface BlockSpansRequest {
   process: Process | undefined;
   stream: Stream | undefined;
   blockId: string;
+  lodId: number;
 }
 
 /** one span track contains spans at one height of call stack */
@@ -919,7 +920,7 @@ export const Span = {
   },
 };
 
-const baseBlockSpansRequest: object = { blockId: "" };
+const baseBlockSpansRequest: object = { blockId: "", lodId: 0 };
 
 export const BlockSpansRequest = {
   encode(
@@ -934,6 +935,9 @@ export const BlockSpansRequest = {
     }
     if (message.blockId !== "") {
       writer.uint32(26).string(message.blockId);
+    }
+    if (message.lodId !== 0) {
+      writer.uint32(32).uint32(message.lodId);
     }
     return writer;
   },
@@ -953,6 +957,9 @@ export const BlockSpansRequest = {
           break;
         case 3:
           message.blockId = reader.string();
+          break;
+        case 4:
+          message.lodId = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -976,6 +983,10 @@ export const BlockSpansRequest = {
       object.blockId !== undefined && object.blockId !== null
         ? String(object.blockId)
         : "";
+    message.lodId =
+      object.lodId !== undefined && object.lodId !== null
+        ? Number(object.lodId)
+        : 0;
     return message;
   },
 
@@ -988,6 +999,7 @@ export const BlockSpansRequest = {
     message.stream !== undefined &&
       (obj.stream = message.stream ? Stream.toJSON(message.stream) : undefined);
     message.blockId !== undefined && (obj.blockId = message.blockId);
+    message.lodId !== undefined && (obj.lodId = Math.round(message.lodId));
     return obj;
   },
 
@@ -1004,6 +1016,7 @@ export const BlockSpansRequest = {
         ? Stream.fromPartial(object.stream)
         : undefined;
     message.blockId = object.blockId ?? "";
+    message.lodId = object.lodId ?? 0;
     return message;
   },
 };

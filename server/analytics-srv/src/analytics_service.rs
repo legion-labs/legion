@@ -143,6 +143,7 @@ impl AnalyticsService {
         process: &lgn_telemetry_sink::ProcessInfo,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
+        _lod_id: u32,
     ) -> Result<BlockSpansReply> {
         let cache_item_name = format!("spans_{}", block_id);
         self.cache
@@ -407,6 +408,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 &inner_request.process.unwrap(),
                 &inner_request.stream.unwrap(),
                 &inner_request.block_id,
+                inner_request.lod_id,
             )
             .await
         {

@@ -104,6 +104,8 @@ pub struct BlockSpansRequest {
     pub stream: ::core::option::Option<super::telemetry::Stream>,
     #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "4")]
+    pub lod_id: u32,
 }
 /// one span track contains spans at one height of call stack
 #[derive(Clone, PartialEq, ::prost::Message)]

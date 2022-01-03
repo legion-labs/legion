@@ -1,10 +1,10 @@
 <script context="module" lang="ts">
   type Thread = {
     streamInfo: Stream;
-    spanBlocks: BlockSpansReply[];
     maxDepth: number;
     minMs: number;
     maxMs: number;
+    block_ids: string[];
   };
 
   type BeginPan = {
@@ -18,14 +18,20 @@
     requested: number;
     completed: number;
   };
+
+  type BlockSpanData = {
+    lods: SpanBlockLOD[];
+    beginMs: number;
+    endMs: number;
+  };
 </script>
 
 <script lang="ts">
   import { link } from "svelte-navigator";
   import {
-    BlockSpansReply,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
+    SpanBlockLOD,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
   import { Block } from "@lgn/proto-telemetry/codegen/block";
@@ -56,6 +62,7 @@
   let maxMs = -Infinity;
   let yOffset = 0;
   let threads: Record<string, Thread> = {};
+  let blockSpans: Record<string, BlockSpanData> = {};
   let blockList: Block[] = [];
   let scopes: Record<number, ScopeDesc> = {};
   let viewRange: [number, number] | undefined;
@@ -119,10 +126,10 @@
       if (stream.tags.includes("cpu")) {
         threads[stream.streamId] = {
           streamInfo: stream,
-          spanBlocks: [],
           maxDepth: 0,
           minMs: Infinity,
           maxMs: -Infinity,
+          block_ids: [],
         };
 
         promises.push(fetchBlocks(stream.streamId));
@@ -170,10 +177,14 @@
     maxMs = Math.max(maxMs, response.endMs);
 
     let thread = threads[streamId];
-    thread.spanBlocks.push(response);
     thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
     thread.minMs = Math.min(thread.minMs, response.beginMs);
     thread.maxMs = Math.max(thread.maxMs, response.endMs);
+    thread.block_ids.push(block.blockId);
+    if (!blockSpans.hasOwnProperty(block.blockId)){
+      blockSpans[block.blockId] = { lods: [], beginMs:response.beginMs, endMs:response.endMs  };
+    }
+    blockSpans[block.blockId].lods[response.lod.lodId] = response.lod;
     if (loadingProgression) {
       loadingProgression.completed += 1;
     }
@@ -217,7 +228,7 @@
 
       const childStartTime = Date.parse(childProcess.startTime);
       const thread = threads[streamId];
-      if (thread.spanBlocks.length > 0) {
+      if (thread.block_ids.length > 0) {
         drawThread(
           thread,
           threadVerticalOffset,
@@ -274,20 +285,22 @@
       20 * thread.maxDepth
     );
 
-    thread.spanBlocks.forEach((blockSpans) => {
+    thread.block_ids.forEach((block_id) => {
+      let blockSpanData = blockSpans[block_id];
+      let lodToRender = blockSpanData.lods[0];
       if (
-        blockSpans.beginMs + offsetMs > end ||
-        blockSpans.endMs + offsetMs < begin
+        blockSpanData.beginMs + offsetMs > end ||
+        blockSpanData.endMs + offsetMs < begin
       ) {
         return;
       }
 
-      if( !blockSpans.lod ){
+      if( !lodToRender ){
         return;
       }
 
-      for( let trackIndex = 0; trackIndex < blockSpans.lod.tracks.length; trackIndex += 1 ){
-        let track = blockSpans.lod.tracks[trackIndex];
+      for( let trackIndex = 0; trackIndex < lodToRender.tracks.length; trackIndex += 1 ){
+        let track = lodToRender.tracks[trackIndex];
         track.spans.forEach(({ beginMs, endMs, scopeHash }) => {
         if (!renderingContext) {
           throw new Error("Rendering context not available");

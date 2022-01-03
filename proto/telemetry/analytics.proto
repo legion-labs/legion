@@ -80,6 +80,7 @@ message BlockSpansRequest{
     telemetry.Process process = 1;
     telemetry.Stream stream = 2;
     string block_id = 3;
+    uint32 lod_id = 4;
 }
 
 // one span track contains spans at one height of call stack
