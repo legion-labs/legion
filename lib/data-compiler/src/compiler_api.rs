@@ -443,10 +443,10 @@ enum Commands {
         /// Resource to compile.
         resource: String,
         /// Source dependencies.
-        #[clap(long = COMMAND_ARG_SRC_DEPS)]
+        #[clap(long = COMMAND_ARG_SRC_DEPS, multiple_values=true)]
         src_deps: Vec<String>,
         /// Derived dependencies.
-        #[clap(long = COMMAND_ARG_DER_DEPS)]
+        #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
         der_deps: Vec<String>,
         /// Resource directory.
         #[clap(long = COMMAND_ARG_RESOURCE_DIR)]

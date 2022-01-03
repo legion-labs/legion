@@ -309,14 +309,14 @@ impl CompilerCompileCmd {
         builder.arg(COMMAND_NAME_COMPILE);
         builder.arg(compile_path.to_string());
         if !source_deps.is_empty() {
+            builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
             for res in source_deps {
-                builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
                 builder.arg(res.to_string());
             }
         }
         if !derived_deps.is_empty() {
+            builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
             for res in derived_deps {
-                builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
                 builder.arg(res.to_string());
             }
         }
