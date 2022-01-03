@@ -151,17 +151,17 @@ fn main() -> Result<(), String> {
             let locale = Locale::new(&locale);
             let content_store_path = ContentStoreAddr::from(cas.as_str());
 
-            let compilers = {
-                if let Some(mut exe_dir) = std::env::args().next().map(|s| PathBuf::from(&s)) {
+            let compilers = std::env::args()
+                .next()
+                .and_then(|s| {
+                    let mut exe_dir = PathBuf::from(&s);
                     if exe_dir.pop() && exe_dir.is_dir() {
-                        CompilerRegistryOptions::from_dir(&exe_dir)
+                        Some(CompilerRegistryOptions::from_dir(&exe_dir))
                     } else {
-                        CompilerRegistryOptions::default()
+                        None
                     }
-                } else {
-                    CompilerRegistryOptions::default()
-                }
-            };
+                })
+                .unwrap_or_default();
 
             let mut build = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
