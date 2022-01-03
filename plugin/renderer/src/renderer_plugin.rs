@@ -13,8 +13,8 @@ use crate::{
 };
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightSettings, LightType, RenderSurface,
-        RotationComponent, StaticMesh,
+        camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
+        RenderSurface, RotationComponent, StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
@@ -49,6 +49,8 @@ impl Plugin for RendererPlugin {
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightSettings>();
 
+        app.add_startup_system(create_camera.system());
+
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
 
@@ -59,6 +61,7 @@ impl Plugin for RendererPlugin {
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
+        app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
             SystemSet::new()
@@ -255,7 +258,7 @@ fn render_update(
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
-    q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
+    q_cameras: Query<'_, '_, &CameraComponent>,
     light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
@@ -273,10 +276,8 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &LightComponent)>>();
 
-    let default_camera = CameraComponent::default_transform();
-    let q_cameras = q_cameras
-        .iter()
-        .collect::<Vec<(&CameraComponent, &Transform)>>();
+    let default_camera = CameraComponent::default();
+    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
 
     renderer.flush_update_jobs(&render_context);
 
@@ -291,7 +292,7 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0]
             } else {
                 &default_camera
             },
@@ -305,7 +306,7 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0]
             } else {
                 &default_camera
             },
@@ -321,7 +322,7 @@ fn render_update(
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0]
             } else {
                 &default_camera
             },
@@ -336,7 +337,7 @@ fn render_update(
             render_surface.as_mut(),
             debug_display.as_mut(),
             if !q_cameras.is_empty() {
-                q_cameras[0].1
+                q_cameras[0]
             } else {
                 &default_camera
             },

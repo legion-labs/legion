@@ -10,19 +10,15 @@ use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings}
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
-use lgn_input::{
-    keyboard::{KeyCode, KeyboardInput},
-    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
-    InputPlugin,
-};
-use lgn_math::{EulerRot, Quat, Vec3};
+use lgn_input::InputPlugin;
+use lgn_math::Vec3;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
-        CameraComponent, LightComponent, LightType, RenderSurface, RenderSurfaceExtents,
-        RenderSurfaceId, RotationComponent, StaticMesh,
+        LightComponent, LightType, RenderSurface, RenderSurfaceExtents, RenderSurfaceId,
+        RotationComponent, StaticMesh,
     },
     resources::{DefaultMeshId, DefaultMeshes},
     {Renderer, RendererPlugin, RendererSystemLabel},
@@ -128,7 +124,6 @@ fn main() {
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
-            .add_system(camera_control.system())
             .insert_resource(RenderSurfaces::new());
     }
     if args.use_asset_registry {
@@ -332,12 +327,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             color: (1.0, 1.0, 1.0),
             enabled: true,
         });
-
-    // camera
-    commands
-        .spawn()
-        .insert(CameraComponent::default())
-        .insert(CameraComponent::default_transform());
 }
 
 fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
@@ -390,12 +379,6 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             color: (1.0, 1.0, 1.0),
             enabled: true,
         });
-
-    // camera
-    commands
-        .spawn()
-        .insert(CameraComponent::default())
-        .insert(CameraComponent::default_transform());
 }
 
 fn on_snapshot_app_exit(
@@ -406,69 +389,6 @@ fn on_snapshot_app_exit(
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
             commands.entity(entity).despawn();
-        }
-    }
-}
-
-#[derive(Default)]
-struct CameraMoving(bool);
-
-fn camera_control(
-    mut q_cameras: Query<'_, '_, (&mut CameraComponent, &mut Transform)>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
-    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
-    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
-    mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
-    mut camera_moving: Local<'_, CameraMoving>,
-) {
-    for mouse_button_input_event in mouse_button_input_events.iter() {
-        if mouse_button_input_event.button == MouseButton::Right {
-            camera_moving.0 = mouse_button_input_event.state.is_pressed();
-        }
-    }
-
-    if q_cameras.is_empty() || !camera_moving.0 {
-        return;
-    }
-
-    let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
-    {
-        for keyboard_input_event in keyboard_input_events.iter() {
-            if let Some(key_code) = keyboard_input_event.key_code {
-                match key_code {
-                    KeyCode::W => {
-                        let dir = transform.forward();
-                        transform.translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::S => {
-                        let dir = transform.back();
-                        transform.translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::D => {
-                        let dir = transform.right();
-                        transform.translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::A => {
-                        let dir = transform.left();
-                        transform.translation += dir * camera.speed / 60.0;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        for mouse_motion_event in mouse_motion_events.iter() {
-            let (euler_x, euler_y, euler_z) = transform.rotation.to_euler(EulerRot::XYZ);
-            transform.rotation = Quat::from_euler(
-                EulerRot::XYZ,
-                euler_x + mouse_motion_event.delta.y * camera.rotation_speed / 60.0,
-                euler_y - mouse_motion_event.delta.x * camera.rotation_speed / 60.0,
-                euler_z,
-            );
-        }
-
-        for mouse_wheel_event in mouse_wheel_events.iter() {
-            camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
         }
     }
 }
