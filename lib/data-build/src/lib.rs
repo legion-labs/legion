@@ -184,68 +184,62 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-use lgn_data_compiler::compiler_api::CompilerError;
+use std::path::PathBuf;
 
-#[derive(Debug)]
+use lgn_data_compiler::compiler_api::CompilerError;
+use thiserror::Error;
+
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
+#[derive(Error, Debug)]
 pub enum Error {
-    /// Project-related error
-    ProjectError,
+    /// Project-related error.
+    #[error("Project-related error: '{0}")]
+    ProjectError(#[source] lgn_data_offline::resource::Error),
     /// Not found.
+    #[error("Not found.")]
     NotFound,
     /// Compiler not found.
+    #[error("Compiler not found.")]
     CompilerNotFound,
     /// IO error.
+    #[error("IO error.")]
     IOError,
-    /// Index integrity error.
-    IntegrityFailure,
     /// Circular dependency in build graph.
+    #[error("Circular dependency in build graph.")]
     CircularDependency,
     /// Index version mismatch.
-    VersionMismatch,
+    #[error("Index version mismatch: '{value}', expected: '{expected}'")]
+    VersionMismatch {
+        /// Current version value.
+        value: String,
+        /// Expected version value.
+        expected: String,
+    },
     /// Content Store invalid.
+    #[error("Content Store invalid.")]
     InvalidContentStore,
     /// Project invalid.
-    InvalidProject,
+    #[error("Project invalid.")]
+    InvalidProject(PathBuf),
     /// Manifest file error.
-    InvalidManifest,
+    #[error("Manifest file error.")]
+    InvalidManifest(Box<dyn std::error::Error + Send + Sync>),
     /// Asset linking failed.
+    #[error("Asset linking failed.")]
     LinkFailed,
     /// Compilation did not produce expected output.
+    #[error("Compilation did not produce expected output.")]
     OutputNotPresent,
     /// Compiler returned an error.
+    #[error("Compiler returned an error.")]
     CompilerError(CompilerError),
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Error::ProjectError => write!(f, "ProjectError"),
-            Error::NotFound => write!(f, "NotFound"),
-            Error::CompilerNotFound => write!(f, "CompilerNotFound"),
-            Error::IOError => write!(f, "IOError"),
-            Error::IntegrityFailure => write!(f, "IntegrityFailure"),
-            Error::CircularDependency => write!(f, "CircularDependency"),
-            Error::VersionMismatch => write!(f, "VersionMismatch"),
-            Error::InvalidContentStore => write!(f, "InvalidContentStore"),
-            Error::InvalidProject => write!(f, "InvalidProject"),
-            Error::InvalidManifest => write!(f, "InvalidManifest"),
-            Error::LinkFailed => write!(f, "LinkFailed"),
-            Error::OutputNotPresent => write!(f, "OutputNotPresent"),
-            Error::CompilerError(_) => write!(f, "CompilerError"),
-        }
-    }
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {
     fn from(err: lgn_data_offline::resource::Error) -> Self {
         match err {
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Self::NotFound,
-            lgn_data_offline::resource::Error::ParseError
-            | lgn_data_offline::resource::Error::IOError(_) => Self::ProjectError,
+            lgn_data_offline::resource::Error::NotFound => Self::NotFound,
+            _ => Self::ProjectError(err),
         }
     }
 }

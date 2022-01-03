@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::{env, vec};
@@ -19,6 +20,7 @@ use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
 
 use crate::databuild::CompileOutput;
+use crate::Error;
 use crate::{databuild::DataBuild, DataBuildOptions};
 
 fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
@@ -825,7 +827,7 @@ fn verify_manifest() {
     let compile_path = ResourcePathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
     let manifest = build
         .compile(
-            compile_path,
+            compile_path.clone(),
             Some(output_manifest_file.clone()),
             &test_env(),
         )
@@ -855,5 +857,20 @@ fn verify_manifest() {
             .compiled_resources
             .iter()
             .any(|res| res.checksum == resource.checksum));
+    }
+
+    // malformed manifest as input.
+    {
+        let invalid_manifest_file = work_dir.path().join("invalid.manifest");
+        let mut file = File::create(&invalid_manifest_file).expect("create empty file");
+        file.write_all(b"junk")
+            .expect("to write junk into manifest");
+
+        let invalid = build.compile(compile_path, Some(invalid_manifest_file), &test_env());
+        assert!(
+            matches!(invalid, Err(Error::InvalidManifest(_))),
+            "{:?}",
+            invalid
+        );
     }
 }

@@ -8,6 +8,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::resource::{
     metadata::{Metadata, ResourceHash},
@@ -89,31 +90,18 @@ pub struct Project {
     resource_dir: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 /// Error returned by the project.
 pub enum Error {
     /// Project index parsing error.
-    ParseError,
+    #[error("Parsing '{0}' failed with {1}")]
+    ParseError(PathBuf, #[source] serde_json::error::Error),
     /// Not found.
+    #[error("Not found")]
     NotFound,
-    /// Specified path is invalid.
-    InvalidPath,
     /// IO error on the project index file.
-    IOError(std::io::Error), /* todo(kstasik): have clearer Open/Read/Write errors that will be
-                              * easier to handle layer above */
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Error::ParseError => write!(f, "Error Parsing Content"),
-            Error::NotFound => write!(f, "Resource Not Found"),
-            Error::InvalidPath => write!(f, "Path Not Found"),
-            Error::IOError(ref err) => err.fmt(f),
-        }
-    }
+    #[error("IO on '{0}' failed with {1}")]
+    IOError(PathBuf, #[source] std::io::Error),
 }
 
 impl Project {
@@ -145,15 +133,16 @@ impl Project {
             .write(true)
             .create_new(true)
             .open(&index_path)
-            .map_err(Error::IOError)?;
+            .map_err(|e| Error::IOError(index_path.clone(), e))?;
 
         let db = ResourceDb::default();
-        serde_json::to_writer(&file, &db).map_err(|_e| Error::ParseError)?;
+        serde_json::to_writer(&file, &db).map_err(|e| Error::ParseError(index_path.clone(), e))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
         if !resource_dir.exists() {
-            std::fs::create_dir(&resource_dir).map_err(Error::IOError)?;
+            std::fs::create_dir(&resource_dir)
+                .map_err(|e| Error::IOError(resource_dir.clone(), e))?;
         }
 
         Ok(Self {
@@ -174,7 +163,8 @@ impl Project {
             .open(&index_path)
             .map_err(|_e| Error::NotFound)?;
 
-        let db = serde_json::from_reader(&file).map_err(|_e| Error::ParseError)?;
+        let db =
+            serde_json::from_reader(&file).map_err(|e| Error::ParseError(index_path.clone(), e))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
@@ -278,22 +268,25 @@ impl Project {
         let resource_path = self.resource_path(type_id);
 
         let build_dependencies = {
-            let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
+            let mut resource_file = File::create(&resource_path)
+                .map_err(|e| Error::IOError(resource_path.clone(), e))?;
 
             let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(Error::IOError)?;
+                .map_err(|e| Error::IOError(resource_path.clone(), e))?;
             build_deps
         };
 
         let content_checksum = {
-            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
+            let mut resource_file =
+                File::open(&resource_path).map_err(|e| Error::IOError(resource_path.clone(), e))?;
+            content_checksum_from_read(&mut resource_file)
+                .map_err(|e| Error::IOError(resource_path.clone(), e))?
         };
 
         let meta_file = File::create(&meta_path).map_err(|e| {
             fs::remove_file(&resource_path).unwrap();
-            Error::IOError(e)
+            Error::IOError(meta_path, e)
         })?;
 
         let metadata = Metadata::new_with_dependencies(name, content_checksum, &build_dependencies);
@@ -308,8 +301,8 @@ impl Project {
         let resource_path = self.resource_path(type_id);
         let metadata_path = self.metadata_path(type_id);
 
-        std::fs::remove_file(resource_path).map_err(Error::IOError)?;
-        std::fs::remove_file(metadata_path).map_err(Error::IOError)?;
+        std::fs::remove_file(&resource_path).map_err(|e| Error::IOError(resource_path, e))?;
+        std::fs::remove_file(&metadata_path).map_err(|e| Error::IOError(metadata_path, e))?;
 
         self.db.local_resources.retain(|x| *x != type_id);
         self.db.remote_resources.retain(|x| *x != type_id);
@@ -330,27 +323,29 @@ impl Project {
         let mut meta_file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(metadata_path)
-            .map_err(Error::IOError)?;
+            .open(&metadata_path)
+            .map_err(|e| Error::IOError(metadata_path.clone(), e))?;
         let mut metadata: Metadata =
-            serde_json::from_reader(&meta_file).map_err(|_e| Error::ParseError)?;
+            serde_json::from_reader(&meta_file).map_err(|e| Error::ParseError(metadata_path, e))?;
 
         let build_dependencies = {
             let mut resource_file = OpenOptions::new()
                 .write(true)
                 .truncate(true)
                 .open(&resource_path)
-                .map_err(Error::IOError)?;
+                .map_err(|e| Error::IOError(resource_path.clone(), e))?;
 
             let (_written, build_deps) = resources
                 .serialize_resource(type_id.t, handle, &mut resource_file)
-                .map_err(Error::IOError)?;
+                .map_err(|e| Error::IOError(resource_path.clone(), e))?;
             build_deps
         };
 
         let content_checksum = {
-            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
+            let mut resource_file =
+                File::open(&resource_path).map_err(|e| Error::IOError(resource_path.clone(), e))?;
+            content_checksum_from_read(&mut resource_file)
+                .map_err(|e| Error::IOError(resource_path, e))?
         };
 
         metadata.content_checksum = content_checksum;
@@ -374,10 +369,11 @@ impl Project {
     ) -> Result<ResourceHandleUntyped, Error> {
         let resource_path = self.resource_path(type_id);
 
-        let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
+        let mut resource_file =
+            File::open(&resource_path).map_err(|e| Error::IOError(resource_path.clone(), e))?;
         let handle = resources
             .deserialize_resource(type_id.t, &mut resource_file)
-            .map_err(Error::IOError)?;
+            .map_err(|e| Error::IOError(resource_path, e))?;
         Ok(handle)
     }
 
@@ -438,9 +434,9 @@ impl Project {
     fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
         let path = self.metadata_path(type_id);
 
-        let file = File::open(path).map_err(Error::IOError)?;
+        let file = File::open(&path).map_err(|e| Error::IOError(path.clone(), e))?;
 
-        let result = serde_json::from_reader(file).map_err(|_e| Error::ParseError)?;
+        let result = serde_json::from_reader(file).map_err(|e| Error::ParseError(path, e))?;
         Ok(result)
     }
 
@@ -499,7 +495,8 @@ impl Project {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
         self.pre_serialize();
-        serde_json::to_writer_pretty(&self.file, &self.db).map_err(|_e| Error::ParseError)
+        serde_json::to_writer_pretty(&self.file, &self.db)
+            .map_err(|e| Error::ParseError(self.indexfile_path(), e))
     }
 }
 
@@ -528,6 +525,7 @@ mod tests {
 
     use super::ResourceDb;
     use crate::resource::project::Project;
+    use crate::resource::Error;
     use crate::{
         resource::{
             ResourcePathName, ResourceProcessor, ResourceRegistry, ResourceRegistryOptions,
@@ -770,6 +768,17 @@ mod tests {
         let _project = Project::create_new(root.path()).expect("failed to re-create project");
         let same_project = Project::create_new(root.path());
         assert!(same_project.is_err());
+    }
+
+    #[test]
+    fn proj_open() {
+        let root = tempfile::tempdir().unwrap();
+
+        let proj_path = root.path().join("project.index");
+        let _fake_project = File::create(proj_path);
+
+        let project = Project::open(root.path());
+        assert!(matches!(project.unwrap_err(), Error::ParseError(_, _)));
     }
 
     #[test]

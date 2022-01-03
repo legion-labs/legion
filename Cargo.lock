@@ -4100,6 +4100,7 @@ dependencies = [
  "serde_with",
  "tempfile",
  "text-resource",
+ "thiserror",
 ]
 
 [[package]]
@@ -4187,6 +4188,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
  "tokio",
 ]
 

@@ -93,6 +93,7 @@ fn compute_context_hash(
 ///                         &env,
 ///                      ).expect("compilation output");
 /// ```
+#[derive(Debug)]
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
@@ -166,12 +167,7 @@ impl DataBuild {
     }
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).map_err(|e| match e {
-            lgn_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Error::NotFound,
-            lgn_data_offline::resource::Error::IOError(_) => Error::IOError,
-        })
+        Project::open(project_dir).map_err(Error::from)
     }
 
     /// Accessor for the project associated with this builder.
@@ -253,8 +249,8 @@ impl DataBuild {
                     if file.metadata().unwrap().len() == 0 {
                         (Manifest::default(), Some(file))
                     } else {
-                        let manifest_content: Manifest =
-                            serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                        let manifest_content: Manifest = serde_json::from_reader(&file)
+                            .map_err(|e| Error::InvalidManifest(e.into()))?;
                         (manifest_content, Some(file))
                     }
                 } else {
@@ -263,7 +259,7 @@ impl DataBuild {
                         .write(true)
                         .create_new(true)
                         .open(manifest_file)
-                        .map_err(|_e| Error::InvalidManifest)?;
+                        .map_err(|e| Error::InvalidManifest(e.into()))?;
 
                     (Manifest::default(), Some(file))
                 }
@@ -296,7 +292,8 @@ impl DataBuild {
             file.set_len(0).unwrap();
             file.seek(std::io::SeekFrom::Start(0)).unwrap();
             manifest.pre_serialize();
-            serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+            serde_json::to_writer_pretty(&file, &manifest)
+                .map_err(|e| Error::InvalidManifest(e.into()))?;
         }
         Ok(manifest)
     }
