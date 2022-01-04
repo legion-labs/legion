@@ -222,18 +222,18 @@ impl TmpRenderPass {
         }
 
         let directional_lights_buffer_view = transient_allocator
-            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .copy_data_slice(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let omnidirectional_lights_buffer_view = transient_allocator
-            .copy_data(
+            .copy_data_slice(
                 &omnidirectional_lights_data,
                 ResourceUsage::AS_SHADER_RESOURCE,
             )
             .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let spotlights_buffer_view = transient_allocator
-            .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .copy_data_slice(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
 
         for (_index, (static_mesh_component, picked_component, manipulator_component)) in

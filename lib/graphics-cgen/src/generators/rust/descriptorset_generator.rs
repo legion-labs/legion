@@ -158,7 +158,7 @@ fn generate_rust_descriptorset(
         writer.new_line();
 
         // impl: initialize
-        writer.add_line("#![allow(unsafe_code)]");
+        writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext) {");
         writer.indent();
         writer.add_line( "unsafe { descriptor_set_layout = Some(descriptor_set_def.create_descriptor_set_layout(device_context)); }" );
@@ -166,7 +166,17 @@ fn generate_rust_descriptorset(
         writer.add_line("}");
         writer.new_line();
 
+        // impl: shutdown
+        writer.add_line("#[allow(unsafe_code)]");        
+        writer.add_line("pub fn shutdown() {");
+        writer.indent();
+        writer.add_line( "unsafe{ descriptor_set_layout = None; }" );
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+
         // impl: descriptor_set_layout
+        writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn descriptor_set_layout() -> &'static DescriptorSetLayout {");
         writer.indent();
         writer.add_line("unsafe{ match &descriptor_set_layout{");
@@ -336,14 +346,6 @@ fn generate_rust_descriptorset(
         writer.add_line("}");
         writer.new_line();
 
-        // writer.add_line("fn default() -> Self {");
-        // writer.indent();
-        // writer.add_line(format!(
-        //     "Self {{descriptor_refs: [DescriptorRef::<'a>::default(); {}], }}",
-        //     descriptor_set.flat_descriptor_count
-        // ));
-        // writer.unindent();
-        // writer.add_line("}");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();

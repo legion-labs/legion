@@ -2,19 +2,19 @@ use crate::{
     cgen::{self, descriptor_set::ViewDescriptorSet},
     components::{ManipulatorComponent, PickedComponent},
     egui::egui_plugin::{Egui, EguiPlugin},
-    hl_gfx_api::DescriptorSetData,    
+    hl_gfx_api::DescriptorSetData,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
-use lgn_app::{CoreStage, Plugin};
+use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::ResourceUsage;
-// use lgn_graphics_cgen_runtime::fake::{FakeDescriptorID, FakeDescriptorSetData};
-use lgn_math::{EulerRot, Quat, Mat4, Vec3};
+use lgn_math::{EulerRot, Mat4, Quat, Vec3};
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
+
 use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
@@ -192,7 +192,7 @@ fn update_ui(
                     light.color.1 = rgb[1];
                     light.color.2 = rgb[2];
                 }
-            });
+    });
         }
     });
 }
@@ -319,40 +319,28 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &LightComponent)>>();
 
-    let camera_transform = if !q_cameras.is_empty() {
-        q_cameras[0].1
+    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+    let default_camera = CameraComponent::default();
+    let camera_component = if !q_cameras.is_empty() {
+        q_cameras[0]
     } else {
         &default_camera
     };
-    let default_camera = CameraComponent::default();
-    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
 
     renderer.flush_update_jobs(&render_context);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
-
     // View descriptor set
     {
+            let (view_matrix, projection_matrix) = camera_component.build_view_projection(
+                render_surface.extents().width() as f32,
+                render_surface.extents().height() as f32,
+            );
+
         let transient_allocator = render_context.transient_buffer_allocator();
 
             let mut view_data = crate::cgen::cgen_type::ViewData::default();
-    
-            let fov_y_radians: f32 = 45.0;
-            let width = render_surface.extents().width() as f32;
-            let height = render_surface.extents().height() as f32;
-            let aspect_ratio: f32 = width / height;
-            let z_near: f32 = 0.01;
-            let z_far: f32 = 100.0;        
-    
-            let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
-
-            let view_matrix = Mat4::look_at_lh(
-                camera_transform.translation,
-                camera_transform.translation + camera_transform.forward(),
-                Vec3::new(0.0, 1.0, 0.0),
-            );
-
             view_data.view = view_matrix.into();
             view_data.projection = projection_matrix.into();
 
@@ -375,11 +363,7 @@ fn render_update(
             &render_context,
             render_surface.as_mut(),
             q_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
         );
 
         let render_pass = render_surface.test_renderpass();
@@ -389,11 +373,7 @@ fn render_update(
             &cmd_buffer,
             render_surface.as_mut(),
             q_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
             q_lights.as_slice(),
             &light_settings,
         );
@@ -405,13 +385,9 @@ fn render_update(
             &cmd_buffer,
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
             &default_meshes,
-            debug_display.as_mut(),
+            debug_display.as_mut()            
         );
 
         let egui_pass = render_surface.egui_renderpass();

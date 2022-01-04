@@ -38,11 +38,17 @@ pub struct ViewDescriptorSet<'a> {
 
 impl<'a> ViewDescriptorSet<'a> {
 	
-	#![allow(unsafe_code)]
+	#[allow(unsafe_code)]
 	pub fn initialize(device_context: &DeviceContext) {
 		unsafe { descriptor_set_layout = Some(descriptor_set_def.create_descriptor_set_layout(device_context)); }
 	}
 	
+	#[allow(unsafe_code)]
+	pub fn shutdown() {
+		unsafe{ descriptor_set_layout = None; }
+	}
+	
+	#[allow(unsafe_code)]
 	pub fn descriptor_set_layout() -> &'static DescriptorSetLayout {
 		unsafe{ match &descriptor_set_layout{
 		Some(dsl) => dsl,

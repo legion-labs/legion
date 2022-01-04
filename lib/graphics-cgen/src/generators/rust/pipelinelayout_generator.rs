@@ -60,13 +60,13 @@ fn generate_rust_pipeline_layout(
 
     // local dependencies
     {
-        for (name, content) in &pipeline_layout.members {
+        for (_, content) in &pipeline_layout.members {
             match content {
                 crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(typ_ref) => {
+                crate::model::PipelineLayoutContent::Pushconstant(_typ_ref) => {
                     todo!();
                 }
             }
@@ -128,7 +128,7 @@ fn generate_rust_pipeline_layout(
         writer.new_line();
         
         // fn initialize
-        writer.add_line("#![allow(unsafe_code)]");
+        writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
         writer.indent();
         writer.add_line( "unsafe { pipeline_layout = Some(pipeline_layout_def.create_pipeline_layout(device_context, descriptor_set_layouts)); }" );
@@ -136,7 +136,17 @@ fn generate_rust_pipeline_layout(
         writer.add_line("}");
         writer.new_line();
 
+        // fn shutdown        
+        writer.add_line("#[allow(unsafe_code)]");
+        writer.add_line("pub fn shutdown() {");
+        writer.indent();
+        writer.add_line( "unsafe{ pipeline_layout = None; }" );
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+
         // fn root_signature        
+        writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn root_signature() -> &'static RootSignature {");
         writer.indent();
         writer.add_line("unsafe{ match &pipeline_layout{" );
@@ -166,7 +176,7 @@ fn generate_rust_pipeline_layout(
         // fn setters
         for (name, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                crate::model::PipelineLayoutContent::DescriptorSet(_ds_ref) => {
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
                         name
@@ -176,7 +186,7 @@ fn generate_rust_pipeline_layout(
                     writer.unindent();
                     writer.add_line("}");
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                crate::model::PipelineLayoutContent::Pushconstant(_ty_ref) => {
                     todo!();
                 }
             }

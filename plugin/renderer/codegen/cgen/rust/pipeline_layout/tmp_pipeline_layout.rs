@@ -32,11 +32,17 @@ pub struct TmpPipelineLayout<'a> {
 
 impl<'a> TmpPipelineLayout<'a> {
 	
-	#![allow(unsafe_code)]
+	#[allow(unsafe_code)]
 	pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {
 		unsafe { pipeline_layout = Some(pipeline_layout_def.create_pipeline_layout(device_context, descriptor_set_layouts)); }
 	}
 	
+	#[allow(unsafe_code)]
+	pub fn shutdown() {
+		unsafe{ pipeline_layout = None; }
+	}
+	
+	#[allow(unsafe_code)]
 	pub fn root_signature() -> &'static RootSignature {
 		unsafe{ match &pipeline_layout{
 			Some(pl) => pl,

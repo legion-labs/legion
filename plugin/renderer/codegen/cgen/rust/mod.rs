@@ -5,9 +5,6 @@ pub mod cgen_type;
 pub mod descriptor_set;
 pub mod pipeline_layout;
 
-pub struct CGenDef {
-}
-
 pub fn initialize(device_context: &DeviceContext) {
 	
 	descriptor_set::ViewDescriptorSet::initialize(device_context);
@@ -19,6 +16,15 @@ pub fn initialize(device_context: &DeviceContext) {
 	];
 	
 	pipeline_layout::TmpPipelineLayout::initialize(device_context, &descriptor_set_layouts);
+	
+}
+
+pub fn shutdown() {
+	
+	descriptor_set::ViewDescriptorSet::shutdown();
+	descriptor_set::FrameDescriptorSet::shutdown();
+	
+	pipeline_layout::TmpPipelineLayout::shutdown();
 	
 }
 

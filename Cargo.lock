@@ -4616,7 +4616,6 @@ dependencies = [
  "dolly",
  "egui",
  "epaint",
- "lazy_static",
  "lgn-app",
  "lgn-build-utils",
  "lgn-ecs",

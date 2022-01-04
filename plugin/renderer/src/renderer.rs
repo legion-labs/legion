@@ -10,7 +10,6 @@ use lgn_graphics_api::{
     RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use lgn_graphics_cgen_runtime::CGenRuntime;
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
@@ -59,13 +58,9 @@ impl Renderer {
         filesystem.add_mount_point("renderer",  env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
-
-        // this is not compliant with the rules set for code generation, aka no binary
-        // files TODO fix this
-        // let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
-        // let cgen_def = CGenDef{};
+        
         cgen::initialize(device_context);
-        // let cgen_runtime = CGenRuntime::new(&cgen_def, device_context);
+
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
@@ -394,10 +389,15 @@ impl Renderer {
 }
 
 impl Drop for Renderer {
-    fn drop(&mut self) {
+    fn drop(&mut self) {        
+        
+        {
+            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
+            graphics_queue.wait_for_queue_idle().unwrap();        
+        }
+        
         std::mem::drop(self.test_transform_data.take());
-
-        let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
-        graphics_queue.wait_for_queue_idle().unwrap();
+        
+        cgen::shutdown();
     }
 }

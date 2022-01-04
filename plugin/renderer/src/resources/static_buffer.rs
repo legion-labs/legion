@@ -313,7 +313,7 @@ impl UniformGPUDataUpdater {
     }
 
     pub fn add_update_jobs<T>(&mut self, data: &[T], dst_offset: u64) {
-        let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
+        let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;        
 
         while self.job_blocks.is_empty()
             || !self
@@ -322,9 +322,14 @@ impl UniformGPUDataUpdater {
                 .unwrap()
                 .add_update_jobs(data, dst_offset)
         {
+            let data_layout = Layout::from_size_align(
+                std::cmp::max(self.block_size as usize, upload_size_in_bytes as usize),
+                std::mem::align_of::<T>()
+            ).unwrap();
+
             self.job_blocks.push(UniformGPUDataUploadJobBlock::new(
                 self.paged_buffer
-                    .allocate_page(std::cmp::max(self.block_size, upload_size_in_bytes)),
+                    .allocate_page(data_layout),
             ));
         }
     }

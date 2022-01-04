@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
     DescriptorSetWriter, Pipeline, QueueType, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use lgn_graphics_cgen_runtime::{CGenRuntime, PipelineDataProvider};
+use lgn_graphics_cgen_runtime::{PipelineDataProvider};
 
 use crate::{
     hl_gfx_api::{HLCommandBuffer, HLQueue},
