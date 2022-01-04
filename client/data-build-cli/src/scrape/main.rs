@@ -599,12 +599,13 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
     let get_resource_name = |a: &syn::ItemStruct| -> Option<(String, ResourceType)> {
         for a in &a.attrs {
             if a.path.segments.len() == 1 && a.path.segments[0].ident == "resource" {
-                let arg: syn::LitStr = a.parse_args().unwrap();
-                let arg = arg.value();
+                if let Ok(arg) = a.parse_args::<syn::LitStr>() {
+                    let arg = arg.value();
 
-                let ty = ResourceType::new(arg.as_bytes());
+                    let ty = ResourceType::new(arg.as_bytes());
 
-                return Some((arg, ty));
+                    return Some((arg, ty));
+                }
             }
         }
         None
