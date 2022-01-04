@@ -59,9 +59,9 @@
 use std::sync::Arc;
 
 use lgn_graphics_api::{
-    BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
-    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType, TextureView,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    BufferView, DescriptorDef, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetLayoutDef,
+    DeviceContext, Pipeline, PushConstantDef, RootSignature, RootSignatureDef, Sampler,
+    ShaderResourceType, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use serde::{Deserialize, Serialize};
 
@@ -79,6 +79,12 @@ pub struct Float4(glam::Vec4);
 
 #[derive(Default, Clone, Copy)]
 pub struct Float4x4(glam::Mat4);
+
+impl From<glam::Mat4> for Float4x4 {
+    fn from(value: glam::Mat4) -> Self {
+        Self(value)
+    }
+}
 
 pub mod prelude {
     pub use crate::Float1;
@@ -468,3 +474,9 @@ pub mod fake {
     }
 }
 */
+
+pub trait PipelineDataProvider {
+    fn pipeline(&self) -> &Pipeline;
+    fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle>;
+    fn set_descriptor_set(&mut self, frequency: u32, descriptor_set: Option<DescriptorSetHandle>);
+}

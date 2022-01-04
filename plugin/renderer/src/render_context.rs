@@ -1,8 +1,10 @@
+use std::cell::RefCell;
+
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, QueueType,
+    DescriptorSetWriter, Pipeline, QueueType, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use lgn_graphics_cgen_runtime::CGenRuntime;
+use lgn_graphics_cgen_runtime::{CGenRuntime, PipelineDataProvider};
 
 use crate::{
     hl_gfx_api::{HLCommandBuffer, HLQueue},
@@ -19,6 +21,7 @@ pub struct RenderContext<'frame> {
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
+    descriptor_sets: RefCell<[Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS]>,
 }
 
 impl<'frame> RenderContext<'frame> {
@@ -29,7 +32,6 @@ impl<'frame> RenderContext<'frame> {
             renderer,
             cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
-            // TMP: we should acquire a handle from the renderer
             transient_buffer_allocator: TransientBufferAllocatorHandle::new(
                 TransientBufferAllocator::new(
                     renderer.device_context(),
@@ -38,6 +40,7 @@ impl<'frame> RenderContext<'frame> {
                 ),
             ),
             bump_allocator: renderer.acquire_bump_allocator(),
+            descriptor_sets: RefCell::new([None; MAX_DESCRIPTOR_SET_LAYOUTS]),
         }
     }
 
@@ -76,6 +79,7 @@ impl<'frame> RenderContext<'frame> {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
         descriptor_set: &impl DescriptorSetDataProvider,
@@ -85,9 +89,18 @@ impl<'frame> RenderContext<'frame> {
             .descriptor_pool
             .write_descriptor_set(descriptor_set, bump)
         {
+            let mut descriptor_sets = self.descriptor_sets.borrow_mut();
+            descriptor_sets[descriptor_set.layout().definition().frequency as usize] = Some(handle);
             handle
         } else {
             todo!("Descriptor OOM! ")
+        }
+    }
+
+    pub fn populate_pipeline_data(&self, pipeline_data: &mut impl PipelineDataProvider) {
+        let descriptor_sets = self.descriptor_sets.borrow();
+        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
+            pipeline_data.set_descriptor_set(i, descriptor_sets[i as usize]);
         }
     }
 

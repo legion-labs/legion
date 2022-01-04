@@ -1,10 +1,16 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
+use std::{
+    hash::{Hash, Hasher}
+};
+
+
 use crate::{
     deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult,
     MAX_DESCRIPTOR_BINDINGS,
 };
 
+#[derive(Debug)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
@@ -25,7 +31,13 @@ impl Drop for DescriptorSetLayoutInner {
     }
 }
 
-#[derive(Clone)]
+impl Hash for DescriptorSetLayoutInner {
+    fn hash<H: Hasher>(&self, mut state: &mut H) {
+        self.definition.hash(&mut state);
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct DescriptorSetLayout {
     pub(crate) inner: Drc<DescriptorSetLayoutInner>,
 }
@@ -101,5 +113,11 @@ impl DescriptorSetLayout {
         };
 
         Ok(result)
+    }
+}
+
+impl Hash for DescriptorSetLayout {
+    fn hash<H: Hasher>(&self, mut state: &mut H) {
+        self.inner.definition.hash(&mut state);
     }
 }

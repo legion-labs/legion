@@ -219,6 +219,7 @@ impl Descriptor {
 
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
+    // pub layout: &'static DescriptorSetLayout,    
     #[cfg(feature = "vulkan")]
     pub vk_type: ash::vk::DescriptorSet,
 }
@@ -454,7 +455,7 @@ pub enum ShaderResourceType {
     TextureCubeArray = 0x20_00,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
     pub binding: u32,
@@ -468,7 +469,7 @@ impl DescriptorDef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorSetLayoutDef {
     pub frequency: u32,
     pub descriptor_defs: Vec<DescriptorDef>,
@@ -489,13 +490,13 @@ impl Default for DescriptorSetLayoutDef {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
     pub size: NonZeroU32,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Hash)]
 pub struct RootSignatureDef {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
@@ -503,8 +504,7 @@ pub struct RootSignatureDef {
 
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
-        Self {
-            // pipeline_type: self.pipeline_type,
+        Self {            
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
         }

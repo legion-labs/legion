@@ -10,7 +10,7 @@ use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::ResourceUsage;
 // use lgn_graphics_cgen_runtime::fake::{FakeDescriptorID, FakeDescriptorSetData};
-use lgn_math::{EulerRot, Quat};
+use lgn_math::{EulerRot, Quat, Mat4, Vec3};
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
@@ -319,16 +319,42 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &LightComponent)>>();
 
+    let camera_transform = if !q_cameras.is_empty() {
+        q_cameras[0].1
+    } else {
+        &default_camera
+    };
     let default_camera = CameraComponent::default();
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
 
     renderer.flush_update_jobs(&render_context);
 
+    // For each surface/view, we have to execute the render graph
+    for mut render_surface in q_render_surfaces.iter_mut() {
+
     // View descriptor set
     {
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let view_data = crate::cgen::cgen_type::ViewData::default();
+            let mut view_data = crate::cgen::cgen_type::ViewData::default();
+    
+            let fov_y_radians: f32 = 45.0;
+            let width = render_surface.extents().width() as f32;
+            let height = render_surface.extents().height() as f32;
+            let aspect_ratio: f32 = width / height;
+            let z_near: f32 = 0.01;
+            let z_far: f32 = 100.0;        
+    
+            let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
+
+            let view_matrix = Mat4::look_at_lh(
+                camera_transform.translation,
+                camera_transform.translation + camera_transform.forward(),
+                Vec3::new(0.0, 1.0, 0.0),
+            );
+
+            view_data.view = view_matrix.into();
+            view_data.projection = projection_matrix.into();
 
         let sub_allocation =
             transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
@@ -341,8 +367,6 @@ fn render_update(
         let handle = render_context.write_descriptor_set(&view_descriptor_set);
     }
 
-    // For each surface/view, we have to execute the render graph
-    for mut render_surface in q_render_surfaces.iter_mut() {
         let cmd_buffer = render_context.alloc_command_buffer();
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
