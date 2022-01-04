@@ -64,7 +64,7 @@ use lgn_data_compiler::{
     compiler_utils::hash_code_and_data,
 };
 use lgn_data_offline::Transform;
-use lgn_data_runtime::Resource;
+use lgn_data_runtime::{AssetRegistryOptions, Resource};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -75,15 +75,17 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         text_resource::TextResource::TYPE,
         integer_asset::IntegerAsset::TYPE,
     ),
+    init_func: init,
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };
 
+fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    registry.add_loader::<text_resource::TextResource>()
+}
+
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context
-        .take_registry()
-        .add_loader::<text_resource::TextResource>()
-        .create();
+    let resources = context.registry();
 
     let resource = resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();

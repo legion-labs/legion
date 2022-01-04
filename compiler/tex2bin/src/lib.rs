@@ -64,7 +64,7 @@ use lgn_data_compiler::{
     compiler_utils::hash_code_and_data,
 };
 use lgn_data_offline::Transform;
-use lgn_data_runtime::Resource;
+use lgn_data_runtime::{AssetRegistryOptions, Resource};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -75,15 +75,17 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         lgn_graphics_offline::Texture::TYPE,
         lgn_graphics_runtime::Texture::TYPE,
     ),
+    init_func: init,
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };
 
+fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    registry.add_loader::<lgn_graphics_offline::Texture>()
+}
+
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context
-        .take_registry()
-        .add_loader::<lgn_graphics_offline::Texture>()
-        .create();
+    let resources = context.registry();
 
     let resource =
         resources.load_sync::<lgn_graphics_offline::Texture>(context.source.resource_id());

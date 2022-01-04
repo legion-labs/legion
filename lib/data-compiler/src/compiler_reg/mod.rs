@@ -152,6 +152,7 @@ mod tests {
         code_version: "code0",
         data_version: "data0",
         transform: &TEST_TRANSFORM,
+        init_func: |options| options,
         compiler_hash_func: |_code, _data, _env| CompilerHash(7),
         compile_func: |ctx| {
             Ok(CompilationOutput {

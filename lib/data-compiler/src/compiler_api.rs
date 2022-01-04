@@ -21,7 +21,7 @@
 //! # use lgn_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use lgn_data_offline::{ResourcePathId, Transform};
-//! # use lgn_data_runtime::ResourceType;
+//! # use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
 //! # use lgn_content_store::ContentStoreAddr;
 //! # use std::path::Path;
 //! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
@@ -32,6 +32,7 @@
 //!    code_version: "",
 //!    data_version: "",
 //!    transform: &Transform::new(INPUT_TYPE, OUTPUT_TYPE),
+//!    init_func: init,
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -41,6 +42,10 @@
 //!    data: &'static str,
 //!    env: &CompilationEnv,
 //! ) -> CompilerHash {
+//!    todo!()
+//! }
+//!
+//! fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 //!    todo!()
 //! }
 //!
@@ -69,12 +74,13 @@ use std::{
     io::{self, stdout},
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_offline::{ResourcePathId, Transform};
-use lgn_data_runtime::AssetRegistryOptions;
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -144,7 +150,7 @@ pub struct CompilerContext<'a> {
     /// Compilation dependency list.
     pub dependencies: &'a [ResourcePathId],
     /// Pre-configures asset registry builder.
-    resources: Option<AssetRegistryOptions>,
+    registry: Arc<AssetRegistry>,
     /// Compilation environment.
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
@@ -152,9 +158,9 @@ pub struct CompilerContext<'a> {
 }
 
 impl CompilerContext<'_> {
-    /// Returns options that can be used to create asset registry.
-    pub fn take_registry(&mut self) -> AssetRegistryOptions {
-        self.resources.take().unwrap()
+    /// Returns asset registry responsible for loading resources.
+    pub fn registry(&self) -> Arc<AssetRegistry> {
+        self.registry.clone()
     }
 
     /// Stores `compiled_content` in the content store.
@@ -189,7 +195,9 @@ pub struct CompilerDescriptor {
     pub data_version: &'static str,
     /// Compiler supported resource transformation `f(.0)->.1`.
     pub transform: &'static Transform,
-    /// Function returning a list of `CompilerHash` for a given context.
+    /// Compiler initialization function.
+    pub init_func: fn(registry: AssetRegistryOptions) -> AssetRegistryOptions,
+    /// Function returning a `CompilerHash` for a given context.
     pub compiler_hash_func:
         fn(code: &'static str, data: &'static str, env: &CompilationEnv) -> CompilerHash,
     /// Data compilation function.
@@ -312,12 +320,14 @@ impl CompilerDescriptor {
             .add_device_cas(Box::new(source_store), manifest)
             .add_device_dir(resource_dir); // todo: filter dependencies only
 
+        let registry = (self.init_func)(registry).create();
+
         assert!(!compile_path.is_named());
         let context = CompilerContext {
             source: compile_path.direct_dependency().unwrap(),
             target_unnamed: compile_path,
             dependencies,
-            resources: Some(registry),
+            registry,
             env,
             output_store: &mut output_store,
         };
