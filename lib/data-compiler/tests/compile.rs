@@ -29,7 +29,7 @@ fn compile_atoi() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: text_resource::TextResource::TYPE,
+            kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -98,7 +98,7 @@ fn compile_intermediate() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: text_resource::TextResource::TYPE,
+            kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
         let mut proc = text_resource::TextResourceProc {};
@@ -187,7 +187,7 @@ fn compile_multi_resource() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: multitext_resource::MultiTextResource::TYPE,
+            kind: multitext_resource::MultiTextResource::TYPE,
             id: ResourceId::new(),
         };
         let mut proc = MultiTextResourceProc {};
@@ -267,7 +267,7 @@ fn compile_base64() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: binary_resource::BinaryResource::TYPE,
+            kind: binary_resource::BinaryResource::TYPE,
             id: ResourceId::new(),
         };
 

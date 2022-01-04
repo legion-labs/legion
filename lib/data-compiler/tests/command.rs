@@ -48,7 +48,7 @@ fn command_compile() {
     let content = "test content";
 
     let source = ResourceTypeAndId {
-        t: refs_resource::TestResource::TYPE,
+        kind: refs_resource::TestResource::TYPE,
         id: ResourceId::new(),
     };
     create_test_resource(source, &resource_dir, content);

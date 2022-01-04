@@ -130,7 +130,7 @@ impl Editor for GRPCServer {
         // properties
         if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
         {
             if let TypeDefinition::Struct(struct_def) = reflection.get_type() {
                 let properties: anyhow::Result<Vec<ResourceProperty>> = struct_def
@@ -209,7 +209,7 @@ impl Editor for GRPCServer {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request

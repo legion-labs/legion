@@ -202,7 +202,7 @@ impl<'de> Deserialize<'de> for ResourceId {
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
 pub struct ResourceTypeAndId {
     /// The associated `ResourceType`.
-    pub t: ResourceType,
+    pub kind: ResourceType,
 
     /// The associated `ResourceId`.
     pub id: ResourceId,
@@ -216,15 +216,15 @@ impl FromStr for ResourceTypeAndId {
             .trim_matches(|p| p == '(' || p == ')')
             .split(',')
             .collect();
-        let t = pair[0].parse::<ResourceType>()?;
+        let kind = pair[0].parse::<ResourceType>()?;
         let id = pair[1].parse::<ResourceId>()?;
-        Ok(Self { t, id })
+        Ok(Self { kind, id })
     }
 }
 
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("({},{})", self.t, self.id))
+        f.write_fmt(format_args!("({},{})", self.kind, self.id))
     }
 }
 

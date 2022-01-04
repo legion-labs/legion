@@ -49,7 +49,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         let resource_path: ResourcePathName = "/entity/create_test.dc".into();
 
         let new_id = ResourceTypeAndId {
-            t: TestEntity::TYPE,
+            kind: TestEntity::TYPE,
             id: ResourceId::new(),
         };
 
@@ -78,7 +78,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         // Clone the created Resource
         let clone_name: ResourcePathName = "/entity/test_clone.dc".into();
         let clone_id = ResourceTypeAndId {
-            t: TestEntity::TYPE,
+            kind: TestEntity::TYPE,
             id: ResourceId::new(),
         };
         let transaction = Transaction::new().add_operation(CloneResourceOperation::new(
@@ -142,7 +142,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         let invalid_resource: ResourcePathName = "/entity/create_invalid.dc".into();
         let resource_path: ResourcePathName = "/entity/create_test.dc".into();
         let new_id = ResourceTypeAndId {
-            t: TestEntity::TYPE,
+            kind: TestEntity::TYPE,
             id: ResourceId::new(),
         };
         let transaction = Transaction::new()

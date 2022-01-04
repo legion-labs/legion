@@ -479,7 +479,7 @@ mod tests {
                 return Ok(None);
             }
             Ok(Some(Reference::Passive(ResourceTypeAndId {
-                t: ResourceType::from_raw(underlying_type),
+                kind: ResourceType::from_raw(underlying_type),
                 id: ResourceId::from_raw(underlying_id),
             })))
         }
@@ -498,7 +498,7 @@ mod tests {
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let checksum = content_store.store(content).unwrap();
@@ -544,7 +544,7 @@ mod tests {
         ];
 
         let child_id = ResourceTypeAndId {
-            t: refs_asset::RefsAsset::TYPE,
+            kind: refs_asset::RefsAsset::TYPE,
             id: ResourceId::new_explicit(1),
         };
 
@@ -556,7 +556,7 @@ mod tests {
             );
             let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
             let id = ResourceTypeAndId {
-                t: refs_asset::RefsAsset::TYPE,
+                kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
             };
             manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
@@ -649,7 +649,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped(ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(7),
             });
             internal_id = a.id();
@@ -677,7 +677,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped_sync(ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(7),
             });
             internal_id = a.id();

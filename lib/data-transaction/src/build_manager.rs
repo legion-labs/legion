@@ -40,12 +40,12 @@ impl BuildManager {
     ) -> anyhow::Result<Vec<ResourceTypeAndId>> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
-        let runtime_type = if resource_id.t == ResourceType::new(b"offline_debugcube") {
+        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_debugcube") {
             ResourceType::new(b"runtime_debugcube")
-        } else if resource_id.t == ResourceType::new(b"offline_testentity") {
+        } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
             ResourceType::new(b"runtime_testentity")
         } else {
-            resource_id.t
+            resource_id.kind
         };
 
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);

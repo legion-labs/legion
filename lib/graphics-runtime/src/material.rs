@@ -40,7 +40,7 @@ where
     let underlying_type = reader.read_u64::<LittleEndian>()?;
     let underlying_id = reader.read_u128::<LittleEndian>()?;
     Ok(Reference::Passive(ResourceTypeAndId {
-        t: ResourceType::from_raw(underlying_type),
+        kind: ResourceType::from_raw(underlying_type),
         id: ResourceId::from_raw(underlying_id),
     }))
 }

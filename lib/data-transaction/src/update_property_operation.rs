@@ -36,7 +36,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.t, resource_handle)
+            .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         if self.old_value.is_none() {
@@ -64,7 +64,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
             let reflection = ctx
                 .resource_registry
-                .get_resource_reflection_mut(self.resource_id.t, handle)
+                .get_resource_reflection_mut(self.resource_id.kind, handle)
                 .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
             set_property_from_json_string(

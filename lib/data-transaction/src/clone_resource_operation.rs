@@ -41,19 +41,19 @@ impl TransactionOperation for CloneResourceOperation {
 
         let mut buffer = Vec::<u8>::new();
         ctx.resource_registry.serialize_resource(
-            self.source_resource_id.t,
+            self.source_resource_id.kind,
             source_handle,
             &mut buffer,
         )?;
 
         let clone_handle = ctx
             .resource_registry
-            .deserialize_resource(self.source_resource_id.t, &mut buffer.as_slice())?;
+            .deserialize_resource(self.source_resource_id.kind, &mut buffer.as_slice())?;
 
         ctx.project.add_resource_with_id(
             self.clone_path.clone(),
             self.source_resource_type_name,
-            self.clone_resource_id.t,
+            self.clone_resource_id.kind,
             self.clone_resource_id,
             &clone_handle,
             &mut ctx.resource_registry,

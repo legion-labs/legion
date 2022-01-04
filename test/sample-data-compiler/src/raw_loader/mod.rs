@@ -188,7 +188,7 @@ fn build_resource_from_raw(
                 id
             } else {
                 let id = ResourceTypeAndId {
-                    t: kind.1,
+                    kind: kind.1,
                     id: in_resources[i].1,
                 };
                 project
@@ -221,7 +221,7 @@ fn build_test_entity(
             let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
-                t: kind,
+                kind,
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
             let test_entity_handle = resources.new_resource(kind).unwrap();
@@ -272,7 +272,7 @@ fn build_debug_cubes(
         let id = project.find_resource(&name).unwrap_or_else(|_err| {
             let kind = DebugCube::TYPE;
             let id = ResourceTypeAndId {
-                t: kind,
+                kind,
                 id: ResourceId::from_str(cube_ids[index]).unwrap(),
             };
             let cube_entity_handle = resources.new_resource(kind).unwrap();

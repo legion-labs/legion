@@ -259,7 +259,7 @@ impl Project {
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         let type_id = ResourceTypeAndId {
-            t: kind,
+            kind,
             id: ResourceId::new(),
         };
         self.add_resource_with_id(name, kind_name, kind, type_id, handle, registry)
@@ -360,7 +360,7 @@ impl Project {
                 .map_err(|e| Error::IOError(resource_path.clone(), e))?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(type_id.t, handle, &mut resource_file)
+                .serialize_resource(type_id.kind, handle, &mut resource_file)
                 .map_err(|e| Error::IOError(resource_path.clone(), e))?;
             build_deps
         };
@@ -396,7 +396,7 @@ impl Project {
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::IOError(resource_path.clone(), e))?;
         let handle = resources
-            .deserialize_resource(type_id.t, &mut resource_file)
+            .deserialize_resource(type_id.kind, &mut resource_file)
             .map_err(|e| Error::IOError(resource_path, e))?;
         Ok(handle)
     }

@@ -32,7 +32,7 @@ pub fn write_assetfile(
     let mut kind: Option<ResourceType> = None;
     for content in asset_list {
         if asset_contents.is_empty() {
-            kind = Some(content.0.t);
+            kind = Some(content.0.kind);
         }
         asset_contents.push(content_store.read(content.1).unwrap());
     }
@@ -68,7 +68,7 @@ mod tests {
         let content = RefAssetContent {
             text,
             reference: ResourceTypeAndId {
-                t: refs_asset::RefsAsset::TYPE,
+                kind: refs_asset::RefsAsset::TYPE,
                 id: reference,
             },
         };
@@ -84,7 +84,7 @@ mod tests {
         let mut content_store = RamContentStore::default();
 
         let asset_id = ResourceTypeAndId {
-            t: refs_asset::RefsAsset::TYPE,
+            kind: refs_asset::RefsAsset::TYPE,
             id: ResourceId::new_explicit(1),
         };
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
@@ -114,7 +114,7 @@ mod tests {
         let mut content_store = RamContentStore::default();
 
         let child_id = ResourceTypeAndId {
-            t: refs_asset::RefsAsset::TYPE,
+            kind: refs_asset::RefsAsset::TYPE,
             id: ResourceId::new_explicit(1),
         };
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
         let parent_id = ResourceTypeAndId {
-            t: refs_asset::RefsAsset::TYPE,
+            kind: refs_asset::RefsAsset::TYPE,
             id: ResourceId::new_explicit(2),
         };
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
