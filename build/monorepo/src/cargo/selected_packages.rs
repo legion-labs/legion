@@ -27,6 +27,9 @@ pub struct SelectedPackageArgs {
     /// Run on packages changed since the merge base of this commit
     changed_since: Option<String>,
     #[clap(long)]
+    /// Valid only with `--changed-since <BASE>`
+    direct_only: bool,
+    #[clap(long)]
     /// Run on all packages in the workspace
     pub(crate) workspace: bool,
 }
@@ -72,12 +75,22 @@ impl SelectedPackageArgs {
                     "May only use --changes-since if working in a local git repository.",
                 )
             })?;
-            let affected_set = changed_since_impl(git_cli, ctx, base)?;
-            includes = includes.intersection(
-                affected_set
-                    .packages(DependencyDirection::Forward)
-                    .map(|package| package.name()),
-            );
+            let determinator_set = changed_since_impl(git_cli, ctx, base)?;
+            if self.direct_only {
+                includes = includes.intersection(
+                    determinator_set
+                        .path_changed_set
+                        .packages(DependencyDirection::Forward)
+                        .map(|package| package.name()),
+                );
+            } else {
+                includes = includes.intersection(
+                    determinator_set
+                        .affected_set
+                        .packages(DependencyDirection::Forward)
+                        .map(|package| package.name()),
+                );
+            }
         }
 
         let mut ret = SelectedPackages::new(includes);

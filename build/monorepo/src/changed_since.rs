@@ -3,8 +3,8 @@
 
 use crate::git::GitCli;
 use crate::{context::Context, Error, Result};
-use determinator::Determinator;
-use guppy::graph::{cargo::CargoResolverVersion, DependencyDirection, PackageSet};
+use determinator::{Determinator, DeterminatorSet};
+use guppy::graph::{cargo::CargoResolverVersion, DependencyDirection};
 use lgn_telemetry::trace;
 
 #[derive(Debug, clap::Args)]
@@ -17,8 +17,11 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let git_cli = ctx.git_cli().map_err(|err| {
         err.with_explanation("changed-since` must be run within a project cloned from a git repo.")
     })?;
-    let affected_set = changed_since_impl(git_cli, ctx, &args.base)?;
-    for package in affected_set.packages(DependencyDirection::Forward) {
+    let determinator_set = changed_since_impl(git_cli, ctx, &args.base)?;
+    for package in determinator_set
+        .affected_set
+        .packages(DependencyDirection::Forward)
+    {
         println!("{}", package.name());
     }
     Ok(())
@@ -28,7 +31,7 @@ pub(crate) fn changed_since_impl<'g>(
     git_cli: &GitCli,
     ctx: &'g Context,
     base: &str,
-) -> Result<PackageSet<'g>> {
+) -> Result<DeterminatorSet<'g>> {
     let merge_base = git_cli.merge_base(base)?;
     let (old_graph, (new_graph, files_changed)) = rayon::join(
         || {
@@ -68,6 +71,5 @@ pub(crate) fn changed_since_impl<'g>(
         .set_rules(&ctx.config().determinator)
         .map_err(|err| Error::new("failed setting the rules").with_source(err))?;
 
-    let determinator_set = determinator.compute();
-    Ok(determinator_set.affected_set)
+    Ok(determinator.compute())
 }
