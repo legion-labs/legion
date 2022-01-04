@@ -1,3 +1,5 @@
+// @ts-check
+
 module.exports = {
   env: {
     browser: true,

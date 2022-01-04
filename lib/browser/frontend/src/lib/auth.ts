@@ -40,10 +40,14 @@ export type ClientTokenSet = {
   expires_in: number;
 };
 
+export type GetTokenSetRequest =
+  | { type: "code"; code: string }
+  | { type: "refreshToken"; refreshToken: string };
+
 export interface Authenticator {
   getAuthorizationCodeInteractive(): void;
 
-  getTokenSetFromAuthorizationCode(code: string): Promise<ClientTokenSet>;
+  getTokenSet(request: GetTokenSetRequest): Promise<ClientTokenSet>;
 }
 
 export class TokenCache<A extends Authenticator> {
@@ -55,9 +59,9 @@ export class TokenCache<A extends Authenticator> {
     }
   }
 
-  getTokenSetFromAuthorizationCode(code: string) {
+  getTokenSet(request: GetTokenSetRequest) {
     if (this.tokenIsInvalid()) {
-      return this.authenticator.getTokenSetFromAuthorizationCode(code);
+      return this.authenticator.getTokenSet(request);
     }
   }
 
@@ -161,15 +165,36 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
     window.location.href = this.authorizationUrl.toString();
   }
 
-  async getTokenSetFromAuthorizationCode(
-    code: string
-  ): Promise<ClientTokenSet> {
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: this.clientId,
-      code: code,
-      redirect_uri: this.redirectUri,
-    });
+  async getTokenSet(request: GetTokenSetRequest): Promise<ClientTokenSet> {
+    let body: URLSearchParams;
+
+    switch (request.type) {
+      case "code": {
+        body = new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: this.clientId,
+          code: request.code,
+          redirect_uri: this.redirectUri,
+        });
+
+        break;
+      }
+
+      case "refreshToken": {
+        body = new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: this.clientId,
+          refresh_token: request.refreshToken,
+          redirect_uri: this.redirectUri,
+        });
+
+        break;
+      }
+
+      default: {
+        throw new Error(`Unexpected request: ${request}`);
+      }
+    }
 
     const requestInit: RequestInit = {
       method: "POST",
@@ -178,9 +203,9 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     };
 
-    const request = new Request(this.accessTokenUrl.toString(), requestInit);
-
-    const response = await fetch(request);
+    const response = await fetch(
+      new Request(this.accessTokenUrl.toString(), requestInit)
+    );
 
     if (!response.ok) {
       throw new Error(await response.text());
@@ -226,8 +251,10 @@ export async function finalizeAwsCognitoAuth(
   awsCognitoTokenCache: TokenCache<AwsCognitoClientAuthenticator>,
   code: string
 ) {
-  const clientTokenSet =
-    await awsCognitoTokenCache.getTokenSetFromAuthorizationCode(code);
+  const clientTokenSet = await awsCognitoTokenCache.getTokenSet({
+    type: "code",
+    code,
+  });
 
   if (!clientTokenSet) {
     return null;
@@ -246,4 +273,38 @@ export async function finalizeAwsCognitoAuth(
   setCookie("expires_at", expiresAt, expires_in);
 
   return awsCognitoTokenCache.authenticator.getUserInfo(access_token);
+}
+
+/** */
+export async function scheduleRefreshClientTokenSet(
+  awsCognitoTokenCache: TokenCache<AwsCognitoClientAuthenticator>
+) {
+  const expiresAtCookie = getCookie("expires_at");
+
+  if (!expiresAtCookie) {
+    return;
+  }
+
+  const expiresAt = +expiresAtCookie;
+
+  if (isNaN(expiresAt)) {
+    return;
+  }
+
+  const expiresIn = expiresAt - Date.now() - 10_000;
+
+  const timeoutId = setTimeout(async () => {
+    const refreshToken = getCookie("refresh_token");
+
+    if (!refreshToken) {
+      return;
+    }
+
+    await awsCognitoTokenCache.getTokenSet({
+      type: "refreshToken",
+      refreshToken,
+    });
+  }, expiresIn);
+
+  return timeoutId;
 }

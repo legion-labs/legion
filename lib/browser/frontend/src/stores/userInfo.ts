@@ -12,7 +12,7 @@ export default asyncData(async () => {
     : getCookie("access_token");
 
   if (!accessToken) {
-    return null;
+    throw new Error("Couldn't find access token in cookies");
   }
 
   return awsCognitoAuthenticator.getUserInfo(accessToken);

@@ -56,6 +56,7 @@
     "@tauri-apps/api": "^1.0.0-beta.8",
     "browser-headers": "^0.4.1",
     "color-convert": "^2.0.1",
+    "google-protobuf": "^3.19.1",
     "grpc-web": "^1.3.0",
     "long": "^5.2.0",
     "pnpm": "^6.24.2",

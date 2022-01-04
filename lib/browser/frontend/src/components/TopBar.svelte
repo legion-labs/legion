@@ -106,7 +106,7 @@
       title={$userInfoData
         ? `Welcome back ${$userInfoData.name}`
         : "Authenticate"}
-      on:click={authenticate}
+      on:click={$userInfoData ? null : authenticate}
     >
       {userInitials}
     </div>
