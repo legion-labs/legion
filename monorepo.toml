@@ -72,3 +72,7 @@ allow = [
 [[determinator.path-rule]]
 globs = [".github/**/*"]
 mark-changed = "all"
+
+[[determinator.path-rule]]
+globs = [".vscode/*"]
+mark-changed = []
