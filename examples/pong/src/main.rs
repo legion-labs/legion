@@ -137,9 +137,7 @@ fn main() {
         if let Some(params) = args.project {
             PathBuf::from(params)
         } else {
-            settings
-                .get_absolute_path("runtime_srv.project_dir")
-                .unwrap_or_else(|| PathBuf::from("test/sample-data"))
+            PathBuf::from("examples/pong/data")
         }
     };
 
