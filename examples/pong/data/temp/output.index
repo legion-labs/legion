@@ -1,7 +1,32 @@
 {
   "version": "0.1.0",
-  "compiled_resources": [],
-  "compiled_resource_references": [],
+  "compiled_resources": [
+    {
+      "compile_path": "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e",
+      "context_hash": "e0e9d8a5b0e5e97e",
+      "source_hash": "932307f25827850e",
+      "compiled_path": "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e",
+      "compiled_checksum": "90135ffec92b70e32a7dd56a2e547899",
+      "compiled_size": 64
+    },
+    {
+      "compile_path": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
+      "context_hash": "cec2e97c03c39272",
+      "source_hash": "708220dee44a8085",
+      "compiled_path": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
+      "compiled_checksum": "25a7ec4d8123182fb79037e70b02d3c4",
+      "compiled_size": 185
+    }
+  ],
+  "compiled_resource_references": [
+    {
+      "compile_path": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
+      "context_hash": "cec2e97c03c39272",
+      "source_hash": "708220dee44a8085",
+      "compiled_path": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
+      "compiled_reference": "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e"
+    }
+  ],
   "pathid_mapping": [
     [
       "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)",
@@ -10,6 +35,10 @@
     [
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)",
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)"
+    ],
+    [
+      "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
+      "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045"
     ],
     [
       "(e0d46a6b35b5717e,fe923488-86d9-500c-8151-25ef5f71417d)",
