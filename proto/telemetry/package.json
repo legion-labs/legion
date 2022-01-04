@@ -22,6 +22,7 @@
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
     "browser-headers": "^0.4.1",
+    "google-protobuf": "^3.19.1",
     "long": "^5.2.0",
     "pnpm": "^6.24.2",
     "protobufjs": "^6.11.2"

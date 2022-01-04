@@ -1,9 +1,6 @@
-declare module "@tauri-apps/api" {
-  // The `UserInfo` struct returned by the `authenticate` function
-  type UserInfo = {
-    sub: string;
-  };
+import { UserInfo } from "../lib/auth";
 
+declare module "@tauri-apps/api" {
   type Command<T extends string> = `plugin:browser|${T}`;
 
   function invoke(command: Command<"authenticate">): Promise<UserInfo>;

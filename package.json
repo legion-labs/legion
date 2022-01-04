@@ -1,7 +1,7 @@
 {
   "name": "legion",
-	"version": "0.0.1",
-	"description": "monorepo for legion labs",
+  "version": "0.0.1",
+  "description": "monorepo for legion labs",
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
@@ -9,6 +9,7 @@
     "check:all": "pnpm -r check:all",
     "clean": "pnpm -r clean && rimraf node_modules",
     "test": "pnpm -r test",
+    "prettier:fix": "pnpm -r prettier:fix",
     "analytics:dev": "pnpm -C client/analytics-web/frontend dev",
     "editor:dev": "pnpm -C client/editor/frontend dev",
     "runtime:dev": "pnpm -C client/runtime/frontend dev"

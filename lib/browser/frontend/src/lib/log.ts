@@ -98,12 +98,11 @@ function log(
   ) {
     // eslint-disable-next-line no-console
     console.log(
-      `[%c${new Date().toISOString()} %c${level.toUpperCase()}${
-        namespace === undefined ? "" : ` %c${namespace}`
-      }%c]`,
+      `[%c${new Date().toISOString()} %c${level.toUpperCase()}%c${
+        !namespace.length ? "" : ` ${namespace}`
+      }]`,
       "color: purple",
       `color: ${levelColor(level)}`,
-      "color: purple",
       "color: black",
       message
     );

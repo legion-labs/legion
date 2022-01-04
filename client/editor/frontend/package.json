@@ -16,7 +16,7 @@
     "eslint:fix": "eslint --ext .ts,.svelte --fix .",
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
-    "svelte:check": "tsc --noEmit && svelte-check",
+    "svelte:check": "tsc && svelte-check",
     "clean": "rimraf node_modules dist",
     "test": "jest"
   },

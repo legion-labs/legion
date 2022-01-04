@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
@@ -17,9 +19,11 @@
     }
   },
   "include": [
+    // Source
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.svelte",
+    // Tests
     "tests/**/*.ts"
   ]
 }
