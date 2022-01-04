@@ -1,18 +1,24 @@
 // This is generated file. Do not edit manually
 
-use lgn_graphics_api::DeviceContext;
-use lgn_graphics_api::DescriptorSetLayout;
-use lgn_graphics_api::ShaderResourceType;
-use lgn_graphics_api::DescriptorRef;
-use lgn_graphics_api::Sampler;
-use lgn_graphics_api::BufferView;
-use lgn_graphics_api::TextureView;
-use lgn_graphics_api::DescriptorSetDataProvider;
-use lgn_graphics_cgen_runtime::CGenDescriptorSetInfo;
-use lgn_graphics_cgen_runtime::CGenDescriptorDef;
-use lgn_graphics_cgen_runtime::CGenDescriptorSetDef;
+#[allow(unused_imports)]
+	use lgn_graphics_api::{
+	DeviceContext,
+	DescriptorSetLayout,
+	ShaderResourceType,
+	DescriptorRef,
+	Sampler,
+	BufferView,
+	TextureView,
+	DescriptorSetDataProvider,
+};
+#[allow(unused_imports)]
+	use lgn_graphics_cgen_runtime::{
+	CGenDescriptorSetInfo,
+	CGenDescriptorDef,
+	CGenDescriptorSetDef,
+};
 
-static descriptor_defs: [CGenDescriptorDef; 1] = [
+static DESCRIPTOR_DEFS: [CGenDescriptorDef; 1] = [
 	CGenDescriptorDef {
 		name: "view_data",
 		shader_resource_type: ShaderResourceType::ConstantBuffer,
@@ -22,15 +28,15 @@ static descriptor_defs: [CGenDescriptorDef; 1] = [
 	}, 
 ];
 
-static descriptor_set_def: CGenDescriptorSetDef = CGenDescriptorSetDef{ 
+static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{ 
 	name: "ViewDescriptorSet",
 	id: 0,
 	frequency: 0,
 	descriptor_flat_count: 1,
-	descriptor_defs: &descriptor_defs,
+	descriptor_defs: &DESCRIPTOR_DEFS,
 }; 
 
-static mut descriptor_set_layout: Option<DescriptorSetLayout> = None;
+static mut DESCRIPTOR_SET_LAYOUT: Option<DescriptorSetLayout> = None;
 
 pub struct ViewDescriptorSet<'a> {
 	descriptor_refs: [DescriptorRef<'a>; 1],
@@ -40,17 +46,17 @@ impl<'a> ViewDescriptorSet<'a> {
 	
 	#[allow(unsafe_code)]
 	pub fn initialize(device_context: &DeviceContext) {
-		unsafe { descriptor_set_layout = Some(descriptor_set_def.create_descriptor_set_layout(device_context)); }
+		unsafe { DESCRIPTOR_SET_LAYOUT = Some(DESCRIPTOR_SET_DEF.create_descriptor_set_layout(device_context)); }
 	}
 	
 	#[allow(unsafe_code)]
 	pub fn shutdown() {
-		unsafe{ descriptor_set_layout = None; }
+		unsafe{ DESCRIPTOR_SET_LAYOUT = None; }
 	}
 	
 	#[allow(unsafe_code)]
 	pub fn descriptor_set_layout() -> &'static DescriptorSetLayout {
-		unsafe{ match &descriptor_set_layout{
+		unsafe{ match &DESCRIPTOR_SET_LAYOUT{
 		Some(dsl) => dsl,
 		None => unreachable!(),
 		}}
@@ -60,12 +66,12 @@ impl<'a> ViewDescriptorSet<'a> {
 	
 	pub const fn frequency() -> u32 { 0  }
 	
-	pub fn def() -> &'static CGenDescriptorSetDef { &descriptor_set_def }
+	pub fn def() -> &'static CGenDescriptorSetDef { &DESCRIPTOR_SET_DEF }
 	
 	pub fn new() -> Self { Self::default() }
 	
 	pub fn set_view_data(&mut self, value:  &'a BufferView) {
-		assert!(descriptor_set_def.descriptor_defs[0].validate(value));
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[0].validate(value));
 		self.descriptor_refs[0] = DescriptorRef::BufferView(value);
 	}
 	
@@ -84,7 +90,7 @@ impl<'a> DescriptorSetDataProvider for ViewDescriptorSet<'a> {
 	
 	fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'a>] {
 		&self.descriptor_refs[
-                descriptor_defs[descriptor_index].flat_index_start as usize .. descriptor_defs[descriptor_index].flat_index_end as usize
+                DESCRIPTOR_DEFS[descriptor_index].flat_index_start as usize .. DESCRIPTOR_DEFS[descriptor_index].flat_index_end as usize
              ]
 	}
 	

@@ -77,7 +77,7 @@ fn generate_rust_pipeline_layout(
     // write cgen pipeline layout def
     {
         writer.add_line(
-            "static pipeline_layout_def: CGenPipelineLayoutDef = CGenPipelineLayoutDef{ ",
+            "static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef{ ",
         );
         writer.indent();
         writer.add_line(format!("name: \"{}\",", pipeline_layout.name));
@@ -104,7 +104,7 @@ fn generate_rust_pipeline_layout(
 
     // pipeline layout
     {
-        writer.add_line("static mut pipeline_layout: Option<RootSignature> = None;");
+        writer.add_line("static mut PIPELINE_LAYOUT: Option<RootSignature> = None;");
         writer.new_line();
     }
 
@@ -131,7 +131,7 @@ fn generate_rust_pipeline_layout(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
         writer.indent();
-        writer.add_line( "unsafe { pipeline_layout = Some(pipeline_layout_def.create_pipeline_layout(device_context, descriptor_set_layouts)); }" );
+        writer.add_line( "unsafe { PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts)); }" );
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -140,7 +140,7 @@ fn generate_rust_pipeline_layout(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn shutdown() {");
         writer.indent();
-        writer.add_line( "unsafe{ pipeline_layout = None; }" );
+        writer.add_line( "unsafe{ PIPELINE_LAYOUT = None; }" );
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -149,7 +149,7 @@ fn generate_rust_pipeline_layout(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn root_signature() -> &'static RootSignature {");
         writer.indent();
-        writer.add_line("unsafe{ match &pipeline_layout{" );
+        writer.add_line("unsafe{ match &PIPELINE_LAYOUT{" );
         writer.indent();
         writer.add_line("Some(pl) => pl,");
         writer.add_line("None => unreachable!(),");
@@ -176,13 +176,14 @@ fn generate_rust_pipeline_layout(
         // fn setters
         for (name, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(_ds_ref) => {
+                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                    let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
                         name
                     ));
                     writer.indent();
-                    // writer.add_line("self.descriptor_sets[{}] = ");
+                    writer.add_line(format!("self.descriptor_sets[{}] = Some(descriptor_set_handle);", ds.frequency ));
                     writer.unindent();
                     writer.add_line("}");
                 }

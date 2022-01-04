@@ -1,15 +1,12 @@
 use crate::{
-    cgen::{self, descriptor_set::ViewDescriptorSet},
     components::{ManipulatorComponent, PickedComponent},
     egui::egui_plugin::{Egui, EguiPlugin},
-    hl_gfx_api::DescriptorSetData,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::*;
-use lgn_graphics_api::ResourceUsage;
-use lgn_math::{EulerRot, Mat4, Quat, Vec3};
+use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
@@ -192,7 +189,7 @@ fn update_ui(
                     light.color.1 = rgb[1];
                     light.color.2 = rgb[2];
                 }
-    });
+            });
         }
     });
 }
@@ -331,29 +328,31 @@ fn render_update(
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
-    // View descriptor set
-    {
+        // View descriptor set
+        /* WIP
+        {
             let (view_matrix, projection_matrix) = camera_component.build_view_projection(
                 render_surface.extents().width() as f32,
                 render_surface.extents().height() as f32,
             );
 
-        let transient_allocator = render_context.transient_buffer_allocator();
+            let transient_allocator = render_context.transient_buffer_allocator();
 
             let mut view_data = crate::cgen::cgen_type::ViewData::default();
             view_data.view = view_matrix.into();
             view_data.projection = projection_matrix.into();
 
-        let sub_allocation =
-            transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
+            let sub_allocation =
+                transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-        let const_buffer_view = sub_allocation.const_buffer_view();
+            let const_buffer_view = sub_allocation.const_buffer_view();
 
-        let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
-        view_descriptor_set.set_view_data(&const_buffer_view);
+            let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
+            view_descriptor_set.set_view_data(&const_buffer_view);
 
-        let handle = render_context.write_descriptor_set(&view_descriptor_set);
-    }
+            let handle = render_context.write_descriptor_set(&view_descriptor_set);
+        }
+        */
 
         let cmd_buffer = render_context.alloc_command_buffer();
         let picking_pass = render_surface.picking_renderpass();

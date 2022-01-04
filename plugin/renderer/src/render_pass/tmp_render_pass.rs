@@ -331,8 +331,6 @@ impl TmpRenderPass {
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
             
-            
-
             /* WIP 
             {
                 let mut pipeline_data = cgen::pipeline_layout::TmpPipelineLayout::new(&self.pipeline);

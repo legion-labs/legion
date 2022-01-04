@@ -11,7 +11,7 @@ use lgn_graphics_cgen_runtime::PipelineDataProvider;
 
 use super::super::descriptor_set::ViewDescriptorSet;
 
-static pipeline_layout_def: CGenPipelineLayoutDef = CGenPipelineLayoutDef{ 
+static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef{ 
 	name: "TmpPipelineLayout",
 	id: 0,
 	descriptor_set_layout_ids: [
@@ -23,7 +23,7 @@ static pipeline_layout_def: CGenPipelineLayoutDef = CGenPipelineLayoutDef{
 	push_constant_type: None,
 }; 
 
-static mut pipeline_layout: Option<RootSignature> = None;
+static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
 
 pub struct TmpPipelineLayout<'a> {
 	pipeline: &'a Pipeline,
@@ -34,17 +34,17 @@ impl<'a> TmpPipelineLayout<'a> {
 	
 	#[allow(unsafe_code)]
 	pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {
-		unsafe { pipeline_layout = Some(pipeline_layout_def.create_pipeline_layout(device_context, descriptor_set_layouts)); }
+		unsafe { PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts)); }
 	}
 	
 	#[allow(unsafe_code)]
 	pub fn shutdown() {
-		unsafe{ pipeline_layout = None; }
+		unsafe{ PIPELINE_LAYOUT = None; }
 	}
 	
 	#[allow(unsafe_code)]
 	pub fn root_signature() -> &'static RootSignature {
-		unsafe{ match &pipeline_layout{
+		unsafe{ match &PIPELINE_LAYOUT{
 			Some(pl) => pl,
 			None => unreachable!(),
 		}}
@@ -59,6 +59,7 @@ impl<'a> TmpPipelineLayout<'a> {
 	}
 	
 	pub fn set_view_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
+		self.descriptor_sets[0] = Some(descriptor_set_handle);
 	}
 }
 

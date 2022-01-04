@@ -12,7 +12,7 @@ use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
 pub struct HLCommandBuffer<'rc> {
     cmd_buffer_pool: &'rc CommandBufferPoolHandle,
     cmd_buffer: CommandBufferHandle,
-    cur_pipeline_state: Option<&'rc Pipeline>,
+    // wip: cur_pipeline_state: Option<&'rc Pipeline>,
 }
 
 impl<'rc> HLCommandBuffer<'rc> {
@@ -22,7 +22,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         Self {
             cmd_buffer_pool,
             cmd_buffer,
-            cur_pipeline_state: None,
+            // cur_pipeline_state: None,
         }
     }
 
@@ -232,7 +232,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         let pipeline_type = pipeline.pipeline_type();
         let root_signature = pipeline.root_signature();
 
-        self.cmd_buffer.cmd_bind_pipeline(&pipeline);
+        self.cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
 
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
             let descriptor_set = pipeline_data.descriptor_set(i);
@@ -242,7 +242,7 @@ impl<'rc> HLCommandBuffer<'rc> {
                     &root_signature,
                     i,
                     descriptor_set,
-                );
+                ).unwrap();
             }
         }
     }

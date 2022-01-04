@@ -46,50 +46,37 @@ fn generate_rust_descriptorset(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    // writer.add_line("use lgn_graphics_api::DeviceContext;");
-    // writer.add_line("use lgn_graphics_api::DescriptorSetLayoutDef;");
     // writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
 
-    writer.add_line("use lgn_graphics_api::DeviceContext;");
-    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
-    writer.add_line("use lgn_graphics_api::ShaderResourceType;");
-    writer.add_line("use lgn_graphics_api::DescriptorRef;");
-    writer.add_line("use lgn_graphics_api::Sampler;");
-    writer.add_line("use lgn_graphics_api::BufferView;");
-    writer.add_line("use lgn_graphics_api::TextureView;");
-    writer.add_line("use lgn_graphics_api::DescriptorSetDataProvider;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenDescriptorSetInfo;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenDescriptorDef;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenDescriptorSetDef;");
+    writer.add_line("#[allow(unused_imports)]");
+    writer.indent();
+    writer.add_line("use lgn_graphics_api::{");
+    writer.add_line("DeviceContext,");
+    writer.add_line("DescriptorSetLayout,");
+    writer.add_line("ShaderResourceType,");
+    writer.add_line("DescriptorRef,");
+    writer.add_line("Sampler,");
+    writer.add_line("BufferView,");
+    writer.add_line("TextureView,");
+    writer.add_line("DescriptorSetDataProvider,");
+    writer.unindent();
+    writer.add_line("};");
+
+    writer.add_line("#[allow(unused_imports)]");
+    writer.indent();
+    writer.add_line("use lgn_graphics_cgen_runtime::{");
+    writer.add_line("CGenDescriptorSetInfo,");
+    writer.add_line("CGenDescriptorDef,");
+    writer.add_line("CGenDescriptorSetDef,");
+    writer.unindent();
+    writer.add_line("};");
 
     writer.new_line();
-    // local dependencies
-    /*
-    let deps = GeneratorContext::get_descriptorset_dependencies(descriptor_set);
-
-    if !deps.is_empty() {
-        for ty_ref in &deps {
-            let ty = ty_ref.get(ctx.model);
-            match ty {
-                CGenType::Native(_) => {}
-                CGenType::Struct(e) => {
-                    writer.add_line("#[allow(unused_imports)]");
-                    writer.add_line(format!(
-                        "use super::super::cgen_type::{}::{};",
-                        e.name.to_snake_case(),
-                        e.name
-                    ));
-                }
-            }
-        }
-        writer.new_line();
-    }
-    */
 
     // write cgen descriptor def
     {
         writer.add_line(format!(
-            "static descriptor_defs: [CGenDescriptorDef; {}] = [",
+            "static DESCRIPTOR_DEFS: [CGenDescriptorDef; {}] = [",
             descriptor_set.descriptors.len()
         ));
         writer.indent();
@@ -102,7 +89,10 @@ fn generate_rust_descriptorset(
                 descriptor.def.into_shader_resource_type()
             ));
             writer.add_line(format!("flat_index_start: {},", descriptor.flat_index));
-            writer.add_line(format!("flat_index_end: {},", descriptor.flat_index + descriptor.array_len.unwrap_or(1) ));
+            writer.add_line(format!(
+                "flat_index_end: {},",
+                descriptor.flat_index + descriptor.array_len.unwrap_or(1)
+            ));
             writer.add_line(format!(
                 "array_size: {},",
                 descriptor.array_len.unwrap_or(0u32)
@@ -117,7 +107,7 @@ fn generate_rust_descriptorset(
 
     // write cgen descriptor set def
     {
-        writer.add_line("static descriptor_set_def: CGenDescriptorSetDef = CGenDescriptorSetDef{ ");
+        writer.add_line("static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", descriptor_set.name));
         writer.add_line(format!("id: {},", descriptor_set_ref.id()));
@@ -126,7 +116,7 @@ fn generate_rust_descriptorset(
             "descriptor_flat_count: {},",
             descriptor_set.flat_descriptor_count
         ));
-        writer.add_line("descriptor_defs: &descriptor_defs,");
+        writer.add_line("descriptor_defs: &DESCRIPTOR_DEFS,");
         writer.unindent();
         writer.add_line("}; ");
         writer.new_line();
@@ -134,7 +124,7 @@ fn generate_rust_descriptorset(
 
     // descriptor set layout
     {
-        writer.add_line("static mut descriptor_set_layout: Option<DescriptorSetLayout> = None;");
+        writer.add_line("static mut DESCRIPTOR_SET_LAYOUT: Option<DescriptorSetLayout> = None;");
         writer.new_line();
     }
 
@@ -161,16 +151,16 @@ fn generate_rust_descriptorset(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext) {");
         writer.indent();
-        writer.add_line( "unsafe { descriptor_set_layout = Some(descriptor_set_def.create_descriptor_set_layout(device_context)); }" );
+        writer.add_line( "unsafe { DESCRIPTOR_SET_LAYOUT = Some(DESCRIPTOR_SET_DEF.create_descriptor_set_layout(device_context)); }" );
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
 
         // impl: shutdown
-        writer.add_line("#[allow(unsafe_code)]");        
+        writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn shutdown() {");
         writer.indent();
-        writer.add_line( "unsafe{ descriptor_set_layout = None; }" );
+        writer.add_line("unsafe{ DESCRIPTOR_SET_LAYOUT = None; }");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -179,7 +169,7 @@ fn generate_rust_descriptorset(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn descriptor_set_layout() -> &'static DescriptorSetLayout {");
         writer.indent();
-        writer.add_line("unsafe{ match &descriptor_set_layout{");
+        writer.add_line("unsafe{ match &DESCRIPTOR_SET_LAYOUT{");
         writer.add_line("Some(dsl) => dsl,");
         writer.add_line("None => unreachable!(),");
         writer.add_line("}}");
@@ -202,7 +192,7 @@ fn generate_rust_descriptorset(
         writer.new_line();
 
         // impl: def
-        writer.add_line("pub fn def() -> &'static CGenDescriptorSetDef { &descriptor_set_def }");
+        writer.add_line("pub fn def() -> &'static CGenDescriptorSetDef { &DESCRIPTOR_SET_DEF }");
         writer.new_line();
 
         // impl: new
@@ -264,7 +254,7 @@ fn generate_rust_descriptorset(
             match descriptor.array_len {
                 Some(n) => {
                     writer.add_line(format!(
-                        "assert!(descriptor_set_def.descriptor_defs[{}].validate(value.as_ref()));",
+                        "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(value.as_ref()));",
                         descriptor_index
                     ));
                     writer.add_line(format!("for i in 0..{} {{", n));
@@ -278,7 +268,7 @@ fn generate_rust_descriptorset(
                 }
                 None => {
                     writer.add_line(format!(
-                        "assert!(descriptor_set_def.descriptor_defs[{}].validate(value));",
+                        "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(value));",
                         descriptor_index
                     ));
                     writer.add_line(format!(
@@ -339,7 +329,7 @@ fn generate_rust_descriptorset(
         writer.indent();
         writer.add_line(format!(
             "&self.descriptor_refs[
-                descriptor_defs[descriptor_index].flat_index_start as usize .. descriptor_defs[descriptor_index].flat_index_end as usize
+                DESCRIPTOR_DEFS[descriptor_index].flat_index_start as usize .. DESCRIPTOR_DEFS[descriptor_index].flat_index_end as usize
              ]",            
         ));
         writer.unindent();
