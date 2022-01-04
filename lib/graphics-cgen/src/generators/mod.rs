@@ -99,6 +99,4 @@ impl<'a> GeneratorContext<'a> {
 
         set
     }
-
-    
 }

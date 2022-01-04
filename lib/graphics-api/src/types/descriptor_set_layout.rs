@@ -1,9 +1,6 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
-use std::{
-    hash::{Hash, Hasher}
-};
-
+use std::hash::{Hash, Hasher};
 
 use crate::{
     deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult,

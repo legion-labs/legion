@@ -191,10 +191,8 @@ impl TransientBufferAllocator {
 
         let mut aligned_offset =
             lgn_utils::memory::round_size_up_to_alignment_u64(self.offset.get(), alignment);
-        let aligned_size = lgn_utils::memory::round_size_up_to_alignment_u64(
-            data_layout.size() as u64,
-            alignment,
-        );
+        let aligned_size =
+            lgn_utils::memory::round_size_up_to_alignment_u64(data_layout.size() as u64, alignment);
         let mut new_offset = aligned_offset + aligned_size;
         let mut allocation = self.allocation.borrow_mut();
 
@@ -206,10 +204,7 @@ impl TransientBufferAllocator {
 
             assert!(
                 aligned_offset
-                    == lgn_utils::memory::round_size_up_to_alignment_u64(
-                        aligned_offset,
-                        alignment
-                    )
+                    == lgn_utils::memory::round_size_up_to_alignment_u64(aligned_offset, alignment)
             );
         }
 

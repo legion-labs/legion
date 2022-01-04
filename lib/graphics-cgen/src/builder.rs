@@ -74,7 +74,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             mdl,
             product: DescriptorSet::new(name, frequency),
             names: HashSet::new(),
-            flat_index: 0
+            flat_index: 0,
         }
     }
 

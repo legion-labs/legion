@@ -244,7 +244,7 @@ impl CGenPipelineLayoutDef {
     }
 }
 
-pub trait CGenDescriptorSetInfo {    
+pub trait CGenDescriptorSetInfo {
     fn id() -> u32;
 }
 

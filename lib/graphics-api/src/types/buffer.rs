@@ -1,8 +1,8 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanBuffer;
 use crate::{
-    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult,
-    ResourceCreation, ResourceUsage,
+    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult, ResourceCreation,
+    ResourceUsage,
 };
 
 #[derive(Clone, Debug, Default)]

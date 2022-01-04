@@ -43,12 +43,12 @@ impl RootSignature {
             })?;
 
         let mut hasher = fnv::FnvHasher::default();
-        definition.hash(&mut hasher);        
+        definition.hash(&mut hasher);
 
         let inner = RootSignatureInner {
             device_context: device_context.clone(),
             definition: definition.clone(),
-            hash : hasher.finish(),
+            hash: hasher.finish(),
             #[cfg(any(feature = "vulkan"))]
             platform_root_signature,
         };

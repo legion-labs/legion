@@ -237,12 +237,14 @@ impl<'rc> HLCommandBuffer<'rc> {
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
             let descriptor_set = pipeline_data.descriptor_set(i);
             if let Some(descriptor_set) = descriptor_set {
-                self.cmd_buffer.cmd_bind_descriptor_set_handle(
-                    pipeline_type,
-                    &root_signature,
-                    i,
-                    descriptor_set,
-                ).unwrap();
+                self.cmd_buffer
+                    .cmd_bind_descriptor_set_handle(
+                        pipeline_type,
+                        &root_signature,
+                        i,
+                        descriptor_set,
+                    )
+                    .unwrap();
             }
         }
     }

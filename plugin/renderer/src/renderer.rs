@@ -19,7 +19,7 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::{RenderContext, cgen};
+use crate::{cgen, RenderContext};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -55,10 +55,10 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let filesystem = FileSystem::new(".")?;
-        filesystem.add_mount_point("renderer",  env!("CARGO_MANIFEST_DIR"))?;
+        filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
-        
+
         cgen::initialize(device_context);
 
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
@@ -389,15 +389,14 @@ impl Renderer {
 }
 
 impl Drop for Renderer {
-    fn drop(&mut self) {        
-        
+    fn drop(&mut self) {
         {
             let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
-            graphics_queue.wait_for_queue_idle().unwrap();        
+            graphics_queue.wait_for_queue_idle().unwrap();
         }
-        
+
         std::mem::drop(self.test_transform_data.take());
-        
+
         cgen::shutdown();
     }
 }

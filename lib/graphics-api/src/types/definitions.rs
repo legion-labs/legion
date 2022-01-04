@@ -219,7 +219,7 @@ impl Descriptor {
 
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
-    // pub layout: &'static DescriptorSetLayout,    
+    // pub layout: &'static DescriptorSetLayout,
     #[cfg(feature = "vulkan")]
     pub vk_type: ash::vk::DescriptorSet,
 }
@@ -504,7 +504,7 @@ pub struct RootSignatureDef {
 
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
-        Self {            
+        Self {
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
         }

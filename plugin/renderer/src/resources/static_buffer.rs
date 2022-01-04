@@ -6,8 +6,8 @@ use std::{
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation,
-    ResourceState, ResourceUsage, Semaphore,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
+    ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
 
@@ -313,7 +313,7 @@ impl UniformGPUDataUpdater {
     }
 
     pub fn add_update_jobs<T>(&mut self, data: &[T], dst_offset: u64) {
-        let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;        
+        let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
 
         while self.job_blocks.is_empty()
             || !self
@@ -324,12 +324,12 @@ impl UniformGPUDataUpdater {
         {
             let data_layout = Layout::from_size_align(
                 std::cmp::max(self.block_size as usize, upload_size_in_bytes as usize),
-                std::mem::align_of::<T>()
-            ).unwrap();
+                std::mem::align_of::<T>(),
+            )
+            .unwrap();
 
             self.job_blocks.push(UniformGPUDataUploadJobBlock::new(
-                self.paged_buffer
-                    .allocate_page(data_layout),
+                self.paged_buffer.allocate_page(data_layout),
             ));
         }
     }

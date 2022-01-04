@@ -126,7 +126,7 @@ fn generate_rust_pipeline_layout(
         writer.add_line(format!("impl<'a> {}<'a> {{", pipeline_layout.name));
         writer.indent();
         writer.new_line();
-        
+
         // fn initialize
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
@@ -136,25 +136,25 @@ fn generate_rust_pipeline_layout(
         writer.add_line("}");
         writer.new_line();
 
-        // fn shutdown        
+        // fn shutdown
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn shutdown() {");
         writer.indent();
-        writer.add_line( "unsafe{ PIPELINE_LAYOUT = None; }" );
+        writer.add_line("unsafe{ PIPELINE_LAYOUT = None; }");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
 
-        // fn root_signature        
+        // fn root_signature
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn root_signature() -> &'static RootSignature {");
         writer.indent();
-        writer.add_line("unsafe{ match &PIPELINE_LAYOUT{" );
+        writer.add_line("unsafe{ match &PIPELINE_LAYOUT{");
         writer.indent();
         writer.add_line("Some(pl) => pl,");
         writer.add_line("None => unreachable!(),");
         writer.unindent();
-        writer.add_line("}}");        
+        writer.add_line("}}");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -183,7 +183,10 @@ fn generate_rust_pipeline_layout(
                         name
                     ));
                     writer.indent();
-                    writer.add_line(format!("self.descriptor_sets[{}] = Some(descriptor_set_handle);", ds.frequency ));
+                    writer.add_line(format!(
+                        "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
+                        ds.frequency
+                    ));
                     writer.unindent();
                     writer.add_line("}");
                 }
@@ -215,13 +218,14 @@ fn generate_rust_pipeline_layout(
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
-        
+
         // fn set_descriptor_set
-        writer.add_line("fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {" );
+        writer
+            .add_line("fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {");
         writer.indent();
         writer.add_line("self.descriptor_sets[frequency as usize]");
         writer.unindent();
-        writer.add_line("}");        
+        writer.add_line("}");
         writer.new_line();
 
         // fn set_descriptor_set
@@ -230,7 +234,7 @@ fn generate_rust_pipeline_layout(
         writer.add_line("self.descriptor_sets[frequency as usize] = descriptor_set;");
         writer.unindent();
         writer.add_line("}");
-        
+
         // prolog
         writer.unindent();
         writer.add_line("}");
