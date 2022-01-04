@@ -6365,6 +6365,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pong"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "instant",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-async",
+ "lgn-config",
+ "lgn-core",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-grpc",
+ "lgn-input",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-streamer",
+ "lgn-telemetry",
+ "lgn-telemetry-sink",
+ "lgn-transform",
+ "lgn-utils",
+ "lgn-window",
+ "lgn-winit",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"

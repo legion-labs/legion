@@ -5,6 +5,7 @@ members = [
     "lib/*",
     "plugin/*",
     "proto/*",
+    "examples/*",
     "test/*",
     "compiler/*",
     "build/monorepo",
