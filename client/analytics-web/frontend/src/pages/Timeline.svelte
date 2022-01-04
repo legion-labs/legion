@@ -173,6 +173,7 @@
       let endMs = RFC3339ToMs(block.endTime);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
+      nbEventsRepresented += block.nbObjects;
     } );
     blockList = blockList.concat(blocks);
   }
@@ -548,6 +549,7 @@
   let pixelSize = 0;
   let LOD = 0;
   let mergeThreshold = 0;
+  let nbEventsRepresented = 0;
   $: {
     LOD = getViewLOD(pixelSize);
   }
@@ -602,6 +604,10 @@
       <div>
         <span>Merge Threshold</span>
         <span>{formatExecutionTime(mergeThreshold)}</span>
+      </div>
+      <div>
+        <span>Nb Events Represented</span>
+        <span>{nbEventsRepresented}</span>
       </div>
     </div>
   </div>
