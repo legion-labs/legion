@@ -200,6 +200,12 @@
     const preferedLod = computePreferedLodFromTimeRange(spanData.beginMs + processOffsetMs,
                                                         spanData.endMs + processOffsetMs);
     return spanData.lods.reduce( (lhs, rhs) => {
+      if ( lhs.tracks.length == 0 ){
+        return rhs;
+      }
+      if ( rhs.tracks.length == 0 ){
+        return lhs;
+      }
       if ( Math.abs( lhs.lodId - preferedLod ) < Math.abs( rhs.lodId - preferedLod ) ){
         return lhs;
       }
