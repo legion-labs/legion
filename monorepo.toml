@@ -70,9 +70,18 @@ allow = [
 ]
 
 [[determinator.path-rule]]
-globs = [".github/**/*"]
+globs = [".github/**/*", "rust-toolchain.toml", "monorepo.toml"]
 mark-changed = "all"
 
 [[determinator.path-rule]]
-globs = [".vscode/*"]
+globs = [
+    ".vscode/*",
+    "doc/**/*",
+    "build/env/**/*",
+    "pnpm-*",
+    "deny.toml",
+    "Makefile",
+    "legion.toml",
+    "package.json",
+]
 mark-changed = []
