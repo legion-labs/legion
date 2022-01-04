@@ -327,20 +327,7 @@ fn render_update(
                 &default_camera
             },
             &default_meshes,
-        );
-
-        let debug_display_pass = render_surface.debug_display_renderpass();
-        let debug_display_pass = debug_display_pass.write();
-        debug_display_pass.render(
-            &render_context,
-            &cmd_buffer,
-            render_surface.as_mut(),
             debug_display.as_mut(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
         );
 
         let egui_pass = render_surface.egui_renderpass();
