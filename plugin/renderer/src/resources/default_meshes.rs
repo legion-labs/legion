@@ -1,4 +1,5 @@
 use lgn_graphics_api::PagedBufferAllocation;
+use lgn_math::Vec3;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{static_mesh_render_data::StaticMeshRenderData, Renderer};
@@ -27,6 +28,7 @@ pub enum DefaultMeshId {
     Cone,
     Cylinder,
     Sphere,
+    Arrow,
 }
 
 impl DefaultMeshes {
@@ -42,6 +44,7 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
             StaticMeshRenderData::new_sphere(0.25, 20, 20),
+            StaticMeshRenderData::new_arrow(Vec3::ZERO, Vec3::X),
         ];
 
         let mut vertex_data_size_in_bytes = 0;

@@ -1,21 +1,18 @@
-use std::num::NonZeroU32;
-
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorDef, DescriptorRef,
-    DescriptorSetLayoutDef, FillMode, Format, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
-    PrimitiveTopology, PushConstantDef, RasterizerState, ResourceUsage, RootSignature,
-    RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags, StencilOp,
-    StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorRef, FillMode, Format,
+    GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
+    ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
+use lgn_math::{Mat4, Quat, Vec3};
+
 use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
+    debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
-    resources::DefaultMeshes,
+    resources::{DefaultMeshId, DefaultMeshes},
     RenderContext, Renderer,
 };
 
@@ -32,112 +29,8 @@ impl DebugRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
-        //
-        // Shaders
-        //
-        let shader_compiler = renderer.shader_compiler();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../../shaders/const_color.hlsl").to_vec()).unwrap();
-
-        let shader_build_result = shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
-                glob_defines: Vec::new(),
-                entry_points: vec![
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_vs".to_owned(),
-                        target_profile: "vs_6_0".to_owned(),
-                    },
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_ps".to_owned(),
-                        target_profile: "ps_6_0".to_owned(),
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
-
-        //
-        // Root signature
-        //
-        let mut descriptor_set_layouts = Vec::new();
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let shader_resources: Vec<_> = shader_build_result
-                .pipeline_reflection
-                .shader_resources
-                .iter()
-                .filter(|x| x.set_index as usize == set_index)
-                .collect();
-
-            if !shader_resources.is_empty() {
-                let descriptor_defs = shader_resources
-                    .iter()
-                    .map(|sr| DescriptorDef {
-                        name: sr.name.clone(),
-                        binding: sr.binding,
-                        shader_resource_type: sr.shader_resource_type,
-                        array_size: sr.element_count,
-                    })
-                    .collect();
-
-                let def = DescriptorSetLayoutDef {
-                    frequency: set_index as u32,
-                    descriptor_defs,
-                };
-                let descriptor_set_layout =
-                    device_context.create_descriptorset_layout(&def).unwrap();
-                descriptor_set_layouts.push(descriptor_set_layout);
-            }
-        }
-
-        let root_signature_def = RootSignatureDef {
-            descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: shader_build_result
-                .pipeline_reflection
-                .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
-                }),
-        };
-
-        let root_signature = device_context
-            .create_root_signature(&root_signature_def)
-            .unwrap();
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/const_color.hlsl"));
 
         //
         // Pipeline state
@@ -341,7 +234,11 @@ impl DebugRenderPass {
             render_context,
         );
 
-        self.render_mesh(4, cmd_buffer, default_meshes);
+        self.render_mesh(
+            DefaultMeshId::GroundPlane as u32,
+            cmd_buffer,
+            default_meshes,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -396,9 +293,60 @@ impl DebugRenderPass {
             render_context,
         );
 
-        self.render_mesh(3, cmd_buffer, default_meshes);
+        self.render_mesh(
+            DefaultMeshId::WireframeCube as u32,
+            cmd_buffer,
+            default_meshes,
+        );
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_debug_display(
+        &self,
+        render_context: &RenderContext<'_>,
+        mut constant_data: [f32; 53],
+        cmd_buffer: &HLCommandBuffer<'_>,
+        debug_display: &mut DebugDisplay,
+        default_meshes: &DefaultMeshes,
+    ) {
+        debug_display.render_primitives(|primitive| {
+            let mut rotation = Quat::IDENTITY;
+            let mesh_id = match primitive.primitive_type {
+                DebugPrimitiveType::Cube => DefaultMeshId::WireframeCube,
+                DebugPrimitiveType::Arrow { dir } => {
+                    rotation = Quat::from_rotation_arc(Vec3::X, dir);
+                    DefaultMeshId::Arrow
+                }
+            };
+
+            let color: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
+
+            let world = Transform::identity()
+                .with_translation(primitive.pos)
+                .with_scale(Vec3::new(0.1, 0.1, 0.1))
+                .with_rotation(rotation)
+                .compute_matrix();
+            world.write_cols_to_slice(&mut constant_data[0..]);
+            constant_data[48] = color.0;
+            constant_data[49] = color.1;
+            constant_data[50] = color.2;
+            constant_data[51] = color.3;
+            constant_data[52] = 0.0;
+
+            self.bind_pipeline_and_desc_set(
+                &self.wire_pso_depth,
+                constant_data,
+                cmd_buffer,
+                render_context,
+            );
+
+            self.render_mesh(mesh_id as u32, cmd_buffer, default_meshes);
+        });
+
+        debug_display.clear_display_lists();
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
@@ -407,6 +355,7 @@ impl DebugRenderPass {
         static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
         camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
+        debug_display: &mut DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
@@ -451,6 +400,14 @@ impl DebugRenderPass {
                 default_meshes,
             );
         }
+
+        self.render_debug_display(
+            render_context,
+            constant_data,
+            cmd_buffer,
+            debug_display,
+            default_meshes,
+        );
 
         cmd_buffer.end_render_pass();
     }
