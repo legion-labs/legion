@@ -29,6 +29,9 @@ export default function videoPlayer(
   videoElement: HTMLVideoElement,
   options?: { onFatal?: () => void }
 ) {
+  videoElement.muted = true;
+  videoElement.autoplay = true;
+
   let videoSource: SourceBuffer | null = null;
   let mediaSource: MediaSource | null = null;
   let waitingForKeyFrame = true;

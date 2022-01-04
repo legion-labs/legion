@@ -108,16 +108,10 @@ export type Listener = (input: RemoteWindowInput) => void;
 
 type State = {
   mouseState: ElementState;
-  /** Where the index is the Touch id.
-   * We use an object of `null` value instead of an array
-   * so that it's easier and faster to lookup for ids and
-   * to delete the touch action that's not active anymore
-   */
-  activeTouches: Record<number, null>;
-  /**
-   * Where the index is the `KeyCode`.
-   */
-  activeKeys: Record<string, null>;
+  /** Contains the Touch id */
+  activeTouches: Set<number>;
+  /** Contains the `KeyCode` */
+  activeKeys: Set<string>;
   previousMousePosition: Vec2 | null;
 };
 
@@ -260,7 +254,7 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const changedTouch = event.changedTouches.item(i)!;
 
-      state.activeTouches[changedTouch.identifier] = null;
+      state.activeTouches.add(changedTouch.identifier);
 
       const touchInput: TouchInput = {
         type: "TouchInput",
@@ -283,7 +277,7 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const changedTouch = event.changedTouches.item(i)!;
 
-      if (!(changedTouch.identifier in state.activeTouches)) {
+      if (!state.activeTouches.has(changedTouch.identifier)) {
         continue;
       }
 
@@ -312,11 +306,11 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
       // This means the touch end event wasn't initiated by a touch start
       // in the remote window, we don't need to send the input to the server
-      if (!(changedTouch.identifier in state.activeTouches)) {
+      if (!state.activeTouches.has(changedTouch.identifier)) {
         continue;
       }
 
-      delete state.activeTouches[changedTouch.identifier];
+      state.activeTouches.delete(changedTouch.identifier);
 
       if (!defaultPrevented) {
         event.preventDefault();
@@ -348,11 +342,11 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
       // This means the touch end event wasn't initiated by a touch start
       // in the remote window, we don't need to send the input to the server
-      if (!(changedTouch.identifier in state.activeTouches)) {
+      if (!state.activeTouches.has(changedTouch.identifier)) {
         continue;
       }
 
-      delete state.activeTouches[changedTouch.identifier];
+      state.activeTouches.delete(changedTouch.identifier);
 
       if (!defaultPrevented) {
         event.preventDefault();
@@ -378,14 +372,14 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
   function onKeyDown(event: KeyboardEvent) {
     const key = keyCodeFromBrowserKey(event.key, event.location);
 
-    // We don't report unknown keys or keys that are being pressed already
-    if (!key || key in state.activeKeys) {
+    // We don't report unknown keys
+    if (!key) {
       return;
     }
 
     event.preventDefault();
 
-    state.activeKeys[key] = null;
+    state.activeKeys.add(key);
 
     const keyboardInput: KeyboardInput = {
       type: "KeyboardInput",
@@ -402,13 +396,13 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
   function onKeyUp(event: KeyboardEvent) {
     const key = keyCodeFromBrowserKey(event.key, event.location);
 
-    if (!key || !(key in state.activeKeys)) {
+    if (!key || !state.activeKeys.has(key)) {
       return;
     }
 
     event.preventDefault();
 
-    delete state.activeKeys[key];
+    state.activeKeys.delete(key);
 
     const keyboardInput: KeyboardInput = {
       type: "KeyboardInput",
@@ -460,8 +454,8 @@ export default function remoteWindowInputs(
 
   const state: State = {
     mouseState: "Released",
-    activeTouches: {},
-    activeKeys: {},
+    activeTouches: new Set(),
+    activeKeys: new Set(),
     previousMousePosition: null,
   };
 
