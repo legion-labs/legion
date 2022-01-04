@@ -1,5 +1,25 @@
 {
   "version": "0.1.0",
   "project_index": "..\\project.index",
-  "resources": []
+  "resources": [
+    {
+      "id": "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)",
+      "dependencies": [],
+      "resource_hash": "be78f810d9345794"
+    },
+    {
+      "id": "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e",
+      "dependencies": [
+        "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)"
+      ],
+      "resource_hash": null
+    },
+    {
+      "id": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)",
+      "dependencies": [
+        "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e"
+      ],
+      "resource_hash": "524ce68e7e53347a"
+    }
+  ]
 }

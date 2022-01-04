@@ -1,4 +1,13 @@
 {
   "remote_resources": [],
-  "local_resources": []
+  "local_resources": [
+    {
+      "t": "09cde0390abe0694",
+      "id": "63c338c9-0d03-4636-8a17-8f0cba02b618"
+    },
+    {
+      "t": "1c0ff9e497b0740f",
+      "id": "29b8b0d0-ee1e-4792-aca2-3b3a3ce63916"
+    }
+  ]
 }
