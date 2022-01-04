@@ -6,7 +6,10 @@ vcs = "none"
 [alias]
 md = "run --package lgn-monorepo --bin lgn-monorepo --"
 m = "run -q --release --package lgn-monorepo --bin lgn-monorepo --"
+# for cases when settings only accept a single word and m clippy, m build wouldn't work
 mclippy = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
+mbuild = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- build"
+mtest = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- test"
 mdoc = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- doc"
 
 [target.x86_64-pc-windows-msvc]
