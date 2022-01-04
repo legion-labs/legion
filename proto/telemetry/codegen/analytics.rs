@@ -95,6 +95,9 @@ pub struct Span {
     pub begin_ms: f64,
     #[prost(double, tag = "3")]
     pub end_ms: f64,
+    ///\[0-255\] non-linear transformation of occupancy for spans that are a lower level of detail
+    #[prost(uint32, tag = "4")]
+    pub alpha: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansRequest {

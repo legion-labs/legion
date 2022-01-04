@@ -199,6 +199,7 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
         scope_hash: tree.hash,
         begin_ms: tree.begin_ms,
         end_ms: tree.end_ms,
+        alpha: 255,
     };
     if lod.tracks.len() <= depth as usize {
         lod.tracks.push(SpanTrack { spans: vec![] });
@@ -250,18 +251,26 @@ pub(crate) fn reduce_lod(lod0: &SpanBlockLod, lod_id: u32) -> SpanBlockLod {
     for track in &lod0.tracks {
         let mut reduced_spans = vec![];
         let mut current_acc = track.spans[0].clone();
+        let mut time_sum = current_acc.end_ms - current_acc.begin_ms;
         let mut index = 1;
         while index < track.spans.len() {
             let span = track.spans[index].clone();
             if span.end_ms - current_acc.begin_ms > merge_threshold {
+                let nonlinear_occupancy =
+                    (time_sum / (current_acc.end_ms - current_acc.begin_ms)).sqrt();
+                current_acc.alpha = (nonlinear_occupancy * 255.0).floor() as u32;
                 reduced_spans.push(current_acc);
                 current_acc = span;
+                time_sum = current_acc.end_ms - current_acc.begin_ms;
             } else {
                 current_acc.scope_hash = 0;
                 current_acc.end_ms = span.end_ms;
+                time_sum += span.end_ms - span.begin_ms;
             }
             index += 1;
         }
+        let nonlinear_occupancy = (time_sum / (current_acc.end_ms - current_acc.begin_ms)).sqrt();
+        current_acc.alpha = (nonlinear_occupancy * 255.0).floor() as u32;
         reduced_spans.push(current_acc);
         tracks.push(SpanTrack {
             spans: reduced_spans,

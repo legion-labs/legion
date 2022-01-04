@@ -64,6 +64,8 @@ export interface Span {
   scopeHash: number;
   beginMs: number;
   endMs: number;
+  /** [0-255] non-linear transformation of occupancy for spans that are a lower level of detail */
+  alpha: number;
 }
 
 export interface BlockSpansRequest {
@@ -845,7 +847,7 @@ export const ListStreamBlocksReply = {
   },
 };
 
-const baseSpan: object = { scopeHash: 0, beginMs: 0, endMs: 0 };
+const baseSpan: object = { scopeHash: 0, beginMs: 0, endMs: 0, alpha: 0 };
 
 export const Span = {
   encode(message: Span, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
@@ -857,6 +859,9 @@ export const Span = {
     }
     if (message.endMs !== 0) {
       writer.uint32(25).double(message.endMs);
+    }
+    if (message.alpha !== 0) {
+      writer.uint32(32).uint32(message.alpha);
     }
     return writer;
   },
@@ -876,6 +881,9 @@ export const Span = {
           break;
         case 3:
           message.endMs = reader.double();
+          break;
+        case 4:
+          message.alpha = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -899,6 +907,10 @@ export const Span = {
       object.endMs !== undefined && object.endMs !== null
         ? Number(object.endMs)
         : 0;
+    message.alpha =
+      object.alpha !== undefined && object.alpha !== null
+        ? Number(object.alpha)
+        : 0;
     return message;
   },
 
@@ -908,6 +920,7 @@ export const Span = {
       (obj.scopeHash = Math.round(message.scopeHash));
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
+    message.alpha !== undefined && (obj.alpha = Math.round(message.alpha));
     return obj;
   },
 
@@ -916,6 +929,7 @@ export const Span = {
     message.scopeHash = object.scopeHash ?? 0;
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
+    message.alpha = object.alpha ?? 0;
     return message;
   },
 };

@@ -358,7 +358,7 @@
       let lodToRender = findBestLod(blockSpanData, offsetMs);
       if (
         blockSpanData.beginMs + offsetMs > end ||
-        blockSpanData.endMs + offsetMs < begin
+          blockSpanData.endMs + offsetMs < begin
       ) {
         return;
       }
@@ -369,51 +369,54 @@
 
       for( let trackIndex = 0; trackIndex < lodToRender.tracks.length; trackIndex += 1 ){
         let track = lodToRender.tracks[trackIndex];
-        track.spans.forEach(({ beginMs, endMs, scopeHash }) => {
-        if (!renderingContext) {
-          throw new Error("Rendering context not available");
-        }
+        track.spans.forEach(({ beginMs, endMs, scopeHash, alpha }) => {
+          if (!renderingContext) {
+            throw new Error("Rendering context not available");
+          }
 
-        const beginSpan = beginMs + offsetMs;
-        const endSpan = endMs + offsetMs;
+          const beginSpan = beginMs + offsetMs;
+          const endSpan = endMs + offsetMs;
 
-        if (beginSpan > end || endSpan < begin) {
-          return;
-        }
+          if (beginSpan > end || endSpan < begin) {
+            return;
+          }
 
-        const beginPixels = (beginSpan - begin) * msToPixelsFactor;
-        const endPixels = (endSpan - begin) * msToPixelsFactor;
-        const callWidth = endPixels - beginPixels;
-        if (callWidth < 0.1) {
-          return;
-        }
-        const offsetY = threadVerticalOffset + trackIndex * 20;
-        if (trackIndex % 2 === 0) {
-          renderingContext.fillStyle = "#fede99";
-        } else {
-          renderingContext.fillStyle = "#fea446";
-        }
+          const beginPixels = (beginSpan - begin) * msToPixelsFactor;
+          const endPixels = (endSpan - begin) * msToPixelsFactor;
+          const callWidth = endPixels - beginPixels;
+          if (callWidth < 0.1) {
+            return;
+          }
+          const offsetY = threadVerticalOffset + trackIndex * 20;
+          if (trackIndex % 2 === 0) {
+            renderingContext.fillStyle = "#fede99";
+          } else {
+            renderingContext.fillStyle = "#fea446";
+          }
 
-        renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
+          renderingContext.globalAlpha = alpha / 255;
+          renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
+          renderingContext.globalAlpha = 1.0;
 
-        const { name } = scopes[scopeHash];
+          if ( scopeHash != 0 ){
+            const { name } = scopes[scopeHash];
+            if (callWidth > characterWidth * 5) {
+              const nbChars = Math.floor(callWidth / characterWidth);
 
-        if (callWidth > characterWidth * 5) {
-          const nbChars = Math.floor(callWidth / characterWidth);
+              renderingContext.fillStyle = "#000000";
 
-          renderingContext.fillStyle = "#000000";
+              const extraHeight = 0.5 * (20 - characterHeight);
+              const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
-          const extraHeight = 0.5 * (20 - characterHeight);
-          const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
-
-          renderingContext.fillText(
-            caption.slice(0, nbChars),
-            beginPixels + 5,
-            offsetY + characterHeight + extraHeight,
-            callWidth
-          );
-        }
-      });
+              renderingContext.fillText(
+                caption.slice(0, nbChars),
+                beginPixels + 5,
+                offsetY + characterHeight + extraHeight,
+                callWidth
+              );
+            }
+          }
+        });        
       }
     });
   }
