@@ -1,13 +1,12 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api";
   import topBarMenu, {
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "../stores/topBarMenu";
-  import { createAwsCognitoTokenCache } from "../lib/auth";
   import userInfo from "../stores/userInfo";
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
+  import { startUserAuth } from "../lib/auth";
 
   export let documentTitle: string | null = null;
 
@@ -42,20 +41,8 @@
     }
   }
 
-  async function authenticate() {
-    if (window.__TAURI__) {
-      const userInfo = await invoke("plugin:browser|authenticate");
-
-      log.debug("auth", userInfo);
-
-      userInfoData.set(userInfo);
-
-      return;
-    }
-
-    const awsCognitoTokenCache = createAwsCognitoTokenCache();
-
-    awsCognitoTokenCache.getAuthorizationCodeInteractive();
+  function authenticate() {
+    startUserAuth(userInfo);
   }
 </script>
 

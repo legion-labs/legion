@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ServerType } from "@lgn/frontend/src/api";
-  import asyncData from "@lgn/frontend/src/stores/asyncData";
+  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
   import { Resolution } from "@lgn/frontend/src/lib/types";
   import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
   import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
@@ -12,7 +12,7 @@
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
 
-  const { run: runGetAllResources } = asyncData(getAllResources);
+  const { run: runGetAllResources } = asyncStore(getAllResources);
 
   let currentResourceDescription: ResourceDescription | null = null;
   let fetchAllResources = runGetAllResources();

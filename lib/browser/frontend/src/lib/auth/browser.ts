@@ -1,38 +1,10 @@
-import { getCookie, setCookie } from "./cookie";
+import { UserInfo } from ".";
+import { AsyncStore } from "../../stores/asyncStore";
+import { getCookie, setCookie } from "../cookie";
 
 const authorizationUrl = new URL(
   "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=5m58nrjfv6kr144prif9jk62di&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:3000/&identity_provider=Azure"
 );
-
-export type UserInfo = {
-  sub: string;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  middle_name?: string;
-  nickname?: string;
-  preferred_username?: string;
-  profile?: string;
-  picture?: string;
-  website?: string;
-  email?: string;
-  email_verified?: "true" | "false";
-  gender?: string;
-  birthdate?: string;
-  zoneinfo?: string;
-  locale?: string;
-  phone_number?: string;
-  phone_number_verified?: "true" | "false";
-  updated_at?: string;
-  // Azure-specific fields.
-  //
-  // This is a merely a convention, but we need one.
-  //
-  // These fields contains the Azure-specific information about the user, which allow us to query
-  // the Azure API for extended user information (like the user's photo).
-  "custom:azure_oid"?: string;
-  "custom:azure_tid"?: string;
-};
 
 export type ClientTokenSet = {
   access_token: string;
@@ -307,4 +279,54 @@ export async function scheduleRefreshClientTokenSet(
   }, expiresIn);
 
   return timeoutId;
+}
+
+/**
+ * Start authentication on Browser.
+ */
+export async function startUserAuth() {
+  const awsCognitoTokenCache = createAwsCognitoTokenCache();
+
+  awsCognitoTokenCache.getAuthorizationCodeInteractive();
+}
+
+/**
+ * If a `code` is present in the url then this function will try
+ * to authenticate the user, otherwise the global user info store
+ * is populated and the user info set returned.
+ *
+ * If the `forceAuth` option is `true` the unauthenticated users
+ * will be redirected to Cognito.
+ */
+export async function userAuth(
+  asyncStore: AsyncStore<UserInfo>,
+  { forceAuth }: { forceAuth: boolean }
+) {
+  const awsCognitoTokenCache = createAwsCognitoTokenCache();
+
+  const code =
+    window.location.pathname === "/" &&
+    new URLSearchParams(window.location.search).get("code");
+
+  if (code) {
+    await finalizeAwsCognitoAuth(awsCognitoTokenCache, code);
+
+    window.history.replaceState(null, "Home", "/");
+  }
+
+  try {
+    const userInfoSet = await asyncStore.run();
+
+    // TODO: The returned timeout id can and should be freed.
+    // Schedule refresh token.
+    scheduleRefreshClientTokenSet(awsCognitoTokenCache);
+
+    return userInfoSet;
+  } catch {
+    if (forceAuth) {
+      startUserAuth();
+    }
+
+    return null;
+  }
 }
