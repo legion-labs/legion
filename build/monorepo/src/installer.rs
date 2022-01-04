@@ -105,8 +105,11 @@ fn install_cargo_component_if_needed(
 fn check_installed_cargo_component(name: &str, version: &str) -> bool {
     let result = Command::new(name).arg("--version").output();
     let found = match result {
-        Ok(output) => format!("{} {}", name, version)
-            .eq(String::from_utf8_lossy(output.stdout.as_slice()).trim()),
+        Ok(output) => {
+            let output = String::from_utf8_lossy(output.stdout.as_slice());
+            format!("{} {}", name, version).eq(output.trim())
+                || format!("{} v{}", name, version).eq(output.trim())
+        }
         _ => false,
     };
     info!(
