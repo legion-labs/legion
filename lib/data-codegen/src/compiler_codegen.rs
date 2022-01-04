@@ -3,87 +3,12 @@ use quote::{format_ident, quote};
 
 use crate::reflection::DataContainerMetaInfo;
 
-fn generate_compile_resource(data_container_info: &DataContainerMetaInfo) -> TokenStream {
-    let members_compile: Vec<TokenStream> = data_container_info
-        .members
-        .iter()
-        .filter(|m| !m.is_offline())
-        .map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            match m.get_type_name().as_str() {
-                "Option < ResourcePathId >" => quote! {
-                    #member_ident :  offline.#member_ident.as_ref().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())),
-                },
-                "Vec < ResourcePathId >" => quote! {
-                    #member_ident : offline.#member_ident.iter().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())).collect(),
-                },
-                "Vec < Box < dyn Component > >" => quote! {
-                    #member_ident : Vec::new(),
-                },
-                _ => quote! {
-                    #member_ident : offline.#member_ident.clone(),
-                },
-            }
-        })
-        .collect();
-
-    quote! {
-        #[allow(unused_variables,clippy::clone_on_copy)]
-        fn compile_resource(offline: &OfflineType) -> RuntimeType {
-            RuntimeType {
-                #(#members_compile)*
-            }
-        }
-    }
-}
-
-fn generate_extract_dependencies(data_container_info: &DataContainerMetaInfo) -> TokenStream {
-    let extract_dependencies: Vec<TokenStream> = data_container_info
-        .members
-        .iter()
-        .filter_map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            match m.get_type_name().as_str() {
-                "Option < ResourcePathId >" => Some(quote! {
-                    if let Some(value) = offline.#member_ident.as_ref() {
-                        results.push(value.clone())
-                    }
-                }),
-                "Vec < ResourcePathId >" => Some(quote! {
-                    results.append(&offline.#member_ident);
-                }),
-                //"Vec < Box < dyn Component > >" => quote! {},
-                _ => None,
-            }
-        })
-        .collect();
-
-    if extract_dependencies.is_empty() {
-        quote! {
-            fn extract_resource_dependencies(_offline: &OfflineType) -> Option<Vec<ResourcePathId>> {
-                None
-            }
-        }
-    } else {
-        quote! {
-            fn extract_resource_dependencies(offline: &OfflineType) -> Option<Vec<ResourcePathId>> {
-                let mut results = Vec::new();
-                #(#extract_dependencies)*
-                Some(results)
-            }
-        }
-    }
-}
-
 #[allow(clippy::too_many_lines)]
 pub fn generate(
     data_container_info: &DataContainerMetaInfo,
     crate_name: &syn::Ident,
 ) -> TokenStream {
     let type_name: syn::Ident = format_ident!("{}", data_container_info.name);
-
-    let extract_depends_code = generate_extract_dependencies(data_container_info);
-    let compile_resource_code = generate_compile_resource(data_container_info);
 
     let signature_hash = data_container_info.calculate_hash().to_string();
 
@@ -95,10 +20,11 @@ pub fn generate(
                 CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
                 DATA_BUILD_VERSION,
             },
-            compiler_utils::hash_code_and_data,
+            compiler_utils::{hash_code_and_data},
+            compiler_reflection::reflection_compile
         };
 
-        use lgn_data_offline::{ResourcePathId, Transform};
+        use lgn_data_offline::{Transform,ResourcePathId};
         use lgn_data_runtime::{Resource};
         type OfflineType = #crate_name::offline::#type_name;
         type RuntimeType = #crate_name::runtime::#type_name;
@@ -113,31 +39,29 @@ pub fn generate(
             compile_func: compile,
         };
 
-        #extract_depends_code
-
-        #compile_resource_code
 
         fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
             let resources = context.take_registry().add_loader::<OfflineType>().create();
-
             let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
-            let offline_resource = offline_resource.get(&resources).unwrap();
+            let offline_resource = offline_resource
+                .get(&resources)
+                .ok_or(CompilerError::CompilationError("Failed to load resource"))?;
 
-            let runtime_resource = compile_resource(&offline_resource);
-            let compiled_asset = bincode::serialize(&runtime_resource).unwrap();
-
-            let resource_references = extract_resource_dependencies(&offline_resource);
-            let resource_references: Vec<(ResourcePathId, ResourcePathId)> = resource_references.unwrap_or_default()
+            let offline_resource : &OfflineType = &offline_resource;
+            let mut runtime_resource = RuntimeType::default();
+            let (compiled_asset, resource_references) = reflection_compile(offline_resource, &mut runtime_resource)?;
+            let resource_references: Vec<(ResourcePathId, ResourcePathId)> = resource_references
+                .unwrap_or_default()
                 .into_iter()
                 .map(|res| (context.target_unnamed.clone(), res))
                 .collect();
 
             let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
-
             Ok(CompilationOutput {
                 compiled_resources: vec![asset],
                 resource_references,
             })
+
         }
     }
 }

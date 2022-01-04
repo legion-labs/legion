@@ -38,6 +38,7 @@ impl BuildManager {
         &mut self,
         resource_id: ResourceTypeAndId,
     ) -> anyhow::Result<Vec<ResourceTypeAndId>> {
+        let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
         let derived_id =
             ResourcePathId::from(resource_id).push(ResourceType::new(b"runtime_debugcube"));
@@ -45,13 +46,18 @@ impl BuildManager {
         self.build.source_pull().unwrap();
         match self.build.compile(derived_id, None, &self.compile_env) {
             Ok(output) => {
+                println!(
+                    "Data build {} Succeeded ({:?} ms)",
+                    resource_id,
+                    start.elapsed(),
+                );
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
                 let built = rt_manifest.resources();
                 self.manifest.extend(rt_manifest);
                 Ok(built)
             }
             Err(e) => {
-                println!("Data Build Failed: '{}'", e.to_string());
+                println!("Data Build {} Failed: '{}'", resource_id, e.to_string());
                 Err(anyhow::Error::new(e))
             }
         }
