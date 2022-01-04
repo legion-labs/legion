@@ -6,7 +6,7 @@ pub struct StaticMeshComponent {
 }
 impl StaticMeshComponent {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 17359756617277276696u64;
+    const SIGNATURE_HASH: u64 = 13871379992308584785u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__STATICMESHCOMPONENT_DEFAULT
@@ -25,6 +25,9 @@ impl lgn_data_model::TypeReflection for StaticMeshComponent {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             StaticMeshComponent,
@@ -33,13 +36,19 @@ impl lgn_data_model::TypeReflection for StaticMeshComponent {
                     field_name: "mesh_id".into(),
                     offset: memoffset::offset_of!(StaticMeshComponent, mesh_id),
                     field_type: <usize as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "color".into(),
                     offset: memoffset::offset_of!(StaticMeshComponent, color),
                     field_type: <Color as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );

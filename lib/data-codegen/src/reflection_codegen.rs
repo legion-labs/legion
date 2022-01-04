@@ -10,7 +10,7 @@ fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<
         .iter()
         .filter(|m| {
             gen_type == GenerationType::OfflineFormat
-                || (gen_type == GenerationType::RuntimeFormat && !m.offline)
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
@@ -29,7 +29,7 @@ fn generate_defaults(members: &[MemberMetaInfo], gen_type: GenerationType) -> Ve
         .iter()
         .filter(|m| {
             gen_type == GenerationType::OfflineFormat
-                || (gen_type == GenerationType::RuntimeFormat && !m.offline)
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
             let member_type = match gen_type {
@@ -70,25 +70,36 @@ fn generate_fields_descriptors(
         .iter()
         .filter(|m| {
             gen_type == GenerationType::OfflineFormat
-                || (gen_type == GenerationType::RuntimeFormat && !m.offline)
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
             let struct_type_name = format_ident!("{}", &data_container_info.name);
             let member_ident = format_ident!("{}", &m.name);
             let prop_name = &m.name;
-            let group = &m.group;
 
             let member_type = match gen_type {
                 GenerationType::OfflineFormat => m.type_path.clone(),
                 GenerationType::RuntimeFormat => m.get_runtime_type().unwrap(),
             };
 
+            let attributes: Vec<TokenStream> = m
+                .attributes
+                .iter()
+                .map(|(k, v)| {
+                    quote! {  attr.insert(String::from(#k),String::from(#v)); }
+                })
+                .collect();
+
             quote! {
                 lgn_data_model::FieldDescriptor {
                     field_name : #prop_name.into(),
                     offset: memoffset::offset_of!(#struct_type_name, #member_ident),
                     field_type : <#member_type as lgn_data_model::TypeReflection>::get_type_def(),
-                    group : #group.into()
+                    attributes : {
+                        let mut attr = std::collections::HashMap::new();
+                        #(#attributes)*
+                        attr
+                    }
                 },
             }
         })
@@ -139,6 +150,9 @@ pub fn generate_reflection(
                     Self::get_type_def()
             }
 
+            #[allow(unused_mut)]
+            #[allow(clippy::let_and_return)]
+            #[allow(clippy::too_many_lines)]
             fn get_type_def() -> lgn_data_model::TypeDefinition {
                 lgn_data_model::implement_struct_descriptor!(#type_identifier, vec![
                     #(#fields_descriptors)*

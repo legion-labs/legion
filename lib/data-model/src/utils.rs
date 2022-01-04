@@ -16,6 +16,17 @@ pub struct ReflectedPtr<'a> {
     _covariant: std::marker::PhantomData<&'a ()>,
 }
 
+/// Internal struct to store `ReflectedPtrMut`
+pub struct ReflectedPtrMut<'a> {
+    /// ReflectedPtr base
+    pub base: *mut (),
+    /// ReflectedPtr type
+    pub type_def: TypeDefinition,
+    /// Base Descriptor of the type
+    pub base_descriptor: &'a BaseDescriptor,
+    _covariant: std::marker::PhantomData<&'a ()>,
+}
+
 #[derive(Error, Debug)]
 pub(crate) enum ReflectionError {
     #[error("Invalid TypeDescriptor in path: '{0}'")]
@@ -66,6 +77,25 @@ pub fn find_property<'a>(
         base.get_type(),
         path,
     )
+}
+
+/// Get Property from a Path
+pub fn find_property_mut<'a>(
+    base: &mut dyn TypeReflection,
+    path: &str,
+) -> anyhow::Result<ReflectedPtrMut<'a>> {
+    let out = internal_find_property(
+        (base as *const dyn TypeReflection).cast::<()>(),
+        base.get_type(),
+        path,
+    )?;
+
+    Ok(ReflectedPtrMut {
+        base: out.base as *mut (),
+        type_def: out.type_def,
+        base_descriptor: out.base_descriptor,
+        _covariant: std::marker::PhantomData,
+    })
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref, clippy::too_many_lines)]

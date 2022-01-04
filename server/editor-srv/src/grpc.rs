@@ -151,7 +151,7 @@ impl Editor for GRPCServer {
                         return Ok(ResourceProperty {
                             name: descriptor.field_name.clone(),
                             ptype: descriptor.field_type.get_type_name().to_lowercase(),
-                            group: descriptor.group.clone(),
+                            group: String::new(),
                             default_value: default_value.as_bytes().to_vec(),
                             value: value.as_bytes().to_vec(),
                         });

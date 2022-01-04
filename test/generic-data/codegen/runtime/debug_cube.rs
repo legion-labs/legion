@@ -11,7 +11,7 @@ pub struct DebugCube {
 }
 impl DebugCube {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 13358266263809831249u64;
+    const SIGNATURE_HASH: u64 = 3131965765607460829u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__DEBUGCUBE_DEFAULT
@@ -34,6 +34,9 @@ impl lgn_data_model::TypeReflection for DebugCube {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             DebugCube,
@@ -42,37 +45,55 @@ impl lgn_data_model::TypeReflection for DebugCube {
                     field_name: "position".into(),
                     offset: memoffset::offset_of!(DebugCube, position),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "rotation".into(),
                     offset: memoffset::offset_of!(DebugCube, rotation),
                     field_type: <Quat as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "scale".into(),
                     offset: memoffset::offset_of!(DebugCube, scale),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "mesh_id".into(),
                     offset: memoffset::offset_of!(DebugCube, mesh_id),
                     field_type: <usize as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "color".into(),
                     offset: memoffset::offset_of!(DebugCube, color),
                     field_type: <Color as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "rotation_speed".into(),
                     offset: memoffset::offset_of!(DebugCube, rotation_speed),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );

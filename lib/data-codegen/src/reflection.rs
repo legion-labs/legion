@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 //type QuoteRes = quote::__private::TokenStream;
@@ -27,15 +28,9 @@ pub struct DataContainerMetaInfo {
 pub struct MemberMetaInfo {
     pub name: String,
     pub type_path: syn::Path,
-    pub resource_type: Option<syn::Path>,
     pub imports: Vec<syn::Path>,
-    pub offline: bool,
-    pub group: String,
-    pub hidden: bool,
-    pub readonly: bool,
-    pub transient: bool,
-    pub tooltip: String,
     pub default_literal: Option<TokenStream>,
+    pub attributes: BTreeMap<String, String>,
 }
 
 impl DataContainerMetaInfo {
@@ -64,11 +59,12 @@ impl DataContainerMetaInfo {
         self.members.iter().for_each(|m| {
             m.name.hash(&mut hasher);
             m.get_type_name().hash(&mut hasher);
-            if let Some(res) = m.resource_type.as_ref() {
-                res.hash(&mut hasher);
-            }
-            m.offline.hash(&mut hasher);
-            m.transient.hash(&mut hasher);
+
+            m.attributes.iter().for_each(|(k, v)| {
+                k.hash(&mut hasher);
+                v.hash(&mut hasher);
+            });
+
             m.default_literal
                 .to_token_stream()
                 .to_string()
@@ -118,6 +114,10 @@ impl MemberMetaInfo {
         !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Option"
     }
 
+    pub fn is_offline(&self) -> bool {
+        self.attributes.contains_key(OFFLINE_ATTR)
+    }
+
     pub fn is_vec(&self) -> bool {
         !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Vec"
     }
@@ -129,7 +129,7 @@ impl MemberMetaInfo {
     pub fn get_runtime_type(&self) -> Option<syn::Path> {
         match self.get_type_name().as_str() {
             "Option < ResourcePathId >" => {
-                let ty = if let Some(resource_type) = &self.resource_type {
+                let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
                     format!(
                         "Option<lgn_data_runtime::Reference<{}>>",
                         resource_type.to_token_stream().to_string()
@@ -140,7 +140,7 @@ impl MemberMetaInfo {
                 syn::parse_str(ty.as_str()).ok()
             }
             "Vec < ResourcePathId >" => {
-                let ty = if let Some(resource_type) = &self.resource_type {
+                let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
                     format!(
                         "Vec<lgn_data_runtime::Reference<{}>>",
                         resource_type.to_token_stream().to_string()
@@ -234,14 +234,14 @@ fn get_default_token_stream(
 
 fn get_resource_type(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
-) -> Option<syn::Path> {
+) -> String {
     let mut attrib_str = String::new();
 
     if let Some(TokenTree::Punct(punct)) = group_iter.peek() {
         if punct.as_char() == '=' {
             group_iter.next();
         } else {
-            return None;
+            panic!("Legion proc-macro: unexpected punct in syntax for attribute 'resource_type'")
         }
     }
 
@@ -259,24 +259,17 @@ fn get_resource_type(
     }
 
     if attrib_str.is_empty() {
-        return None;
+        panic!("Legion proc-macro: empty  attribute 'resource_type'")
     }
-
-    syn::parse_str(&attrib_str).ok()
+    attrib_str
 }
 
 pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaInfo {
     let mut member_info = MemberMetaInfo {
         name: field.ident.as_ref().unwrap().to_string(),
         type_path,
-        resource_type: None,
         imports: vec![],
-        group: String::default(),
-        offline: false,
-        hidden: false,
-        readonly: false,
-        transient: false,
-        tooltip: String::default(),
+        attributes: BTreeMap::new(),
         default_literal: None,
     };
 
@@ -292,25 +285,32 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
                 let mut group_iter = group.stream().into_iter().peekable();
 
                 while let Some(TokenTree::Ident(ident)) = group_iter.next() {
-                    match ident.to_string().as_str() {
+                    let ident = ident.to_string();
+                    match ident.as_str() {
+                        // Default literal token stream
                         DEFAULT_ATTR => {
                             member_info.default_literal = get_default_token_stream(&mut group_iter);
                         }
-                        READONLY_ATTR => member_info.readonly = true,
-                        HIDDEN_ATTR => member_info.hidden = true,
-                        OFFLINE_ATTR => member_info.offline = true,
-                        TRANSIENT_ATTR => member_info.transient = true,
+
+                        // Bool Attributes
+                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ATTR | TRANSIENT_ATTR => {
+                            member_info.attributes.insert(ident, "true".into());
+                        }
+
+                        // ResourceType Attribute
                         RESOURCE_TYPE_ATTR => {
-                            member_info.resource_type = get_resource_type(&mut group_iter);
+                            member_info
+                                .attributes
+                                .insert(ident, get_resource_type(&mut group_iter));
                             member_info
                                 .imports
                                 .push(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
                         }
-                        TOOLTIP_ATTR => {
-                            member_info.tooltip = get_attribute_literal(&mut group_iter);
-                        }
-                        GROUP_ATTR => {
-                            member_info.group = get_attribute_literal(&mut group_iter);
+                        // Literal Attributes
+                        GROUP_ATTR | TOOLTIP_ATTR => {
+                            member_info
+                                .attributes
+                                .insert(ident, get_attribute_literal(&mut group_iter));
                         }
                         _ => {}
                     }
