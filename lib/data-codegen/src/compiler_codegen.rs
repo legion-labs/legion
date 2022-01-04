@@ -7,7 +7,7 @@ fn generate_compile_resource(data_container_info: &DataContainerMetaInfo) -> Tok
     let members_compile: Vec<TokenStream> = data_container_info
         .members
         .iter()
-        .filter(|m| !m.offline)
+        .filter(|m| !m.is_offline())
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
             match m.get_type_name().as_str() {

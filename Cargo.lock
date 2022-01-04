@@ -2771,6 +2771,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
+ "generic-data",
  "lazy_static",
  "lgn-data-codegen",
  "lgn-data-model",

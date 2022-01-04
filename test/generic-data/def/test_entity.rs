@@ -5,33 +5,33 @@ use lgn_math::prelude::*;
 #[resource()]
 pub struct TestEntity {
     // Default with string literal
-    #[legion(default = "string literal", readonly, category = "Name")]
+    #[legion(default = "string literal", readonly)]
     test_string: String,
 
-    #[legion(default = (255,0,0,255))]
+    #[legion(default = (255,0,0,255), group = "GroupTest1")]
     test_color: Color,
 
     // Default with Tuple()
-    #[legion(default=(0.0,0.0,0.0), hidden)]
+    #[legion(default=(0.0,0.0,0.0), hidden, group = "GroupTest1")]
     pub test_position: Vec3,
 
     // Default with Constant value
-    #[legion(default= Quat::IDENTITY, tooltip = "Rotation Tooltip")]
+    #[legion(default= Quat::IDENTITY, group = "GroupTest1", tooltip = "Rotation Tooltip")]
     pub test_rotation: Quat,
 
     // Default with bool constant
-    #[legion(default = false)]
+    #[legion(default = false, group = "GroupTest2")]
     test_bool: bool,
 
     // Default with Float constant
-    #[legion(default = 32.32f32)]
+    #[legion(default = 32.32f32, group = "GroupTest2")]
     test_float32: f32,
 
     #[legion(default = 64.64f64, offline)]
     test_float64: f64,
 
     // Default with Integer constant
-    #[legion(default = 123)]
+    #[legion(default = 123, group = "GroupTest2")]
     test_int: i32,
 
     // Default with Array

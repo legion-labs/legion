@@ -28,6 +28,9 @@ memoffset = "0.6"
 [build-dependencies]
 lgn-data-codegen = { path = "../../lib/data-codegen", version = "0.1.0" }
 
+[dev-dependencies]
+generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
+
 [features]
 offline = []
 runtime = []

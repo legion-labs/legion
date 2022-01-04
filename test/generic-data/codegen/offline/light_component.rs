@@ -5,7 +5,7 @@ pub struct LightComponent {
 }
 impl LightComponent {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 8640207041695829339u64;
+    const SIGNATURE_HASH: u64 = 11952990472424728965u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__LIGHTCOMPONENT_DEFAULT
@@ -23,6 +23,9 @@ impl lgn_data_model::TypeReflection for LightComponent {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             LightComponent,
@@ -30,7 +33,10 @@ impl lgn_data_model::TypeReflection for LightComponent {
                 field_name: "light_color".into(),
                 offset: memoffset::offset_of!(LightComponent, light_color),
                 field_type: <Color as lgn_data_model::TypeReflection>::get_type_def(),
-                group: "".into()
+                attributes: {
+                    let mut attr = std::collections::HashMap::new();
+                    attr
+                }
             },]
         );
         lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)

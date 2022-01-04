@@ -1,4 +1,5 @@
 use crate::TypeDefinition;
+use std::collections::HashMap;
 /// Descriptor of a Reflected Field
 pub struct FieldDescriptor {
     /// Name of the field
@@ -7,6 +8,6 @@ pub struct FieldDescriptor {
     pub offset: usize,
     /// Type of the field
     pub field_type: TypeDefinition,
-    /// Editor Group of the field
-    pub group: String,
+    /// List of Attributes for the Field
+    pub attributes: HashMap<String, String>,
 }

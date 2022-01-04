@@ -17,7 +17,7 @@ pub struct TestEntity {
 }
 impl TestEntity {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 5274493235039250438u64;
+    const SIGNATURE_HASH: u64 = 13487959877062313387u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTENTITY_DEFAULT
@@ -45,6 +45,9 @@ impl lgn_data_model::TypeReflection for TestEntity {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestEntity,
@@ -53,69 +56,111 @@ impl lgn_data_model::TypeReflection for TestEntity {
                     field_name: "test_string".into(),
                     offset: memoffset::offset_of!(TestEntity, test_string),
                     field_type: <String as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("readonly"), String::from("true"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_color".into(),
                     offset: memoffset::offset_of!(TestEntity, test_color),
                     field_type: <Color as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest1"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_position".into(),
                     offset: memoffset::offset_of!(TestEntity, test_position),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest1"));
+                        attr.insert(String::from("hidden"), String::from("true"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_rotation".into(),
                     offset: memoffset::offset_of!(TestEntity, test_rotation),
                     field_type: <Quat as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest1"));
+                        attr.insert(String::from("tooltip"), String::from("Rotation Tooltip"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_bool".into(),
                     offset: memoffset::offset_of!(TestEntity, test_bool),
                     field_type: <bool as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest2"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_float32".into(),
                     offset: memoffset::offset_of!(TestEntity, test_float32),
                     field_type: <f32 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest2"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_int".into(),
                     offset: memoffset::offset_of!(TestEntity, test_int),
                     field_type: <i32 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("group"), String::from("GroupTest2"));
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_blob".into(),
                     offset: memoffset::offset_of!(TestEntity, test_blob),
                     field_type: <Vec<u8> as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_sub_type".into(),
                     offset: memoffset::offset_of!(TestEntity, test_sub_type),
                     field_type: <TestSubType1 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_option_set".into(),
                     offset: memoffset::offset_of!(TestEntity, test_option_set),
                     field_type:
                         <Option<TestSubType2> as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_option_none".into(),
                     offset: memoffset::offset_of!(TestEntity, test_option_none),
                     field_type:
                         <Option<TestSubType2> as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );
@@ -155,7 +200,7 @@ pub struct TestComponent {
 }
 impl TestComponent {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 16512715240131344153u64;
+    const SIGNATURE_HASH: u64 = 17681940531815441823u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTCOMPONENT_DEFAULT
@@ -173,6 +218,9 @@ impl lgn_data_model::TypeReflection for TestComponent {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestComponent,
@@ -180,7 +228,10 @@ impl lgn_data_model::TypeReflection for TestComponent {
                 field_name: "test_i32".into(),
                 offset: memoffset::offset_of!(TestComponent, test_i32),
                 field_type: <i32 as lgn_data_model::TypeReflection>::get_type_def(),
-                group: "".into()
+                attributes: {
+                    let mut attr = std::collections::HashMap::new();
+                    attr
+                }
             },]
         );
         lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)
@@ -205,7 +256,7 @@ pub struct TestSubType1 {
 }
 impl TestSubType1 {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 10652788437003811010u64;
+    const SIGNATURE_HASH: u64 = 3020594708295791616u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTSUBTYPE1_DEFAULT
@@ -225,6 +276,9 @@ impl lgn_data_model::TypeReflection for TestSubType1 {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestSubType1,
@@ -234,19 +288,28 @@ impl lgn_data_model::TypeReflection for TestSubType1 {
                     offset: memoffset::offset_of!(TestSubType1, test_components),
                     field_type:
                         <Vec<Box<dyn Component>> as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_string".into(),
                     offset: memoffset::offset_of!(TestSubType1, test_string),
                     field_type: <String as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "test_sub_type".into(),
                     offset: memoffset::offset_of!(TestSubType1, test_sub_type),
                     field_type: <TestSubType2 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );
@@ -268,7 +331,7 @@ pub struct TestSubType2 {
 }
 impl TestSubType2 {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 16122499844266623450u64;
+    const SIGNATURE_HASH: u64 = 14284095519436775734u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTSUBTYPE2_DEFAULT
@@ -286,6 +349,9 @@ impl lgn_data_model::TypeReflection for TestSubType2 {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestSubType2,
@@ -293,7 +359,10 @@ impl lgn_data_model::TypeReflection for TestSubType2 {
                 field_name: "test_vec".into(),
                 offset: memoffset::offset_of!(TestSubType2, test_vec),
                 field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                group: "".into()
+                attributes: {
+                    let mut attr = std::collections::HashMap::new();
+                    attr
+                }
             },]
         );
         lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)

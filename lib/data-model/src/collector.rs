@@ -1,6 +1,17 @@
-use itertools::Itertools;
-
-use crate::{utils::ReflectionError, TypeDefinition, TypeReflection};
+use crate::{utils::ReflectionError, FieldDescriptor, TypeDefinition, TypeReflection};
+/// Info about a Property
+pub struct ItemInfo<'a> {
+    /// Pointer to the raw_data
+    pub base: *const (),
+    /// Type of the Property
+    pub type_def: TypeDefinition,
+    /// Field Descriptor
+    pub field_descriptor: Option<&'a FieldDescriptor>,
+    /// Name Suffix  (such as array '[0]')
+    pub suffix: Option<&'a str>,
+    /// Depth of traveral
+    pub depth: usize,
+}
 
 /// Trait to collect reflection data
 pub trait PropertyCollector {
@@ -8,11 +19,7 @@ pub trait PropertyCollector {
     type Item;
 
     /// Callback to create a new Item for a field
-    fn new_item(
-        base: *const (),
-        type_def: TypeDefinition,
-        name: &str,
-    ) -> anyhow::Result<Self::Item>
+    fn new_item(info: &ItemInfo<'_>) -> anyhow::Result<Self::Item>
     where
         Self: Sized;
 
@@ -27,95 +34,95 @@ pub fn collect_properties<T>(base: &dyn TypeReflection) -> anyhow::Result<T::Ite
 where
     T: PropertyCollector,
 {
-    internal_collect_properties::<T>(
-        (base as *const dyn TypeReflection).cast::<()>(),
-        base.get_type(),
-        base.get_type().get_type_name(),
-    )
+    let item_info = ItemInfo {
+        base: (base as *const dyn TypeReflection).cast::<()>(),
+        type_def: base.get_type(),
+        suffix: None,
+        depth: 0,
+        field_descriptor: None,
+    };
+    internal_collect_properties::<T>(&item_info)
 }
 
-fn internal_collect_properties<T>(
-    base: *const (),
-    type_def: TypeDefinition,
-    property_name: &str,
-) -> anyhow::Result<T::Item>
+fn internal_collect_properties<T>(item_info: &ItemInfo<'_>) -> anyhow::Result<T::Item>
 where
     T: PropertyCollector,
 {
-    let mut parent = T::new_item(base, type_def, property_name)?;
-
-    match type_def {
+    let result = match item_info.type_def {
         TypeDefinition::None => {
-            return Err(ReflectionError::InvalidateTypeDescriptor(property_name.into()).into());
+            let resource_type = item_info
+                .field_descriptor
+                .map_or(item_info.suffix.unwrap_or_default(), |f| {
+                    f.field_name.as_str()
+                });
+
+            return Err(ReflectionError::InvalidateTypeDescriptor(resource_type.into()).into());
         }
         TypeDefinition::BoxDyn(box_dyn_descriptor) => {
-            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(base) };
-            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(base) };
-            let child = internal_collect_properties::<T>(sub_base, sub_type, property_name)?;
-            T::add_child(&mut parent, child);
+            // For BoxDyn, pipe directly to the inner type
+            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(item_info.base) };
+            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(item_info.base) };
+            internal_collect_properties::<T>(&ItemInfo {
+                base: sub_base,
+                type_def: sub_type,
+                suffix: item_info.suffix,
+                depth: item_info.depth,
+                field_descriptor: item_info.field_descriptor,
+            })?
         }
 
         TypeDefinition::Array(array_descriptor) => {
-            for index in 0..unsafe { (array_descriptor.len)(base) } {
-                let element_base = unsafe { (array_descriptor.get)(base, index) }?;
-                let child = internal_collect_properties::<T>(
-                    element_base,
-                    array_descriptor.inner_type,
-                    format!("[{}]", index).as_str(),
-                )?;
-                T::add_child(&mut parent, child);
+            let mut array_parent = T::new_item(item_info)?;
+            for index in 0..unsafe { (array_descriptor.len)(item_info.base) } {
+                let child = internal_collect_properties::<T>(&ItemInfo {
+                    base: unsafe { (array_descriptor.get)(item_info.base, index) }?,
+                    type_def: array_descriptor.inner_type,
+                    suffix: Some(format!("[{}]", index).as_str()),
+                    depth: item_info.depth + 1,
+                    field_descriptor: None,
+                })?;
+                T::add_child(&mut array_parent, child);
             }
+            array_parent
         }
 
-        TypeDefinition::Primitive(_primitive_descriptor) => {}
+        TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(item_info)?,
 
         #[allow(clippy::option_if_let_else)]
         TypeDefinition::Option(option_descriptor) => {
-            if let Some(value_base) = unsafe { (option_descriptor.get_inner)(base) } {
-                let child =
-                    internal_collect_properties::<T>(value_base, option_descriptor.inner_type, "")?;
-                T::add_child(&mut parent, child);
+            let mut option_parent = T::new_item(item_info)?;
+            if let Some(value_base) = unsafe { (option_descriptor.get_inner)(item_info.base) } {
+                let child = internal_collect_properties::<T>(&ItemInfo {
+                    base: value_base,
+                    type_def: option_descriptor.inner_type,
+                    suffix: None,
+                    depth: item_info.depth + 1,
+                    field_descriptor: None,
+                })?;
+                T::add_child(&mut option_parent, child);
             }
+            option_parent
         }
         TypeDefinition::Struct(struct_descriptor) => {
+            let mut struct_parent = T::new_item(item_info)?;
             struct_descriptor
                 .fields
                 .iter()
-                .group_by(|f| f.group.as_str())
-                .into_iter()
-                .try_for_each(|(group_name, fields)| -> anyhow::Result<()> {
-                    let mut group: Option<T::Item> = None;
-
-                    if !group_name.is_empty() {
-                        group = Some(T::new_item(
-                            std::ptr::null(),
-                            TypeDefinition::None,
-                            group_name,
-                        )?);
-                    }
-                    for field in fields {
-                        let field_base =
-                            unsafe { base.cast::<u8>().add(field.offset).cast::<()>() };
-                        let child = internal_collect_properties::<T>(
-                            field_base,
-                            field.field_type,
-                            field.field_name.as_str(),
-                        )?;
-
-                        if let Some(group) = &mut group {
-                            T::add_child(group, child);
-                        } else {
-                            T::add_child(&mut parent, child);
-                        }
-                    }
-
-                    if let Some(group) = group {
-                        T::add_child(&mut parent, group);
-                    }
-
+                .try_for_each(|field| -> anyhow::Result<()> {
+                    let field_base =
+                        unsafe { item_info.base.cast::<u8>().add(field.offset).cast::<()>() };
+                    let child = internal_collect_properties::<T>(&ItemInfo {
+                        base: field_base,
+                        type_def: field.field_type,
+                        suffix: None,
+                        depth: item_info.depth + 1,
+                        field_descriptor: Some(field),
+                    })?;
+                    T::add_child(&mut struct_parent, child);
                     Ok(())
                 })?;
+            struct_parent
         }
-    }
-    Ok(parent)
+    };
+    Ok(result)
 }

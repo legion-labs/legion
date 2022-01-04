@@ -6,7 +6,7 @@ pub struct EntityDc {
 }
 impl EntityDc {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 2369000756644127862u64;
+    const SIGNATURE_HASH: u64 = 8800754876911975167u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__ENTITYDC_DEFAULT
@@ -25,6 +25,9 @@ impl lgn_data_model::TypeReflection for EntityDc {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             EntityDc,
@@ -33,14 +36,20 @@ impl lgn_data_model::TypeReflection for EntityDc {
                     field_name: "name".into(),
                     offset: memoffset::offset_of!(EntityDc, name),
                     field_type: <String as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "components".into(),
                     offset: memoffset::offset_of!(EntityDc, components),
                     field_type:
                         <Vec<Box<dyn Component>> as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );

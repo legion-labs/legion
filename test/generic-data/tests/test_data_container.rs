@@ -54,12 +54,13 @@
 // END - Legion Labs lints v0.6
 #![allow(unsafe_code)]
 
+use std::collections::HashMap;
 use std::io::Cursor;
 
 use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
-use lgn_data_model::collector::{collect_properties, PropertyCollector};
+use lgn_data_model::collector::{collect_properties, ItemInfo, PropertyCollector};
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
-use lgn_data_model::{TypeDefinition, TypeReflection};
+use lgn_data_model::TypeReflection;
 use lgn_data_runtime::AssetLoader;
 use lgn_math::prelude::*;
 
@@ -185,50 +186,55 @@ fn test_editor_descriptors() {
 
 #[test]
 fn test_collector() {
-    enum PropertyBagValue {
-        JsonString(String),
-        SubProperties(Vec<PropertyBag>),
-    }
     struct PropertyBag {
         name: String,
         ptype: String,
-        value: PropertyBagValue,
+        sub_properties: Vec<PropertyBag>,
+        attributes: HashMap<String, String>,
     }
 
     impl PropertyCollector for PropertyBag {
         type Item = Self;
-        fn new_item(
-            base: *const (),
-            type_def: TypeDefinition,
-            name: &str,
-        ) -> anyhow::Result<Self::Item> {
-            if let TypeDefinition::Primitive(primitive_descriptor) = type_def {
-                let mut output = Vec::new();
-                let mut json = serde_json::Serializer::new(&mut output);
-                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
-                unsafe {
-                    (primitive_descriptor.base_descriptor.dynamic_serialize)(
-                        base,
-                        &mut serializer,
-                    )?;
-                }
-
-                Ok(Self {
-                    name: name.into(),
-                    ptype: primitive_descriptor.base_descriptor.type_name.clone(),
-                    value: PropertyBagValue::JsonString(String::from_utf8(output)?),
-                })
-            } else {
-                Ok(Self {
-                    name: name.into(),
-                    ptype: type_def.get_type_name().into(),
-                    value: PropertyBagValue::SubProperties(Vec::new()),
-                })
-            }
+        fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
+            Ok(Self::Item {
+                name: item_info
+                    .field_descriptor
+                    .map_or(String::new(), |field| field.field_name.clone())
+                    + item_info.suffix.unwrap_or_default(),
+                ptype: item_info.type_def.get_type_name().into(),
+                sub_properties: Vec::new(),
+                attributes: item_info
+                    .field_descriptor
+                    .map_or(HashMap::new(), |field| field.attributes.clone()),
+            })
         }
         fn add_child(parent: &mut Self::Item, child: Self::Item) {
-            if let PropertyBagValue::SubProperties(prop) = &mut parent.value {
-                prop.push(child);
+            let sub_properties = &mut parent.sub_properties;
+
+            // If there's a 'Group' attribute, find or create a PropertyBag for the Group within the parent
+            if let Some(group_name) = child.attributes.get("group") {
+                // Search for the Group within the Parent SubProperties
+
+                let group_bag = if let Some(group_bag) = sub_properties
+                    .iter_mut()
+                    .find(|bag| bag.ptype == "_group_" && bag.name == *group_name)
+                {
+                    group_bag
+                } else {
+                    // Create a new group bag if not found
+                    sub_properties.push(Self::Item {
+                        name: group_name.into(),
+                        ptype: "_group_".into(),
+                        sub_properties: Vec::new(),
+                        attributes: std::collections::HashMap::new(),
+                    });
+                    sub_properties.last_mut().unwrap()
+                };
+
+                // Add child to group
+                group_bag.sub_properties.push(child);
+            } else {
+                sub_properties.push(child);
             }
         }
     }
@@ -236,13 +242,10 @@ fn test_collector() {
     // Test Dynamic type info
     let entity = TestEntity::default();
     let output = collect_properties::<PropertyBag>(&entity).unwrap();
-    assert_eq!(output.name, "TestEntity");
     assert_eq!(output.ptype, "TestEntity");
-    if let PropertyBagValue::SubProperties(sub) = output.value {
-        assert_eq!(sub.len(), 12);
-        assert_eq!(sub[0].name, "test_string");
-        assert_eq!(sub[0].ptype, "String");
-    } else {
-        panic!("TestEntity doesn't have subproperty");
-    }
+    assert_eq!(output.sub_properties.len(), 8);
+    assert_eq!(output.sub_properties[0].name, "test_string");
+    assert_eq!(output.sub_properties[0].ptype, "String");
+    assert_eq!(output.sub_properties[1].name, "GroupTest1");
+    assert_eq!(output.sub_properties[1].ptype, "_group_");
 }

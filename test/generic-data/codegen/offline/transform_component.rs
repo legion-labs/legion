@@ -7,7 +7,7 @@ pub struct TransformComponent {
 }
 impl TransformComponent {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 13214906858233497312u64;
+    const SIGNATURE_HASH: u64 = 1257914175696485568u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TRANSFORMCOMPONENT_DEFAULT
@@ -27,6 +27,9 @@ impl lgn_data_model::TypeReflection for TransformComponent {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TransformComponent,
@@ -35,19 +38,28 @@ impl lgn_data_model::TypeReflection for TransformComponent {
                     field_name: "position".into(),
                     offset: memoffset::offset_of!(TransformComponent, position),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "rotation".into(),
                     offset: memoffset::offset_of!(TransformComponent, rotation),
                     field_type: <Quat as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
                 lgn_data_model::FieldDescriptor {
                     field_name: "scale".into(),
                     offset: memoffset::offset_of!(TransformComponent, scale),
                     field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                    group: "".into()
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
                 },
             ]
         );

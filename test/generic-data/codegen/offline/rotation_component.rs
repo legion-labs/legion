@@ -5,7 +5,7 @@ pub struct RotationComponent {
 }
 impl RotationComponent {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 96410917651568727u64;
+    const SIGNATURE_HASH: u64 = 18233231219042076698u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__ROTATIONCOMPONENT_DEFAULT
@@ -23,6 +23,9 @@ impl lgn_data_model::TypeReflection for RotationComponent {
     fn get_type(&self) -> lgn_data_model::TypeDefinition {
         Self::get_type_def()
     }
+    #[allow(unused_mut)]
+    #[allow(clippy::let_and_return)]
+    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             RotationComponent,
@@ -30,7 +33,10 @@ impl lgn_data_model::TypeReflection for RotationComponent {
                 field_name: "rotation_speed".into(),
                 offset: memoffset::offset_of!(RotationComponent, rotation_speed),
                 field_type: <Vec3 as lgn_data_model::TypeReflection>::get_type_def(),
-                group: "".into()
+                attributes: {
+                    let mut attr = std::collections::HashMap::new();
+                    attr
+                }
             },]
         );
         lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)
