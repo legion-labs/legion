@@ -249,9 +249,11 @@
                                   tracks: [],
                                   lodId: preferedLod };
     }
-    if ( block.lods[preferedLod].state == LODState.Loaded ){
+    if ( block.lods[preferedLod].state == LODState.Loaded ||
+         block.lods[preferedLod].state == LODState.Requested ){
       return;
     }
+    block.lods[preferedLod].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
     const response = await client.block_spans({
       blockId: blockId,
