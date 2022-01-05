@@ -86,5 +86,7 @@ pub use clone_resource_operation::*;
 pub mod update_property_operation;
 pub use update_property_operation::*;
 
+pub mod array_element_operation;
+pub use array_element_operation::*;
 #[cfg(test)]
 pub(crate) mod test_transaction;
