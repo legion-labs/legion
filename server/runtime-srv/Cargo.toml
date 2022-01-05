@@ -7,7 +7,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-<<<<<<< HEAD
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
 lgn-async = { path = "../../plugin/async", version = "0.1.0" }
@@ -15,7 +14,7 @@ lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
-lgn-input = { path = "../../plugin/input" }
+lgn-input = { path = "../../plugin/input", version = "0.1.0" }
 lgn-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
 lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
 lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
@@ -26,15 +25,6 @@ lgn-config = { path = "../../lib/config", version = "0.1.0" }
 lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
-=======
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
-legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-log = { path = "../../plugin/log", version = "0.1.0" }
-legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
->>>>>>> 5b74eac9 (add log plugin to runtime-srv)
 
 # other
 clap = { version = "3.0", features = ["derive"] }

@@ -68,6 +68,7 @@ mod time;
 pub use bytes::*;
 pub use float_ord::*;
 pub use label::*;
+use lgn_log::LogPlugin;
 pub use name::*;
 pub use task_pool_options::DefaultTaskPoolOptions;
 pub use time::*;
@@ -102,6 +103,8 @@ impl Plugin for CorePlugin {
             .cloned()
             .unwrap_or_default()
             .create_default_pools(&mut app.world);
+
+        app.add_plugin(LogPlugin);
 
         app.init_resource::<Time>()
             .init_resource::<EntityLabels>()

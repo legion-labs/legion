@@ -1,9 +1,9 @@
-use legion_utils::tracing::{
+use std::fmt::{Debug, Write};
+use tracing::{
     field::Field,
     span::{Attributes, Record},
     Event, Id, Level, Subscriber,
 };
-use std::fmt::{Debug, Write};
 use tracing_subscriber::{field::Visit, layer::Context, registry::LookupSpan, Layer};
 
 #[derive(Default)]
@@ -54,7 +54,7 @@ impl core::default::Default for StringRecorder {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for AndroidLayer {
-    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let mut new_debug_record = StringRecorder::new();
         attrs.record(&mut new_debug_record);
 

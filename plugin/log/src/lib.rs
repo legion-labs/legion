@@ -59,16 +59,17 @@ mod android_tracing;
 
 pub mod prelude {
     #[doc(hidden)]
-    pub use legion_utils::tracing::{
+    pub use tracing::{
         debug, debug_span, error, error_span, info, info_span, trace, trace_span, warn, warn_span,
     };
 }
-pub use legion_utils::tracing::{
+pub use tracing::{
     debug, debug_span, error, error_span, info, info_span, trace, trace_span, warn, warn_span,
     Level,
 };
 
-use legion_app::{App, Plugin};
+use lgn_app::{App, Plugin};
+use tracing_log::LogTracer;
 #[cfg(feature = "tracing-chrome")]
 use tracing_subscriber::fmt::{format::DefaultFields, FormattedFields};
 use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
@@ -87,7 +88,7 @@ use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
 /// # use bevy_internal::DefaultPlugins;
 /// # use legion_app::App;
 /// # use bevy_log::LogSettings;
-/// # use legion_utils::tracing::Level;
+/// # use tracing::Level;
 /// fn main() {
 ///     App::new()
 ///         .insert_resource(LogSettings {
@@ -101,6 +102,8 @@ use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
 ///
 /// Log level can also be changed using the `RUST_LOG` environment variable.
 /// It has the same syntax has the field [`LogSettings::filter`], see [`EnvFilter`].
+/// If you define the `RUST_LOG` environment variable, the [`LogSettings`] resource
+/// will be ignored.
 ///
 /// If you want to setup your own tracing collector, you should disable this
 /// plugin from `DefaultPlugins` with [`App::add_plugins_with`]:
@@ -142,7 +145,7 @@ impl Plugin for LogPlugin {
             let settings = app.world.get_resource_or_insert_with(LogSettings::default);
             format!("{},{}", settings.level, settings.filter)
         };
-
+        LogTracer::init().unwrap();
         let filter_layer = EnvFilter::try_from_default_env()
             .or_else(|_| EnvFilter::try_new(&default_filter))
             .unwrap();
@@ -181,7 +184,7 @@ impl Plugin for LogPlugin {
             #[cfg(feature = "tracing-tracy")]
             let subscriber = subscriber.with(tracy_layer);
 
-            legion_utils::tracing::subscriber::set_global_default(subscriber)
+            tracing::subscriber::set_global_default(subscriber)
                 .expect("Could not set global default tracing subscriber. If you've already set up a tracing subscriber, please disable LogPlugin from Bevy's DefaultPlugins");
         }
 
@@ -191,14 +194,14 @@ impl Plugin for LogPlugin {
             let subscriber = subscriber.with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),
             ));
-            legion_utils::tracing::subscriber::set_global_default(subscriber)
+            tracing::subscriber::set_global_default(subscriber)
                 .expect("Could not set global default tracing subscriber. If you've already set up a tracing subscriber, please disable LogPlugin from Bevy's DefaultPlugins");
         }
 
         #[cfg(target_os = "android")]
         {
             let subscriber = subscriber.with(android_tracing::AndroidLayer::default());
-            legion_utils::tracing::subscriber::set_global_default(subscriber)
+            tracing::subscriber::set_global_default(subscriber)
                 .expect("Could not set global default tracing subscriber. If you've already set up a tracing subscriber, please disable LogPlugin from Bevy's DefaultPlugins");
         }
     }

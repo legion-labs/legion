@@ -60,20 +60,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-<<<<<<< HEAD
 use runtime_srv::{build_runtime, start_runtime};
-=======
-use std::str::FromStr;
-
-use clap::Arg;
-use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_core::CorePlugin;
-use legion_data_runtime::ResourceId;
-use legion_log::LogPlugin;
-use legion_transform::prelude::*;
-use legion_utils::Duration;
->>>>>>> 5b74eac9 (add log plugin to runtime-srv)
 
 fn main() {
     let mut app = build_runtime(
@@ -85,66 +72,5 @@ fn main() {
         "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)",
     );
 
-<<<<<<< HEAD
     start_runtime(&mut app);
-=======
-    let args = clap::App::new("Legion Labs runtime engine")
-        .author(clap::crate_authors!())
-        .version(clap::crate_version!())
-        .about("Server that will run with runtime data, and execute world simulation, ready to be streamed to a runtime client.")
-        .arg(Arg::with_name(ARG_NAME_CAS)
-            .long(ARG_NAME_CAS)
-            .takes_value(true)
-            .help("Path to folder containing the content storage files"))
-        .arg(Arg::with_name(ARG_NAME_MANIFEST)
-            .long(ARG_NAME_MANIFEST)
-            .takes_value(true)
-            .help("Path to the game manifest"))
-        .arg(Arg::with_name(ARG_NAME_ROOT)
-            .long(ARG_NAME_ROOT)
-            .takes_value(true)
-            .help("Root object to load, usually a world"))
-        .get_matches();
-
-    let content_store_addr = args
-        .value_of(ARG_NAME_CAS)
-        .unwrap_or("test/sample-data/temp");
-
-    let game_manifest = args
-        .value_of(ARG_NAME_MANIFEST)
-        .unwrap_or("test/sample-data/runtime/game.manifest");
-
-    let mut assets_to_load: Vec<ResourceId> = Vec::new();
-
-    // default root object is in sample data
-    // /world/sample_1.ent
-    // resource-id: 97b0740f00000000fcd3242ec9691beb
-    // asset-id: aad8904500000000ab5fe63eda1e1c4f
-    // checksum: 3aba5061a97aa89bb522050b16081f67
-
-    let root_asset = args
-        .value_of(ARG_NAME_ROOT)
-        .unwrap_or("aad8904500000000ab5fe63eda1e1c4f");
-    if let Ok(asset_id) = ResourceId::from_str(root_asset) {
-        assets_to_load.push(asset_id);
-    }
-
-    // Start app with 60 fps
-    App::new()
-        .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
-        )))
-        .add_plugin(LogPlugin::default())
-        .add_plugin(CorePlugin::default())
-        .add_plugin(ScheduleRunnerPlugin::default())
-        .add_plugin(TransformPlugin::default())
-        .insert_resource(AssetRegistrySettings::new(
-            content_store_addr,
-            game_manifest,
-            assets_to_load,
-            None,
-        ))
-        .add_plugin(AssetRegistryPlugin::default())
-        .run();
->>>>>>> 5b74eac9 (add log plugin to runtime-srv)
 }
