@@ -1,22 +1,26 @@
+//! Transaction Operation to Delete a Resource
+
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
-pub(crate) struct DeleteResourceOperation {
+/// Operation to Delete a resource
+pub struct DeleteResourceOperation {
     resource_id: ResourceTypeAndId,
     old_resource_name: Option<ResourcePathName>,
     old_resource_data: Option<Vec<u8>>,
 }
 
 impl DeleteResourceOperation {
-    pub fn new(resource_id: ResourceTypeAndId) -> Self {
-        Self {
+    /// Return a newly created `DeleteResourceOperation`
+    pub fn new(resource_id: ResourceTypeAndId) -> Box<Self> {
+        Box::new(Self {
             resource_id,
             old_resource_name: None,
             old_resource_data: None,
-        }
+        })
     }
 }
 

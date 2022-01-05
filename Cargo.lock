@@ -4243,6 +4243,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "generic-data",
+ "lgn-compiler-testentity",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",

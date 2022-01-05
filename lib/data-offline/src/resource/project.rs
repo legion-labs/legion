@@ -176,6 +176,22 @@ impl Project {
         })
     }
 
+    /// Reload a project
+    pub fn reload(&mut self) -> Result<(), Error> {
+        let index_path = Self::root_to_index_path(&self.project_dir);
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .append(false)
+            .open(&index_path)
+            .map_err(|_e| Error::NotFound)?;
+
+        self.file = file;
+        self.db = serde_json::from_reader(&self.file)
+            .map_err(|e| Error::ParseError(index_path.clone(), e))?;
+        Ok(())
+    }
+
     /// Deletes the project by deleting the index file.
     pub fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
@@ -491,7 +507,8 @@ impl Project {
         self.db.pre_serialize();
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
+    /// Flush the db to the project.index
+    pub fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
         self.pre_serialize();

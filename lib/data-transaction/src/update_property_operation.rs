@@ -1,10 +1,13 @@
+//! Transaction Operation to Update a Resource property through Reflection
+
 use async_trait::async_trait;
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
-pub(crate) struct UpdatePropertyOperation {
+/// Operation to update a Property Value through reflection
+pub struct UpdatePropertyOperation {
     resource_id: ResourceTypeAndId,
     property_name: String,
     new_value: String,
@@ -12,13 +15,14 @@ pub(crate) struct UpdatePropertyOperation {
 }
 
 impl UpdatePropertyOperation {
-    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Self {
-        Self {
+    /// Return a newly created `UpdatePropertyOperation`
+    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Box<Self> {
+        Box::new(Self {
             resource_id,
             property_name: property_name.into(),
             new_value: new_value.into(),
             old_value: None,
-        }
+        })
     }
 }
 
