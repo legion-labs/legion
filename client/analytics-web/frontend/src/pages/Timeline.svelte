@@ -47,6 +47,7 @@
 <script lang="ts">
   import { link } from "svelte-navigator";
   import {
+    BlockSpansReply,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl
   } from "@lgn/proto-telemetry/codegen/analytics";
@@ -236,7 +237,29 @@
     } );
   }
 
-  async function fetchBlockSpans(block: ThreadBlock) {
+  function onLodReceived(response: BlockSpansReply){
+    const blockId = response.blockId;
+    if (!response.lod) {
+      throw new Error(`Error fetching spans for block ${blockId}`);
+    }
+    scopes = { ...scopes, ...response.scopes };
+
+    const block = blocks[response.blockId];
+    let thread = threads[block.blockDefinition.streamId];
+    thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
+    thread.minMs = Math.min(thread.minMs, response.beginMs);
+    thread.maxMs = Math.max(thread.maxMs, response.endMs);
+    thread.block_ids.push(blockId);
+    block.lods[response.lod.lodId].state = LODState.Loaded;
+    block.lods[response.lod.lodId].tracks = response.lod.tracks;
+    if (loadingProgression) {
+      loadingProgression.completed += 1;
+    }
+    updateProgess();
+    drawCanvas();
+  }
+
+  function fetchBlockSpans(block: ThreadBlock) {
     const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {
@@ -255,29 +278,13 @@
     }
     block.lods[preferedLod].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
-    const response = await client.block_spans({
+    const fut = client.block_spans({
       blockId: blockId,
       process,
       stream: threads[streamId].streamInfo,
       lodId: preferedLod,
     });
-    if (!response.lod) {
-      throw new Error(`Error fetching spans for block ${blockId}`);
-    }
-    scopes = { ...scopes, ...response.scopes };
-
-    let thread = threads[streamId];
-    thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
-    thread.minMs = Math.min(thread.minMs, response.beginMs);
-    thread.maxMs = Math.max(thread.maxMs, response.endMs);
-    thread.block_ids.push(blockId);
-    block.lods[response.lod.lodId].state = LODState.Loaded;
-    block.lods[response.lod.lodId].tracks = response.lod.tracks;
-    if (loadingProgression) {
-      loadingProgression.completed += 1;
-    }
-    updateProgess();
-    drawCanvas();
+    fut.then(onLodReceived, e => console.log("LOD request failed: ", e));
   }
 
   function findStreamProcess(streamId: string) {
