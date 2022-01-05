@@ -3797,6 +3797,7 @@ dependencies = [
  "lgn-utils",
  "ron",
  "serde",
+ "tracing",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -4310,6 +4311,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

@@ -346,10 +346,12 @@ impl Schedule {
     /// Executes each [`Stage`] contained in the schedule, one at a time.
     pub fn run_once(&mut self, world: &mut World) {
         for label in &self.stage_order {
+            #[cfg(feature = "trace")]
+            let stage_span = tracing::info_span!("stage", name = ?label);
+            #[cfg(feature = "trace")]
+            let _stage_guard = stage_span.enter();
             // TODO: add stage name to trace scope
             trace_scope!();
-            // let stage_span = info_span!("stage", name = ?label);
-            // let _stage_guard = stage_span.enter();
             let stage = self.stages.get_mut(label).unwrap();
             stage.run(world);
         }

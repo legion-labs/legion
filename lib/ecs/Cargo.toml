@@ -9,6 +9,10 @@ license = "MIT OR Apache-2.0"
 keywords = ["ecs", "game", "legion"]
 categories = ["game-engines", "data-structures"]
 
+[features]
+trace = ["tracing"]
+default = []
+
 [dependencies]
 lgn-ecs-macros = { path = "macros", version = "0.1.0" }
 lgn-tasks = { path = "../tasks", version = "0.1.0" }
@@ -21,6 +25,9 @@ fixedbitset = "0.4"
 fxhash = "0.2"
 serde = "1.0"
 thiserror = "1.0"
+tracing = { version = "0.1", features = [
+    "release_max_level_info",
+], optional = true }
 
 [dev-dependencies]
 parking_lot = "0.11"

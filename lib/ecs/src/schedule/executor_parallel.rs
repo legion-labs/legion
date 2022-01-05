@@ -155,6 +155,10 @@ impl ParallelExecutor {
     /// call to [`update_archetypes`] and updates cached
     /// `archetype_component_access`.
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
+        #[cfg(feature = "trace")]
+        let span = tracing::info_span!("update_archetypes");
+        #[cfg(feature = "trace")]
+        let _guard = span.enter();
         trace_scope!("update_archetypes");
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
@@ -181,6 +185,10 @@ impl ParallelExecutor {
         systems: &'scope mut [ParallelSystemContainer],
         world: &'scope World,
     ) {
+        #[cfg(feature = "trace")]
+        let span = tracing::info_span!("prepare_systems");
+        #[cfg(feature = "trace")]
+        let _guard = span.enter();
         trace_scope!("prepare_systems");
         self.should_run.clear();
         for (index, (system_data, system)) in
@@ -192,21 +200,21 @@ impl ParallelExecutor {
                 let start_receiver = system_data.start_receiver.clone();
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
+                #[cfg(feature = "trace")] // NB: outside the task to get the TLS current span
+                let system_span = tracing::info_span!("system", name = &*system.name());
                 // TODO: add system name to async trace scope
-                // #[cfg(feature = "trace")] // NB: outside the task to get the TLS current span
-                // let system_span = info_span!("system", name = &*system.name());
                 let task = async move {
                     start_receiver
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!(error));
+                    #[cfg(feature = "trace")]
+                    let system_guard = system_span.enter();
                     // TODO: add system name to async trace scope
                     // trace_scope!();
-                    // #[cfg(feature = "trace")]
-                    // let system_guard = system_span.enter();
                     unsafe { system.run_unsafe((), world) };
-                    // #[cfg(feature = "trace")]
-                    // drop(system_guard);
+                    #[cfg(feature = "trace")]
+                    drop(system_guard);
                     finish_sender
                         .send(index)
                         .await

@@ -32,10 +32,12 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
 
         for system in systems {
             if system.should_run() {
+                #[cfg(feature = "trace")]
+                let system_span = tracing::info_span!("system", name = &*system.name());
+                #[cfg(feature = "trace")]
+                let _system_guard = system_span.enter();
                 // TODO: add system name to trace scope
                 trace_scope!();
-                // let system_span = info_span!("system", name = &*system.name());
-                // let _system_guard = system_span.enter();
                 system.system_mut().run((), world);
             }
         }
