@@ -2,12 +2,11 @@ use std::slice;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
-    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DescriptorDef,
-    DescriptorRef, DescriptorSetLayoutDef, DeviceContext, Format, GraphicsPipelineDef, LoadOp,
-    MemoryAllocation, MemoryAllocationDef, MemoryUsage, Pipeline, PipelineType, PrimitiveTopology,
-    PushConstantDef, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
-    RootSignature, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags,
-    StencilOp, StoreOp, VertexLayout, MAX_DESCRIPTOR_SET_LAYOUTS,
+    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
+    DescriptorRef, DeviceContext, Format, GraphicsPipelineDef, LoadOp,
+    MemoryAllocation, MemoryAllocationDef, MemoryUsage, Pipeline, PipelineType, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    RootSignature, SampleCount,
+    StencilOp, StoreOp, VertexLayout,
 };
 
 use crate::{
