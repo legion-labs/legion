@@ -330,15 +330,20 @@ impl TmpRenderPass {
             push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
-            
-            /* WIP 
+
+            cmd_buffer.draw(static_mesh_component.num_verticies, 0);
+
+            /*/ WIP
             {
-                let mut pipeline_data = cgen::pipeline_layout::TmpPipelineLayout::new(&self.pipeline);
+                let mut pipeline_data =
+                    cgen::pipeline_layout::TmpPipelineLayout::new(&self.pipeline);
                 render_context.populate_pipeline_data(&mut pipeline_data);
-                cmd_buffer.draw_with_data(&pipeline_data, mesh.num_vertices() as u32, 0);    
+                pipeline_data.set_push_constant(&cgen::cgen_type::PushConstantData {
+                    color: Default::default(),
+                });
+                cmd_buffer.draw_with_data(&pipeline_data, static_mesh_component.num_verticies, 0);
             }
             */
-            cmd_buffer.draw(static_mesh_component.num_verticies, 0);
         }
 
         cmd_buffer.end_render_pass();

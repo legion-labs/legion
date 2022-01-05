@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_lines)]
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
@@ -171,13 +172,10 @@ impl CommandBuffer {
         Ok(())
     }
 
-    pub fn cmd_push_constants<T: Sized>(
-        &self,
-        root_signature: &RootSignature,
-        constants: &T,
-    ) -> GfxResult<()> {
+    #[allow(unsafe_code)]
+    pub fn cmd_push_constant(&self, root_signature: &RootSignature, data: &[u8]) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.cmd_push_constants_platform(root_signature, constants);
+        self.cmd_push_constant_platform(root_signature, data);
         Ok(())
     }
 

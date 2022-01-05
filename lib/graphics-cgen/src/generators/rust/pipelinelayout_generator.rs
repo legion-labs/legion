@@ -39,6 +39,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
+#[allow(clippy::too_many_lines)]
 fn generate_rust_pipeline_layout(
     ctx: &GeneratorContext<'_>,
     pipeline_layout_ref: PipelineLayoutRef,
@@ -48,14 +49,23 @@ fn generate_rust_pipeline_layout(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    writer.add_line("use lgn_graphics_api::DeviceContext;");
-    writer.add_line("use lgn_graphics_api::RootSignature;");
-    writer.add_line("use lgn_graphics_api::DescriptorSetLayout;");
-    writer.add_line("use lgn_graphics_api::DescriptorSetHandle;");
-    writer.add_line("use lgn_graphics_api::Pipeline;");
-    writer.add_line("use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenPipelineLayoutDef;");
-    writer.add_line("use lgn_graphics_cgen_runtime::PipelineDataProvider;");
+    writer.add_line("use std::{mem, ptr};");
+    writer.new_line();
+
+    writer.add_line("use lgn_graphics_api::{");
+    writer.add_line("DeviceContext,");
+    writer.add_line("RootSignature,");
+    writer.add_line("DescriptorSetLayout,");
+    writer.add_line("DescriptorSetHandle,");
+    writer.add_line("Pipeline,");
+    writer.add_line("MAX_DESCRIPTOR_SET_LAYOUTS,");
+    writer.add_line("};");
+    writer.new_line();
+
+    writer.add_line("use lgn_graphics_cgen_runtime::{");
+    writer.add_line("CGenPipelineLayoutDef,");
+    writer.add_line("PipelineDataProvider,");
+    writer.add_line("};");
     writer.new_line();
 
     // local dependencies
@@ -66,8 +76,9 @@ fn generate_rust_pipeline_layout(
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(_typ_ref) => {
-                    todo!();
+                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                    let ty = ty_ref.get(ctx.model);
+                    writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
                 }
             }
         }
@@ -116,6 +127,10 @@ fn generate_rust_pipeline_layout(
         writer.add_line(
             "descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],",
         );
+        if let Some(ty_ref) = pipeline_layout.push_constant() {
+            let ty = ty_ref.get(ctx.model);
+            writer.add_line(format!("push_constant: {}", ty.name()));
+        }
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -167,6 +182,10 @@ fn generate_rust_pipeline_layout(
         writer.indent();
         writer.add_line("pipeline,");
         writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
+        if let Some(ty_ref) = pipeline_layout.push_constant() {
+            let ty = ty_ref.get(ctx.model);
+            writer.add_line(format!("push_constant: {}::default(),", ty.name()));
+        }
         writer.unindent();
         writer.add_line("}");
         writer.unindent();
@@ -190,8 +209,17 @@ fn generate_rust_pipeline_layout(
                     writer.unindent();
                     writer.add_line("}");
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(_ty_ref) => {
-                    todo!();
+                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                    let ty = ty_ref.get(ctx.model);
+                    writer.add_line(format!(
+                        "pub fn set_{}(&mut self, data: &{}) {{",
+                        name,
+                        ty.name()
+                    ));
+                    writer.indent();
+                    writer.add_line("self.push_constant = *data;");
+                    writer.unindent();
+                    writer.add_line("}");
                 }
             }
         }
@@ -219,11 +247,28 @@ fn generate_rust_pipeline_layout(
         writer.add_line("}");
         writer.new_line();
 
-        // fn set_descriptor_set
+        // fn descriptor_set
         writer
             .add_line("fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {");
         writer.indent();
         writer.add_line("self.descriptor_sets[frequency as usize]");
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+
+        // fn push_constant
+        writer.add_line("fn push_constant(&self) -> Option<&[u8]> {");
+        writer.indent();
+        if let Some(ty_ref) = pipeline_layout.push_constant() {
+            writer.add_line("#![allow(unsafe_code)]");
+            let ty = ty_ref.get(ctx.model);
+            writer.add_line("let data_slice = unsafe {");
+            writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
+            writer.add_line("};");
+            writer.add_line("Some(data_slice)");
+        } else {
+            writer.add_line("None");
+        }
         writer.unindent();
         writer.add_line("}");
         writer.new_line();

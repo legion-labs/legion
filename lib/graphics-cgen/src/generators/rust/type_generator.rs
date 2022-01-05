@@ -83,6 +83,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
 
     // struct
     writer.add_line("#[derive(Default, Clone, Copy)]");
+    writer.add_line("#[repr(C)]");
     writer.add_line(format!("pub struct {} {{", struct_def.name));
 
     writer.indent();

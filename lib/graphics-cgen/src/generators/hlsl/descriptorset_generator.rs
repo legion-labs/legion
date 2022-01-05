@@ -27,63 +27,63 @@ fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String 
         DescriptorDef::ConstantBuffer(def) => {
             format!(
                 "ConstantBuffer<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::StructuredBuffer(def) => {
             format!(
                 "StructuredBuffer<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::RWStructuredBuffer(def) => {
             format!(
                 "RWStructuredBuffer<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
         DescriptorDef::RWByteAddressBuffer => "RWByteAddressBuffer".to_owned(),
         DescriptorDef::Texture2D(def) => {
-            format!("Texture2D<{}>", get_hlsl_typestring(&def.ty_ref.get(model)))
+            format!("Texture2D<{}>", get_hlsl_typestring(def.ty_ref.get(model)))
         }
         DescriptorDef::RWTexture2D(def) => {
             format!(
                 "RWTexture2D<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::Texture3D(def) => {
-            format!("Texture3D<{}>", get_hlsl_typestring(&def.ty_ref.get(model)))
+            format!("Texture3D<{}>", get_hlsl_typestring(def.ty_ref.get(model)))
         }
         DescriptorDef::RWTexture3D(def) => {
             format!(
                 "RWTexture3D<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::Texture2DArray(def) => {
             format!(
                 "Texture2DArray<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::RWTexture2DArray(def) => {
             format!(
                 "RWTexture2DArray<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::TextureCube(def) => {
             format!(
                 "TextureCube<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
         DescriptorDef::TextureCubeArray(def) => {
             format!(
                 "TextureCubeArray<{}>",
-                get_hlsl_typestring(&def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_ref.get(model))
             )
         }
     };

@@ -255,5 +255,6 @@ pub trait CGenPipelineLayoutInfo {
 pub trait PipelineDataProvider {
     fn pipeline(&self) -> &Pipeline;
     fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle>;
+    fn push_constant(&self) -> Option<&[u8]>;
     fn set_descriptor_set(&mut self, frequency: u32, descriptor_set: Option<DescriptorSetHandle>);
 }

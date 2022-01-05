@@ -1,3 +1,5 @@
+use std::{mem, ptr};
+
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
@@ -98,8 +100,15 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn push_constants<T: Sized>(&self, root_signature: &RootSignature, constants: &T) {
+
+        let constants_size = mem::size_of::<T>();
+        let constants_ptr = (constants as *const T).cast::<u8>();
+        #[allow(unsafe_code)]
+        let data = unsafe {
+            &*ptr::slice_from_raw_parts(constants_ptr, constants_size)
+        };                
         self.cmd_buffer
-            .cmd_push_constants(root_signature, constants)
+            .cmd_push_constant(root_signature, data)
             .unwrap();
     }
 
@@ -232,7 +241,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         let pipeline_type = pipeline.pipeline_type();
         let root_signature = pipeline.root_signature();
 
-        self.cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
+        self.cmd_buffer.cmd_bind_pipeline(pipeline).unwrap();
 
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
             let descriptor_set = pipeline_data.descriptor_set(i);
@@ -240,12 +249,16 @@ impl<'rc> HLCommandBuffer<'rc> {
                 self.cmd_buffer
                     .cmd_bind_descriptor_set_handle(
                         pipeline_type,
-                        &root_signature,
+                        root_signature,
                         i,
                         descriptor_set,
                     )
                     .unwrap();
             }
+        }
+
+        if let Some(push_constant_data) = pipeline_data.push_constant() {
+            self.cmd_buffer.cmd_push_constant(&root_signature, push_constant_data).unwrap();            
         }
     }
 }

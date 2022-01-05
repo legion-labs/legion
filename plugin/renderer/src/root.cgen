@@ -16,6 +16,10 @@ struct ViewData {
     projection: Float4x4,
 }
 
+struct PushConstantData {
+    color: Float4,
+}
+
 #[DescriptorSet(frequency = 0)]
 struct ViewDescriptorSet {
     view_data: ConstantBuffer<ViewData>,
@@ -46,4 +50,5 @@ struct FrameDescriptorSet {
 #[PipelineLayout]
 struct TmpPipelineLayout {
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    push_constant: PushConstant<PushConstantData>,
 }

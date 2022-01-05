@@ -434,6 +434,13 @@ impl CGenType {
             CGenType::Native(_) => panic!("Invalid access"),
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            CGenType::Native(e) => e.into(),
+            CGenType::Struct(e) => e.name.as_str(),
+        }
+    }
 }
 
 pub type CGenTypeRef = ModelObjectRef<CGenType>;
@@ -634,6 +641,18 @@ impl PipelineLayout {
             PipelineLayoutContent::DescriptorSet(ds) => Some(ds),
             PipelineLayoutContent::Pushconstant(_) => None,
         });
+        x
+    }
+
+    pub fn push_constant(&self) -> Option<CGenTypeRef> {
+        let x = self
+            .members
+            .iter()
+            .filter_map(|m| match m.1 {
+                PipelineLayoutContent::Pushconstant(ds) => Some(ds),
+                PipelineLayoutContent::DescriptorSet(_) => None,
+            })
+            .last();
         x
     }
 

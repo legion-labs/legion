@@ -4,8 +4,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 #[derive(Default, Clone, Copy)]
 #[repr(C)]
-pub struct LayoutA {
-	pub a: Float1,
-	pub b: Float2,
-} // LayoutA
+pub struct PushConstantData {
+	pub color: Float4,
+} // PushConstantData
 
