@@ -3,8 +3,11 @@
         "clippy::[a-z_]+"
     ],
     "words": [
+        "asft",
         "bincode",
+        "Deserialization",
         "Graphviz",
-        "thiserror"
+        "thiserror",
+        "xxhash"
     ]
 }
