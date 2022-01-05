@@ -75,7 +75,7 @@ impl TransactionOperation for ArrayOperation {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.t, resource_handle)
+            .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         let array_value = find_property_mut(reflection, self.array_path.as_str())?;
@@ -119,7 +119,7 @@ impl TransactionOperation for ArrayOperation {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.t, handle)
+            .get_resource_reflection_mut(self.resource_id.kind, handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         let array_value = find_property_mut(reflection, self.array_path.as_str())?;
