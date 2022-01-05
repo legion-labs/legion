@@ -29,6 +29,7 @@ pub enum DefaultMeshId {
     Cylinder,
     Sphere,
     Arrow,
+    RotationRing,
 }
 
 impl DefaultMeshes {
@@ -40,11 +41,12 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_pyramid(0.5, 1.0),
             StaticMeshRenderData::new_wireframe_cube(1.0),
             StaticMeshRenderData::new_ground_plane(6, 5, 0.25),
-            StaticMeshRenderData::new_torus(0.01, 32, 0.5, 128),
+            StaticMeshRenderData::new_torus(0.1, 32, 0.5, 128),
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
             StaticMeshRenderData::new_sphere(0.25, 20, 20),
             StaticMeshRenderData::new_arrow(Vec3::ZERO, Vec3::X),
+            StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];
 
         let mut vertex_data_size_in_bytes = 0;

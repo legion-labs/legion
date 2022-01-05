@@ -1,11 +1,14 @@
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
-use lgn_input::mouse::{MouseButtonInput, MouseMotion};
+use lgn_input::{
+    keyboard::KeyboardInput,
+    mouse::{MouseButtonInput, MouseMotion},
+};
 use lgn_math::Vec2;
 use lgn_transform::prelude::Transform;
 use lgn_window::WindowResized;
 
-use super::{ManipulatorManager, PickingManager, PositionComponents};
+use super::{ManipulatorManager, PickingManager};
 use crate::components::{
     CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
 };
@@ -62,8 +65,10 @@ impl Plugin for PickingPlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn gather_input(
     picking_manager: Res<'_, PickingManager>,
+    manipulator_manager: Res<'_, ManipulatorManager>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
 ) {
     for cursor_button_event in cursor_button.iter() {
         picking_manager.set_mouse_button_input(cursor_button_event);
@@ -71,6 +76,12 @@ fn gather_input(
 
     for motion_event in mouse_motion_events.iter() {
         picking_manager.set_mouse_moition_event(motion_event);
+    }
+
+    for keyboard_input_event in keyboard_input_events.iter() {
+        if let Some(key_code) = keyboard_input_event.key_code {
+            manipulator_manager.change_manipulator(key_code);
+        }
     }
 }
 
@@ -189,14 +200,17 @@ fn update_manipulator_component(
     }
 
     let mut update_manip_entity = false;
-    let mut active_manipulator_part = PositionComponents::None;
+    let mut active_manipulator_part = false;
     for (entity, _transform, mut manipulator, picked_component) in manipulator_query.iter_mut() {
         manipulator.selected = false;
         if selected_part != usize::MAX
-            && PositionComponents::from_component_id(selected_part)
-                == PositionComponents::from_component_id(manipulator.part_num)
+            && manipulator_manager.match_manipulator_parts(
+                selected_part,
+                manipulator.part_type,
+                manipulator.part_num,
+            )
         {
-            active_manipulator_part = PositionComponents::from_component_id(selected_part);
+            active_manipulator_part = true;
             manipulator.selected = true;
         } else if picked_component.is_some() {
             commands.entity(entity).remove::<PickedComponent>();
@@ -207,7 +221,7 @@ fn update_manipulator_component(
     let mut select_entity_transform = None;
     for (entity, mut transform, picked) in picked_query.iter_mut() {
         if entity == picking_manager.manipulated_entity() {
-            if active_manipulator_part != PositionComponents::None {
+            if active_manipulator_part {
                 let (base_transform, picking_pos) = picking_manager.base_picking_data();
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
@@ -222,7 +236,7 @@ fn update_manipulator_component(
                         }
 
                         *transform = manipulator_manager.manipulate_entity(
-                            active_manipulator_part,
+                            selected_part,
                             &base_transform,
                             q_cameras[0],
                             picking_pos,
