@@ -1,19 +1,19 @@
-use std::{
-    hash::{Hash, Hasher},
-    num::NonZeroU32,
-};
+use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
 use serde::{Deserialize, Serialize};
 
-use super::{
+use strum::IntoStaticStr;
+
+use crate::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
-    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PrimitiveTopology,
-    SampleCount, ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
+    DescriptorSetLayout, Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage,
+    MipMapMode, PrimitiveTopology, ResourceFlags, RootSignature, SampleCount, Shader, ShaderModule,
+    ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
-use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of
 /// validation is API-specific.
@@ -431,7 +431,9 @@ pub struct ShaderStageDef {
     pub shader_module: ShaderModule,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, strum::Display, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, IntoStaticStr,
+)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,
@@ -449,7 +451,7 @@ pub enum ShaderResourceType {
     TextureCubeArray = 0x20_00,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
     pub binding: u32,
@@ -463,7 +465,7 @@ impl DescriptorDef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorSetLayoutDef {
     pub frequency: u32,
     pub descriptor_defs: Vec<DescriptorDef>,
@@ -484,15 +486,14 @@ impl Default for DescriptorSetLayoutDef {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
-    pub size: NonZeroU32,
+    pub size: u32,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Hash)]
 pub struct RootSignatureDef {
-    // pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -500,7 +501,6 @@ pub struct RootSignatureDef {
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
         Self {
-            // pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
         }

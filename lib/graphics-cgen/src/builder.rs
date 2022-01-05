@@ -39,8 +39,7 @@ impl<'mdl> StructBuilder<'mdl> {
         self.names.insert(name.to_string());
 
         // get cgen type and check its existence if necessary
-        // let type_key = typ.into();
-        let object_id = self.mdl.get_object_id::<CGenType>(typ).context(anyhow!(
+        let ty_ref = self.mdl.get_object_ref::<CGenType>(typ).context(anyhow!(
             "Member '{}' in struct '{}' has an unknown type '{}'",
             name,
             self.product.name,
@@ -49,7 +48,7 @@ impl<'mdl> StructBuilder<'mdl> {
         // done
         self.product
             .members
-            .push(StructMember::new(name, object_id, array_len));
+            .push(StructMember::new(name, ty_ref, array_len));
         Ok(self)
     }
 
@@ -66,6 +65,7 @@ pub struct DescriptorSetBuilder<'mdl> {
     mdl: &'mdl Model,
     product: DescriptorSet,
     names: HashSet<String>,
+    flat_index: u32,
 }
 
 impl<'mdl> DescriptorSetBuilder<'mdl> {
@@ -74,6 +74,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             mdl,
             product: DescriptorSet::new(name, frequency),
             names: HashSet::new(),
+            flat_index: 0,
         }
     }
 
@@ -91,17 +92,20 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     /// todo
     pub fn add_constantbuffer(self, name: &str, inner_type: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
-        let object_id = self
+        let ty_ref = self
             .mdl
-            .get_object_id::<CGenType>(inner_type)
+            .get_object_ref::<CGenType>(inner_type)
             .context(anyhow!(
                 "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
                 self.product.name,
                 inner_type
             ))?;
-        let def = ConstantBufferDef { object_id };
-        self.add_descriptor(name, None, DescriptorDef::ConstantBuffer(def))
+        self.add_descriptor(
+            name,
+            None,
+            DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_ref }),
+        )
     }
 
     /// Add descriptor.
@@ -116,16 +120,16 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         read_write: bool,
     ) -> Result<Self> {
         // get cgen type and check its existence if necessary
-        let object_id = self
+        let ty_ref = self
             .mdl
-            .get_object_id::<CGenType>(inner_ty)
+            .get_object_ref::<CGenType>(inner_ty)
             .context(anyhow!(
                 "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
                 self.product.name,
                 inner_ty
             ))?;
-        let def = StructuredBufferDef { object_id };
+        let def = StructuredBufferDef { ty_ref };
         let def = if read_write {
             DescriptorDef::RWStructuredBuffer(def)
         } else {
@@ -167,13 +171,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         //
         // Texture format
         //
-        let ty_id = self.mdl.get_object_id::<CGenType>(fmt).context(anyhow!(
+        let ty_ref = self.mdl.get_object_ref::<CGenType>(fmt).context(anyhow!(
             "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
             name,
             self.product.name,
             fmt
         ))?;
-        let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_id).unwrap();
+        let fmt_ty = ty_ref.get(self.mdl);
+        // let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_ref).unwrap();
         let valid_type = match fmt_ty {
             CGenType::Struct(_) => false,
             CGenType::Native(e) => matches!(
@@ -189,7 +194,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                 self.product.name
             ));
         }
-        let def = TextureDef { object_id: ty_id };
+        let def = TextureDef { ty_ref };
         let ds = match tex_type {
             "2D" => {
                 if read_write {
@@ -263,9 +268,12 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.names.insert(name.to_string());
         self.product.descriptors.push(Descriptor {
             name: name.to_owned(),
+            flat_index: self.flat_index,
             array_len,
             def,
         });
+
+        self.flat_index += array_len.unwrap_or(1u32);
 
         Ok(self)
     }
@@ -274,7 +282,8 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    pub fn build(self) -> Result<DescriptorSet> {
+    pub fn build(mut self) -> Result<DescriptorSet> {
+        self.product.flat_descriptor_count = self.flat_index;
         Ok(self.product)
     }
 }
@@ -304,16 +313,16 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     /// todo
     pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
         // check descriptorset exists
-        let ds_id = self.mdl.get_object_id::<DescriptorSet>(ty);
-        if ds_id.is_none() {
+        let ds_ref = self.mdl.get_object_ref::<DescriptorSet>(ty);
+        if ds_ref.is_none() {
             return Err(anyhow!(
                 "Unknown DescriptorSet '{}' added to PipelineLayout '{}'",
                 ty,
                 self.product.name
             ));
         }
-        let obj_id = ds_id.unwrap();
-        let ds = self.mdl.get_from_objectid::<DescriptorSet>(obj_id).unwrap();
+        let ds_ref = ds_ref.unwrap();
+        let ds = ds_ref.get(self.mdl);
 
         // check for frequency conflict
         if self.freqs.contains(&ds.frequency) {
@@ -325,7 +334,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         }
         self.freqs.insert(ds.frequency);
 
-        self.add_member(name, PipelineLayoutContent::DescriptorSet(obj_id))
+        self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_ref))
     }
 
     /// Add pushconstant
@@ -342,31 +351,23 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         }
         self.has_pushconstant = true;
         // get cgen type and check its existence if necessary
-        let object_id = self
+        let ty_ref = self
             .mdl
-            .get_object_id::<CGenType>(typename)
+            .get_object_ref::<CGenType>(typename)
             .context(anyhow!(
                 "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
                 typename,
                 name,
                 self.product.name
             ))?;
-        let cgen_type = self
-            .mdl
-            .get_from_objectid::<CGenType>(object_id)
-            .context(anyhow!(
-                "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
-                typename,
-                name,
-                self.product.name
-            ))?;
+        let cgen_type = ty_ref.get(self.mdl);
         // Only struct types allowed for now
         if let CGenType::Struct(_def) = cgen_type {
         } else {
             return Err(anyhow!("PushConstant must be Struct types "));
         }
         // done
-        self.add_member(name, PipelineLayoutContent::Pushconstant(object_id))
+        self.add_member(name, PipelineLayoutContent::Pushconstant(ty_ref))
     }
 
     fn add_member(mut self, name: &str, mb: PipelineLayoutContent) -> Result<Self> {

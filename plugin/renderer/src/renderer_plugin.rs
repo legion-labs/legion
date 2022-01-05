@@ -4,13 +4,14 @@ use crate::{
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
-use lgn_app::prelude::*;
+use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
+
 use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
@@ -315,13 +316,44 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &LightComponent)>>();
 
-    let default_camera = CameraComponent::default();
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+    let default_camera = CameraComponent::default();
+    let camera_component = if !q_cameras.is_empty() {
+        q_cameras[0]
+    } else {
+        &default_camera
+    };
 
     renderer.flush_update_jobs(&render_context);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
+        // View descriptor set
+        /* WIP
+        {
+            let (view_matrix, projection_matrix) = camera_component.build_view_projection(
+                render_surface.extents().width() as f32,
+                render_surface.extents().height() as f32,
+            );
+
+            let transient_allocator = render_context.transient_buffer_allocator();
+
+            let mut view_data = crate::cgen::cgen_type::ViewData::default();
+            view_data.view = view_matrix.into();
+            view_data.projection = projection_matrix.into();
+
+            let sub_allocation =
+                transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
+
+            let const_buffer_view = sub_allocation.const_buffer_view();
+
+            let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
+            view_descriptor_set.set_view_data(&const_buffer_view);
+
+            let handle = render_context.write_descriptor_set(&view_descriptor_set);
+        }
+        */
+
         let cmd_buffer = render_context.alloc_command_buffer();
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
@@ -330,11 +362,7 @@ fn render_update(
             &render_context,
             render_surface.as_mut(),
             q_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
         );
 
         let render_pass = render_surface.test_renderpass();
@@ -344,11 +372,7 @@ fn render_update(
             &cmd_buffer,
             render_surface.as_mut(),
             q_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
             q_lights.as_slice(),
             &light_settings,
         );
@@ -360,11 +384,7 @@ fn render_update(
             &cmd_buffer,
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
-            if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            },
+            camera_component,
             &default_meshes,
             debug_display.as_mut(),
         );

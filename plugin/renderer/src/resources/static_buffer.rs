@@ -1,10 +1,13 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    alloc::Layout,
+    sync::{Arc, Mutex},
+};
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, QueueType, ResourceCreation,
-    ResourceState, ResourceUsage, Semaphore,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
+    ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
 
@@ -39,7 +42,6 @@ impl UnifiedStaticBuffer {
         }
         let buffer_def = BufferDef {
             size: virtual_buffer_size,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             creation_flags,
         };
@@ -320,9 +322,14 @@ impl UniformGPUDataUpdater {
                 .unwrap()
                 .add_update_jobs(data, dst_offset)
         {
+            let data_layout = Layout::from_size_align(
+                std::cmp::max(self.block_size as usize, upload_size_in_bytes as usize),
+                std::mem::align_of::<T>(),
+            )
+            .unwrap();
+
             self.job_blocks.push(UniformGPUDataUploadJobBlock::new(
-                self.paged_buffer
-                    .allocate_page(std::cmp::max(self.block_size, upload_size_in_bytes)),
+                self.paged_buffer.allocate_page(data_layout),
             ));
         }
     }

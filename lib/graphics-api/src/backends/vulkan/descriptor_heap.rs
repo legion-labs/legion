@@ -1,6 +1,6 @@
 use crate::{
-    DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext, GfxResult,
+    DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider, DescriptorSetHandle,
+    DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
 };
 
 struct DescriptorHeapPoolConfig {
@@ -255,7 +255,7 @@ impl DescriptorHeapPartition {
         }
     }
 
-    pub(crate) fn write_descriptor_set_platform<'frame>(
+    pub(crate) fn get_writer_platform<'frame>(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
         bump: &'frame bumpalo::Bump,
@@ -275,21 +275,28 @@ impl DescriptorHeapPartition {
         )
     }
 
-    // pub(crate) fn write_descriptor_set_platform(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    //     descriptors: &[Descriptor_],
-    // ) -> GfxResult<DescriptorSetHandle> {
-    //     let device = self.inner.heap.inner.device_context.vk_device();
-    //     let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-    //         .set_layouts(&[descriptor_set_layout.vk_layout()])
-    //         .descriptor_pool(self.inner.platform_descriptor_heap_partition.
-    // vk_pool)         .build();
+    pub(crate) fn write_platform<'frame>(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+        bump: &'frame bumpalo::Bump,
+    ) -> GfxResult<DescriptorSetHandle> {
+        let device_context = &self.inner.heap.inner.device_context;
+        let device = device_context.vk_device();
+        let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
+            .set_layouts(&[descriptor_set.layout().vk_layout()])
+            .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
+            .build();
 
-    //     let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
+        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
-    //     let descriptor_set_handle = DescriptorSetHandle { vk_type: result[0] };
+        let mut writer = DescriptorSetWriter::new(
+            DescriptorSetHandle { vk_type: result[0] },
+            descriptor_set.layout(),
+            bump,
+        )?;
 
-    //     Ok(descriptor_set_handle)
-    // }
+        writer.set_descriptors(descriptor_set)?;
+
+        Ok(writer.flush(device_context))
+    }
 }

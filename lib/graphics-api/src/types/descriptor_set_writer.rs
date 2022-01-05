@@ -5,8 +5,8 @@ use lgn_telemetry::error;
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetWriter;
 use crate::{
-    DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,
-    MAX_DESCRIPTOR_BINDINGS,
+    DescriptorRef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
+    DeviceContext, GfxError, GfxResult, MAX_DESCRIPTOR_BINDINGS,
 };
 
 pub struct DescriptorSetWriter<'frame> {
@@ -44,7 +44,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
     pub fn set_descriptors_by_name(
         &mut self,
         name: &str,
-        update_datas: &[DescriptorRef<'frame>],
+        update_datas: &[DescriptorRef<'_>],
     ) -> GfxResult<()> {
         let descriptor_index = self
             .descriptor_set_layout
@@ -62,7 +62,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
     pub fn set_descriptors_by_index(
         &mut self,
         index: usize,
-        update_datas: &[DescriptorRef<'frame>],
+        update_datas: &[DescriptorRef<'_>],
     ) -> GfxResult<()> {
         let descriptor = self.descriptor_set_layout.descriptor(index);
         self.write_mask &= !(1u64 << descriptor.binding);
@@ -74,7 +74,25 @@ impl<'frame> DescriptorSetWriter<'frame> {
         self.set_descriptors_by_index_platform(index, update_datas)
     }
 
-    pub fn flush(self, vulkan_device_context: &DeviceContext) -> DescriptorSetHandle {
+    pub fn set_descriptors(
+        &mut self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+    ) -> GfxResult<()> {
+        let descriptor_count = self
+            .descriptor_set_layout
+            .definition()
+            .descriptor_defs
+            .len();
+
+        for index in 0..descriptor_count {
+            let descriptor_refs = descriptor_set.descriptor_refs(index);
+            self.set_descriptors_by_index(index, descriptor_refs)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn flush(self, device_context: &DeviceContext) -> DescriptorSetHandle {
         if self.write_mask != 0 {
             error!(
                 "An instance of DescriptorSetWriter cannot be flushed due to missing descriptors"
@@ -89,7 +107,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
         }
 
         #[cfg(any(feature = "vulkan"))]
-        self.flush_platform(vulkan_device_context);
+        self.flush_platform(device_context);
         self.descriptor_set
     }
 }

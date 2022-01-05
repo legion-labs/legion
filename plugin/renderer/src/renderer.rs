@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::num::NonZeroU32;
-
 use anyhow::Result;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
@@ -10,7 +8,6 @@ use lgn_graphics_api::{
     RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use lgn_graphics_cgen_runtime::CGenRuntime;
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
@@ -20,7 +17,7 @@ use crate::resources::{
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::RenderContext;
+use crate::{cgen, RenderContext};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -35,7 +32,6 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-    cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
@@ -60,10 +56,8 @@ impl Renderer {
 
         let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
-        // this is not compliant with the rules set for code generation, aka no binary
-        // files TODO fix this
-        let cgen_def = include_bytes!(concat!(env!("OUT_DIR"), "/codegen/cgen/blob/cgen_def.blob"));
-        let cgen_runtime = CGenRuntime::new(cgen_def, device_context);
+        cgen::initialize(device_context);
+
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
@@ -102,7 +96,6 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
@@ -195,10 +188,6 @@ impl Renderer {
     ) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.lock();
         pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
-    }
-
-    pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
-        &self.cgen_runtime
     }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
@@ -379,7 +368,7 @@ impl Renderer {
                 .push_constant
                 .map(|x| PushConstantDef {
                     used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
+                    size: x.size,
                 }),
         };
 
@@ -393,9 +382,13 @@ impl Renderer {
 
 impl Drop for Renderer {
     fn drop(&mut self) {
+        {
+            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
+            graphics_queue.wait_for_queue_idle().unwrap();
+        }
+
         std::mem::drop(self.test_transform_data.take());
 
-        let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
-        graphics_queue.wait_for_queue_idle().unwrap();
+        cgen::shutdown();
     }
 }

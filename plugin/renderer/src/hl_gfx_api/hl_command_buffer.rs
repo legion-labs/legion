@@ -1,15 +1,20 @@
+use std::{mem, ptr};
+
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, IndexBufferBinding, IndexType, Pipeline,
     PipelineType, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
+use lgn_graphics_cgen_runtime::PipelineDataProvider;
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
 
 pub struct HLCommandBuffer<'rc> {
     cmd_buffer_pool: &'rc CommandBufferPoolHandle,
     cmd_buffer: CommandBufferHandle,
+    // wip: cur_pipeline_state: Option<&'rc Pipeline>,
 }
 
 impl<'rc> HLCommandBuffer<'rc> {
@@ -19,6 +24,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         Self {
             cmd_buffer_pool,
             cmd_buffer,
+            // cur_pipeline_state: None,
         }
     }
 
@@ -94,12 +100,28 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn push_constants<T: Sized>(&self, root_signature: &RootSignature, constants: &T) {
+        let constants_size = mem::size_of::<T>();
+        let constants_ptr = (constants as *const T).cast::<u8>();
+        #[allow(unsafe_code)]
+        let data = unsafe { &*ptr::slice_from_raw_parts(constants_ptr, constants_size) };
         self.cmd_buffer
-            .cmd_push_constants(root_signature, constants)
+            .cmd_push_constant(root_signature, data)
             .unwrap();
     }
 
     pub fn draw(&self, vertex_count: u32, first_vertex: u32) {
+        self.cmd_buffer
+            .cmd_draw(vertex_count, first_vertex)
+            .unwrap();
+    }
+
+    pub fn draw_with_data(
+        &self,
+        pipeline_data: &impl PipelineDataProvider,
+        vertex_count: u32,
+        first_vertex: u32,
+    ) {
+        self.set_pipeline_data(pipeline_data);
         self.cmd_buffer
             .cmd_draw(vertex_count, first_vertex)
             .unwrap();
@@ -209,6 +231,34 @@ impl<'rc> HLCommandBuffer<'rc> {
     pub fn finalize(mut self) -> CommandBufferHandle {
         self.cmd_buffer.end().unwrap();
         self.cmd_buffer.transfer()
+    }
+
+    fn set_pipeline_data(&self, pipeline_data: &impl PipelineDataProvider) {
+        let pipeline = pipeline_data.pipeline();
+        let pipeline_type = pipeline.pipeline_type();
+        let root_signature = pipeline.root_signature();
+
+        self.cmd_buffer.cmd_bind_pipeline(pipeline).unwrap();
+
+        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
+            let descriptor_set = pipeline_data.descriptor_set(i);
+            if let Some(descriptor_set) = descriptor_set {
+                self.cmd_buffer
+                    .cmd_bind_descriptor_set_handle(
+                        pipeline_type,
+                        root_signature,
+                        i,
+                        descriptor_set,
+                    )
+                    .unwrap();
+            }
+        }
+
+        if let Some(push_constant_data) = pipeline_data.push_constant() {
+            self.cmd_buffer
+                .cmd_push_constant(root_signature, push_constant_data)
+                .unwrap();
+        }
     }
 }
 
