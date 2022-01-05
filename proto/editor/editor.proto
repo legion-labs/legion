@@ -1,4 +1,7 @@
 syntax = "proto3";
+import public "resource_browser.proto";
+import public "property_inspector.proto";
+
 package editor;
 
 service Editor {

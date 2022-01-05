@@ -1,0 +1,78 @@
+syntax = "proto3";
+package property_inspector;
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+service PropertyInspector {
+  rpc GetResourceProperties(GetResourcePropertiesRequest)
+      returns (GetResourcePropertiesResponse);
+
+  rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
+      returns (UpdateResourcePropertiesResponse);
+
+  rpc DeleteArrayElement(DeleteArrayElementRequest)
+      returns (DeleteArrayElementResponse);
+
+  rpc InsertNewArrayElement(InsertNewArrayElementRequest)
+      returns (InsertNewArrayElementResponse);
+
+  rpc ReorderArrayElement(ReorderArrayElementRequest)
+      returns (ReorderArrayElementResponse);
+}
+
+message GetResourcePropertiesRequest { string id = 1; }
+
+message ResourceDescription {
+  string id = 1;
+  string path = 2;
+  uint32 version = 3;
+}
+
+message GetResourcePropertiesResponse {
+  ResourceDescription description = 1;
+  repeated ResourceProperty properties = 2;
+}
+
+message ResourceProperty {
+  string name = 1;
+  string ptype = 2;
+  optional string json_value = 4;
+  repeated ResourceProperty sub_properties = 5;
+  map<string, string> attributes = 6;
+}
+
+message UpdateResourcePropertiesRequest {
+  string id = 1;
+  uint32 version = 2;
+  repeated ResourcePropertyUpdate propertyUpdates = 3;
+}
+
+message UpdateResourcePropertiesResponse {}
+
+message ResourcePropertyUpdate {
+  string name = 1;
+  string json_value = 2;
+}
+
+message DeleteArrayElementRequest {
+  string resource_id = 1;
+  string array_path = 2;
+  repeated uint64 indices = 3;
+}
+message DeleteArrayElementResponse {}
+
+message InsertNewArrayElementRequest {
+  string resource_id = 1;
+  string array_path = 2;
+  uint64 index = 3;
+  string json_value = 4;
+}
+message InsertNewArrayElementResponse {}
+
+message ReorderArrayElementRequest {
+  string resource_id = 1;
+  string array_path = 2;
+  uint64 old_index = 3;
+  uint64 new_index = 4;
+}
+message ReorderArrayElementResponse {}

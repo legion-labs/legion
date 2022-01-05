@@ -12,3 +12,9 @@
 #[path = "../codegen/editor.rs"]
 mod editor;
 pub use editor::*;
+
+#[path = "../codegen/resource_browser.rs"]
+pub mod resource_browser;
+
+#[path = "../codegen/property_inspector.rs"]
+pub mod property_inspector;
