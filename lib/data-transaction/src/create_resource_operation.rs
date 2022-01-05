@@ -1,20 +1,24 @@
+//! Transaction Operation to Create a Resource
+
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
-pub(crate) struct CreateResourceOperation {
+/// Operation to Create a new Resource
+pub struct CreateResourceOperation {
     resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
 }
 
 impl CreateResourceOperation {
-    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Self {
-        Self {
+    /// Create a new `CreateResourceOperation`
+    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Box<Self> {
+        Box::new(Self {
             resource_id,
             resource_path,
-        }
+        })
     }
 }
 

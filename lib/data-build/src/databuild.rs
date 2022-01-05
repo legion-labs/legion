@@ -186,6 +186,7 @@ impl DataBuild {
     /// provided resource database.
     pub fn source_pull(&mut self) -> Result<i32, Error> {
         let mut updated_resources = 0;
+        self.project.reload()?;
 
         for resource_id in self.project.resource_list() {
             let (resource_hash, resource_deps) = self.project.resource_info(resource_id)?;

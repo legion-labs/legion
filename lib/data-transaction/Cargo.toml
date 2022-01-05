@@ -26,6 +26,7 @@ tokio = { version = "1.13", features = ["full"] }
 async-trait = "0.1"
 
 [dev-dependencies]
+lgn-compiler-testentity = { path = "../../compiler/testentity" }
 generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
     "offline",
 ] }
