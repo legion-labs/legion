@@ -94,7 +94,11 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        static_meshes: &[(
+            &StaticMesh,
+            Option<&PickedComponent>,
+            Option<&ManipulatorComponent>,
+        )],
         camera: &CameraComponent,
         lights: &[(&Transform, &LightComponent)],
         light_settings: &LightSettings,
@@ -232,8 +236,13 @@ impl TmpRenderPass {
             .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
 
-        for (_index, (static_mesh_component, picked_component)) in static_meshes.iter().enumerate()
+        for (_index, (static_mesh_component, picked_component, manipulator_component)) in
+            static_meshes.iter().enumerate()
         {
+            if manipulator_component.is_some() {
+                continue;
+            }
+
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
                 f32::from(static_mesh_component.color.g) / 255.0f32,

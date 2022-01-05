@@ -1,3 +1,9 @@
+use crate::{
+    components::{ManipulatorComponent, PickedComponent},
+    egui::egui_plugin::{Egui, EguiPlugin},
+    picking::{ManipulatorManager, PickingManager, PickingPlugin},
+    resources::DefaultMeshes,
+};
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_math::{EulerRot, Quat};
@@ -5,12 +11,6 @@ use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
-use crate::{
-    components::PickedComponent,
-    egui::egui_plugin::{Egui, EguiPlugin},
-    picking::{PickingManager, PickingPlugin},
-    resources::DefaultMeshes,
-};
 use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
@@ -44,6 +44,10 @@ impl Plugin for RendererPlugin {
 
         app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
         app.add_plugin(PickingPlugin::new(self.has_window));
+
+        app.insert_resource(ManipulatorManager::new());
+        app.add_startup_system(init_manipulation_manager);
+
         app.insert_resource(default_meshes);
         app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
@@ -75,6 +79,15 @@ impl Plugin for RendererPlugin {
             render_post_update, // .label(RendererSystemLabel::FrameDone),
         );
     }
+}
+
+fn init_manipulation_manager(
+    commands: Commands<'_, '_>,
+    mut manipulation_manager: ResMut<'_, ManipulatorManager>,
+    default_meshes: Res<'_, DefaultMeshes>,
+    picking_manager: Res<'_, PickingManager>,
+) {
+    manipulation_manager.initialize(commands, default_meshes, picking_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -246,14 +259,36 @@ fn update_transform(
     renderer.release_transform_data(gpu_data);
 }
 
-#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::too_many_arguments,
+    clippy::type_complexity
+)]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
-    q_debug_drawables: Query<'_, '_, (&StaticMesh, &Transform, &PickedComponent)>,
+    q_drawables: Query<
+        '_,
+        '_,
+        (
+            &StaticMesh,
+            Option<&PickedComponent>,
+            Option<&ManipulatorComponent>,
+        ),
+    >,
+    q_debug_drawables: Query<
+        '_,
+        '_,
+        (
+            &StaticMesh,
+            &Transform,
+            Option<&PickedComponent>,
+            Option<&ManipulatorComponent>,
+        ),
+        Or<(With<PickedComponent>, With<ManipulatorComponent>)>,
+    >,
     q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
@@ -264,13 +299,17 @@ fn render_update(
     crate::egui::egui_plugin::end_frame(&mut egui);
 
     let render_context = RenderContext::new(&renderer);
-    let q_drawables = q_drawables
-        .iter()
-        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
-    let q_debug_drawables =
-        q_debug_drawables
-            .iter()
-            .collect::<Vec<(&StaticMesh, &Transform, &PickedComponent)>>();
+    let q_drawables = q_drawables.iter().collect::<Vec<(
+        &StaticMesh,
+        Option<&PickedComponent>,
+        Option<&ManipulatorComponent>,
+    )>>();
+    let q_debug_drawables = q_debug_drawables.iter().collect::<Vec<(
+        &StaticMesh,
+        &Transform,
+        Option<&PickedComponent>,
+        Option<&ManipulatorComponent>,
+    )>>();
 
     let q_lights = q_lights
         .iter()
