@@ -239,6 +239,14 @@ impl ResourceRegistry {
         None
     }
 
+    /// Return the list of the Resource Type supported by the `ResourceRegisry`
+    pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
+        self.processors
+            .iter()
+            .filter_map(|(k, processor)| processor.get_resource_type_name().map(|n| (*k, n)))
+            .collect()
+    }
+
     /// Returns the number of loaded resources.
     pub fn len(&self) -> usize {
         self.ref_counts.len()
@@ -304,6 +312,10 @@ mod tests {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
+        }
+
+        fn get_resource_type_name(&self) -> Option<&'static str> {
+            Some(SampleResource::TYPENAME)
         }
 
         fn write_resource(
@@ -421,6 +433,10 @@ mod tests {
             .create_registry();
 
         let mut resources = resources.lock().unwrap();
+        assert_eq!(
+            resources.get_resource_types()[0],
+            (SampleResource::TYPE, SampleResource::TYPENAME)
+        );
 
         let created_handle = resources
             .new_resource(SampleResource::TYPE)
