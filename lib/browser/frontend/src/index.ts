@@ -60,11 +60,7 @@ type HookFunction<HasLog extends boolean, HasAuth extends boolean> = (
   args: HookArgs<HasLog, HasAuth>
 ) => void;
 
-export type Config<
-  SvelteComponent,
-  Log extends LogLevel | null,
-  Auth extends AuthUserConfig | null
-> = {
+export type Config<SvelteComponent> = {
   /** A Svelte component class */
   appComponent: new (options: {
     target: Element | ShadowRoot;
@@ -74,32 +70,11 @@ export type Config<
    *
    * If authentication is not enabled some functionalities like `userInfo` will not be usable
    */
-  auth: Auth;
+  auth: AuthUserConfig | null;
   /** A valid query selector to mount your app into  */
   rootQuerySelector: string;
   /** Log level, if set to `null` logs are entirely disabled  */
-  logLevel: Log;
-  /** Function(s) called before the user is authenticated, _can't be provided if `auth` is `null` */
-  onAuthStart?: Auth extends null
-    ? never
-    : HookLogOnlyFunction<Log extends null ? false : true>;
-  /** PostAuth function(s) called after the user is authenticated, _can't be provided if `auth` is `null` */
-  onAuthEnd?: Auth extends null
-    ? never
-    : HookFunction<
-        Log extends null ? false : true,
-        Auth extends null ? false : true
-      >;
-  /** Function(s) called before the Svelte application has started */
-  onInitStart?: HookFunction<
-    Log extends null ? false : true,
-    Auth extends null ? false : true
-  >;
-  /** Function(s) called after the Svelte application has started */
-  onInitEnd?: HookFunction<
-    Log extends null ? false : true,
-    Auth extends null ? false : true
-  >;
+  logLevel: LogLevel | null;
 };
 
 /**
@@ -109,29 +84,12 @@ export type Config<
  * If the `forceAuth` option is `true` the unauthenticated users
  * will be redirected to Cognito.
  */
-export async function run<SvelteComponent>(
-  config: Config<SvelteComponent, null, null>
-): Promise<void>;
-export async function run<SvelteComponent>(
-  config: Config<SvelteComponent, LogLevel, null>
-): Promise<void>;
-export async function run<SvelteComponent>(
-  config: Config<SvelteComponent, null, AuthUserConfig>
-): Promise<void>;
-export async function run<SvelteComponent>(
-  config: Config<SvelteComponent, LogLevel, AuthUserConfig>
-): Promise<void>;
 export async function run<SvelteComponent>({
   appComponent: App,
   auth: authConfig,
   rootQuerySelector,
   logLevel,
-  onAuthStart,
-  onAuthEnd,
-  onInitStart,
-  onInitEnd,
-}: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-Config<SvelteComponent, any, any>): Promise<void> {
+}: Config<SvelteComponent>): Promise<void> {
   const target = getTarget(rootQuerySelector);
 
   if (logLevel) {
@@ -146,10 +104,6 @@ Config<SvelteComponent, any, any>): Promise<void> {
   let userInfoSet: UserInfo | null = null;
 
   if (authConfig) {
-    if (onAuthStart) {
-      onAuthStart({ log });
-    }
-
     if (window.__TAURI__) {
       userInfoSet = await tauriGetUserInfo(userInfo, {
         forceAuth: authConfig.forceAuth,
@@ -158,10 +112,6 @@ Config<SvelteComponent, any, any>): Promise<void> {
       userInfoSet = await browserUserAuth(userInfo, {
         forceAuth: authConfig.forceAuth,
       });
-    }
-
-    if (onAuthEnd) {
-      onAuthEnd({ log, userInfo: userInfoSet });
     }
   }
 
@@ -174,19 +124,11 @@ Config<SvelteComponent, any, any>): Promise<void> {
     );
   }
 
-  if (onInitStart) {
-    onInitStart({ log, userInfo: userInfoSet });
-  }
-
   try {
     new App({ target });
   } catch (error) {
     log.error(error);
 
     return;
-  }
-
-  if (onInitEnd) {
-    onInitEnd({ log, userInfo: userInfoSet });
   }
 }
