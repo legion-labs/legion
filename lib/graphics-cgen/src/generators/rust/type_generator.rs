@@ -5,7 +5,7 @@ use crate::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
         GeneratorContext,
     },
-    model::{CGenType, Model, StructMember, CGenTypeRef},
+    model::{CGenType, CGenTypeRef, Model, StructMember},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -63,7 +63,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty_ref: CGenTypeRef) -> 
 
     writer.add_line("use lgn_graphics_cgen_runtime::{");
     writer.indent();
-    writer.add_line("CGenTypeDef,");    
+    writer.add_line("CGenTypeDef,");
     writer.unindent();
     writer.add_line("};");
     writer.new_line();
@@ -96,9 +96,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty_ref: CGenTypeRef) -> 
 
     // write type def
     {
-        writer.add_line(
-            "static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ",
-        );
+        writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", struct_def.name));
         writer.add_line(format!("id: {},", ty_ref.id()));
@@ -123,20 +121,16 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty_ref: CGenTypeRef) -> 
     // impl
     {
         writer.add_line(format!("impl {} {{", struct_def.name));
-        writer.indent();        
+        writer.indent();
 
         // impl: id
-        writer.add_line(format!(
-            "pub const fn id() -> u32 {{ {}  }}",
-            ty_ref.id()
-        ));
+        writer.add_line(format!("pub const fn id() -> u32 {{ {}  }}", ty_ref.id()));
         writer.new_line();
 
         // impl: def
         writer.add_line("pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }");
         writer.new_line();
 
-        
         writer.unindent();
         writer.add_line("}");
         writer.new_line();

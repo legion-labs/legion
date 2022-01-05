@@ -40,7 +40,7 @@ impl VulkanRootSignature {
 
         let mut push_constant_ranges = Vec::new();
         if let Some(push_constant_def) = &definition.push_constant_def {
-            assert!(push_constant_def.size>0);
+            assert!(push_constant_def.size > 0);
             push_constant_ranges.push(vk::PushConstantRange {
                 stage_flags: vk::ShaderStageFlags::ALL,
                 offset: 0,

@@ -158,7 +158,10 @@ fn generate_rust_pipeline_layout(
         writer.add_line("unsafe { ");
         if let Some(ty_ref) = pipeline_layout.push_constant() {
             let ty = ty_ref.get(ctx.model);
-            writer.add_line(format!("let push_constant_def = Some({}::def());", ty.name()));
+            writer.add_line(format!(
+                "let push_constant_def = Some({}::def());",
+                ty.name()
+            ));
         } else {
             writer.add_line("let push_constant_def = None");
         };
