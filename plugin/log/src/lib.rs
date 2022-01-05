@@ -69,6 +69,7 @@ pub use tracing::{
 };
 
 use lgn_app::{App, Plugin};
+#[cfg(feature = "tracing-log")]
 use tracing_log::LogTracer;
 #[cfg(feature = "tracing-chrome")]
 use tracing_subscriber::fmt::{format::DefaultFields, FormattedFields};
@@ -86,14 +87,14 @@ use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
 /// You can configure this plugin using the resource [`LogSettings`].
 /// ```no_run
 /// # use bevy_internal::DefaultPlugins;
-/// # use legion_app::App;
-/// # use bevy_log::LogSettings;
+/// # use lgn_app::App;
+/// # use lgn_log::LogSettings;
 /// # use tracing::Level;
 /// fn main() {
 ///     App::new()
 ///         .insert_resource(LogSettings {
 ///             level: Level::DEBUG,
-///             filter: "wgpu=error,bevy_render=info".to_string(),
+///             filter: "wgpu=error".to_string(),
 ///         })
 ///         .add_plugins(DefaultPlugins)
 ///         .run();
@@ -109,8 +110,8 @@ use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
 /// plugin from `DefaultPlugins` with [`App::add_plugins_with`]:
 /// ```no_run
 /// # use bevy_internal::DefaultPlugins;
-/// # use bevy_app::App;
-/// # use bevy_log::LogPlugin;
+/// # use lgn_app::App;
+/// # use lgn_log::LogPlugin;
 /// fn main() {
 ///     App::new()
 ///         .add_plugins_with(DefaultPlugins, |group| group.disable::<LogPlugin>())
@@ -145,6 +146,7 @@ impl Plugin for LogPlugin {
             let settings = app.world.get_resource_or_insert_with(LogSettings::default);
             format!("{},{}", settings.level, settings.filter)
         };
+        #[cfg(feature = "tracing-log")]
         LogTracer::init().unwrap();
         let filter_layer = EnvFilter::try_from_default_env()
             .or_else(|_| EnvFilter::try_new(&default_filter))
