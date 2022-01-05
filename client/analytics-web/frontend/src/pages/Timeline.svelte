@@ -19,10 +19,28 @@
     completed: number;
   };
 
-  type BlockSpanData = {
-    lods: SpanBlockLOD[];
-    beginMs: number;
-    endMs: number;
+  enum LODState {
+    Missing,
+    Requested,
+    Loaded,
+  }
+
+  import {
+    SpanTrack
+  } from "@lgn/proto-telemetry/codegen/analytics";
+  
+  type ThreadBlockLOD = {
+    state: LODState;
+    tracks: SpanTrack[];
+    lodId: number;
+  };
+
+  import { Block } from "@lgn/proto-telemetry/codegen/block";
+  type ThreadBlock = {
+    blockDefinition: Block; // block metadata stored in data lake
+    beginMs: number; // relative to main process
+    endMs: number;   // relative to main process
+    lods: ThreadBlockLOD[];
   };
 </script>
 
@@ -30,11 +48,9 @@
   import { link } from "svelte-navigator";
   import {
     GrpcWebImpl,
-    PerformanceAnalyticsClientImpl,
-    SpanBlockLOD,
+    PerformanceAnalyticsClientImpl
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
-  import { Block } from "@lgn/proto-telemetry/codegen/block";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { Stream } from "@lgn/proto-telemetry/codegen/stream";
   import { onMount } from "svelte";
@@ -62,8 +78,7 @@
   let maxMs = -Infinity;
   let yOffset = 0;
   let threads: Record<string, Thread> = {};
-  let blockSpans: Record<string, BlockSpanData> = {};
-  let blockList: Block[] = [];
+  let blocks: Record<string, ThreadBlock> = {};
   let scopes: Record<number, ScopeDesc> = {0: { name: "",
                                                 filename: "",
                                                 line: 0,
@@ -115,12 +130,14 @@
     currentProcess = process;
     await fetchStreams(process);
     await fetchChildren();
-    loadingProgression = { requested: blockList.length, completed: 0 };
+    loadingProgression = { requested: Object.keys(blocks).length, completed: 0 };
     fetchPreferedLods();
   }
 
   function fetchPreferedLods(){
-    blockList.forEach((block) => fetchBlockSpans(block));
+    for (let blockId in blocks){
+      fetchBlockSpans(blocks[blockId])
+    }
   }
 
   async function fetchStreams(process: Process) {
@@ -167,15 +184,18 @@
   }
 
   async function fetchBlocks(streamId: string) {
-    const { blocks } = await client.list_stream_blocks({ streamId });
-    blocks.forEach( block => {
+    const response = await client.list_stream_blocks({ streamId });
+    response.blocks.forEach( block => {
       let beginMs = RFC3339ToMs(block.beginTime);
       let endMs = RFC3339ToMs(block.endTime);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
+      blocks[block.blockId] = { blockDefinition: block,
+                                beginMs: beginMs,
+                                endMs: endMs,
+                                lods: [] };
     } );
-    blockList = blockList.concat(blocks);
   }
 
   function computePreferedBlockLod(block: Block): number{
@@ -197,10 +217,10 @@
     return getViewLOD(currentPixelSize);
   }
 
-  function findBestLod(spanData: BlockSpanData, processOffsetMs: number){
-    const preferedLod = computePreferedLodFromTimeRange(spanData.beginMs + processOffsetMs,
-                                                        spanData.endMs + processOffsetMs);
-    return spanData.lods.reduce( (lhs, rhs) => {
+  function findBestLod(block: ThreadBlock){
+    const preferedLod = computePreferedLodFromTimeRange(block.beginMs,
+                                                        block.endMs);
+    return block.lods.reduce( (lhs, rhs) => {
       if ( lhs.tracks.length == 0 ){
         return rhs;
       }
@@ -216,31 +236,31 @@
     } );
   }
 
-  async function fetchBlockSpans(block: Block) {
-    const streamId = block.streamId;
+  async function fetchBlockSpans(block: ThreadBlock) {
+    const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
     }
 
-    const preferedLod = computePreferedBlockLod(block);
-    if (blockSpans.hasOwnProperty(block.blockId)){
-      let spans = blockSpans[block.blockId];
-      if ( spans.lods.hasOwnProperty(preferedLod) ){
-        return;
-      }
-      spans.lods[preferedLod] = {lodId: preferedLod,
-                                 tracks: []}; //hacky way to not request the same lods
+    const preferedLod = computePreferedBlockLod(block.blockDefinition);
+    if (!block.lods[preferedLod]){
+      block.lods[preferedLod] = { state: LODState.Missing,
+                                  tracks: [],
+                                  lodId: preferedLod };
     }
-
+    if ( block.lods[preferedLod].state == LODState.Loaded ){
+      return;
+    }
+    const blockId = block.blockDefinition.blockId;
     const response = await client.block_spans({
-      blockId: block.blockId,
+      blockId: blockId,
       process,
       stream: threads[streamId].streamInfo,
       lodId: preferedLod,
     });
     if (!response.lod) {
-      throw new Error(`Error fetching spans for block ${block.blockId}`);
+      throw new Error(`Error fetching spans for block ${blockId}`);
     }
     scopes = { ...scopes, ...response.scopes };
 
@@ -248,11 +268,9 @@
     thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
     thread.minMs = Math.min(thread.minMs, response.beginMs);
     thread.maxMs = Math.max(thread.maxMs, response.endMs);
-    thread.block_ids.push(block.blockId);
-    if (!blockSpans.hasOwnProperty(block.blockId)){
-      blockSpans[block.blockId] = { lods: [], beginMs:response.beginMs, endMs:response.endMs  };
-    }
-    blockSpans[block.blockId].lods[response.lod.lodId] = response.lod;
+    thread.block_ids.push(blockId);
+    block.lods[response.lod.lodId].state = LODState.Loaded;
+    block.lods[response.lod.lodId].tracks = response.lod.tracks;
     if (loadingProgression) {
       loadingProgression.completed += 1;
     }
@@ -354,11 +372,11 @@
     );
 
     thread.block_ids.forEach((block_id) => {
-      let blockSpanData = blockSpans[block_id];
-      let lodToRender = findBestLod(blockSpanData, offsetMs);
+      let block = blocks[block_id];
+      let lodToRender = findBestLod(block);
       if (
-        blockSpanData.beginMs + offsetMs > end ||
-          blockSpanData.endMs + offsetMs < begin
+        block.beginMs > end ||
+          block.endMs < begin
       ) {
         return;
       }
