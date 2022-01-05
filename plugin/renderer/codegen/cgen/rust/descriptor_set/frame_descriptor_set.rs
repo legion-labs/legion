@@ -189,7 +189,7 @@ impl<'a> FrameDescriptorSet<'a> {
 	}
 	
 	pub fn set_smp_arr(&mut self, value:  &[&'a Sampler; 10]) {
-		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[1].validate(value.as_ref()));
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[1].validate(&value.as_slice()));
 		for i in 0..10 {
 			self.descriptor_refs[1+i] = DescriptorRef::Sampler(value[i]);
 		}
@@ -211,7 +211,7 @@ impl<'a> FrameDescriptorSet<'a> {
 	}
 	
 	pub fn set_sb_arr(&mut self, value:  &[&'a BufferView; 10]) {
-		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[5].validate(value.as_ref()));
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[5].validate(&value.as_slice()));
 		for i in 0..10 {
 			self.descriptor_refs[14+i] = DescriptorRef::BufferView(value[i]);
 		}

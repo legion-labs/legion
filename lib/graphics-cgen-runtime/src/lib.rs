@@ -59,7 +59,7 @@
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetLayoutDef,
     DeviceContext, Pipeline, PushConstantDef, RootSignature, RootSignatureDef, Sampler,
-    ShaderResourceType, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
+    ShaderResourceType, ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 #[derive(Default, Clone, Copy)]
@@ -91,12 +91,10 @@ pub mod prelude {
     pub use crate::Float4x4;
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
-pub struct CGenTypeId(pub u32);
-
-#[derive(Default, Debug, PartialEq)]
 pub struct CGenTypeDef {
-    pub id: CGenTypeId,
+    pub name: &'static str,
+    pub id: u32,
+    pub size: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -112,7 +110,7 @@ pub trait ValueWrapper {
     fn validate(&self, def: &CGenDescriptorDef) -> bool;
 }
 
-impl ValueWrapper for &BufferView {
+impl ValueWrapper for BufferView {
     fn validate(&self, def: &CGenDescriptorDef) -> bool {
         match def.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
@@ -144,7 +142,7 @@ impl ValueWrapper for &[&BufferView] {
     }
 }
 
-impl ValueWrapper for &Sampler {
+impl ValueWrapper for Sampler {
     fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
@@ -156,7 +154,7 @@ impl ValueWrapper for &[&Sampler] {
     }
 }
 
-impl ValueWrapper for &TextureView {
+impl ValueWrapper for TextureView {
     fn validate(&self, _def: &CGenDescriptorDef) -> bool {
         false
     }
@@ -169,7 +167,7 @@ impl ValueWrapper for &[&TextureView] {
 }
 
 impl CGenDescriptorDef {
-    pub fn validate(&self, wrapper: impl ValueWrapper) -> bool {
+    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
         wrapper.validate(self)
     }
 }
@@ -217,7 +215,7 @@ pub struct CGenPipelineLayoutDef {
     pub name: &'static str,
     pub id: u32,
     pub descriptor_set_layout_ids: [Option<u32>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub push_constant_type: Option<CGenTypeId>,
+    pub push_constant_type: Option<u32>,
 }
 
 impl CGenPipelineLayoutDef {
@@ -225,17 +223,24 @@ impl CGenPipelineLayoutDef {
         &self,
         device_context: &DeviceContext,
         descriptor_set_layouts: &[&DescriptorSetLayout],
+        push_constant_def: Option<&CGenTypeDef>,
     ) -> RootSignature {
+        let push_constant_def = if let Some(ty_def) = push_constant_def {
+            Some(PushConstantDef {
+                used_in_shader_stages: ShaderStageFlags::all(),
+                size: u32::try_from(ty_def.size).unwrap(),
+            })
+        } else {
+            None
+        };
+
         let signature_def = RootSignatureDef {
             descriptor_set_layouts: self
                 .descriptor_set_layout_ids
                 .iter()
                 .filter_map(|opt_id| opt_id.map(|id| descriptor_set_layouts[id as usize].clone()))
                 .collect::<Vec<_>>(),
-            push_constant_def: self.push_constant_type.as_ref().map(|_pc| PushConstantDef {
-                used_in_shader_stages: todo!(),
-                size: todo!(),
-            }),
+            push_constant_def,
         };
 
         device_context

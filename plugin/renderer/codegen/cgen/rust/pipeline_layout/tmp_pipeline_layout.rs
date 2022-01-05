@@ -3,17 +3,17 @@
 use std::{mem, ptr};
 
 use lgn_graphics_api::{
-DeviceContext,
-RootSignature,
-DescriptorSetLayout,
-DescriptorSetHandle,
-Pipeline,
-MAX_DESCRIPTOR_SET_LAYOUTS,
+	DeviceContext,
+	RootSignature,
+	DescriptorSetLayout,
+	DescriptorSetHandle,
+	Pipeline,
+	MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use lgn_graphics_cgen_runtime::{
-CGenPipelineLayoutDef,
-PipelineDataProvider,
+	CGenPipelineLayoutDef,
+	PipelineDataProvider,
 };
 
 use super::super::descriptor_set::ViewDescriptorSet;
@@ -28,7 +28,7 @@ static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef{
 	None,
 	None,
 	],
-	push_constant_type: None,
+	push_constant_type: Some(PushConstantData::id())
 }; 
 
 static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
@@ -43,7 +43,10 @@ impl<'a> TmpPipelineLayout<'a> {
 	
 	#[allow(unsafe_code)]
 	pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {
-		unsafe { PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts)); }
+		unsafe { 
+		let push_constant_def = Some(PushConstantData::def());
+		PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));
+		}
 	}
 	
 	#[allow(unsafe_code)]

@@ -256,7 +256,7 @@ fn generate_rust_descriptorset(
 
             if let Some(n) = descriptor.array_len {
                 writer.add_line(format!(
-                    "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(value.as_ref()));",
+                    "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(&value.as_slice()));",
                     descriptor_index
                 ));
                 writer.add_line(format!("for i in 0..{} {{", n));

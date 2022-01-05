@@ -1,7 +1,4 @@
-use std::{
-    hash::{Hash, Hasher},
-    num::NonZeroU32,
-};
+use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
 use serde::{Deserialize, Serialize};
@@ -493,7 +490,7 @@ impl Default for DescriptorSetLayoutDef {
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
-    pub size: NonZeroU32,
+    pub size: u32,
 }
 
 #[derive(Default, Debug, Hash)]

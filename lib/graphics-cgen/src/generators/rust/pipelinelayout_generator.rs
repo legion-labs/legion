@@ -53,18 +53,22 @@ fn generate_rust_pipeline_layout(
     writer.new_line();
 
     writer.add_line("use lgn_graphics_api::{");
+    writer.indent();
     writer.add_line("DeviceContext,");
     writer.add_line("RootSignature,");
     writer.add_line("DescriptorSetLayout,");
     writer.add_line("DescriptorSetHandle,");
     writer.add_line("Pipeline,");
     writer.add_line("MAX_DESCRIPTOR_SET_LAYOUTS,");
+    writer.unindent();
     writer.add_line("};");
     writer.new_line();
 
     writer.add_line("use lgn_graphics_cgen_runtime::{");
+    writer.indent();
     writer.add_line("CGenPipelineLayoutDef,");
     writer.add_line("PipelineDataProvider,");
+    writer.unindent();
     writer.add_line("};");
     writer.new_line();
 
@@ -106,7 +110,12 @@ fn generate_rust_pipeline_layout(
             }
         }
         writer.add_line("],");
-        writer.add_line("push_constant_type: None,");
+        if let Some(ty_ref) = pipeline_layout.push_constant() {
+            let ty = ty_ref.get(ctx.model);
+            writer.add_line(format!("push_constant_type: Some({}::id())", ty.name()));
+        } else {
+            writer.add_line("push_constant_type: None,");
+        }
 
         writer.unindent();
         writer.add_line("}; ");
@@ -146,7 +155,15 @@ fn generate_rust_pipeline_layout(
         writer.add_line("#[allow(unsafe_code)]");
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
         writer.indent();
-        writer.add_line( "unsafe { PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts)); }" );
+        writer.add_line("unsafe { ");
+        if let Some(ty_ref) = pipeline_layout.push_constant() {
+            let ty = ty_ref.get(ctx.model);
+            writer.add_line(format!("let push_constant_def = Some({}::def());", ty.name()));
+        } else {
+            writer.add_line("let push_constant_def = None");
+        };
+        writer.add_line( "PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));" );
+        writer.add_line("}");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();

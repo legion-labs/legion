@@ -256,7 +256,7 @@ impl<'rc> HLCommandBuffer<'rc> {
 
         if let Some(push_constant_data) = pipeline_data.push_constant() {
             self.cmd_buffer
-                .cmd_push_constant(&root_signature, push_constant_data)
+                .cmd_push_constant(root_signature, push_constant_data)
                 .unwrap();
         }
     }

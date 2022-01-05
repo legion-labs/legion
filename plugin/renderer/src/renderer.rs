@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::num::NonZeroU32;
-
 use anyhow::Result;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
@@ -376,7 +374,7 @@ impl Renderer {
                 .push_constant
                 .map(|x| PushConstantDef {
                     used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
+                    size: x.size,
                 }),
         };
 

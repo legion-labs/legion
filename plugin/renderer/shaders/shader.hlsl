@@ -1,4 +1,4 @@
-#include "crate://renderer/codegen/cgen/hlsl/pipeline_layout/tmp_pipeline_layout.hlsl"
+// #include "crate://renderer/codegen/cgen/hlsl/pipeline_layout/tmp_pipeline_layout.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
