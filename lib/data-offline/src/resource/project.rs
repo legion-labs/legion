@@ -432,13 +432,13 @@ impl Project {
 
     fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(type_id.to_string());
+        path.push(type_id.id.to_string());
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(type_id.to_string())
+        self.resource_dir().join(type_id.id.to_string())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
