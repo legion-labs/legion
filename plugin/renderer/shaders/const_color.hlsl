@@ -42,11 +42,5 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-     if (const_data.circle_half_width > 0)
-     {
-         if (abs(dot(vertex_out.uv_coord, vertex_out.uv_coord) - 1.0f + const_data.circle_half_width) < const_data.circle_half_width)
-             clip(-1);
-    }
-
-    return vertex_out.color + const_data.color;
+    return saturate(vertex_out.color + const_data.color);
 }

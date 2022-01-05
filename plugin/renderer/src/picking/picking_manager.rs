@@ -2,12 +2,18 @@ use std::sync::{Arc, Mutex};
 
 use lgn_ecs::prelude::{Commands, Entity, Query};
 use lgn_input::{
-    mouse::{MouseButton, MouseButtonInput},
+    mouse::{MouseButton, MouseButtonInput, MouseMotion},
     ElementState,
 };
 use lgn_math::{Vec2, Vec3};
+use lgn_transform::prelude::Transform;
 
-use crate::{components::PickedComponent, render_pass::PickingData};
+use crate::{
+    components::{ManipulatorComponent, PickedComponent},
+    render_pass::PickingData,
+};
+
+use super::ManipulatorType;
 
 pub struct PickingIdBlock {
     picking_ids: Vec<u32>,
@@ -81,13 +87,19 @@ pub(crate) enum PickingState {
 pub struct PickingManagerInner {
     block_size: u32,
     picking_blocks: Vec<Option<PickingIdBlock>>,
+
     mouse_input: MouseButtonInput,
     screen_rect: Vec2,
+
+    manip_entity_base_transform: Transform,
+    picking_pos_world_space: Vec3,
+
     picking_state: PickingState,
     current_cpu_frame_no: u64,
     picked_cpu_frame_no: u64,
-    current_picking_ids: Vec<u32>,
-    closest_world_pos: Vec3,
+    current_picking_data: Vec<PickingData>,
+    current_type: ManipulatorType,
+    manipulated_entity: Entity,
 }
 
 #[derive(Clone)]
@@ -106,12 +118,15 @@ impl PickingManager {
                     state: ElementState::Released,
                     pos: Vec2::NAN,
                 },
+                manip_entity_base_transform: Transform::default(),
+                picking_pos_world_space: Vec3::NAN,
                 screen_rect: Vec2::default(),
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
                 picked_cpu_frame_no: u64::MAX,
-                current_picking_ids: Vec::new(),
-                closest_world_pos: Vec3::NAN,
+                current_picking_data: Vec::new(),
+                current_type: ManipulatorType::Position,
+                manipulated_entity: Entity::new(u32::MAX),
             })),
         }
     }
@@ -187,25 +202,43 @@ impl PickingManager {
         inner.picking_state.clone()
     }
 
+    pub fn mouse_button_down(&self) -> bool {
+        let inner = self.inner.lock().unwrap();
+
+        inner.mouse_input.state.is_pressed()
+    }
+
     pub fn current_cursor_pos(&self) -> Vec2 {
         let inner = self.inner.lock().unwrap();
 
         inner.mouse_input.pos
     }
 
-    pub fn set_mouse_button_input(&mut self, input: &MouseButtonInput) {
+    pub fn set_mouse_button_input(&self, input: &MouseButtonInput) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        inner.mouse_input = input.clone();
+        if input.button == MouseButton::Left {
+            inner.mouse_input = input.clone();
 
-        inner.current_cpu_frame_no += 1;
-        if inner.picking_state == PickingState::Ready || inner.mouse_input.state.is_pressed() {
-            inner.picked_cpu_frame_no = inner.current_cpu_frame_no;
-            inner.picking_state = PickingState::Rendering;
+            inner.current_cpu_frame_no += 1;
+            if inner.picking_state == PickingState::Ready || inner.mouse_input.state.is_pressed() {
+                inner.picked_cpu_frame_no = inner.current_cpu_frame_no;
+                inner.picking_state = PickingState::Rendering;
+            }
+
+            if inner.picking_state == PickingState::Completed
+                && !inner.mouse_input.state.is_pressed()
+            {
+                inner.picking_state = PickingState::Ready;
+            }
         }
+    }
 
-        if inner.picking_state == PickingState::Completed && !inner.mouse_input.state.is_pressed() {
-            inner.picking_state = PickingState::Ready;
+    pub fn set_mouse_moition_event(&self, input: &MouseMotion) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        if inner.mouse_input.state.is_pressed() && inner.mouse_input.button == MouseButton::Left {
+            inner.mouse_input.pos += input.delta / 1.33;
         }
     }
 
@@ -224,66 +257,139 @@ impl PickingManager {
     pub(crate) fn set_picked(&self, picked_data_set: &[PickingData]) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        inner.closest_world_pos = Vec3::NAN;
         for picking_data in picked_data_set {
             if !inner
-                .current_picking_ids
+                .current_picking_data
                 .iter()
-                .any(|picking_id| *picking_id == picking_data.picking_id)
+                .any(|existing_data| existing_data.picking_id == picking_data.picking_id)
             {
-                inner.current_picking_ids.push(picking_data.picking_id);
-            }
-            if inner.closest_world_pos == Vec3::NAN
-                || inner.closest_world_pos.z > picking_data.picking_pos.z
-            {
-                inner.closest_world_pos = picking_data.picking_pos;
+                inner.current_picking_data.push(*picking_data);
             }
         }
-        assert!(inner.picking_state == PickingState::Waiting);
-        inner.picking_state = PickingState::Processing;
+        if inner.picking_state == PickingState::Waiting {
+            inner.picking_state = PickingState::Processing;
+        }
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub(super) fn update_picking_components(
         &self,
         mut commands: Commands<'_, '_>,
-        mut picked_components: Query<'_, '_, (Entity, &mut PickedComponent)>,
+        mut picked_components: Query<
+            '_,
+            '_,
+            (
+                Entity,
+                &Transform,
+                &mut PickedComponent,
+                Option<&ManipulatorComponent>,
+            ),
+        >,
+        manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
         if inner.picking_state == PickingState::Processing {
-            let mut picked_entities = Vec::with_capacity(inner.current_picking_ids.len());
-            for picking_id in &inner.current_picking_ids {
-                let base_id = picking_id & 0x00FFFFFF;
+            if inner.current_picking_data.is_empty() {
+                inner.manipulated_entity = Entity::new(u32::MAX);
+            }
+
+            let mut picked_entities = Vec::with_capacity(inner.current_picking_data.len());
+            for picking_data in &inner.current_picking_data {
+                let base_id = picking_data.picking_id & 0x00FFFFFF;
                 let block_id = base_id / inner.block_size as u32;
 
                 if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
-                    picked_entities.push(block.entity_id_for_picking_id(*picking_id));
+                    picked_entities.push(block.entity_id_for_picking_id(picking_data.picking_id));
+                }
+            }
+            let mut manipulator_picked = false;
+            for picked_entity in &picked_entities {
+                for (entity, _manipulator) in manipulator_entities.iter() {
+                    if entity == *picked_entity {
+                        manipulator_picked = true;
+                    }
                 }
             }
 
-            for (entity, mut picked_component) in picked_components.iter_mut() {
-                picked_component.replace_picking_ids(
-                    entity,
-                    &mut inner.current_picking_ids,
-                    &mut picked_entities,
-                );
-                if picked_component.is_empty() {
-                    commands.entity(entity).remove::<PickedComponent>();
+            for (entity, transform, mut picked_component, manipulator_component) in
+                picked_components.iter_mut()
+            {
+                if !manipulator_picked || manipulator_component.is_some() {
+                    picked_component.replace_picking_ids(
+                        entity,
+                        &mut inner.current_picking_data,
+                        &mut picked_entities,
+                    );
+
+                    if manipulator_component.is_none() && !picked_component.is_empty() {
+                        inner.manip_entity_base_transform = *transform;
+                        inner.picking_pos_world_space = picked_component.get_closest_point();
+                        inner.manipulated_entity = entity;
+                    }
                 }
             }
 
             let i = 0;
-            while i < inner.current_picking_ids.len() {
-                let mut add_component = commands.get_or_spawn(picked_entities[i]);
-                let mut new_component = PickedComponent::new();
-                new_component.replace_picking_ids(
-                    picked_entities[i],
-                    &mut inner.current_picking_ids,
-                    &mut picked_entities,
-                );
-                add_component.insert(new_component);
+            while i < inner.current_picking_data.len() {
+                let entity_id = picked_entities[i];
+                let mut is_manipulator = false;
+
+                for (entity, _manipulator) in manipulator_entities.iter() {
+                    if entity == entity_id {
+                        is_manipulator = true;
+                    }
+                }
+
+                if !manipulator_picked || is_manipulator {
+                    let mut add_component = commands.get_or_spawn(entity_id);
+                    let mut new_component = PickedComponent::new();
+                    new_component.replace_picking_ids(
+                        picked_entities[i],
+                        &mut inner.current_picking_data,
+                        &mut picked_entities,
+                    );
+                    add_component.insert(new_component);
+                } else {
+                    inner.current_picking_data.swap_remove(i);
+                    picked_entities.swap_remove(i);
+                }
             }
             inner.picking_state = PickingState::Completed;
         }
+    }
+
+    pub fn manipulator_type(&self) -> ManipulatorType {
+        let inner = self.inner.lock().unwrap();
+
+        inner.current_type
+    }
+
+    pub fn manipulated_entity(&self) -> Entity {
+        let inner = self.inner.lock().unwrap();
+
+        inner.manipulated_entity
+    }
+
+    pub fn set_manip_entity(&self, entity: Entity, base_transform: &Transform) {
+        let mut inner = self.inner.lock().unwrap();
+
+        inner.manip_entity_base_transform = *base_transform;
+        inner.manipulated_entity = entity;
+    }
+
+    pub fn set_picking_start_pos(&self, picking_world_space: Vec3) {
+        let mut inner = self.inner.lock().unwrap();
+
+        inner.picking_pos_world_space = picking_world_space;
+    }
+
+    pub fn base_picking_data(&self) -> (Transform, Vec3) {
+        let inner = self.inner.lock().unwrap();
+
+        (
+            inner.manip_entity_base_transform,
+            inner.picking_pos_world_space,
+        )
     }
 }
