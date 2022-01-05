@@ -240,7 +240,7 @@ fn update_transform(
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut gpu_data = renderer.aquire_transform_data();
+    let mut gpu_data = renderer.acquire_transform_data();
 
     for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
         if manipulator.is_none() {
@@ -258,6 +258,12 @@ fn update_transform(
 
     renderer.test_add_update_jobs(updater.job_blocks());
     renderer.release_transform_data(gpu_data);
+}
+
+fn update_lights(
+    mut renderer: ResMut<'_, Renderer>,
+    mut query: Query<'_, '_, (Entity, &Transform, &mut LightComponent)>,
+) {
 }
 
 #[allow(

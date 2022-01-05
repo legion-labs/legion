@@ -133,7 +133,7 @@ impl Renderer {
         self.transient_buffer.clone()
     }
 
-    pub fn aquire_transform_data(&mut self) -> TestStaticBuffer {
+    pub fn acquire_transform_data(&mut self) -> TestStaticBuffer {
         self.test_transform_data.transfer()
     }
 
