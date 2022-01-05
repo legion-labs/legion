@@ -343,7 +343,7 @@ impl CompilerCompileCmd {
         &mut self,
         compiler_path: impl AsRef<OsStr>,
     ) -> io::Result<CompilerCompileCmdOutput> {
-        match self.0.exec(compiler_path) {
+        match self.0.exec(compiler_path.as_ref().to_owned()) {
             Ok(output) => CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice())
                 .ok_or_else(|| {
                     eprintln!("Cannot parse compiler output, args: {:?}", self.0.args);
@@ -356,7 +356,11 @@ impl CompilerCompileCmd {
                     )
                 }),
             Err(e) => {
-                eprintln!("Compiler command failed, args: {:?}", self.0.args);
+                eprintln!(
+                    "Compiler command failed: {:?} {:?}",
+                    compiler_path.as_ref(),
+                    self.0.args
+                );
                 Err(e)
             }
         }
