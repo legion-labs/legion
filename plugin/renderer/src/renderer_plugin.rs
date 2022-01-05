@@ -54,7 +54,7 @@ impl Plugin for RendererPlugin {
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightSettings>();
 
-        app.add_startup_system(create_camera.system());
+        app.add_startup_system(create_camera);
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);

@@ -6370,6 +6370,14 @@ dependencies = [
 name = "pong"
 version = "0.1.0"
 dependencies = [
+ "dolly",
+ "generic-data",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-math",
+ "lgn-renderer",
+ "lgn-transform",
  "runtime-srv",
 ]
 
