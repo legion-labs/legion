@@ -437,15 +437,15 @@ impl DebugRenderPass {
                     default_meshes,
                 );
             } else if let Some(_picked) = picked {
-            self.render_aabb_for_mesh(
-                static_mesh_component.mesh_id as u32,
-                transform,
-                constant_data,
-                cmd_buffer,
-                render_context,
-                default_meshes,
-            );
-        }
+                self.render_aabb_for_mesh(
+                    static_mesh_component.mesh_id as u32,
+                    transform,
+                    constant_data,
+                    cmd_buffer,
+                    render_context,
+                    default_meshes,
+                );
+            }
         }
 
         self.render_debug_display(

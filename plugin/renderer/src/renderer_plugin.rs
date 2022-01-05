@@ -386,7 +386,7 @@ fn render_update(
             q_debug_drawables.as_slice(),
             camera_component,
             &default_meshes,
-            debug_display.as_mut()            
+            debug_display.as_mut(),
         );
 
         let egui_pass = render_surface.egui_renderpass();
