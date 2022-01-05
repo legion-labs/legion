@@ -4242,6 +4242,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "erased-serde",
  "generic-data",
  "lgn-compiler-testentity",
  "lgn-content-store",
