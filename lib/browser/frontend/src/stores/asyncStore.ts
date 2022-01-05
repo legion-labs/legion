@@ -1,4 +1,11 @@
-import { writable } from "svelte/store";
+import { Writable, writable } from "svelte/store";
+
+export type AsyncStore<Data> = {
+  data: Writable<Data | null>;
+  loading: Writable<boolean>;
+  error: Writable<unknown>;
+  run: () => Promise<Data>;
+};
 
 /**
  * Simple store for async data (used typically to execute gRPC requests).
@@ -11,16 +18,18 @@ import { writable } from "svelte/store";
  * @param promise The promise to run and resolve
  * @returns An object containing several states, including the resolved data, errors if any, and a loading state
  */
-export default function asyncData<T>(promise: () => Promise<T>) {
+export default function asyncStore<Data>(
+  promise: () => Promise<Data>
+): AsyncStore<Data> {
   const loading = writable(false);
   const error = writable<unknown | null>(null);
-  const data = writable<T | null>(null);
+  const data = writable<Data | null>(null);
 
   async function run() {
     loading.set(true);
     error.set(null);
 
-    let newData: T;
+    let newData: Data;
 
     try {
       newData = await promise();

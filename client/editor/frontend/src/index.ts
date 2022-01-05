@@ -24,12 +24,7 @@ async function run() {
     log.set(logLevel);
   }
 
-  const userInfo = await initLgnFrontend({ auth: true });
-
-  log.debug(
-    "user",
-    userInfo ? log.json`User is authed: ${userInfo}` : "User is not authed"
-  );
+  await initLgnFrontend({ auth: true, forceAuth: false });
 
   try {
     new App({ target });

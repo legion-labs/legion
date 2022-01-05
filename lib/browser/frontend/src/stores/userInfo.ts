@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api";
 
-import { createAwsCognito } from "../lib/auth";
+import { createAwsCognito } from "../lib/auth/browser";
 import { getCookie } from "../lib/cookie";
-import asyncData from "./asyncData";
+import asyncStore from "./asyncStore";
 
-export default asyncData(async () => {
+export default asyncStore(async () => {
   const awsCognitoAuthenticator = createAwsCognito();
 
   const accessToken = window.__TAURI__
