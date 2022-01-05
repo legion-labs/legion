@@ -1,15 +1,14 @@
 {
     "editor.formatOnSave": true,
+    "files.eol": "\n",
     "rust-analyzer.checkOnSave.command": "clippy",
-    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
-    "rust-analyzer.cargo.runBuildScripts": true,
+    "rust-analyzer.checkOnSave.extraArgs": [
+        "--target-dir",
+        "target/ra"
+    ],
     "rust-analyzer.diagnostics.disabled": [
         "unresolved-macro-call"
     ],
-    "rust-analyzer.cargo.features": [
-        //"run-codegen"
-    ],
-    "files.eol": "\n",
     "cSpell.words": [
         "asft",
         "Deserialization",
