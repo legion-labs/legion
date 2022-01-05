@@ -23,7 +23,15 @@ impl Device for CasDevice {
     fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let (checksum, size) = self.manifest.find(type_id)?;
         let content = self.content_store.read(checksum)?;
-        assert_eq!(content.len(), size);
+        assert_eq!(
+            content.len(),
+            size,
+            "content size mismatch for asset {}, checksum: {}, expected size: {}, actual: {}",
+            type_id,
+            checksum,
+            size,
+            content.len()
+        );
         Some(content)
     }
 }
