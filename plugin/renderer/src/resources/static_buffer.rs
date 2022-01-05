@@ -9,7 +9,7 @@ use lgn_graphics_api::{
     MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
     ResourceUsage, Semaphore,
 };
-use lgn_math::Mat4;
+use lgn_math::{Mat4, Vec3};
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::{RenderContext, RenderHandle};
@@ -207,6 +207,12 @@ pub struct EntityTransforms {
     pub world: Mat4,
 }
 
+pub struct OmnidirectionalLight {
+    pos: Vec3,
+    radiance: f32,
+    color: Vec3,
+}
+
 pub struct UniformGPUData<T> {
     static_baffer: UnifiedStaticBuffer,
     allocated_pages: Vec<PagedBufferAllocation>,
@@ -243,9 +249,20 @@ impl<T> UniformGPUData<T> {
 
         self.allocated_pages[index_of_page as usize].offset() + (index_in_page * self.element_size)
     }
+
+    pub fn structured_buffer_view(&self, struct_size: u64) -> BufferView {
+        assert!(!self.allocated_pages.is_empty());
+        self.allocated_pages[0].structured_buffer_view(struct_size, true)
+    }
+
+    pub fn offset(&self) -> u64 {
+        assert!(!self.allocated_pages.is_empty());
+        self.allocated_pages[0].offset()
+    }
 }
 
 pub type TestStaticBuffer = RenderHandle<UniformGPUData<EntityTransforms>>;
+pub type OmnidirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmnidirectionalLight>>;
 
 pub struct UniformGPUDataUploadJobBlock {
     upload_allocation: BufferAllocation,

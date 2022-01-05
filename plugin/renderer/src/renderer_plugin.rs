@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 use crate::{
     components::{ManipulatorComponent, PickedComponent},
     egui::egui_plugin::{Egui, EguiPlugin},
@@ -64,6 +65,7 @@ impl Plugin for RendererPlugin {
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
+        app.add_system(update_lights.before(RendererSystemLabel::FrameUpdate));
         app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
@@ -262,8 +264,83 @@ fn update_transform(
 
 fn update_lights(
     mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, '_, (Entity, &Transform, &mut LightComponent)>,
+    mut query: Query<'_, '_, (Entity, &Transform, &LightComponent)>,
 ) {
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let mut gpu_data = renderer.acquire_omnidirectional_lights_data();
+    const NUM_LIGHTS: usize = 8;
+    const DIRECTIONAL_LIGHT_SIZE: usize = 32;
+    const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
+    const SPOTLIGHT_SIZE: usize = 32;
+
+    let mut omnidirectional_lights_data =
+        Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+    let mut num_omnidirectional_lights = 0;
+
+    for (_entity, transform, light) in query.iter() {
+        if !light.enabled {
+            continue;
+        }
+        match light.light_type {
+            LightType::Directional { direction } => {
+                /*
+                let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
+
+                directional_lights_data.push(direction_in_view.x);
+                directional_lights_data.push(direction_in_view.y);
+                directional_lights_data.push(direction_in_view.z);
+                directional_lights_data.push(light.radiance);
+                directional_lights_data.push(light.color.0);
+                directional_lights_data.push(light.color.1);
+                directional_lights_data.push(light.color.2);
+                num_directional_lights += 1;*/
+            }
+            LightType::Omnidirectional => {
+                //let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+                let transform_in_view = transform.translation;
+                omnidirectional_lights_data.push(transform_in_view.x);
+                omnidirectional_lights_data.push(transform_in_view.y);
+                omnidirectional_lights_data.push(transform_in_view.z);
+                omnidirectional_lights_data.push(light.radiance);
+                omnidirectional_lights_data.push(light.color.0);
+                omnidirectional_lights_data.push(light.color.1);
+                omnidirectional_lights_data.push(light.color.2);
+                num_omnidirectional_lights += 1;
+                unsafe {
+                    omnidirectional_lights_data.set_len(
+                        OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
+                    );
+                }
+            }
+            LightType::Spotlight {
+                direction,
+                cone_angle,
+            } => {
+                /*let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
+                let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
+
+                spotlights_data.push(transform_in_view.x);
+                spotlights_data.push(transform_in_view.y);
+                spotlights_data.push(transform_in_view.z);
+                spotlights_data.push(light.radiance);
+                spotlights_data.push(direction_in_view.x);
+                spotlights_data.push(direction_in_view.y);
+                spotlights_data.push(direction_in_view.z);
+                spotlights_data.push(cone_angle);
+                spotlights_data.push(light.color.0);
+                spotlights_data.push(light.color.1);
+                spotlights_data.push(light.color.2);
+                num_spotlights += 1;
+                */
+            }
+        }
+    }
+    if !omnidirectional_lights_data.is_empty() {
+        updater.add_update_jobs(&omnidirectional_lights_data, gpu_data.offset());
+        renderer.test_add_update_jobs(updater.job_blocks());
+    }
+
+    renderer.release_omnidirectional_lights_data(gpu_data);
 }
 
 #[allow(

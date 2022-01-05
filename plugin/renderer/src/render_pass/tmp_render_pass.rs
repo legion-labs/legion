@@ -280,6 +280,9 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
+            let omnidirectional_lights_buffer_view = render_context
+                .renderer()
+                .omnidirectional_lights_structured_view();
             descriptor_set_writer
                 .set_descriptors_by_name(
                     "omnidirectional_lights",

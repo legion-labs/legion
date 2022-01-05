@@ -117,7 +117,7 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal
 }
 
 Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float3 normal, float3 pos) {
-    float3 light_dir = light.pos - pos;
+    float3 light_dir = mul(const_data.view, float4(light.pos, 1.0)).xyz - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);

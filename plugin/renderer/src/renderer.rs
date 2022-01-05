@@ -14,8 +14,9 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
-    EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
-    UniformGPUData, UniformGPUDataUploadJobBlock,
+    EntityTransforms, GpuSafePool, OmnidirectionalLight, OmnidirectionalLightsStaticBuffer,
+    TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
+    UniformGPUDataUploadJobBlock,
 };
 use crate::{cgen, RenderContext};
 
@@ -35,6 +36,7 @@ pub struct Renderer {
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
+    omnidirectional_lights_data: OmnidirectionalLightsStaticBuffer,
     bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
     shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
@@ -63,6 +65,12 @@ impl Renderer {
             &static_buffer,
             64 * 1024,
         ));
+
+        let omnidirectional_lights_data =
+            OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(
+                &static_buffer,
+                32 * 8,
+            ));
 
         let descriptor_heap_def = DescriptorHeapDef {
             max_descriptor_sets: 32 * 4096,
@@ -99,6 +107,7 @@ impl Renderer {
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
+            omnidirectional_lights_data,
             bump_allocator_pool: Mutex::new(CpuPool::new()),
             shader_compiler,
             api,
@@ -139,6 +148,18 @@ impl Renderer {
 
     pub fn release_transform_data(&mut self, test: TestStaticBuffer) {
         self.test_transform_data = test;
+    }
+
+    pub fn acquire_omnidirectional_lights_data(&mut self) -> OmnidirectionalLightsStaticBuffer {
+        self.omnidirectional_lights_data.transfer()
+    }
+
+    pub fn release_omnidirectional_lights_data(&mut self, data: OmnidirectionalLightsStaticBuffer) {
+        self.omnidirectional_lights_data = data;
+    }
+
+    pub fn omnidirectional_lights_structured_view(&self) -> BufferView {
+        self.omnidirectional_lights_data.structured_buffer_view(32)
     }
 
     pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
@@ -386,7 +407,7 @@ impl Drop for Renderer {
             let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
             graphics_queue.wait_for_queue_idle().unwrap();
         }
-
+        std::mem::drop(self.omnidirectional_lights_data.take());
         std::mem::drop(self.test_transform_data.take());
 
         cgen::shutdown();
