@@ -27,7 +27,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 }
 
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
-    // let typestring = get_hlsl_typestring(model, member.cgen_type());
     let typestring = get_hlsl_typestring(member.ty_ref.get(model));
 
     format!("{} {};", typestring, member.name)
@@ -54,7 +53,6 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let deps = GeneratorContext::get_type_dependencies(ty);
     if !deps.is_empty() {
         for ty_ref in deps {
-            // let dep_ty = ctx.model.get_from_objectid::<CGenType>(*object_id).unwrap();
             let ty = ty_ref.get(ctx.model);
             match ty {
                 CGenType::Native(_) => (),

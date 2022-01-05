@@ -216,7 +216,6 @@ impl Descriptor {
 
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
-    // pub layout: &'static DescriptorSetLayout,
     #[cfg(feature = "vulkan")]
     pub vk_type: ash::vk::DescriptorSet,
 }

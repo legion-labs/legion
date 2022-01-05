@@ -244,7 +244,6 @@ impl TransientBufferAllocator {
         data: &[T],
         resource_usage: ResourceUsage,
     ) -> BufferAllocation {
-        // let layout = lgn_utils::memory::slice_size_in_bytes(data) as u64;
         let data_layout = Layout::array::<T>(data.len()).unwrap();
         let allocation = self.allocate(data_layout, resource_usage);
         let src = data.as_ptr().cast::<u8>();

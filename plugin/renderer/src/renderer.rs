@@ -32,7 +32,6 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-    // cgen_runtime: CGenRuntime,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
@@ -97,7 +96,6 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            // cgen_runtime,
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
@@ -191,10 +189,6 @@ impl Renderer {
         let mut pool = self.descriptor_pools.lock();
         pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
     }
-
-    // pub(crate) fn cgen_runtime(&self) -> &CGenRuntime {
-    //     &self.cgen_runtime
-    // }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
         let mut pool = self.descriptor_pools.lock();
