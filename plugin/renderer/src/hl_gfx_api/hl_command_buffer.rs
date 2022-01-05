@@ -100,13 +100,10 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn push_constants<T: Sized>(&self, root_signature: &RootSignature, constants: &T) {
-
         let constants_size = mem::size_of::<T>();
         let constants_ptr = (constants as *const T).cast::<u8>();
         #[allow(unsafe_code)]
-        let data = unsafe {
-            &*ptr::slice_from_raw_parts(constants_ptr, constants_size)
-        };                
+        let data = unsafe { &*ptr::slice_from_raw_parts(constants_ptr, constants_size) };
         self.cmd_buffer
             .cmd_push_constant(root_signature, data)
             .unwrap();
@@ -258,7 +255,9 @@ impl<'rc> HLCommandBuffer<'rc> {
         }
 
         if let Some(push_constant_data) = pipeline_data.push_constant() {
-            self.cmd_buffer.cmd_push_constant(&root_signature, push_constant_data).unwrap();            
+            self.cmd_buffer
+                .cmd_push_constant(&root_signature, push_constant_data)
+                .unwrap();
         }
     }
 }

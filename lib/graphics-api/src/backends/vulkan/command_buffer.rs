@@ -331,11 +331,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn cmd_push_constant_platform(
-        &self,
-        root_signature: &RootSignature,
-        data: &[u8],
-    ) {        
+    pub(crate) fn cmd_push_constant_platform(&self, root_signature: &RootSignature, data: &[u8]) {
         unsafe {
             self.inner.device_context.vk_device().cmd_push_constants(
                 self.inner.platform_command_buffer.vk_command_buffer,
