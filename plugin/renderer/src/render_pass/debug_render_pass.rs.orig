@@ -9,10 +9,12 @@ use lgn_math::{Mat4, Quat, Vec3};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{
-        CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
-    },
+<<<<<<< HEAD
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     debug_display::{DebugDisplay, DebugPrimitiveType},
+=======
+    components::{ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh},
+>>>>>>> manipulator_framework
     hl_gfx_api::HLCommandBuffer,
     resources::{DefaultMeshId, DefaultMeshes},
     RenderContext, Renderer,
@@ -354,13 +356,18 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
+<<<<<<< HEAD
+        static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
+        camera: &CameraComponent,
+=======
         static_meshes: &[(
             &StaticMesh,
             &Transform,
             Option<&PickedComponent>,
             Option<&ManipulatorComponent>,
         )],
-        camera: &CameraComponent,
+        camera_transform: &Transform,
+>>>>>>> manipulator_framework
         default_meshes: &DefaultMeshes,
         debug_display: &mut DebugDisplay,
     ) {

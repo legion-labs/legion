@@ -5,8 +5,14 @@ use lgn_math::Vec2;
 use lgn_transform::prelude::Transform;
 use lgn_window::WindowResized;
 
-use super::{ManipulatorManager, PickingManager, PositionComponents};
+<<<<<<< HEAD
+use super::PickingManager;
+use crate::components::{PickedComponent, StaticMesh};
+=======
 use crate::components::{CameraComponent, ManipulatorComponent, PickedComponent, StaticMesh};
+
+use super::{ManipulatorManager, PickingManager, PositionComponents};
+>>>>>>> manipulator_framework
 
 pub struct PickingPlugin {
     has_window: bool,
@@ -151,7 +157,7 @@ fn update_manipulator_component(
     q_cameras: Query<
         '_,
         '_,
-        &CameraComponent,
+        (&CameraComponent, &Transform),
         (Without<PickedComponent>, Without<ManipulatorComponent>),
     >,
     mut picked_query: Query<
@@ -200,14 +206,17 @@ fn update_manipulator_component(
             if active_manipulator_part != PositionComponents::None {
                 let (base_transform, picking_pos) = picking_manager.base_picking_data();
 
-                let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+                let q_cameras = q_cameras
+                    .iter()
+                    .collect::<Vec<(&CameraComponent, &Transform)>>();
 
                 if !q_cameras.is_empty() {
                     *transform = manipulator_manager.manipulate_entity(
                         active_manipulator_part,
                         &base_transform,
-                        q_cameras[0],
+                        q_cameras[0].1,
                         picking_pos,
+                        45.0,
                         picking_manager.screen_rect(),
                         picking_manager.current_cursor_pos(),
                     );

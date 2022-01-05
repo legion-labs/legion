@@ -1,10 +1,23 @@
+<<<<<<< HEAD
+//use std::sync::{Arc, Mutex};
+
+trait Manipulator {
+    fn new() -> Self;
+}
+
+struct PositionManipulator {}
+
+impl Manipulator for PositionManipulator {
+    fn new() -> Self {
+        Self {}
+=======
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, StaticMesh},
+    components::{ManipulatorComponent, StaticMesh},
     resources::{DefaultMeshId, DefaultMeshes},
 };
 
@@ -258,8 +271,9 @@ impl PositionManipulator {
     fn manipulate_entity(
         component: PositionComponents,
         base_entity_transform: &Transform,
-        camera: &CameraComponent,
+        camera_transform: &Transform,
         picking_pos_world_space: Vec3,
+        fov_y: f32,
         screen_size: Vec2,
         mut cursor_pos: Vec2,
     ) -> Transform {
@@ -274,12 +288,19 @@ impl PositionManipulator {
         };
 
         cursor_pos.y = screen_size.y - cursor_pos.y;
-        let camera_pos = camera.camera_rig.final_transform.position;
-        let ray_point = camera_pos;
+        let ray_point = camera_transform.translation;
         let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
 
-        let (view_matrix, projection_matrix) =
-            camera.build_view_projection(screen_size.x as f32, screen_size.y as f32);
+        let view_matrix = Mat4::look_at_lh(
+            camera_transform.translation,
+            camera_transform.translation + camera_transform.forward(),
+            Vec3::new(0.0, 1.0, 0.0),
+        );
+
+        let aspect_ratio: f32 = screen_size.x / screen_size.y;
+        let z_near: f32 = 0.01;
+        let z_far: f32 = 100.0;
+        let projection_matrix = Mat4::perspective_lh(fov_y, aspect_ratio, z_near, z_far);
 
         let view_proj_matrix = projection_matrix * view_matrix;
         let inv_view_proj_matrix = view_proj_matrix.inverse();
@@ -288,7 +309,7 @@ impl PositionManipulator {
 
         let mut world_pos = inv_view_proj_matrix.mul_vec4(screen_pos);
         world_pos = world_pos / world_pos.w;
-        let ray_dir = (world_pos.xyz() - camera_pos).normalize();
+        let ray_dir = (world_pos.xyz() - camera_transform.translation).normalize();
 
         let new_world_point =
             intersect_ray_with_plane(ray_point, ray_dir, plane_point, plane_normal);
@@ -303,12 +324,22 @@ impl PositionManipulator {
 
         let new_transform = base_entity_transform;
         new_transform.with_translation(base_entity_transform.translation + clamped_delta)
+>>>>>>> manipulator_framework
     }
 }
 
 // struct RotationManipulator {}
 // struct ScaleManipulator {}
 
+<<<<<<< HEAD
+// struct ManipulatorManagerInner {}
+
+// struct ManipulatorManager {
+//     inner: Arc<Mutex<ManipulatorManagerInner>>,
+// }
+
+//impl ManipulatorManager {}
+=======
 struct ManipulatorManagerInner {
     position: PositionManipulator,
     current_type: ManipulatorType,
@@ -352,8 +383,9 @@ impl ManipulatorManager {
         &self,
         component: PositionComponents,
         base_entity_transform: &Transform,
-        camera: &CameraComponent,
+        camera_transform: &Transform,
         picking_pos_world_space: Vec3,
+        fov_y: f32,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
@@ -363,8 +395,9 @@ impl ManipulatorManager {
             ManipulatorType::Position => PositionManipulator::manipulate_entity(
                 component,
                 base_entity_transform,
-                camera,
+                camera_transform,
                 picking_pos_world_space,
+                fov_y,
                 screen_size,
                 cursor_pos,
             ),
@@ -372,3 +405,4 @@ impl ManipulatorManager {
         }
     }
 }
+>>>>>>> manipulator_framework

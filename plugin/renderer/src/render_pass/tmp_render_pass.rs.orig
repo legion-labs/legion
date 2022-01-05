@@ -10,8 +10,13 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightSettings, LightType, ManipulatorComponent,
-        PickedComponent, RenderSurface, StaticMesh,
+<<<<<<< HEAD
+        CameraComponent, LightComponent, LightSettings, LightType, PickedComponent, RenderSurface,
+        StaticMesh,
+=======
+        LightComponent, LightSettings, LightType, ManipulatorComponent, PickedComponent,
+        RenderSurface, StaticMesh,
+>>>>>>> manipulator_framework
     },
     hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
@@ -94,12 +99,17 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
+<<<<<<< HEAD
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        camera: &CameraComponent,
+=======
         static_meshes: &[(
             &StaticMesh,
             Option<&PickedComponent>,
             Option<&ManipulatorComponent>,
         )],
-        camera: &CameraComponent,
+        camera_transform: &Transform,
+>>>>>>> manipulator_framework
         lights: &[(&Transform, &LightComponent)],
         light_settings: &LightSettings,
     ) {

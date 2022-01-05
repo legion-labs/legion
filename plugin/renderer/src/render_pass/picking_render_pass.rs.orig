@@ -10,9 +10,11 @@ use lgn_graphics_api::{
 };
 
 use crate::{
-    components::{
-        CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
-    },
+<<<<<<< HEAD
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
+=======
+    components::{ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh},
+>>>>>>> manipulator_framework
     hl_gfx_api::HLCommandBuffer,
     picking::{PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
@@ -257,12 +259,17 @@ impl PickingRenderPass {
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
+<<<<<<< HEAD
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        camera: &CameraComponent,
+=======
         static_meshes: &[(
             &StaticMesh,
             Option<&PickedComponent>,
             Option<&ManipulatorComponent>,
         )],
-        camera: &CameraComponent,
+        camera_transform: &Transform,
+>>>>>>> manipulator_framework
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
