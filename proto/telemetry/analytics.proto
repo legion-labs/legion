@@ -74,6 +74,7 @@ message Span{
     uint32 scope_hash = 1;
     double begin_ms = 2;
     double end_ms = 3;
+    uint32 alpha = 4; //[0-255] non-linear transformation of occupancy for spans that are a lower level of detail
 }
 
 message BlockSpansRequest{

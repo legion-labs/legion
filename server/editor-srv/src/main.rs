@@ -41,9 +41,6 @@ struct Args {
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
-    /// Path to the build index directory
-    #[clap(long = "buildindex")]
-    build_index: Option<String>,
     #[clap(long)]
     egui: bool,
 }
