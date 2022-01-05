@@ -36,8 +36,18 @@ fn command_compiler_hash() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let command = CompilerHashCmd::new(&common::test_env());
-    let _hashes = command.execute(&exe_path).expect("hash list");
+    // get all hashes
+    let command = CompilerHashCmd::new(&common::test_env(), None);
+    let hashes = command.execute(&exe_path).expect("hash list");
+    assert_eq!(hashes.compiler_hash_list.len(), 1);
+
+    let (transform, hash) = hashes.compiler_hash_list[0];
+
+    // get a hash for the specified transform
+    let command = CompilerHashCmd::new(&common::test_env(), Some(transform));
+    let hashes = command.execute(&exe_path).expect("hash list");
+    assert_eq!(hashes.compiler_hash_list.len(), 1);
+    assert_eq!(hashes.compiler_hash_list[0], (transform, hash));
 }
 
 #[test]

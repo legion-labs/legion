@@ -26,7 +26,7 @@
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerHashCmd;
 //! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-//! let command = CompilerHashCmd::new(&CompilationEnv{ target: Target::Game, platform: Platform::Windows, locale: Locale::new("en") });
+//! let command = CompilerHashCmd::new(&CompilationEnv{ target: Target::Game, platform: Platform::Windows, locale: Locale::new("en") }, None);
 //! let info = command.execute("my_compiler.exe").expect("compiler hash info");
 //! ```
 //!
@@ -59,11 +59,12 @@ use std::{
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::{CompilationEnv, CompilerDescriptor, CompilerInfo},
+    compiler_api::{CompilationEnv, CompilerInfo},
+    compiler_reg::CompilerRegistry,
     CompiledResource, CompilerHash,
 };
 
@@ -177,19 +178,18 @@ impl CommandBuilder {
 //
 
 /// Output of `compiler_info` command.
-pub type CompilerInfoCmdOutput = CompilerInfo;
+#[derive(Serialize, Deserialize)]
+pub struct CompilerInfoCmdOutput(Vec<CompilerInfo>);
 
 impl CompilerInfoCmdOutput {
-    pub(crate) fn from_descriptor(descriptor: &CompilerDescriptor) -> Self {
-        Self {
-            build_version: descriptor.build_version.to_owned(),
-            code_version: descriptor.code_version.to_owned(),
-            data_version: descriptor.data_version.to_owned(),
-            transform: *descriptor.transform,
-        }
+    pub(crate) fn from_registry(compilers: &CompilerRegistry) -> Self {
+        Self(compilers.infos().clone())
     }
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
         serde_json::from_slice(bytes).ok()?
+    }
+    pub(crate) fn take(self) -> Vec<CompilerInfo> {
+        self.0
     }
 }
 
@@ -203,6 +203,7 @@ pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
 pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
 pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
 pub(crate) const COMMAND_ARG_RESOURCE_DIR: &str = "resource_dir";
+pub(crate) const COMMAND_ARG_TRANSFORM: &str = "transform";
 
 /// Helper building a `info` command.
 pub struct CompilerInfoCmd(CommandBuilder);
@@ -235,8 +236,8 @@ impl CompilerInfoCmd {
 /// Output of `compiler_hash` command.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CompilerHashCmdOutput {
-    /// [`CompilerHash`] for given compilation context.
-    pub compiler_hash: CompilerHash,
+    /// List of [`Transform`] and [`CompilerHash`] for given compilation context supported by given compiler.
+    pub compiler_hash_list: Vec<(Transform, CompilerHash)>,
 }
 
 impl CompilerHashCmdOutput {
@@ -249,13 +250,17 @@ impl CompilerHashCmdOutput {
 pub struct CompilerHashCmd(CommandBuilder);
 
 impl CompilerHashCmd {
-    /// Creates a new command for a given compilation context.
-    pub fn new(env: &CompilationEnv) -> Self {
+    /// Creates a new command for a given compilation context that will return a hash for a specified `transform`.
+    /// It returns hashes for all transforms if a `transform` argument is None.
+    pub fn new(env: &CompilationEnv, transform: Option<Transform>) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILER_HASH);
         builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
         builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
         builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale));
+        if let Some(transform) = transform {
+            builder.arg(format!("--{}={}", COMMAND_ARG_TRANSFORM, transform));
+        }
         Self(builder)
     }
 

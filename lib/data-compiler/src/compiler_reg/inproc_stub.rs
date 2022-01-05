@@ -1,7 +1,7 @@
 use std::{io, path::Path};
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{ResourcePathId, Transform};
 
 use super::CompilerStub;
 use crate::{
@@ -16,12 +16,15 @@ pub(super) struct InProcessCompilerStub {
 }
 
 impl CompilerStub for InProcessCompilerStub {
-    fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash> {
-        let hash = (self.descriptor.compiler_hash_func)(
-            self.descriptor.code_version,
-            self.descriptor.data_version,
-            env,
-        );
+    fn compiler_hash(
+        &self,
+        transform: Transform,
+        env: &CompilationEnv,
+    ) -> io::Result<CompilerHash> {
+        if transform != *self.descriptor.transform {
+            return Err(io::Error::new(io::ErrorKind::Other, "Transform mismatch"));
+        }
+        let hash = self.descriptor.compiler_hash(env);
         Ok(hash)
     }
 
@@ -44,13 +47,13 @@ impl CompilerStub for InProcessCompilerStub {
         )
     }
 
-    fn info(&self) -> io::Result<CompilerInfo> {
+    fn info(&self) -> io::Result<Vec<CompilerInfo>> {
         let info = CompilerInfo {
             build_version: self.descriptor.build_version.to_string(),
             code_version: self.descriptor.code_version.to_string(),
             data_version: self.descriptor.data_version.to_string(),
             transform: *self.descriptor.transform,
         };
-        Ok(info)
+        Ok(vec![info])
     }
 }

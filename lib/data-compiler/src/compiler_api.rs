@@ -88,8 +88,9 @@ use crate::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
-        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
+    compiler_reg::{CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
 
@@ -129,7 +130,7 @@ pub struct CompilationEnv {
 }
 
 /// Compiler information.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CompilerInfo {
     /// Data build version of data compiler.
     pub build_version: String,
@@ -216,8 +217,12 @@ pub enum CompilerError {
     InvalidResourceId,
     /// Resource not found.
     ResourceNotFound,
+    /// Compiler not found for a given transform.
+    CompilerNotFound(Transform),
     /// Invalid input/output resource type pair.
     InvalidTransform,
+    /// Invalid ResourcePathId provided as input.
+    InvalidResource(ResourcePathId),
     /// Unknown platform.
     InvalidPlatform,
     /// Unknown target.
@@ -242,7 +247,13 @@ impl std::fmt::Display for CompilerError {
             CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
             CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),
             CompilerError::ResourceNotFound => write!(f, "ResourceNotFound"),
+            CompilerError::CompilerNotFound(transform) => {
+                f.write_fmt(format_args!("CompilerNotFoud for '{}'", transform))
+            }
             CompilerError::InvalidTransform => write!(f, "InvalidResourceType"),
+            CompilerError::InvalidResource(resource) => {
+                f.write_fmt(format_args!("InvalidResource '{}'", resource))
+            }
             CompilerError::InvalidTarget => write!(f, "InvalidTarget"),
             CompilerError::InvalidPlatform => write!(f, "InvalidPlatform"),
             CompilerError::UnknownCommand => write!(f, "UnknownCommand"),
@@ -336,12 +347,13 @@ impl CompilerDescriptor {
     }
 }
 
-fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
+#[allow(clippy::too_many_lines)]
+fn run(command: Commands, compilers: &CompilerRegistry) -> Result<(), CompilerError> {
     match command {
         Commands::Info => {
             serde_json::to_writer_pretty(
                 stdout(),
-                &CompilerInfoCmdOutput::from_descriptor(descriptor),
+                &CompilerInfoCmdOutput::from_registry(compilers),
             )
             .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
@@ -350,20 +362,51 @@ fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), Compile
             target,
             platform,
             locale,
+            transform,
         } => {
             let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
                 Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(&locale);
+            let transform = transform
+                .map(|transform| {
+                    Transform::from_str(&transform).map_err(|_e| CompilerError::InvalidTransform)
+                })
+                .transpose()?;
 
             let env = CompilationEnv {
                 target,
                 platform,
                 locale,
             };
-            let compiler_hash = descriptor.compiler_hash(&env);
 
-            let output = CompilerHashCmdOutput { compiler_hash };
+            let get_transform_hash = |transform| -> Result<CompilerHash, CompilerError> {
+                let (compiler, transform) = compilers
+                    .find_compiler(transform)
+                    .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+                let compiler_hash = compiler
+                    .compiler_hash(transform, &env)
+                    .map_err(|_e| CompilerError::CompilerNotFound(transform))?;
+
+                Ok(compiler_hash)
+            };
+
+            let compiler_hash_list = if let Some(transform) = transform {
+                let compiler_hash = get_transform_hash(transform)?;
+                vec![(transform, compiler_hash)]
+            } else {
+                let mut compiler_hashes = vec![];
+                for info in compilers.infos() {
+                    let transform = info.transform;
+                    let compiler_hash = get_transform_hash(transform)?;
+                    compiler_hashes.push((transform, compiler_hash));
+                }
+
+                compiler_hashes
+            };
+
+            let output = CompilerHashCmdOutput { compiler_hash_list };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
@@ -400,7 +443,15 @@ fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), Compile
                 locale,
             };
 
-            let compilation_output = descriptor.compile(
+            let transform = derived
+                .last_transform()
+                .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
+
+            let (compiler, _) = compilers
+                .find_compiler(transform)
+                .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+            let compilation_output = compiler.compile(
                 derived,
                 &dependencies,
                 &derived_deps,
@@ -446,6 +497,9 @@ enum Commands {
         /// Build localization (en, fr, etc).
         #[clap(long)]
         locale: String,
+        /// Optional transformation to return hash for. Otherwise returns hashes for all transformations.
+        #[clap(long = COMMAND_ARG_TRANSFORM)]
+        transform: Option<String>,
     },
     /// Compile given resource.
     #[clap(name = COMMAND_NAME_COMPILE)]
@@ -487,13 +541,18 @@ enum Commands {
 // TODO: remove the limitation above.
 pub fn compiler_main(
     args: env::Args,
-    descriptor: &CompilerDescriptor,
+    descriptor: &'static CompilerDescriptor,
 ) -> Result<(), CompilerError> {
     let args = Cli::try_parse_from(args).map_err(|err| {
         eprintln!("{}", err);
         CompilerError::InvalidArgs
     })?;
-    let result = run(args.command, descriptor);
+
+    let compilers = CompilerRegistryOptions::default()
+        .add_compiler(descriptor)
+        .create();
+
+    let result = run(args.command, &compilers);
     if let Err(error) = &result {
         eprintln!("Compiler Failed With: '{:?}'", error);
     }

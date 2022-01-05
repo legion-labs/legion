@@ -471,11 +471,13 @@ impl DataBuild {
             unique_transforms
                 .into_iter()
                 .map(|transform| {
-                    let compiler = self
+                    let (compiler, transform) = self
                         .compilers
                         .find_compiler(transform)
                         .ok_or(Error::CompilerNotFound)?;
-                    let compiler_hash = compiler.compiler_hash(env).map_err(|_e| Error::IOError)?;
+                    let compiler_hash = compiler
+                        .compiler_hash(transform, env)
+                        .map_err(|_e| Error::IOError)?;
                     Ok((transform, (compiler, compiler_hash)))
                 })
                 .collect::<Result<HashMap<_, _>, Error>>()?

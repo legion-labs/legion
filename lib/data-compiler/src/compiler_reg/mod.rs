@@ -16,13 +16,15 @@ use crate::{
 };
 
 /// Interface allowing to support multiple types of compilers - in-process,
-/// external executables.
+/// external executables. By returning multiple `CompilerInfo` via `info` the implementation
+/// of `CompilerStub` can expose multiple compilers.
 pub trait CompilerStub: Send + Sync {
     /// Returns information about the compiler.
-    fn info(&self) -> io::Result<CompilerInfo>;
+    fn info(&self) -> io::Result<Vec<CompilerInfo>>;
 
-    /// Returns the `CompilerHash` for the given compilation context.
-    fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash>;
+    /// Returns the `CompilerHash` for the given compilation context and transform.
+    fn compiler_hash(&self, transform: Transform, env: &CompilationEnv)
+        -> io::Result<CompilerHash>;
 
     /// Triggers compilation of provided `compile_path` and returns the
     /// information about compilation output.
@@ -81,23 +83,30 @@ impl CompilerRegistryOptions {
 
     /// Creates a new compiler registry based on specified options.
     pub fn create(self) -> CompilerRegistry {
-        let infos = self.collect_info();
+        let (infos, indices) = self.collect_info();
 
         CompilerRegistry {
             compilers: self.compilers,
             infos,
+            indices,
         }
     }
 
     /// Gathers info on all compilers.
-    fn collect_info(&self) -> Vec<CompilerInfo> {
-        // todo: panic if info already gathered
-        let mut infos = Vec::with_capacity(self.compilers.len());
-        for compiler in &self.compilers {
-            let info = compiler.info().unwrap(); // todo: support failure
-            infos.push(info);
+    fn collect_info(&self) -> (Vec<CompilerInfo>, Vec<usize>) {
+        let mut infos = vec![];
+        let mut indices = vec![];
+        for (index, compiler_stub) in self.compilers.iter().enumerate() {
+            match compiler_stub.info() {
+                Ok(compilers) => {
+                    indices.extend(std::iter::repeat(index).take(compilers.len()));
+                    infos.extend(compilers);
+                }
+                Err(_) => continue,
+            }
         }
-        infos
+
+        (infos, indices)
     }
 }
 
@@ -106,6 +115,7 @@ impl CompilerRegistryOptions {
 pub struct CompilerRegistry {
     compilers: Vec<Box<dyn CompilerStub>>,
     infos: Vec<CompilerInfo>,
+    indices: Vec<usize>,
 }
 
 impl fmt::Debug for CompilerRegistry {
@@ -118,15 +128,21 @@ impl fmt::Debug for CompilerRegistry {
 
 impl CompilerRegistry {
     /// Returns a reference to the compiler
-    pub fn find_compiler(&self, transform: Transform) -> Option<&dyn CompilerStub> {
+    pub fn find_compiler(&self, transform: Transform) -> Option<(&dyn CompilerStub, Transform)> {
         if let Some(compiler_index) = self
             .infos
             .iter()
             .position(|info| info.transform == transform)
         {
-            return Some(self.compilers[compiler_index].as_ref());
+            let stub_index = self.indices[compiler_index];
+            return Some((self.compilers[stub_index].as_ref(), transform));
         }
         None
+    }
+
+    /// A list of compilers available in the registry.
+    pub fn infos(&self) -> &Vec<CompilerInfo> {
+        &self.infos
     }
 }
 
@@ -195,8 +211,8 @@ mod tests {
 
         let transform = Transform::new(source.kind, destination.content_type());
 
-        let compiler = registry.find_compiler(transform).expect("valid compiler");
-        let _ = compiler.compiler_hash(&env).expect("valid hash");
+        let (compiler, transform) = registry.find_compiler(transform).expect("valid compiler");
+        let _ = compiler.compiler_hash(transform, &env).expect("valid hash");
     }
 
     #[test]
@@ -211,8 +227,8 @@ mod tests {
             locale: Locale::new("en"),
         };
 
-        let compiler = registry.find_compiler(TEST_TRANSFORM).expect("a compiler");
-        let hash = compiler.compiler_hash(&env).expect("valid hash");
+        let (compiler, transform) = registry.find_compiler(TEST_TRANSFORM).expect("a compiler");
+        let hash = compiler.compiler_hash(transform, &env).expect("valid hash");
         assert_eq!(hash, CompilerHash(7));
 
         let source = ResourceTypeAndId {
