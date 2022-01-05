@@ -248,7 +248,7 @@ impl PickingManager {
         inner.screen_rect
     }
 
-    pub fn set_screen_rect(&mut self, screen_rect: &Vec2) {
+    pub fn set_screen_rect(&self, screen_rect: &Vec2) {
         let inner = &mut *self.inner.lock().unwrap();
 
         inner.screen_rect = *screen_rect;
