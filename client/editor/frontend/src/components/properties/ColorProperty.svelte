@@ -21,8 +21,8 @@
     dispatch("input", value);
   }
 
-  function setColorsFromTextInput({ detail: newValue }: CustomEvent<string>) {
-    setColors(newValue);
+  function setColorsFromTextInput({ detail: hex }: CustomEvent<string>) {
+    setColors(hex);
   }
 
   function setColorsFromColorPicker({
