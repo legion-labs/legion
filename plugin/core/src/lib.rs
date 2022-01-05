@@ -104,7 +104,7 @@ impl Plugin for CorePlugin {
             .unwrap_or_default()
             .create_default_pools(&mut app.world);
 
-        app.add_plugin(LogPlugin);
+        app.add_plugin(LogPlugin::default());
 
         app.init_resource::<Time>()
             .init_resource::<EntityLabels>()

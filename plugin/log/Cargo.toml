@@ -8,6 +8,11 @@ repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
+[features]
+trace_chrome = ["tracing-chrome"]
+trace_tracy = ["tracing-tracy"]
+default = []
+
 [dependencies]
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
