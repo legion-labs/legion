@@ -59,6 +59,8 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
     }
 }
 
+const DIFF_THREASHOLD: f64 = 0.001;
+
 // cargo run --bin lgn-graphics-sandbox -- --snapshot
 // rm ./test/graphics-sandbox/tests/refs/simple-scene/simple-scene.png
 // mv ./simple-scene.png ./test/graphics-sandbox/tests/refs/simple-scene
@@ -79,12 +81,16 @@ fn gpu_simple_scene() {
     let ref_snapshot = load_image(&ref_path).unwrap();
     assert_eq!(snapshot.width, ref_snapshot.width);
     assert_eq!(snapshot.height, ref_snapshot.height);
+    let diff_coeff = rgba_image_diff(
+        &snapshot.data,
+        &ref_snapshot.data,
+        snapshot.width,
+        snapshot.height,
+    );
     assert!(
-        rgba_image_diff(
-            &snapshot.data,
-            &ref_snapshot.data,
-            snapshot.width,
-            snapshot.height
-        ) < 0.001
+        diff_coeff < DIFF_THREASHOLD,
+        "image diff threashold {} < {}",
+        diff_coeff,
+        DIFF_THREASHOLD
     );
 }

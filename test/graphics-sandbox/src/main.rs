@@ -101,6 +101,11 @@ fn main() {
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
         .add_plugin(RendererPlugin::new(true, args.egui, !args.snapshot))
+        .insert_resource(WindowDescriptor {
+            width: args.width,
+            height: args.height,
+            ..WindowDescriptor::default()
+        })
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default());
 
@@ -115,11 +120,6 @@ fn main() {
         .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
-        app.insert_resource(WindowDescriptor {
-            width: args.width,
-            height: args.height,
-            ..WindowDescriptor::default()
-        });
         app.add_plugin(WinitPlugin::default())
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
@@ -333,7 +333,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
     // plane
     commands
         .spawn()
-        .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
+        .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Plane as usize,
