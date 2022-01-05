@@ -13,7 +13,7 @@ use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     resources::DefaultMeshes,
     RenderContext, Renderer,
@@ -23,7 +23,7 @@ pub struct DebugRenderPass {
     root_signature: RootSignature,
     _solid_pso_depth: Pipeline,
     wire_pso_depth: Pipeline,
-    _solid_pso_nodepth: Pipeline,
+    solid_pso_nodepth: Pipeline,
     _wire_pso_nodepth: Pipeline,
 }
 
@@ -250,7 +250,7 @@ impl DebugRenderPass {
             root_signature,
             _solid_pso_depth: solid_pso_depth,
             wire_pso_depth,
-            _solid_pso_nodepth: solid_pso_nodepth,
+            solid_pso_nodepth,
             _wire_pso_nodepth: wire_pso_nodepth,
         }
     }
@@ -404,7 +404,12 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, &PickedComponent)],
+        static_meshes: &[(
+            &StaticMesh,
+            &Transform,
+            Option<&PickedComponent>,
+            Option<&ManipulatorComponent>,
+        )],
         camera_transform: &Transform,
         default_meshes: &DefaultMeshes,
     ) {
@@ -448,17 +453,57 @@ impl DebugRenderPass {
 
         self.render_ground_plane(constant_data, cmd_buffer, render_context, default_meshes);
 
-        for (_index, (static_mesh_component, transform, _picked_component)) in
+        for (_index, (static_mesh_component, transform, picked, manipulator)) in
             static_meshes.iter().enumerate()
         {
-            self.render_aabb_for_mesh(
-                static_mesh_component.mesh_id as u32,
-                transform,
-                constant_data,
-                cmd_buffer,
-                render_context,
-                default_meshes,
-            );
+            if let Some(manipulator) = manipulator {
+                if !manipulator.active {
+                    continue;
+                }
+
+                transform
+                    .compute_matrix()
+                    .write_cols_to_slice(&mut constant_data[0..]);
+
+                let mut color: (f32, f32, f32, f32) = (
+                    f32::from(static_mesh_component.color.r) / 255.0f32,
+                    f32::from(static_mesh_component.color.g) / 255.0f32,
+                    f32::from(static_mesh_component.color.b) / 255.0f32,
+                    f32::from(static_mesh_component.color.a) / 255.0f32,
+                );
+
+                if manipulator.selected {
+                    color = (1.0, 1.0, 0.0, 1.0);
+                }
+
+                constant_data[48] = color.0;
+                constant_data[49] = color.1;
+                constant_data[50] = color.2;
+                constant_data[51] = if manipulator.transparent { 0.9 } else { 1.0 };
+                constant_data[52] = 0.0;
+
+                self.bind_pipeline_and_desc_set(
+                    &self.solid_pso_nodepth,
+                    constant_data,
+                    cmd_buffer,
+                    render_context,
+                );
+
+                self.render_mesh(
+                    static_mesh_component.mesh_id as u32,
+                    cmd_buffer,
+                    default_meshes,
+                );
+            } else if let Some(_picked) = picked {
+                self.render_aabb_for_mesh(
+                    static_mesh_component.mesh_id as u32,
+                    transform,
+                    constant_data,
+                    cmd_buffer,
+                    render_context,
+                    default_meshes,
+                );
+            }
         }
 
         cmd_buffer.end_render_pass();

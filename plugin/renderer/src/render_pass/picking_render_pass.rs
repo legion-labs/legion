@@ -15,7 +15,7 @@ use lgn_pso_compiler::{CompileParams, EntryPoint, ShaderSource};
 use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     picking::{PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
@@ -362,7 +362,11 @@ impl PickingRenderPass {
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        static_meshes: &[(
+            &StaticMesh,
+            Option<&PickedComponent>,
+            Option<&ManipulatorComponent>,
+        )],
         camera_transform: &Transform,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -417,9 +421,15 @@ impl PickingRenderPass {
 
             let transient_allocator = render_context.transient_buffer_allocator();
 
-            for (_index, (static_mesh_component, _picked_component)) in
+            for (_index, (static_mesh_component, _picked_component, manipulator_component)) in
                 static_meshes.iter().enumerate()
             {
+                if let Some(manipulator) = manipulator_component {
+                    if !manipulator.active {
+                        continue;
+                    }
+                }
+
                 let mut constant_data: [f32; 39] = [0.0; 39];
                 view_proj_matrix.write_cols_to_slice(&mut constant_data[0..]);
                 inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
