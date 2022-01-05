@@ -575,11 +575,11 @@ mod tests {
         root
     }
 
-    const RESOURCE_TEXTURE: &'static str = "texture";
-    const RESOURCE_MATERIAL: &'static str = "material";
-    const RESOURCE_GEOMETRY: &'static str = "geometry";
-    const RESOURCE_SKELETON: &'static str = "skeleton";
-    const RESOURCE_ACTOR: &'static str = "actor";
+    const RESOURCE_TEXTURE: &str = "texture";
+    const RESOURCE_MATERIAL: &str = "material";
+    const RESOURCE_GEOMETRY: &str = "geometry";
+    const RESOURCE_SKELETON: &str = "skeleton";
+    const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
     struct NullResource {
@@ -660,6 +660,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
