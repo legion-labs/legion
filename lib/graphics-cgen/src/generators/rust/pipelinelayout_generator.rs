@@ -103,8 +103,7 @@ fn generate_rust_pipeline_layout(
             match opt_ds_ref {
                 Some(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
-                    // writer.add_line(format!("Some({}),", ds_ref.id()))
-                    writer.add_line(format!("Some({}::id()),", ds.name))
+                    writer.add_line(format!("Some({}::id()),", ds.name));
                 }
                 None => writer.add_line("None,"),
             }

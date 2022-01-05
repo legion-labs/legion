@@ -225,14 +225,10 @@ impl CGenPipelineLayoutDef {
         descriptor_set_layouts: &[&DescriptorSetLayout],
         push_constant_def: Option<&CGenTypeDef>,
     ) -> RootSignature {
-        let push_constant_def = if let Some(ty_def) = push_constant_def {
-            Some(PushConstantDef {
-                used_in_shader_stages: ShaderStageFlags::all(),
-                size: u32::try_from(ty_def.size).unwrap(),
-            })
-        } else {
-            None
-        };
+        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {
+            used_in_shader_stages: ShaderStageFlags::all(),
+            size: u32::try_from(ty_def.size).unwrap(),
+        });
 
         let signature_def = RootSignatureDef {
             descriptor_set_layouts: self

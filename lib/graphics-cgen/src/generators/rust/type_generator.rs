@@ -52,7 +52,7 @@ fn get_member_declaration(model: &Model, member: &StructMember) -> String {
     format!("pub {}: {},", member.name, typestring)
 }
 
-fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty_ref: CGenTypeRef) -> String {
+fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_ref: CGenTypeRef) -> String {
     let ty = ty_ref.get(ctx.model);
     let struct_def = ty.struct_type();
     let mut writer = FileWriter::new();

@@ -1,6 +1,6 @@
 use crate::model::{CGenType, NativeType};
 
-pub(super) fn get_rust_typestring<'a>(ty: &'a CGenType) -> &'a str {
+pub(super) fn get_rust_typestring(ty: &CGenType) -> &str {
     let typestring = match ty {
         CGenType::Native(e) => match e {
             NativeType::Float1 => "Float1",
