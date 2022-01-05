@@ -6,7 +6,9 @@ use lgn_transform::prelude::Transform;
 use lgn_window::WindowResized;
 
 use super::{ManipulatorManager, PickingManager, PositionComponents};
-use crate::components::{CameraComponent, ManipulatorComponent, PickedComponent, StaticMesh};
+use crate::components::{
+    CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
+};
 
 pub struct PickingPlugin {
     has_window: bool,
@@ -30,37 +32,38 @@ impl Plugin for PickingPlugin {
         let picking_manager = PickingManager::new(4096);
         app.insert_resource(picking_manager);
 
+        app.add_system_to_stage(CoreStage::PreUpdate, gather_input);
         if self.has_window {
-            app.add_system_to_stage(CoreStage::PreUpdate, gather_input_window);
-            app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
-
-            app.add_system_to_stage(
-                CoreStage::PostUpdate,
-                update_picking_components
-                    .before(PickingSystemLabel::PickedEntity)
-                    .label(PickingSystemLabel::PickedComponent),
-            );
-
-            app.add_system_to_stage(
-                CoreStage::PostUpdate,
-                update_picked_entity
-                    .before(PickingSystemLabel::Manipulator)
-                    .label(PickingSystemLabel::PickedEntity),
-            );
-
-            app.add_system_to_stage(
-                CoreStage::PostUpdate,
-                update_manipulator_component.label(PickingSystemLabel::Manipulator),
-            );
+            app.add_system_to_stage(CoreStage::PreUpdate, gather_window_resize);
         }
+        app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
+
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_picking_components
+                .before(PickingSystemLabel::PickedEntity)
+                .label(PickingSystemLabel::PickedComponent),
+        );
+
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_picked_entity
+                .before(PickingSystemLabel::Manipulator)
+                .label(PickingSystemLabel::PickedEntity),
+        );
+
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_manipulator_component.label(PickingSystemLabel::Manipulator),
+        );
     }
 }
 
-fn gather_input_window(
-    mut picking_manager: ResMut<'_, PickingManager>,
+#[allow(clippy::needless_pass_by_value)]
+fn gather_input(
+    picking_manager: Res<'_, PickingManager>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
 ) {
     for cursor_button_event in cursor_button.iter() {
         picking_manager.set_mouse_button_input(cursor_button_event);
@@ -69,7 +72,13 @@ fn gather_input_window(
     for motion_event in mouse_motion_events.iter() {
         picking_manager.set_mouse_moition_event(motion_event);
     }
+}
 
+#[allow(clippy::needless_pass_by_value)]
+fn gather_window_resize(
+    picking_manager: Res<'_, PickingManager>,
+    mut window_resized_events: EventReader<'_, '_, WindowResized>,
+) {
     for window_resized_event in window_resized_events.iter() {
         picking_manager.set_screen_rect(&Vec2::new(
             window_resized_event.width,
@@ -154,6 +163,7 @@ fn update_manipulator_component(
         &CameraComponent,
         (Without<PickedComponent>, Without<ManipulatorComponent>),
     >,
+    q_render_surfaces: Query<'_, '_, &RenderSurface>,
     mut picked_query: Query<
         '_,
         '_,
@@ -201,16 +211,25 @@ fn update_manipulator_component(
                 let (base_transform, picking_pos) = picking_manager.base_picking_data();
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
-
                 if !q_cameras.is_empty() {
-                    *transform = manipulator_manager.manipulate_entity(
-                        active_manipulator_part,
-                        &base_transform,
-                        q_cameras[0],
-                        picking_pos,
-                        picking_manager.screen_rect(),
-                        picking_manager.current_cursor_pos(),
-                    );
+                    for render_surface in q_render_surfaces.iter() {
+                        let mut screen_rect = picking_manager.screen_rect();
+                        if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
+                            screen_rect = Vec2::new(
+                                render_surface.extents().width() as f32,
+                                render_surface.extents().height() as f32,
+                            );
+                        }
+
+                        *transform = manipulator_manager.manipulate_entity(
+                            active_manipulator_part,
+                            &base_transform,
+                            q_cameras[0],
+                            picking_pos,
+                            screen_rect,
+                            picking_manager.current_cursor_pos(),
+                        );
+                    }
                 }
             } else if update_manip_entity {
                 picking_manager.set_manip_entity(entity, &transform);

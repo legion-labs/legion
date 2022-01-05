@@ -18,7 +18,7 @@ use crate::{
     RenderContext, RenderHandle, Renderer,
 };
 
-use lgn_math::Vec3;
+use lgn_math::{Vec2, Vec3};
 
 #[derive(Clone, Copy)]
 pub(crate) struct PickingData {
@@ -316,7 +316,14 @@ impl PickingRenderPass {
                 view_proj_matrix.write_cols_to_slice(&mut constant_data[0..]);
                 inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
 
-                let screen_rect = picking_manager.screen_rect();
+                let mut screen_rect = picking_manager.screen_rect();
+                if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
+                    screen_rect = Vec2::new(
+                        render_surface.extents().width() as f32,
+                        render_surface.extents().height() as f32,
+                    );
+                }
+
                 constant_data[32] = screen_rect.x;
                 constant_data[33] = screen_rect.y;
                 constant_data[34] = 1.0 / screen_rect.x;
