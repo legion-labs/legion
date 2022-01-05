@@ -13,6 +13,8 @@ pub struct MonorepoConfig {
     pub clippy: Clippy,
     pub rustdoc: RustDoc,
     pub cargo_installs: HashMap<String, CargoInstallation>,
+    pub dependencies: Dependencies,
+    pub crate_attributes: CrateAttributes,
 }
 
 impl MonorepoConfig {
@@ -35,10 +37,6 @@ impl MonorepoConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct PackageConfig {}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
 pub struct CargoConfig {
     pub sccache: Option<Sccache>,
 }
@@ -48,7 +46,6 @@ pub struct CargoConfig {
 pub struct CargoInstalls {
     pub installer: CargoInstallation,
 }
-
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Sccache {
@@ -72,6 +69,48 @@ pub struct Sccache {
     pub public: Option<bool>,
     /// Extra environment variables to set for the sccache server.
     pub envs: Option<Vec<(String, String)>>,
+}
+
+/// Dependencies lints configurations
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Dependencies {
+    pub bans: Vec<DependencyBan>,
+}
+
+/// Additional dependencies
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct DependencyBan {
+    pub name: String,
+    pub version: String,
+    pub suggestion: String,
+    pub exceptions: Option<Vec<String>>,
+}
+
+/// Crate attributes lints configurations
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct CrateAttributes {
+    pub name: NameAttribute,
+    pub license: LicenseAttribute,
+    pub edition: String,
+}
+
+/// Name attribute lint configurations
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct NameAttribute {
+    name_pattern: String,
+    globs: Vec<String>,
+}
+
+/// License attribute lint configurations
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct LicenseAttribute {
+    spdx: String,
+    globs: Vec<String>,
 }
 
 ///

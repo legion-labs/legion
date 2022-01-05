@@ -31,6 +31,7 @@ toml = "0.5.8"
 toml_edit = "0.10"
 
 # WIP for files in the repo but not yet included in the tree.
+# globset = "0.4.8"
 # cargo_toml = "0.10"
 # sha2 = "0.10.0"
 # tinytemplate = "1.2.1"
