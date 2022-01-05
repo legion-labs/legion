@@ -130,7 +130,11 @@ pub fn build_web_app() -> Result<()> {
             });
     } else {
         std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write("frontend/dist/index.html", "pnpm missing from path").unwrap();
+        std::fs::write(
+            "frontend/dist/index.html",
+            "pnpm missing from path, please run a clean build after installing it",
+        )
+        .unwrap();
         println!("cargo:rerun-if-env-changed=PATH");
     }
     Ok(())
