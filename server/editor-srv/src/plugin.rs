@@ -10,7 +10,13 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system_to_stage(StartupStage::PostStartup, Self::setup);
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::setup
+                .exclusive_system()
+                .after(lgn_data_runtime::AssetRegistryScheduling::AssetRegistryCreated)
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        );
     }
 }
 

@@ -30,10 +30,21 @@ pub use test_entity::*;
 mod transform_component;
 pub use transform_component::*;
 
-pub fn register_resource_types(registry: &mut lgn_data_offline::resource::ResourceRegistryOptions) {
-    registry
+pub fn register_resource_types(
+    resource_registry: &mut lgn_data_offline::resource::ResourceRegistryOptions,
+) -> &mut lgn_data_offline::resource::ResourceRegistryOptions {
+    resource_registry
         .add_type_mut::<DebugCube>()
         .add_type_mut::<EntityDc>()
         .add_type_mut::<InstanceDc>()
-        .add_type_mut::<TestEntity>();
+        .add_type_mut::<TestEntity>()
+}
+pub fn add_loaders(
+    asset_registry: &mut lgn_data_runtime::AssetRegistryOptions,
+) -> &mut lgn_data_runtime::AssetRegistryOptions {
+    asset_registry
+        .add_loader_mut::<DebugCube>()
+        .add_loader_mut::<EntityDc>()
+        .add_loader_mut::<InstanceDc>()
+        .add_loader_mut::<TestEntity>()
 }

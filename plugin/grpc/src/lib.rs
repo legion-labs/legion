@@ -70,6 +70,12 @@ use lgn_online::grpc::{
 use lgn_telemetry::warn;
 use tonic::transport::NamedService;
 
+/// Label to use for scheduling systems for GRPC Service registration
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum GRPCPluginScheduling {
+    StartRpcServer,
+}
+
 pub struct GRPCPluginSettings {
     pub grpc_server_addr: SocketAddr,
     multiplexer_service_builder: MultiplexerServiceBuilder,
@@ -105,8 +111,13 @@ pub struct GRPCPlugin;
 
 impl Plugin for GRPCPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GRPCPluginSettings>();
-        app.add_startup_system(Self::start_grpc_server);
+        app.init_resource::<GRPCPluginSettings>()
+            .add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                Self::start_grpc_server
+                    .exclusive_system()
+                    .label(GRPCPluginScheduling::StartRpcServer),
+            );
     }
 }
 

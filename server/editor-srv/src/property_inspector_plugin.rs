@@ -26,6 +26,7 @@ use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, DataManager, LockContext, Transaction, UpdatePropertyOperation,
 };
+use lgn_ecs::prelude::*;
 
 struct PropertyInspectorRPC {
     data_manager: Arc<Mutex<DataManager>>,
@@ -48,20 +49,25 @@ fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
 
 impl Plugin for PropertyInspectorPlugin {
     fn build(&self, app: &mut App) {
-        let data_manager = app
-            .world
-            .get_resource::<Arc<Mutex<DataManager>>>()
-            .expect("ResourceBrowser requires DataManager resource");
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::setup
+                .exclusive_system()
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        );
+    }
+}
 
+impl PropertyInspectorPlugin {
+    fn setup(
+        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
+    ) {
         let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
             data_manager: data_manager.clone(),
         });
-
-        app.world
-            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .expect("the editor plugin requires the gRPC plugin")
-            .into_inner()
-            .register_service(property_inspector);
+        grpc_settings.register_service(property_inspector);
     }
 }
 

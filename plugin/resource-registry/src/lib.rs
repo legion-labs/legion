@@ -74,6 +74,15 @@ use tokio::sync::Mutex;
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
 
+pub struct ResourceRegistryCreated {}
+
+/// Label to use for scheduling systems that require the `ResourceRegistry`
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum ResourceRegistryPluginScheduling {
+    /// AssetRegistry has been created
+    ResourceRegistryCreated,
+}
+
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
@@ -81,7 +90,8 @@ impl Plugin for ResourceRegistryPlugin {
             StartupStage::PostStartup,
             Self::post_setup
                 .exclusive_system()
-                .after(AssetRegistryScheduling::AssetRegistryCreated),
+                .after(AssetRegistryScheduling::AssetRegistryCreated)
+                .label(ResourceRegistryPluginScheduling::ResourceRegistryCreated),
         );
     }
 }

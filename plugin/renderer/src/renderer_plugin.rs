@@ -93,13 +93,11 @@ impl Plugin for RendererPlugin {
 fn register_asset_loaders(mut registry: NonSendMut<'_, AssetRegistryOptions>) {
     sample_data_runtime::add_loaders(&mut registry);
     lgn_graphics_runtime::add_loaders(&mut registry);
-    generic_data::runtime::add_loaders(&mut registry);
 }
 
 fn register_resource_types(mut registry: ResMut<'_, ResourceRegistryOptions>) {
     sample_data_offline::register_resource_types(&mut registry);
     lgn_graphics_offline::register_resource_types(&mut registry);
-    generic_data::offline::register_resource_types(&mut registry);
 }
 
 fn init_manipulation_manager(

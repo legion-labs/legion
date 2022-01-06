@@ -26,9 +26,6 @@ lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 
 sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }
 sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }
-generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
-    "runtime",
-] }
 
 anyhow = "1.0"
 bumpalo = "3.8"

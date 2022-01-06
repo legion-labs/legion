@@ -10,12 +10,12 @@ lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
 lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
 lgn-data-model = { path = "../../lib/data-model", version = "0.1.0" }
-lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
 lgn-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
 lgn-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
@@ -33,6 +33,11 @@ clap = { version = "3.0", features = ["derive"] }
 anyhow = "1.0"
 serde_json = "1.0"
 erased-serde = "0.3.12"
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+
 
 [dev-dependencies]
 tempfile = "3.2.0"
@@ -40,9 +45,6 @@ lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 lgn-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
 lgn-compiler-testentity = { path = "../../compiler/testentity" }
-generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
-    "offline",
-] }
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0", features = [

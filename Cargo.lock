@@ -2783,10 +2783,13 @@ dependencies = [
  "erased-serde",
  "generic-data",
  "lazy_static",
+ "lgn-app",
  "lgn-data-codegen",
+ "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
@@ -4633,7 +4636,6 @@ dependencies = [
  "dolly",
  "egui",
  "epaint",
- "generic-data",
  "lgn-app",
  "lgn-build-utils",
  "lgn-data-offline",
@@ -4665,7 +4667,6 @@ dependencies = [
 name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
- "generic-data",
  "lgn-app",
  "lgn-content-store",
  "lgn-data-build",
