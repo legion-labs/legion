@@ -584,7 +584,7 @@ mod tests {
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            t: refs_resource::TestResource::TYPE,
+            kind: refs_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);
@@ -640,7 +640,7 @@ mod tests {
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            t: refs_resource::TestResource::TYPE,
+            kind: refs_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);

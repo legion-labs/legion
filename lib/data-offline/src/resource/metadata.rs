@@ -1,6 +1,7 @@
 use std::{fmt, hash::Hash};
 
 use lgn_content_store::Checksum;
+use lgn_data_runtime::ResourceType;
 use lgn_utils::DefaultHash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -75,6 +76,8 @@ impl fmt::Display for ResourceHash {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) name: ResourcePathName,
+    pub(crate) type_name: String,
+    pub(crate) type_id: ResourceType,
     pub(crate) dependencies: Vec<ResourcePathId>,
     pub(crate) content_checksum: Checksum, // this needs to be updated on every asset change.
 }
@@ -86,11 +89,15 @@ impl Metadata {
 
     pub(crate) fn new_with_dependencies(
         name: ResourcePathName,
+        type_name: &str,
+        type_id: ResourceType,
         content_checksum: Checksum,
         deps: &[ResourcePathId],
     ) -> Self {
         Self {
             name,
+            type_name: type_name.to_string(),
+            type_id,
             dependencies: deps.to_vec(),
             content_checksum,
         }

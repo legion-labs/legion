@@ -72,4 +72,8 @@ where
     pub fn get_properties(&self) -> HashMap<String, String> {
         self.properties.clone()
     }
+
+    pub fn properties(&self) -> &HashMap<String, String> {
+        &self.properties
+    }
 }

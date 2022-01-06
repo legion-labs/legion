@@ -1,6 +1,8 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use lgn_telemetry::trace_scope;
+
 use crate::{
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
     context::Context,
@@ -19,6 +21,7 @@ pub struct Args {
 }
 
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
+    trace_scope!();
     let mut pass_through_args = vec![];
     pass_through_args.extend(args.args.clone());
 

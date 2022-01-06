@@ -31,6 +31,11 @@ pub trait ResourceProcessor {
     /// building.
     fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId>;
 
+    /// Return the name of the Resource type that the processor can process.
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
         &mut self,

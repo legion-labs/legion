@@ -254,12 +254,12 @@ impl EguiPass {
                 .collect();
 
             let sub_allocation =
-                transient_allocator.copy_data(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+                transient_allocator.copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
             cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
             let sub_allocation =
-                transient_allocator.copy_data(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
+                transient_allocator.copy_data_slice(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
 
             cmd_buffer
                 .bind_buffer_suballocation_as_index_buffer(&sub_allocation, IndexType::Uint32);

@@ -63,6 +63,7 @@ fn create_resource(
     project
         .add_resource(
             name,
+            refs_resource::TestResource::TYPENAME,
             refs_resource::TestResource::TYPE,
             &resource_b,
             resources,
@@ -119,6 +120,7 @@ fn compile_change_no_deps() {
         let resource_id = project
             .add_resource(
                 ResourcePathName::new("resource"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -277,6 +279,7 @@ fn intermediate_resource() {
         project
             .add_resource(
                 ResourcePathName::new("resource"),
+                text_resource::TextResource::TYPENAME,
                 text_resource::TextResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -467,6 +470,7 @@ fn named_path_cache_use() {
         project
             .add_resource(
                 ResourcePathName::new("resource"),
+                multitext_resource::MultiTextResource::TYPENAME,
                 multitext_resource::MultiTextResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -700,6 +704,7 @@ fn link() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,
@@ -718,6 +723,7 @@ fn link() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
@@ -785,6 +791,7 @@ fn verify_manifest() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resources
                     .new_resource(refs_resource::TestResource::TYPE)
@@ -806,6 +813,7 @@ fn verify_manifest() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,

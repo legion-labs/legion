@@ -88,6 +88,10 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 vec![]
             }
 
+            fn get_resource_type_name(&self) -> Option<&'static str> {
+                Some(#offline_identifier::TYPENAME)
+            }
+
             fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).

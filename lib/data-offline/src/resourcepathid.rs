@@ -42,23 +42,31 @@ impl Transform {
 /// runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use lgn_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
-/// # use lgn_data_runtime::ResourceType;
-/// # use std::path::PathBuf;
-/// # let resources = ResourceRegistryOptions::new().create_registry();
-/// # let mut resources = resources.lock().unwrap();
-/// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
-/// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
-/// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
-/// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
+/// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+/// use lgn_data_runtime::ResourceType;
+/// use lgn_data_offline::ResourcePathId;
+/// use std::path::PathBuf;
+/// let resources = ResourceRegistryOptions::new().create_registry();
+/// let mut resources = resources.lock().unwrap();
+/// let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
+/// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
+/// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
 /// // create a resource and add it to the project
-/// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
-/// let resource_id = project.add_resource(ResourcePathName::new("new resource"),
-///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
-///
+/// let source_geometry_type = ResourceType::new(SOURCE_GEOMETRY.as_bytes());
+/// let resource_handle = resources.new_resource(source_geometry_type).unwrap();
+/// let resource_id = project
+///     .add_resource(
+///         ResourcePathName::new("new resource"),
+///         SOURCE_GEOMETRY,
+///         source_geometry_type,
+///         &resource_handle,
+///         &mut resources,
+///     )
+///     .unwrap();
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
-/// let target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
+/// let _target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
 /// ```
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {
@@ -220,7 +228,7 @@ impl ResourcePathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ResourceType {
         if self.transforms.is_empty() {
-            self.source.t
+            self.source.kind
         } else {
             self.transforms.last().unwrap().0
         }
@@ -251,7 +259,7 @@ impl ResourcePathId {
     pub fn last_transform(&self) -> Option<Transform> {
         match self.transforms.len() {
             0 => None,
-            1 => Some(Transform::new(self.source.t, self.transforms[0].0)),
+            1 => Some(Transform::new(self.source.kind, self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some(Transform::new(
@@ -281,7 +289,7 @@ impl ResourcePathId {
             self.source
         } else {
             ResourceTypeAndId {
-                t: self.content_type(),
+                kind: self.content_type(),
                 id: ResourceId::from_obj(&self),
             }
         }
@@ -297,7 +305,7 @@ impl ResourcePathId {
     /// # use lgn_data_offline::{ResourcePathId};
     /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
     /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
-    /// let source = ResourceTypeAndId { t: FOO_TYPE, id: ResourceId::new() };
+    /// let source = ResourceTypeAndId { kind: FOO_TYPE, id: ResourceId::new() };
     /// let path = ResourcePathId::from(source).push(BAR_TYPE).push_named(FOO_TYPE, "parameter");
     ///
     /// let mut transforms = path.transforms();
@@ -329,7 +337,7 @@ impl<'a> Iterator for Transforms<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.target_index < self.path_id.transforms.len() {
             let source = if self.target_index == 0 {
-                self.path_id.source.t
+                self.path_id.source.kind
             } else {
                 self.path_id.transforms[self.target_index - 1].0
             };
@@ -355,7 +363,7 @@ mod tests {
     #[test]
     fn simple_path() {
         let source = ResourceTypeAndId {
-            t: test_resource::TestResource::TYPE,
+            kind: test_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -372,7 +380,7 @@ mod tests {
     #[test]
     fn named_path() {
         let source = ResourceTypeAndId {
-            t: test_resource::TestResource::TYPE,
+            kind: test_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -388,7 +396,7 @@ mod tests {
         let foo_type = ResourceType::new(b"foo");
         let bar_type = ResourceType::new(b"bar");
         let source = ResourceTypeAndId {
-            t: foo_type,
+            kind: foo_type,
             id: ResourceId::new(),
         };
 

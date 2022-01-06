@@ -100,6 +100,9 @@ impl ResourceProcessor for EntityDcProcessor {
     ) -> Vec<lgn_data_offline::ResourcePathId> {
         vec![]
     }
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        Some(EntityDc::TYPENAME)
+    }
     fn write_resource(
         &mut self,
         resource: &dyn Any,

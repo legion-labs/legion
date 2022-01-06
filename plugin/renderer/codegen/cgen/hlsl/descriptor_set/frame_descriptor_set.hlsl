@@ -3,7 +3,7 @@
 #ifndef DESCRIPTORSET_FRAMEDESCRIPTORSET
 #define DESCRIPTORSET_FRAMEDESCRIPTORSET
 
-	#include "../c_gen_type/layout_a.hlsl"
+	#include "../cgen_type/layout_a.hlsl"
 	
 	[[vk::binding(0, 1)]]
 	SamplerState  smp;

@@ -222,18 +222,18 @@ impl TmpRenderPass {
         }
 
         let directional_lights_buffer_view = transient_allocator
-            .copy_data(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .copy_data_slice(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let omnidirectional_lights_buffer_view = transient_allocator
-            .copy_data(
+            .copy_data_slice(
                 &omnidirectional_lights_data,
                 ResourceUsage::AS_SHADER_RESOURCE,
             )
             .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
 
         let spotlights_buffer_view = transient_allocator
-            .copy_data(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
+            .copy_data_slice(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
 
         for (_index, (static_mesh_component, picked_component, manipulator_component)) in
@@ -269,30 +269,9 @@ impl TmpRenderPass {
             constant_data[44] = light_settings.shininess;
 
             let sub_allocation =
-                transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
-
-            /* WIP
-            {
-                let bump_allocator = render_context.bump_allocator();
-
-                let descriptor_heap_partition = render_context
-                    .descriptor_pool()
-                    .descriptor_heap_partition_mut();
-
-              let mut ds_data = FakeDescriptorSetData::new(
-                    render_context.cgen_runtime(),
-                    bump_allocator.bumpalo(),
-                    descriptor_heap_partition,
-                );
-
-
-                ds_data.set_constant_buffer(FakeDescriptorID::A, &const_buffer_view);
-
-                let descriptor_handle = ds_data.build(render_context.renderer().device_context());
-            }
-            */
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
@@ -353,6 +332,18 @@ impl TmpRenderPass {
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
             cmd_buffer.draw(static_mesh_component.num_verticies, 0);
+
+            /*/ WIP
+            {
+                let mut pipeline_data =
+                    cgen::pipeline_layout::TmpPipelineLayout::new(&self.pipeline);
+                render_context.populate_pipeline_data(&mut pipeline_data);
+                pipeline_data.set_push_constant(&cgen::cgen_type::PushConstantData {
+                    color: Default::default(),
+                });
+                cmd_buffer.draw_with_data(&pipeline_data, static_mesh_component.num_verticies, 0);
+            }
+            */
         }
 
         cmd_buffer.end_render_pass();

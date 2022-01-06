@@ -3,9 +3,18 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanDescriptorHeap, VulkanDescriptorHeapPartition};
 use crate::{
-    deferred_drop::Drc, DescriptorHeapDef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext,
-    GfxResult,
+    deferred_drop::Drc, DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
+    DescriptorSetWriter, DeviceContext, GfxResult,
 };
+
+//
+// DescriptorSetDataProvider
+//
+
+pub trait DescriptorSetDataProvider {
+    fn layout(&self) -> &'static DescriptorSetLayout;
+    fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'_>];
+}
 
 //
 // DescriptorHeapInner
@@ -125,18 +134,6 @@ impl DescriptorHeapPartition {
         })
     }
 
-    pub fn write_descriptor_set<'frame>(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.write_descriptor_set_platform(descriptor_set_layout, bump)
-    }
-
     pub fn reset(&self) -> GfxResult<()> {
         assert!(self.inner.transient);
 
@@ -145,5 +142,29 @@ impl DescriptorHeapPartition {
 
         #[cfg(any(feature = "vulkan"))]
         self.reset_platform()
+    }
+
+    pub fn get_writer<'frame>(
+        &self,
+        descriptor_set_layout: &DescriptorSetLayout,
+        bump: &'frame bumpalo::Bump,
+    ) -> GfxResult<DescriptorSetWriter<'frame>> {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(any(feature = "vulkan"))]
+        self.get_writer_platform(descriptor_set_layout, bump)
+    }
+
+    pub fn write<'frame>(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+        bump: &'frame bumpalo::Bump,
+    ) -> GfxResult<DescriptorSetHandle> {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(any(feature = "vulkan"))]
+        self.write_platform(descriptor_set, bump)
     }
 }

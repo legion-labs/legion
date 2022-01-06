@@ -70,7 +70,7 @@ where
         return Ok(None);
     }
     Ok(Some(Reference::Passive(ResourceTypeAndId {
-        t: ResourceType::from_raw(underlying_type),
+        kind: ResourceType::from_raw(underlying_type),
         id: ResourceId::from_raw(underlying_id),
     })))
 }

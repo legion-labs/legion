@@ -11,7 +11,7 @@ use crate::ResourceTypeAndId;
 #[derive(Serialize, Deserialize)]
 pub struct CompiledAsset {
     /// The id of the asset.
-    pub guid: ResourceTypeAndId,
+    pub resource_id: ResourceTypeAndId,
     /// The checksum of the asset.
     pub checksum: Checksum,
     /// The size of the asset.
@@ -60,12 +60,12 @@ impl Serialize for Manifest {
         let mut entries: Vec<CompiledAsset> = Vec::new();
         for (guid, (checksum, size)) in &self.0.pin() {
             entries.push(CompiledAsset {
-                guid: *guid,
+                resource_id: *guid,
                 checksum: *checksum,
                 size: *size,
             });
         }
-        entries.sort_by(|a, b| a.guid.partial_cmp(&b.guid).unwrap());
+        entries.sort_by(|a, b| a.resource_id.partial_cmp(&b.resource_id).unwrap());
         entries.serialize(serializer)
     }
 }
@@ -81,7 +81,7 @@ impl<'de> Deserialize<'de> for Manifest {
             manifest
                 .0
                 .pin()
-                .insert(asset.guid, (asset.checksum, asset.size));
+                .insert(asset.resource_id, (asset.checksum, asset.size));
         }
         Ok(manifest)
     }

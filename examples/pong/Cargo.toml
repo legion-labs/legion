@@ -6,5 +6,15 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-# Legion engine
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-input = { path = "../../plugin/input", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "runtime",
+] }
 runtime-srv = { path = "../../server/runtime-srv", version = "0.1.0" }
+
+dolly = "0.1.4"

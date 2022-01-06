@@ -40,14 +40,21 @@ impl BuildManager {
     ) -> anyhow::Result<Vec<ResourceTypeAndId>> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
-        let derived_id =
-            ResourcePathId::from(resource_id).push(ResourceType::new(b"runtime_debugcube"));
+        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_debugcube") {
+            ResourceType::new(b"runtime_debugcube")
+        } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
+            ResourceType::new(b"runtime_testentity")
+        } else {
+            resource_id.kind
+        };
 
-        self.build.source_pull().unwrap();
+        let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
+
+        self.build.source_pull()?;
         match self.build.compile(derived_id, None, &self.compile_env) {
             Ok(output) => {
                 println!(
-                    "Data build {} Succeeded ({:?} ms)",
+                    "Data build {} Succeeded ({:?})",
                     resource_id,
                     start.elapsed(),
                 );

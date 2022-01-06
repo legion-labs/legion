@@ -5,7 +5,7 @@ use crate::{
     context::Context,
     Result,
 };
-use lgn_telemetry::info;
+use lgn_telemetry::{info, trace_scope};
 use std::ffi::OsString;
 
 #[derive(Debug, clap::Args)]
@@ -37,6 +37,7 @@ pub fn convert_args(args: &Args) -> Vec<OsString> {
 }
 
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
+    trace_scope!();
     info!("Build plan: {}", args.build_plan);
 
     let direct_args = convert_args(args);

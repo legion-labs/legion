@@ -1,8 +1,0 @@
-(
-    name: "prefab/props/cube_group.ent",
-    dependencies: [
-        "prefab/props/cube_group_cube_1.ent.ins",
-        "prefab/props/cube_group_cube_2.ent.ins",
-    ],
-    content_checksum: "e4ffb79191e8990a4c74b62ff3dda75a16d05c05e862028ac33b920b508c5218",
-)

@@ -5,7 +5,7 @@ use lgn_data_model::{
     TypeDefinition,
 };
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_data_transaction::{DataManager, LockContext, Transaction};
+use lgn_data_transaction::{DataManager, LockContext, Transaction, UpdatePropertyOperation};
 use lgn_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
@@ -130,7 +130,7 @@ impl Editor for GRPCServer {
         // properties
         if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
         {
             if let TypeDefinition::Struct(struct_def) = reflection.get_type() {
                 let properties: anyhow::Result<Vec<ResourceProperty>> = struct_def
@@ -186,14 +186,15 @@ impl Editor for GRPCServer {
         let mut data_manager = self.data_manager.lock().await;
         {
             let mut transaction = Transaction::new();
-            request
-                .property_updates
-                .iter()
-                .try_for_each(|update| -> anyhow::Result<()> {
-                    let value = std::str::from_utf8(update.value.as_slice())?;
-                    transaction.update_property(resource_id, update.name.as_str(), value)
-                })
-                .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+            for update in &request.property_updates {
+                transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                    resource_id,
+                    update.name.as_str(),
+                    std::str::from_utf8(update.value.as_slice())
+                        .map_err(|err| Status::internal(err.to_string()))?,
+                ));
+            }
+
             data_manager
                 .commit_transaction(transaction)
                 .await
@@ -208,7 +209,7 @@ impl Editor for GRPCServer {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request

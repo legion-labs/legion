@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::{fmt, hash::Hash, str::FromStr};
 
 use lgn_utils::DefaultHash;
+use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
@@ -199,10 +200,10 @@ impl<'de> Deserialize<'de> for ResourceId {
 
 /// FIXME: This should only be a temporary struct, we should be using the
 /// `ResourceId` directly.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash)]
 pub struct ResourceTypeAndId {
     /// The associated `ResourceType`.
-    pub t: ResourceType,
+    pub kind: ResourceType,
 
     /// The associated `ResourceId`.
     pub id: ResourceId,
@@ -216,15 +217,46 @@ impl FromStr for ResourceTypeAndId {
             .trim_matches(|p| p == '(' || p == ')')
             .split(',')
             .collect();
-        let t = pair[0].parse::<ResourceType>()?;
+        let kind = pair[0].parse::<ResourceType>()?;
         let id = pair[1].parse::<ResourceId>()?;
-        Ok(Self { t, id })
+        Ok(Self { kind, id })
     }
 }
 
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("({},{})", self.t, self.id))
+        f.write_fmt(format_args!("({},{})", self.kind, self.id))
+    }
+}
+
+impl Serialize for ResourceTypeAndId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            serializer.serialize_str(&format!("{}", self))
+        } else {
+            let mut tup = serializer.serialize_tuple(2)?;
+            tup.serialize_element(&self.kind)?;
+            tup.serialize_element(&self.id)?;
+            tup.end()
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ResourceTypeAndId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        if deserializer.is_human_readable() {
+            let kind_id = String::deserialize(deserializer)?;
+            Ok(Self::from_str(&kind_id).unwrap())
+        } else {
+            let (kind, id) = <(ResourceType, ResourceId)>::deserialize(deserializer)?;
+            Ok(Self { kind, id })
+        }
     }
 }
 

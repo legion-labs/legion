@@ -1,21 +1,25 @@
 use determinator::rules::PathMatch;
 use determinator::Determinator;
+use lgn_telemetry::trace_scope;
 
 use crate::context::Context;
 use crate::{action_step, Error, Result};
 
 pub fn run(ctx: &Context) -> Result<()> {
+    trace_scope!();
     action_step!("Monorepo", "Running rules determination");
     let git_cli = ctx.git_cli().map_err(|err| {
         err.with_explanation("changed-since` must be run within a project cloned from a git repo.")
     })?;
     let tracked_files = git_cli.tracked_files()?;
     let graph = ctx.package_graph().map(|new_graph| {
+        trace_scope!("feature_graph");
         // Initialize the feature graph since it will be required later on.
         new_graph.feature_graph();
         new_graph
     })?;
 
+    trace_scope!("match_paths");
     // we can use the same graph since match path actually does not use the old graph
     let mut determinator = Determinator::new(graph, graph);
     determinator

@@ -38,6 +38,7 @@ impl<'a> LockContext<'a> {
     }
 
     pub(crate) async fn save_changed_resources(&mut self) -> anyhow::Result<()> {
+        let mut need_flush = false;
         self.changed_resources
             .iter()
             .try_for_each(|resource_id| -> anyhow::Result<()> {
@@ -47,16 +48,26 @@ impl<'a> LockContext<'a> {
                         &handle,
                         &mut self.resource_registry,
                     )?;
+                    need_flush = true;
+                }
+                Ok(())
+            })?;
 
-                    match self.build.build_all_derived(*resource_id) {
-                        Ok(built_resources) => {
-                            for resource in built_resources {
-                                self.asset_registry.reload(resource);
-                            }
+        if need_flush {
+            self.project.flush()?;
+        }
+
+        self.changed_resources
+            .iter()
+            .try_for_each(|resource_id| -> anyhow::Result<()> {
+                match self.build.build_all_derived(*resource_id) {
+                    Ok(built_resources) => {
+                        for resource in built_resources {
+                            self.asset_registry.reload(resource);
                         }
-                        Err(e) => {
-                            error!("Error building resource derivations {:?}", e);
-                        }
+                    }
+                    Err(e) => {
+                        error!("Error building resource derivations {:?}", e);
                     }
                 }
                 Ok(())

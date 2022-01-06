@@ -78,14 +78,13 @@ mod lint;
 mod term;
 mod test;
 mod tools;
-mod utils;
 
 //mod sources;
 //mod hash;
 //mod package;
 
 use clap::{Parser, Subcommand};
-use lgn_telemetry::TelemetryThreadGuard;
+use lgn_telemetry::{trace_scope, TelemetryThreadGuard};
 use lgn_telemetry_sink::TelemetryGuard;
 
 use error::Error;
@@ -154,6 +153,8 @@ enum Commands {
 fn main() -> Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
+
+    trace_scope!();
 
     let args = Cli::parse();
     let ctx = context::Context::new()?;

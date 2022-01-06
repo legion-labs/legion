@@ -73,6 +73,9 @@ impl ResourceProcessor for InstanceDcProcessor {
     ) -> Vec<lgn_data_offline::ResourcePathId> {
         vec![]
     }
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        Some(InstanceDc::TYPENAME)
+    }
     fn write_resource(
         &mut self,
         resource: &dyn Any,

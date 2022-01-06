@@ -1,6 +1,4 @@
 #![allow(clippy::too_many_lines)]
-use std::{mem, ptr};
-
 use lgn_telemetry::trace;
 
 use super::internal;
@@ -333,21 +331,14 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn cmd_push_constants_platform<T: Sized>(
-        &self,
-        root_signature: &RootSignature,
-        constants: &T,
-    ) {
-        let constants_size = mem::size_of::<T>();
-        let constants_ptr = (constants as *const T).cast::<u8>();
+    pub(crate) fn cmd_push_constant_platform(&self, root_signature: &RootSignature, data: &[u8]) {
         unsafe {
-            let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
             self.inner.device_context.vk_device().cmd_push_constants(
                 self.inner.platform_command_buffer.vk_command_buffer,
                 root_signature.vk_pipeline_layout(),
                 ash::vk::ShaderStageFlags::ALL,
                 0,
-                data_slice,
+                data,
             );
         }
     }

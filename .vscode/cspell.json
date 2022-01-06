@@ -6,6 +6,7 @@
         "asft",
         "bincode",
         "Deserialization",
+        "determinator",
         "Graphviz",
         "thiserror",
         "xxhash"

@@ -687,7 +687,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
             if let Some(config) = config {
                 let (_build, project) = config.open().expect("open config");
                 let path_id = ResourcePathId::from(ResourceTypeAndId {
-                    t: asset_ref_type,
+                    kind: asset_ref_type,
                     id: asset_ref_id,
                 });
                 println!(
@@ -698,7 +698,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
                 println!(
                     "\t\treference: {}",
                     ResourceTypeAndId {
-                        t: asset_ref_type,
+                        kind: asset_ref_type,
                         id: asset_ref_id
                     }
                 );
@@ -735,9 +735,9 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
 
     let source_ty_pretty = config
         .type_map
-        .get(&rid.source_resource().t)
+        .get(&rid.source_resource().kind)
         .cloned()
-        .unwrap_or_else(|| rid.source_resource().t.to_string());
+        .unwrap_or_else(|| rid.source_resource().kind.to_string());
     output_text.push_str(&format!(" ({})", source_ty_pretty));
 
     for (_, target, name) in rid.transforms() {

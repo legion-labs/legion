@@ -4242,7 +4242,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "erased-serde",
  "generic-data",
+ "lgn-compiler-testentity",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -4339,6 +4341,7 @@ dependencies = [
  "lgn-utils",
  "raw-window-handle 0.4.2",
  "serde",
+ "strum 0.23.0",
  "vk-mem",
 ]
 
@@ -4816,6 +4819,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "json",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-transit",
@@ -6368,6 +6372,14 @@ dependencies = [
 name = "pong"
 version = "0.1.0"
 dependencies = [
+ "dolly",
+ "generic-data",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-math",
+ "lgn-renderer",
+ "lgn-transform",
  "runtime-srv",
 ]
 

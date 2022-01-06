@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanRootSignature;
 use crate::deferred_drop::Drc;
@@ -9,9 +11,11 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
+#[derive(Debug)]
 pub(crate) struct RootSignatureInner {
     device_context: DeviceContext,
     definition: RootSignatureDef,
+    hash: u64,
 
     #[cfg(feature = "vulkan")]
     pub(crate) platform_root_signature: VulkanRootSignature,
@@ -24,7 +28,7 @@ impl Drop for RootSignatureInner {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RootSignature {
     pub(crate) inner: Drc<RootSignatureInner>,
 }
@@ -38,9 +42,13 @@ impl RootSignature {
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
+        let mut hasher = fnv::FnvHasher::default();
+        definition.hash(&mut hasher);
+
         let inner = RootSignatureInner {
             device_context: device_context.clone(),
             definition: definition.clone(),
+            hash: hasher.finish(),
             #[cfg(any(feature = "vulkan"))]
             platform_root_signature,
         };
@@ -60,5 +68,11 @@ impl RootSignature {
 
     pub fn definition(&self) -> &RootSignatureDef {
         &self.inner.definition
+    }
+}
+
+impl PartialEq for RootSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.hash == other.inner.hash
     }
 }

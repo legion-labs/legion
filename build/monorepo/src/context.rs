@@ -3,6 +3,7 @@
 
 use camino::{Utf8Path, Utf8PathBuf};
 use guppy::graph::PackageGraph;
+use lgn_telemetry::trace_scope;
 use once_cell::sync::OnceCell;
 
 use crate::config::MonorepoConfig;
@@ -23,6 +24,7 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Result<Self> {
+        trace_scope!();
         const X_DEPTH: usize = 2;
         let workspace_root = Utf8Path::new(&env!("CARGO_MANIFEST_DIR"))
             .ancestors()
@@ -68,6 +70,7 @@ impl Context {
 
     pub fn package_graph(&self) -> Result<&PackageGraph> {
         self.package_graph.get_or_try_init(|| {
+            trace_scope!();
             let mut cmd = guppy::MetadataCommand::new();
             cmd.current_dir(self.workspace_root);
             guppy::graph::PackageGraph::from_command(&mut cmd)
@@ -76,8 +79,10 @@ impl Context {
     }
 
     pub fn git_cli(&self) -> Result<&GitCli> {
-        self.git_cli
-            .get_or_try_init(|| GitCli::new(self.workspace_root()))
+        self.git_cli.get_or_try_init(|| {
+            trace_scope!();
+            GitCli::new(self.workspace_root())
+        })
     }
 
     pub fn workspace_root(&self) -> &'static Utf8Path {
@@ -110,6 +115,7 @@ impl Context {
     where
         B: Default + Extend<&'a str>,
     {
+        trace_scope!();
         let workspace = self.package_graph()?.workspace();
         let (known, unknown) = names
             .into_iter()

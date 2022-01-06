@@ -1,0 +1,10 @@
+{
+  "name": "/prefab/props/cube_group.ent",
+  "type_name": "offline_entity",
+  "type_id": "1c0ff9e497b0740f",
+  "dependencies": [
+    "(91dc60590cba171e,7d0e930c-eb69-45c4-a695-fcb787f3700f)|e5c099cc30495fed",
+    "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)|e5c099cc30495fed"
+  ],
+  "content_checksum": "1ba3766f112d1fc35fbc2b78f01aca8e"
+}

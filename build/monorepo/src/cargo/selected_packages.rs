@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use clap::Args;
 use guppy::graph::DependencyDirection;
-use lgn_telemetry::warn;
+use lgn_telemetry::{trace_scope, warn};
 
 use crate::changed_since::changed_since_impl;
 use crate::context::Context;
@@ -36,6 +36,7 @@ pub struct SelectedPackageArgs {
 
 impl SelectedPackageArgs {
     pub fn to_selected_packages<'a>(&'a self, ctx: &'a Context) -> Result<SelectedPackages<'a>> {
+        trace_scope!();
         // Mutually exclusive options -- only one of these can be provided.
         {
             let mut exclusive = vec![];

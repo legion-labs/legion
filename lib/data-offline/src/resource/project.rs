@@ -176,6 +176,22 @@ impl Project {
         })
     }
 
+    /// Reload a project
+    pub fn reload(&mut self) -> Result<(), Error> {
+        let index_path = Self::root_to_index_path(&self.project_dir);
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .append(false)
+            .open(&index_path)
+            .map_err(|_e| Error::NotFound)?;
+
+        self.file = file;
+        self.db = serde_json::from_reader(&self.file)
+            .map_err(|e| Error::ParseError(index_path.clone(), e))?;
+        Ok(())
+    }
+
     /// Deletes the project by deleting the index file.
     pub fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
@@ -237,15 +253,16 @@ impl Project {
     pub fn add_resource(
         &mut self,
         name: ResourcePathName,
+        kind_name: &str,
         kind: ResourceType,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         let type_id = ResourceTypeAndId {
-            t: kind,
+            kind,
             id: ResourceId::new(),
         };
-        self.add_resource_with_id(name, kind, type_id, handle, registry)
+        self.add_resource_with_id(name, kind_name, kind, type_id, handle, registry)
     }
 
     /// Add a given resource of a given type and id with an associated `.meta`.
@@ -259,6 +276,7 @@ impl Project {
     pub fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
+        kind_name: &str,
         kind: ResourceType,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
@@ -289,7 +307,13 @@ impl Project {
             Error::IOError(meta_path, e)
         })?;
 
-        let metadata = Metadata::new_with_dependencies(name, content_checksum, &build_dependencies);
+        let metadata = Metadata::new_with_dependencies(
+            name,
+            kind_name,
+            kind,
+            content_checksum,
+            &build_dependencies,
+        );
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         self.db.local_resources.push(type_id);
@@ -336,7 +360,7 @@ impl Project {
                 .map_err(|e| Error::IOError(resource_path.clone(), e))?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(type_id.t, handle, &mut resource_file)
+                .serialize_resource(type_id.kind, handle, &mut resource_file)
                 .map_err(|e| Error::IOError(resource_path.clone(), e))?;
             build_deps
         };
@@ -372,7 +396,7 @@ impl Project {
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::IOError(resource_path.clone(), e))?;
         let handle = resources
-            .deserialize_resource(type_id.t, &mut resource_file)
+            .deserialize_resource(type_id.kind, &mut resource_file)
             .map_err(|e| Error::IOError(resource_path, e))?;
         Ok(handle)
     }
@@ -395,6 +419,12 @@ impl Project {
         Ok(meta.name)
     }
 
+    /// Returns the type name of the resource from its `.meta` file.
+    pub fn resource_type_name(&self, type_id: ResourceTypeAndId) -> Result<String, Error> {
+        let meta = self.read_meta(type_id)?;
+        Ok(meta.type_name)
+    }
+
     /// Returns the root directory where resources are located.
     pub fn resource_dir(&self) -> PathBuf {
         self.resource_dir.clone()
@@ -402,13 +432,13 @@ impl Project {
 
     fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(type_id.to_string());
+        path.push(type_id.id.to_string());
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(type_id.to_string())
+        self.resource_dir().join(type_id.id.to_string())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
@@ -491,7 +521,8 @@ impl Project {
         self.db.pre_serialize();
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
+    /// Flush the db to the project.index
+    pub fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
         self.pre_serialize();
@@ -544,11 +575,11 @@ mod tests {
         root
     }
 
-    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
-    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
-    const RESOURCE_GEOMETRY: ResourceType = ResourceType::new(b"geometry");
-    const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
-    const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
+    const RESOURCE_TEXTURE: &str = "texture";
+    const RESOURCE_MATERIAL: &str = "material";
+    const RESOURCE_GEOMETRY: &str = "geometry";
+    const RESOURCE_SKELETON: &str = "skeleton";
+    const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
     struct NullResource {
@@ -629,29 +660,48 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
         let resources_arc = ResourceRegistryOptions::new()
-            .add_type_processor(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
-            .add_type_processor(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
-            .add_type_processor(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
-            .add_type_processor(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
-            .add_type_processor(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
+            .add_type_processor(
+                ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
+                Box::new(NullResourceProc {}),
+            )
+            .add_type_processor(
+                ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
+                Box::new(NullResourceProc {}),
+            )
+            .add_type_processor(
+                ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
+                Box::new(NullResourceProc {}),
+            )
+            .add_type_processor(
+                ResourceType::new(RESOURCE_SKELETON.as_bytes()),
+                Box::new(NullResourceProc {}),
+            )
+            .add_type_processor(
+                ResourceType::new(RESOURCE_ACTOR.as_bytes()),
+                Box::new(NullResourceProc {}),
+            )
             .create_registry();
 
         let mut resources = resources_arc.lock().unwrap();
+        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
                 RESOURCE_TEXTURE,
-                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                texture_type,
+                &resources.new_resource(texture_type).unwrap(),
                 &mut resources,
             )
             .unwrap();
 
+        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(RESOURCE_MATERIAL)
+            .new_resource(material_type)
             .unwrap()
             .typed::<NullResource>();
         material
@@ -663,13 +713,15 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("body.material"),
                 RESOURCE_MATERIAL,
+                material_type,
                 &material,
                 &mut resources,
             )
             .unwrap();
 
+        let geometry_type = ResourceType::new(RESOURCE_GEOMETRY.as_bytes());
         let geometry = resources
-            .new_resource(RESOURCE_GEOMETRY)
+            .new_resource(geometry_type)
             .unwrap()
             .typed::<NullResource>();
         geometry
@@ -681,22 +733,26 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
                 RESOURCE_GEOMETRY,
+                geometry_type,
                 &geometry,
                 &mut resources,
             )
             .unwrap();
 
+        let skeleton_type = ResourceType::new(RESOURCE_SKELETON.as_bytes());
         let skeleton = project
             .add_resource(
                 ResourcePathName::new("hero.skeleton"),
                 RESOURCE_SKELETON,
-                &resources.new_resource(RESOURCE_SKELETON).unwrap(),
+                skeleton_type,
+                &resources.new_resource(skeleton_type).unwrap(),
                 &mut resources,
             )
             .unwrap();
 
+        let actor_type = ResourceType::new(RESOURCE_ACTOR.as_bytes());
         let actor = resources
-            .new_resource(RESOURCE_ACTOR)
+            .new_resource(actor_type)
             .unwrap()
             .typed::<NullResource>();
         actor.get_mut(&mut resources).unwrap().dependencies = vec![
@@ -707,6 +763,7 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("hero.actor"),
                 RESOURCE_ACTOR,
+                actor_type,
                 &actor,
                 &mut resources,
             )
@@ -717,17 +774,20 @@ mod tests {
     }
 
     fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
+        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("sky.texture"),
                 RESOURCE_TEXTURE,
-                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                texture_type,
+                &resources.new_resource(texture_type).unwrap(),
                 resources,
             )
             .unwrap();
 
+        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(RESOURCE_MATERIAL)
+            .new_resource(material_type)
             .unwrap()
             .typed::<NullResource>();
         material
@@ -740,6 +800,7 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("sky.material"),
                 RESOURCE_MATERIAL,
+                material_type,
                 &material,
                 resources,
             )

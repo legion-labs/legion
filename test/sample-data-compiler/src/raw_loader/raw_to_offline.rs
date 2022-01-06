@@ -83,8 +83,9 @@ fn lookup_asset_path(
     path: &str,
 ) -> Option<ResourcePathId> {
     let source = source_resource(path);
-    let output = lookup_reference(references, source).map(ResourcePathId::from);
-    let output = output.map(|id| push_transforms(id, path));
+    let output = lookup_reference(references, source)
+        .map(ResourcePathId::from)
+        .map(|id| push_transforms(id, path));
     match &output {
         Some(resolved_path) => {
             println!("Path Resolved: {} -> {}", path, resolved_path);

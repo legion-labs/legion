@@ -14,6 +14,21 @@ pub struct ArrayDescriptor {
     pub get: unsafe fn(array: *const (), index: usize) -> anyhow::Result<*const ()>,
     /// Function to return an element mutable raw pointer
     pub get_mut: unsafe fn(array: *mut (), index: usize) -> anyhow::Result<*mut ()>,
+    /// Function to insert a new defualt element at the specified index
+    pub insert_element: unsafe fn(
+        array: *mut (),
+        index: usize,
+        deserializer: &mut dyn ::erased_serde::Deserializer<'_>,
+    ) -> anyhow::Result<()>,
+    /// Function to insert a new element
+    pub delete_element: unsafe fn(
+        array: *mut (),
+        index: usize,
+        serializer: Option<&mut dyn ::erased_serde::Serializer>,
+    ) -> anyhow::Result<()>,
+    /// Function to reorder an element with an array
+    pub reorder_element:
+        unsafe fn(array: *mut (), old_index: usize, new_index: usize) -> anyhow::Result<()>,
 }
 
 #[derive(Error, Debug)]
@@ -42,6 +57,26 @@ macro_rules! implement_array_descriptor {
                     (*(array as *mut Vec<$type_id>))
                         .get_mut(index).ok_or($crate::ArrayDescriptorError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")).into())
                         .and_then(|value| Ok((value as *mut $type_id).cast::<()>()))
+                },
+                insert_element : |array: *mut(), index : usize, deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
+                    let array = &mut (*(array as *mut Vec<$type_id>));
+                    let new_element : $type_id = ::erased_serde::deserialize(deserializer)?;
+                    array.insert(index, new_element);
+                    Ok(())
+                },
+                delete_element : |array: *mut(), index : usize, serializer: Option<&mut dyn::erased_serde::Serializer> | unsafe {
+                    let array = &mut (*(array as *mut Vec<$type_id>));
+                    let old_value = array.remove(index);
+                    if let Some(serializer) = serializer {
+                       ::erased_serde::serialize(&old_value, serializer)?;
+                    }
+                    Ok(())
+                },
+                reorder_element : |array: *mut(), old_index : usize, new_index : usize  | unsafe {
+                    let array = &mut (*(array as *mut Vec<$type_id>));
+                    let value = array.remove(old_index);
+                    array.insert(new_index, value);
+                    Ok(())
                 },
             };
         }

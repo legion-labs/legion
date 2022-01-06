@@ -63,11 +63,11 @@ use std::sync::Arc;
 use lgn_telemetry::{prelude::*, EventSink};
 
 mod grpc_event_sink;
-mod log_event_sink;
+mod immediate_event_sink;
 mod stream;
 
 use grpc_event_sink::GRPCEventSink;
-use log_event_sink::SimpleLoggerEventSink;
+use immediate_event_sink::ImmediateEventSink;
 
 pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
@@ -82,7 +82,9 @@ impl TelemetryGuard {
     pub fn new() -> anyhow::Result<Self, String> {
         let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
             Ok(url) => Arc::new(GRPCEventSink::new(&url)),
-            Err(_no_url_in_env) => Arc::new(SimpleLoggerEventSink::new()),
+            Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
+                std::env::var("LGN_TRACE_FILE").ok(),
+            )),
         };
         #[cfg(debug_assertions)]
         set_max_log_level(LevelFilter::Info);

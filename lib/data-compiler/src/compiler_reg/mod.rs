@@ -218,12 +218,12 @@ mod tests {
         };
 
         let source = ResourceTypeAndId {
-            t: text_resource::TextResource::TYPE,
+            kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
         let destination = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
 
-        let transform = Transform::new(source.t, destination.content_type());
+        let transform = Transform::new(source.kind, destination.content_type());
         let _ = registry.get_hash(transform, &env).expect("valid hash");
     }
 
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(hash, CompilerHash(7));
 
         let source = ResourceTypeAndId {
-            t: ResourceType::new(b"input"),
+            kind: ResourceType::new(b"input"),
             id: ResourceId::new(),
         };
         let cas = ContentStoreAddr::from(".");

@@ -1,11 +1,12 @@
 use std::{
+    alloc::Layout,
     cell::{Cell, RefCell},
     sync::{Arc, Mutex},
 };
 
 use lgn_graphics_api::{
     Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
-    MemoryAllocationDef, MemoryUsage, QueueType, Range, ResourceCreation, ResourceUsage,
+    MemoryAllocationDef, MemoryUsage, Range, ResourceCreation, ResourceUsage,
 };
 
 use super::RangeAllocator;
@@ -29,7 +30,6 @@ impl PageHeap {
     pub fn new(device_context: &DeviceContext, num_pages: u64, page_size: u64) -> Self {
         let buffer_def = BufferDef {
             size: page_size * num_pages,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_CONST_BUFFER
                 | ResourceUsage::AS_VERTEX_BUFFER
@@ -59,8 +59,11 @@ impl PageHeap {
         }
     }
 
-    pub fn allocate_page(&mut self, size: u64) -> Option<BufferAllocation> {
-        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(size, self.page_size);
+    pub fn allocate_page(&mut self, layout: Layout) -> Option<BufferAllocation> {
+        assert!(layout.align() as u64 <= self.page_size);
+
+        let alloc_size =
+            lgn_utils::memory::round_size_up_to_alignment_u64(layout.size() as u64, self.page_size);
 
         match self.range_allocator.allocate(alloc_size) {
             None => None,
@@ -127,11 +130,11 @@ impl TransientPagedBuffer {
         }
     }
 
-    pub fn allocate_page(&self, size: u64) -> BufferAllocation {
+    pub fn allocate_page(&self, layout: Layout) -> BufferAllocation {
         let mut inner = self.inner.lock().unwrap();
 
         for page_heap in &mut inner.page_heaps {
-            if let Some(allocation) = page_heap.allocate_page(size) {
+            if let Some(allocation) = page_heap.allocate_page(layout) {
                 return allocation;
             }
         }
@@ -167,7 +170,8 @@ impl TransientBufferAllocator {
         paged_buffer: &TransientPagedBuffer,
         min_alloc_size: u64,
     ) -> Self {
-        let allocation = paged_buffer.allocate_page(min_alloc_size);
+        let allocation = paged_buffer
+            .allocate_page(Layout::from_size_align(min_alloc_size as usize, 64 * 1024).unwrap());
         let offset = allocation.offset();
         Self {
             paged_buffer: paged_buffer.clone(),
@@ -177,40 +181,30 @@ impl TransientBufferAllocator {
         }
     }
 
-    pub fn allocate(
-        &self,
-        data_size_in_bytes: u64,
-        resource_usage: ResourceUsage,
-    ) -> BufferAllocation {
+    pub fn allocate(&self, data_layout: Layout, resource_usage: ResourceUsage) -> BufferAllocation {
         let alignment = if resource_usage == ResourceUsage::AS_CONST_BUFFER {
             self.device_info.min_uniform_buffer_offset_alignment
         } else {
             self.device_info.min_storage_buffer_offset_alignment
         };
+        let alignment = u64::from(alignment).max(data_layout.align() as u64);
 
-        let mut aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
-            self.offset.get(),
-            u64::from(alignment),
-        );
-        let aligned_size = lgn_utils::memory::round_size_up_to_alignment_u64(
-            data_size_in_bytes,
-            u64::from(alignment),
-        );
+        let mut aligned_offset =
+            lgn_utils::memory::round_size_up_to_alignment_u64(self.offset.get(), alignment);
+        let aligned_size =
+            lgn_utils::memory::round_size_up_to_alignment_u64(data_layout.size() as u64, alignment);
         let mut new_offset = aligned_offset + aligned_size;
         let mut allocation = self.allocation.borrow_mut();
 
         if new_offset > allocation.size() {
-            *allocation = self.paged_buffer.allocate_page(data_size_in_bytes);
+            *allocation = self.paged_buffer.allocate_page(data_layout);
 
             aligned_offset = allocation.offset();
             new_offset = aligned_offset + aligned_size;
 
             assert!(
                 aligned_offset
-                    == lgn_utils::memory::round_size_up_to_alignment_u64(
-                        aligned_offset,
-                        u64::from(alignment)
-                    )
+                    == lgn_utils::memory::round_size_up_to_alignment_u64(aligned_offset, alignment)
             );
         }
 
@@ -226,14 +220,32 @@ impl TransientBufferAllocator {
         }
     }
 
-    pub fn copy_data<T: Copy>(
+    pub fn copy_data<T: Copy>(&self, data: &T, resource_usage: ResourceUsage) -> BufferAllocation {
+        let data_layout = std::alloc::Layout::new::<T>();
+        let allocation = self.allocate(data_layout, resource_usage);
+        let src = (data as *const T).cast::<u8>();
+
+        #[allow(unsafe_code)]
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                src,
+                allocation
+                    .memory
+                    .mapped_ptr()
+                    .add(allocation.offset() as usize),
+                data_layout.size(),
+            );
+        }
+        allocation
+    }
+
+    pub fn copy_data_slice<T: Copy>(
         &self,
         data: &[T],
         resource_usage: ResourceUsage,
     ) -> BufferAllocation {
-        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
-
-        let allocation = self.allocate(data_size_in_bytes, resource_usage);
+        let data_layout = Layout::array::<T>(data.len()).unwrap();
+        let allocation = self.allocate(data_layout, resource_usage);
         let src = data.as_ptr().cast::<u8>();
 
         #[allow(unsafe_code)]
@@ -244,7 +256,7 @@ impl TransientBufferAllocator {
                     .memory
                     .mapped_ptr()
                     .add(allocation.offset() as usize),
-                data_size_in_bytes as usize,
+                data_layout.size(),
             );
         }
         allocation

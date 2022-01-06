@@ -58,6 +58,13 @@
 // crate-specific exceptions:
 #![allow()]
 
+use dolly::{prelude::*, rig::CameraRig};
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
+use lgn_input::mouse::MouseMotion;
+use lgn_math::Vec3;
+use lgn_renderer::components::CameraComponent;
+use lgn_transform::components::Transform;
 use runtime_srv::{build_runtime, start_runtime};
 
 #[allow(clippy::too_many_lines)]
@@ -71,5 +78,41 @@ fn main() {
         "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
     );
 
+    app.add_startup_system_to_stage(StartupStage::PostStartup, game_setup);
+    app.add_system(game_logic);
+
     start_runtime(&mut app);
+}
+
+fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>) {
+    for mut camera in cameras.iter_mut() {
+        let eye = Vec3::new(0.0, 0.0, 7.0);
+
+        camera.camera_rig = CameraRig::builder()
+            .with(Position::new(eye))
+            .with(YawPitch::new())
+            .build();
+
+        camera.speed = 0_f32;
+        camera.rotation_speed = 0_f32;
+    }
+}
+
+fn game_logic(
+    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
+    mut entities: Query<'_, '_, (Entity, &mut Transform)>,
+) {
+    // aggregate mouse movement
+    let mut mouse_delta_x = 0_f32;
+    for motion_event in mouse_motion_events.iter() {
+        mouse_delta_x += motion_event.delta.x;
+    }
+
+    for (entity, mut transform) in entities.iter_mut() {
+        if entity.id() == 14 {
+            transform.translation.y += mouse_delta_x / 100_f32;
+        } else if entity.id() == 13 {
+            transform.translation.y -= mouse_delta_x / 100_f32;
+        }
+    }
 }
