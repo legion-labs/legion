@@ -16,6 +16,5 @@ uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
 memoffset = "0.6"
 log = { version = "0.4", features = ["std"] }
-ctrlc = "3.2.0"
 thread-id = "4.0"
 lazy_static = "1.4"

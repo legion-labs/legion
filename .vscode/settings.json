@@ -1,15 +1,24 @@
 {
-    "editor.formatOnSave": true,
+  "editor.formatOnSave": true,
   "files.eol": "\n",
-    "rust-analyzer.checkOnSave.command": "clippy",
-  "rust-analyzer.checkOnSave.extraArgs": ["--target-dir", "target/ra"],
-  "rust-analyzer.diagnostics.disabled": ["unresolved-macro-call"],
-  "cSpell.words": ["asft", "Deserialization", "xxhash"],
-    "css.lint.unknownAtRules": "ignore",
-    "[html]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.checkOnSave.extraArgs": [
+    "--target-dir",
+    "target/ra"
+  ],
+  "rust-analyzer.diagnostics.disabled": [
+    "unresolved-macro-call"
+  ],
+  "cSpell.words": [
+    "asft",
+    "Deserialization",
+    "xxhash"
+  ],
+  "css.lint.unknownAtRules": "ignore",
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 }

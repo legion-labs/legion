@@ -2164,6 +2164,7 @@ dependencies = [
  "lgn-online",
  "lgn-tauri",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-transit",
  "prost",
  "regex",
@@ -2183,12 +2184,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "erased-serde",
+ "generic-data",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
  "lgn-codec-api",
+ "lgn-compiler-testentity",
  "lgn-config",
+ "lgn-content-store",
  "lgn-core",
+ "lgn-data-build",
+ "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -2203,6 +2210,8 @@ dependencies = [
  "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-transform",
+ "serde_json",
+ "tempfile",
  "tokio",
  "tonic",
 ]
@@ -3774,10 +3783,12 @@ dependencies = [
 name = "lgn-app"
 version = "0.1.0"
 dependencies = [
+ "ctrlc",
  "instant",
  "lgn-derive",
  "lgn-ecs",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-utils",
  "ron",
  "serde",
@@ -4178,7 +4189,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
- "itertools",
  "lazy_static",
  "lgn-math",
  "serde",
@@ -4350,12 +4360,10 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "clap",
  "fxhash",
  "heck 0.4.0",
  "lgn-graphics-api",
- "lgn-graphics-cgen-runtime",
  "lgn-telemetry",
  "lgn-telemetry-sink",
  "proc-macro2",
@@ -4368,7 +4376,6 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "bumpalo",
  "glam",
  "lgn-graphics-api",
@@ -4479,6 +4486,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
+ "chrono",
  "clap",
  "determinator",
  "guppy",
@@ -4757,6 +4765,7 @@ dependencies = [
  "event-listener",
  "futures-lite",
  "instant",
+ "lgn-telemetry",
  "num_cpus",
  "wasm-bindgen-futures",
 ]
@@ -4787,7 +4796,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "ctrlc",
  "lazy_static",
  "lgn-transit",
  "lgn-utils",
@@ -6950,6 +6958,8 @@ dependencies = [
  "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
+ "lgn-telemetry",
+ "lgn-telemetry-sink",
  "tauri",
  "tauri-build",
  "url",
@@ -6974,7 +6984,6 @@ dependencies = [
  "lgn-renderer",
  "lgn-streamer",
  "lgn-telemetry",
- "lgn-telemetry-sink",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",

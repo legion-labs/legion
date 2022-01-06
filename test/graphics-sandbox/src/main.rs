@@ -23,13 +23,12 @@ use lgn_renderer::{
     resources::{DefaultMeshId, DefaultMeshes},
     {Renderer, RendererPlugin, RendererSystemLabel},
 };
-use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::components::Transform;
 use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
-use lgn_winit::{WinitPlugin, WinitWindows};
+use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 
 struct RenderSurfaces {
     window_id_mapper: HashMap<WindowId, RenderSurfaceId>,
@@ -95,7 +94,6 @@ struct Args {
 }
 
 fn main() {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let args = Args::parse();
 
     let mut app = App::new();
@@ -120,11 +118,14 @@ fn main() {
         .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
-        app.add_plugin(WinitPlugin::default())
-            .add_system(on_window_created.exclusive_system())
-            .add_system(on_window_resized.exclusive_system())
-            .add_system(on_window_close_requested.exclusive_system())
-            .insert_resource(RenderSurfaces::new());
+        app.insert_resource(WinitConfig {
+            return_from_run: true,
+        })
+        .add_plugin(WinitPlugin::default())
+        .add_system(on_window_created.exclusive_system())
+        .add_system(on_window_resized.exclusive_system())
+        .add_system(on_window_close_requested.exclusive_system())
+        .insert_resource(RenderSurfaces::new());
     }
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())

@@ -10,7 +10,7 @@ use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
-use lgn_winit::{WinitPlugin, WinitWindows};
+use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 
 pub(crate) fn build_standalone(app: &mut App) -> &mut App {
     let width = 1280_f32;
@@ -19,6 +19,9 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
         width,
         height,
         ..WindowDescriptor::default()
+    })
+    .insert_resource(WinitConfig {
+        return_from_run: true,
     })
     .add_plugin(WindowPlugin::default())
     .add_plugin(WinitPlugin::default())

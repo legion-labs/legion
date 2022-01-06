@@ -10,8 +10,8 @@ use lgn_ecs::{
     system::Resource,
     world::World,
 };
-use lgn_telemetry::debug;
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::{debug, trace_scope};
+use lgn_telemetry_sink::TelemetryGuard;
 use lgn_utils::HashMap;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
@@ -47,6 +47,7 @@ pub struct App {
     pub runner: Box<dyn FnOnce(App)>,
     pub schedule: Schedule,
     sub_apps: HashMap<Box<dyn AppLabel>, SubApp>,
+    telemetry_guard: Option<TelemetryGuard>,
 }
 
 struct SubApp {
@@ -57,6 +58,8 @@ struct SubApp {
 impl Default for App {
     fn default() -> Self {
         let mut app = Self::empty();
+        app.telemetry_guard =
+            Some(TelemetryGuard::new().expect("telemetry guard should be initialized once"));
         app.add_default_stages()
             .add_event::<AppExit>()
             .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
@@ -81,6 +84,7 @@ impl App {
             schedule: Schedule::default(),
             runner: Box::new(run_once),
             sub_apps: HashMap::default(),
+            telemetry_guard: None,
         }
     }
 
@@ -88,7 +92,7 @@ impl App {
     ///
     /// See [`Schedule::run_once`] for more details.
     pub fn update(&mut self) {
-        trace_scope!("frame");
+        trace_scope!();
         self.schedule.run(&mut self.world);
         for sub_app in self.sub_apps.values_mut() {
             (sub_app.runner)(&mut self.world, &mut sub_app.app);
@@ -101,7 +105,7 @@ impl App {
     /// Finalizes the [`App`] configuration. For general usage, see the example
     /// on the item level documentation.
     pub fn run(&mut self) {
-        trace_scope!("legion_app");
+        trace_scope!();
 
         let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
@@ -768,6 +772,7 @@ impl App {
     where
         T: Plugin,
     {
+        trace_scope!();
         debug!("added plugin: {}", plugin.name());
         plugin.build(self);
         self
@@ -795,6 +800,7 @@ impl App {
     ///     .add_plugins(MinimalPlugins);
     /// ```
     pub fn add_plugins<T: PluginGroup>(&mut self, mut group: T) -> &mut Self {
+        trace_scope!();
         let mut plugin_group_builder = PluginGroupBuilder::default();
         group.build(&mut plugin_group_builder);
         plugin_group_builder.finish(self);
@@ -835,6 +841,7 @@ impl App {
         T: PluginGroup,
         F: FnOnce(&mut PluginGroupBuilder) -> &mut PluginGroupBuilder,
     {
+        trace_scope!();
         let mut plugin_group_builder = PluginGroupBuilder::default();
         group.build(&mut plugin_group_builder);
         func(&mut plugin_group_builder);

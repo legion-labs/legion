@@ -16,12 +16,12 @@ use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_streamer::StreamerPlugin;
-use lgn_telemetry::prelude::*;
-use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::TransformPlugin;
 
 mod grpc;
 mod plugin;
+mod property_inspector_plugin;
+mod resource_browser_plugin;
 
 use plugin::EditorPlugin;
 
@@ -46,11 +46,6 @@ struct Args {
 }
 
 fn main() {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
-
-    trace_scope!();
-
     let args = Args::parse();
 
     let settings = Config::new();

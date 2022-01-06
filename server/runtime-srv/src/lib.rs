@@ -76,7 +76,6 @@ use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
-use lgn_telemetry_sink::TelemetryGuard;
 use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]
@@ -205,10 +204,6 @@ pub fn build_runtime(
 }
 
 pub fn start_runtime(app: &mut App) {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
-
     trace_scope!();
-
     app.run();
 }

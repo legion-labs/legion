@@ -109,9 +109,9 @@ fn game_logic(
     }
 
     for (entity, mut transform) in entities.iter_mut() {
-        if entity.id() == 14 {
+        if entity.id() == 26 {
             transform.translation.y += mouse_delta_x / 100_f32;
-        } else if entity.id() == 13 {
+        } else if entity.id() == 25 {
             transform.translation.y -= mouse_delta_x / 100_f32;
         }
     }

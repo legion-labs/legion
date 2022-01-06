@@ -240,7 +240,6 @@ enum Commands {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     trace_scope!();
     let args = Cli::parse();

@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 
 use clap::Args;
-use guppy::graph::DependencyDirection;
+use guppy::graph::{BuildTargetId, DependencyDirection};
 use lgn_telemetry::{trace_scope, warn};
 
 use crate::changed_since::changed_since_impl;
@@ -174,6 +174,23 @@ impl<'a> SelectedPackages<'a> {
                     .any(|p| !self.excludes.contains(p) && *p == package)
             }
         }
+    }
+    pub fn select_package_from_bin(&mut self, bin: &str, ctx: &'a Context) -> Result<()> {
+        match self.includes {
+            SelectedInclude::Workspace => {
+                self.includes = self.includes.intersection(
+                    ctx.package_graph()?
+                        .workspace()
+                        .iter()
+                        .filter(|package| {
+                            package.build_target(&BuildTargetId::Binary(bin)).is_some()
+                        })
+                        .map(|package| package.name()),
+                );
+            }
+            SelectedInclude::Includes(_) => {}
+        }
+        Ok(())
     }
 }
 
