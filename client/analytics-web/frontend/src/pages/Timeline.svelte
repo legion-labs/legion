@@ -58,6 +58,7 @@
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
+  import binarySearch from "binary-search";
   import {
     DrawSelectedRange,
     NewSelectionState,
@@ -72,6 +73,7 @@
   let timelineEnd: number | undefined;
 
   let canvas: HTMLCanvasElement | undefined;
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   let processList: Process[] = [];
   let currentProcess: Process | undefined;
   let renderingContext: CanvasRenderingContext2D | undefined;
@@ -88,7 +90,7 @@
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
-  let loadingProgression: LoadingState | undefined;
+  let loadingProgression: LoadingState = { requested: 0, completed: 0 };
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -111,7 +113,6 @@
     }
 
     const context = canvas.getContext("2d");
-
     if (!context) {
       throw new Error("Couldn't get context for canvas");
     }
@@ -131,13 +132,23 @@
     currentProcess = process;
     await fetchStreams(process);
     await fetchChildren();
-    loadingProgression = { requested: Object.keys(blocks).length, completed: 0 };
-    fetchPreferedLods();
+    fetchPreferedLods(loadingProgression);
   }
 
-  function fetchPreferedLods(){
+  function fetchPreferedLods(loadingProgression: LoadingState){
     for (let blockId in blocks){
-      fetchBlockSpans(blocks[blockId])
+      if ( loadingProgression.requested - loadingProgression.completed >= 4 ){
+        return;
+      }
+      fetchBlockSpans(loadingProgression, blocks[blockId])
+    }
+    // here would be a good place to load some low-priority block lods
+    // like the lod that corresponds to the full time range being visible
+    // this would have the added bonus of caching the lod0 of all blocks on the server
+
+    if ( loadingProgression.completed == loadingProgression.requested ){
+      loadingProgression.requested = 0;
+      loadingProgression.completed = 0;
     }
   }
 
@@ -199,20 +210,19 @@
     } );
   }
 
-  function computePreferedBlockLod(block: Block): number{
+  function computePreferedBlockLod(block: Block): number | null{
     const beginBlock = RFC3339ToMs(block.beginTime);
     const endBlock = RFC3339ToMs(block.endTime);
     return computePreferedLodFromTimeRange( beginBlock, endBlock );
   }
 
-  function computePreferedLodFromTimeRange(beginMs: number, endMs: number): number{
+  function computePreferedLodFromTimeRange(beginMs: number, endMs: number): number | null {
     if (!canvas) {
-      throw new Error("Canvas undefined");
+      return null;
     }
-    const initialPixelSize = (maxMs - minMs) / canvas.width;
     const vr = getViewRange();
     if (beginMs > vr[1] || endMs < vr[0]){
-      return getViewLOD(initialPixelSize);
+      return null;
     }
     const currentPixelSize = (vr[1] - vr[0]) / canvas.width;
     return getViewLOD(currentPixelSize);
@@ -221,6 +231,9 @@
   function findBestLod(block: ThreadBlock){
     const preferedLod = computePreferedLodFromTimeRange(block.beginMs,
                                                         block.endMs);
+    if( preferedLod == null ){
+      return null;
+    }
     return block.lods.reduce( (lhs, rhs) => {
       if ( lhs.tracks.length == 0 ){
         return rhs;
@@ -238,6 +251,7 @@
   }
 
   function onLodReceived(response: BlockSpansReply){
+    loadingProgression.completed += 1;
     const blockId = response.blockId;
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${blockId}`);
@@ -252,14 +266,12 @@
     thread.block_ids.push(blockId);
     block.lods[response.lod.lodId].state = LODState.Loaded;
     block.lods[response.lod.lodId].tracks = response.lod.tracks;
-    if (loadingProgression) {
-      loadingProgression.completed += 1;
-    }
     updateProgess();
-    drawCanvas();
+    invalidateCanvas();
+    fetchPreferedLods(loadingProgression);
   }
 
-  function fetchBlockSpans(block: ThreadBlock) {
+  function fetchBlockSpans(loadingProgression: LoadingState, block: ThreadBlock) {
     const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {
@@ -267,6 +279,9 @@
     }
 
     const preferedLod = computePreferedBlockLod(block.blockDefinition);
+    if ( preferedLod == null ){
+      return;
+    }
     if (!block.lods[preferedLod]){
       block.lods[preferedLod] = { state: LODState.Missing,
                                   tracks: [],
@@ -277,6 +292,7 @@
       return;
     }
     block.lods[preferedLod].state = LODState.Requested;
+    loadingProgression.requested += 1;
     const blockId = block.blockDefinition.blockId;
     const fut = client.block_spans({
       blockId: blockId,
@@ -284,7 +300,10 @@
       stream: threads[streamId].streamInfo,
       lodId: preferedLod,
     });
-    fut.then(onLodReceived, e => console.log("LOD request failed: ", e));
+    fut.then(onLodReceived, e => {
+      loadingProgression.completed += 1;
+      console.log("Error fetching block spans", e);
+    });
   }
 
   function findStreamProcess(streamId: string) {
@@ -295,8 +314,14 @@
     );
   }
 
+  function invalidateCanvas(){
+    if ( refreshTimer ){
+      clearTimeout(refreshTimer);
+    }
+    refreshTimer = setTimeout( drawCanvas, 10 );
+  }
+
   function drawCanvas() {
-    updatePixelSize();
     if (!canvas || !renderingContext) {
       return;
     }
@@ -307,9 +332,8 @@
 
     canvas.height =
       window.innerHeight - canvas.getBoundingClientRect().top - 20;
-
+   
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
-
     let threadVerticalOffset = yOffset;
 
     const parentStartTime = Date.parse(currentProcess?.startTime);
@@ -324,12 +348,15 @@
       const childStartTime = Date.parse(childProcess.startTime);
       const thread = threads[streamId];
       if (thread.block_ids.length > 0) {
-        drawThread(
-          thread,
-          threadVerticalOffset,
-          childStartTime - parentStartTime
-        );
-        threadVerticalOffset += (thread.maxDepth + 2) * 20;
+        const threadHeight = (thread.maxDepth + 2) * 20;
+        if(threadVerticalOffset < canvas.height && threadVerticalOffset + threadHeight >= 0){
+          drawThread(
+            thread,
+            threadVerticalOffset,
+            childStartTime - parentStartTime
+          );
+        }
+        threadVerticalOffset += threadHeight;
       }
     }
 
@@ -394,25 +421,52 @@
         return;
       }
 
+      if (!renderingContext) {
+        throw new Error("Rendering context not available");
+      }
+      
+
       for( let trackIndex = 0; trackIndex < lodToRender.tracks.length; trackIndex += 1 ){
         let track = lodToRender.tracks[trackIndex];
-        track.spans.forEach(({ beginMs, endMs, scopeHash, alpha }) => {
-          if (!renderingContext) {
-            throw new Error("Rendering context not available");
+        let firstSpan = binarySearch( track.spans, begin - offsetMs, function( span, needle ){
+          if ( span.endMs < needle ){
+            return -1;
           }
+          if ( span.beginMs > needle ){
+            return 1;
+          }
+          return 0;
+        } );
+        if ( firstSpan < 0 ){
+          firstSpan = ~firstSpan;
+        }
 
-          const beginSpan = beginMs + offsetMs;
-          const endSpan = endMs + offsetMs;
+        let lastSpan = binarySearch( track.spans, end - offsetMs, function( span, needle ){
+          if ( span.beginMs < needle ){
+            return -1;
+          }
+          if ( span.endMs > needle ){
+            return 1;
+          }
+          return 0;
+        } );
+        if ( lastSpan < 0 ){
+          lastSpan = ~lastSpan;
+        }
+        for( let spanIndex = firstSpan; spanIndex < lastSpan; spanIndex += 1 ){
+          const span = track.spans[spanIndex];
+          const beginSpan = span.beginMs + offsetMs;
+          const endSpan = span.endMs + offsetMs;
 
           if (beginSpan > end || endSpan < begin) {
-            return;
+            continue;
           }
 
           const beginPixels = (beginSpan - begin) * msToPixelsFactor;
           const endPixels = (endSpan - begin) * msToPixelsFactor;
           const callWidth = endPixels - beginPixels;
           if (callWidth < 0.1) {
-            return;
+            continue;
           }
           const offsetY = threadVerticalOffset + trackIndex * 20;
           if (trackIndex % 2 === 0) {
@@ -421,12 +475,12 @@
             renderingContext.fillStyle = "#fea446";
           }
 
-          renderingContext.globalAlpha = alpha / 255;
+          renderingContext.globalAlpha = span.alpha / 255;
           renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
           renderingContext.globalAlpha = 1.0;
 
-          if ( scopeHash != 0 ){
-            const { name } = scopes[scopeHash];
+          if ( span.scopeHash != 0 ){
+            const { name } = scopes[span.scopeHash];
             if (callWidth > characterWidth * 5) {
               const nbChars = Math.floor(callWidth / characterWidth);
 
@@ -443,7 +497,7 @@
               );
             }
           }
-        });        
+        }
       }
     });
   }
@@ -493,7 +547,7 @@
   function onMouseDown(event: MouseEvent) {
     if (RangeSelectionOnMouseDown(event, selectionState)) {
       currentSelection = selectionState.selectedRange;
-      drawCanvas();
+      invalidateCanvas();
     }
   }
 
@@ -524,9 +578,11 @@
       ) ||
       PanOnMouseMove(event)
     ) {
-      currentSelection = selectionState.selectedRange;
-      fetchPreferedLods();
-      drawCanvas();
+      if ( currentSelection != selectionState.selectedRange ){
+        currentSelection = selectionState.selectedRange;
+      }
+      fetchPreferedLods(loadingProgression);
+      invalidateCanvas();
     }
   }
 
@@ -535,8 +591,9 @@
       throw new Error("Canvas can't be found");
     }
     viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
-    fetchPreferedLods();
-    drawCanvas();
+    fetchPreferedLods(loadingProgression);
+    invalidateCanvas();
+    updatePixelSize();
   }
 
   function updatePixelSize() {
@@ -556,9 +613,6 @@
       elem.style.width =
         (loadingProgression.completed * 100) / loadingProgression.requested +
         "%";
-    }
-    if (loadingProgression.completed == loadingProgression.requested) {
-      loadingProgression = undefined;
     }
   }
 
