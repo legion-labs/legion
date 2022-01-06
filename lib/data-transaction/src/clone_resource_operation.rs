@@ -8,7 +8,6 @@ use crate::{Error, LockContext, TransactionOperation};
 
 /// Clone a Resource Operation
 pub struct CloneResourceOperation {
-    source_resource_type_name: &'static str,
     source_resource_id: ResourceTypeAndId,
     clone_resource_id: ResourceTypeAndId,
     clone_path: ResourcePathName,
@@ -17,13 +16,11 @@ pub struct CloneResourceOperation {
 impl CloneResourceOperation {
     /// Create a new Clone a Resource Operation
     pub fn new(
-        source_resource_type_name: &'static str,
         source_resource_id: ResourceTypeAndId,
         clone_resource_id: ResourceTypeAndId,
         clone_path: ResourcePathName,
     ) -> Box<Self> {
         Box::new(Self {
-            source_resource_type_name,
             source_resource_id,
             clone_resource_id,
             clone_path,
@@ -50,17 +47,21 @@ impl TransactionOperation for CloneResourceOperation {
             .resource_registry
             .deserialize_resource(self.source_resource_id.kind, &mut buffer.as_slice())?;
 
-        ctx.project.add_resource_with_id(
-            self.clone_path.clone(),
-            self.source_resource_type_name,
-            self.clone_resource_id.kind,
-            self.clone_resource_id,
-            &clone_handle,
-            &mut ctx.resource_registry,
-        )?;
-        ctx.loaded_resource_handles
-            .insert(self.clone_resource_id, clone_handle);
-
+        if let Some(resource_type_name) = ctx
+            .resource_registry
+            .get_resource_type_name(self.source_resource_id.kind)
+        {
+            ctx.project.add_resource_with_id(
+                self.clone_path.clone(),
+                resource_type_name,
+                self.clone_resource_id.kind,
+                self.clone_resource_id,
+                &clone_handle,
+                &mut ctx.resource_registry,
+            )?;
+            ctx.loaded_resource_handles
+                .insert(self.clone_resource_id, clone_handle);
+        }
         Ok(())
     }
 

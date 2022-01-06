@@ -247,6 +247,13 @@ impl ResourceRegistry {
             .collect()
     }
 
+    /// Return the name of a Resource Type
+    pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
+        self.processors
+            .get(&kind)
+            .and_then(|processor| processor.get_resource_type_name())
+    }
+
     /// Returns the number of loaded resources.
     pub fn len(&self) -> usize {
         self.ref_counts.len()
