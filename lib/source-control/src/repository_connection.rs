@@ -3,15 +3,15 @@ use std::sync::Arc;
 use url::Url;
 
 use crate::{
-    http_repository_query::HTTPRepositoryQuery,
+    http_repository_query::HttpRepositoryQuery,
     sql::SqlConnectionPool,
     sql_repository_query::{Databases, SqlRepositoryQuery},
     BlobStorage, RepositoryAddr, RepositoryQuery, Workspace,
 };
 
 pub struct RepositoryConnection {
-    repo_query: Box<dyn RepositoryQuery>,
-    blob_storage: Box<dyn BlobStorage>,
+    pub repo_query: Box<dyn RepositoryQuery>,
+    pub blob_storage: Box<dyn BlobStorage>,
 }
 
 impl RepositoryConnection {
@@ -27,15 +27,12 @@ impl RepositoryConnection {
                 repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Sqlite));
             }
             RepositoryAddr::Remote(spec_uri) => {
-                let uri = Url::parse(spec_uri).unwrap();
-                let mut url_path = String::from(uri.path());
-                let path = url_path.split_off(1); //remove leading /
-                match uri.scheme() {
-                    "lsc" => {
-                        let host = uri.host().unwrap();
-                        let port = uri.port().unwrap_or(80);
-                        let url = format!("http://{}:{}/lsc", host, port);
-                        repo_query = Box::new(HTTPRepositoryQuery::new(url, path));
+                let url = Url::parse(spec_uri).unwrap();
+                let path = String::from(url.path()).split_off(1); //remove leading /
+
+                match url.scheme() {
+                    "http" | "https" => {
+                        repo_query = Box::new(HttpRepositoryQuery::new(url, path));
                     }
                     "mysql" => {
                         let pool =

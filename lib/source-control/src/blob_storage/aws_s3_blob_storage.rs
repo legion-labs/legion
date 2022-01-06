@@ -13,9 +13,9 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
-use crate::{BoxedAsyncRead, BoxedAsyncWrite};
+use crate::{BlobStats, BoxedAsyncRead, BoxedAsyncWrite};
 
-use super::{BlobStorage, Error, Result};
+use super::{Error, Result, StreamingBlobStorage};
 
 pub struct AwsS3BlobStorage {
     url: AwsS3Url,
@@ -34,32 +34,28 @@ impl AwsS3BlobStorage {
         self.url.root.join(hash).to_str().unwrap().to_owned()
     }
 
-    async fn blob_exists(&self, key: &str) -> Result<bool> {
-        //we fetch the acl to know if the object exists
-        let req_acl = self
+    async fn get_object_size(&self, key: &str) -> Result<Option<u64>> {
+        let req = self
             .client
-            .get_object_acl()
+            .get_object()
             .bucket(&self.url.bucket_name)
             .key(key);
 
-        match req_acl.send().await {
-            Ok(_acl) => Ok(true),
+        match req.send().await {
+            Ok(output) => Ok(Some(output.content_length() as u64)),
             Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
-                if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
-                    Ok(false)
+                if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
+                    Ok(None)
                 } else {
                     Err(Error::forward_with_context(
                         err,
-                        format!("could not fetch AWS S3 ACL for object: {}", key),
+                        format!("could not fetch AWS S3 object: {}", key),
                     ))
                 }
             }
             Err(err) => Err(Error::forward_with_context(
                 err,
-                format!(
-                    "unexpected SDK error while fetching AWS S3 ACL for object: {}",
-                    key
-                ),
+                format!("unexpected SDK error while fetching AWS object: {}", key),
             )),
         }
     }
@@ -204,7 +200,15 @@ impl AsyncWrite for ByteStreamWriter {
 }
 
 #[async_trait]
-impl BlobStorage for AwsS3BlobStorage {
+impl StreamingBlobStorage for AwsS3BlobStorage {
+    async fn get_blob_info(&self, hash: &str) -> super::Result<Option<BlobStats>> {
+        let key = self.blob_key(hash);
+
+        let size = self.get_object_size(&key).await?;
+
+        Ok(size.map(|size| BlobStats { size }))
+    }
+
     async fn get_blob_reader(&self, hash: &str) -> Result<BoxedAsyncRead> {
         let key = self.blob_key(hash);
 

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 use crate::{Branch, Commit, Lock, Tree, Workspace};
@@ -165,11 +166,11 @@ impl ServerRequest {
 
 pub async fn execute_request(
     client: &reqwest::Client,
-    http_url: &str,
+    url: &Url,
     request: &ServerRequest,
 ) -> Result<String> {
     let resp = client
-        .get(http_url)
+        .get(url.clone())
         .body(request.to_json()?)
         .send()
         .await
@@ -179,7 +180,7 @@ pub async fn execute_request(
     if !status.is_success() {
         anyhow::bail!(
             "request to `{}` failed with status {} (body follows)\n{}",
-            http_url,
+            url,
             status,
             resp.text().await.unwrap_or_default(),
         );

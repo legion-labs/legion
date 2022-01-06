@@ -28,7 +28,7 @@ impl FromStr for RepositoryUrl {
             UrlOrPath::Path(path) => Ok(Self::Local(path)),
             UrlOrPath::Url(url) => match url.scheme() {
                 "mysql" => Ok(Self::MySQL(url)),
-                "lsc" => Ok(Self::Lsc(url)),
+                "http" | "https" => Ok(Self::Lsc(url)),
                 scheme => Err(anyhow::anyhow!(
                     "unsupported repository URL scheme: {}",
                     scheme
@@ -147,8 +147,8 @@ mod tests {
     #[test]
     fn test_from_str_lsc() {
         assert_eq!(
-            RepositoryUrl::from_str("lsc://user:pass@localhost:3306/db").unwrap(),
-            RepositoryUrl::Lsc(Url::parse("lsc://user:pass@localhost:3306/db").unwrap())
+            RepositoryUrl::from_str("http://user:pass@localhost:3306/db").unwrap(),
+            RepositoryUrl::Lsc(Url::parse("http://user:pass@localhost:3306/db").unwrap())
         );
     }
 
@@ -178,8 +178,9 @@ mod tests {
             "mysql://user:pass@localhost:3306/db"
         );
         assert_eq!(
-            RepositoryUrl::Lsc("lsc://user:pass@localhost:3306/db".try_into().unwrap()).to_string(),
-            "lsc://user:pass@localhost:3306/db"
+            RepositoryUrl::Lsc("https://user:pass@localhost:3306/db".try_into().unwrap())
+                .to_string(),
+            "https://user:pass@localhost:3306/db"
         );
     }
 }

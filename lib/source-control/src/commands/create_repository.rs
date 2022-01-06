@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use log::info;
 use reqwest::Url;
 
+use crate::http_repository_query::HttpRepositoryQuery;
 use crate::sql_repository_query::{Databases, SqlRepositoryQuery};
 use crate::{
     check_directory_does_not_exist_or_is_empty, create_branches_table, init_commit_database,
@@ -14,7 +15,7 @@ use crate::{
     sql::{create_database, SqlConnectionPool},
     trace_scope, BlobStorageUrl, Branch, Commit, RepositoryQuery, Tree,
 };
-use crate::{execute_request, InitRepositoryRequest, RepositoryUrl, ServerRequest};
+use crate::{RepositoryConnection, RepositoryUrl};
 
 /// Create a repository at the specified URL.
 ///
@@ -23,7 +24,7 @@ use crate::{execute_request, InitRepositoryRequest, RepositoryUrl, ServerRequest
 pub async fn create_repository(
     repo_url: &RepositoryUrl,
     blob_storage_url: &Option<BlobStorageUrl>,
-) -> Result<()> {
+) -> Result<RepositoryConnection> {
     info!("Creating repository at {}", repo_url);
 
     if let Some(blob_storage_url) = blob_storage_url {
@@ -44,7 +45,7 @@ pub async fn create_repository(
 async fn create_local_repository(
     directory: impl AsRef<Path>,
     blob_storage_url: &Option<BlobStorageUrl>,
-) -> Result<()> {
+) -> Result<RepositoryConnection> {
     trace_scope!();
 
     let directory = directory.as_ref();
@@ -75,15 +76,21 @@ async fn create_local_repository(
     let mut sql_connection = pool.acquire().await?;
 
     init_repo_database(&mut sql_connection, repo_uri.as_str(), blob_storage_url).await?;
-    push_init_repo_data(pool, Databases::Sqlite).await?;
+    push_init_repo_data(pool.clone(), Databases::Sqlite).await?;
 
-    Ok(())
+    let repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Sqlite));
+    let blob_storage = blob_storage_url.clone().into_blob_storage().await?;
+
+    Ok(RepositoryConnection {
+        repo_query,
+        blob_storage,
+    })
 }
 
 async fn create_mysql_repository(
     url: &Url,
     blob_storage_url: &Option<BlobStorageUrl>,
-) -> Result<()> {
+) -> Result<RepositoryConnection> {
     trace_scope!();
 
     let blob_storage_url = blob_storage_url.as_ref().ok_or_else(|| {
@@ -100,17 +107,33 @@ async fn create_mysql_repository(
     init_repo_database(&mut sql_connection, url.as_str(), blob_storage_url).await?;
     push_init_repo_data(pool.clone(), Databases::Mysql).await?;
 
-    Ok(())
+    let repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Mysql));
+    let blob_storage = blob_storage_url.clone().into_blob_storage().await?;
+
+    Ok(RepositoryConnection {
+        repo_query,
+        blob_storage,
+    })
 }
 
-async fn create_lsc_repository(url: &Url) -> Result<()> {
+async fn create_lsc_repository(url: &Url) -> Result<RepositoryConnection> {
     trace_scope!();
 
-    let path = url.path().trim_start_matches('/');
-    let host = url.host().unwrap();
-    let port = url.port().unwrap_or(80);
+    let repo_name = url.path().trim_start_matches('/');
+    let mut url = url.clone();
+    url.set_path("");
 
-    init_http_repository_command(&host.to_string(), port, path).await
+    let repo_query = Box::new(HttpRepositoryQuery::new(url, repo_name.to_string()));
+    let blob_storage = repo_query
+        .create_repository(repo_name)
+        .await?
+        .into_blob_storage()
+        .await?;
+
+    Ok(RepositoryConnection {
+        repo_query,
+        blob_storage,
+    })
 }
 
 async fn init_repo_database(
@@ -154,17 +177,5 @@ async fn push_init_repo_data(pool: Arc<SqlConnectionPool>, database_kind: Databa
         lock_domain_id,
     );
     query.insert_branch(&main_branch).await?;
-    Ok(())
-}
-
-async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Result<()> {
-    trace_scope!();
-    let request = ServerRequest::InitRepo(InitRepositoryRequest {
-        repo_name: String::from(name),
-    });
-    let http_url = format!("http://{}:{}/lsc", host, port);
-    let client = reqwest::Client::new();
-    let resp = execute_request(&client, &http_url, &request).await?;
-    println!("{}", resp);
     Ok(())
 }

@@ -2,7 +2,6 @@ mod aws_s3_blob_storage;
 mod blob_storage_url;
 mod error;
 mod local_blob_storage;
-mod lz4;
 mod lz4_blob_storage_adapter;
 
 pub use aws_s3_blob_storage::{AwsS3BlobStorage, AwsS3Url};
@@ -19,8 +18,23 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 pub type BoxedAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
 pub type BoxedAsyncWrite = Pin<Box<dyn AsyncWrite + Send>>;
 
+pub struct BlobStats {
+    pub size: u64,
+}
+
+/// A trait for blob storage backends that implement efficient sequential reads
+/// and writes.
 #[async_trait]
-pub trait BlobStorage: Send + Sync {
+pub trait StreamingBlobStorage: Send + Sync {
+    async fn blob_exists(&self, hash: &str) -> Result<bool> {
+        self.get_blob_info(hash).await.map(|info| info.is_some())
+    }
+
+    /// Read information about a blob.
+    ///
+    /// If the blob does not exist, Ok(None) is returned.
+    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>>;
+
     /// Reads a blob from the storage.
     ///
     /// If no such blob exists, Error::NoSuchBlob is returned.
@@ -35,6 +49,36 @@ pub trait BlobStorage: Send + Sync {
     ///
     /// In any other case, an error is returned.
     async fn get_blob_writer(&self, hash: &str) -> Result<Option<BoxedAsyncWrite>>;
+}
+
+#[async_trait]
+pub trait BlobStorage: Send + Sync {
+    async fn blob_exists(&self, hash: &str) -> Result<bool> {
+        self.get_blob_info(hash).await.map(|info| info.is_some())
+    }
+
+    /// Read information about a blob.
+    ///
+    /// If the blob does not exist, Ok(None) is returned.
+    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>>;
+
+    /// Reads the the full contents of a blob from the storage.
+    async fn read_blob(&self, hash: &str) -> Result<Vec<u8>>;
+
+    /// Writes the full contents of a blob to the storage.
+    async fn write_blob(&self, hash: &str, content: &[u8]) -> Result<()>;
+
+    /// Download a blob from the storage and persist it to disk at the specified
+    /// location.
+    async fn download_blob(&self, path: &Path, hash: &str) -> Result<()>;
+}
+
+/// Blanket implementation for all blob streaming storage backends.
+#[async_trait]
+impl<T: StreamingBlobStorage> BlobStorage for T {
+    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>> {
+        StreamingBlobStorage::get_blob_info(self, hash).await
+    }
 
     /// Reads the the full contents of a blob from the storage.
     async fn read_blob(&self, hash: &str) -> Result<Vec<u8>> {
@@ -61,7 +105,7 @@ pub trait BlobStorage: Send + Sync {
         Ok(())
     }
 
-    /// Download a blob from the storage and perist it to disk at the specified
+    /// Download a blob from the storage and persist it to disk at the specified
     /// location.
     async fn download_blob(&self, path: &Path, hash: &str) -> Result<()> {
         let mut reader = self.get_blob_reader(hash).await?;

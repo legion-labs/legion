@@ -7,7 +7,7 @@ use std::{
 };
 
 use super::{AwsS3BlobStorage, BlobStorage, LocalBlobStorage};
-use crate::{parse_url_or_path, AwsS3Url, UrlOrPath};
+use crate::{parse_url_or_path, AwsS3Url, Lz4BlobStorageAdapter, UrlOrPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BlobStorageUrl {
@@ -30,8 +30,12 @@ impl BlobStorageUrl {
 
     pub async fn into_blob_storage(self) -> Result<Box<dyn BlobStorage>> {
         match self {
-            BlobStorageUrl::Local(path) => Ok(Box::new(LocalBlobStorage::new(path).await?)),
-            BlobStorageUrl::AwsS3(url) => Ok(Box::new(AwsS3BlobStorage::new(url).await)),
+            BlobStorageUrl::Local(path) => Ok(Box::new(Lz4BlobStorageAdapter::new(
+                LocalBlobStorage::new(path).await?,
+            ))),
+            BlobStorageUrl::AwsS3(url) => Ok(Box::new(Lz4BlobStorageAdapter::new(
+                AwsS3BlobStorage::new(url).await,
+            ))),
         }
     }
 }

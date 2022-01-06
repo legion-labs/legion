@@ -66,6 +66,8 @@ use lgn_source_control::*;
 use lgn_telemetry::*;
 
 const SUB_COMMAND_CREATE_REPOSITORY: &str = "create-repository";
+const SUB_COMMAND_DESTROY_REPOSITORY: &str = "destroy-repository";
+const SUB_COMMAND_PING: &str = "ping";
 
 const ARG_REPOSITORY_URL: &str = "repository-url";
 const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
@@ -95,12 +97,12 @@ async fn main() -> anyhow::Result<()> {
                 )
         )
         .subcommand(
-            SubCommand::with_name("destroy-repository")
+            SubCommand::with_name(SUB_COMMAND_DESTROY_REPOSITORY)
                 .about("Destroys all repository data permanently")
                 .arg(
-                    Arg::with_name("uri")
+                    Arg::with_name(ARG_REPOSITORY_URL)
                         .required(true)
-                        .help("file://somepath, mysql://user:pass@host:port/database, lsc://host:port/database")
+                        .help("The local path to the repository. If not specified, uses the current directory")
                 )
         )
         .subcommand(
@@ -286,12 +288,13 @@ async fn main() -> anyhow::Result<()> {
                         .help("Name of the branch to import"))
         )
         .subcommand(
-            SubCommand::with_name("ping")
+            SubCommand::with_name(SUB_COMMAND_PING)
                 .about("Contact server")
                 .arg(
-                    Arg::with_name("server_uri")
+                    Arg::with_name(ARG_REPOSITORY_URL)
                         .required(true)
-                        .help("lsc://host:port"))
+                        .help("The local path to the repository. If not specified, uses the current directory")
+                )
         )
         .get_matches();
 
@@ -312,13 +315,21 @@ async fn main() -> anyhow::Result<()> {
                 .transpose()?;
 
             lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
-                .await
-        }
-        ("destroy-repository", Some(command_match)) => {
-            info!("destroy-repository");
-            let repo_uri = command_match.value_of("uri").unwrap();
+                .await?;
 
-            lgn_source_control::destroy_repository::destroy_repository_command(repo_uri).await
+            Ok(())
+        }
+        (SUB_COMMAND_DESTROY_REPOSITORY, Some(command_match)) => {
+            let repository_url = command_match
+                .value_of(ARG_REPOSITORY_URL)
+                .map(RepositoryUrl::from_str)
+                .transpose()?
+                .unwrap_or_else(RepositoryUrl::from_current_dir)
+                .make_absolute(std::env::current_dir()?);
+
+            lgn_source_control::commands::destroy_repository(&repository_url).await?;
+
+            Ok(())
         }
         ("init-workspace", Some(command_match)) => {
             info!("init-workspace");
@@ -488,11 +499,15 @@ async fn main() -> anyhow::Result<()> {
 
             import_git_branch_command(Path::new(path_arg), branch_name).await
         }
-        ("ping", Some(command_match)) => {
-            let server_uri = command_match.value_of("server_uri").unwrap();
-            info!("ping {}", server_uri);
+        (SUB_COMMAND_PING, Some(command_match)) => {
+            let repository_url = command_match
+                .value_of(ARG_REPOSITORY_URL)
+                .map(RepositoryUrl::from_str)
+                .transpose()?
+                .unwrap_or_else(RepositoryUrl::from_current_dir)
+                .make_absolute(std::env::current_dir()?);
 
-            ping_console_command(server_uri).await
+            lgn_source_control::commands::ping(&repository_url).await
         }
         other_match => {
             info!("unknown subcommand match");
