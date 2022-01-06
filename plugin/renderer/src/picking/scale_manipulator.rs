@@ -160,7 +160,7 @@ impl ScaleManipulator {
         component: AxisComponents,
         base_entity_transform: &Transform,
         camera: &CameraComponent,
-        picking_pos_world_space: Vec3,
+        picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
@@ -171,11 +171,13 @@ impl ScaleManipulator {
         let plane_normal =
             plane_normal_for_camera_pos(component, base_entity_transform, camera, entity_rotation);
 
+        let picked_world_point =
+            new_world_point_for_cursor(camera, screen_size, picked_pos, plane_point, plane_normal);
+        let vec_to_picked_point =
+            inv_entity_rotation.mul_vec3(picked_world_point - base_entity_transform.translation);
+
         let new_world_point =
             new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
-
-        let vec_to_picked_point = inv_entity_rotation
-            .mul_vec3(picking_pos_world_space - base_entity_transform.translation);
         let vec_to_new_point =
             inv_entity_rotation.mul_vec3(new_world_point - base_entity_transform.translation);
 

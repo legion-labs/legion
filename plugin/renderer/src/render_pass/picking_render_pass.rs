@@ -7,18 +7,19 @@ use lgn_graphics_api::{
     MemoryUsage, Pipeline, PipelineType, PrimitiveTopology, RasterizerState, ResourceCreation,
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
+use lgn_transform::components::Transform;
 
 use crate::{
     components::{
         CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
     },
     hl_gfx_api::HLCommandBuffer,
-    picking::{PickingManager, PickingState},
+    picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
     RenderContext, RenderHandle, Renderer,
 };
 
-use lgn_math::{Vec2, Vec3};
+use lgn_math::{Mat4, Vec2, Vec3};
 
 #[derive(Clone, Copy)]
 pub(crate) struct PickingData {
@@ -249,16 +250,105 @@ impl PickingRenderPass {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn render_mesh(
+        &self,
+        custom_world: &Mat4,
+        view_proj_matrix: &Mat4,
+        screen_rect: Vec2,
+        cursor_pos: Vec2,
+        picking_distance: f32,
+        static_mesh: &StaticMesh,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        render_context: &RenderContext<'_>,
+    ) {
+        let mut constant_data: [f32; 55] = [0.0; 55];
+        custom_world.write_cols_to_slice(&mut constant_data[0..]);
+        view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
+
+        let inv_view_proj_matrix = view_proj_matrix.inverse();
+        inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[32..]);
+
+        constant_data[48] = screen_rect.x;
+        constant_data[49] = screen_rect.y;
+        constant_data[50] = 1.0 / screen_rect.x;
+        constant_data[51] = 1.0 / screen_rect.y;
+
+        constant_data[52] = cursor_pos.x;
+        constant_data[53] = cursor_pos.y;
+
+        constant_data[54] = picking_distance;
+
+        let transient_allocator = render_context.transient_buffer_allocator();
+        let sub_allocation =
+            transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+
+        let const_buffer_view = sub_allocation.const_buffer_view();
+
+        let descriptor_set_layout = &self
+            .pipeline
+            .root_signature()
+            .definition()
+            .descriptor_set_layouts[0];
+
+        let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
+
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "const_data",
+                &[DescriptorRef::BufferView(&const_buffer_view)],
+            )
+            .unwrap();
+
+        let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "static_buffer",
+                &[DescriptorRef::BufferView(&static_buffer_ro_view)],
+            )
+            .unwrap();
+
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "picked_count",
+                &[DescriptorRef::BufferView(&self.count_rw_view)],
+            )
+            .unwrap();
+
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "picked_objects",
+                &[DescriptorRef::BufferView(&self.picked_rw_view)],
+            )
+            .unwrap();
+
+        let descriptor_set_handle =
+            descriptor_set_writer.flush(render_context.renderer().device_context());
+
+        cmd_buffer.bind_descriptor_set_handle(
+            PipelineType::Graphics,
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency,
+            descriptor_set_handle,
+        );
+
+        let mut push_constant_data: [u32; 3] = [0; 3];
+        push_constant_data[0] = static_mesh.vertex_offset;
+        push_constant_data[1] = static_mesh.world_offset;
+        push_constant_data[2] = static_mesh.picking_id;
+
+        cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
+
+        cmd_buffer.draw(static_mesh.num_verticies, 0);
+    }
+
     pub fn render(
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(
-            &StaticMesh,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        )],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
         camera: &CameraComponent,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -287,112 +377,61 @@ impl PickingRenderPass {
 
             cmd_buffer.bind_pipeline(&self.pipeline);
 
-            let descriptor_set_layout = &self
-                .pipeline
-                .root_signature()
-                .definition()
-                .descriptor_set_layouts[0];
-
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
                 render_surface.extents().height() as f32,
             );
-
             let view_proj_matrix = projection_matrix * view_matrix;
-            let inv_view_proj_matrix = view_proj_matrix.inverse();
 
-            let transient_allocator = render_context.transient_buffer_allocator();
+            let mut screen_rect = picking_manager.screen_rect();
+            if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
+                screen_rect = Vec2::new(
+                    render_surface.extents().width() as f32,
+                    render_surface.extents().height() as f32,
+                );
+            }
 
-            for (_index, (static_mesh_component, _picked_component, manipulator_component)) in
-                static_meshes.iter().enumerate()
+            let cursor_pos = picking_manager.current_cursor_pos();
+
+            for (_index, (static_mesh, transform, manipulator)) in
+                manipulator_meshes.iter().enumerate()
             {
-                let mut picking_distance = 1.0;
-                if let Some(manipulator) = manipulator_component {
-                    if manipulator.active {
-                        picking_distance = 50.0;
-                    } else {
-                        continue;
-                    }
-                }
+                if manipulator.active {
+                    let picking_distance = 50.0;
+                    let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
+                        transform,
+                        &manipulator.local_transform,
+                        &view_matrix,
+                        &projection_matrix,
+                    );
 
-                let mut constant_data: [f32; 39] = [0.0; 39];
-                view_proj_matrix.write_cols_to_slice(&mut constant_data[0..]);
-                inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
-
-                let mut screen_rect = picking_manager.screen_rect();
-                if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
-                    screen_rect = Vec2::new(
-                        render_surface.extents().width() as f32,
-                        render_surface.extents().height() as f32,
+                    self.render_mesh(
+                        &custom_world,
+                        &view_proj_matrix,
+                        screen_rect,
+                        cursor_pos,
+                        picking_distance,
+                        static_mesh,
+                        &cmd_buffer,
+                        render_context,
                     );
                 }
+            }
 
-                constant_data[32] = screen_rect.x;
-                constant_data[33] = screen_rect.y;
-                constant_data[34] = 1.0 / screen_rect.x;
-                constant_data[35] = 1.0 / screen_rect.y;
+            for (_index, (static_mesh, _picked)) in static_meshes.iter().enumerate() {
+                let picking_distance = 1.0;
+                let custom_world = Mat4::IDENTITY;
 
-                let cursor_pos = picking_manager.current_cursor_pos();
-                constant_data[36] = cursor_pos.x;
-                constant_data[37] = cursor_pos.y;
-
-                constant_data[38] = picking_distance;
-
-                let sub_allocation =
-                    transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-                let const_buffer_view = sub_allocation.const_buffer_view();
-
-                let mut descriptor_set_writer =
-                    render_context.alloc_descriptor_set(descriptor_set_layout);
-
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "const_data",
-                        &[DescriptorRef::BufferView(&const_buffer_view)],
-                    )
-                    .unwrap();
-
-                let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "static_buffer",
-                        &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-                    )
-                    .unwrap();
-
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "picked_count",
-                        &[DescriptorRef::BufferView(&self.count_rw_view)],
-                    )
-                    .unwrap();
-
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "picked_objects",
-                        &[DescriptorRef::BufferView(&self.picked_rw_view)],
-                    )
-                    .unwrap();
-
-                let descriptor_set_handle =
-                    descriptor_set_writer.flush(render_context.renderer().device_context());
-
-                cmd_buffer.bind_descriptor_set_handle(
-                    PipelineType::Graphics,
-                    &self.root_signature,
-                    descriptor_set_layout.definition().frequency,
-                    descriptor_set_handle,
+                self.render_mesh(
+                    &custom_world,
+                    &view_proj_matrix,
+                    screen_rect,
+                    cursor_pos,
+                    picking_distance,
+                    static_mesh,
+                    &cmd_buffer,
+                    render_context,
                 );
-
-                let mut push_constant_data: [u32; 3] = [0; 3];
-                push_constant_data[0] = static_mesh_component.vertex_offset;
-                push_constant_data[1] = static_mesh_component.world_offset;
-                push_constant_data[2] = static_mesh_component.picking_id;
-
-                cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
-
-                cmd_buffer.draw(static_mesh_component.num_verticies, 0);
             }
 
             cmd_buffer.end_render_pass();

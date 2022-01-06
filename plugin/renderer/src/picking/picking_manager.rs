@@ -87,16 +87,14 @@ pub(crate) enum PickingState {
 pub struct PickingManagerInner {
     block_size: u32,
     picking_blocks: Vec<Option<PickingIdBlock>>,
-
     mouse_input: MouseButtonInput,
     screen_rect: Vec2,
-
     manip_entity_base_transform: Transform,
     picking_pos_world_space: Vec3,
-
     picking_state: PickingState,
     current_cpu_frame_no: u64,
     picked_cpu_frame_no: u64,
+    picked_pos: Vec2,
     current_picking_data: Vec<PickingData>,
     current_type: ManipulatorType,
     manipulated_entity: Entity,
@@ -124,6 +122,7 @@ impl PickingManager {
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
                 picked_cpu_frame_no: u64::MAX,
+                picked_pos: Vec2::ZERO,
                 current_picking_data: Vec::new(),
                 current_type: ManipulatorType::Position,
                 manipulated_entity: Entity::new(u32::MAX),
@@ -214,6 +213,12 @@ impl PickingManager {
         inner.mouse_input.pos
     }
 
+    pub fn picked_pos(&self) -> Vec2 {
+        let inner = self.inner.lock().unwrap();
+
+        inner.picked_pos
+    }
+
     pub fn set_mouse_button_input(&self, input: &MouseButtonInput) {
         let inner = &mut *self.inner.lock().unwrap();
 
@@ -224,6 +229,7 @@ impl PickingManager {
             if inner.picking_state == PickingState::Ready || inner.mouse_input.state.is_pressed() {
                 inner.picked_cpu_frame_no = inner.current_cpu_frame_no;
                 inner.picking_state = PickingState::Rendering;
+                inner.picked_pos = inner.mouse_input.pos;
             }
 
             if inner.picking_state == PickingState::Completed

@@ -160,7 +160,7 @@ impl PositionManipulator {
         component: AxisComponents,
         base_entity_transform: &Transform,
         camera: &CameraComponent,
-        picking_pos_world_space: Vec3,
+        picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
@@ -168,10 +168,12 @@ impl PositionManipulator {
         let plane_normal =
             plane_normal_for_camera_pos(component, base_entity_transform, camera, Quat::IDENTITY);
 
+        let picked_world_point =
+            new_world_point_for_cursor(camera, screen_size, picked_pos, plane_point, plane_normal);
         let new_world_point =
             new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
 
-        let delta = new_world_point - picking_pos_world_space;
+        let delta = new_world_point - picked_world_point;
         let clamped_delta = match component {
             AxisComponents::XAxis => Vec3::new(delta.x, 0.0, 0.0),
             AxisComponents::YAxis => Vec3::new(0.0, delta.y, 0.0),

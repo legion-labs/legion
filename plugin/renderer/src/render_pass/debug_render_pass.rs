@@ -14,6 +14,7 @@ use crate::{
     },
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
+    picking::ManipulatorManager,
     resources::{DefaultMeshId, DefaultMeshes},
     RenderContext, Renderer,
 };
@@ -352,12 +353,8 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(
-            &StaticMesh,
-            &Transform,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        )],
+        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
         camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
         debug_display: &mut DebugDisplay,
@@ -393,23 +390,22 @@ impl DebugRenderPass {
 
         self.render_ground_plane(constant_data, cmd_buffer, render_context, default_meshes);
 
-        for (_index, (static_mesh_component, transform, picked, manipulator)) in
-            static_meshes.iter().enumerate()
+        for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
         {
-            if let Some(manipulator) = manipulator {
-                if !manipulator.active {
-                    continue;
-                }
-
-                transform
-                    .compute_matrix()
-                    .write_cols_to_slice(&mut constant_data[0..]);
+            if manipulator.active {
+                let scaled_world_matrix = ManipulatorManager::scale_manipulator_for_viewport(
+                    transform,
+                    &manipulator.local_transform,
+                    &view_matrix,
+                    &projection_matrix,
+                );
+                scaled_world_matrix.write_cols_to_slice(&mut constant_data[0..]);
 
                 let mut color: (f32, f32, f32, f32) = (
-                    f32::from(static_mesh_component.color.r) / 255.0f32,
-                    f32::from(static_mesh_component.color.g) / 255.0f32,
-                    f32::from(static_mesh_component.color.b) / 255.0f32,
-                    f32::from(static_mesh_component.color.a) / 255.0f32,
+                    f32::from(static_mesh.color.r) / 255.0f32,
+                    f32::from(static_mesh.color.g) / 255.0f32,
+                    f32::from(static_mesh.color.b) / 255.0f32,
+                    f32::from(static_mesh.color.a) / 255.0f32,
                 );
 
                 if manipulator.selected {
@@ -428,12 +424,13 @@ impl DebugRenderPass {
                     render_context,
                 );
 
-                self.render_mesh(
-                    static_mesh_component.mesh_id as u32,
-                    cmd_buffer,
-                    default_meshes,
-                );
-            } else if let Some(_picked) = picked {
+                self.render_mesh(static_mesh.mesh_id as u32, cmd_buffer, default_meshes);
+            }
+        }
+
+        for (_index, (static_mesh_component, transform, picked)) in static_meshes.iter().enumerate()
+        {
+            if picked.is_some() {
                 self.render_aabb_for_mesh(
                     static_mesh_component.mesh_id as u32,
                     transform,
