@@ -16,7 +16,6 @@ struct ConstData {
     float4x4 view;
     float4x4 projection;
     float4 color;
-    float circle_half_width;
 };
 
 ConstantBuffer<ConstData> const_data;

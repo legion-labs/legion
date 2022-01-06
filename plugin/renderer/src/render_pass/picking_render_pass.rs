@@ -306,8 +306,11 @@ impl PickingRenderPass {
             for (_index, (static_mesh_component, _picked_component, manipulator_component)) in
                 static_meshes.iter().enumerate()
             {
+                let mut picking_distance = 1.0;
                 if let Some(manipulator) = manipulator_component {
-                    if !manipulator.active {
+                    if manipulator.active {
+                        picking_distance = 50.0;
+                    } else {
                         continue;
                     }
                 }
@@ -333,7 +336,7 @@ impl PickingRenderPass {
                 constant_data[36] = cursor_pos.x;
                 constant_data[37] = cursor_pos.y;
 
-                constant_data[38] = 1.0;
+                constant_data[38] = picking_distance;
 
                 let sub_allocation =
                     transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);

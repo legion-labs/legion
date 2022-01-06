@@ -1,6 +1,7 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
-use lgn_math::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
+use lgn_input::keyboard::KeyCode;
+use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::Transform;
 
 use crate::{
@@ -8,32 +9,26 @@ use crate::{
     resources::{DefaultMeshId, DefaultMeshes},
 };
 
-use super::{PickingIdBlock, PickingManager};
+use super::{
+    position_manipulator::PositionManipulator,
+    rotation_manipulator::{RotationComponents, RotationManipulator},
+    scale_manipulator::ScaleManipulator,
+    PickingIdBlock, PickingManager,
+};
 
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum PositionComponents {
+pub enum AxisComponents {
     XAxis = 0,
     YAxis,
     ZAxis,
     XYPlane,
     XZPlane,
     YZPlane,
-    None,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum ManipulatorType {
-    Position,
-    Rotation,
-    Scale,
-    None,
-}
-
-pub const NUM_POSITION_COMPONENT_PARTS: usize = 9;
-
-impl PositionComponents {
+impl AxisComponents {
     pub fn from_component_id(index: usize) -> Self {
         match index {
             0 | 1 => Self::XAxis,
@@ -47,13 +42,21 @@ impl PositionComponents {
     }
 }
 
-struct ManipulatorPart {
+#[derive(Clone, Copy, PartialEq)]
+pub enum ManipulatorType {
+    Position,
+    Rotation,
+    Scale,
+    None,
+}
+
+pub(super) struct ManipulatorPart {
     _entity: Entity,
 }
 
 impl ManipulatorPart {
     #[allow(clippy::too_many_arguments)]
-    fn new(
+    pub(super) fn new(
         color: Color,
         part_type: ManipulatorType,
         part_num: usize,
@@ -62,10 +65,10 @@ impl ManipulatorPart {
         mesh_id: DefaultMeshId,
         commands: &mut Commands<'_, '_>,
         picking_block: &mut PickingIdBlock,
-        default_meshes: &Res<'_, DefaultMeshes>,
+        default_meshes: &DefaultMeshes,
     ) -> Self {
         let mut static_mesh =
-            StaticMesh::from_default_meshes(default_meshes.as_ref(), mesh_id as usize, color);
+            StaticMesh::from_default_meshes(default_meshes, mesh_id as usize, color);
 
         let mut entity_commands = commands.spawn();
 
@@ -75,6 +78,7 @@ impl ManipulatorPart {
                 part_type,
                 part_num,
                 local_translation: transform.translation,
+                local_rotation: transform.rotation,
                 active: false,
                 selected: false,
                 transparent,
@@ -111,206 +115,82 @@ fn intersect_ray_with_plane(
     }
 }
 
-struct PositionManipulator {
-    parts: Vec<ManipulatorPart>,
+pub(super) fn new_world_point_for_cursor(
+    camera: &CameraComponent,
+    screen_size: Vec2,
+    mut cursor_pos: Vec2,
+    plane_point: Vec3,
+    plane_normal: Vec3,
+) -> Vec3 {
+    cursor_pos.y = screen_size.y - cursor_pos.y;
+    let camera_pos = camera.camera_rig.final_transform.position;
+    let ray_point = camera_pos;
+    let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
+
+    let (view_matrix, projection_matrix) =
+        camera.build_view_projection(screen_size.x as f32, screen_size.y as f32);
+
+    let view_proj_matrix = projection_matrix * view_matrix;
+    let inv_view_proj_matrix = view_proj_matrix.inverse();
+
+    let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.1, 1.0);
+
+    let mut world_pos = inv_view_proj_matrix.mul_vec4(screen_pos);
+    world_pos = world_pos / world_pos.w;
+    let ray_dir = (world_pos.xyz() - camera_pos).normalize();
+
+    intersect_ray_with_plane(ray_point, ray_dir, plane_point, plane_normal)
 }
 
-impl PositionManipulator {
-    fn new() -> Self {
-        Self { parts: Vec::new() }
-    }
+pub(super) fn plane_normal_for_camera_pos(
+    component: AxisComponents,
+    base_entity_transform: &Transform,
+    camera: &CameraComponent,
+    rotation: Quat,
+) -> Vec3 {
+    let camera_pos = camera.camera_rig.final_transform.position;
+    let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
 
-    #[allow(clippy::too_many_lines, clippy::needless_pass_by_value)]
-    fn add_manipulator_parts(
-        &mut self,
-        mut commands: Commands<'_, '_>,
-        default_meshes: Res<'_, DefaultMeshes>,
-        picking_manager: Res<'_, PickingManager>,
-    ) {
-        let mut picking_block = picking_manager.aquire_picking_id_block();
+    let xy_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 0.0, 1.0));
+    let xz_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0));
+    let yz_plane_normal = rotation.mul_vec3(Vec3::new(1.0, 0.0, 0.0));
 
-        let rotate_x_pointer =
-            Mat4::from_axis_angle(Vec3::new(-1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
-        let rotate_z_pointer =
-            Mat4::from_axis_angle(Vec3::new(0.0, 0.0, -1.0), std::f32::consts::PI * 0.5);
+    let xy_plane_facing_cam = dir_to_camera.dot(xy_plane_normal).abs();
+    let xz_plane_facing_cam = dir_to_camera.dot(xz_plane_normal).abs();
+    let yz_plane_facing_cam = dir_to_camera.dot(yz_plane_normal).abs();
 
-        let rotate_xy_plane =
-            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
-        let rotate_yz_plane =
-            Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), std::f32::consts::PI * 0.5);
-
-        let cone_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
-        let plane_offset = Mat4::from_translation(Vec3::new(0.2, 0.0, -0.2));
-
-        let cone_scale = Vec3::new(0.1, 0.1, 0.1);
-        let cylinder_scale = Vec3::new(0.025, 0.5, 0.025);
-        let plane_scale = Vec3::new(0.2, 0.2, 0.2);
-
-        let red = (255, 0, 0).into();
-        let green = (0, 255, 0).into();
-        let blue = (0, 0, 255).into();
-
-        self.parts = vec![
-            ManipulatorPart::new(
-                red,
-                ManipulatorType::Position,
-                0,
-                false,
-                Transform::from_matrix(rotate_z_pointer * cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                red,
-                ManipulatorType::Position,
-                1,
-                false,
-                Transform::from_matrix(rotate_z_pointer).with_scale(cylinder_scale),
-                DefaultMeshId::Cylinder,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                green,
-                ManipulatorType::Position,
-                2,
-                false,
-                Transform::from_matrix(cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                green,
-                ManipulatorType::Position,
-                3,
-                false,
-                Transform::from_scale(cylinder_scale),
-                DefaultMeshId::Cylinder,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                blue,
-                ManipulatorType::Position,
-                4,
-                false,
-                Transform::from_matrix(rotate_x_pointer * cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                blue,
-                ManipulatorType::Position,
-                5,
-                false,
-                Transform::from_matrix(rotate_x_pointer).with_scale(cylinder_scale),
-                DefaultMeshId::Cylinder,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                blue,
-                ManipulatorType::Position,
-                6,
-                true,
-                Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
-                DefaultMeshId::Plane,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                green,
-                ManipulatorType::Position,
-                7,
-                true,
-                Transform::from_matrix(plane_offset).with_scale(plane_scale),
-                DefaultMeshId::Plane,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-            ManipulatorPart::new(
-                red,
-                ManipulatorType::Position,
-                8,
-                true,
-                Transform::from_matrix(rotate_yz_plane * plane_offset).with_scale(plane_scale),
-                DefaultMeshId::Plane,
-                &mut commands,
-                &mut picking_block,
-                &default_meshes,
-            ),
-        ];
-
-        picking_manager.release_picking_id_block(picking_block);
-    }
-
-    fn manipulate_entity(
-        component: PositionComponents,
-        base_entity_transform: &Transform,
-        camera: &CameraComponent,
-        picking_pos_world_space: Vec3,
-        screen_size: Vec2,
-        mut cursor_pos: Vec2,
-    ) -> Transform {
-        let plane_point = base_entity_transform.translation;
-        let plane_normal = match component {
-            PositionComponents::XAxis | PositionComponents::ZAxis | PositionComponents::XZPlane => {
-                Vec3::new(0.0, 1.0, 0.0)
+    match component {
+        AxisComponents::XAxis => {
+            if xy_plane_facing_cam > xz_plane_facing_cam {
+                xy_plane_normal
+            } else {
+                xz_plane_normal
             }
-            PositionComponents::YAxis | PositionComponents::XYPlane => Vec3::new(0.0, 0.0, 1.0),
-            PositionComponents::YZPlane => Vec3::new(1.0, 0.0, 0.0),
-            PositionComponents::None => Vec3::NAN,
-        };
-
-        cursor_pos.y = screen_size.y - cursor_pos.y;
-        let camera_pos = camera.camera_rig.final_transform.position;
-        let ray_point = camera_pos;
-        let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
-
-        let (view_matrix, projection_matrix) =
-            camera.build_view_projection(screen_size.x as f32, screen_size.y as f32);
-
-        let view_proj_matrix = projection_matrix * view_matrix;
-        let inv_view_proj_matrix = view_proj_matrix.inverse();
-
-        let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.1, 1.0);
-
-        let mut world_pos = inv_view_proj_matrix.mul_vec4(screen_pos);
-        world_pos = world_pos / world_pos.w;
-        let ray_dir = (world_pos.xyz() - camera_pos).normalize();
-
-        let new_world_point =
-            intersect_ray_with_plane(ray_point, ray_dir, plane_point, plane_normal);
-
-        let delta = new_world_point - picking_pos_world_space;
-        let clamped_delta = match component {
-            PositionComponents::XAxis => Vec3::new(delta.x, 0.0, 0.0),
-            PositionComponents::YAxis => Vec3::new(0.0, delta.y, 0.0),
-            PositionComponents::ZAxis => Vec3::new(0.0, 0.0, delta.z),
-            _ => delta,
-        };
-
-        let new_transform = base_entity_transform;
-        new_transform.with_translation(base_entity_transform.translation + clamped_delta)
+        }
+        AxisComponents::YAxis => {
+            if xy_plane_facing_cam > yz_plane_facing_cam {
+                xy_plane_normal
+            } else {
+                yz_plane_normal
+            }
+        }
+        AxisComponents::ZAxis => {
+            if xz_plane_facing_cam > yz_plane_facing_cam {
+                xz_plane_normal
+            } else {
+                yz_plane_normal
+            }
+        }
+        AxisComponents::XYPlane => xy_plane_normal,
+        AxisComponents::XZPlane => xz_plane_normal,
+        AxisComponents::YZPlane => yz_plane_normal,
     }
 }
-
-// struct RotationManipulator {}
-// struct ScaleManipulator {}
 
 struct ManipulatorManagerInner {
     position: PositionManipulator,
+    rotation: RotationManipulator,
+    scale: ScaleManipulator,
     current_type: ManipulatorType,
 }
 
@@ -323,14 +203,17 @@ impl ManipulatorManager {
         Self {
             inner: Arc::new(Mutex::new(ManipulatorManagerInner {
                 position: PositionManipulator::new(),
-                current_type: ManipulatorType::Position,
+                rotation: RotationManipulator::new(),
+                scale: ScaleManipulator::new(),
+                current_type: ManipulatorType::Rotation,
             })),
         }
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn initialize(
         &mut self,
-        commands: Commands<'_, '_>,
+        mut commands: Commands<'_, '_>,
         default_meshes: Res<'_, DefaultMeshes>,
         picking_manager: Res<'_, PickingManager>,
     ) {
@@ -338,7 +221,15 @@ impl ManipulatorManager {
 
         inner
             .position
-            .add_manipulator_parts(commands, default_meshes, picking_manager);
+            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+
+        inner
+            .rotation
+            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+
+        inner
+            .scale
+            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
     }
 
     pub fn curremt_manipulator_type(&self) -> ManipulatorType {
@@ -347,10 +238,35 @@ impl ManipulatorManager {
         inner.current_type
     }
 
+    pub fn match_manipulator_parts(
+        &self,
+        selected_part: usize,
+        match_type: ManipulatorType,
+        match_part: usize,
+    ) -> bool {
+        let inner = self.inner.lock().unwrap();
+
+        if inner.current_type == match_type {
+            match inner.current_type {
+                ManipulatorType::Position | ManipulatorType::Scale => {
+                    AxisComponents::from_component_id(selected_part)
+                        == AxisComponents::from_component_id(match_part)
+                }
+                ManipulatorType::Rotation => {
+                    RotationComponents::from_component_id(selected_part)
+                        == RotationComponents::from_component_id(match_part)
+                }
+                ManipulatorType::None => panic!(),
+            }
+        } else {
+            false
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn manipulate_entity(
         &self,
-        component: PositionComponents,
+        part: usize,
         base_entity_transform: &Transform,
         camera: &CameraComponent,
         picking_pos_world_space: Vec3,
@@ -361,14 +277,66 @@ impl ManipulatorManager {
 
         match inner.current_type {
             ManipulatorType::Position => PositionManipulator::manipulate_entity(
-                component,
+                AxisComponents::from_component_id(part),
                 base_entity_transform,
                 camera,
                 picking_pos_world_space,
                 screen_size,
                 cursor_pos,
             ),
-            ManipulatorType::Rotation | ManipulatorType::Scale | ManipulatorType::None => panic!(),
+            ManipulatorType::Rotation => RotationManipulator::manipulate_entity(
+                RotationComponents::from_component_id(part),
+                base_entity_transform,
+                camera,
+                picking_pos_world_space,
+                screen_size,
+                cursor_pos,
+            ),
+            ManipulatorType::Scale => ScaleManipulator::manipulate_entity(
+                AxisComponents::from_component_id(part),
+                base_entity_transform,
+                camera,
+                picking_pos_world_space,
+                screen_size,
+                cursor_pos,
+            ),
+            ManipulatorType::None => panic!(),
+        }
+    }
+
+    pub fn change_manipulator(&self, key: KeyCode) {
+        let mut inner = self.inner.lock().unwrap();
+
+        inner.current_type = match key {
+            KeyCode::Numpad1 | KeyCode::Key1 => ManipulatorType::Position,
+            KeyCode::Numpad2 | KeyCode::Key2 => ManipulatorType::Rotation,
+            KeyCode::Numpad3 | KeyCode::Key3 => ManipulatorType::Scale,
+            _ => inner.current_type,
+        }
+    }
+
+    pub fn manipulator_transform_from_entity_transform(
+        &self,
+        entity_transform: &Transform,
+        manipulator: &ManipulatorComponent,
+        manipulator_transform: &mut Transform,
+    ) {
+        let inner = self.inner.lock().unwrap();
+
+        let mut local_translation = manipulator.local_translation;
+        if inner.current_type == ManipulatorType::Scale {
+            local_translation = entity_transform
+                .rotation
+                .mul_vec3(manipulator.local_translation);
+        }
+
+        manipulator_transform.translation = entity_transform.translation + local_translation;
+
+        if inner.current_type == ManipulatorType::Scale {
+            manipulator_transform.rotation = entity_transform
+                .rotation
+                .mul_quat(manipulator.local_rotation)
+                .normalize();
         }
     }
 }

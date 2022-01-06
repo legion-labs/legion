@@ -6,7 +6,6 @@ use crate::{
 };
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::*;
-use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
@@ -227,15 +226,15 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
-    for (mut transform, rotation) in query.iter_mut() {
-        transform.rotate(Quat::from_euler(
-            EulerRot::XYZ,
-            rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
-        ));
-    }
+fn update_rotation(mut _query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
+    // for (mut transform, rotation) in query.iter_mut() {
+    //     transform.rotate(Quat::from_euler(
+    //         EulerRot::XYZ,
+    //         rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
+    //         rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
+    //         rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
+    //     ));
+    // }
 }
 
 fn update_transform(
