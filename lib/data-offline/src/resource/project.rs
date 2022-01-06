@@ -136,7 +136,7 @@ impl Project {
             .map_err(|e| Error::Io(index_path.clone(), e))?;
 
         let db = ResourceDb::default();
-        serde_json::to_writer(&file, &db).map_err(|e| Error::Parse(index_path.clone(), e))?;
+        serde_json::to_writer_pretty(&file, &db).map_err(|e| Error::Parse(index_path.clone(), e))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
@@ -569,7 +569,7 @@ mod tests {
         let project_index_file = File::create(project_index_path).unwrap();
         std::fs::create_dir(root.path().join("offline")).unwrap();
 
-        serde_json::to_writer(project_index_file, &ResourceDb::default()).unwrap();
+        serde_json::to_writer_pretty(project_index_file, &ResourceDb::default()).unwrap();
         root
     }
 
@@ -603,7 +603,7 @@ mod tests {
         }
 
         fn write_resource(
-            &mut self,
+            &self,
             resource: &dyn Any,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {

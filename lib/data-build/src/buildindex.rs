@@ -185,8 +185,8 @@ impl BuildIndex {
 
         // todo: write the output file
 
-        serde_json::to_writer(&source_file, &source).map_err(|_e| Error::Io)?;
-        serde_json::to_writer(&output_file, &output).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&source_file, &source).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&output_file, &output).map_err(|_e| Error::Io)?;
 
         Ok(Self {
             source_content: source,

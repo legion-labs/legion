@@ -37,11 +37,7 @@ pub trait ResourceProcessor {
     }
 
     /// Interface defining serialization behavior of the resource.
-    fn write_resource(
-        &mut self,
-        resource: &dyn Any,
-        writer: &mut dyn io::Write,
-    ) -> io::Result<usize>;
+    fn write_resource(&self, resource: &dyn Any, writer: &mut dyn io::Write) -> io::Result<usize>;
 
     /// Interface defining deserialization behavior of the resource.
     fn read_resource(

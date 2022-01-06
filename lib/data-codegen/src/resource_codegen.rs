@@ -101,7 +101,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 Some(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME)
             }
 
-            fn write_resource(&mut self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
+            fn write_resource(&self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).
                     map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;

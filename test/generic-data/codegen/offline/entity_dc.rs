@@ -138,7 +138,7 @@ impl lgn_data_offline::resource::ResourceProcessor for EntityDcProcessor {
         Some(<EntityDc as lgn_data_runtime::Resource>::TYPENAME)
     }
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn std::any::Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {

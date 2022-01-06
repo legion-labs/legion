@@ -4474,6 +4474,7 @@ dependencies = [
 name = "lgn-graphics-offline"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "lgn-data-offline",
  "lgn-data-runtime",
  "psd",

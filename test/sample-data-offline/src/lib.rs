@@ -122,12 +122,12 @@ impl ResourceProcessor for EntityProcessor {
     }
 
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Entity>().unwrap();
-        serde_json::to_writer(writer, resource).unwrap();
+        serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
     }
 
@@ -339,12 +339,12 @@ impl ResourceProcessor for InstanceProcessor {
     }
 
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Instance>().unwrap();
-        serde_json::to_writer(writer, resource).unwrap();
+        serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
     }
 
@@ -405,12 +405,12 @@ impl ResourceProcessor for MeshProcessor {
     }
 
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Mesh>().unwrap();
-        serde_json::to_writer(writer, resource).unwrap();
+        serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
     }
 

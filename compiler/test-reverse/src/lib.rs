@@ -96,7 +96,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
             content: resource.content.chars().rev().collect(),
         };
 
-        let mut processor = text_resource::TextResourceProc {};
+        let processor = text_resource::TextResourceProc {};
         let _nbytes = processor
             .write_resource(&output, &mut bytes)
             .map_err(CompilerError::ResourceWriteFailed)?;

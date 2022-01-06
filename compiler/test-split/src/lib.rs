@@ -100,7 +100,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         resource_references: vec![],
     };
 
-    let mut proc = text_resource::TextResourceProc {};
+    let proc = text_resource::TextResourceProc {};
 
     for (index, content) in source_text_list.iter().enumerate() {
         let output_resource = text_resource::TextResource {

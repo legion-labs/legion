@@ -44,12 +44,12 @@ impl ResourceProcessor for MultiTextResourceProc {
     }
 
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<MultiTextResource>().unwrap();
-        serde_json::to_writer(writer, resource).unwrap();
+        serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
     }
 

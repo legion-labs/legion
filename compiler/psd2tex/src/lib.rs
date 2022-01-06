@@ -61,9 +61,9 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_offline::Transform;
+use lgn_data_offline::{resource::ResourceProcessor, Transform};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_offline::PsdFile;
+use lgn_graphics_offline::{texture::TextureProcessor, PsdFile};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -92,6 +92,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resource.get(&resources).unwrap();
 
     let mut compiled_resources = vec![];
+    let texture_proc = TextureProcessor {};
 
     let compiled_content = {
         let final_image = resource
@@ -99,17 +100,23 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
             .ok_or(CompilerError::CompilationError(
                 "Failed to generate texture",
             ))?;
-        serde_json::to_vec(&final_image)
-            .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))?
+        let mut content = vec![];
+        texture_proc
+            .write_resource(&final_image, &mut content)
+            .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+        content
     };
 
     let output = context.store(&compiled_content, context.target_unnamed.clone())?;
     compiled_resources.push(output);
 
-    let compile_layer = |psd: &PsdFile, layer_name| -> Result<Vec<u8>, CompilerError> {
+    let compile_layer = |psd: &PsdFile, layer_name| -> Vec<u8> {
         let image = psd.layer_texture(layer_name).unwrap();
-        serde_json::to_vec(&image)
-            .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))
+        let mut layer_content = vec![];
+        texture_proc
+            .write_resource(&image, &mut layer_content)
+            .unwrap_or_else(|_| panic!("writing to file, from layer {}", layer_name));
+        layer_content
     };
 
     for layer_name in resource
@@ -118,7 +125,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
             "Failed to extract layer names",
         ))?
     {
-        let pixels = compile_layer(&resource, layer_name)?;
+        let pixels = compile_layer(&resource, layer_name);
         let output = context.store(&pixels, context.target_unnamed.new_named(layer_name))?;
         compiled_resources.push(output);
     }

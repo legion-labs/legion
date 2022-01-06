@@ -105,7 +105,7 @@ impl ResourceProcessor for PsdFileProcessor {
     }
 
     fn write_resource(
-        &mut self,
+        &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
