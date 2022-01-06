@@ -70,11 +70,11 @@ use lgn_math::prelude::*;
 use lgn_telemetry::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+pub fn add_loaders(registry: &mut AssetRegistryOptions) {
     registry
-        .add_loader::<Entity>()
-        .add_loader::<Instance>()
-        .add_loader::<Mesh>()
+        .add_loader_mut::<Entity>()
+        .add_loader_mut::<Instance>()
+        .add_loader_mut::<Mesh>();
 }
 
 fn deserialize_bincode_asset<T>(reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>>

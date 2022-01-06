@@ -181,6 +181,13 @@ impl AssetRegistryOptions {
         self
     }
 
+    /// Enables support of a given [`Resource`] by adding corresponding
+    /// [`AssetLoader`].
+    pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
+        self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
+        self
+    }
+
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
     pub fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);

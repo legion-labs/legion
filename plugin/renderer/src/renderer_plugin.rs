@@ -88,10 +88,10 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn register_asset_loaders(registry: NonSend<'_, AssetRegistryOptions>) {
-    registry
-        .add_loader::<lgn_graphics_runtime::Material>()
-        .add_loader::<lgn_graphics_runtime::Texture>()
+fn register_asset_loaders(mut registry: NonSendMut<'_, AssetRegistryOptions>) {
+    sample_data_runtime::add_loaders(&mut registry);
+    lgn_graphics_runtime::add_loaders(&mut registry);
+    generic_data::runtime::add_loaders(&mut registry);
 }
 
 fn init_manipulation_manager(
