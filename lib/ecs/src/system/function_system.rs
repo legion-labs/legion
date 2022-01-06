@@ -29,7 +29,7 @@ pub struct SystemMeta {
 impl SystemMeta {
     fn new<T>() -> Self {
         Self {
-            name: std::any::type_name::<T>().into(),
+            name: std::any::type_name::<T>(),
             archetype_component_access: Access::default(),
             component_access_set: FilteredAccessSet::default(),
             is_send: true,
@@ -53,7 +53,7 @@ impl SystemMeta {
 
     #[inline]
     pub(crate) fn check_change_tick(&mut self, change_tick: u32) {
-        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name.as_ref());
+        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name);
     }
 }
 
@@ -485,7 +485,7 @@ where
         check_system_change_tick(
             &mut self.system_meta.last_change_tick,
             change_tick,
-            self.system_meta.name.as_ref(),
+            self.system_meta.name,
         );
     }
 }

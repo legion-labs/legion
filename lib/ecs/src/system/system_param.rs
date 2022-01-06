@@ -134,7 +134,7 @@ where
     fn init(world: &mut World, system_meta: &mut SystemMeta, _config: Self::Config) -> Self {
         let state = Self::new(world);
         assert_component_access_compatibility(
-            &system_meta.name,
+            system_meta.name,
             std::any::type_name::<Q>(),
             std::any::type_name::<F>(),
             &system_meta.component_access_set,

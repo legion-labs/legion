@@ -46,7 +46,7 @@ where
     fn initialize(&mut self, _: &mut World) {}
 
     fn check_change_tick(&mut self, change_tick: u32) {
-        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name.as_ref());
+        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name);
     }
 }
 
@@ -61,7 +61,7 @@ where
     fn exclusive_system(self) -> ExclusiveSystemFn<F> {
         ExclusiveSystemFn {
             func: self,
-            name: core::any::type_name::<F>().into(),
+            name: core::any::type_name::<F>(),
             last_change_tick: 0,
         }
     }

@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::borrow::Cow;
-
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
