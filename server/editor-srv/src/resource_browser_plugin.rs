@@ -264,7 +264,7 @@ mod test {
 
         let project = Project::create_new(&project_dir).expect("failed to create a project");
         let mut registry = ResourceRegistryOptions::new();
-        registry = generic_data::offline::register_resource_types(registry);
+        generic_data::offline::register_resource_types(&mut registry);
         let registry = registry.create_async_registry();
         let project = Arc::new(Mutex::new(project));
 

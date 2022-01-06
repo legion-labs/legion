@@ -140,7 +140,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     let project = Arc::new(Mutex::new(project));
 
     let mut registry = ResourceRegistryOptions::new();
-    registry = generic_data::offline::register_resource_types(registry);
+    generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
 
     let asset_registry = AssetRegistryOptions::new().create();

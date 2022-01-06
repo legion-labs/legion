@@ -69,11 +69,11 @@ use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 use lgn_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub fn register_resource_types(registry: ResourceRegistryOptions) -> ResourceRegistryOptions {
+pub fn register_resource_types(registry: &mut ResourceRegistryOptions) {
     registry
-        .add_type::<Entity>()
-        .add_type::<Instance>()
-        .add_type::<Mesh>()
+        .add_type_mut::<Entity>()
+        .add_type_mut::<Instance>()
+        .add_type_mut::<Mesh>();
 }
 
 // ------------------ Entity -----------------------------------

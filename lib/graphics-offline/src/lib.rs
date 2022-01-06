@@ -69,9 +69,9 @@ pub mod texture;
 pub use texture::Texture;
 
 /// Register crate's resource types to resource registry
-pub fn register_resource_types(registry: ResourceRegistryOptions) -> ResourceRegistryOptions {
+pub fn register_resource_types(registry: &mut ResourceRegistryOptions) {
     registry
-        .add_type::<Material>()
-        .add_type::<PsdFile>()
-        .add_type::<Texture>()
+        .add_type_mut::<Material>()
+        .add_type_mut::<PsdFile>()
+        .add_type_mut::<Texture>();
 }

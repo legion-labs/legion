@@ -37,6 +37,17 @@ impl ResourceRegistryOptions {
         self
     }
 
+    /// See `add_type_processor`
+    pub fn add_type_processor_mut(
+        &mut self,
+        ty: ResourceType,
+        proc: Box<dyn ResourceProcessor + Send + Sync>,
+    ) -> &mut Self {
+        let v = self.processors.insert(ty, proc).is_none();
+        assert!(v);
+        self
+    }
+
     /// Same as `add_type_processor` but adds a default processor of
     /// `OfflineResource`.
     ///
@@ -46,6 +57,11 @@ impl ResourceRegistryOptions {
     /// registered.
     pub fn add_type<T: OfflineResource>(self) -> Self {
         self.add_type_processor(T::TYPE, Box::new(T::Processor::default()))
+    }
+
+    /// See `add_type`
+    pub fn add_type_mut<T: OfflineResource>(&mut self) -> &mut Self {
+        self.add_type_processor_mut(T::TYPE, Box::new(T::Processor::default()))
     }
 
     /// Creates a new registry with the options specified by `self`.

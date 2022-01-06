@@ -9,6 +9,7 @@ use crate::{
     resources::DefaultMeshes,
 };
 use lgn_app::{App, CoreStage, Plugin};
+use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
 use lgn_transform::components::Transform;
@@ -59,6 +60,7 @@ impl Plugin for RendererPlugin {
         app.init_resource::<LightingManager>();
 
         app.add_startup_system(register_asset_loaders);
+        app.add_startup_system(register_resource_types);
 
         app.add_startup_system(create_camera);
 
@@ -92,6 +94,12 @@ fn register_asset_loaders(mut registry: NonSendMut<'_, AssetRegistryOptions>) {
     sample_data_runtime::add_loaders(&mut registry);
     lgn_graphics_runtime::add_loaders(&mut registry);
     generic_data::runtime::add_loaders(&mut registry);
+}
+
+fn register_resource_types(mut registry: ResMut<'_, ResourceRegistryOptions>) {
+    sample_data_offline::register_resource_types(&mut registry);
+    lgn_graphics_offline::register_resource_types(&mut registry);
+    generic_data::offline::register_resource_types(&mut registry);
 }
 
 fn init_manipulation_manager(
