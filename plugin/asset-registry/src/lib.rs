@@ -117,6 +117,7 @@ impl Plugin for AssetRegistryPlugin {
                         StartupStage::PostStartup,
                         Self::post_setup.exclusive_system(),
                     )
+                    .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
                     .add_system(Self::handle_load_events);
@@ -133,31 +134,30 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
-    fn post_setup(
-        world: &mut World, // mut commands: Commands<'_, '_>,
-                           // registry: NonSend<'_, AssetRegistryOptions>,
-                           // mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-                           // mut asset_handles: ResMut<'_, AssetHandles>,
-                           // config: ResMut<'_, AssetRegistrySettings>
-    ) {
+    fn post_setup(world: &mut World) {
         let registry_options = world.remove_non_send::<AssetRegistryOptions>().unwrap();
         let registry = registry_options.create();
 
         let load_events = registry.subscribe_to_load_events();
         world.insert_resource(load_events);
 
-        /*
-        // Request load for all assets specified in config.
-        let config = world.get_resource_mut::<AssetRegistrySettings>().unwrap();
-        let asset_loading_states = world.get_resource_mut::<AssetLoadingStates>().unwrap();
-        let asset_handles = world.get_resource::<AssetHandles>().unwrap();
+        world.insert_resource(registry);
+    }
+
+    // Request load for all assets specified in config.
+    fn preload_assets(
+        config: ResMut<'_, AssetRegistrySettings>,
+        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        mut asset_handles: ResMut<'_, AssetHandles>,
+        registry: Res<'_, Arc<AssetRegistry>>,
+    ) {
         for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
-        */
 
-        world.insert_resource(registry);
+        drop(config);
+        drop(registry);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {
