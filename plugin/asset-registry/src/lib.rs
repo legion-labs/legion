@@ -71,7 +71,8 @@ pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
+    ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_renderer::resources::DefaultMeshes;
@@ -115,7 +116,9 @@ impl Plugin for AssetRegistryPlugin {
                     .insert_resource(manifest)
                     .add_startup_system_to_stage(
                         StartupStage::PostStartup,
-                        Self::post_setup.exclusive_system(),
+                        Self::post_setup
+                            .exclusive_system()
+                            .label(AssetRegistryScheduling::AssetRegistryCreated),
                     )
                     .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
                     .add_system(Self::update_registry)

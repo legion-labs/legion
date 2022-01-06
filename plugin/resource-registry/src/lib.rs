@@ -64,7 +64,7 @@ use lgn_app::prelude::*;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, DataManager};
 use lgn_ecs::prelude::*;
 use lgn_tasks::IoTaskPool;
@@ -79,7 +79,9 @@ impl Plugin for ResourceRegistryPlugin {
         app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
-            Self::post_setup.exclusive_system(),
+            Self::post_setup
+                .exclusive_system()
+                .after(AssetRegistryScheduling::AssetRegistryCreated),
         );
     }
 }

@@ -14,6 +14,7 @@ use std::{
 };
 
 use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -243,6 +244,13 @@ pub struct AssetRegistry {
     inner: UnsafeCell<Inner>,
     loader: AssetLoaderStub,
     load_thread: Cell<Option<JoinHandle<()>>>,
+}
+
+/// Label to use for scheduling systems that require the `AssetRegistry`
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum AssetRegistryScheduling {
+    /// AssetRegistry has been created
+    AssetRegistryCreated,
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or

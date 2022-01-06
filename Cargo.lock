@@ -4233,6 +4233,7 @@ dependencies = [
  "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime-macros",
+ "lgn-ecs",
  "lgn-telemetry",
  "lgn-utils",
  "serde",
