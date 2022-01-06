@@ -260,8 +260,11 @@ fn update_manipulator_component(
 
         if let Some(entity_transform) = select_entity_transform {
             if manipulator.part_type == manipulator_manager.curremt_manipulator_type() {
-                transform.translation =
-                    entity_transform.translation + manipulator.local_translation;
+                manipulator_manager.manipulator_transform_from_entity_transform(
+                    &entity_transform,
+                    &manipulator,
+                    &mut transform,
+                );
                 manipulator.active = true;
             }
         }

@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_math::{Mat4, Quat, Vec3};
+use lgn_math::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::Transform;
 
@@ -153,7 +153,7 @@ impl DebugRenderPass {
     pub fn bind_pipeline_and_desc_set(
         &self,
         pipeline: &Pipeline,
-        constant_data: [f32; 53],
+        constant_data: [f32; 52],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
@@ -216,7 +216,7 @@ impl DebugRenderPass {
 
     pub fn render_ground_plane(
         &self,
-        mut constant_data: [f32; 53],
+        mut constant_data: [f32; 52],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
@@ -227,7 +227,6 @@ impl DebugRenderPass {
         constant_data[49] = 0.0;
         constant_data[50] = 0.0;
         constant_data[51] = 0.0;
-        constant_data[52] = 0.0;
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
@@ -248,7 +247,7 @@ impl DebugRenderPass {
         &self,
         mesh_id: u32,
         transform: &Transform,
-        mut constant_data: [f32; 53],
+        mut constant_data: [f32; 52],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
@@ -259,13 +258,14 @@ impl DebugRenderPass {
         let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
         for i in 0..mesh.num_vertices() {
-            let position = Vec3::new(
+            let position = Vec4::new(
                 mesh.vertices[i * 14],
                 mesh.vertices[i * 14 + 1],
                 mesh.vertices[i * 14 + 2],
+                1.0,
             );
 
-            let world_pos = transform.mul_vec3(position);
+            let world_pos = transform.compute_matrix().mul_vec4(position).xyz();
 
             min_bound = min_bound.min(world_pos);
             max_bound = max_bound.max(world_pos);
@@ -286,7 +286,6 @@ impl DebugRenderPass {
         constant_data[49] = 1.0;
         constant_data[50] = 0.0;
         constant_data[51] = 1.0;
-        constant_data[52] = 0.0;
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
@@ -306,7 +305,7 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        mut constant_data: [f32; 53],
+        mut constant_data: [f32; 52],
         cmd_buffer: &HLCommandBuffer<'_>,
         debug_display: &mut DebugDisplay,
         default_meshes: &DefaultMeshes,
@@ -333,7 +332,6 @@ impl DebugRenderPass {
             constant_data[49] = color.1;
             constant_data[50] = color.2;
             constant_data[51] = color.3;
-            constant_data[52] = 0.0;
 
             self.bind_pipeline_and_desc_set(
                 &self.wire_pso_depth,
@@ -389,7 +387,7 @@ impl DebugRenderPass {
             render_surface.extents().height() as f32,
         );
 
-        let mut constant_data: [f32; 53] = [0.0; 53];
+        let mut constant_data: [f32; 52] = [0.0; 52];
         view_matrix.write_cols_to_slice(&mut constant_data[16..]);
         projection_matrix.write_cols_to_slice(&mut constant_data[32..]);
 
@@ -422,7 +420,6 @@ impl DebugRenderPass {
                 constant_data[49] = color.1;
                 constant_data[50] = color.2;
                 constant_data[51] = if manipulator.transparent { 0.9 } else { 1.0 };
-                constant_data[52] = 0.0;
 
                 self.bind_pipeline_and_desc_set(
                     &self.solid_pso_nodepth,

@@ -1,4 +1,4 @@
-use lgn_ecs::prelude::{Commands, Res};
+use lgn_ecs::prelude::Commands;
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3};
 use lgn_transform::components::Transform;
 
@@ -40,9 +40,9 @@ impl RotationManipulator {
     #[allow(clippy::too_many_lines, clippy::needless_pass_by_value)]
     pub(super) fn add_manipulator_parts(
         &mut self,
-        mut commands: Commands<'_, '_>,
-        default_meshes: Res<'_, DefaultMeshes>,
-        picking_manager: Res<'_, PickingManager>,
+        commands: &mut Commands<'_, '_>,
+        default_meshes: &DefaultMeshes,
+        picking_manager: &PickingManager,
     ) {
         let mut picking_block = picking_manager.aquire_picking_id_block();
 
@@ -63,9 +63,9 @@ impl RotationManipulator {
                 false,
                 Transform::from_matrix(rotate_x_pointer),
                 DefaultMeshId::RotationRing,
-                &mut commands,
+                commands,
                 &mut picking_block,
-                &default_meshes,
+                default_meshes,
             ),
             ManipulatorPart::new(
                 green,
@@ -74,9 +74,9 @@ impl RotationManipulator {
                 false,
                 Transform::from_matrix(rotate_y_pointer),
                 DefaultMeshId::RotationRing,
-                &mut commands,
+                commands,
                 &mut picking_block,
-                &default_meshes,
+                default_meshes,
             ),
             ManipulatorPart::new(
                 blue,
@@ -85,9 +85,9 @@ impl RotationManipulator {
                 false,
                 Transform::from_matrix(Mat4::IDENTITY),
                 DefaultMeshId::RotationRing,
-                &mut commands,
+                commands,
                 &mut picking_block,
-                &default_meshes,
+                default_meshes,
             ),
         ];
 

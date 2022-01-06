@@ -1,7 +1,7 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_input::keyboard::KeyCode;
-use lgn_math::{Vec2, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::Transform;
 
 use crate::{
@@ -10,11 +10,37 @@ use crate::{
 };
 
 use super::{
-    PickingIdBlock, PickingManager, PositionComponents, PositionManipulator, RotationComponents,
-    RotationManipulator,
+    position_manipulator::PositionManipulator,
+    rotation_manipulator::{RotationComponents, RotationManipulator},
+    scale_manipulator::ScaleManipulator,
+    PickingIdBlock, PickingManager,
 };
 
 use std::sync::{Arc, Mutex};
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum AxisComponents {
+    XAxis = 0,
+    YAxis,
+    ZAxis,
+    XYPlane,
+    XZPlane,
+    YZPlane,
+}
+
+impl AxisComponents {
+    pub fn from_component_id(index: usize) -> Self {
+        match index {
+            0 | 1 => Self::XAxis,
+            2 | 3 => Self::YAxis,
+            4 | 5 => Self::ZAxis,
+            6 => Self::XYPlane,
+            7 => Self::XZPlane,
+            8 => Self::YZPlane,
+            _ => panic!("Unknown index: {}", index),
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ManipulatorType {
@@ -52,6 +78,7 @@ impl ManipulatorPart {
                 part_type,
                 part_num,
                 local_translation: transform.translation,
+                local_rotation: transform.rotation,
                 active: false,
                 selected: false,
                 transparent,
@@ -115,9 +142,55 @@ pub(super) fn new_world_point_for_cursor(
     intersect_ray_with_plane(ray_point, ray_dir, plane_point, plane_normal)
 }
 
+pub(super) fn plane_normal_for_camera_pos(
+    component: AxisComponents,
+    base_entity_transform: &Transform,
+    camera: &CameraComponent,
+    rotation: Quat,
+) -> Vec3 {
+    let camera_pos = camera.camera_rig.final_transform.position;
+    let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
+
+    let xy_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 0.0, 1.0));
+    let xz_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0));
+    let yz_plane_normal = rotation.mul_vec3(Vec3::new(1.0, 0.0, 0.0));
+
+    let xy_plane_facing_cam = dir_to_camera.dot(xy_plane_normal).abs();
+    let xz_plane_facing_cam = dir_to_camera.dot(xz_plane_normal).abs();
+    let yz_plane_facing_cam = dir_to_camera.dot(yz_plane_normal).abs();
+
+    match component {
+        AxisComponents::XAxis => {
+            if xy_plane_facing_cam > xz_plane_facing_cam {
+                xy_plane_normal
+            } else {
+                xz_plane_normal
+            }
+        }
+        AxisComponents::YAxis => {
+            if xy_plane_facing_cam > yz_plane_facing_cam {
+                xy_plane_normal
+            } else {
+                yz_plane_normal
+            }
+        }
+        AxisComponents::ZAxis => {
+            if xz_plane_facing_cam > yz_plane_facing_cam {
+                xz_plane_normal
+            } else {
+                yz_plane_normal
+            }
+        }
+        AxisComponents::XYPlane => xy_plane_normal,
+        AxisComponents::XZPlane => xz_plane_normal,
+        AxisComponents::YZPlane => yz_plane_normal,
+    }
+}
+
 struct ManipulatorManagerInner {
     position: PositionManipulator,
     rotation: RotationManipulator,
+    scale: ScaleManipulator,
     current_type: ManipulatorType,
 }
 
@@ -131,11 +204,13 @@ impl ManipulatorManager {
             inner: Arc::new(Mutex::new(ManipulatorManagerInner {
                 position: PositionManipulator::new(),
                 rotation: RotationManipulator::new(),
+                scale: ScaleManipulator::new(),
                 current_type: ManipulatorType::Rotation,
             })),
         }
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn initialize(
         &mut self,
         mut commands: Commands<'_, '_>,
@@ -150,7 +225,11 @@ impl ManipulatorManager {
 
         inner
             .rotation
-            .add_manipulator_parts(commands, default_meshes, picking_manager);
+            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+
+        inner
+            .scale
+            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
     }
 
     pub fn curremt_manipulator_type(&self) -> ManipulatorType {
@@ -169,15 +248,15 @@ impl ManipulatorManager {
 
         if inner.current_type == match_type {
             match inner.current_type {
-                ManipulatorType::Position => {
-                    PositionComponents::from_component_id(selected_part)
-                        == PositionComponents::from_component_id(match_part)
+                ManipulatorType::Position | ManipulatorType::Scale => {
+                    AxisComponents::from_component_id(selected_part)
+                        == AxisComponents::from_component_id(match_part)
                 }
                 ManipulatorType::Rotation => {
                     RotationComponents::from_component_id(selected_part)
                         == RotationComponents::from_component_id(match_part)
                 }
-                ManipulatorType::Scale | ManipulatorType::None => panic!(),
+                ManipulatorType::None => panic!(),
             }
         } else {
             false
@@ -198,7 +277,7 @@ impl ManipulatorManager {
 
         match inner.current_type {
             ManipulatorType::Position => PositionManipulator::manipulate_entity(
-                PositionComponents::from_component_id(part),
+                AxisComponents::from_component_id(part),
                 base_entity_transform,
                 camera,
                 picking_pos_world_space,
@@ -213,7 +292,15 @@ impl ManipulatorManager {
                 screen_size,
                 cursor_pos,
             ),
-            ManipulatorType::Scale | ManipulatorType::None => panic!(),
+            ManipulatorType::Scale => ScaleManipulator::manipulate_entity(
+                AxisComponents::from_component_id(part),
+                base_entity_transform,
+                camera,
+                picking_pos_world_space,
+                screen_size,
+                cursor_pos,
+            ),
+            ManipulatorType::None => panic!(),
         }
     }
 
@@ -223,8 +310,33 @@ impl ManipulatorManager {
         inner.current_type = match key {
             KeyCode::Numpad1 | KeyCode::Key1 => ManipulatorType::Position,
             KeyCode::Numpad2 | KeyCode::Key2 => ManipulatorType::Rotation,
-            //KeyCode::Numpad3 | KeyCode::Key3 => Some(Key::Num2),
+            KeyCode::Numpad3 | KeyCode::Key3 => ManipulatorType::Scale,
             _ => inner.current_type,
+        }
+    }
+
+    pub fn manipulator_transform_from_entity_transform(
+        &self,
+        entity_transform: &Transform,
+        manipulator: &ManipulatorComponent,
+        manipulator_transform: &mut Transform,
+    ) {
+        let inner = self.inner.lock().unwrap();
+
+        let mut local_translation = manipulator.local_translation;
+        if inner.current_type == ManipulatorType::Scale {
+            local_translation = entity_transform
+                .rotation
+                .mul_vec3(manipulator.local_translation);
+        }
+
+        manipulator_transform.translation = entity_transform.translation + local_translation;
+
+        if inner.current_type == ManipulatorType::Scale {
+            manipulator_transform.rotation = entity_transform
+                .rotation
+                .mul_quat(manipulator.local_rotation)
+                .normalize();
         }
     }
 }

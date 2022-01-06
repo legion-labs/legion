@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::Commands;
-use lgn_math::{Mat4, Quat, Vec2, Vec3};
+use lgn_math::{Mat4, Vec2, Vec3};
 use lgn_transform::components::Transform;
 
 use crate::{
@@ -12,11 +12,11 @@ use super::{
     ManipulatorType, PickingManager,
 };
 
-pub(super) struct PositionManipulator {
+pub(super) struct ScaleManipulator {
     parts: Vec<ManipulatorPart>,
 }
 
-impl PositionManipulator {
+impl ScaleManipulator {
     pub(super) fn new() -> Self {
         Self { parts: Vec::new() }
     }
@@ -40,10 +40,10 @@ impl PositionManipulator {
         let rotate_yz_plane =
             Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), std::f32::consts::PI * 0.5);
 
-        let cone_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
+        let cube_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
         let plane_offset = Mat4::from_translation(Vec3::new(0.2, 0.0, -0.2));
 
-        let cone_scale = Vec3::new(0.1, 0.1, 0.1);
+        let cube_scale = Vec3::new(0.1, 0.1, 0.1);
         let cylinder_scale = Vec3::new(0.025, 0.5, 0.025);
         let plane_scale = Vec3::new(0.2, 0.2, 0.2);
 
@@ -54,18 +54,18 @@ impl PositionManipulator {
         self.parts = vec![
             ManipulatorPart::new(
                 red,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 0,
                 false,
-                Transform::from_matrix(rotate_z_pointer * cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
+                Transform::from_matrix(rotate_z_pointer * cube_offset).with_scale(cube_scale),
+                DefaultMeshId::Cube,
                 commands,
                 &mut picking_block,
                 default_meshes,
             ),
             ManipulatorPart::new(
                 red,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 1,
                 false,
                 Transform::from_matrix(rotate_z_pointer).with_scale(cylinder_scale),
@@ -76,18 +76,18 @@ impl PositionManipulator {
             ),
             ManipulatorPart::new(
                 green,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 2,
                 false,
-                Transform::from_matrix(cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
+                Transform::from_matrix(cube_offset).with_scale(cube_scale),
+                DefaultMeshId::Cube,
                 commands,
                 &mut picking_block,
                 default_meshes,
             ),
             ManipulatorPart::new(
                 green,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 3,
                 false,
                 Transform::from_scale(cylinder_scale),
@@ -98,18 +98,18 @@ impl PositionManipulator {
             ),
             ManipulatorPart::new(
                 blue,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 4,
                 false,
-                Transform::from_matrix(rotate_x_pointer * cone_offset).with_scale(cone_scale),
-                DefaultMeshId::Cone,
+                Transform::from_matrix(rotate_x_pointer * cube_offset).with_scale(cube_scale),
+                DefaultMeshId::Cube,
                 commands,
                 &mut picking_block,
                 default_meshes,
             ),
             ManipulatorPart::new(
                 blue,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 5,
                 false,
                 Transform::from_matrix(rotate_x_pointer).with_scale(cylinder_scale),
@@ -120,7 +120,7 @@ impl PositionManipulator {
             ),
             ManipulatorPart::new(
                 blue,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 6,
                 true,
                 Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
@@ -131,7 +131,7 @@ impl PositionManipulator {
             ),
             ManipulatorPart::new(
                 green,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 7,
                 true,
                 Transform::from_matrix(plane_offset).with_scale(plane_scale),
@@ -142,7 +142,7 @@ impl PositionManipulator {
             ),
             ManipulatorPart::new(
                 red,
-                ManipulatorType::Position,
+                ManipulatorType::Scale,
                 8,
                 true,
                 Transform::from_matrix(rotate_yz_plane * plane_offset).with_scale(plane_scale),
@@ -164,22 +164,34 @@ impl PositionManipulator {
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
+        let entity_rotation = base_entity_transform.rotation;
+        let inv_entity_rotation = base_entity_transform.rotation.inverse();
+
         let plane_point = base_entity_transform.translation;
         let plane_normal =
-            plane_normal_for_camera_pos(component, base_entity_transform, camera, Quat::IDENTITY);
+            plane_normal_for_camera_pos(component, base_entity_transform, camera, entity_rotation);
 
         let new_world_point =
             new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
 
-        let delta = new_world_point - picking_pos_world_space;
-        let clamped_delta = match component {
-            AxisComponents::XAxis => Vec3::new(delta.x, 0.0, 0.0),
-            AxisComponents::YAxis => Vec3::new(0.0, delta.y, 0.0),
-            AxisComponents::ZAxis => Vec3::new(0.0, 0.0, delta.z),
-            _ => delta,
+        let vec_to_picked_point = inv_entity_rotation
+            .mul_vec3(picking_pos_world_space - base_entity_transform.translation);
+        let vec_to_new_point =
+            inv_entity_rotation.mul_vec3(new_world_point - base_entity_transform.translation);
+
+        let scale_multiplier = (vec_to_new_point / vec_to_picked_point).abs();
+
+        let clamped_scale_multiplier = match component {
+            AxisComponents::XAxis => Vec3::new(scale_multiplier.x, 1.0, 1.0),
+            AxisComponents::YAxis => Vec3::new(1.0, scale_multiplier.y, 1.0),
+            AxisComponents::ZAxis => Vec3::new(1.0, 1.0, scale_multiplier.z),
+            AxisComponents::XYPlane => Vec3::new(scale_multiplier.x, scale_multiplier.y, 1.0),
+            AxisComponents::XZPlane => Vec3::new(scale_multiplier.x, 1.0, scale_multiplier.z),
+            AxisComponents::YZPlane => Vec3::new(1.0, scale_multiplier.y, scale_multiplier.z),
         };
 
-        let new_transform = base_entity_transform;
-        new_transform.with_translation(base_entity_transform.translation + clamped_delta)
+        let mut new_transform = *base_entity_transform;
+        new_transform.scale *= clamped_scale_multiplier;
+        new_transform
     }
 }
