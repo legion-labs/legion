@@ -2,7 +2,6 @@ use strum::{EnumIter, IntoStaticStr};
 
 use super::{model::ModelObjectRef, ModelObject};
 
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CGenType {
     Native(NativeType),
@@ -10,7 +9,6 @@ pub enum CGenType {
 }
 
 pub type CGenTypeRef = ModelObjectRef<CGenType>;
-
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy, EnumIter, IntoStaticStr)]
 pub enum NativeType {
@@ -20,9 +18,6 @@ pub enum NativeType {
     Float4,
     Float4x4,
 }
-
-
-
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct StructMember {
@@ -41,7 +36,6 @@ impl StructMember {
     }
 }
 
-
 impl CGenType {
     pub fn struct_type(&self) -> &StructType {
         match self {
@@ -57,7 +51,6 @@ impl CGenType {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct StructType {

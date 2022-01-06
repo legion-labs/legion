@@ -12,7 +12,7 @@ use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
 use super::ParsingResult;
 use crate::{
     builder::{DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder},
-    model::{CGenType, Model, self},
+    model::{self, CGenType, Model},
 };
 
 pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {

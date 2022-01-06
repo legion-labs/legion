@@ -1,5 +1,4 @@
-use super::{CGenTypeRef, Model, DescriptorSetRef, ModelObjectRef, ModelObject};
-
+use super::{CGenTypeRef, DescriptorSetRef, Model, ModelObject, ModelObjectRef};
 
 #[derive(Debug, Clone)]
 pub struct PushConstant {
