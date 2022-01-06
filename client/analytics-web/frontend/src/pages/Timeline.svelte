@@ -25,10 +25,8 @@
     Loaded,
   }
 
-  import {
-    SpanTrack
-  } from "@lgn/proto-telemetry/codegen/analytics";
-  
+  import { SpanTrack } from "@lgn/proto-telemetry/codegen/analytics";
+
   type ThreadBlockLOD = {
     state: LODState;
     tracks: SpanTrack[];
@@ -39,7 +37,7 @@
   type ThreadBlock = {
     blockDefinition: Block; // block metadata stored in data lake
     beginMs: number; // relative to main process
-    endMs: number;   // relative to main process
+    endMs: number; // relative to main process
     lods: ThreadBlockLOD[];
   };
 </script>
@@ -49,7 +47,7 @@
   import {
     BlockSpansReply,
     GrpcWebImpl,
-    PerformanceAnalyticsClientImpl
+    PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
@@ -82,10 +80,9 @@
   let yOffset = 0;
   let threads: Record<string, Thread> = {};
   let blocks: Record<string, ThreadBlock> = {};
-  let scopes: Record<number, ScopeDesc> = {0: { name: "",
-                                                filename: "",
-                                                line: 0,
-                                                hash: 0} };
+  let scopes: Record<number, ScopeDesc> = {
+    0: { name: "", filename: "", line: 0, hash: 0 },
+  };
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
@@ -135,18 +132,18 @@
     fetchPreferedLods(loadingProgression);
   }
 
-  function fetchPreferedLods(loadingProgression: LoadingState){
-    for (let blockId in blocks){
-      if ( loadingProgression.requested - loadingProgression.completed >= 4 ){
+  function fetchPreferedLods(loadingProgression: LoadingState) {
+    for (let blockId in blocks) {
+      if (loadingProgression.requested - loadingProgression.completed >= 4) {
         return;
       }
-      fetchBlockSpans(loadingProgression, blocks[blockId])
+      fetchBlockSpans(loadingProgression, blocks[blockId]);
     }
     // here would be a good place to load some low-priority block lods
     // like the lod that corresponds to the full time range being visible
     // this would have the added bonus of caching the lod0 of all blocks on the server
 
-    if ( loadingProgression.completed == loadingProgression.requested ){
+    if (loadingProgression.completed == loadingProgression.requested) {
       loadingProgression.requested = 0;
       loadingProgression.completed = 0;
     }
@@ -186,8 +183,8 @@
     await Promise.all(promises);
   }
 
-  function RFC3339ToMs(time: string): number{
-    if ( !currentProcess?.startTime ){
+  function RFC3339ToMs(time: string): number {
+    if (!currentProcess?.startTime) {
       throw new Error("Parent process start time undefined");
     }
     const parentStartTime = Date.parse(currentProcess?.startTime);
@@ -197,60 +194,68 @@
 
   async function fetchBlocks(streamId: string) {
     const response = await client.list_stream_blocks({ streamId });
-    response.blocks.forEach( block => {
+    response.blocks.forEach((block) => {
       let beginMs = RFC3339ToMs(block.beginTime);
       let endMs = RFC3339ToMs(block.endTime);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
-      blocks[block.blockId] = { blockDefinition: block,
-                                beginMs: beginMs,
-                                endMs: endMs,
-                                lods: [] };
-    } );
+      blocks[block.blockId] = {
+        blockDefinition: block,
+        beginMs: beginMs,
+        endMs: endMs,
+        lods: [],
+      };
+    });
   }
 
-  function computePreferedBlockLod(block: Block): number | null{
+  function computePreferedBlockLod(block: Block): number | null {
     const beginBlock = RFC3339ToMs(block.beginTime);
     const endBlock = RFC3339ToMs(block.endTime);
-    return computePreferedLodFromTimeRange( beginBlock, endBlock );
+    return computePreferedLodFromTimeRange(beginBlock, endBlock);
   }
 
-  function computePreferedLodFromTimeRange(beginMs: number, endMs: number): number | null {
+  function computePreferedLodFromTimeRange(
+    beginMs: number,
+    endMs: number
+  ): number | null {
     if (!canvas) {
       return null;
     }
     const vr = getViewRange();
-    if (beginMs > vr[1] || endMs < vr[0]){
+    if (beginMs > vr[1] || endMs < vr[0]) {
       return null;
     }
     const currentPixelSize = (vr[1] - vr[0]) / canvas.width;
     return getViewLOD(currentPixelSize);
   }
 
-  function findBestLod(block: ThreadBlock){
-    const preferedLod = computePreferedLodFromTimeRange(block.beginMs,
-                                                        block.endMs);
-    if( preferedLod == null ){
+  function findBestLod(block: ThreadBlock) {
+    const preferedLod = computePreferedLodFromTimeRange(
+      block.beginMs,
+      block.endMs
+    );
+    if (preferedLod == null) {
       return null;
     }
-    return block.lods.reduce( (lhs, rhs) => {
-      if ( lhs.tracks.length == 0 ){
+    return block.lods.reduce((lhs, rhs) => {
+      if (lhs.tracks.length == 0) {
         return rhs;
       }
-      if ( rhs.tracks.length == 0 ){
+      if (rhs.tracks.length == 0) {
         return lhs;
       }
-      if ( Math.abs( lhs.lodId - preferedLod ) < Math.abs( rhs.lodId - preferedLod ) ){
+      if (
+        Math.abs(lhs.lodId - preferedLod) < Math.abs(rhs.lodId - preferedLod)
+      ) {
         return lhs;
-      }
-      else{
+      } else {
         return rhs;
       }
-    } );
+    });
   }
 
-  function onLodReceived(response: BlockSpansReply){
+  function onLodReceived(response: BlockSpansReply) {
     loadingProgression.completed += 1;
     const blockId = response.blockId;
     if (!response.lod) {
@@ -271,7 +276,10 @@
     fetchPreferedLods(loadingProgression);
   }
 
-  function fetchBlockSpans(loadingProgression: LoadingState, block: ThreadBlock) {
+  function fetchBlockSpans(
+    loadingProgression: LoadingState,
+    block: ThreadBlock
+  ) {
     const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {
@@ -279,16 +287,20 @@
     }
 
     const preferedLod = computePreferedBlockLod(block.blockDefinition);
-    if ( preferedLod == null ){
+    if (preferedLod == null) {
       return;
     }
-    if (!block.lods[preferedLod]){
-      block.lods[preferedLod] = { state: LODState.Missing,
-                                  tracks: [],
-                                  lodId: preferedLod };
+    if (!block.lods[preferedLod]) {
+      block.lods[preferedLod] = {
+        state: LODState.Missing,
+        tracks: [],
+        lodId: preferedLod,
+      };
     }
-    if ( block.lods[preferedLod].state == LODState.Loaded ||
-         block.lods[preferedLod].state == LODState.Requested ){
+    if (
+      block.lods[preferedLod].state == LODState.Loaded ||
+      block.lods[preferedLod].state == LODState.Requested
+    ) {
       return;
     }
     block.lods[preferedLod].state = LODState.Requested;
@@ -300,7 +312,7 @@
       stream: threads[streamId].streamInfo,
       lodId: preferedLod,
     });
-    fut.then(onLodReceived, e => {
+    fut.then(onLodReceived, (e) => {
       loadingProgression.completed += 1;
       console.log("Error fetching block spans", e);
     });
@@ -314,11 +326,11 @@
     );
   }
 
-  function invalidateCanvas(){
-    if ( refreshTimer ){
+  function invalidateCanvas() {
+    if (refreshTimer) {
       clearTimeout(refreshTimer);
     }
-    refreshTimer = setTimeout( drawCanvas, 10 );
+    refreshTimer = setTimeout(drawCanvas, 10);
   }
 
   function drawCanvas() {
@@ -332,7 +344,7 @@
 
     canvas.height =
       window.innerHeight - canvas.getBoundingClientRect().top - 20;
-   
+
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
     let threadVerticalOffset = yOffset;
 
@@ -349,7 +361,10 @@
       const thread = threads[streamId];
       if (thread.block_ids.length > 0) {
         const threadHeight = (thread.maxDepth + 2) * 20;
-        if(threadVerticalOffset < canvas.height && threadVerticalOffset + threadHeight >= 0){
+        if (
+          threadVerticalOffset < canvas.height &&
+          threadVerticalOffset + threadHeight >= 0
+        ) {
           drawThread(
             thread,
             threadVerticalOffset,
@@ -363,10 +378,95 @@
     DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
   }
 
+  function drawSpanTrack(
+    track: SpanTrack,
+    color: string,
+    offsetY: number,
+    processOffsetMs: number,
+    beginViewRange: number,
+    endViewRange: number,
+    characterWidth: number,
+    characterHeight: number,
+    msToPixelsFactor: number
+  ) {
+    if (!renderingContext) {
+      throw new Error("Rendering context not available");
+    }
+
+    let firstSpan = binarySearch(
+      track.spans,
+      beginViewRange - processOffsetMs,
+      function (span, needle) {
+        if (span.endMs < needle) {
+          return -1;
+        }
+        if (span.beginMs > needle) {
+          return 1;
+        }
+        return 0;
+      }
+    );
+    if (firstSpan < 0) {
+      firstSpan = ~firstSpan;
+    }
+
+    let lastSpan = binarySearch(
+      track.spans,
+      endViewRange - processOffsetMs,
+      function (span, needle) {
+        if (span.beginMs < needle) {
+          return -1;
+        }
+        if (span.endMs > needle) {
+          return 1;
+        }
+        return 0;
+      }
+    );
+    if (lastSpan < 0) {
+      lastSpan = ~lastSpan;
+    }
+    for (let spanIndex = firstSpan; spanIndex < lastSpan; spanIndex += 1) {
+      const span = track.spans[spanIndex];
+      const beginSpan = span.beginMs + processOffsetMs;
+      const endSpan = span.endMs + processOffsetMs;
+
+      const beginPixels = (beginSpan - beginViewRange) * msToPixelsFactor;
+      const endPixels = (endSpan - beginViewRange) * msToPixelsFactor;
+      const callWidth = endPixels - beginPixels;
+      if (callWidth < 0.1) {
+        continue;
+      }
+      renderingContext.fillStyle = color;
+      renderingContext.globalAlpha = span.alpha / 255;
+      renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
+      renderingContext.globalAlpha = 1.0;
+
+      if (span.scopeHash != 0) {
+        const { name } = scopes[span.scopeHash];
+        if (callWidth > characterWidth * 5) {
+          const nbChars = Math.floor(callWidth / characterWidth);
+
+          renderingContext.fillStyle = "#000000";
+
+          const extraHeight = 0.5 * (20 - characterHeight);
+          const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
+
+          renderingContext.fillText(
+            caption.slice(0, nbChars),
+            beginPixels + 5,
+            offsetY + characterHeight + extraHeight,
+            callWidth
+          );
+        }
+      }
+    }
+  }
+
   function drawThread(
     thread: Thread,
     threadVerticalOffset: number,
-    offsetMs: number
+    processOffsetMs: number
   ) {
     if (!canvas || !renderingContext) {
       return;
@@ -387,8 +487,8 @@
     const characterWidth = testTextMetrics.width / testString.length;
     const characterHeight = testTextMetrics.actualBoundingBoxAscent;
 
-    const beginThread = Math.max(begin, thread.minMs + offsetMs);
-    const endThread = Math.min(end, thread.maxMs + offsetMs);
+    const beginThread = Math.max(begin, thread.minMs + processOffsetMs);
+    const endThread = Math.min(end, thread.maxMs + processOffsetMs);
     const beginThreadPixels = (beginThread - begin) * msToPixelsFactor;
     const endThreadPixels = (endThread - begin) * msToPixelsFactor;
 
@@ -410,94 +510,43 @@
     thread.block_ids.forEach((block_id) => {
       let block = blocks[block_id];
       let lodToRender = findBestLod(block);
-      if (
-        block.beginMs > end ||
-          block.endMs < begin
-      ) {
+      if (block.beginMs > end || block.endMs < begin) {
         return;
       }
 
-      if( !lodToRender ){
+      if (!lodToRender) {
         return;
       }
 
       if (!renderingContext) {
         throw new Error("Rendering context not available");
       }
-      
 
-      for( let trackIndex = 0; trackIndex < lodToRender.tracks.length; trackIndex += 1 ){
+      for (
+        let trackIndex = 0;
+        trackIndex < lodToRender.tracks.length;
+        trackIndex += 1
+      ) {
         let track = lodToRender.tracks[trackIndex];
-        let firstSpan = binarySearch( track.spans, begin - offsetMs, function( span, needle ){
-          if ( span.endMs < needle ){
-            return -1;
-          }
-          if ( span.beginMs > needle ){
-            return 1;
-          }
-          return 0;
-        } );
-        if ( firstSpan < 0 ){
-          firstSpan = ~firstSpan;
+        const offsetY = threadVerticalOffset + trackIndex * 20;
+        let color: string = "";
+        if (trackIndex % 2 === 0) {
+          color = "#fede99";
+        } else {
+          color = "#fea446";
         }
 
-        let lastSpan = binarySearch( track.spans, end - offsetMs, function( span, needle ){
-          if ( span.beginMs < needle ){
-            return -1;
-          }
-          if ( span.endMs > needle ){
-            return 1;
-          }
-          return 0;
-        } );
-        if ( lastSpan < 0 ){
-          lastSpan = ~lastSpan;
-        }
-        for( let spanIndex = firstSpan; spanIndex < lastSpan; spanIndex += 1 ){
-          const span = track.spans[spanIndex];
-          const beginSpan = span.beginMs + offsetMs;
-          const endSpan = span.endMs + offsetMs;
-
-          if (beginSpan > end || endSpan < begin) {
-            continue;
-          }
-
-          const beginPixels = (beginSpan - begin) * msToPixelsFactor;
-          const endPixels = (endSpan - begin) * msToPixelsFactor;
-          const callWidth = endPixels - beginPixels;
-          if (callWidth < 0.1) {
-            continue;
-          }
-          const offsetY = threadVerticalOffset + trackIndex * 20;
-          if (trackIndex % 2 === 0) {
-            renderingContext.fillStyle = "#fede99";
-          } else {
-            renderingContext.fillStyle = "#fea446";
-          }
-
-          renderingContext.globalAlpha = span.alpha / 255;
-          renderingContext.fillRect(beginPixels, offsetY, callWidth, 20);
-          renderingContext.globalAlpha = 1.0;
-
-          if ( span.scopeHash != 0 ){
-            const { name } = scopes[span.scopeHash];
-            if (callWidth > characterWidth * 5) {
-              const nbChars = Math.floor(callWidth / characterWidth);
-
-              renderingContext.fillStyle = "#000000";
-
-              const extraHeight = 0.5 * (20 - characterHeight);
-              const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
-
-              renderingContext.fillText(
-                caption.slice(0, nbChars),
-                beginPixels + 5,
-                offsetY + characterHeight + extraHeight,
-                callWidth
-              );
-            }
-          }
-        }
+        drawSpanTrack(
+          track,
+          color,
+          offsetY,
+          processOffsetMs,
+          begin,
+          end,
+          characterWidth,
+          characterHeight,
+          msToPixelsFactor
+        );
       }
     });
   }
@@ -578,7 +627,7 @@
       ) ||
       PanOnMouseMove(event)
     ) {
-      if ( currentSelection != selectionState.selectedRange ){
+      if (currentSelection != selectionState.selectedRange) {
         currentSelection = selectionState.selectedRange;
       }
       fetchPreferedLods(loadingProgression);
@@ -622,14 +671,14 @@
 
   function getViewLOD(pixelSizeMs: number): number {
     const pixelSizeNs = pixelSizeMs * 1000000;
-    return Math.max( 0, Math.floor(LogX(100, pixelSizeNs)));
+    return Math.max(0, Math.floor(LogX(100, pixelSizeNs)));
   }
 
   function MergeThresholdForLOD(lod: number): number {
     return Math.pow(100, lod - 2) / 10;
   }
 
-  //debug variables (displayed in debug div>
+  //debug variables (displayed in debug div)
   let pixelSize = 0;
   let LOD = 0;
   let mergeThreshold = 0;
@@ -654,12 +703,6 @@
           </a>
         </div>
       {/if}
-    </div>
-  {/if}
-
-  {#if loadingProgression}
-    <div id="totalLoadingProgress">
-      <div id="loadedProgress">Loading</div>
     </div>
   {/if}
 
@@ -695,6 +738,11 @@
       </div>
     </div>
   </div>
+  {#if loadingProgression}
+    <div id="totalLoadingProgress">
+      <div id="loadedProgress" />
+    </div>
+  {/if}
 </div>
 
 <style lang="postcss">
@@ -719,6 +767,7 @@
 
   #loadedProgress {
     width: 0px;
+    height: 10px;
     background-color: #fea446;
   }
 
