@@ -46,9 +46,9 @@ pub trait System: Send + Sync + 'static {
     /// This might access world and resources in an unsafe manner. This should
     /// only be called in one of the following contexts:
     ///     1. This system is the only system running on the given world across
-    /// all threads.     2. This system only runs in parallel with other
-    /// systems that do not conflict with the        [`System::
-    /// archetype_component_access()`].
+    /// all threads.
+    ///     2. This system only runs in parallel with other systems that do not
+    ///  conflict with the [`System::archetype_component_access()`].
     unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
     /// Runs the system with the given input in the world.
     fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
