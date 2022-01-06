@@ -99,7 +99,7 @@ float GetSpecular(float3 pos, float3 light_dir, float3 normal) {
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal, float3 pos) {
-    float3 light_dir = normalize(light.dir);
+    float3 light_dir = normalize(mul(const_data.view, float4(light.dir, 0.0)).xyz);
 
     float lambertian = max(dot(light_dir, normal)/PI, 0.0);
     float specular = 0.0;
@@ -138,7 +138,7 @@ Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float
 }
 
 Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) {
-    float3 light_dir = light.pos - pos;
+    float3 light_dir = mul(const_data.view, float4(light.pos, 1.0)).xyz - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -151,7 +151,7 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) 
         specular = GetSpecular(pos, light_dir, normal);
     }
 
-    float cos_between_dir = dot(normalize(light.dir), light_dir);
+    float cos_between_dir = dot(normalize(mul(const_data.view, float4(light.dir, 0.0)).xyz), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);

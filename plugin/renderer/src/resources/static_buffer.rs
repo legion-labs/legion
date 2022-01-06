@@ -9,7 +9,7 @@ use lgn_graphics_api::{
     MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
     ResourceUsage, Semaphore,
 };
-use lgn_math::{Mat4, Vec3};
+use lgn_math::Mat4;
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::{RenderContext, RenderHandle};
@@ -207,12 +207,6 @@ pub struct EntityTransforms {
     pub world: Mat4,
 }
 
-pub struct OmnidirectionalLight {
-    pos: Vec3,
-    radiance: f32,
-    color: Vec3,
-}
-
 pub struct UniformGPUData<T> {
     static_baffer: UnifiedStaticBuffer,
     allocated_pages: Vec<PagedBufferAllocation>,
@@ -262,7 +256,6 @@ impl<T> UniformGPUData<T> {
 }
 
 pub type TestStaticBuffer = RenderHandle<UniformGPUData<EntityTransforms>>;
-pub type OmnidirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmnidirectionalLight>>;
 
 pub struct UniformGPUDataUploadJobBlock {
     upload_allocation: BufferAllocation,

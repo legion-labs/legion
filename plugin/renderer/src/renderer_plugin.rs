@@ -1,7 +1,10 @@
 #![allow(unsafe_code)]
 use crate::{
-    components::{ManipulatorComponent, PickedComponent},
+    components::{
+        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent, Spotlight,
+    },
     egui::egui_plugin::{Egui, EguiPlugin},
+    lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
@@ -53,6 +56,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightSettings>();
+        app.init_resource::<LightingManager>();
 
         app.add_startup_system(create_camera);
 
@@ -94,30 +98,10 @@ fn init_manipulation_manager(
 #[allow(clippy::needless_pass_by_value)]
 fn update_ui(
     egui_ctx: Res<'_, Egui>,
-    mut rotations: Query<'_, '_, &mut RotationComponent>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
     mut light_settings: ResMut<'_, LightSettings>,
 ) {
-    egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
-        ui.label("Objects");
-        for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("Object {}: ", i));
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.0, 0.0..=5.0)
-                        .text("x"),
-                );
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.1, 0.0..=5.0)
-                        .text("y"),
-                );
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.2, 0.0..=5.0)
-                        .text("z"),
-                );
-            });
-        }
-
+    egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
         ui.checkbox(&mut light_settings.diffuse, "Diffuse");
         ui.checkbox(&mut light_settings.specular, "Specular");
         ui.add(
@@ -262,20 +246,27 @@ fn update_transform(
     renderer.release_transform_data(gpu_data);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn update_lights(
     mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, '_, (Entity, &Transform, &LightComponent)>,
+    query: Query<'_, '_, (Entity, &Transform, &LightComponent)>,
+    mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut gpu_data = renderer.acquire_omnidirectional_lights_data();
+    let omnidirectional_gpu_data = renderer.acquire_omnidirectional_lights_data();
+    let directional_gpu_data = renderer.acquire_directional_lights_data();
+    let spotlights_gpu_data = renderer.acquire_spotlights_data();
+
     const NUM_LIGHTS: usize = 8;
-    const DIRECTIONAL_LIGHT_SIZE: usize = 32;
-    const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
-    const SPOTLIGHT_SIZE: usize = 32;
 
     let mut omnidirectional_lights_data =
-        Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
+        Vec::<f32>::with_capacity(OmnidirectionalLight::SIZE * NUM_LIGHTS);
+    let mut directional_lights_data =
+        Vec::<f32>::with_capacity(DirectionalLight::SIZE * NUM_LIGHTS);
+    let mut spotlights_data = Vec::<f32>::with_capacity(Spotlight::SIZE * NUM_LIGHTS);
+    let mut num_directional_lights = 0;
     let mut num_omnidirectional_lights = 0;
+    let mut num_spotlights = 0;
 
     for (_entity, transform, light) in query.iter() {
         if !light.enabled {
@@ -283,24 +274,23 @@ fn update_lights(
         }
         match light.light_type {
             LightType::Directional { direction } => {
-                /*
-                let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                directional_lights_data.push(direction_in_view.x);
-                directional_lights_data.push(direction_in_view.y);
-                directional_lights_data.push(direction_in_view.z);
+                directional_lights_data.push(direction.x);
+                directional_lights_data.push(direction.y);
+                directional_lights_data.push(direction.z);
                 directional_lights_data.push(light.radiance);
                 directional_lights_data.push(light.color.0);
                 directional_lights_data.push(light.color.1);
                 directional_lights_data.push(light.color.2);
-                num_directional_lights += 1;*/
+                num_directional_lights += 1;
+                unsafe {
+                    directional_lights_data
+                        .set_len(DirectionalLight::SIZE / 4 * num_directional_lights as usize);
+                }
             }
             LightType::Omnidirectional => {
-                //let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-                let transform_in_view = transform.translation;
-                omnidirectional_lights_data.push(transform_in_view.x);
-                omnidirectional_lights_data.push(transform_in_view.y);
-                omnidirectional_lights_data.push(transform_in_view.z);
+                omnidirectional_lights_data.push(transform.translation.x);
+                omnidirectional_lights_data.push(transform.translation.y);
+                omnidirectional_lights_data.push(transform.translation.z);
                 omnidirectional_lights_data.push(light.radiance);
                 omnidirectional_lights_data.push(light.color.0);
                 omnidirectional_lights_data.push(light.color.1);
@@ -308,7 +298,7 @@ fn update_lights(
                 num_omnidirectional_lights += 1;
                 unsafe {
                     omnidirectional_lights_data.set_len(
-                        OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
+                        OmnidirectionalLight::SIZE / 4 * num_omnidirectional_lights as usize,
                     );
                 }
             }
@@ -316,31 +306,46 @@ fn update_lights(
                 direction,
                 cone_angle,
             } => {
-                /*let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-                let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                spotlights_data.push(transform_in_view.x);
-                spotlights_data.push(transform_in_view.y);
-                spotlights_data.push(transform_in_view.z);
+                spotlights_data.push(transform.translation.x);
+                spotlights_data.push(transform.translation.y);
+                spotlights_data.push(transform.translation.z);
                 spotlights_data.push(light.radiance);
-                spotlights_data.push(direction_in_view.x);
-                spotlights_data.push(direction_in_view.y);
-                spotlights_data.push(direction_in_view.z);
+                spotlights_data.push(direction.x);
+                spotlights_data.push(direction.y);
+                spotlights_data.push(direction.z);
                 spotlights_data.push(cone_angle);
                 spotlights_data.push(light.color.0);
                 spotlights_data.push(light.color.1);
                 spotlights_data.push(light.color.2);
                 num_spotlights += 1;
-                */
+                unsafe {
+                    spotlights_data.set_len(Spotlight::SIZE / 4 * num_spotlights as usize);
+                }
             }
         }
     }
-    if !omnidirectional_lights_data.is_empty() {
-        updater.add_update_jobs(&omnidirectional_lights_data, gpu_data.offset());
-        renderer.test_add_update_jobs(updater.job_blocks());
-    }
 
-    renderer.release_omnidirectional_lights_data(gpu_data);
+    lighting_manager.num_directional_lights = num_directional_lights;
+    lighting_manager.num_omnidirectional_lights = num_omnidirectional_lights;
+    lighting_manager.num_spotlights = num_spotlights;
+
+    if !omnidirectional_lights_data.is_empty() {
+        updater.add_update_jobs(
+            &omnidirectional_lights_data,
+            omnidirectional_gpu_data.offset(),
+        );
+    }
+    if !directional_lights_data.is_empty() {
+        updater.add_update_jobs(&directional_lights_data, directional_gpu_data.offset());
+    }
+    if !spotlights_data.is_empty() {
+        updater.add_update_jobs(&spotlights_data, spotlights_gpu_data.offset());
+    }
+    renderer.test_add_update_jobs(updater.job_blocks());
+
+    renderer.release_omnidirectional_lights_data(omnidirectional_gpu_data);
+    renderer.release_directional_lights_data(directional_gpu_data);
+    renderer.release_spotlights_data(spotlights_gpu_data);
 }
 
 #[allow(
@@ -366,7 +371,7 @@ fn render_update(
         Without<ManipulatorComponent>,
     >,
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
-    q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
+    lighting_manager: Res<'_, LightingManager>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
@@ -387,10 +392,6 @@ fn render_update(
         q_manipulator_drawables
             .iter()
             .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
-
-    let q_lights = q_lights
-        .iter()
-        .collect::<Vec<(&Transform, &LightComponent)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();
@@ -450,7 +451,7 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             camera_component,
-            q_lights.as_slice(),
+            lighting_manager.as_ref(),
             &light_settings,
         );
 

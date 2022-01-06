@@ -97,4 +97,5 @@ pub mod egui;
 
 pub mod hl_gfx_api;
 
+pub(crate) mod lighting;
 pub(crate) mod render_pass;

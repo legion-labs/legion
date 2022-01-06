@@ -47,3 +47,37 @@ impl Default for LightComponent {
         }
     }
 }
+
+// GPU components
+// TODO: codegen these structs
+pub struct OmnidirectionalLight {
+    pos: Vec3,
+    radiance: f32,
+    color: Vec3,
+}
+
+impl OmnidirectionalLight {
+    pub const SIZE: usize = 32;
+}
+
+pub struct DirectionalLight {
+    dir: Vec3,
+    radiance: f32,
+    color: Vec3,
+}
+
+impl DirectionalLight {
+    pub const SIZE: usize = 32;
+}
+
+pub struct Spotlight {
+    pos: Vec3,
+    radiance: f32,
+    dir: Vec3,
+    cone_angle: f32,
+    color: Vec3,
+}
+
+impl Spotlight {
+    pub const SIZE: usize = 64;
+}
