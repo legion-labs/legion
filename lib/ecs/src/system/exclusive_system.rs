@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{
     archetype::ArchetypeGeneration,
     system::{check_system_change_tick, BoxedSystem, IntoSystem},
@@ -7,7 +5,7 @@ use crate::{
 };
 
 pub trait ExclusiveSystem: Send + Sync + 'static {
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> &'static str;
 
     fn run(&mut self, world: &mut World);
 
@@ -18,7 +16,7 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
 
 pub struct ExclusiveSystemFn<F> {
     func: F,
-    name: Cow<'static, str>,
+    name: &'static str,
     last_change_tick: u32,
 }
 
@@ -26,8 +24,8 @@ impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
 where
     F: FnMut(&mut World) + Send + Sync + 'static,
 {
-    fn name(&self) -> Cow<'static, str> {
-        self.name.clone()
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn run(&mut self, world: &mut World) {
@@ -75,7 +73,7 @@ pub struct ExclusiveSystemCoerced {
 }
 
 impl ExclusiveSystem for ExclusiveSystemCoerced {
-    fn name(&self) -> Cow<'static, str> {
+    fn name(&self) -> &'static str {
         self.system.name()
     }
 

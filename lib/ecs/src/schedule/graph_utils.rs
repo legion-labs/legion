@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Debug, hash::Hash};
+use std::{fmt::Debug, hash::Hash};
 
 use fixedbitset::FixedBitSet;
 use lgn_telemetry::warn;
@@ -10,7 +10,7 @@ pub enum DependencyGraphError<Labels> {
 
 pub trait GraphNode {
     type Label;
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> &'static str;
     fn labels(&self) -> &[Self::Label];
     fn before(&self) -> &[Self::Label];
     fn after(&self) -> &[Self::Label];

@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::borrow::Cow;
-
 use crate::{
     component::ComponentId,
     query::Access,
@@ -61,7 +59,7 @@ impl ExclusiveSystemContainer {
 impl GraphNode for ExclusiveSystemContainer {
     type Label = BoxedSystemLabel;
 
-    fn name(&self) -> Cow<'static, str> {
+    fn name(&self) -> &'static str {
         self.system.name()
     }
 
@@ -139,7 +137,7 @@ impl ParallelSystemContainer {
         }
     }
 
-    pub fn name(&self) -> Cow<'static, str> {
+    pub fn name(&self) -> &'static str {
         GraphNode::name(self)
     }
 
@@ -163,7 +161,7 @@ impl ParallelSystemContainer {
 impl GraphNode for ParallelSystemContainer {
     type Label = BoxedSystemLabel;
 
-    fn name(&self) -> Cow<'static, str> {
+    fn name(&self) -> &'static str {
         self.system().name()
     }
 

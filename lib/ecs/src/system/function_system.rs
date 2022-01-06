@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use std::{borrow::Cow, marker::PhantomData};
+use std::marker::PhantomData;
 
 use lgn_ecs_macros::all_tuples;
 
@@ -17,7 +17,7 @@ use crate::{
 
 /// The metadata of a [`System`].
 pub struct SystemMeta {
-    pub(crate) name: Cow<'static, str>,
+    pub(crate) name: &'static str,
     pub(crate) component_access_set: FilteredAccessSet<ComponentId>,
     pub(crate) archetype_component_access: Access<ArchetypeComponentId>,
     // NOTE: this must be kept private. making a SystemMeta non-send is irreversible to prevent
@@ -210,8 +210,8 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
 
     type Out = ();
 
-    fn name(&self) -> Cow<'static, str> {
-        self.state.meta().name.clone()
+    fn name(&self) -> &'static str {
+        self.state.meta().name
     }
 
     fn new_archetype(&mut self, archetype: &Archetype) {
@@ -426,8 +426,8 @@ where
     type Out = Out;
 
     #[inline]
-    fn name(&self) -> Cow<'static, str> {
-        self.system_meta.name.clone()
+    fn name(&self) -> &'static str {
+        self.system_meta.name
     }
 
     #[inline]

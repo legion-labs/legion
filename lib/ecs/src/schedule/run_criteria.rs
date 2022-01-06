@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::borrow::Cow;
-
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
@@ -127,7 +125,7 @@ impl RunCriteriaContainer {
         }
     }
 
-    pub(crate) fn name(&self) -> Cow<'static, str> {
+    pub(crate) fn name(&self) -> &'static str {
         match &self.inner {
             RunCriteriaInner::Single(system) => system.name(),
             RunCriteriaInner::Piped { system, .. } => system.name(),
@@ -164,7 +162,7 @@ impl RunCriteriaContainer {
 impl GraphNode for RunCriteriaContainer {
     type Label = BoxedRunCriteriaLabel;
 
-    fn name(&self) -> Cow<'static, str> {
+    fn name(&self) -> &'static str {
         match &self.inner {
             RunCriteriaInner::Single(system) => system.name(),
             RunCriteriaInner::Piped { system, .. } => system.name(),
@@ -415,8 +413,8 @@ impl System for RunOnce {
     type In = ();
     type Out = ShouldRun;
 
-    fn name(&self) -> Cow<'static, str> {
-        Cow::Borrowed(std::any::type_name::<Self>())
+    fn name(&self) -> &'static str {
+        std::any::type_name::<Self>()
     }
 
     fn new_archetype(&mut self, _archetype: &Archetype) {}
