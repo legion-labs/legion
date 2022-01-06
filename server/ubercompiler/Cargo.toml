@@ -8,6 +8,12 @@ license = "MIT OR Apache-2.0"
 [lib]
 doc = false
 
+
+[[bin]]
+name = "compiler-ubercompiler"
+path = "src/main.rs"
+doc = false
+
 [dependencies]
 lgn-data-offline = { path = "../../lib/data-offline" }
 lgn-data-runtime = { path = "../../lib/data-runtime" }

@@ -178,7 +178,7 @@ impl CommandBuilder {
 //
 
 /// Output of `compiler_info` command.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CompilerInfoCmdOutput(Vec<CompilerInfo>);
 
 impl CompilerInfoCmdOutput {
@@ -188,7 +188,9 @@ impl CompilerInfoCmdOutput {
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
         serde_json::from_slice(bytes).ok()?
     }
-    pub(crate) fn take(self) -> Vec<CompilerInfo> {
+
+    /// Converts the the output to a list of `CompilerInfo`.
+    pub fn take(self) -> Vec<CompilerInfo> {
         self.0
     }
 }

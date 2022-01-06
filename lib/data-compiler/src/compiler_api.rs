@@ -538,19 +538,26 @@ enum Commands {
 ///
 /// > **NOTE**: Data compiler must not write to stdout because this could break
 /// the specific output that is expected.
-// TODO: remove the limitation above.
 pub fn compiler_main(
     args: env::Args,
     descriptor: &'static CompilerDescriptor,
+) -> Result<(), CompilerError> {
+    let compilers = CompilerRegistryOptions::default().add_compiler(descriptor);
+
+    multi_compiler_main(args, compilers)
+}
+
+/// Same as `compiler_main` but supports many compilers in a single binary.
+pub fn multi_compiler_main(
+    args: env::Args,
+    compilers: CompilerRegistryOptions,
 ) -> Result<(), CompilerError> {
     let args = Cli::try_parse_from(args).map_err(|err| {
         eprintln!("{}", err);
         CompilerError::InvalidArgs
     })?;
 
-    let compilers = CompilerRegistryOptions::default()
-        .add_compiler(descriptor)
-        .create();
+    let compilers = compilers.create();
 
     let result = run(args.command, &compilers);
     if let Err(error) = &result {
