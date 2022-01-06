@@ -92,13 +92,13 @@ impl Plugin for AssetRegistryPlugin {
                     config.assets_to_load = manifest.resources();
                 }
 
-                let mut registry = AssetRegistryOptions::new();
-                registry = runtime_data::add_loaders(registry);
-                registry = lgn_graphics_runtime::add_loaders(registry);
-                registry = generic_data::runtime::add_loaders(registry);
+                let mut registry_options = AssetRegistryOptions::new();
+                // registry = runtime_data::add_loaders(registry);
+                // registry = lgn_graphics_runtime::add_loaders(registry);
+                // registry = generic_data::runtime::add_loaders(registry);
 
                 if let Some(databuild_config) = &config.databuild_config {
-                    registry = registry.add_device_build(
+                    registry_options = registry_options.add_device_build(
                         Box::new(content_store),
                         ContentStoreAddr::from(config.content_store_addr.clone()),
                         manifest.clone(),
@@ -107,20 +107,16 @@ impl Plugin for AssetRegistryPlugin {
                         false,
                     );
                 } else {
-                    registry = registry.add_device_cas(Box::new(content_store), manifest.clone());
+                    registry_options =
+                        registry_options.add_device_cas(Box::new(content_store), manifest.clone());
                 }
 
-                let registry = registry.create();
-
-                let load_events = registry.subscribe_to_load_events();
-
-                app.insert_resource(registry)
+                app.insert_non_send_resource(registry_options)
                     .insert_resource(AssetLoadingStates::default())
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
-                    .insert_resource(load_events)
                     .insert_resource(manifest)
-                    .add_startup_system(Self::setup)
+                    .add_startup_system_to_stage(StartupStage::PostStartup, Self::post_setup)
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
                     .add_system(Self::handle_load_events);
@@ -137,21 +133,25 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
-    /// Initial plugin setup.
-    /// Request load for all assets specified in config.
-    fn setup(
-        registry: ResMut<'_, Arc<AssetRegistry>>,
+    fn post_setup(
+        mut commands: Commands<'_, '_>,
+        registry: NonSend<'_, AssetRegistryOptions>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         config: ResMut<'_, AssetRegistrySettings>,
     ) {
+        let registry = registry.create();
+
+        let load_events = registry.subscribe_to_load_events();
+        commands.insert_resource(load_events);
+
+        // Request load for all assets specified in config.
         for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
 
-        drop(registry);
-        drop(config);
+        commands.insert_resource(registry);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {
