@@ -8,20 +8,14 @@ use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Create a new Resource
 pub struct CreateResourceOperation {
-    resource_type_name: &'static str,
     resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
 }
 
 impl CreateResourceOperation {
     /// Create a new `CreateResourceOperation`
-    pub fn new(
-        resource_type_name: &'static str,
-        resource_id: ResourceTypeAndId,
-        resource_path: ResourcePathName,
-    ) -> Box<Self> {
+    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Box<Self> {
         Box::new(Self {
-            resource_type_name,
             resource_id,
             resource_path,
         })
@@ -44,15 +38,20 @@ impl TransactionOperation for CreateResourceOperation {
             return Err(Error::ResourcePathAlreadyExist(self.resource_path.clone()).into());
         }
 
-        ctx.project.add_resource_with_id(
-            self.resource_path.clone(),
-            self.resource_type_name,
-            self.resource_id.kind,
-            self.resource_id,
-            &handle,
-            &mut ctx.resource_registry,
-        )?;
-        ctx.loaded_resource_handles.insert(self.resource_id, handle);
+        if let Some(resource_type_name) = ctx
+            .resource_registry
+            .get_resource_type_name(self.resource_id.kind)
+        {
+            ctx.project.add_resource_with_id(
+                self.resource_path.clone(),
+                resource_type_name,
+                self.resource_id.kind,
+                self.resource_id,
+                &handle,
+                &mut ctx.resource_registry,
+            )?;
+            ctx.loaded_resource_handles.insert(self.resource_id, handle);
+        }
         Ok(())
     }
 

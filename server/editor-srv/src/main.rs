@@ -20,6 +20,8 @@ use lgn_transform::TransformPlugin;
 
 mod grpc;
 mod plugin;
+mod property_inspector_plugin;
+mod resource_browser_plugin;
 
 use plugin::EditorPlugin;
 

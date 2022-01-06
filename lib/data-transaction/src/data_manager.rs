@@ -48,11 +48,11 @@ pub enum Error {
 pub struct DataManager {
     commited_transactions: Vec<Transaction>,
     rollbacked_transactions: Vec<Transaction>,
+    pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
 
     pub(crate) project: Arc<Mutex<Project>>,
     pub(crate) resource_registry: Arc<Mutex<ResourceRegistry>>,
     pub(crate) asset_registry: Arc<AssetRegistry>,
-    pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
 }
 
