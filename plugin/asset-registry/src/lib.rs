@@ -93,9 +93,6 @@ impl Plugin for AssetRegistryPlugin {
                 }
 
                 let mut registry_options = AssetRegistryOptions::new();
-                // registry = runtime_data::add_loaders(registry);
-                // registry = lgn_graphics_runtime::add_loaders(registry);
-                // registry = generic_data::runtime::add_loaders(registry);
 
                 if let Some(databuild_config) = &config.databuild_config {
                     registry_options = registry_options.add_device_build(
@@ -116,7 +113,10 @@ impl Plugin for AssetRegistryPlugin {
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
                     .insert_resource(manifest)
-                    .add_startup_system_to_stage(StartupStage::PostStartup, Self::post_setup)
+                    .add_startup_system_to_stage(
+                        StartupStage::PostStartup,
+                        Self::post_setup.exclusive_system(),
+                    )
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
                     .add_system(Self::handle_load_events);
@@ -133,27 +133,31 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
-    fn pre_setup(mut commands: Commands<'_, '_>) {}
-
     fn post_setup(
-        mut commands: Commands<'_, '_>,
-        registry: NonSend<'_, AssetRegistryOptions>,
-        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        mut asset_handles: ResMut<'_, AssetHandles>,
-        config: ResMut<'_, AssetRegistrySettings>,
+        world: &mut World, // mut commands: Commands<'_, '_>,
+                           // registry: NonSend<'_, AssetRegistryOptions>,
+                           // mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+                           // mut asset_handles: ResMut<'_, AssetHandles>,
+                           // config: ResMut<'_, AssetRegistrySettings>
     ) {
-        let registry = registry.create();
+        let registry_options = world.remove_non_send::<AssetRegistryOptions>().unwrap();
+        let registry = registry_options.create();
 
         let load_events = registry.subscribe_to_load_events();
-        commands.insert_resource(load_events);
+        world.insert_resource(load_events);
 
+        /*
         // Request load for all assets specified in config.
+        let config = world.get_resource_mut::<AssetRegistrySettings>().unwrap();
+        let asset_loading_states = world.get_resource_mut::<AssetLoadingStates>().unwrap();
+        let asset_handles = world.get_resource::<AssetHandles>().unwrap();
         for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
+        */
 
-        commands.insert_resource(registry);
+        world.insert_resource(registry);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {

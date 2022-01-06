@@ -77,7 +77,10 @@ pub struct ResourceRegistryPlugin {}
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
-        app.add_startup_system_to_stage(StartupStage::PostStartup, Self::post_setup);
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::post_setup.exclusive_system(),
+        );
     }
 }
 
@@ -87,16 +90,11 @@ impl ResourceRegistryPlugin {
         commands.insert_resource(registry_options);
     }
 
-    fn post_setup(
-        mut commands: Commands<'_, '_>,
-        registry_options: Res<'_, ResourceRegistryOptions>,
-        asset_registry: ResMut<'_, Arc<AssetRegistry>>,
-        manifest: Res<'_, Manifest>,
-        settings: Res<'_, ResourceRegistrySettings>,
-        io_task_pool: Res<'_, IoTaskPool>,
-    ) {
+    fn post_setup(world: &mut World) {
+        let registry_options = world.remove_resource::<ResourceRegistryOptions>().unwrap();
         let registry = registry_options.create_async_registry();
 
+        let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
         let project_dir = settings.root_folder.clone();
         let build_dir = project_dir.join("temp");
 
@@ -109,9 +107,11 @@ impl ResourceRegistryPlugin {
         let build_options = DataBuildOptions::new(&build_dir, compilers)
             .content_store(&ContentStoreAddr::from(build_dir.as_path()));
 
+        let manifest = world.get_resource::<Manifest>().unwrap();
         let build_manager = BuildManager::new(build_options, &project_dir, manifest.clone())
             .expect("the editor requires valid build manager");
 
+        let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
         let data_manager = Arc::new(Mutex::new(DataManager::new(
             project,
             registry,
@@ -121,6 +121,7 @@ impl ResourceRegistryPlugin {
 
         {
             let data_manager = data_manager.clone();
+            let io_task_pool = world.get_resource::<IoTaskPool>().unwrap();
             io_task_pool
                 .spawn(async move {
                     let mut data_manager = data_manager.lock().await;
@@ -129,6 +130,6 @@ impl ResourceRegistryPlugin {
                 .detach();
         }
 
-        commands.insert_resource(data_manager);
+        world.insert_resource(data_manager);
     }
 }
