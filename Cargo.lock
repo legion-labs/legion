@@ -4181,7 +4181,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
- "itertools",
  "lazy_static",
  "lgn-math",
  "serde",
@@ -4353,12 +4352,10 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "clap",
  "fxhash",
  "heck 0.4.0",
  "lgn-graphics-api",
- "lgn-graphics-cgen-runtime",
  "lgn-telemetry",
  "lgn-telemetry-sink",
  "proc-macro2",
@@ -4371,7 +4368,6 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "bumpalo",
  "glam",
  "lgn-graphics-api",
