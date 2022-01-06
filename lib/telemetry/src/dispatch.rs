@@ -5,7 +5,7 @@ use std::{
 };
 
 use chrono::Utc;
-use log::LevelFilter;
+use log::{warn, LevelFilter};
 
 use crate::event_block::TelemetryBlock;
 use crate::metrics_block::MetricsStream;
@@ -389,7 +389,7 @@ pub fn init_thread_stream() {
         if let Some(d) = &mut G_DISPATCH {
             d.init_thread_stream(cell);
         } else {
-            panic!("dispatch not initialized");
+            warn!("dispatch not initialized, cannot init thread stream, events will be lost for this thread");
         }
     });
 }

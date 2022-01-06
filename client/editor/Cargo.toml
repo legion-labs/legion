@@ -11,7 +11,6 @@ keywords = ["game", "legion"]
 
 [dependencies]
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
-lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-online = { path = "../../lib/online", version = "0.1.0" }
@@ -19,6 +18,8 @@ lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
 lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
 lgn-browser = { path = "../../lib/browser", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = { version = "3.0", features = ["derive"] }
 tonic = "0.6"

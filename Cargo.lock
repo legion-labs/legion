@@ -2164,6 +2164,7 @@ dependencies = [
  "lgn-online",
  "lgn-tauri",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-transit",
  "prost",
  "regex",
@@ -3774,10 +3775,12 @@ dependencies = [
 name = "lgn-app"
 version = "0.1.0"
 dependencies = [
+ "ctrlc",
  "instant",
  "lgn-derive",
  "lgn-ecs",
  "lgn-telemetry",
+ "lgn-telemetry-sink",
  "lgn-utils",
  "ron",
  "serde",
@@ -4758,6 +4761,7 @@ dependencies = [
  "event-listener",
  "futures-lite",
  "instant",
+ "lgn-telemetry",
  "num_cpus",
  "wasm-bindgen-futures",
 ]
@@ -4788,7 +4792,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "ctrlc",
  "lazy_static",
  "lgn-transit",
  "lgn-utils",
@@ -6951,6 +6954,8 @@ dependencies = [
  "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
+ "lgn-telemetry",
+ "lgn-telemetry-sink",
  "tauri",
  "tauri-build",
  "url",
@@ -6975,7 +6980,6 @@ dependencies = [
  "lgn-renderer",
  "lgn-streamer",
  "lgn-telemetry",
- "lgn-telemetry-sink",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",

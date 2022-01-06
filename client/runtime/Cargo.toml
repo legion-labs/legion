@@ -15,6 +15,8 @@ lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-online = { path = "../../lib/online", version = "0.1.0" }
 lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 
 # others
 anyhow = "1.0.44"

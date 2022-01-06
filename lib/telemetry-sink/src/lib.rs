@@ -75,6 +75,8 @@ pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
 
 pub struct TelemetryGuard {
+    // note we rely here on the drop order being the same as the declaration order
+    _thread_guard: TelemetryThreadGuard,
     _guard: TelemetrySystemGuard,
 }
 
@@ -92,8 +94,10 @@ impl TelemetryGuard {
         #[cfg(not(debug_assertions))]
         set_max_log_level(LevelFilter::Warn);
 
+        // order here is important
         Ok(Self {
             _guard: TelemetrySystemGuard::new(sink)?,
+            _thread_guard: TelemetryThreadGuard::new(),
         })
     }
     pub fn with_log_level(self, leve_filter: LevelFilter) -> Self {

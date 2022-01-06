@@ -109,6 +109,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
     }
 
     fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+        trace_scope!();
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
@@ -181,7 +182,7 @@ impl ParallelExecutor {
         systems: &'scope mut [ParallelSystemContainer],
         world: &'scope World,
     ) {
-        trace_scope!("prepare_systems");
+        trace_scope!();
         self.should_run.clear();
         for (index, (system_data, system)) in
             self.system_metadata.iter_mut().zip(systems).enumerate()
@@ -204,7 +205,10 @@ impl ParallelExecutor {
                     // trace_scope!();
                     // #[cfg(feature = "trace")]
                     // let system_guard = system_span.enter();
-                    unsafe { system.run_unsafe((), world) };
+                    {
+                        trace_scope!();
+                        unsafe { system.run_unsafe((), world) };
+                    }
                     // #[cfg(feature = "trace")]
                     // drop(system_guard);
                     finish_sender

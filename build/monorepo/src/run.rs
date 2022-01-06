@@ -52,8 +52,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         trace_name,
         Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
     )
-    .replace(":", "-");
-    println!("{}", &trace_name);
+    .replace(":", "-"); // Windows doesn't like colons in the filename
     let env = if let Some(trace_file) = &args.ctrace {
         vec![(
             "LGN_TRACE_FILE",

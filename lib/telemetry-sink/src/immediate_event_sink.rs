@@ -93,6 +93,12 @@ impl EventSink for ImmediateEventSink {
         if self.chrome_trace_file.is_none() {
             return;
         }
+        {
+            let events = self.chrome_events.lock().unwrap();
+            if events.len() > 10_000_000 {
+                return;
+            }
+        }
         let process_data = self.process_data.read().unwrap();
         if let Some(process_data) = &*process_data {
             if let Some(thread_name) = self.thread_names.read().unwrap().get(&block.stream_id) {
@@ -117,8 +123,10 @@ impl EventSink for ImmediateEventSink {
                         ts: time,
 
                     };
-                    let mut events = self.chrome_events.lock().unwrap();
-                    events.push(event);
+                    {
+                        let mut events = self.chrome_events.lock().unwrap();
+                        events.push(event);
+                    }
                 }
             }
         }

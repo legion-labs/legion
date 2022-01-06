@@ -15,13 +15,15 @@ lgn_ci_testing = ["serde", "ron"]
 # legion
 lgn-derive = { path = "../derive", version = "0.1.0" }
 lgn-ecs = { path = "../ecs", version = "0.1.0" }
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
 
 # other
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 ron = { version = "0.7.0", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
+ctrlc = "3.2.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"

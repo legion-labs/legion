@@ -1,7 +1,6 @@
+use crate::prelude::*;
 use std::io::Write;
 use std::panic::{take_hook, PanicInfo};
-
-use crate::prelude::*;
 
 pub fn init_panic_hook() {
     type BoxedHook = Box<dyn Fn(&PanicInfo<'_>) + Sync + Send + 'static>;
@@ -19,14 +18,4 @@ pub fn init_panic_hook() {
             hook(panic_info);
         }
     }));
-}
-
-#[allow(clippy::exit)]
-pub fn init_ctrlc_hook() {
-    ctrlc::set_handler(move || {
-        error!("CTRL-C");
-        shutdown_telemetry();
-        std::process::exit(1);
-    })
-    .expect("Error in ctrlc::set_handler");
 }

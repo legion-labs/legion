@@ -66,7 +66,6 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_analytics::alloc_sql_pool;
-use lgn_telemetry::TelemetryThreadGuard;
 use lgn_telemetry_sink::TelemetryGuard;
 use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
@@ -140,7 +139,6 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     let args = Cli::parse();
 

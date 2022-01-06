@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use lgn_telemetry::{flush_log_buffer, flush_metrics_buffer, trace_scope, TelemetryThreadGuard};
+use lgn_telemetry::{flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, trace_scope};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_test_utils::{create_test_dir, syscall};
 
@@ -78,7 +78,6 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 fn local_repo_suite() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
@@ -183,13 +182,13 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["sync"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn local_single_branch_merge_flow() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
@@ -235,13 +234,13 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&work1, &["resolves-pending"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_print_config() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
@@ -251,13 +250,13 @@ fn test_print_config() {
     }
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_branch() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_branch");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -348,13 +347,13 @@ fn test_branch() {
     //lsc_cli_sys(&work1, &["log"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_locks() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_locks");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -463,6 +462,7 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 fn get_root_git_directory() -> PathBuf {
@@ -479,7 +479,6 @@ fn get_root_git_directory() -> PathBuf {
 fn test_import_git() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_import_git");
     let work1 = test_dir.join("work1");
@@ -498,4 +497,5 @@ fn test_import_git() {
     );
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }

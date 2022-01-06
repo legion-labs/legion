@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-    init_thread_stream,
-    panic_hook::{init_ctrlc_hook, init_panic_hook},
-    shutdown_event_dispatch, EventSink,
+    init_thread_stream, panic_hook::init_panic_hook, shutdown_event_dispatch, EventSink,
 };
 
 pub struct TelemetrySystemGuard {}
@@ -25,7 +23,6 @@ impl std::ops::Drop for TelemetrySystemGuard {
 pub fn init_telemetry(sink: Arc<dyn EventSink>) -> anyhow::Result<(), String> {
     init_event_dispatch(10 * 1024 * 1024, 10 * 1024 * 1024, 1024 * 1024, sink)?;
     init_panic_hook();
-    init_ctrlc_hook();
     Ok(())
 }
 
