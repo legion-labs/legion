@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::*;
-use lgn_math::{Quat, Vec3};
+use lgn_transform::components::Transform;
 
 use crate::picking::ManipulatorType;
 
@@ -7,8 +7,7 @@ use crate::picking::ManipulatorType;
 pub struct ManipulatorComponent {
     pub part_type: ManipulatorType,
     pub part_num: usize,
-    pub local_translation: Vec3,
-    pub local_rotation: Quat,
+    pub local_transform: Transform,
     pub active: bool,
     pub selected: bool,
     pub transparent: bool,

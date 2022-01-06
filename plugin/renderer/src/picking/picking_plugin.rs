@@ -222,7 +222,7 @@ fn update_manipulator_component(
     for (entity, mut transform, picked) in picked_query.iter_mut() {
         if entity == picking_manager.manipulated_entity() {
             if active_manipulator_part {
-                let (base_transform, picking_pos) = picking_manager.base_picking_data();
+                let (base_transform, _picking_pos) = picking_manager.base_picking_data();
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
                 if !q_cameras.is_empty() {
@@ -239,7 +239,7 @@ fn update_manipulator_component(
                             selected_part,
                             &base_transform,
                             q_cameras[0],
-                            picking_pos,
+                            picking_manager.picked_pos(),
                             screen_rect,
                             picking_manager.current_cursor_pos(),
                         );
@@ -260,11 +260,8 @@ fn update_manipulator_component(
 
         if let Some(entity_transform) = select_entity_transform {
             if manipulator.part_type == manipulator_manager.curremt_manipulator_type() {
-                manipulator_manager.manipulator_transform_from_entity_transform(
-                    &entity_transform,
-                    &manipulator,
-                    &mut transform,
-                );
+                manipulator_manager
+                    .manipulator_transform_from_entity_transform(&entity_transform, &mut transform);
                 manipulator.active = true;
             }
         }
