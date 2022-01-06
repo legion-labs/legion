@@ -51,9 +51,12 @@ impl EventSink for ImmediateEventSink {
             let trace_document = json::object! {
                 traceEvents: chrome_events.clone(),
             };
-            std::fs::write(chrome_trace_file, trace_document.dump()).unwrap();
-            println!("chrome trace written to {}", chrome_trace_file);
-            println!("Open https://ui.perfetto.dev/ to view the trace");
+            if std::fs::write(chrome_trace_file, trace_document.dump()).is_ok() {
+                println!("chrome trace written to {}", chrome_trace_file);
+                println!("Open https://ui.perfetto.dev/ to view the trace");
+            } else {
+                println!("failed to write trace {}", chrome_trace_file);
+            }
         }
     }
 

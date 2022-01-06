@@ -34,3 +34,4 @@ yarn-error.log*
 yarn.lock
 npm-debug.log*
 package-lock.json
+trace-*.json

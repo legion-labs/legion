@@ -75,6 +75,7 @@ mod git;
 mod hakari;
 mod installer;
 mod lint;
+mod run;
 mod term;
 mod test;
 mod tools;
@@ -127,6 +128,9 @@ enum Commands {
     /// Run `cargo fmt`
     #[clap(name = "fmt")]
     Fmt(fmt::Args),
+    /// Run `cargo run`
+    #[clap(name = "run")]
+    Run(run::Args),
     /// Run `cargo tests`
     #[clap(name = "test")]
     Test(test::Args),
@@ -167,6 +171,7 @@ fn main() -> Result<()> {
         Commands::Doc(args) => doc::run(args, &ctx)?,
         Commands::Fix(args) => fix::run(args, &ctx)?,
         Commands::Fmt(args) => fmt::run(args, &ctx)?,
+        Commands::Run(args) => run::run(&args, &ctx)?,
         Commands::Test(args) => test::run(args, &ctx)?,
 
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,

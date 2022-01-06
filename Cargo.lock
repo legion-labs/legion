@@ -4479,6 +4479,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
+ "chrono",
  "clap",
  "determinator",
  "guppy",
