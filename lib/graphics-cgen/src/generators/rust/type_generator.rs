@@ -5,21 +5,20 @@ use crate::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
         GeneratorContext,
     },
-    model::{CGenType, CGenTypeRef, Model, StructMember},
+    model::{CGenType, Model, StructMember},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for ty_ref in model.ref_iter::<CGenType>() {
-        let ty = ty_ref.get(model);
-        if let Some(content) = match ty {
+    for ty_ref in model.object_iter::<CGenType>() {
+        if let Some(content) = match ty_ref.object() {
             CGenType::Native(_) => None,
-            CGenType::Struct(_) => Some(generate_rust_struct(ctx, ty_ref)),
+            CGenType::Struct(_) => Some(generate_rust_struct(ctx, ty_ref.id(), ty_ref.object())),
         } {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(ty, CGenVariant::Rust),
+                GeneratorContext::get_object_rel_path(ty_ref.object(), CGenVariant::Rust),
                 content.into_bytes(),
             ));
         }
@@ -52,8 +51,7 @@ fn get_member_declaration(model: &Model, member: &StructMember) -> String {
     format!("pub {}: {},", member.name, typestring)
 }
 
-fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_ref: CGenTypeRef) -> String {
-    let ty = ty_ref.get(ctx.model);
+fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -> String {
     let struct_def = ty.struct_type();
     let mut writer = FileWriter::new();
 
@@ -99,7 +97,7 @@ fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_ref: CGenTypeRef) -> Stri
         writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", struct_def.name));
-        writer.add_line(format!("id: {},", ty_ref.id()));
+        writer.add_line(format!("id: {},", ty_id));
         writer.add_line(format!("size: mem::size_of::<{}>(),", struct_def.name));
         writer.unindent();
         writer.add_line("}; ");
@@ -124,7 +122,7 @@ fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_ref: CGenTypeRef) -> Stri
         writer.indent();
 
         // impl: id
-        writer.add_line(format!("pub const fn id() -> u32 {{ {}  }}", ty_ref.id()));
+        writer.add_line(format!("pub const fn id() -> u32 {{ {}  }}", ty_id));
         writer.new_line();
 
         // impl: def

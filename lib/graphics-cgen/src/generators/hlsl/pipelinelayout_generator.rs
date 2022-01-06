@@ -7,11 +7,11 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for pipeline_layout in model.object_iter::<PipelineLayout>() {
-        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
+    for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Hlsl),
+            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }

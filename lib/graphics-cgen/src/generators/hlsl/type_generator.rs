@@ -11,14 +11,14 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for cgen_type in model.object_iter::<CGenType>() {
-        if let Some(content) = match cgen_type {
+    for cgen_type_ref in model.object_iter::<CGenType>() {
+        if let Some(content) = match cgen_type_ref.object() {
             CGenType::Native(_) => None,
-            CGenType::Struct(_) => Some(generate_hlsl_struct(ctx, cgen_type)),
+            CGenType::Struct(_) => Some(generate_hlsl_struct(ctx, cgen_type_ref.object())),
         } {
             products.push(Product::new(
                 CGenVariant::Hlsl,
-                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Hlsl),
+                GeneratorContext::get_object_rel_path(cgen_type_ref.object(), CGenVariant::Hlsl),
                 content.into_bytes(),
             ));
         }

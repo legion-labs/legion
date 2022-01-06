@@ -10,11 +10,11 @@ use crate::{
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for descriptorset in model.object_iter::<DescriptorSet>() {
-        let content = generate_hlsl_descritporset(ctx, descriptorset);
+    for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+        let content = generate_hlsl_descritporset(ctx, descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(descriptorset, CGenVariant::Hlsl),
+            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }

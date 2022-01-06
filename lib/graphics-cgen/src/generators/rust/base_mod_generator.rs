@@ -45,22 +45,22 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         writer.indent();
     
         writer.new_line();        
-        for descriptor_set in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::initialize(device_context);", descriptor_set.name));            
+        for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+            writer.add_line( format!("descriptor_set::{}::initialize(device_context);", descriptor_set_ref.object().name));            
         }
         
         writer.new_line();
         writer.add_line("let descriptor_set_layouts = [");
         writer.indent();
-        for descriptor_set in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::descriptor_set_layout(),", descriptor_set.name));            
+        for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+            writer.add_line( format!("descriptor_set::{}::descriptor_set_layout(),", descriptor_set_ref.object().name));            
         }
         writer.unindent();
         writer.add_line("];");
         
         writer.new_line();
-        for pipeline_layout in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);", pipeline_layout.name));    
+        for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+            writer.add_line( format!("pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);", pipeline_layout_ref.object().name));    
         }
         writer.new_line();    
         writer.unindent();
@@ -74,13 +74,13 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         writer.indent();
     
         writer.new_line();        
-        for descriptor_set in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::shutdown();", descriptor_set.name));            
+        for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+            writer.add_line( format!("descriptor_set::{}::shutdown();", descriptor_set_ref.object().name));            
         }
         writer.new_line();
         
-        for pipeline_layout in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::shutdown();", pipeline_layout.name));    
+        for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+            writer.add_line( format!("pipeline_layout::{}::shutdown();", pipeline_layout_ref.object().name));    
         }
         writer.new_line();    
         writer.unindent();

@@ -1,17 +1,17 @@
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{DescriptorSet, DescriptorSetRef},
+    model::DescriptorSet,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for descriptor_set_ref in model.ref_iter::<DescriptorSet>() {
-        let descriptor_set = descriptor_set_ref.get(model);
-        let content = generate_rust_descriptorset(ctx, descriptor_set_ref);
+    for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+        let content =
+            generate_rust_descriptorset(ctx, descriptor_set_ref.id(), descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(descriptor_set, CGenVariant::Rust),
+            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
@@ -39,11 +39,10 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
 #[allow(clippy::too_many_lines)]
 fn generate_rust_descriptorset(
-    ctx: &GeneratorContext<'_>,
-    descriptor_set_ref: DescriptorSetRef,
+    _ctx: &GeneratorContext<'_>,
+    descriptor_set_id: u32,
+    descriptor_set: &DescriptorSet,
 ) -> String {
-    let descriptor_set = descriptor_set_ref.get(ctx.model);
-
     let mut writer = FileWriter::new();
 
     // global dependencies
@@ -109,7 +108,7 @@ fn generate_rust_descriptorset(
         writer.add_line("static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", descriptor_set.name));
-        writer.add_line(format!("id: {},", descriptor_set_ref.id()));
+        writer.add_line(format!("id: {},", descriptor_set_id));
         writer.add_line(format!("frequency: {},", descriptor_set.frequency));
         writer.add_line(format!(
             "descriptor_flat_count: {},",
@@ -179,7 +178,7 @@ fn generate_rust_descriptorset(
         // impl: id
         writer.add_line(format!(
             "pub const fn id() -> u32 {{ {}  }}",
-            descriptor_set_ref.id()
+            descriptor_set_id
         ));
         writer.new_line();
 

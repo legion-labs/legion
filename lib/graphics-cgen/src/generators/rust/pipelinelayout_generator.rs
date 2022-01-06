@@ -2,18 +2,21 @@ use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{PipelineLayout, PipelineLayoutRef},
+    model::PipelineLayout,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for pipeline_layout_ref in model.ref_iter::<PipelineLayout>() {
-        let pipeline_layout = pipeline_layout_ref.get(model);
-        let content = generate_rust_pipeline_layout(ctx, pipeline_layout_ref);
+    for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+        let content = generate_rust_pipeline_layout(
+            ctx,
+            pipeline_layout_ref.id(),
+            pipeline_layout_ref.object(),
+        );
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Rust),
+            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
@@ -42,10 +45,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 #[allow(clippy::too_many_lines)]
 fn generate_rust_pipeline_layout(
     ctx: &GeneratorContext<'_>,
-    pipeline_layout_ref: PipelineLayoutRef,
+    pipeline_layout_id: u32,
+    pipeline_layout: &PipelineLayout,
 ) -> String {
-    let pipeline_layout = pipeline_layout_ref.get(ctx.model);
-
     let mut writer = FileWriter::new();
 
     // global dependencies
@@ -96,7 +98,7 @@ fn generate_rust_pipeline_layout(
         );
         writer.indent();
         writer.add_line(format!("name: \"{}\",", pipeline_layout.name));
-        writer.add_line(format!("id: {},", pipeline_layout_ref.id()));
+        writer.add_line(format!("id: {},", pipeline_layout_id));
         writer.add_line("descriptor_set_layout_ids: [");
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
             let opt_ds_ref = pipeline_layout.find_descriptor_set_by_frequency(ctx.model, i);
