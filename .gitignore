@@ -34,4 +34,6 @@ yarn-error.log*
 yarn.lock
 npm-debug.log*
 package-lock.json
+
+# Perfetto tracing files
 trace-*.json
