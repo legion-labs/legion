@@ -1,5 +1,7 @@
 use std::ffi::OsString;
 
+use lgn_telemetry::trace_scope;
+
 use crate::cargo::{BuildArgs, CargoCommand, SelectedPackageArgs};
 use crate::context::Context;
 use crate::{Error, Result};
@@ -24,6 +26,7 @@ pub struct Args {
 }
 
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
+    trace_scope!();
     // Force no deps
     args.no_deps = true;
 

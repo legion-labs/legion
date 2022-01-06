@@ -1,5 +1,7 @@
 use std::ffi::OsString;
 
+use lgn_telemetry::trace_scope;
+
 use crate::cargo::{BuildArgs, CargoCommand, SelectedPackageArgs};
 use crate::context::Context;
 use crate::Result;
@@ -15,6 +17,7 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
+    trace_scope!();
     let mut pass_through_args: Vec<OsString> = vec![];
     for lint in &ctx.config().clippy.deny {
         pass_through_args.push("-D".into());

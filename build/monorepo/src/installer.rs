@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{cargo::Cargo, config::CargoInstallation, context::Context, ignore_step};
-use lgn_telemetry::{error, info};
+use lgn_telemetry::{error, info, trace_scope};
 use std::{collections::HashMap, process::Command};
 
 pub struct Installer {
@@ -64,6 +64,7 @@ fn install_cargo_component_if_needed(
     name: &str,
     installation: &CargoInstallation,
 ) -> bool {
+    trace_scope!();
     if !check_installed_cargo_component(name, &installation.version) {
         info!("Installing {} {}", name, installation.version);
         //prevent recursive install attempts of sccache.
@@ -103,6 +104,7 @@ fn install_cargo_component_if_needed(
 
 //TODO check installed features for sccache?
 fn check_installed_cargo_component(name: &str, version: &str) -> bool {
+    trace_scope!();
     let result = Command::new(name).arg("--version").output();
     let found = match result {
         Ok(output) => {

@@ -2,6 +2,7 @@ use std::{collections::HashMap, fs};
 
 use camino::Utf8Path;
 use determinator::rules::DeterminatorRules;
+use lgn_telemetry::trace_scope;
 use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result};
@@ -19,6 +20,7 @@ pub struct MonorepoConfig {
 
 impl MonorepoConfig {
     pub fn new(root: &Utf8Path) -> Result<Self> {
+        trace_scope!();
         let monorepo_file = root.join("monorepo.toml");
         let contents = fs::read(&monorepo_file).map_err(|err| {
             Error::new(format!("could not read config file {}", &monorepo_file)).with_source(err)

@@ -1,6 +1,8 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use lgn_telemetry::trace_scope;
+
 use crate::{context::Context, Error, Result};
 
 #[derive(Debug, clap::Args)]
@@ -11,6 +13,7 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
+    trace_scope!();
     let success = if args.check {
         ctx.installer().check_all()
     } else {
