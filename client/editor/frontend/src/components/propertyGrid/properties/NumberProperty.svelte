@@ -1,5 +1,5 @@
 <script lang="ts">
-  import NumberInput from "../NumberInput.svelte";
+  import NumberInput from "../../NumberInput.svelte";
 
   export let value: number;
 </script>

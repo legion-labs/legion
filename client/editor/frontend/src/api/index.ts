@@ -1,16 +1,23 @@
 import log from "@lgn/frontend/src/lib/log";
 import {
-  GrpcWebImpl as EditorGrpcWebImpl,
-  EditorClientImpl,
+  GrpcWebImpl as EditorResourceBrowserWebImpl,
+  ResourceBrowserClientImpl,
   ResourceDescription,
-} from "@lgn/proto-editor/codegen/editor";
+} from "@lgn/proto-editor/codegen/resource_browser";
+import {
+  GrpcWebImpl as EditorPropertyInspectorWebImpl,
+  PropertyInspectorClientImpl,
+  ResourceProperty as ResourceRawProperty,
+} from "@lgn/proto-editor/codegen/property_inspector";
 
 const editorServerURL = "http://[::1]:50051";
 
-const editorClient = new EditorClientImpl(
-  new EditorGrpcWebImpl(editorServerURL, {
-    debug: false,
-  })
+const resourceBrowserClient = new ResourceBrowserClientImpl(
+  new EditorResourceBrowserWebImpl(editorServerURL, { debug: false })
+);
+
+const propertyInspectorClient = new PropertyInspectorClientImpl(
+  new EditorPropertyInspectorWebImpl(editorServerURL, { debug: false })
 );
 
 /**
@@ -23,7 +30,7 @@ export async function getAllResources() {
   async function getMoreResources(
     searchToken: string
   ): Promise<ResourceDescription[]> {
-    const response = await editorClient.searchResources({
+    const response = await resourceBrowserClient.searchResources({
       searchToken,
     });
 
@@ -37,43 +44,53 @@ export async function getAllResources() {
   return getMoreResources("");
 }
 
-type ResourcePropertyBase<Value, Type extends string> = {
-  defaultValue: Value;
-  value: Value;
-  name: string;
+type ResourcePropertyCommon<Type extends string = string> = {
   ptype: Type;
-  group: string;
+  name: string;
+  attributes: Record<string, string>;
+  subProperties: (ResourceProperty | ResourcePropertyGroup)[];
 };
 
-export type BooleanProperty = ResourcePropertyBase<boolean, "bool">;
+export type ResourcePropertyGroup = ResourcePropertyCommon<
+  "virtual-group" | "group"
+>;
+
+type ResourcePropertyBase<
+  Type extends string,
+  Value
+> = ResourcePropertyCommon<Type> & {
+  value: Value;
+};
+
+export type BooleanProperty = ResourcePropertyBase<"bool", boolean>;
 
 export type Speed = number;
 
-export type SpeedProperty = ResourcePropertyBase<Speed, "speed">;
+export type SpeedProperty = ResourcePropertyBase<"speed", Speed>;
 
 export type Color = number;
 
-export type ColorProperty = ResourcePropertyBase<Color, "color">;
+export type ColorProperty = ResourcePropertyBase<"color", Color>;
 
-export type StringProperty = ResourcePropertyBase<string, "string">;
+export type StringProperty = ResourcePropertyBase<"string", string>;
 
 export type NumberProperty = ResourcePropertyBase<
-  number,
-  "i32" | "u32" | "f32" | "f64"
+  "i32" | "u32" | "f32" | "f64" | "usize" | "u8",
+  number
 >;
 
 export type Vec3 = [number, number, number];
 
-export type Vec3Property = ResourcePropertyBase<Vec3, "vec3">;
+export type Vec3Property = ResourcePropertyBase<"vec3", Vec3>;
 
 export type Quat = [number, number, number, number];
 
-export type QuatProperty = ResourcePropertyBase<Quat, "quat">;
+export type QuatProperty = ResourcePropertyBase<"quat", Quat>;
 
 // Uint8Array might fit better here, but it requires some value conversion at runtime
 export type VecU8 = number[];
 
-export type VecU8Property = ResourcePropertyBase<VecU8, "vec < u8 >">;
+export type VecU8Property = ResourcePropertyBase<"vec<u8>", VecU8>;
 
 export type ResourceProperty =
   | BooleanProperty
@@ -86,58 +103,72 @@ export type ResourceProperty =
   | VecU8Property;
 
 export function propertyIsBoolean(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is BooleanProperty {
-  return property.ptype === "bool";
+  return property.ptype.toLowerCase() === "bool";
 }
 
 export function propertyIsSpeed(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is SpeedProperty {
-  return property.ptype === "speed";
+  return property.ptype.toLowerCase() === "speed";
 }
 
 export function propertyIsColor(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is ColorProperty {
-  return property.ptype === "color";
+  return property.ptype.toLowerCase() === "color";
 }
 
 export function propertyIsString(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is StringProperty {
-  return property.ptype === "string";
+  return property.ptype.toLowerCase() === "string";
 }
 
 export function propertyIsNumber(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is NumberProperty {
-  return ["i32", "u32", "f32", "f64", "usize"].includes(property.ptype);
+  return ["i32", "u32", "f32", "f64", "u8", "usize"].includes(
+    property.ptype.toLowerCase()
+  );
 }
 
 export function propertyIsVec3(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is Vec3Property {
-  return property.ptype === "vec3";
+  return property.ptype.toLowerCase() === "vec3";
 }
 
 export function propertyIsQuat(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is QuatProperty {
-  return property.ptype === "quat";
+  return property.ptype.toLowerCase() === "quat";
 }
 
 export function propertyIsVecU8(
-  property: ResourceProperty
+  property: ResourceProperty | ResourcePropertyGroup
 ): property is VecU8Property {
-  return property.ptype === "vec < u8 >";
+  return property.ptype.toLowerCase() === "vec<u8>";
+}
+
+export function propertyIsGroup(
+  property: ResourceProperty | ResourcePropertyGroup
+): property is ResourcePropertyGroup {
+  return ["virtual-group", "group"].includes(property.ptype.toLowerCase());
+}
+
+export function propertyIsVirtualGroup(
+  property: ResourceProperty | ResourcePropertyGroup
+): property is ResourcePropertyGroup {
+  return property.ptype.toLowerCase() === "virtual-group";
 }
 
 export type ResourceWithProperties = {
   id: string;
   description: ResourceDescription;
   version: number;
-  properties: ResourceProperty[];
+  properties: (ResourceProperty | ResourcePropertyGroup)[];
 };
 
 /**
@@ -149,33 +180,47 @@ export async function getResourceProperties({
   id,
   version,
 }: ResourceDescription): Promise<ResourceWithProperties> {
-  const { description, properties } = await editorClient.getResourceProperties({
-    id,
-  });
+  const { description, properties } =
+    await propertyInspectorClient.getResourceProperties({
+      id,
+    });
 
   if (!description) {
     throw new Error("Fetched resource didn't return any description");
+  }
+
+  function formatProperties(
+    properties: ResourceRawProperty[]
+  ): (ResourceProperty | ResourcePropertyGroup)[] {
+    return properties.map(
+      (property): ResourceProperty | ResourcePropertyGroup => {
+        if (!property.jsonValue) {
+          return {
+            ptype: property.ptype === "_group_" ? "virtual-group" : "group",
+            name: property.name,
+            attributes: property.attributes,
+            subProperties: formatProperties(property.subProperties),
+          };
+        }
+
+        return {
+          name: property.name,
+          value: JSON.parse(property.jsonValue),
+          // We don't actually validate the incoming data to keep it fast
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ptype: property.ptype as ResourceProperty["ptype"],
+          attributes: property.attributes,
+          subProperties: formatProperties(property.subProperties),
+        };
+      }
+    );
   }
 
   return {
     id,
     description,
     version,
-    properties: properties.map((property) => {
-      const value = JSON.parse(new TextDecoder().decode(property.value));
-      const defaultValue = JSON.parse(
-        new TextDecoder().decode(property.defaultValue)
-      );
-
-      return {
-        ...property,
-        defaultValue,
-        value,
-        // We don't actually validate the incoming data to keep it fast
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ptype: property.ptype as ResourceProperty["ptype"],
-      };
-    }),
+    properties: formatProperties(properties),
   };
 }
 
@@ -197,12 +242,12 @@ export async function updateResourceProperties(
   version: number,
   propertyUpdates: PropertyUpdate[]
 ) {
-  await editorClient.updateResourceProperties({
+  await propertyInspectorClient.updateResourceProperties({
     id: resourceId,
     version,
-    propertyUpdates: propertyUpdates.map((propertyUpdate) => ({
-      ...propertyUpdate,
-      value: new TextEncoder().encode(JSON.stringify(propertyUpdate.value)),
+    propertyUpdates: propertyUpdates.map(({ name, value }) => ({
+      name: name,
+      jsonValue: JSON.stringify(value),
     })),
   });
 }

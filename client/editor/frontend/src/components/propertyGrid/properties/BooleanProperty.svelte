@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Toggle from "../Toggle.svelte";
+  import Toggle from "../../Toggle.svelte";
 
   export let value: boolean;
 </script>

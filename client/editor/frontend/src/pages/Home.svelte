@@ -7,7 +7,7 @@
   import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
   import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
   import { getAllResources, getResourceProperties } from "@/api";
-  import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
+  import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
@@ -127,7 +127,7 @@
               {tab}
             </div>
             <div class="properties-content" slot="content">
-              <CurrentResourceProperties />
+              <PropertyGrid />
             </div>
           </Panel>
         </div>
@@ -167,7 +167,7 @@
   }
 
   .secondary-contents {
-    @apply flex flex-col flex-shrink-0 w-80 h-full;
+    @apply flex flex-col flex-shrink-0 w-96 h-full;
   }
 
   .resources {

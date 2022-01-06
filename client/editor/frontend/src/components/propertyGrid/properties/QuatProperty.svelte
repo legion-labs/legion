@@ -1,13 +1,16 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Vec3 } from "@/api";
-  import NumberInput from "../NumberInput.svelte";
+  import { Quat } from "@/api";
+  import NumberInput from "../../NumberInput.svelte";
 
-  const dispatch = createEventDispatcher<{ input: Vec3 }>();
+  const dispatch = createEventDispatcher<{ input: Quat }>();
 
-  export let value: Vec3;
+  export let value: Quat;
 
-  function updateVectorAt(index: 0 | 1 | 2, { detail }: CustomEvent<number>) {
+  function updateVectorAt(
+    index: 0 | 1 | 2 | 3,
+    { detail }: CustomEvent<number>
+  ) {
     dispatch("input", Object.assign([], value, { [index]: detail }));
   }
 </script>
@@ -35,6 +38,15 @@
     <NumberInput
       on:input={(event) => updateVectorAt(2, event)}
       bind:value={value[2]}
+      noArrow
+      fullWidth
+      autoSelect
+    />
+  </div>
+  <div>
+    <NumberInput
+      on:input={(event) => updateVectorAt(3, event)}
+      bind:value={value[3]}
       noArrow
       fullWidth
       autoSelect
