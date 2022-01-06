@@ -12,6 +12,7 @@ struct VertexOut {
 };
 
 struct ConstData {
+    float4x4 custom_world;
     float4x4 view_proj;
     float4x4 inv_view_proj;
     float4 screen_size;
@@ -48,8 +49,12 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
-    float4x4 world = transpose(transform.world);
+    float4x4 world = const_data.custom_world;
+    if (push_constant.world_offset != 0xFFFFFFFF)
+    {
+        EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
+        world = transpose(transform.world);
+    }
 
     float4 world_pos = mul(world, vertex_in.pos);
     vertex_out.hpos = mul(const_data.view_proj, world_pos);

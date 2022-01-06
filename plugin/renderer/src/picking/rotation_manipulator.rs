@@ -98,7 +98,7 @@ impl RotationManipulator {
         component: RotationComponents,
         base_entity_transform: &Transform,
         camera: &CameraComponent,
-        picking_pos_world_space: Vec3,
+        picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
@@ -109,25 +109,38 @@ impl RotationManipulator {
             RotationComponents::ZAxis => Vec3::new(0.0, 0.0, 1.0),
         };
 
+        let picked_world_point =
+            new_world_point_for_cursor(camera, screen_size, picked_pos, plane_point, plane_normal);
+        let dir_to_picked_point =
+            (picked_world_point - base_entity_transform.translation).normalize();
+
         let new_world_point =
             new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
-
-        let dir_to_picked_point =
-            (picking_pos_world_space - base_entity_transform.translation).normalize();
         let dir_to_new_point = (new_world_point - base_entity_transform.translation).normalize();
 
         let initial_rotation = Mat3::from_quat(base_entity_transform.rotation);
+        let new_rotation_angle = dir_to_picked_point.dot(dir_to_new_point).acos();
 
-        let mut new_rotation_angle = dir_to_picked_point.dot(dir_to_new_point).acos();
-        let mut rotation = Mat3::from_axis_angle(plane_normal, new_rotation_angle);
+        let rotation_one = Mat3::from_axis_angle(plane_normal, new_rotation_angle);
+        let proj_one = rotation_one
+            .mul_vec3(dir_to_picked_point)
+            .dot(dir_to_new_point);
 
-        if rotation.mul_vec3(dir_to_picked_point).dot(dir_to_new_point) < 0.99 {
-            new_rotation_angle *= -1.0;
-            rotation = Mat3::from_axis_angle(plane_normal, new_rotation_angle);
+        let rotation_two = Mat3::from_axis_angle(plane_normal, -new_rotation_angle);
+        let proj_two = rotation_two
+            .mul_vec3(dir_to_picked_point)
+            .dot(dir_to_new_point);
+
+        let new_rotation = if proj_one > proj_two {
+            rotation_one
+        } else {
+            rotation_two
+        } * initial_rotation;
+
+        if !new_rotation.is_nan() {
+            base_entity_transform.with_rotation(Quat::from_mat3(&new_rotation))
+        } else {
+            *base_entity_transform
         }
-
-        let new_rotation = rotation * initial_rotation;
-
-        base_entity_transform.with_rotation(Quat::from_mat3(&new_rotation))
     }
 }

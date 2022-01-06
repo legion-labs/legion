@@ -60,7 +60,6 @@ impl Plugin for RendererPlugin {
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
             app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
@@ -226,36 +225,38 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(mut _query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
-    // for (mut transform, rotation) in query.iter_mut() {
-    //     transform.rotate(Quat::from_euler(
-    //         EulerRot::XYZ,
-    //         rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
-    //         rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
-    //         rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
-    //     ));
-    // }
-}
-
 fn update_transform(
     mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, '_, (Entity, &Transform, &mut StaticMesh)>,
+    mut query: Query<
+        '_,
+        '_,
+        (
+            Entity,
+            &Transform,
+            &mut StaticMesh,
+            Option<&ManipulatorComponent>,
+        ),
+        Changed<Transform>,
+    >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut gpu_data = renderer.aquire_transform_data();
 
-    for (entity, transform, mut mesh) in query.iter_mut() {
-        mesh.world_offset = gpu_data.ensure_index_allocated(entity.id()) as u32;
+    for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
+        if manipulator.is_none() {
+            mesh.world_offset = gpu_data.ensure_index_allocated(entity.id()) as u32;
 
-        let world = EntityTransforms {
-            world: transform.compute_matrix(),
-        };
+            let world = EntityTransforms {
+                world: transform.compute_matrix(),
+            };
 
-        updater.add_update_jobs(&[world], u64::from(mesh.world_offset));
+            updater.add_update_jobs(&[world], u64::from(mesh.world_offset));
+        } else {
+            mesh.world_offset = u32::MAX;
+        }
     }
 
     renderer.test_add_update_jobs(updater.job_blocks());
-
     renderer.release_transform_data(gpu_data);
 }
 
@@ -272,23 +273,16 @@ fn render_update(
     q_drawables: Query<
         '_,
         '_,
-        (
-            &StaticMesh,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        ),
+        (&StaticMesh, Option<&PickedComponent>),
+        Without<ManipulatorComponent>,
     >,
     q_debug_drawables: Query<
         '_,
         '_,
-        (
-            &StaticMesh,
-            &Transform,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        ),
-        Or<(With<PickedComponent>, With<ManipulatorComponent>)>,
+        (&StaticMesh, &Transform, Option<&PickedComponent>),
+        Without<ManipulatorComponent>,
     >,
+    q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
     q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
@@ -299,17 +293,17 @@ fn render_update(
     crate::egui::egui_plugin::end_frame(&mut egui);
 
     let render_context = RenderContext::new(&renderer);
-    let q_drawables = q_drawables.iter().collect::<Vec<(
-        &StaticMesh,
-        Option<&PickedComponent>,
-        Option<&ManipulatorComponent>,
-    )>>();
-    let q_debug_drawables = q_debug_drawables.iter().collect::<Vec<(
-        &StaticMesh,
-        &Transform,
-        Option<&PickedComponent>,
-        Option<&ManipulatorComponent>,
-    )>>();
+    let q_drawables = q_drawables
+        .iter()
+        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
+    let q_debug_drawables =
+        q_debug_drawables
+            .iter()
+            .collect::<Vec<(&StaticMesh, &Transform, Option<&PickedComponent>)>>();
+    let q_manipulator_drawables =
+        q_manipulator_drawables
+            .iter()
+            .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
 
     let q_lights = q_lights
         .iter()
@@ -361,6 +355,7 @@ fn render_update(
             &render_context,
             render_surface.as_mut(),
             q_drawables.as_slice(),
+            q_manipulator_drawables.as_slice(),
             camera_component,
         );
 
@@ -383,6 +378,7 @@ fn render_update(
             &cmd_buffer,
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
+            q_manipulator_drawables.as_slice(),
             camera_component,
             &default_meshes,
             debug_display.as_mut(),

@@ -10,8 +10,8 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightSettings, LightType, ManipulatorComponent,
-        PickedComponent, RenderSurface, StaticMesh,
+        CameraComponent, LightComponent, LightSettings, LightType, PickedComponent, RenderSurface,
+        StaticMesh,
     },
     hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
@@ -94,11 +94,7 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(
-            &StaticMesh,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        )],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera: &CameraComponent,
         lights: &[(&Transform, &LightComponent)],
         light_settings: &LightSettings,
@@ -236,18 +232,12 @@ impl TmpRenderPass {
             .copy_data_slice(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
             .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
 
-        for (_index, (static_mesh_component, picked_component, manipulator_component)) in
-            static_meshes.iter().enumerate()
-        {
-            if manipulator_component.is_some() {
-                continue;
-            }
-
+        for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
             let color: (f32, f32, f32, f32) = (
-                f32::from(static_mesh_component.color.r) / 255.0f32,
-                f32::from(static_mesh_component.color.g) / 255.0f32,
-                f32::from(static_mesh_component.color.b) / 255.0f32,
-                f32::from(static_mesh_component.color.a) / 255.0f32,
+                f32::from(static_mesh.color.r) / 255.0f32,
+                f32::from(static_mesh.color.g) / 255.0f32,
+                f32::from(static_mesh.color.b) / 255.0f32,
+                f32::from(static_mesh.color.a) / 255.0f32,
             );
 
             let mut constant_data = [0.0; 45];
@@ -325,13 +315,13 @@ impl TmpRenderPass {
             );
 
             let mut push_constant_data: [u32; 3] = [0; 3];
-            push_constant_data[0] = static_mesh_component.vertex_offset;
-            push_constant_data[1] = static_mesh_component.world_offset;
+            push_constant_data[0] = static_mesh.vertex_offset;
+            push_constant_data[1] = static_mesh.world_offset;
             push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-            cmd_buffer.draw(static_mesh_component.num_verticies, 0);
+            cmd_buffer.draw(static_mesh.num_verticies, 0);
 
             /*/ WIP
             {
