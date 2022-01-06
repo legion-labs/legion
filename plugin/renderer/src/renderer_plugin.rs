@@ -9,6 +9,7 @@ use crate::{
     resources::DefaultMeshes,
 };
 use lgn_app::{App, CoreStage, Plugin};
+use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
 use lgn_transform::components::Transform;
 
@@ -57,6 +58,8 @@ impl Plugin for RendererPlugin {
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightingManager>();
 
+        app.add_startup_system(register_asset_loaders);
+
         app.add_startup_system(create_camera);
 
         // Pre-Update
@@ -83,6 +86,12 @@ impl Plugin for RendererPlugin {
             render_post_update, // .label(RendererSystemLabel::FrameDone),
         );
     }
+}
+
+fn register_asset_loaders(registry: NonSend<'_, AssetRegistryOptions>) {
+    registry
+        .add_loader::<lgn_graphics_runtime::Material>()
+        .add_loader::<lgn_graphics_runtime::Texture>()
 }
 
 fn init_manipulation_manager(
