@@ -17,8 +17,8 @@ use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 
 use crate::{
     components::{
-        camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
-        RenderSurface, RotationComponent, StaticMesh,
+        camera_control, create_camera, CameraComponent, LightComponent, LightType, RenderSurface,
+        RotationComponent, StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
@@ -55,7 +55,6 @@ impl Plugin for RendererPlugin {
         app.insert_resource(default_meshes);
         app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightSettings>();
         app.init_resource::<LightingManager>();
 
         app.add_startup_system(create_camera);
@@ -65,7 +64,7 @@ impl Plugin for RendererPlugin {
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+            app.add_system(update_lighting_ui.before(RendererSystemLabel::FrameUpdate));
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
@@ -96,27 +95,27 @@ fn init_manipulation_manager(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_ui(
+fn update_lighting_ui(
     egui_ctx: Res<'_, Egui>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
-    mut light_settings: ResMut<'_, LightSettings>,
+    mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
     egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
-        ui.checkbox(&mut light_settings.diffuse, "Diffuse");
-        ui.checkbox(&mut light_settings.specular, "Specular");
+        ui.checkbox(&mut lighting_manager.diffuse, "Diffuse");
+        ui.checkbox(&mut lighting_manager.specular, "Specular");
         ui.add(
-            egui::Slider::new(&mut light_settings.specular_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.specular_reflection, 0.0..=1.0)
                 .text("specular_reflection"),
         );
         ui.add(
-            egui::Slider::new(&mut light_settings.diffuse_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.diffuse_reflection, 0.0..=1.0)
                 .text("diffuse_reflection"),
         );
         ui.add(
-            egui::Slider::new(&mut light_settings.ambient_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.ambient_reflection, 0.0..=1.0)
                 .text("ambient_reflection"),
         );
-        ui.add(egui::Slider::new(&mut light_settings.shininess, 1.0..=32.0).text("shininess"));
+        ui.add(egui::Slider::new(&mut lighting_manager.shininess, 1.0..=32.0).text("shininess"));
         ui.label("Lights");
         for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -376,7 +375,6 @@ fn render_update(
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
-    light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
@@ -452,7 +450,6 @@ fn render_update(
             q_drawables.as_slice(),
             camera_component,
             lighting_manager.as_ref(),
-            &light_settings,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();

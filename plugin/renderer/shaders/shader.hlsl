@@ -13,15 +13,15 @@ struct VertexOut {
     float3 pos : POSITION;
 };
 
-struct ConstData {
+struct Camera {
     float4x4 view;
     float4x4 projection;
-    float4 color;
+};
+
+struct LightingManager {
     uint num_directional_lights;
     uint num_omnidirectional_lights;
     uint num_spotlights;
-
-    // light settings
     bool diffuse;
     bool specular;
     float specular_reflection;
@@ -34,29 +34,31 @@ struct EntityTransforms {
     float4x4 world;
 };
 
-ConstantBuffer<ConstData> const_data;
-ByteAddressBuffer static_buffer;
-
-struct PushConstData {
+struct InstanceData {
     uint vertex_offset;
     uint world_offset;
     uint is_picked;
+    uint _pad;
+    float4 color;
 };
 
+ConstantBuffer<Camera> camera;
+ConstantBuffer<LightingManager> lighting_manager;
+ByteAddressBuffer static_buffer;
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<InstanceData> instance_data;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
+    VertexIn vertex_in = static_buffer.Load<VertexIn>(instance_data.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
+    EntityTransforms transform = static_buffer.Load<EntityTransforms>(instance_data.world_offset);
     float4x4 world = transpose(transform.world);
 
-    float4 pos_view_relative = mul(const_data.view, mul(world, vertex_in.pos));
-    vertex_out.hpos = mul(const_data.projection, pos_view_relative);
+    float4 pos_view_relative = mul(camera.view, mul(world, vertex_in.pos));
+    vertex_out.hpos = mul(camera.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(const_data.view, mul(world, vertex_in.normal)).xyz;
+    vertex_out.normal = mul(camera.view, mul(world, vertex_in.normal)).xyz;
     return vertex_out;
 }
 
@@ -95,11 +97,11 @@ StructuredBuffer<SpotLight> spotlights;
 float GetSpecular(float3 pos, float3 light_dir, float3 normal) {
     float3 view_dir = normalize(-pos);
     float3 light_reflect = normalize(reflect(-light_dir, normal));
-    return pow(saturate(dot(view_dir, light_reflect)), const_data.shininess);
+    return pow(saturate(dot(view_dir, light_reflect)), lighting_manager.shininess);
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal, float3 pos) {
-    float3 light_dir = normalize(mul(const_data.view, float4(light.dir, 0.0)).xyz);
+    float3 light_dir = normalize(mul(camera.view, float4(light.dir, 0.0)).xyz);
 
     float lambertian = max(dot(light_dir, normal)/PI, 0.0);
     float specular = 0.0;
@@ -117,7 +119,7 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal
 }
 
 Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float3 normal, float3 pos) {
-    float3 light_dir = mul(const_data.view, float4(light.pos, 1.0)).xyz - pos;
+    float3 light_dir = mul(camera.view, float4(light.pos, 1.0)).xyz - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -138,7 +140,7 @@ Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float
 }
 
 Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) {
-    float3 light_dir = mul(const_data.view, float4(light.pos, 1.0)).xyz - pos;
+    float3 light_dir = mul(camera.view, float4(light.pos, 1.0)).xyz - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -151,7 +153,7 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) 
         specular = GetSpecular(pos, light_dir, normal);
     }
 
-    float cos_between_dir = dot(normalize(mul(const_data.view, float4(light.dir, 0.0)).xyz), light_dir);
+    float cos_between_dir = dot(normalize(mul(camera.view, float4(light.dir, 0.0)).xyz), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
@@ -164,52 +166,52 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) 
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    float3 uniform_color = const_data.color.xyz; 
-    float3 ambient_color = uniform_color * const_data.ambient_reflection;
-    float3 diffuse_color = uniform_color * const_data.diffuse_reflection;
-    float3 spec_color = float3(1.0, 1.0, 1.0) * const_data.specular_reflection;
+    float3 uniform_color = instance_data.color.xyz; 
+    float3 ambient_color = uniform_color * lighting_manager.ambient_reflection;
+    float3 diffuse_color = uniform_color * lighting_manager.diffuse_reflection;
+    float3 spec_color = float3(1.0, 1.0, 1.0) * lighting_manager.specular_reflection;
 
     float3 color = ambient_color;
-    for (uint i = 0; i < const_data.num_directional_lights; i++)
+    for (uint i = 0; i < lighting_manager.num_directional_lights; i++)
     {
         DirectionalLight light = directional_lights[i];
         Lighting lighting = CalculateIncidentDirectionalLight(light, vertex_out.normal, vertex_out.pos);
-        if (const_data.diffuse)
+        if (lighting_manager.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (const_data.specular)
+        if (lighting_manager.specular)
         {
             color += spec_color * lighting.specular;
         }
     }
 
-    for (i = 0; i < const_data.num_omnidirectional_lights; i++)
+    for (i = 0; i < lighting_manager.num_omnidirectional_lights; i++)
     {
         OmnidirectionalLight light = omnidirectional_lights[i];
         Lighting lighting = CalculateIncidentOmnidirectionalLight(light, vertex_out.normal, vertex_out.pos);
-        if (const_data.diffuse)
+        if (lighting_manager.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (const_data.specular)
+        if (lighting_manager.specular)
         {
             color += spec_color * lighting.specular;
         }
     }
 
-    for (i = 0; i < const_data.num_spotlights; i++)
+    for (i = 0; i < lighting_manager.num_spotlights; i++)
     {
         SpotLight light = spotlights[i];
         Lighting lighting = CalculateIncidentSpotLight(light, vertex_out.normal, vertex_out.pos);
-        if (const_data.diffuse)
+        if (lighting_manager.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (const_data.specular)
+        if (lighting_manager.specular)
         {
             color += spec_color * lighting.specular;
         }
@@ -218,7 +220,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     float4 result = float4(color, 1.0);
     float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
 
-    if (push_constant.is_picked != 0)
+    if (instance_data.is_picked != 0)
         result = result * 0.25f + picking_color * 0.75f;
 
     return result;

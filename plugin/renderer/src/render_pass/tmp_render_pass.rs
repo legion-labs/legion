@@ -9,8 +9,7 @@ use lgn_graphics_api::{
 
 use crate::{
     components::{
-        CameraComponent, LightSettings, PickedComponent, RenderSurface,
-        StaticMesh,
+        CameraComponent, PickedComponent, RenderSurface, StaticMesh,
     },
     hl_gfx_api::HLCommandBuffer,
     lighting::LightingManager,
@@ -97,7 +96,6 @@ impl TmpRenderPass {
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera: &CameraComponent,
         lighting_manager: &LightingManager,
-        light_settings: &LightSettings,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -134,44 +132,37 @@ impl TmpRenderPass {
         );
         let transient_allocator = render_context.transient_buffer_allocator();
 
+        let mut constant_data = Vec::with_capacity(32);
+        unsafe {
+            constant_data.set_len(32);
+        }
+        view_matrix.write_cols_to_slice(&mut constant_data[0..]);
+        projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
+
+        let camera_buffer_view = transient_allocator
+            .copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER)
+            .const_buffer_view();
+
+        let lighting_manager_view = transient_allocator
+            .copy_data_slice(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+            .const_buffer_view();
+            
         for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
-            let color: (f32, f32, f32, f32) = (
-                f32::from(static_mesh.color.r) / 255.0f32,
-                f32::from(static_mesh.color.g) / 255.0f32,
-                f32::from(static_mesh.color.b) / 255.0f32,
-                f32::from(static_mesh.color.a) / 255.0f32,
-            );
-
-            let mut constant_data = [0.0; 45];
-
-            view_matrix.write_cols_to_slice(&mut constant_data[0..]);
-            projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
-            constant_data[32] = color.0;
-            constant_data[33] = color.1;
-            constant_data[34] = color.2;
-            constant_data[35] = 1.0;
-            constant_data[36] = f32::from_bits(lighting_manager.num_directional_lights);
-            constant_data[37] = f32::from_bits(lighting_manager.num_omnidirectional_lights);
-            constant_data[38] = f32::from_bits(lighting_manager.num_spotlights);
-            constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
-            constant_data[40] = f32::from_bits(light_settings.specular as u32);
-            constant_data[41] = light_settings.specular_reflection;
-            constant_data[42] = light_settings.diffuse_reflection;
-            constant_data[43] = light_settings.ambient_reflection;
-            constant_data[44] = light_settings.shininess;
-
-            let sub_allocation =
-                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.const_buffer_view();
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "const_data",
-                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                    "camera",
+                    &[DescriptorRef::BufferView(&camera_buffer_view)],
+                )
+                .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "lighting_manager",
+                    &[DescriptorRef::BufferView(&lighting_manager_view)],
                 )
                 .unwrap();
 
@@ -225,10 +216,22 @@ impl TmpRenderPass {
                 descriptor_set_handle,
             );
 
-            let mut push_constant_data: [u32; 3] = [0; 3];
+            let color: (f32, f32, f32, f32) = (
+                f32::from(static_mesh.color.r) / 255.0f32,
+                f32::from(static_mesh.color.g) / 255.0f32,
+                f32::from(static_mesh.color.b) / 255.0f32,
+                f32::from(static_mesh.color.a) / 255.0f32,
+            );
+
+            let mut push_constant_data = [0; 8];
             push_constant_data[0] = static_mesh.vertex_offset;
             push_constant_data[1] = static_mesh.world_offset;
             push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
+            push_constant_data[3] = 0; // padding
+            push_constant_data[4] = color.0.to_bits();
+            push_constant_data[5] = color.1.to_bits();
+            push_constant_data[6] = color.2.to_bits();
+            push_constant_data[7] = color.3.to_bits();
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
