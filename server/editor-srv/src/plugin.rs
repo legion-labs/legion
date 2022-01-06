@@ -2,32 +2,24 @@ use std::sync::Arc;
 
 use lgn_app::prelude::*;
 use lgn_data_transaction::DataManager;
+use lgn_ecs::prelude::*;
 use tokio::sync::Mutex;
-
-use crate::{
-    property_inspector_plugin::PropertyInspectorPlugin,
-    resource_browser_plugin::ResourceBrowserPlugin,
-};
 
 #[derive(Default)]
 pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        let data_manager = app
-            .world
-            .get_resource::<Arc<Mutex<DataManager>>>()
-            .expect("the editor plugin requires Project resource");
+        app.add_startup_system_to_stage(StartupStage::PostStartup, Self::setup);
+    }
+}
 
-        let grpc_server = super::grpc::GRPCServer::new(Arc::clone(data_manager));
-
-        app.add_plugin(PropertyInspectorPlugin::default())
-            .add_plugin(ResourceBrowserPlugin::default());
-
-        app.world
-            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .expect("the editor plugin requires the gRPC plugin")
-            .into_inner()
-            .register_service(grpc_server.service());
+impl EditorPlugin {
+    fn setup(
+        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
+    ) {
+        let grpc_server = super::grpc::GRPCServer::new(data_manager.clone());
+        grpc_settings.register_service(grpc_server.service());
     }
 }

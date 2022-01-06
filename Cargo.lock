@@ -2200,6 +2200,7 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",
+ "lgn-ecs",
  "lgn-editor-proto",
  "lgn-grpc",
  "lgn-input",
