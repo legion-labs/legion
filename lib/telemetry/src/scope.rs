@@ -30,18 +30,18 @@ pub fn type_name_of<T>(_: &T) -> &'static str {
 #[macro_export]
 macro_rules! trace_scope {
     ($name:tt) => {
-        fn _scope() -> $crate::ScopeDesc {
+        fn _scope_named() -> $crate::ScopeDesc {
             $crate::ScopeDesc {
                 name: $name,
                 filename: file!(),
                 line: line!(),
             }
         }
-        let guard = $crate::ScopeGuard {
-            get_scope_desc: _scope,
+        let guard_named = $crate::ScopeGuard {
+            get_scope_desc: _scope_named,
             _dummy_ptr: std::marker::PhantomData::default(),
         };
-        $crate::on_begin_scope(_scope);
+        $crate::on_begin_scope(_scope_named);
     };
     () => {
         fn _scope() -> $crate::ScopeDesc {

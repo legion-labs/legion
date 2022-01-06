@@ -4819,6 +4819,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "json",
  "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-transit",

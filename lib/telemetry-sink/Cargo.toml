@@ -10,10 +10,11 @@ license = "MIT OR Apache-2.0"
 lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
 lgn-transit = { path = "../transit", version = "0.1.0" }
-simple_logger = "1.16"
 anyhow = "1.0"
 chrono = "0.4"
+json = "0.12"
+prost = "0.9"
+simple_logger = "1.16"
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
-prost = "0.9"
 uuid = { version = "0.8", features = ["v4"] }

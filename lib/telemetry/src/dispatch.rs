@@ -120,10 +120,13 @@ impl Dispatch {
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
         let mut properties = HashMap::new();
         properties.insert(String::from("thread-id"), thread_id::get().to_string());
+        if let Some(name) = std::thread::current().name() {
+            properties.insert("thread-name".to_owned(), name.to_owned());
+        }
         let thread_stream = ThreadStream::new(
             self.thread_buffer_size,
             self.process_id.clone(),
-            &[String::from("cpu")],
+            &["cpu".to_owned()],
             properties,
         );
         unsafe {
