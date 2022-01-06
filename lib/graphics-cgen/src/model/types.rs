@@ -1,6 +1,6 @@
 use strum::{EnumIter, IntoStaticStr};
 
-use super::{model::ModelObjectRef, ModelObject};
+use super::{model::ModelHandle, ModelObject};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CGenType {
@@ -8,7 +8,7 @@ pub enum CGenType {
     Struct(StructType),
 }
 
-pub type CGenTypeRef = ModelObjectRef<CGenType>;
+pub type CGenTypeRef = ModelHandle<CGenType>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy, EnumIter, IntoStaticStr)]
 pub enum NativeType {

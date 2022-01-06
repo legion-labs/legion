@@ -1,7 +1,7 @@
 mod model;
 pub use model::Model;
+pub use model::ModelHandle;
 pub use model::ModelObject;
-pub use model::ModelObjectRef;
 
 mod types;
 use strum::IntoEnumIterator;

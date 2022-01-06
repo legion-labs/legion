@@ -1,7 +1,7 @@
 use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 use strum::EnumString;
 
-use super::{CGenTypeRef, ModelObject, ModelObjectRef};
+use super::{CGenTypeRef, ModelHandle, ModelObject};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TextureDef {
@@ -101,7 +101,7 @@ pub struct DescriptorSet {
     pub descriptors: Vec<Descriptor>,
 }
 
-pub type DescriptorSetRef = ModelObjectRef<DescriptorSet>;
+pub type DescriptorSetRef = ModelHandle<DescriptorSet>;
 
 impl DescriptorSet {
     pub fn new(name: &str, frequency: u32) -> Self {

@@ -12,7 +12,7 @@ use std::ptr::{null, NonNull};
 use anyhow::{anyhow, Result};
 
 /**
- * Model unique ID
+ * Object unique ID model wide
  **/
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct ModelKey(u64);
@@ -131,7 +131,7 @@ fn array_layout(item_layout: &Layout, capacity: usize) -> Layout {
 }
 
 /**
- * tbd: useful?
+ * General properties for code generation.
  **/
 pub trait ModelObject: 'static + Clone + Sized + Hash + PartialEq {
     fn typename() -> &'static str;
@@ -139,10 +139,10 @@ pub trait ModelObject: 'static + Clone + Sized + Hash + PartialEq {
 }
 
 /**
- * Typed ref
+ * Typed handle
 **/
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct ModelObjectRef<T>
+pub struct ModelHandle<T>
 where
     T: ModelObject,
 {
@@ -150,7 +150,7 @@ where
     _phantom: PhantomData<*const T>,
 }
 
-impl<T> ModelObjectRef<T>
+impl<T> ModelHandle<T>
 where
     T: ModelObject,
 {
@@ -170,15 +170,18 @@ where
     }
 }
 
-impl<T> Copy for ModelObjectRef<T> where T: ModelObject {}
+impl<T> Copy for ModelHandle<T> where T: ModelObject {}
 
+/**
+ * Helper to reference an object inside the model
+ **/
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-struct ModelObjectId {
+struct PairTypeId {
     type_index: u32,
     object_index: u32,
 }
 
-impl ModelObjectId {
+impl PairTypeId {
     fn new(type_index: u32, object_index: u32) -> Self {
         Self {
             type_index,
@@ -187,22 +190,20 @@ impl ModelObjectId {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Model {
-    model_vecs: Vec<ModelVec>,
-    type_map: HashMap<TypeId, usize, fxhash::FxBuildHasher>,
-    key_map: HashMap<ModelKey, ModelObjectId, fxhash::FxBuildHasher>,
-}
+/**
+ * Typed ref
+ **/
 
 #[derive(Clone, Copy)]
-pub struct ObjectRef<'a, T>
+pub struct ModelRef<'a, T>
 where
     T: ModelObject,
 {
     id: u32,
     object: &'a T,
 }
-impl<'a, T> ObjectRef<'a, T>
+
+impl<'a, T> ModelRef<'a, T>
 where
     T: ModelObject,
 {
@@ -214,6 +215,10 @@ where
         self.object
     }
 }
+
+/**
+ * ModelVec iter. Return a ModelRef.
+ */
 
 pub struct ModelVecIter<'a, T: ModelObject> {
     index: u32,
@@ -249,7 +254,7 @@ impl<'a, T: ModelObject> ModelVecIter<'a, T> {
 }
 
 impl<'a, T: ModelObject> Iterator for ModelVecIter<'a, T> {
-    type Item = ObjectRef<'a, T>;
+    type Item = ModelRef<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.size {
@@ -260,13 +265,23 @@ impl<'a, T: ModelObject> Iterator for ModelVecIter<'a, T> {
 
             self.index += 1;
 
-            return Some(ObjectRef {
+            return Some(ModelRef {
                 id,
                 object: cur_ref,
             });
         }
         None
     }
+}
+
+/**
+ * Interface for creating and managing objects
+ **/
+#[derive(Debug, Default)]
+pub struct Model {
+    model_vecs: Vec<ModelVec>,
+    type_map: HashMap<TypeId, usize, fxhash::FxBuildHasher>,
+    key_map: HashMap<ModelKey, PairTypeId, fxhash::FxBuildHasher>,
 }
 
 impl Model {
@@ -285,7 +300,7 @@ impl Model {
     ///
     /// # Errors
     /// todo
-    pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelObjectRef<T>> {
+    pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelHandle<T>> {
         let key = ModelKey::new(key);
         if self.key_map.contains_key(&key) {
             return Err(anyhow!("Object not unique"));
@@ -295,10 +310,10 @@ impl Model {
         let object_index = self.get_container_by_index_mut(type_index).add(value_ptr);
         forget(value);
         let object_index = u32::try_from(object_index).unwrap();
-        let object_id = ModelObjectId::new(u32::try_from(type_index).unwrap(), object_index);
+        let object_id = PairTypeId::new(u32::try_from(type_index).unwrap(), object_index);
         self.key_map.insert(key, object_id);
 
-        Ok(ModelObjectRef::new(object_index))
+        Ok(ModelHandle::new(object_index))
     }
 
     pub fn object_iter<T: ModelObject>(&self) -> ModelVecIter<'_, T> {
@@ -306,12 +321,12 @@ impl Model {
         ModelVecIter::new(container)
     }
 
-    pub fn get_object_ref<T: ModelObject>(&self, key: &str) -> Option<ModelObjectRef<T>> {
+    pub fn get_object_ref<T: ModelObject>(&self, key: &str) -> Option<ModelHandle<T>> {
         let container_index = self.get_container_index::<T>()?;
         let key = ModelKey::new(key);
         let id = self.key_map.get(&key).copied()?;
         assert!(id.type_index as usize == container_index);
-        Some(ModelObjectRef::new(id.object_index))
+        Some(ModelHandle::new(id.object_index))
     }
 
     fn get_from_objectid<T: ModelObject>(&self, id: u32) -> Option<&T> {

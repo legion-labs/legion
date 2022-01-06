@@ -1,4 +1,4 @@
-use super::{CGenTypeRef, DescriptorSetRef, Model, ModelObject, ModelObjectRef};
+use super::{CGenTypeRef, DescriptorSetRef, Model, ModelHandle, ModelObject};
 
 #[derive(Debug, Clone)]
 pub struct PushConstant {
@@ -18,7 +18,7 @@ pub struct PipelineLayout {
     pub members: Vec<(String, PipelineLayoutContent)>,
 }
 
-pub type PipelineLayoutRef = ModelObjectRef<PipelineLayout>;
+pub type PipelineLayoutRef = ModelHandle<PipelineLayout>;
 
 impl PipelineLayout {
     pub fn new(name: &str) -> Self {
