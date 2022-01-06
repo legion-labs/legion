@@ -8,9 +8,7 @@ use lgn_graphics_api::{
 };
 
 use crate::{
-    components::{
-        CameraComponent, PickedComponent, RenderSurface, StaticMesh,
-    },
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     lighting::LightingManager,
     RenderContext, Renderer,
@@ -146,9 +144,8 @@ impl TmpRenderPass {
         let lighting_manager_view = transient_allocator
             .copy_data_slice(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
-            
-        for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
 
+        for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 

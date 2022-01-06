@@ -18,7 +18,7 @@ use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, LightType, RenderSurface,
-        RotationComponent, StaticMesh,
+        StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
