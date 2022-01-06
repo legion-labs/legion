@@ -13,8 +13,8 @@
     "check:all": "pnpm eslint:check && pnpm prettier:check && pnpm svelte:check",
     "eslint:check": "eslint --ext .ts,.svelte .",
     "eslint:fix": "eslint --ext .ts,.svelte --fix .",
-    "prettier:check": "prettier --check .",
-    "prettier:fix": "prettier --write .",
+    "prettier:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
+    "prettier:fix": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "svelte:check": "tsc --noEmit && svelte-check",
     "clean": "rimraf node_modules dist",
     "test": "jest"
