@@ -133,6 +133,8 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
+    fn pre_setup(mut commands: Commands<'_, '_>) {}
+
     fn post_setup(
         mut commands: Commands<'_, '_>,
         registry: NonSend<'_, AssetRegistryOptions>,
