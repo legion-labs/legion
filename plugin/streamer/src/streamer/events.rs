@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::bail;
 use lgn_input::{
     keyboard::KeyboardInput,
@@ -7,20 +9,26 @@ use lgn_input::{
 };
 use lgn_math::Vec2;
 use serde::Deserialize;
+use webrtc::data_channel::RTCDataChannel;
 
 use super::StreamID;
 
-#[derive(Debug)]
 pub(crate) struct VideoStreamEvent {
     pub(crate) stream_id: StreamID,
     pub(crate) info: VideoStreamEventInfo,
+    pub(crate) video_data_channel: Arc<RTCDataChannel>,
 }
 
 impl VideoStreamEvent {
-    pub(crate) fn parse(stream_id: StreamID, data: &[u8]) -> anyhow::Result<Self> {
+    pub(crate) fn parse(
+        stream_id: StreamID,
+        video_data_channel: Arc<RTCDataChannel>,
+        data: &[u8],
+    ) -> anyhow::Result<Self> {
         Ok(Self {
             stream_id,
             info: serde_json::from_slice(data)?,
+            video_data_channel,
         })
     }
 }
@@ -101,10 +109,14 @@ pub(crate) enum Input {
 pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "resize")]
     Resize { width: u32, height: u32 },
-    #[serde(rename = "color")]
-    Color { id: String, color: Color },
+    #[serde(rename = "initialize")]
+    Initialize {
+        color: Color,
+        width: u32,
+        height: u32,
+    },
     #[serde(rename = "speed")]
-    Speed { id: String, speed: f32 },
+    Speed { speed: f32 },
     #[serde(rename = "input")]
     Input { input: Input },
 }
