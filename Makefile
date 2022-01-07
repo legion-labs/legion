@@ -23,6 +23,7 @@ check-env:
 	python3 --version
 	ninja --version
 	pnpm --version
+	protoc --version
 
 check-format:
 	cargo fmt --all -- --check
