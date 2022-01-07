@@ -120,7 +120,6 @@ pub fn generate_reflection(
     let fields_descriptors = generate_fields_descriptors(data_container_info, gen_type);
 
     quote! {
-
         #[derive(serde::Serialize, serde::Deserialize)]
         pub struct #type_identifier {
             #(#fields)*

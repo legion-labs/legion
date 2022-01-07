@@ -1,5 +1,4 @@
 use lgn_data_runtime::Component;
-
 #[resource()]
 struct EntityDc {
     #[legion(default = "unnamed")]

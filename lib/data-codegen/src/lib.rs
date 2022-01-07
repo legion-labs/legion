@@ -98,6 +98,7 @@ pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn
             };
             std::fs::create_dir_all(&mod_path)?;
             let mut mod_file = std::fs::File::create(&mod_path.join("mod.rs"))?;
+            writeln!(mod_file, "#![allow(unused_imports)]")?;
 
             let mut processed_types = Vec::<DataContainerMetaInfo>::new();
 

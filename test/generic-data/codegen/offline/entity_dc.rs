@@ -65,22 +65,22 @@ impl lgn_data_model::TypeReflection for EntityDc {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __ENTITYDC_DEFAULT : EntityDc = EntityDc :: default () ; }
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor};
-use lgn_data_runtime::{Asset, AssetLoader, Resource};
-use std::{any::Any, io};
-impl Resource for EntityDc {
+impl lgn_data_runtime::Resource for EntityDc {
     const TYPENAME: &'static str = "offline_entitydc";
 }
-impl Asset for EntityDc {
+impl lgn_data_runtime::Asset for EntityDc {
     type Loader = EntityDcProcessor;
 }
-impl OfflineResource for EntityDc {
+impl lgn_data_offline::resource::OfflineResource for EntityDc {
     type Processor = EntityDcProcessor;
 }
 #[derive(Default)]
 pub struct EntityDcProcessor {}
-impl AssetLoader for EntityDcProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+impl lgn_data_runtime::AssetLoader for EntityDcProcessor {
+    fn load(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
         let mut instance = EntityDc::default();
         let values: serde_json::Value = serde_json::from_reader(reader)
             .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
@@ -88,24 +88,24 @@ impl AssetLoader for EntityDcProcessor {
             .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
         Ok(Box::new(instance))
     }
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }
-impl ResourceProcessor for EntityDcProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+impl lgn_data_offline::resource::ResourceProcessor for EntityDcProcessor {
+    fn new_resource(&mut self) -> Box<dyn std::any::Any + Send + Sync> {
         Box::new(EntityDc::default())
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Any,
+        _resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
         vec![]
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
-        Some(EntityDc::TYPENAME)
+        Some(<EntityDc as lgn_data_runtime::Resource>::TYPENAME)
     }
     fn write_resource(
         &mut self,
-        resource: &dyn Any,
+        resource: &dyn std::any::Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let instance = resource.downcast_ref::<EntityDc>().unwrap();
@@ -121,12 +121,13 @@ impl ResourceProcessor for EntityDcProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+        use lgn_data_runtime::AssetLoader;
         self.load(reader)
     }
     fn get_resource_reflection<'a>(
         &self,
-        resource: &'a dyn Any,
+        resource: &'a dyn std::any::Any,
     ) -> Option<&'a dyn lgn_data_model::TypeReflection> {
         if let Some(instance) = resource.downcast_ref::<EntityDc>() {
             return Some(instance);
@@ -135,7 +136,7 @@ impl ResourceProcessor for EntityDcProcessor {
     }
     fn get_resource_reflection_mut<'a>(
         &self,
-        resource: &'a mut dyn Any,
+        resource: &'a mut dyn std::any::Any,
     ) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
         if let Some(instance) = resource.downcast_mut::<EntityDc>() {
             return Some(instance);
