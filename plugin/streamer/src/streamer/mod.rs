@@ -1,5 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
+use lgn_app::AppExit;
 use lgn_ecs::prelude::*;
 use lgn_input::{
     keyboard::KeyboardInput,
@@ -234,8 +235,21 @@ pub(crate) fn update_streams(
                 // TODO
                 // Most likely: "The given entity does not have the requested component"
                 // i.e. the entity associated with the stream-id does not have a RenderSurface
-                eprintln!("{}", query_err);
+                error!("{}", query_err);
             }
+        }
+    }
+}
+
+// Cleaning up render surfaces otherwise we crash on Ctrl+C
+pub(crate) fn on_app_exit(
+    mut commands: Commands<'_, '_>,
+    mut app_exit: EventReader<'_, '_, AppExit>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+) {
+    if app_exit.iter().last().is_some() {
+        for (entity, _) in query_render_surface.iter() {
+            commands.entity(entity).despawn();
         }
     }
 }

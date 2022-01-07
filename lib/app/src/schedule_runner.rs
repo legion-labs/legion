@@ -68,25 +68,30 @@ impl Plugin for ScheduleRunnerPlugin {
                 RunMode::Loop { wait } => {
                     static CTRL_C_HIT: AtomicBool = AtomicBool::new(false);
                     ctrlc::set_handler(move || {
-                        info!("CTRL-C was hit!");
+                        info!("Ctrl+C was hit!");
                         if CTRL_C_HIT.load(Ordering::SeqCst) {
                             std::process::exit(0);
                         }
                         CTRL_C_HIT.store(true, Ordering::SeqCst);
                     })
-                    .expect("Error setting ctrlc handler");
+                    .expect("Error setting Ctrl+C handler");
 
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
                         let start_time = Instant::now();
 
-                        if let Some(app_exit_events) =
+                        if let Some(mut app_exit_events) =
                             app.world.get_resource_mut::<Events<AppExit>>()
                         {
                             if let Some(exit) = app_exit_event_reader.iter(&app_exit_events).last()
                             {
                                 return Err(exit.clone());
+                            }
+                            // give a chance for the app to handle the event during an update
+                            // in case there is system reacting to the event and doing some cleanup
+                            if CTRL_C_HIT.load(Ordering::SeqCst) {
+                                app_exit_events.send(AppExit);
                             }
                         }
 
@@ -99,10 +104,6 @@ impl Plugin for ScheduleRunnerPlugin {
                             {
                                 return Err(exit.clone());
                             }
-                        }
-
-                        if CTRL_C_HIT.load(Ordering::SeqCst) {
-                            return Err(AppExit {});
                         }
 
                         let end_time = Instant::now();
