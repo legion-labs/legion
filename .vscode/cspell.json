@@ -10,6 +10,11 @@
         "Graphviz",
         "perfetto",
         "thiserror",
-        "xxhash"
+        "xxhash",
+        "winapi",
+        "mmsystem",
+        "TIMERR_NOERROR",
+        "timeapi",
+        "minwindef"
     ]
 }

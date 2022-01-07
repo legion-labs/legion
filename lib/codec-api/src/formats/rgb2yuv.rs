@@ -1,3 +1,5 @@
+use lgn_telemetry::trace_scope;
+
 use crate::formats::YUVSource;
 
 /// Converts RGB to YUV data.
@@ -19,6 +21,7 @@ impl RBGYUVConverter {
 
     #[allow(clippy::cast_precision_loss)]
     fn convert_internal<PixR: Fn(usize, usize) -> (f32, f32, f32)>(&mut self, pixel_reader: PixR) {
+        trace_scope!();
         let width = self.width;
         let height = self.height;
 

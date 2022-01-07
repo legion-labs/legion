@@ -3794,6 +3794,7 @@ dependencies = [
  "serde",
  "wasm-bindgen",
  "web-sys",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -3884,6 +3885,7 @@ name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "lgn-telemetry",
  "openh264-sys2",
  "smallvec",
 ]
@@ -4516,6 +4518,7 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
+ "lgn-telemetry",
  "num-rational",
  "serde",
  "serde_json",

@@ -4,7 +4,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_telemetry::info;
+use lgn_telemetry::{error, info, trace_scope};
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -48,6 +49,27 @@ impl ScheduleRunnerSettings {
     }
 }
 
+fn set_time_period() {
+    // Windows is quantum for sleep can be set process wide and to a minimum of 1ms
+    // even though it's set, depending on the windows version the value can be overridden
+    // https://docs.microsoft.com/en-us/windows/win32/api/timeapi/nf-timeapi-timebeginperiod
+    #[cfg(windows)]
+    #[allow(unsafe_code)]
+    unsafe {
+        use winapi::shared::minwindef::UINT;
+        use winapi::um::mmsystem::TIMERR_NOERROR;
+        use winapi::um::timeapi::timeBeginPeriod;
+
+        const SLEEP_QUANTUM_MS: UINT = 1;
+        let result = timeBeginPeriod(SLEEP_QUANTUM_MS);
+        if result != TIMERR_NOERROR {
+            error!("timeBeginPeriod failed with error code {}", result);
+        } else {
+            info!("timeBeginPeriod set to {}ms", SLEEP_QUANTUM_MS);
+        }
+    }
+}
+
 /// Configures an App to run its [Schedule](lgn_ecs::schedule::Schedule)
 /// according to a given [`RunMode`]
 #[derive(Default)]
@@ -66,6 +88,10 @@ impl Plugin for ScheduleRunnerPlugin {
                     app.update();
                 }
                 RunMode::Loop { wait } => {
+                    if wait.is_some() {
+                        set_time_period();
+                    }
+
                     static CTRL_C_HIT: AtomicBool = AtomicBool::new(false);
                     ctrlc::set_handler(move || {
                         info!("Ctrl+C was hit!");
@@ -79,6 +105,7 @@ impl Plugin for ScheduleRunnerPlugin {
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
+                        trace_scope!();
                         let start_time = Instant::now();
 
                         if let Some(mut app_exit_events) =
@@ -120,8 +147,10 @@ impl Plugin for ScheduleRunnerPlugin {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
+                        trace_scope!();
                         while let Ok(delay) = tick(&mut app, wait) {
                             if let Some(delay) = delay {
+                                trace_scope!("sleep");
                                 std::thread::sleep(delay);
                             }
                         }
