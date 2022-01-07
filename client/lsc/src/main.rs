@@ -236,6 +236,8 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
 
+    trace_scope!();
+
     //let repository_url = command_match
     //    .value_of(ARG_REPOSITORY_URL)
     //    .map(RepositoryUrl::from_str)
