@@ -14,7 +14,7 @@ impl Plugin for EditorPlugin {
             StartupStage::PostStartup,
             Self::setup
                 .exclusive_system()
-                .after(lgn_data_runtime::AssetRegistryScheduling::AssetRegistryCreated)
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
                 .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
         );
     }
