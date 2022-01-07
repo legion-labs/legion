@@ -73,7 +73,9 @@ export interface ReorderArrayElementRequest {
 
 export interface ReorderArrayElementResponse {}
 
-const baseGetResourcePropertiesRequest: object = { id: "" };
+function createBaseGetResourcePropertiesRequest(): GetResourcePropertiesRequest {
+  return { id: "" };
+}
 
 export const GetResourcePropertiesRequest = {
   encode(
@@ -92,9 +94,7 @@ export const GetResourcePropertiesRequest = {
   ): GetResourcePropertiesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
+    const message = createBaseGetResourcePropertiesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -110,12 +110,9 @@ export const GetResourcePropertiesRequest = {
   },
 
   fromJSON(object: any): GetResourcePropertiesRequest {
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+    };
   },
 
   toJSON(message: GetResourcePropertiesRequest): unknown {
@@ -127,15 +124,15 @@ export const GetResourcePropertiesRequest = {
   fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesRequest>, I>>(
     object: I
   ): GetResourcePropertiesRequest {
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
+    const message = createBaseGetResourcePropertiesRequest();
     message.id = object.id ?? "";
     return message;
   },
 };
 
-const baseResourceDescription: object = { id: "", path: "", version: 0 };
+function createBaseResourceDescription(): ResourceDescription {
+  return { id: "", path: "", version: 0 };
+}
 
 export const ResourceDescription = {
   encode(
@@ -157,7 +154,7 @@ export const ResourceDescription = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ResourceDescription {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -179,18 +176,11 @@ export const ResourceDescription = {
   },
 
   fromJSON(object: any): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.path =
-      object.path !== undefined && object.path !== null
-        ? String(object.path)
-        : "";
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      path: isSet(object.path) ? String(object.path) : "",
+      version: isSet(object.version) ? Number(object.version) : 0,
+    };
   },
 
   toJSON(message: ResourceDescription): unknown {
@@ -205,7 +195,7 @@ export const ResourceDescription = {
   fromPartial<I extends Exact<DeepPartial<ResourceDescription>, I>>(
     object: I
   ): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     message.id = object.id ?? "";
     message.path = object.path ?? "";
     message.version = object.version ?? 0;
@@ -213,7 +203,9 @@ export const ResourceDescription = {
   },
 };
 
-const baseGetResourcePropertiesResponse: object = {};
+function createBaseGetResourcePropertiesResponse(): GetResourcePropertiesResponse {
+  return { description: undefined, properties: [] };
+}
 
 export const GetResourcePropertiesResponse = {
   encode(
@@ -238,10 +230,7 @@ export const GetResourcePropertiesResponse = {
   ): GetResourcePropertiesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
-    message.properties = [];
+    const message = createBaseGetResourcePropertiesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -265,17 +254,14 @@ export const GetResourcePropertiesResponse = {
   },
 
   fromJSON(object: any): GetResourcePropertiesResponse {
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
-    message.description =
-      object.description !== undefined && object.description !== null
+    return {
+      description: isSet(object.description)
         ? ResourceDescription.fromJSON(object.description)
-        : undefined;
-    message.properties = (object.properties ?? []).map((e: any) =>
-      ResourceProperty.fromJSON(e)
-    );
-    return message;
+        : undefined,
+      properties: Array.isArray(object?.properties)
+        ? object.properties.map((e: any) => ResourceProperty.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: GetResourcePropertiesResponse): unknown {
@@ -297,9 +283,7 @@ export const GetResourcePropertiesResponse = {
   fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesResponse>, I>>(
     object: I
   ): GetResourcePropertiesResponse {
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
+    const message = createBaseGetResourcePropertiesResponse();
     message.description =
       object.description !== undefined && object.description !== null
         ? ResourceDescription.fromPartial(object.description)
@@ -310,7 +294,15 @@ export const GetResourcePropertiesResponse = {
   },
 };
 
-const baseResourceProperty: object = { name: "", ptype: "" };
+function createBaseResourceProperty(): ResourceProperty {
+  return {
+    name: "",
+    ptype: "",
+    jsonValue: undefined,
+    subProperties: [],
+    attributes: {},
+  };
+}
 
 export const ResourceProperty = {
   encode(
@@ -341,9 +333,7 @@ export const ResourceProperty = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ResourceProperty {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourceProperty } as ResourceProperty;
-    message.subProperties = [];
-    message.attributes = {};
+    const message = createBaseResourceProperty();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -379,29 +369,23 @@ export const ResourceProperty = {
   },
 
   fromJSON(object: any): ResourceProperty {
-    const message = { ...baseResourceProperty } as ResourceProperty;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.ptype =
-      object.ptype !== undefined && object.ptype !== null
-        ? String(object.ptype)
-        : "";
-    message.jsonValue =
-      object.jsonValue !== undefined && object.jsonValue !== null
-        ? String(object.jsonValue)
-        : undefined;
-    message.subProperties = (object.subProperties ?? []).map((e: any) =>
-      ResourceProperty.fromJSON(e)
-    );
-    message.attributes = Object.entries(object.attributes ?? {}).reduce<{
-      [key: string]: string;
-    }>((acc, [key, value]) => {
-      acc[key] = String(value);
-      return acc;
-    }, {});
-    return message;
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      ptype: isSet(object.ptype) ? String(object.ptype) : "",
+      jsonValue: isSet(object.jsonValue) ? String(object.jsonValue) : undefined,
+      subProperties: Array.isArray(object?.subProperties)
+        ? object.subProperties.map((e: any) => ResourceProperty.fromJSON(e))
+        : [],
+      attributes: isObject(object.attributes)
+        ? Object.entries(object.attributes).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
+        : {},
+    };
   },
 
   toJSON(message: ResourceProperty): unknown {
@@ -428,7 +412,7 @@ export const ResourceProperty = {
   fromPartial<I extends Exact<DeepPartial<ResourceProperty>, I>>(
     object: I
   ): ResourceProperty {
-    const message = { ...baseResourceProperty } as ResourceProperty;
+    const message = createBaseResourceProperty();
     message.name = object.name ?? "";
     message.ptype = object.ptype ?? "";
     message.jsonValue = object.jsonValue ?? undefined;
@@ -446,7 +430,9 @@ export const ResourceProperty = {
   },
 };
 
-const baseResourceProperty_AttributesEntry: object = { key: "", value: "" };
+function createBaseResourceProperty_AttributesEntry(): ResourceProperty_AttributesEntry {
+  return { key: "", value: "" };
+}
 
 export const ResourceProperty_AttributesEntry = {
   encode(
@@ -468,9 +454,7 @@ export const ResourceProperty_AttributesEntry = {
   ): ResourceProperty_AttributesEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseResourceProperty_AttributesEntry,
-    } as ResourceProperty_AttributesEntry;
+    const message = createBaseResourceProperty_AttributesEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -489,16 +473,10 @@ export const ResourceProperty_AttributesEntry = {
   },
 
   fromJSON(object: any): ResourceProperty_AttributesEntry {
-    const message = {
-      ...baseResourceProperty_AttributesEntry,
-    } as ResourceProperty_AttributesEntry;
-    message.key =
-      object.key !== undefined && object.key !== null ? String(object.key) : "";
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? String(object.value)
-        : "";
-    return message;
+    return {
+      key: isSet(object.key) ? String(object.key) : "",
+      value: isSet(object.value) ? String(object.value) : "",
+    };
   },
 
   toJSON(message: ResourceProperty_AttributesEntry): unknown {
@@ -511,16 +489,16 @@ export const ResourceProperty_AttributesEntry = {
   fromPartial<
     I extends Exact<DeepPartial<ResourceProperty_AttributesEntry>, I>
   >(object: I): ResourceProperty_AttributesEntry {
-    const message = {
-      ...baseResourceProperty_AttributesEntry,
-    } as ResourceProperty_AttributesEntry;
+    const message = createBaseResourceProperty_AttributesEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? "";
     return message;
   },
 };
 
-const baseUpdateResourcePropertiesRequest: object = { id: "", version: 0 };
+function createBaseUpdateResourcePropertiesRequest(): UpdateResourcePropertiesRequest {
+  return { id: "", version: 0, propertyUpdates: [] };
+}
 
 export const UpdateResourcePropertiesRequest = {
   encode(
@@ -545,10 +523,7 @@ export const UpdateResourcePropertiesRequest = {
   ): UpdateResourcePropertiesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
-    message.propertyUpdates = [];
+    const message = createBaseUpdateResourcePropertiesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -572,19 +547,15 @@ export const UpdateResourcePropertiesRequest = {
   },
 
   fromJSON(object: any): UpdateResourcePropertiesRequest {
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    message.propertyUpdates = (object.propertyUpdates ?? []).map((e: any) =>
-      ResourcePropertyUpdate.fromJSON(e)
-    );
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      version: isSet(object.version) ? Number(object.version) : 0,
+      propertyUpdates: Array.isArray(object?.propertyUpdates)
+        ? object.propertyUpdates.map((e: any) =>
+            ResourcePropertyUpdate.fromJSON(e)
+          )
+        : [],
+    };
   },
 
   toJSON(message: UpdateResourcePropertiesRequest): unknown {
@@ -605,9 +576,7 @@ export const UpdateResourcePropertiesRequest = {
   fromPartial<I extends Exact<DeepPartial<UpdateResourcePropertiesRequest>, I>>(
     object: I
   ): UpdateResourcePropertiesRequest {
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
+    const message = createBaseUpdateResourcePropertiesRequest();
     message.id = object.id ?? "";
     message.version = object.version ?? 0;
     message.propertyUpdates =
@@ -618,7 +587,9 @@ export const UpdateResourcePropertiesRequest = {
   },
 };
 
-const baseUpdateResourcePropertiesResponse: object = {};
+function createBaseUpdateResourcePropertiesResponse(): UpdateResourcePropertiesResponse {
+  return {};
+}
 
 export const UpdateResourcePropertiesResponse = {
   encode(
@@ -634,9 +605,7 @@ export const UpdateResourcePropertiesResponse = {
   ): UpdateResourcePropertiesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
+    const message = createBaseUpdateResourcePropertiesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -649,10 +618,7 @@ export const UpdateResourcePropertiesResponse = {
   },
 
   fromJSON(_: any): UpdateResourcePropertiesResponse {
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: UpdateResourcePropertiesResponse): unknown {
@@ -663,14 +629,14 @@ export const UpdateResourcePropertiesResponse = {
   fromPartial<
     I extends Exact<DeepPartial<UpdateResourcePropertiesResponse>, I>
   >(_: I): UpdateResourcePropertiesResponse {
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
+    const message = createBaseUpdateResourcePropertiesResponse();
     return message;
   },
 };
 
-const baseResourcePropertyUpdate: object = { name: "", jsonValue: "" };
+function createBaseResourcePropertyUpdate(): ResourcePropertyUpdate {
+  return { name: "", jsonValue: "" };
+}
 
 export const ResourcePropertyUpdate = {
   encode(
@@ -692,7 +658,7 @@ export const ResourcePropertyUpdate = {
   ): ResourcePropertyUpdate {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
+    const message = createBaseResourcePropertyUpdate();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -711,16 +677,10 @@ export const ResourcePropertyUpdate = {
   },
 
   fromJSON(object: any): ResourcePropertyUpdate {
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.jsonValue =
-      object.jsonValue !== undefined && object.jsonValue !== null
-        ? String(object.jsonValue)
-        : "";
-    return message;
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      jsonValue: isSet(object.jsonValue) ? String(object.jsonValue) : "",
+    };
   },
 
   toJSON(message: ResourcePropertyUpdate): unknown {
@@ -733,18 +693,16 @@ export const ResourcePropertyUpdate = {
   fromPartial<I extends Exact<DeepPartial<ResourcePropertyUpdate>, I>>(
     object: I
   ): ResourcePropertyUpdate {
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
+    const message = createBaseResourcePropertyUpdate();
     message.name = object.name ?? "";
     message.jsonValue = object.jsonValue ?? "";
     return message;
   },
 };
 
-const baseDeleteArrayElementRequest: object = {
-  resourceId: "",
-  arrayPath: "",
-  indices: 0,
-};
+function createBaseDeleteArrayElementRequest(): DeleteArrayElementRequest {
+  return { resourceId: "", arrayPath: "", indices: [] };
+}
 
 export const DeleteArrayElementRequest = {
   encode(
@@ -771,10 +729,7 @@ export const DeleteArrayElementRequest = {
   ): DeleteArrayElementRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseDeleteArrayElementRequest,
-    } as DeleteArrayElementRequest;
-    message.indices = [];
+    const message = createBaseDeleteArrayElementRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -803,19 +758,13 @@ export const DeleteArrayElementRequest = {
   },
 
   fromJSON(object: any): DeleteArrayElementRequest {
-    const message = {
-      ...baseDeleteArrayElementRequest,
-    } as DeleteArrayElementRequest;
-    message.resourceId =
-      object.resourceId !== undefined && object.resourceId !== null
-        ? String(object.resourceId)
-        : "";
-    message.arrayPath =
-      object.arrayPath !== undefined && object.arrayPath !== null
-        ? String(object.arrayPath)
-        : "";
-    message.indices = (object.indices ?? []).map((e: any) => Number(e));
-    return message;
+    return {
+      resourceId: isSet(object.resourceId) ? String(object.resourceId) : "",
+      arrayPath: isSet(object.arrayPath) ? String(object.arrayPath) : "",
+      indices: Array.isArray(object?.indices)
+        ? object.indices.map((e: any) => Number(e))
+        : [],
+    };
   },
 
   toJSON(message: DeleteArrayElementRequest): unknown {
@@ -833,9 +782,7 @@ export const DeleteArrayElementRequest = {
   fromPartial<I extends Exact<DeepPartial<DeleteArrayElementRequest>, I>>(
     object: I
   ): DeleteArrayElementRequest {
-    const message = {
-      ...baseDeleteArrayElementRequest,
-    } as DeleteArrayElementRequest;
+    const message = createBaseDeleteArrayElementRequest();
     message.resourceId = object.resourceId ?? "";
     message.arrayPath = object.arrayPath ?? "";
     message.indices = object.indices?.map((e) => e) || [];
@@ -843,7 +790,9 @@ export const DeleteArrayElementRequest = {
   },
 };
 
-const baseDeleteArrayElementResponse: object = {};
+function createBaseDeleteArrayElementResponse(): DeleteArrayElementResponse {
+  return {};
+}
 
 export const DeleteArrayElementResponse = {
   encode(
@@ -859,9 +808,7 @@ export const DeleteArrayElementResponse = {
   ): DeleteArrayElementResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseDeleteArrayElementResponse,
-    } as DeleteArrayElementResponse;
+    const message = createBaseDeleteArrayElementResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -874,10 +821,7 @@ export const DeleteArrayElementResponse = {
   },
 
   fromJSON(_: any): DeleteArrayElementResponse {
-    const message = {
-      ...baseDeleteArrayElementResponse,
-    } as DeleteArrayElementResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: DeleteArrayElementResponse): unknown {
@@ -888,19 +832,14 @@ export const DeleteArrayElementResponse = {
   fromPartial<I extends Exact<DeepPartial<DeleteArrayElementResponse>, I>>(
     _: I
   ): DeleteArrayElementResponse {
-    const message = {
-      ...baseDeleteArrayElementResponse,
-    } as DeleteArrayElementResponse;
+    const message = createBaseDeleteArrayElementResponse();
     return message;
   },
 };
 
-const baseInsertNewArrayElementRequest: object = {
-  resourceId: "",
-  arrayPath: "",
-  index: 0,
-  jsonValue: "",
-};
+function createBaseInsertNewArrayElementRequest(): InsertNewArrayElementRequest {
+  return { resourceId: "", arrayPath: "", index: 0, jsonValue: "" };
+}
 
 export const InsertNewArrayElementRequest = {
   encode(
@@ -928,9 +867,7 @@ export const InsertNewArrayElementRequest = {
   ): InsertNewArrayElementRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseInsertNewArrayElementRequest,
-    } as InsertNewArrayElementRequest;
+    const message = createBaseInsertNewArrayElementRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -955,26 +892,12 @@ export const InsertNewArrayElementRequest = {
   },
 
   fromJSON(object: any): InsertNewArrayElementRequest {
-    const message = {
-      ...baseInsertNewArrayElementRequest,
-    } as InsertNewArrayElementRequest;
-    message.resourceId =
-      object.resourceId !== undefined && object.resourceId !== null
-        ? String(object.resourceId)
-        : "";
-    message.arrayPath =
-      object.arrayPath !== undefined && object.arrayPath !== null
-        ? String(object.arrayPath)
-        : "";
-    message.index =
-      object.index !== undefined && object.index !== null
-        ? Number(object.index)
-        : 0;
-    message.jsonValue =
-      object.jsonValue !== undefined && object.jsonValue !== null
-        ? String(object.jsonValue)
-        : "";
-    return message;
+    return {
+      resourceId: isSet(object.resourceId) ? String(object.resourceId) : "",
+      arrayPath: isSet(object.arrayPath) ? String(object.arrayPath) : "",
+      index: isSet(object.index) ? Number(object.index) : 0,
+      jsonValue: isSet(object.jsonValue) ? String(object.jsonValue) : "",
+    };
   },
 
   toJSON(message: InsertNewArrayElementRequest): unknown {
@@ -989,9 +912,7 @@ export const InsertNewArrayElementRequest = {
   fromPartial<I extends Exact<DeepPartial<InsertNewArrayElementRequest>, I>>(
     object: I
   ): InsertNewArrayElementRequest {
-    const message = {
-      ...baseInsertNewArrayElementRequest,
-    } as InsertNewArrayElementRequest;
+    const message = createBaseInsertNewArrayElementRequest();
     message.resourceId = object.resourceId ?? "";
     message.arrayPath = object.arrayPath ?? "";
     message.index = object.index ?? 0;
@@ -1000,7 +921,9 @@ export const InsertNewArrayElementRequest = {
   },
 };
 
-const baseInsertNewArrayElementResponse: object = {};
+function createBaseInsertNewArrayElementResponse(): InsertNewArrayElementResponse {
+  return {};
+}
 
 export const InsertNewArrayElementResponse = {
   encode(
@@ -1016,9 +939,7 @@ export const InsertNewArrayElementResponse = {
   ): InsertNewArrayElementResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseInsertNewArrayElementResponse,
-    } as InsertNewArrayElementResponse;
+    const message = createBaseInsertNewArrayElementResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1031,10 +952,7 @@ export const InsertNewArrayElementResponse = {
   },
 
   fromJSON(_: any): InsertNewArrayElementResponse {
-    const message = {
-      ...baseInsertNewArrayElementResponse,
-    } as InsertNewArrayElementResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: InsertNewArrayElementResponse): unknown {
@@ -1045,19 +963,14 @@ export const InsertNewArrayElementResponse = {
   fromPartial<I extends Exact<DeepPartial<InsertNewArrayElementResponse>, I>>(
     _: I
   ): InsertNewArrayElementResponse {
-    const message = {
-      ...baseInsertNewArrayElementResponse,
-    } as InsertNewArrayElementResponse;
+    const message = createBaseInsertNewArrayElementResponse();
     return message;
   },
 };
 
-const baseReorderArrayElementRequest: object = {
-  resourceId: "",
-  arrayPath: "",
-  oldIndex: 0,
-  newIndex: 0,
-};
+function createBaseReorderArrayElementRequest(): ReorderArrayElementRequest {
+  return { resourceId: "", arrayPath: "", oldIndex: 0, newIndex: 0 };
+}
 
 export const ReorderArrayElementRequest = {
   encode(
@@ -1085,9 +998,7 @@ export const ReorderArrayElementRequest = {
   ): ReorderArrayElementRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseReorderArrayElementRequest,
-    } as ReorderArrayElementRequest;
+    const message = createBaseReorderArrayElementRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1112,26 +1023,12 @@ export const ReorderArrayElementRequest = {
   },
 
   fromJSON(object: any): ReorderArrayElementRequest {
-    const message = {
-      ...baseReorderArrayElementRequest,
-    } as ReorderArrayElementRequest;
-    message.resourceId =
-      object.resourceId !== undefined && object.resourceId !== null
-        ? String(object.resourceId)
-        : "";
-    message.arrayPath =
-      object.arrayPath !== undefined && object.arrayPath !== null
-        ? String(object.arrayPath)
-        : "";
-    message.oldIndex =
-      object.oldIndex !== undefined && object.oldIndex !== null
-        ? Number(object.oldIndex)
-        : 0;
-    message.newIndex =
-      object.newIndex !== undefined && object.newIndex !== null
-        ? Number(object.newIndex)
-        : 0;
-    return message;
+    return {
+      resourceId: isSet(object.resourceId) ? String(object.resourceId) : "",
+      arrayPath: isSet(object.arrayPath) ? String(object.arrayPath) : "",
+      oldIndex: isSet(object.oldIndex) ? Number(object.oldIndex) : 0,
+      newIndex: isSet(object.newIndex) ? Number(object.newIndex) : 0,
+    };
   },
 
   toJSON(message: ReorderArrayElementRequest): unknown {
@@ -1148,9 +1045,7 @@ export const ReorderArrayElementRequest = {
   fromPartial<I extends Exact<DeepPartial<ReorderArrayElementRequest>, I>>(
     object: I
   ): ReorderArrayElementRequest {
-    const message = {
-      ...baseReorderArrayElementRequest,
-    } as ReorderArrayElementRequest;
+    const message = createBaseReorderArrayElementRequest();
     message.resourceId = object.resourceId ?? "";
     message.arrayPath = object.arrayPath ?? "";
     message.oldIndex = object.oldIndex ?? 0;
@@ -1159,7 +1054,9 @@ export const ReorderArrayElementRequest = {
   },
 };
 
-const baseReorderArrayElementResponse: object = {};
+function createBaseReorderArrayElementResponse(): ReorderArrayElementResponse {
+  return {};
+}
 
 export const ReorderArrayElementResponse = {
   encode(
@@ -1175,9 +1072,7 @@ export const ReorderArrayElementResponse = {
   ): ReorderArrayElementResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseReorderArrayElementResponse,
-    } as ReorderArrayElementResponse;
+    const message = createBaseReorderArrayElementResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1190,10 +1085,7 @@ export const ReorderArrayElementResponse = {
   },
 
   fromJSON(_: any): ReorderArrayElementResponse {
-    const message = {
-      ...baseReorderArrayElementResponse,
-    } as ReorderArrayElementResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: ReorderArrayElementResponse): unknown {
@@ -1204,9 +1096,7 @@ export const ReorderArrayElementResponse = {
   fromPartial<I extends Exact<DeepPartial<ReorderArrayElementResponse>, I>>(
     _: I
   ): ReorderArrayElementResponse {
-    const message = {
-      ...baseReorderArrayElementResponse,
-    } as ReorderArrayElementResponse;
+    const message = createBaseReorderArrayElementResponse();
     return message;
   },
 };
@@ -1542,4 +1432,12 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

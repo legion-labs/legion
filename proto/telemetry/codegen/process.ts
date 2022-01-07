@@ -19,19 +19,21 @@ export interface Process {
   parentProcessId: string;
 }
 
-const baseProcess: object = {
-  processId: "",
-  exe: "",
-  username: "",
-  realname: "",
-  computer: "",
-  distro: "",
-  cpuBrand: "",
-  tscFrequency: 0,
-  startTime: "",
-  startTicks: 0,
-  parentProcessId: "",
-};
+function createBaseProcess(): Process {
+  return {
+    processId: "",
+    exe: "",
+    username: "",
+    realname: "",
+    computer: "",
+    distro: "",
+    cpuBrand: "",
+    tscFrequency: 0,
+    startTime: "",
+    startTicks: 0,
+    parentProcessId: "",
+  };
+}
 
 export const Process = {
   encode(
@@ -77,7 +79,7 @@ export const Process = {
   decode(input: _m0.Reader | Uint8Array, length?: number): Process {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcess } as Process;
+    const message = createBaseProcess();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -123,50 +125,23 @@ export const Process = {
   },
 
   fromJSON(object: any): Process {
-    const message = { ...baseProcess } as Process;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    message.exe =
-      object.exe !== undefined && object.exe !== null ? String(object.exe) : "";
-    message.username =
-      object.username !== undefined && object.username !== null
-        ? String(object.username)
-        : "";
-    message.realname =
-      object.realname !== undefined && object.realname !== null
-        ? String(object.realname)
-        : "";
-    message.computer =
-      object.computer !== undefined && object.computer !== null
-        ? String(object.computer)
-        : "";
-    message.distro =
-      object.distro !== undefined && object.distro !== null
-        ? String(object.distro)
-        : "";
-    message.cpuBrand =
-      object.cpuBrand !== undefined && object.cpuBrand !== null
-        ? String(object.cpuBrand)
-        : "";
-    message.tscFrequency =
-      object.tscFrequency !== undefined && object.tscFrequency !== null
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+      exe: isSet(object.exe) ? String(object.exe) : "",
+      username: isSet(object.username) ? String(object.username) : "",
+      realname: isSet(object.realname) ? String(object.realname) : "",
+      computer: isSet(object.computer) ? String(object.computer) : "",
+      distro: isSet(object.distro) ? String(object.distro) : "",
+      cpuBrand: isSet(object.cpuBrand) ? String(object.cpuBrand) : "",
+      tscFrequency: isSet(object.tscFrequency)
         ? Number(object.tscFrequency)
-        : 0;
-    message.startTime =
-      object.startTime !== undefined && object.startTime !== null
-        ? String(object.startTime)
-        : "";
-    message.startTicks =
-      object.startTicks !== undefined && object.startTicks !== null
-        ? Number(object.startTicks)
-        : 0;
-    message.parentProcessId =
-      object.parentProcessId !== undefined && object.parentProcessId !== null
+        : 0,
+      startTime: isSet(object.startTime) ? String(object.startTime) : "",
+      startTicks: isSet(object.startTicks) ? Number(object.startTicks) : 0,
+      parentProcessId: isSet(object.parentProcessId)
         ? String(object.parentProcessId)
-        : "";
-    return message;
+        : "",
+    };
   },
 
   toJSON(message: Process): unknown {
@@ -189,7 +164,7 @@ export const Process = {
   },
 
   fromPartial<I extends Exact<DeepPartial<Process>, I>>(object: I): Process {
-    const message = { ...baseProcess } as Process;
+    const message = createBaseProcess();
     message.processId = object.processId ?? "";
     message.exe = object.exe ?? "";
     message.username = object.username ?? "";
@@ -253,4 +228,8 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

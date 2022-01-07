@@ -36,13 +36,9 @@ export interface Stream_PropertiesEntry {
   value: string;
 }
 
-const baseUDTMember: object = {
-  name: "",
-  typeName: "",
-  offset: 0,
-  size: 0,
-  isReference: false,
-};
+function createBaseUDTMember(): UDTMember {
+  return { name: "", typeName: "", offset: 0, size: 0, isReference: false };
+}
 
 export const UDTMember = {
   encode(
@@ -70,7 +66,7 @@ export const UDTMember = {
   decode(input: _m0.Reader | Uint8Array, length?: number): UDTMember {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseUDTMember } as UDTMember;
+    const message = createBaseUDTMember();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -98,28 +94,15 @@ export const UDTMember = {
   },
 
   fromJSON(object: any): UDTMember {
-    const message = { ...baseUDTMember } as UDTMember;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.typeName =
-      object.typeName !== undefined && object.typeName !== null
-        ? String(object.typeName)
-        : "";
-    message.offset =
-      object.offset !== undefined && object.offset !== null
-        ? Number(object.offset)
-        : 0;
-    message.size =
-      object.size !== undefined && object.size !== null
-        ? Number(object.size)
-        : 0;
-    message.isReference =
-      object.isReference !== undefined && object.isReference !== null
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      typeName: isSet(object.typeName) ? String(object.typeName) : "",
+      offset: isSet(object.offset) ? Number(object.offset) : 0,
+      size: isSet(object.size) ? Number(object.size) : 0,
+      isReference: isSet(object.isReference)
         ? Boolean(object.isReference)
-        : false;
-    return message;
+        : false,
+    };
   },
 
   toJSON(message: UDTMember): unknown {
@@ -136,7 +119,7 @@ export const UDTMember = {
   fromPartial<I extends Exact<DeepPartial<UDTMember>, I>>(
     object: I
   ): UDTMember {
-    const message = { ...baseUDTMember } as UDTMember;
+    const message = createBaseUDTMember();
     message.name = object.name ?? "";
     message.typeName = object.typeName ?? "";
     message.offset = object.offset ?? 0;
@@ -146,7 +129,9 @@ export const UDTMember = {
   },
 };
 
-const baseUserDefinedType: object = { name: "", size: 0 };
+function createBaseUserDefinedType(): UserDefinedType {
+  return { name: "", size: 0, members: [] };
+}
 
 export const UserDefinedType = {
   encode(
@@ -168,8 +153,7 @@ export const UserDefinedType = {
   decode(input: _m0.Reader | Uint8Array, length?: number): UserDefinedType {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseUserDefinedType } as UserDefinedType;
-    message.members = [];
+    const message = createBaseUserDefinedType();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -191,19 +175,13 @@ export const UserDefinedType = {
   },
 
   fromJSON(object: any): UserDefinedType {
-    const message = { ...baseUserDefinedType } as UserDefinedType;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.size =
-      object.size !== undefined && object.size !== null
-        ? Number(object.size)
-        : 0;
-    message.members = (object.members ?? []).map((e: any) =>
-      UDTMember.fromJSON(e)
-    );
-    return message;
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      size: isSet(object.size) ? Number(object.size) : 0,
+      members: Array.isArray(object?.members)
+        ? object.members.map((e: any) => UDTMember.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: UserDefinedType): unknown {
@@ -223,7 +201,7 @@ export const UserDefinedType = {
   fromPartial<I extends Exact<DeepPartial<UserDefinedType>, I>>(
     object: I
   ): UserDefinedType {
-    const message = { ...baseUserDefinedType } as UserDefinedType;
+    const message = createBaseUserDefinedType();
     message.name = object.name ?? "";
     message.size = object.size ?? 0;
     message.members =
@@ -232,7 +210,9 @@ export const UserDefinedType = {
   },
 };
 
-const baseContainerMetadata: object = {};
+function createBaseContainerMetadata(): ContainerMetadata {
+  return { types: [] };
+}
 
 export const ContainerMetadata = {
   encode(
@@ -248,8 +228,7 @@ export const ContainerMetadata = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ContainerMetadata {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseContainerMetadata } as ContainerMetadata;
-    message.types = [];
+    const message = createBaseContainerMetadata();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -265,11 +244,11 @@ export const ContainerMetadata = {
   },
 
   fromJSON(object: any): ContainerMetadata {
-    const message = { ...baseContainerMetadata } as ContainerMetadata;
-    message.types = (object.types ?? []).map((e: any) =>
-      UserDefinedType.fromJSON(e)
-    );
-    return message;
+    return {
+      types: Array.isArray(object?.types)
+        ? object.types.map((e: any) => UserDefinedType.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ContainerMetadata): unknown {
@@ -287,14 +266,23 @@ export const ContainerMetadata = {
   fromPartial<I extends Exact<DeepPartial<ContainerMetadata>, I>>(
     object: I
   ): ContainerMetadata {
-    const message = { ...baseContainerMetadata } as ContainerMetadata;
+    const message = createBaseContainerMetadata();
     message.types =
       object.types?.map((e) => UserDefinedType.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseStream: object = { streamId: "", processId: "", tags: "" };
+function createBaseStream(): Stream {
+  return {
+    streamId: "",
+    processId: "",
+    dependenciesMetadata: undefined,
+    objectsMetadata: undefined,
+    tags: [],
+    properties: {},
+  };
+}
 
 export const Stream = {
   encode(
@@ -334,9 +322,7 @@ export const Stream = {
   decode(input: _m0.Reader | Uint8Array, length?: number): Stream {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseStream } as Stream;
-    message.tags = [];
-    message.properties = {};
+    const message = createBaseStream();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -376,32 +362,28 @@ export const Stream = {
   },
 
   fromJSON(object: any): Stream {
-    const message = { ...baseStream } as Stream;
-    message.streamId =
-      object.streamId !== undefined && object.streamId !== null
-        ? String(object.streamId)
-        : "";
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    message.dependenciesMetadata =
-      object.dependenciesMetadata !== undefined &&
-      object.dependenciesMetadata !== null
+    return {
+      streamId: isSet(object.streamId) ? String(object.streamId) : "",
+      processId: isSet(object.processId) ? String(object.processId) : "",
+      dependenciesMetadata: isSet(object.dependenciesMetadata)
         ? ContainerMetadata.fromJSON(object.dependenciesMetadata)
-        : undefined;
-    message.objectsMetadata =
-      object.objectsMetadata !== undefined && object.objectsMetadata !== null
+        : undefined,
+      objectsMetadata: isSet(object.objectsMetadata)
         ? ContainerMetadata.fromJSON(object.objectsMetadata)
-        : undefined;
-    message.tags = (object.tags ?? []).map((e: any) => String(e));
-    message.properties = Object.entries(object.properties ?? {}).reduce<{
-      [key: string]: string;
-    }>((acc, [key, value]) => {
-      acc[key] = String(value);
-      return acc;
-    }, {});
-    return message;
+        : undefined,
+      tags: Array.isArray(object?.tags)
+        ? object.tags.map((e: any) => String(e))
+        : [],
+      properties: isObject(object.properties)
+        ? Object.entries(object.properties).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
+        : {},
+    };
   },
 
   toJSON(message: Stream): unknown {
@@ -431,7 +413,7 @@ export const Stream = {
   },
 
   fromPartial<I extends Exact<DeepPartial<Stream>, I>>(object: I): Stream {
-    const message = { ...baseStream } as Stream;
+    const message = createBaseStream();
     message.streamId = object.streamId ?? "";
     message.processId = object.processId ?? "";
     message.dependenciesMetadata =
@@ -456,7 +438,9 @@ export const Stream = {
   },
 };
 
-const baseStream_PropertiesEntry: object = { key: "", value: "" };
+function createBaseStream_PropertiesEntry(): Stream_PropertiesEntry {
+  return { key: "", value: "" };
+}
 
 export const Stream_PropertiesEntry = {
   encode(
@@ -478,7 +462,7 @@ export const Stream_PropertiesEntry = {
   ): Stream_PropertiesEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseStream_PropertiesEntry } as Stream_PropertiesEntry;
+    const message = createBaseStream_PropertiesEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -497,14 +481,10 @@ export const Stream_PropertiesEntry = {
   },
 
   fromJSON(object: any): Stream_PropertiesEntry {
-    const message = { ...baseStream_PropertiesEntry } as Stream_PropertiesEntry;
-    message.key =
-      object.key !== undefined && object.key !== null ? String(object.key) : "";
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? String(object.value)
-        : "";
-    return message;
+    return {
+      key: isSet(object.key) ? String(object.key) : "",
+      value: isSet(object.value) ? String(object.value) : "",
+    };
   },
 
   toJSON(message: Stream_PropertiesEntry): unknown {
@@ -517,7 +497,7 @@ export const Stream_PropertiesEntry = {
   fromPartial<I extends Exact<DeepPartial<Stream_PropertiesEntry>, I>>(
     object: I
   ): Stream_PropertiesEntry {
-    const message = { ...baseStream_PropertiesEntry } as Stream_PropertiesEntry;
+    const message = createBaseStream_PropertiesEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? "";
     return message;
@@ -554,4 +534,12 @@ export type Exact<P, I extends P> = P extends Builtin
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

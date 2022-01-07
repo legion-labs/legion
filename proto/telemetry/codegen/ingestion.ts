@@ -13,7 +13,9 @@ export interface InsertReply {
   msg: string;
 }
 
-const baseInsertReply: object = { msg: "" };
+function createBaseInsertReply(): InsertReply {
+  return { msg: "" };
+}
 
 export const InsertReply = {
   encode(
@@ -29,7 +31,7 @@ export const InsertReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): InsertReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseInsertReply } as InsertReply;
+    const message = createBaseInsertReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -45,10 +47,9 @@ export const InsertReply = {
   },
 
   fromJSON(object: any): InsertReply {
-    const message = { ...baseInsertReply } as InsertReply;
-    message.msg =
-      object.msg !== undefined && object.msg !== null ? String(object.msg) : "";
-    return message;
+    return {
+      msg: isSet(object.msg) ? String(object.msg) : "",
+    };
   },
 
   toJSON(message: InsertReply): unknown {
@@ -60,7 +61,7 @@ export const InsertReply = {
   fromPartial<I extends Exact<DeepPartial<InsertReply>, I>>(
     object: I
   ): InsertReply {
-    const message = { ...baseInsertReply } as InsertReply;
+    const message = createBaseInsertReply();
     message.msg = object.msg ?? "";
     return message;
   },
@@ -298,4 +299,8 @@ export type Exact<P, I extends P> = P extends Builtin
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }
