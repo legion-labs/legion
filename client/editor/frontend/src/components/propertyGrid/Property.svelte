@@ -27,12 +27,10 @@
 
   export let property: ResourceProperty | ResourcePropertyGroup;
 
+  export let level = 0;
+
   /** The property path parts */
   export let pathParts: string[];
-
-  // TODO: Use level to add some indentation?
-  /** Depth level, _should no be provided by the called_, used in recursivity */
-  export let level = 0;
 
   /** Displays a nice little border below the resource property! */
   export let withBorder: boolean;
@@ -48,13 +46,13 @@
 {#if propertyIsGroup(property)}
   <div
     class="root-group"
+    class:with-indent={level > 1}
     class:with-border={withBorder}
-    style="margin-left: {level / 8}rem"
   >
     {#if property.name}
       <div
-        class:property-group-name={level === 0}
-        class:property-sub-name={level !== 0}
+        class:property-group-name={property.ptype === "virtual-group"}
+        class:property-sub-name={property.ptype === "group"}
         title={property.name}
       >
         <div class="truncate">{property.name}</div>
@@ -66,9 +64,10 @@
           ? pathParts
           : [...pathParts, subProperty.name]}
         property={subProperty}
-        on:input={(event) => dispatch("input", event.detail)}
+        on:input
         level={level + 1}
-        withBorder={property.subProperties[index + 1]?.ptype !== "group"}
+        withBorder={property.subProperties[index + 1] &&
+          !propertyIsGroup(property.subProperties[index + 1])}
       />
     {/each}
   </div>
@@ -138,11 +137,15 @@
 
 <style lang="postcss">
   .root-group {
-    @apply flex flex-col py-1 justify-between;
+    @apply flex flex-col pt-1 last:pb-1 justify-between;
+  }
+
+  .root-group.with-indent {
+    @apply pl-1;
   }
 
   .root-property {
-    @apply flex flex-row py-1 pl-2 space-x-1 justify-between;
+    @apply flex flex-row py-1 pl-1 space-x-1 justify-between;
   }
 
   .with-border {
@@ -151,7 +154,7 @@
 
   .property-group-name,
   .property-sub-name {
-    @apply flex flex-row items-center font-bold bg-gray-800 rounded-sm h-7 px-1;
+    @apply flex flex-row items-center h-7 px-1 mb-0.5 font-bold bg-gray-800 rounded-sm;
   }
 
   .property-name {

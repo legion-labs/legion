@@ -11,6 +11,8 @@
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
+  import { fakeFileSystemEntries } from "@/data/fake";
+  import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
 
   const { run: runGetAllResources } = asyncStore(getAllResources);
 
@@ -81,8 +83,9 @@
         <div class="h-separator" />
         <div class="file-system">
           <Panel tabs={["File System"]}>
-            <div slot="tab" let:tab>
-              {tab}
+            <div slot="tab" let:tab>{tab}</div>
+            <div slot="content" class="file-system-content">
+              <HierarchyTree rootName="Root" entries={fakeFileSystemEntries} />
             </div>
           </Panel>
         </div>
@@ -192,6 +195,10 @@
 
   .file-system {
     @apply h-1/2;
+  }
+
+  .file-system-content {
+    @apply h-full;
   }
 
   .properties {

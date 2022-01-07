@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
 
   type Size = "default";
 
@@ -15,9 +15,17 @@
 
   export let fullWidth = false;
 
+  export let autoFocus = false;
+
   export let autoSelect = false;
 
   let input: HTMLInputElement | undefined;
+
+  onMount(() => {
+    if (autoFocus && input) {
+      input.focus();
+    }
+  });
 
   const onFocus = (_event: FocusEvent) => {
     if (autoSelect && input) {
