@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    propertyIsGroup,
     propertyIsVirtualGroup,
     PropertyUpdate,
     updateResourceProperties,
@@ -64,7 +65,8 @@
       <Property
         pathParts={propertyIsVirtualGroup(property) ? [] : [property.name]}
         {property}
-        withBorder={$currentResource.properties[index + 1]?.ptype !== "group"}
+        withBorder={$currentResource.properties[index + 1] &&
+          !propertyIsGroup($currentResource.properties[index + 1])}
         on:input={onInput}
       />
     {/each}
