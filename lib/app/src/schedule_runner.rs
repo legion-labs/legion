@@ -56,11 +56,10 @@ fn set_time_period() {
     #[cfg(windows)]
     #[allow(unsafe_code)]
     unsafe {
-        use winapi::shared::minwindef::UINT;
-        use winapi::um::mmsystem::TIMERR_NOERROR;
-        use winapi::um::timeapi::timeBeginPeriod;
+        use windows::Win32::Media::timeBeginPeriod;
+        use windows::Win32::Media::TIMERR_NOERROR;
 
-        const SLEEP_QUANTUM_MS: UINT = 1;
+        const SLEEP_QUANTUM_MS: u32 = 1;
         let result = timeBeginPeriod(SLEEP_QUANTUM_MS);
         if result != TIMERR_NOERROR {
             error!("timeBeginPeriod failed with error code {}", result);

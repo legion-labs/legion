@@ -11,10 +11,6 @@
         "perfetto",
         "thiserror",
         "xxhash",
-        "winapi",
-        "mmsystem",
-        "TIMERR_NOERROR",
-        "timeapi",
-        "minwindef"
+        "TIMERR_NOERROR"
     ]
 }
