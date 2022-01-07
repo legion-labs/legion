@@ -29,14 +29,16 @@ impl DiskCache {
         if !self.storage.blob_exists(name).await? {
             return Ok(None);
         }
-
+        info!("reading {}", name);
         let buffer = self.storage.read_blob(name).await?;
         Ok(Some(buffer))
     }
 
     pub async fn put(&self, name: &str, buffer: &[u8]) -> Result<()> {
         if !self.storage.blob_exists(name).await? {
+            info!("writing {}", name);
             self.storage.write_blob(name, buffer).await?;
+            info!("writing {} completed", name);
         }
         Ok(())
     }

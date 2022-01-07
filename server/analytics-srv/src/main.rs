@@ -90,7 +90,9 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::new()
+        .unwrap()
+        .with_log_level(LevelFilter::Info);
     trace_scope!();
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
