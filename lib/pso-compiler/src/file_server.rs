@@ -158,7 +158,7 @@ impl FileSystem {
 pub struct FileServerIncludeHandler(pub FileSystem); // stack
 
 impl DxcIncludeHandler for FileServerIncludeHandler {
-    fn load_source(&self, filename: String) -> Option<String> {
+    fn load_source(&mut self, filename: String) -> Option<String> {
         // Absolute file
         let inc_path = if let Some(pos) = filename.find("crate://") {
             &filename[pos..]
