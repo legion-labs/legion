@@ -13,6 +13,7 @@ impl Plugin for GenericDataPlugin {
     }
 }
 
+#[allow(unused_variables)]
 fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOptions>) {
     #[cfg(feature = "offline")]
     {
@@ -20,6 +21,7 @@ fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOpt
     }
 }
 
+#[allow(unused_variables)]
 fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     let asset_registry = asset_registry.into_inner();
     #[cfg(feature = "offline")]
