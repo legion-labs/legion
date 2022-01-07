@@ -6,6 +6,7 @@
 #*.ext text
 
 # Declare files that will always have LF line endings on checkout.
+*.gitattributes eol=lf
 *.rs text eol=lf
 *.toml text eol=lf
 *.hlsl text eol=lf
