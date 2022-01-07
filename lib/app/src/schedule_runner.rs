@@ -56,9 +56,9 @@ fn set_time_period() {
     #[cfg(windows)]
     #[allow(unsafe_code)]
     unsafe {
+        use lgn_telemetry::error;
         use windows::Win32::Media::timeBeginPeriod;
         use windows::Win32::Media::TIMERR_NOERROR;
-        use lgn_telemetry::error;
 
         const SLEEP_QUANTUM_MS: u32 = 1;
         let result = timeBeginPeriod(SLEEP_QUANTUM_MS);
