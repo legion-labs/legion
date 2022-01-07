@@ -174,6 +174,31 @@
         return;
       }
 
+      const normalizedDesiredResolution =
+        normalizeDesiredResolution(desiredResolution);
+
+      if (
+        !normalizedDesiredResolution ||
+        normalizedDesiredResolution.width == 0 ||
+        normalizedDesiredResolution.height == 0
+      ) {
+        return;
+      }
+
+      log.debug(
+        "video",
+        `Resolution is: ${normalizedDesiredResolution.width}x${normalizedDesiredResolution.height}`
+      );
+
+      videoChannel.send(
+        JSON.stringify({
+          event: "initialize",
+          color: backgroundColors[serverType],
+          width: normalizedDesiredResolution.width,
+          height: normalizedDesiredResolution.height,
+        })
+      );
+
       log.debug("video", "Video channel is now open.");
     };
 
@@ -184,53 +209,6 @@
     videoChannel.onmessage = async (message: MessageEvent<ArrayBuffer>) => {
       if (!videoElement) {
         return;
-      }
-
-      // If the message is very small it's unlikely to be a frame
-      if (message.data.byteLength < 100) {
-        try {
-          const jsonMessage = JSON.parse(
-            new TextDecoder().decode(message.data)
-          );
-
-          if (
-            videoChannel &&
-            desiredResolution &&
-            jsonMessage.type === "initialized"
-          ) {
-            const normalizedDesiredResolution =
-              normalizeDesiredResolution(desiredResolution);
-
-            if (
-              !normalizedDesiredResolution ||
-              normalizedDesiredResolution.width == 0 ||
-              normalizedDesiredResolution.height == 0
-            ) {
-              return;
-            }
-
-            log.debug(
-              "video",
-              `Resolution is: ${normalizedDesiredResolution.width}x${normalizedDesiredResolution.height}`
-            );
-
-            videoChannel.send(
-              JSON.stringify({
-                event: "initialize",
-                color: backgroundColors[serverType],
-                width: normalizedDesiredResolution.width,
-                height: normalizedDesiredResolution.height,
-              })
-            );
-          }
-        } catch {
-          log.error(
-            "Couldn't JSON parse what seemed to be a message coming from the server"
-          );
-        } finally {
-          // Block the message and don't push it into the player
-          return;
-        }
       }
 
       // videoElement is augmented with the `videoPlayer` action and will
