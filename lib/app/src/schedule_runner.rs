@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_telemetry::{error, info, trace_scope};
+use lgn_telemetry::{info, trace_scope};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
@@ -58,6 +58,7 @@ fn set_time_period() {
     unsafe {
         use windows::Win32::Media::timeBeginPeriod;
         use windows::Win32::Media::TIMERR_NOERROR;
+        use lgn_telemetry::error;
 
         const SLEEP_QUANTUM_MS: u32 = 1;
         let result = timeBeginPeriod(SLEEP_QUANTUM_MS);
