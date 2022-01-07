@@ -11,7 +11,8 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::{
-        CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
+        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+        StaticMesh,
     },
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
@@ -254,6 +255,7 @@ impl PickingRenderPass {
     fn render_mesh(
         &self,
         custom_world: &Mat4,
+        custom_picking_id: Option<u32>,
         view_proj_matrix: &Mat4,
         screen_rect: Vec2,
         cursor_pos: Vec2,
@@ -335,13 +337,18 @@ impl PickingRenderPass {
         let mut push_constant_data: [u32; 3] = [0; 3];
         push_constant_data[0] = static_mesh.vertex_offset;
         push_constant_data[1] = static_mesh.world_offset;
-        push_constant_data[2] = static_mesh.picking_id;
+        push_constant_data[2] = if let Some(id) = custom_picking_id {
+            id
+        } else {
+            static_mesh.picking_id
+        };
 
         cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
         cmd_buffer.draw(static_mesh.num_verticies, 0);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         picking_manager: &PickingManager,
@@ -349,6 +356,8 @@ impl PickingRenderPass {
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
+        lights: &[(&LightComponent, &Transform)],
+        light_picking_mesh: &StaticMesh,
         camera: &CameraComponent,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -407,6 +416,7 @@ impl PickingRenderPass {
 
                     self.render_mesh(
                         &custom_world,
+                        None,
                         &view_proj_matrix,
                         screen_rect,
                         cursor_pos,
@@ -424,11 +434,28 @@ impl PickingRenderPass {
 
                 self.render_mesh(
                     &custom_world,
+                    None,
                     &view_proj_matrix,
                     screen_rect,
                     cursor_pos,
                     picking_distance,
                     static_mesh,
+                    &cmd_buffer,
+                    render_context,
+                );
+            }
+
+            for (light, transform) in lights {
+                let picking_distance = 1.0;
+                let custom_world = transform.compute_matrix();
+                self.render_mesh(
+                    &custom_world,
+                    Some(light.picking_id),
+                    &view_proj_matrix,
+                    screen_rect,
+                    cursor_pos,
+                    picking_distance,
+                    light_picking_mesh,
                     &cmd_buffer,
                     render_context,
                 );

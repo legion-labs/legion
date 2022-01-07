@@ -13,6 +13,7 @@ pub struct LightComponent {
     pub color: (f32, f32, f32),
     pub radiance: f32,
     pub enabled: bool,
+    pub picking_id: u32,
 }
 
 impl Default for LightComponent {
@@ -22,6 +23,7 @@ impl Default for LightComponent {
             color: (1.0, 1.0, 1.0),
             radiance: 40.0,
             enabled: true,
+            picking_id: 0,
         }
     }
 }
