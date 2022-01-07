@@ -66,6 +66,7 @@ pub trait BlobStorage: Send + Sync {
     async fn read_blob(&self, hash: &str) -> Result<Vec<u8>>;
 
     /// Writes the full contents of a blob to the storage.
+    /// warning: nothing prevents a reader from accessing a partially written blob.
     async fn write_blob(&self, hash: &str, content: &[u8]) -> Result<()>;
 
     /// Download a blob from the storage and persist it to disk at the specified
