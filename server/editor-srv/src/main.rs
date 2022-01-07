@@ -18,10 +18,15 @@ use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_streamer::StreamerPlugin;
 use lgn_transform::TransformPlugin;
 
+use generic_data::plugin::GenericDataPlugin;
+
 mod grpc;
 mod plugin;
 mod property_inspector_plugin;
+use property_inspector_plugin::PropertyInspectorPlugin;
+
 mod resource_browser_plugin;
+use resource_browser_plugin::ResourceBrowserPlugin;
 
 use plugin::EditorPlugin;
 
@@ -100,6 +105,9 @@ fn main() {
         .add_plugin(RendererPlugin::new(false, args.egui, false))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
+        .add_plugin(ResourceBrowserPlugin::default())
+        .add_plugin(PropertyInspectorPlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(GenericDataPlugin::default())
         .run();
 }

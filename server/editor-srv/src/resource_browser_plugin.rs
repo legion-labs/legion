@@ -3,13 +3,12 @@
 #![allow(unused_mut)]
 
 use lgn_app::prelude::*;
-//use lgn_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 use lgn_editor_proto::resource_browser::{
     CloneResourceRequest, CloneResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
     GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ImportResourceRequest,
     ImportResourceResponse, RenameResourceRequest, RenameResourceResponse, SearchResourcesRequest,
 };
-//use lgn_tasks::IoTaskPool;
 
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
@@ -48,20 +47,25 @@ use lgn_editor_proto::resource_browser::{
 
 impl Plugin for ResourceBrowserPlugin {
     fn build(&self, app: &mut App) {
-        let data_manager = app
-            .world
-            .get_resource::<Arc<Mutex<DataManager>>>()
-            .expect("ResourceBrowser requires DataManager resource");
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::setup
+                .exclusive_system()
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        );
+    }
+}
 
+impl ResourceBrowserPlugin {
+    fn setup(
+        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
+    ) {
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
             data_manager: data_manager.clone(),
         });
-
-        app.world
-            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .expect("the editor plugin requires the gRPC plugin")
-            .into_inner()
-            .register_service(resource_browser_service);
+        grpc_settings.register_service(resource_browser_service);
     }
 }
 
@@ -264,7 +268,7 @@ mod test {
 
         let project = Project::create_new(&project_dir).expect("failed to create a project");
         let mut registry = ResourceRegistryOptions::new();
-        registry = generic_data::offline::register_resource_types(registry);
+        generic_data::offline::register_resource_types(&mut registry);
         let registry = registry.create_async_registry();
         let project = Arc::new(Mutex::new(project));
 

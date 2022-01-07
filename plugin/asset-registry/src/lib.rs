@@ -71,7 +71,8 @@ pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
+    ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_renderer::resources::DefaultMeshes;
@@ -92,13 +93,10 @@ impl Plugin for AssetRegistryPlugin {
                     config.assets_to_load = manifest.resources();
                 }
 
-                let mut registry = AssetRegistryOptions::new();
-                registry = runtime_data::add_loaders(registry);
-                registry = lgn_graphics_runtime::add_loaders(registry);
-                registry = generic_data::runtime::add_loaders(registry);
+                let mut registry_options = AssetRegistryOptions::new();
 
                 if let Some(databuild_config) = &config.databuild_config {
-                    registry = registry.add_device_build(
+                    registry_options = registry_options.add_device_build(
                         Box::new(content_store),
                         ContentStoreAddr::from(config.content_store_addr.clone()),
                         manifest.clone(),
@@ -107,20 +105,22 @@ impl Plugin for AssetRegistryPlugin {
                         false,
                     );
                 } else {
-                    registry = registry.add_device_cas(Box::new(content_store), manifest.clone());
+                    registry_options =
+                        registry_options.add_device_cas(Box::new(content_store), manifest.clone());
                 }
 
-                let registry = registry.create();
-
-                let load_events = registry.subscribe_to_load_events();
-
-                app.insert_resource(registry)
+                app.insert_non_send_resource(registry_options)
                     .insert_resource(AssetLoadingStates::default())
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
-                    .insert_resource(load_events)
                     .insert_resource(manifest)
-                    .add_startup_system(Self::setup)
+                    .add_startup_system_to_stage(
+                        StartupStage::PostStartup,
+                        Self::post_setup
+                            .exclusive_system()
+                            .label(AssetRegistryScheduling::AssetRegistryCreated),
+                    )
+                    .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
                     .add_system(Self::handle_load_events);
@@ -137,21 +137,30 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
-    /// Initial plugin setup.
-    /// Request load for all assets specified in config.
-    fn setup(
-        registry: ResMut<'_, Arc<AssetRegistry>>,
+    fn post_setup(world: &mut World) {
+        let registry_options = world.remove_non_send::<AssetRegistryOptions>().unwrap();
+        let registry = registry_options.create();
+
+        let load_events = registry.subscribe_to_load_events();
+        world.insert_resource(load_events);
+
+        world.insert_resource(registry);
+    }
+
+    // Request load for all assets specified in config.
+    fn preload_assets(
+        config: ResMut<'_, AssetRegistrySettings>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
-        config: ResMut<'_, AssetRegistrySettings>,
+        registry: Res<'_, Arc<AssetRegistry>>,
     ) {
         for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
 
-        drop(registry);
         drop(config);
+        drop(registry);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {

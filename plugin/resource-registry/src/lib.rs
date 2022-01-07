@@ -64,69 +64,84 @@ use lgn_app::prelude::*;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, DataManager};
+use lgn_ecs::prelude::*;
 use lgn_tasks::IoTaskPool;
-use sample_data_offline as offline_data;
 pub use settings::ResourceRegistrySettings;
 use tokio::sync::Mutex;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
 
+pub struct ResourceRegistryCreated {}
+
+/// Label to use for scheduling systems that require the `ResourceRegistry`
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum ResourceRegistryPluginScheduling {
+    /// AssetRegistry has been created
+    ResourceRegistryCreated,
+}
+
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut App) {
-        let manifest = app.world.get_resource::<Manifest>().unwrap().clone();
-        if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
-            let project_dir = settings.root_folder.clone();
-            let build_dir = project_dir.join("temp");
+        app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::post_setup
+                .exclusive_system()
+                .after(AssetRegistryScheduling::AssetRegistryCreated)
+                .label(ResourceRegistryPluginScheduling::ResourceRegistryCreated),
+        );
+    }
+}
 
-            if let Ok(project) = Project::open(&project_dir) {
-                // register resource types
-                let mut registry = ResourceRegistryOptions::new();
-                registry = offline_data::register_resource_types(registry);
-                registry = lgn_graphics_offline::register_resource_types(registry);
-                registry = generic_data::offline::register_resource_types(registry);
-                let registry = registry.create_async_registry();
-                let project = Arc::new(Mutex::new(project));
+impl ResourceRegistryPlugin {
+    fn pre_setup(mut commands: Commands<'_, '_>) {
+        let registry_options = ResourceRegistryOptions::new();
+        commands.insert_resource(registry_options);
+    }
 
-                let asset_registry = app
-                    .world
-                    .get_resource::<Arc<AssetRegistry>>()
-                    .expect("the editor plugin requires AssetRegistry resource");
+    fn post_setup(world: &mut World) {
+        let registry_options = world.remove_resource::<ResourceRegistryOptions>().unwrap();
+        let registry = registry_options.create_async_registry();
 
-                let compilers = lgn_ubercompiler::create();
+        let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
+        let project_dir = settings.root_folder.clone();
+        let build_dir = project_dir.join("temp");
 
-                let build_options = DataBuildOptions::new(&build_dir, compilers)
-                    .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+        let project = Project::open(&project_dir).expect("unable to open project dir");
 
-                let build_manager = BuildManager::new(build_options, &project_dir, manifest)
-                    .expect("the editor requires valid build manager");
+        let project = Arc::new(Mutex::new(project));
 
-                let data_manager = Arc::new(Mutex::new(DataManager::new(
-                    project,
-                    registry,
-                    asset_registry.clone(),
-                    build_manager,
-                )));
+        let compilers = lgn_ubercompiler::create();
 
-                let task_pool = app
-                    .world
-                    .get_resource::<IoTaskPool>()
-                    .expect("IoTaskPool is not available, missing CorePlugin?");
+        let build_options = DataBuildOptions::new(&build_dir, compilers)
+            .content_store(&ContentStoreAddr::from(build_dir.as_path()));
 
-                {
-                    let data_manager = data_manager.clone();
-                    task_pool
-                        .spawn(async move {
-                            let mut data_manager = data_manager.lock().await;
-                            data_manager.load_all_resources().await;
-                        })
-                        .detach();
-                }
+        let manifest = world.get_resource::<Manifest>().unwrap();
+        let build_manager = BuildManager::new(build_options, &project_dir, manifest.clone())
+            .expect("the editor requires valid build manager");
 
-                app.insert_resource(data_manager);
-            }
+        let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
+        let data_manager = Arc::new(Mutex::new(DataManager::new(
+            project,
+            registry,
+            asset_registry.clone(),
+            build_manager,
+        )));
+
+        {
+            let data_manager = data_manager.clone();
+            let io_task_pool = world.get_resource::<IoTaskPool>().unwrap();
+            io_task_pool
+                .spawn(async move {
+                    let mut data_manager = data_manager.lock().await;
+                    data_manager.load_all_resources().await;
+                })
+                .detach();
         }
+
+        world.insert_resource(data_manager);
     }
 }

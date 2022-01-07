@@ -62,3 +62,5 @@ pub mod offline;
 #[path = "../codegen/runtime/mod.rs"]
 #[cfg(feature = "runtime")]
 pub mod runtime;
+
+pub mod plugin;

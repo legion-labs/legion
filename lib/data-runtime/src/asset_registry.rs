@@ -14,6 +14,7 @@ use std::{
 };
 
 use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -181,6 +182,13 @@ impl AssetRegistryOptions {
         self
     }
 
+    /// Enables support of a given [`Resource`] by adding corresponding
+    /// [`AssetLoader`].
+    pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
+        self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
+        self
+    }
+
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
     pub fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);
@@ -236,6 +244,13 @@ pub struct AssetRegistry {
     inner: UnsafeCell<Inner>,
     loader: AssetLoaderStub,
     load_thread: Cell<Option<JoinHandle<()>>>,
+}
+
+/// Label to use for scheduling systems that require the `AssetRegistry`
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum AssetRegistryScheduling {
+    /// AssetRegistry has been created
+    AssetRegistryCreated,
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or

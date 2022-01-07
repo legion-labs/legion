@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 lgn-content-store = { path = "../content-store", version = "0.1.0" }
 lgn-data-runtime-macros = { path = "macros", version = "0.1.0" }
 lgn-data-model = { path = "../data-model" }
+lgn-ecs = { path = "../ecs" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
 lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
 

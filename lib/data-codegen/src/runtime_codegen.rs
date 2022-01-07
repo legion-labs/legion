@@ -10,13 +10,13 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
         .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
             let type_name = format_ident!("{}", &struct_meta.name);
-            quote! { .add_loader::<#type_name>() }
+            quote! { .add_loader_mut::<#type_name>() }
         })
         .collect();
 
     if !entries.is_empty() {
         quote! {
-            pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
+            pub fn add_loaders(registry: &mut lgn_data_runtime::AssetRegistryOptions) -> &mut lgn_data_runtime::AssetRegistryOptions {
                 registry
                 #(#entries)*
             }

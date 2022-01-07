@@ -5,20 +5,30 @@ use crate::reflection::DataContainerMetaInfo;
 
 /// Generate Code for Resource Registration
 pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
-    let entries: Vec<TokenStream> = structs
+    let entries: Vec<_> = structs
         .iter()
         .filter(|struct_meta| struct_meta.is_resource)
-        .map(|struct_meta| {
-            let type_name = format_ident!("{}", &struct_meta.name);
-            quote! { .add_type::<#type_name>() }
-        })
+        .map(|struct_meta| format_ident!("{}", &struct_meta.name))
         .collect();
 
     if !entries.is_empty() {
+        let resource_registries = entries
+            .iter()
+            .map(|type_name| quote! { .add_type_mut::<#type_name>() });
+
+        let resources_loaders = entries
+            .iter()
+            .map(|type_name| quote! { .add_loader_mut::<#type_name>() });
+
         quote! {
-            pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
-                registry
-                #(#entries)*
+            pub fn register_resource_types(resource_registry: &mut lgn_data_offline::resource::ResourceRegistryOptions) -> &mut lgn_data_offline::resource::ResourceRegistryOptions {
+                resource_registry
+                #(#resource_registries)*
+            }
+
+            pub fn add_loaders(asset_registry: &mut lgn_data_runtime::AssetRegistryOptions) -> &mut lgn_data_runtime::AssetRegistryOptions {
+                asset_registry
+                #(#resources_loaders)*
             }
         }
     } else {

@@ -123,9 +123,9 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
     .unwrap();
 
     let mut registry = ResourceRegistryOptions::new();
-    registry = offline_data::register_resource_types(registry);
-    registry = lgn_graphics_offline::register_resource_types(registry);
-    registry = generic_data::offline::register_resource_types(registry);
+    offline_data::register_resource_types(&mut registry);
+    lgn_graphics_offline::register_resource_types(&mut registry);
+    generic_data::offline::register_resource_types(&mut registry);
     let registry = registry.create_registry();
 
     (project, registry)

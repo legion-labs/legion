@@ -31,11 +31,11 @@ mod transform_component;
 pub use transform_component::*;
 
 pub fn add_loaders(
-    registry: lgn_data_runtime::AssetRegistryOptions,
-) -> lgn_data_runtime::AssetRegistryOptions {
+    registry: &mut lgn_data_runtime::AssetRegistryOptions,
+) -> &mut lgn_data_runtime::AssetRegistryOptions {
     registry
-        .add_loader::<DebugCube>()
-        .add_loader::<EntityDc>()
-        .add_loader::<InstanceDc>()
-        .add_loader::<TestEntity>()
+        .add_loader_mut::<DebugCube>()
+        .add_loader_mut::<EntityDc>()
+        .add_loader_mut::<InstanceDc>()
+        .add_loader_mut::<TestEntity>()
 }

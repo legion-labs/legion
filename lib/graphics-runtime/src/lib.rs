@@ -65,6 +65,8 @@ use lgn_data_runtime::AssetRegistryOptions;
 pub use texture::Texture;
 
 /// Register crate's asset types to asset registry
-pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<Material>().add_loader::<Texture>()
+pub fn add_loaders(registry: &mut AssetRegistryOptions) {
+    registry
+        .add_loader_mut::<Material>()
+        .add_loader_mut::<Texture>();
 }
