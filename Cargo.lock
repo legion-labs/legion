@@ -3809,6 +3809,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-runtime",
  "lgn-renderer",
+ "lgn-telemetry",
  "lgn-transform",
  "sample-data-runtime",
  "serde_json",
@@ -4410,6 +4411,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "lgn-data-runtime",
+ "lgn-telemetry",
 ]
 
 [[package]]
@@ -7191,6 +7193,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-runtime",
  "lgn-math",
+ "lgn-telemetry",
  "serde",
  "typetag",
 ]
