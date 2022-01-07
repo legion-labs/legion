@@ -4,9 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_recursion::async_recursion;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use unicase::UniCase;
 
@@ -17,10 +16,28 @@ pub enum TreeNodeType {
     File = 2,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TreeNode {
     pub name: String,
     pub hash: String,
+}
+
+impl From<TreeNode> for lgn_source_control_proto::TreeNode {
+    fn from(tree_node: TreeNode) -> Self {
+        Self {
+            name: tree_node.name,
+            hash: tree_node.hash,
+        }
+    }
+}
+
+impl From<lgn_source_control_proto::TreeNode> for TreeNode {
+    fn from(tree_node: lgn_source_control_proto::TreeNode) -> Self {
+        Self {
+            name: tree_node.name,
+            hash: tree_node.hash,
+        }
+    }
 }
 
 impl TreeNode {
@@ -29,10 +46,28 @@ impl TreeNode {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Tree {
     pub directory_nodes: Vec<TreeNode>,
     pub file_nodes: Vec<TreeNode>,
+}
+
+impl From<Tree> for lgn_source_control_proto::Tree {
+    fn from(tree: Tree) -> Self {
+        Self {
+            directory_nodes: tree.directory_nodes.into_iter().map(Into::into).collect(),
+            file_nodes: tree.file_nodes.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<lgn_source_control_proto::Tree> for Tree {
+    fn from(tree: lgn_source_control_proto::Tree) -> Self {
+        Self {
+            directory_nodes: tree.directory_nodes.into_iter().map(Into::into).collect(),
+            file_nodes: tree.file_nodes.into_iter().map(Into::into).collect(),
+        }
+    }
 }
 
 impl Tree {
@@ -41,14 +76,6 @@ impl Tree {
             directory_nodes: Vec::new(),
             file_nodes: Vec::new(),
         }
-    }
-
-    pub fn from_json(contents: &str) -> Result<Self> {
-        serde_json::from_str(contents).context("error parsing tree")
-    }
-
-    pub fn to_json(&self) -> Result<String> {
-        serde_json::to_string(&self).context("error serializing tree")
     }
 
     pub fn is_empty(&self) -> bool {

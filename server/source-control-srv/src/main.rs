@@ -59,258 +59,458 @@
 #![allow()]
 
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use anyhow::{Context, Result};
-use http::response::Response;
-use hyper::body::Body;
-use lgn_source_control::{
-    commands, BlobStorageUrl, ClearLockRequest, ClountLocksInDomainRequest, CommitExistsRequest,
-    CommitToBranchRequest, FindBranchRequest, FindBranchesInLockDomainRequest, FindLockRequest,
-    FindLocksInDomainRequest, InsertBranchRequest, InsertCommitRequest, InsertLockRequest,
-    InsertWorkspaceRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
-    RepositoryQuery, RepositoryUrl, SaveTreeRequest, ServerRequest, UpdateBranchRequest,
+use anyhow::Result;
+use clap::Parser;
+use lgn_source_control::{BlobStorageUrl, Commit, RepositoryQuery, RepositoryUrl};
+use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
+use lgn_source_control_proto::{
+    ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
+    CommitToBranchRequest, CommitToBranchResponse, CountLocksInDomainRequest,
+    CountLocksInDomainResponse, CreateRepositoryRequest, CreateRepositoryResponse,
+    DestroyRepositoryRequest, DestroyRepositoryResponse, FindBranchRequest, FindBranchResponse,
+    FindBranchesInLockDomainRequest, FindBranchesInLockDomainResponse, FindLockRequest,
+    FindLockResponse, FindLocksInDomainRequest, FindLocksInDomainResponse,
+    GetBlobStorageUrlRequest, GetBlobStorageUrlResponse, InsertBranchRequest, InsertBranchResponse,
+    InsertCommitRequest, InsertCommitResponse, InsertLockRequest, InsertLockResponse,
+    ReadBranchesRequest, ReadBranchesResponse, ReadCommitRequest, ReadCommitResponse,
+    ReadTreeRequest, ReadTreeResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
+    SaveTreeRequest, SaveTreeResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
 
-#[macro_use]
-extern crate lazy_static;
-
-lazy_static! {
-    static ref REPOSITORY_QUERIES: RwLock<HashMap<String, Arc<Box<dyn RepositoryQuery>>>> =
-        RwLock::new(HashMap::new());
+struct Service {
+    repository_queries: RwLock<HashMap<String, Arc<Box<dyn RepositoryQuery>>>>,
+    sql_url: String,
+    blob_storage_url: BlobStorageUrl,
 }
 
-async fn init_remote_repository_req(name: &str) -> Result<String> {
-    let repository_url = get_repository_url(name);
-    let blob_storage_url = get_blob_storage_url()?;
-    let repository_connection =
-        commands::create_repository(&repository_url, &Some(blob_storage_url.clone())).await?;
+impl Service {
+    pub fn new(
+        database_host: &str,
+        database_username: Option<&str>,
+        database_password: Option<&str>,
+        blob_storage_url: BlobStorageUrl,
+    ) -> Self {
+        let sql_url = format!(
+            "mysql://{}:{}@{}/",
+            database_host,
+            database_username.unwrap_or_default(),
+            database_password.unwrap_or_default()
+        );
 
-    REPOSITORY_QUERIES.write().unwrap().insert(
-        String::from(name),
-        Arc::new(repository_connection.repo_query),
-    );
-
-    Ok(blob_storage_url.to_string())
-}
-
-async fn destroy_repository_req(name: &str) -> Result<String> {
-    let repository_url = get_repository_url(name);
-    REPOSITORY_QUERIES.write().unwrap().remove(name);
-    commands::destroy_repository(&repository_url).await?;
-
-    Ok("".to_string())
-}
-
-#[allow(clippy::unnecessary_wraps)]
-fn read_blob_storage_spec_req(_name: &str) -> Result<String> {
-    let blob_spec: BlobStorageUrl = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
-        .unwrap()
-        .parse()?;
-
-    serde_json::to_string(&blob_spec).context("error serializing blob storage spec")
-}
-
-fn get_repository_query(name: &str) -> Result<Arc<Box<dyn RepositoryQuery>>> {
-    REPOSITORY_QUERIES
-        .read()
-        .unwrap()
-        .get(name)
-        .ok_or_else(|| anyhow::anyhow!("repository not found"))
-        .map(Arc::clone)
-}
-
-async fn insert_workspace_req(args: &InsertWorkspaceRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.insert_workspace(&args.spec).await?;
-    Ok(String::from(""))
-}
-
-async fn find_branch_req(args: &FindBranchRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query.find_branch(&args.branch_name).await?;
-
-    serde_json::to_string(&res).context("error formatting find_branch_req result")
-}
-
-async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query.read_branches().await?;
-
-    serde_json::to_string(&res).context("error formatting read_branches_req result")
-}
-
-async fn find_branches_in_lock_domain(args: &FindBranchesInLockDomainRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query
-        .find_branches_in_lock_domain(&args.lock_domain_id)
-        .await?;
-
-    serde_json::to_string(&res).context("error formatting find_branches_in_lock_domain result")
-}
-
-async fn read_commit_req(args: &ReadCommitRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let commit = query.read_commit(&args.commit_id).await?;
-    commit.to_json()
-}
-
-async fn read_tree_req(args: &ReadTreeRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let tree = query.read_tree(&args.tree_hash).await?;
-    tree.to_json()
-}
-
-async fn insert_lock_req(args: &InsertLockRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.insert_lock(&args.lock).await?;
-    Ok(String::from(""))
-}
-
-async fn find_lock_req(args: &FindLockRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query
-        .find_lock(&args.lock_domain_id, &args.canonical_relative_path)
-        .await?;
-
-    serde_json::to_string(&res).context("error formatting find_lock result")
-}
-
-async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query.find_locks_in_domain(&args.lock_domain_id).await?;
-
-    serde_json::to_string(&res).context("error formatting find_locks_in_domain result")
-}
-
-async fn save_tree_req(args: &SaveTreeRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.save_tree(&args.tree, &args.hash).await?;
-
-    Ok(String::from(""))
-}
-
-async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.insert_commit(&args.commit).await?;
-    Ok(String::from(""))
-}
-
-async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.commit_to_branch(&args.commit, &args.branch).await?;
-    Ok(String::from(""))
-}
-
-async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query.commit_exists(&args.commit_id).await?;
-
-    serde_json::to_string(&res).context("error formatting commit_exists result")
-}
-
-async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.update_branch(&args.branch).await?;
-    Ok(String::from(""))
-}
-
-async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query.insert_branch(&args.branch).await?;
-    Ok(String::from(""))
-}
-
-async fn clear_lock_req(args: &ClearLockRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    query
-        .clear_lock(&args.lock_domain_id, &args.canonical_relative_path)
-        .await?;
-    Ok(String::from(""))
-}
-
-async fn count_locks_in_domain_req(args: &ClountLocksInDomainRequest) -> Result<String> {
-    let query = get_repository_query(&args.repo_name)?;
-    let res = query.count_locks_in_domain(&args.lock_domain_id).await?;
-
-    serde_json::to_string(&res).context("error formatting count_locks_in_domain_req result")
-}
-
-async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String> {
-    let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
-    println!("{:?}", req);
-    match req {
-        ServerRequest::Ping(req) => Ok(format!("Pong from {}", req.specified_uri)),
-        ServerRequest::InitRepo(req) => init_remote_repository_req(&req.repo_name).await,
-        ServerRequest::DestroyRepo(req) => destroy_repository_req(&req.repo_name).await,
-        ServerRequest::ReadBlobStorageSpec(req) => read_blob_storage_spec_req(&req.repo_name),
-        ServerRequest::InsertWorkspace(req) => insert_workspace_req(&req).await,
-        ServerRequest::FindBranch(req) => find_branch_req(&req).await,
-        ServerRequest::ReadBranches(req) => read_branches_req(&req).await,
-        ServerRequest::FindBranchesInLockDomain(req) => find_branches_in_lock_domain(&req).await,
-        ServerRequest::ReadCommit(req) => read_commit_req(&req).await,
-        ServerRequest::ReadTree(req) => read_tree_req(&req).await,
-        ServerRequest::InsertLock(req) => insert_lock_req(&req).await,
-        ServerRequest::FindLock(req) => find_lock_req(&req).await,
-        ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
-        ServerRequest::SaveTree(req) => save_tree_req(&req).await,
-        ServerRequest::InsertCommit(req) => insert_commit_req(&req).await,
-        ServerRequest::CommitToBranch(req) => insert_commit_to_branch_req(&req).await,
-        ServerRequest::CommitExists(req) => commit_exists_req(&req).await,
-        ServerRequest::UpdateBranch(req) => update_branch_req(&req).await,
-        ServerRequest::InsertBranch(req) => insert_branch_req(&req).await,
-        ServerRequest::ClearLock(req) => clear_lock_req(&req).await,
-        ServerRequest::ClountLocksInDomain(req) => count_locks_in_domain_req(&req).await,
-    }
-}
-
-#[allow(dead_code)]
-async fn dispatch_request(body: bytes::Bytes) -> Result<warp::reply::Response, warp::Rejection> {
-    match dispatch_request_impl(body).await {
-        Ok(body) => Ok(Response::builder().body(Body::from(body)).unwrap()),
-        Err(e) => {
-            let message = format!("Error processing request: {}", e);
-            Ok(Response::builder()
-                .status(500)
-                .body(Body::from(message))
-                .unwrap())
+        Self {
+            repository_queries: RwLock::new(HashMap::new()),
+            sql_url,
+            blob_storage_url,
         }
     }
+
+    fn get_repository_url(&self, name: &str) -> RepositoryUrl {
+        (self.sql_url.clone() + name).parse().unwrap()
+    }
+
+    fn get_repository_query(
+        &self,
+        name: &str,
+    ) -> Result<Arc<Box<dyn RepositoryQuery>>, tonic::Status> {
+        self.repository_queries
+            .read()
+            .unwrap()
+            .get(name)
+            .ok_or_else(|| anyhow::anyhow!("repository not found"))
+            .map(Arc::clone)
+            .map_err(|e| tonic::Status::unknown(e.to_string()))
+    }
 }
 
-fn get_repository_url(db_name: &str) -> RepositoryUrl {
-    let db_host = std::env::var("LEGION_SRC_CTL_DATABASE_HOST")
-        .expect("missing env variable LEGION_SRC_CTL_DATABASE_HOST");
-    let db_user = std::env::var("LEGION_SRC_CTL_DATABASE_USERNAME")
-        .expect("missing env variable LEGION_SRC_CTL_DATABASE_USERNAME");
-    let db_pass = std::env::var("LEGION_SRC_CTL_DATABASE_PASSWORD").unwrap_or_default(); //because it can be empty
+#[tonic::async_trait]
+impl SourceControl for Service {
+    async fn ping(
+        &self,
+        _request: tonic::Request<()>,
+    ) -> Result<tonic::Response<()>, tonic::Status> {
+        Ok(tonic::Response::new(()))
+    }
 
-    format!("mysql://{}:{}@{}/{}", db_user, db_pass, db_host, db_name)
-        .parse()
-        .unwrap()
+    async fn create_repository(
+        &self,
+        request: tonic::Request<CreateRepositoryRequest>,
+    ) -> Result<tonic::Response<CreateRepositoryResponse>, tonic::Status> {
+        let name = request.into_inner().repository_name;
+        let repository_url = self.get_repository_url(&name);
+        let repository_query = repository_url.into_query();
+
+        let blob_storage_url = repository_query
+            .create_repository(Some(self.blob_storage_url.clone()))
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        self.repository_queries
+            .write()
+            .unwrap()
+            .insert(name, Arc::new(repository_query));
+
+        Ok(tonic::Response::new(CreateRepositoryResponse {
+            blob_storage_url: blob_storage_url.to_string(),
+        }))
+    }
+
+    async fn destroy_repository(
+        &self,
+        request: tonic::Request<DestroyRepositoryRequest>,
+    ) -> Result<tonic::Response<DestroyRepositoryResponse>, tonic::Status> {
+        let name = request.into_inner().repository_name;
+
+        // This does not protect from the race condition where a repository is
+        // destroyed while another with the same name is being created.
+        //
+        // We could try to be smart and protect that case by holding the write
+        // mutex a little longer, but that would not protect us against the case
+        // where several instances of the service are running at the same time,
+        // each we a distinct mutex.
+        //
+        // The only real protection here, is ensuring that this can't happen at
+        // the database level, which we don't care about at this early stage.
+        let repository_query = self.repository_queries.write().unwrap().remove(&name);
+
+        let repository_query = match repository_query {
+            Some(repository_query) => repository_query,
+            None => self.get_repository_query(&name)?,
+        };
+
+        repository_query
+            .destroy_repository()
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(DestroyRepositoryResponse {}))
+    }
+
+    async fn get_blob_storage_url(
+        &self,
+        _request: tonic::Request<GetBlobStorageUrlRequest>,
+    ) -> Result<tonic::Response<GetBlobStorageUrlResponse>, tonic::Status> {
+        Ok(tonic::Response::new(GetBlobStorageUrlResponse {
+            blob_storage_url: self.blob_storage_url.to_string(),
+        }))
+    }
+
+    async fn register_workspace(
+        &self,
+        request: tonic::Request<RegisterWorkspaceRequest>,
+    ) -> Result<tonic::Response<RegisterWorkspaceResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let workspace_registration = request.workspace_registration.unwrap_or_default().into();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .register_workspace(&workspace_registration)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(RegisterWorkspaceResponse {}))
+    }
+
+    async fn find_branch(
+        &self,
+        request: tonic::Request<FindBranchRequest>,
+    ) -> Result<tonic::Response<FindBranchResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let branch = query
+            .find_branch(&request.branch_name)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?
+            .map(Into::into);
+
+        Ok(tonic::Response::new(FindBranchResponse { branch }))
+    }
+
+    async fn read_branches(
+        &self,
+        request: tonic::Request<ReadBranchesRequest>,
+    ) -> Result<tonic::Response<ReadBranchesResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let branches = query
+            .read_branches()
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(ReadBranchesResponse {
+            branches: branches.into_iter().map(Into::into).collect(),
+        }))
+    }
+
+    async fn find_branches_in_lock_domain(
+        &self,
+        request: tonic::Request<FindBranchesInLockDomainRequest>,
+    ) -> Result<tonic::Response<FindBranchesInLockDomainResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let branches = query
+            .find_branches_in_lock_domain(&request.lock_domain_id)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(FindBranchesInLockDomainResponse {
+            branches: branches.into_iter().map(Into::into).collect(),
+        }))
+    }
+
+    async fn read_commit(
+        &self,
+        request: tonic::Request<ReadCommitRequest>,
+    ) -> Result<tonic::Response<ReadCommitResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let commit = Some(
+            query
+                .read_commit(&request.commit_id)
+                .await
+                .map_err(|e| tonic::Status::unknown(e.to_string()))?
+                .into(),
+        );
+
+        Ok(tonic::Response::new(ReadCommitResponse { commit }))
+    }
+
+    async fn read_tree(
+        &self,
+        request: tonic::Request<ReadTreeRequest>,
+    ) -> Result<tonic::Response<ReadTreeResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let tree = Some(
+            query
+                .read_tree(&request.tree_hash)
+                .await
+                .map_err(|e| tonic::Status::unknown(e.to_string()))?
+                .into(),
+        );
+
+        Ok(tonic::Response::new(ReadTreeResponse { tree }))
+    }
+
+    async fn insert_lock(
+        &self,
+        request: tonic::Request<InsertLockRequest>,
+    ) -> Result<tonic::Response<InsertLockResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .insert_lock(&request.lock.unwrap_or_default().into())
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(InsertLockResponse {}))
+    }
+
+    async fn find_lock(
+        &self,
+        request: tonic::Request<FindLockRequest>,
+    ) -> Result<tonic::Response<FindLockResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let lock = query
+            .find_lock(&request.lock_domain_id, &request.canonical_relative_path)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?
+            .map(Into::into);
+
+        Ok(tonic::Response::new(FindLockResponse { lock }))
+    }
+
+    async fn find_locks_in_domain(
+        &self,
+        request: tonic::Request<FindLocksInDomainRequest>,
+    ) -> Result<tonic::Response<FindLocksInDomainResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let locks = query
+            .find_locks_in_domain(&request.lock_domain_id)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        Ok(tonic::Response::new(FindLocksInDomainResponse { locks }))
+    }
+
+    async fn save_tree(
+        &self,
+        request: tonic::Request<SaveTreeRequest>,
+    ) -> Result<tonic::Response<SaveTreeResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .save_tree(&request.tree.unwrap_or_default().into(), &request.hash)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(SaveTreeResponse {}))
+    }
+
+    async fn insert_commit(
+        &self,
+        request: tonic::Request<InsertCommitRequest>,
+    ) -> Result<tonic::Response<InsertCommitResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
+        let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        query
+            .insert_commit(&commit)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(InsertCommitResponse {}))
+    }
+
+    async fn commit_to_branch(
+        &self,
+        request: tonic::Request<CommitToBranchRequest>,
+    ) -> Result<tonic::Response<CommitToBranchResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
+        let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        query
+            .commit_to_branch(&commit, &request.branch.unwrap_or_default().into())
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(CommitToBranchResponse {}))
+    }
+
+    async fn commit_exists(
+        &self,
+        request: tonic::Request<CommitExistsRequest>,
+    ) -> Result<tonic::Response<CommitExistsResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let exists = query
+            .commit_exists(&request.commit_id)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(CommitExistsResponse { exists }))
+    }
+
+    async fn update_branch(
+        &self,
+        request: tonic::Request<UpdateBranchRequest>,
+    ) -> Result<tonic::Response<UpdateBranchResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .update_branch(&request.branch.unwrap_or_default().into())
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(UpdateBranchResponse {}))
+    }
+
+    async fn insert_branch(
+        &self,
+        request: tonic::Request<InsertBranchRequest>,
+    ) -> Result<tonic::Response<InsertBranchResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .insert_branch(&request.branch.unwrap_or_default().into())
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(InsertBranchResponse {}))
+    }
+
+    async fn clear_lock(
+        &self,
+        request: tonic::Request<ClearLockRequest>,
+    ) -> Result<tonic::Response<ClearLockResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        query
+            .clear_lock(&request.lock_domain_id, &request.canonical_relative_path)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(ClearLockResponse {}))
+    }
+
+    async fn count_locks_in_domain(
+        &self,
+        request: tonic::Request<CountLocksInDomainRequest>,
+    ) -> Result<tonic::Response<CountLocksInDomainResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let query = self.get_repository_query(&request.repository_name)?;
+
+        let count = query
+            .count_locks_in_domain(&request.lock_domain_id)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(CountLocksInDomainResponse { count }))
+    }
 }
 
-fn get_blob_storage_url() -> Result<BlobStorageUrl> {
-    std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
-        .unwrap()
-        .parse()
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Labs source-control server")]
+#[clap(about = "Source-control server.", version, author)]
+struct Args {
+    /// The address to listen on.
+    #[clap(long, default_value = "[::1]:50051")]
+    listen_endpoint: SocketAddr,
+
+    /// The SQL database host.
+    #[clap(long)]
+    database_host: String,
+
+    /// The SQL database username.
+    #[clap(long)]
+    database_username: Option<String>,
+
+    /// The SQL database password.
+    #[clap(long)]
+    database_password: Option<String>,
+
+    /// The blob storage URL.
+    #[clap(long)]
+    blob_storage_url: BlobStorageUrl,
 }
 
 #[allow(clippy::semicolon_if_nothing_returned)]
 #[tokio::main]
-async fn main() {
-    // TODO: This does not compile anymore but since we will trash it right
-    // away once we move to gRPC, let's just comment it.
+async fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+    let service = SourceControlServer::new(Service::new(
+        &args.database_host,
+        args.database_username.as_deref(),
+        args.database_password.as_deref(),
+        args.blob_storage_url,
+    ));
+    let server = tonic::transport::Server::builder().add_service(service);
 
-    //let command_filter = warp::path("lsc")
-    //    .and(warp::body::bytes())
-    //    .and_then(dispatch_request);
-
-    //let server_addr_str = std::env::var("LEGION_SRC_CTL_SERVER_ADDR")
-    //    .expect("missing env variable LEGION_SRC_CTL_SERVER_ADDR");
-    //let addr: std::net::SocketAddr = server_addr_str
-    //    .parse()
-    //    .expect("Error parsing server address");
-
-    //warp::serve(command_filter).run(addr).await;
+    server.serve(args.listen_endpoint).await.map_err(Into::into)
 }

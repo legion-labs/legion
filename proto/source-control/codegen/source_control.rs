@@ -26,23 +26,19 @@ pub struct GetBlobStorageUrlResponse {
     pub blob_storage_url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InsertWorkspaceRequest {
+pub struct RegisterWorkspaceRequest {
     #[prost(string, tag = "1")]
     pub repository_name: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub workspace: ::core::option::Option<Workspace>,
+    pub workspace_registration: ::core::option::Option<WorkspaceRegistration>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InsertWorkspaceResponse {}
+pub struct RegisterWorkspaceResponse {}
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Workspace {
+pub struct WorkspaceRegistration {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub repository_address: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub root: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
     pub owner: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -54,16 +50,8 @@ pub struct FindBranchRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindBranchResponse {
-    #[prost(oneof = "find_branch_response::Branch", tags = "1")]
-    pub branch: ::core::option::Option<find_branch_response::Branch>,
-}
-/// Nested message and enum types in `FindBranchResponse`.
-pub mod find_branch_response {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Branch {
-        #[prost(message, tag = "1")]
-        Value(super::Branch),
-    }
+    #[prost(message, optional, tag = "1")]
+    pub branch: ::core::option::Option<Branch>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Branch {
@@ -84,7 +72,7 @@ pub struct ReadBranchesRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadBranchesResponse {
     #[prost(message, repeated, tag = "1")]
-    pub value: ::prost::alloc::vec::Vec<Branch>,
+    pub branches: ::prost::alloc::vec::Vec<Branch>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindBranchesInLockDomainRequest {
@@ -96,7 +84,7 @@ pub struct FindBranchesInLockDomainRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindBranchesInLockDomainResponse {
     #[prost(message, repeated, tag = "1")]
-    pub branch: ::prost::alloc::vec::Vec<Branch>,
+    pub branches: ::prost::alloc::vec::Vec<Branch>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadCommitRequest {
@@ -193,16 +181,8 @@ pub struct FindLockRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindLockResponse {
-    #[prost(oneof = "find_lock_response::Lock", tags = "1")]
-    pub lock: ::core::option::Option<find_lock_response::Lock>,
-}
-/// Nested message and enum types in `FindLockResponse`.
-pub mod find_lock_response {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Lock {
-        #[prost(message, tag = "1")]
-        Value(super::Lock),
-    }
+    #[prost(message, optional, tag = "1")]
+    pub lock: ::core::option::Option<Lock>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindLocksInDomainRequest {
@@ -429,10 +409,10 @@ pub mod source_control_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        pub async fn insert_workspace(
+        pub async fn register_workspace(
             &mut self,
-            request: impl tonic::IntoRequest<super::InsertWorkspaceRequest>,
-        ) -> Result<tonic::Response<super::InsertWorkspaceResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::RegisterWorkspaceRequest>,
+        ) -> Result<tonic::Response<super::RegisterWorkspaceResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -441,7 +421,7 @@ pub mod source_control_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/source_control.SourceControl/InsertWorkspace",
+                "/source_control.SourceControl/RegisterWorkspace",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -715,10 +695,10 @@ pub mod source_control_server {
             &self,
             request: tonic::Request<super::GetBlobStorageUrlRequest>,
         ) -> Result<tonic::Response<super::GetBlobStorageUrlResponse>, tonic::Status>;
-        async fn insert_workspace(
+        async fn register_workspace(
             &self,
-            request: tonic::Request<super::InsertWorkspaceRequest>,
-        ) -> Result<tonic::Response<super::InsertWorkspaceResponse>, tonic::Status>;
+            request: tonic::Request<super::RegisterWorkspaceRequest>,
+        ) -> Result<tonic::Response<super::RegisterWorkspaceResponse>, tonic::Status>;
         async fn find_branch(
             &self,
             request: tonic::Request<super::FindBranchRequest>,
@@ -953,21 +933,21 @@ pub mod source_control_server {
                     };
                     Box::pin(fut)
                 }
-                "/source_control.SourceControl/InsertWorkspace" => {
+                "/source_control.SourceControl/RegisterWorkspace" => {
                     #[allow(non_camel_case_types)]
-                    struct InsertWorkspaceSvc<T: SourceControl>(pub Arc<T>);
+                    struct RegisterWorkspaceSvc<T: SourceControl>(pub Arc<T>);
                     impl<T: SourceControl>
-                        tonic::server::UnaryService<super::InsertWorkspaceRequest>
-                        for InsertWorkspaceSvc<T>
+                        tonic::server::UnaryService<super::RegisterWorkspaceRequest>
+                        for RegisterWorkspaceSvc<T>
                     {
-                        type Response = super::InsertWorkspaceResponse;
+                        type Response = super::RegisterWorkspaceResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::InsertWorkspaceRequest>,
+                            request: tonic::Request<super::RegisterWorkspaceRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).insert_workspace(request).await };
+                            let fut = async move { (*inner).register_workspace(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -976,7 +956,7 @@ pub mod source_control_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = InsertWorkspaceSvc(inner);
+                        let method = RegisterWorkspaceSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

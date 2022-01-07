@@ -7,7 +7,12 @@ use std::{
     str::FromStr,
 };
 
-use crate::{parse_url_or_path, UrlOrPath};
+use crate::{
+    lsc_repository_query::LscRepositoryQuery,
+    parse_url_or_path,
+    sql_repository_query::{DatabaseUri, SqlRepositoryQuery},
+    LocalRepositoryQuery, RepositoryQuery, UrlOrPath,
+};
 
 /// A repository URL.
 ///
@@ -16,7 +21,7 @@ use crate::{parse_url_or_path, UrlOrPath};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepositoryUrl {
     Local(PathBuf),
-    MySQL(Url),
+    Mysql(Url),
     Lsc(Url),
 }
 
@@ -27,7 +32,7 @@ impl FromStr for RepositoryUrl {
         match parse_url_or_path(s)? {
             UrlOrPath::Path(path) => Ok(Self::Local(path)),
             UrlOrPath::Url(url) => match url.scheme() {
-                "mysql" => Ok(Self::MySQL(url)),
+                "mysql" => Ok(Self::Mysql(url)),
                 "http" | "https" => Ok(Self::Lsc(url)),
                 scheme => Err(anyhow::anyhow!(
                     "unsupported repository URL scheme: {}",
@@ -55,13 +60,23 @@ impl RepositoryUrl {
             self
         }
     }
+
+    pub fn into_query(self) -> Box<dyn RepositoryQuery> {
+        match self {
+            Self::Local(directory) => Box::new(LocalRepositoryQuery::new(directory)),
+            Self::Mysql(url) => {
+                Box::new(SqlRepositoryQuery::new(DatabaseUri::Mysql(url.to_string())))
+            }
+            Self::Lsc(url) => Box::new(LscRepositoryQuery::new(url)),
+        }
+    }
 }
 
 impl Display for RepositoryUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Local(p) => write!(f, "{}", p.display()),
-            Self::MySQL(u) | Self::Lsc(u) => write!(f, "{}", u),
+            Self::Mysql(u) | Self::Lsc(u) => write!(f, "{}", u),
         }
     }
 }
@@ -140,7 +155,7 @@ mod tests {
     fn test_from_str_mysql() {
         assert_eq!(
             RepositoryUrl::from_str("mysql://user:pass@localhost:3306/db").unwrap(),
-            RepositoryUrl::MySQL(Url::parse("mysql://user:pass@localhost:3306/db").unwrap())
+            RepositoryUrl::Mysql(Url::parse("mysql://user:pass@localhost:3306/db").unwrap())
         );
     }
 
@@ -173,7 +188,7 @@ mod tests {
             "my/path"
         );
         assert_eq!(
-            RepositoryUrl::MySQL("mysql://user:pass@localhost:3306/db".try_into().unwrap())
+            RepositoryUrl::Mysql("mysql://user:pass@localhost:3306/db".try_into().unwrap())
                 .to_string(),
             "mysql://user:pass@localhost:3306/db"
         );

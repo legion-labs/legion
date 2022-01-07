@@ -1,4 +1,3 @@
-use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
@@ -10,7 +9,7 @@ use sqlx::Row;
 use crate::{
     connect_to_server, download_temp_file, fetch_tree_subdir, find_workspace_root,
     make_canonical_relative_path, make_path_absolute, read_bin_file, read_workspace_spec,
-    sql::execute_sql, write_file, Config, LocalWorkspaceConnection, RepositoryConnection, TempPath,
+    sql::execute_sql, write_file, Config, LocalWorkspaceConnection, RepositoryConnection,
 };
 
 #[derive(Debug)]
@@ -254,12 +253,14 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<()> {
     let theirs_temp_file =
         download_temp_file(&connection, &workspace_root, &theirs_file_hash).await?;
     let tmp_dir = workspace_root.join(".lsc/tmp");
-    let output_temp_file = TempPath {
-        path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
-    };
+    let output_temp_file = tempfile::NamedTempFile::new_in(&tmp_dir)?.into_temp_path();
 
     if !allow_tools {
-        run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
+        run_diffy_merge(
+            &abs_path,
+            &theirs_temp_file.to_path_buf(),
+            &base_temp_file.to_path_buf(),
+        )?;
         clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
 
         return workspace_transaction
@@ -271,16 +272,18 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<()> {
     run_merge_program(
         Path::new(&relative_path),
         abs_path.to_str().unwrap(),
-        theirs_temp_file.path.to_str().unwrap(),
-        base_temp_file.path.to_str().unwrap(),
-        output_temp_file.path.to_str().unwrap(),
+        theirs_temp_file.to_path_buf().to_str().unwrap(),
+        base_temp_file.to_path_buf().to_str().unwrap(),
+        output_temp_file.to_str().unwrap(),
     )?;
 
-    fs::copy(&output_temp_file.path, &abs_path).context(format!(
-        "error copying {} to {}",
-        output_temp_file.path.display(),
-        abs_path.display()
-    ))?;
+    tokio::fs::copy(output_temp_file.to_path_buf(), &abs_path)
+        .await
+        .context(format!(
+            "error copying {} to {}",
+            output_temp_file.to_path_buf().display(),
+            abs_path.display()
+        ))?;
 
     println!("Merge accepted, {} updated", abs_path.display());
     clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;

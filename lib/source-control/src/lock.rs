@@ -2,20 +2,41 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
     read_workspace_spec, sql::execute_sql, LocalWorkspaceConnection, RepositoryQuery,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Lock {
     pub relative_path: String, /* needs to have a stable representation across platforms because
                                 * it seeds the hash */
     pub lock_domain_id: String,
     pub workspace_id: String,
     pub branch_name: String,
+}
+
+impl From<Lock> for lgn_source_control_proto::Lock {
+    fn from(lock: Lock) -> Self {
+        Self {
+            relative_path: lock.relative_path,
+            lock_domain_id: lock.lock_domain_id,
+            workspace_id: lock.workspace_id,
+            branch_name: lock.branch_name,
+        }
+    }
+}
+
+impl From<lgn_source_control_proto::Lock> for Lock {
+    fn from(lock: lgn_source_control_proto::Lock) -> Self {
+        Self {
+            relative_path: lock.relative_path,
+            lock_domain_id: lock.lock_domain_id,
+            workspace_id: lock.workspace_id,
+            branch_name: lock.branch_name,
+        }
+    }
 }
 
 pub async fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
@@ -51,7 +72,7 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
-        workspace_id: workspace_spec.id,
+        workspace_id: workspace_spec.registration.id,
         branch_name: repo_branch.name,
     };
     query.insert_lock(&lock).await
@@ -117,7 +138,9 @@ pub async fn assert_not_locked(
             relative_path,
         ))? {
         Some(lock) => {
-            if lock.branch_name == current_branch_name && lock.workspace_id == workspace_spec.id {
+            if lock.branch_name == current_branch_name
+                && lock.workspace_id == workspace_spec.registration.id
+            {
                 Ok(()) //locked by this workspace on this branch - all good
             } else {
                 anyhow::bail!(

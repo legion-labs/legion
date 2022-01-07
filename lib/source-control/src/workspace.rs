@@ -4,26 +4,14 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::write_file;
-use crate::{
-    make_path_absolute, read_text_file, sql::execute_sql, RepositoryAddr, RepositoryConnection,
-};
+use crate::{make_path_absolute, read_text_file, RepositoryConnection};
+use crate::{write_file, RepositoryUrl, WorkspaceRegistration};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Workspace {
-    pub id: String, //a file lock will contain the workspace id
-    pub repo_addr: RepositoryAddr,
+    pub registration: WorkspaceRegistration,
+    pub repository_url: RepositoryUrl,
     pub root: String,
-    pub owner: String,
-}
-
-pub async fn init_workspace_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
-    let sql = "CREATE TABLE workspaces(id VARCHAR(255), root VARCHAR(255), owner VARCHAR(255));
-               CREATE UNIQUE INDEX workspace_id on workspaces(id);";
-
-    execute_sql(sql_connection, sql)
-        .await
-        .context("error creating workspace table and index")
 }
 
 pub fn find_workspace_root(directory: &Path) -> Result<PathBuf> {
@@ -50,25 +38,11 @@ pub fn write_workspace_spec(path: &Path, spec: &Workspace) -> Result<()> {
     write_file(path, data.as_bytes())
 }
 
-pub struct TempPath {
-    pub path: PathBuf,
-}
-
-impl Drop for TempPath {
-    fn drop(&mut self) {
-        if self.path.exists() {
-            if let Err(e) = fs::remove_file(&self.path) {
-                println!("Error deleting temp file {}: {}", self.path.display(), e);
-            }
-        }
-    }
-}
-
 pub async fn download_temp_file(
     connection: &RepositoryConnection,
     workspace_root: &Path,
     blob_hash: &str,
-) -> Result<TempPath> {
+) -> Result<tempfile::TempPath> {
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let temp_file_path = tmp_dir.join(blob_hash);
 
@@ -77,7 +51,5 @@ pub async fn download_temp_file(
         .download_blob(&temp_file_path, blob_hash)
         .await?;
 
-    Ok(TempPath {
-        path: temp_file_path,
-    })
+    Ok(tempfile::TempPath::from_path(temp_file_path))
 }

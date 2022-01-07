@@ -56,7 +56,7 @@
 // crate-specific exceptions:
 #![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
@@ -94,9 +94,9 @@ enum Commands {
     #[clap(name = "init-workspace")]
     InitWorkspace {
         /// lsc workspace directory
-        workspace_directory: String,
+        workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
-        repository_uri: String,
+        repository_url: RepositoryUrl,
     },
     /// Adds local file to the set of pending changes
     #[clap(name = "add")]
@@ -261,25 +261,24 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("create-repository");
 
-            lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
-                .await?;
+            let repository_query = repository_url.into_query();
+            repository_query.create_repository(blob_storage_url).await?;
 
             Ok(())
         }
         Commands::DestroyRepository { repository_url } => {
             info!("destroy-repository");
 
-            lgn_source_control::commands::destroy_repository(&repository_url).await?;
-
-            Ok(())
+            let repository_query = repository_url.into_query();
+            repository_query.destroy_repository().await
         }
         Commands::InitWorkspace {
             workspace_directory,
-            repository_uri,
+            repository_url,
         } => {
             info!("init-workspace");
 
-            init_workspace_command(Path::new(&workspace_directory), &repository_uri).await
+            init_workspace_command(&workspace_directory, repository_url).await
         }
         Commands::Add { path } => {
             info!("add {}", path);
@@ -410,9 +409,9 @@ async fn main() -> anyhow::Result<()> {
             import_git_branch_command(Path::new(&path), &branch).await
         }
         Commands::Ping { repository_url } => {
-            info!("ping {}", &repository_url);
+            let repository_query = repository_url.into_query();
 
-            lgn_source_control::commands::ping(&repository_url).await
+            repository_query.ping().await
         }
     }
 }

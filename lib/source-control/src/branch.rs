@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
-use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
@@ -8,12 +7,34 @@ use crate::{
     LocalWorkspaceConnection,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Branch {
     pub name: String,
     pub head: String, //commit id
     pub parent: String,
     pub lock_domain_id: String,
+}
+
+impl From<Branch> for lgn_source_control_proto::Branch {
+    fn from(branch: Branch) -> Self {
+        Self {
+            name: branch.name,
+            head: branch.head,
+            parent: branch.parent,
+            lock_domain_id: branch.lock_domain_id,
+        }
+    }
+}
+
+impl From<lgn_source_control_proto::Branch> for Branch {
+    fn from(branch: lgn_source_control_proto::Branch) -> Self {
+        Self {
+            name: branch.name,
+            head: branch.head,
+            parent: branch.parent,
+            lock_domain_id: branch.lock_domain_id,
+        }
+    }
 }
 
 impl Branch {
@@ -23,21 +44,6 @@ impl Branch {
             head,
             parent,
             lock_domain_id,
-        }
-    }
-
-    pub fn from_json(contents: &str) -> Result<Self, String> {
-        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
-        match parsed {
-            Ok(branch) => Ok(branch),
-            Err(e) => Err(format!("Error parsing branch spec {}", e)),
-        }
-    }
-
-    pub fn to_json(&self) -> Result<String, String> {
-        match serde_json::to_string(&self) {
-            Ok(json) => Ok(json),
-            Err(e) => Err(format!("Error formatting branch {:?}: {}", self.name, e)),
         }
     }
 }

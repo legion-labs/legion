@@ -20,6 +20,26 @@ pub enum ChangeType {
     Delete = 3,
 }
 
+impl From<ChangeType> for lgn_source_control_proto::ChangeType {
+    fn from(change_type: ChangeType) -> Self {
+        match change_type {
+            ChangeType::Edit => Self::Edit,
+            ChangeType::Add => Self::Add,
+            ChangeType::Delete => Self::Delete,
+        }
+    }
+}
+
+impl From<lgn_source_control_proto::ChangeType> for ChangeType {
+    fn from(change_type: lgn_source_control_proto::ChangeType) -> Self {
+        match change_type {
+            lgn_source_control_proto::ChangeType::Edit => Self::Edit,
+            lgn_source_control_proto::ChangeType::Add => Self::Add,
+            lgn_source_control_proto::ChangeType::Delete => Self::Delete,
+        }
+    }
+}
+
 impl ChangeType {
     pub fn from_int(i: i64) -> Result<Self> {
         match i {

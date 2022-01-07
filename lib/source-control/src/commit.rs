@@ -1,9 +1,8 @@
-use std::path::Path;
+use std::{path::Path, time::SystemTime};
 
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use lgn_tracing::span_fn;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -14,14 +13,49 @@ use crate::{
     LocalWorkspaceConnection, RepositoryConnection,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct HashedChange {
     pub relative_path: String,
     pub hash: String,
     pub change_type: ChangeType,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl From<HashedChange> for lgn_source_control_proto::HashedChange {
+    fn from(hashed_change: HashedChange) -> Self {
+        let change_type: lgn_source_control_proto::ChangeType = hashed_change.change_type.into();
+
+        Self {
+            relative_path: hashed_change.relative_path,
+            hash: hashed_change.hash,
+            change_type: change_type as i32,
+        }
+    }
+}
+
+impl TryFrom<lgn_source_control_proto::HashedChange> for HashedChange {
+    type Error = anyhow::Error;
+
+    fn try_from(hashed_change: lgn_source_control_proto::HashedChange) -> Result<Self> {
+        let change_type =
+            match lgn_source_control_proto::ChangeType::from_i32(hashed_change.change_type) {
+                Some(change_type) => change_type.into(),
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "invalid change type {}",
+                        hashed_change.change_type
+                    ))
+                }
+            };
+
+        Ok(Self {
+            relative_path: hashed_change.relative_path,
+            hash: hashed_change.hash,
+            change_type,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Commit {
     pub id: String,
     pub owner: String,
@@ -29,7 +63,7 @@ pub struct Commit {
     pub changes: Vec<HashedChange>,
     pub root_hash: String,
     pub parents: Vec<String>,
-    pub date_time_utc: String,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl Commit {
@@ -41,8 +75,8 @@ impl Commit {
         changes: Vec<HashedChange>,
         root_hash: String,
         parents: Vec<String>,
+        timestamp: DateTime<Utc>,
     ) -> Self {
-        let date_time_utc = Utc::now().to_rfc3339();
         assert!(!parents.contains(&id));
         Self {
             id,
@@ -51,18 +85,52 @@ impl Commit {
             changes,
             root_hash,
             parents,
-            date_time_utc,
+            timestamp,
         }
     }
+}
 
-    #[span_fn]
-    pub fn from_json(contents: &str) -> Result<Self> {
-        serde_json::from_str(contents).context("parsing commit")
+impl From<Commit> for lgn_source_control_proto::Commit {
+    fn from(commit: Commit) -> Self {
+        let timestamp: SystemTime = commit.timestamp.into();
+
+        Self {
+            id: commit.id,
+            owner: commit.owner,
+            message: commit.message,
+            changes: commit.changes.into_iter().map(Into::into).collect(),
+            root_hash: commit.root_hash,
+            parents: commit.parents,
+            timestamp: Some(timestamp.into()),
+        }
     }
+}
 
-    #[span_fn]
-    pub fn to_json(&self) -> Result<String> {
-        serde_json::to_string(&self).context(format!("serializing commit {}", self.id))
+impl TryFrom<lgn_source_control_proto::Commit> for Commit {
+    type Error = anyhow::Error;
+
+    fn try_from(commit: lgn_source_control_proto::Commit) -> Result<Self> {
+        let timestamp = commit.timestamp.unwrap_or_default();
+        let timestamp = DateTime::from_utc(
+            NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
+            Utc,
+        );
+
+        let changes = commit
+            .changes
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self {
+            id: commit.id,
+            owner: commit.owner,
+            message: commit.message,
+            changes,
+            root_hash: commit.root_hash,
+            parents: commit.parents,
+            timestamp,
+        })
     }
 }
 
@@ -162,6 +230,7 @@ pub async fn commit_local_changes(
     for pending_branch_merge in read_pending_branch_merges(workspace_transaction).await? {
         parent_commits.push(pending_branch_merge.head.clone());
     }
+    let timestamp = Utc::now();
 
     let commit = Commit::new(
         String::from(commit_id),
@@ -170,6 +239,7 @@ pub async fn commit_local_changes(
         hashed_changes,
         new_root_hash,
         parent_commits,
+        timestamp,
     );
     query.commit_to_branch(&commit, &repo_branch).await?;
     repo_branch.head = commit.id.clone();

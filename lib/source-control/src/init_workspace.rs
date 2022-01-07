@@ -3,42 +3,32 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
-use url::Url;
 
 use crate::{
     connect_to_server, create_workspace_branch_table, download_tree,
     init_branch_merge_pending_database, init_local_changes_database, init_resolve_pending_database,
     insert_current_branch, make_path_absolute, sql::create_database, write_workspace_spec,
-    LocalWorkspaceConnection, RepositoryAddr, Workspace,
+    LocalWorkspaceConnection, RepositoryUrl, Workspace,
 };
 
 #[span_fn]
 pub async fn init_workspace_command(
-    specified_workspace_directory: &Path,
-    repo_location: &str,
+    workspace_directory: &Path,
+    repository_url: RepositoryUrl,
 ) -> Result<()> {
-    let workspace_directory = make_path_absolute(specified_workspace_directory);
+    let workspace_directory = make_path_absolute(workspace_directory);
 
     let lsc_dir = workspace_directory.join(".lsc");
     let db_path = lsc_dir.join("workspace.db3");
     let db_uri = format!("sqlite://{}", db_path.display());
 
-    let repo_addr = if Path::new(repo_location).exists() {
-        RepositoryAddr::Local(make_path_absolute(Path::new(repo_location)))
-    } else {
-        Url::parse(repo_location).context(format!("invalid repo location: {}", repo_location))?;
-
-        RepositoryAddr::Remote(String::from(repo_location))
-    };
-
-    let spec = Workspace {
-        id: uuid::Uuid::new_v4().to_string(),
-        repo_addr,
+    let workspace = Workspace {
+        registration: crate::WorkspaceRegistration::new(whoami::username()),
         root: String::from(workspace_directory.to_str().unwrap()),
-        owner: whoami::username(),
+        repository_url,
     };
 
-    let connection = connect_to_server(&spec).await?;
+    let connection = connect_to_server(&workspace).await?;
 
     fs::create_dir_all(&lsc_dir).context("failed to create `.lsc` directory")?;
     create_database(&db_uri).await?;
@@ -56,11 +46,11 @@ pub async fn init_workspace_command(
 
     write_workspace_spec(
         workspace_directory.join(".lsc/workspace.json").as_path(),
-        &spec,
+        &workspace,
     )?;
 
     let query = connection.query();
-    query.insert_workspace(&spec).await?;
+    query.register_workspace(&workspace.registration).await?;
     let main_branch = query.read_branch("main").await?;
     insert_current_branch(
         workspace_connection.sql(),
