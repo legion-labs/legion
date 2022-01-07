@@ -80,11 +80,11 @@ pub struct AnalyticsService {
 }
 
 impl AnalyticsService {
-    pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
+    pub async fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
         Ok(Self {
             pool,
             data_dir,
-            cache: DiskCache::new()?,
+            cache: DiskCache::new().await?,
         })
     }
 

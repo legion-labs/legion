@@ -74,7 +74,6 @@ pub async fn download_temp_file(
 
     connection
         .blob_storage()
-        .await?
         .download_blob(&temp_file_path, blob_hash)
         .await?;
 

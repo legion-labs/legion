@@ -359,7 +359,6 @@ pub async fn download_tree(
             println!("writing {}", abs_path.display());
             if let Err(e) = connection
                 .blob_storage()
-                .await?
                 .download_blob(&abs_path, &relative_file_node.hash)
                 .await
             {

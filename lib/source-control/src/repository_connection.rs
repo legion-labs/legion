@@ -1,45 +1,42 @@
-use std::{path::PathBuf, sync::Arc};
-
 use anyhow::Result;
+use std::sync::Arc;
 use url::Url;
 
 use crate::{
-    http_repository_query::HTTPRepositoryQuery,
+    http_repository_query::HttpRepositoryQuery,
     sql::SqlConnectionPool,
     sql_repository_query::{Databases, SqlRepositoryQuery},
-    BlobStorage, BlobStorageSpec, DiskBlobStorage, RepositoryAddr, RepositoryQuery, S3BlobStorage,
-    Workspace,
+    BlobStorage, RepositoryAddr, RepositoryQuery, Workspace,
 };
 
 pub struct RepositoryConnection {
-    blob_storage_spec: BlobStorageSpec,
-    compressed_blob_cache: PathBuf,
-    repo_query: Box<dyn RepositoryQuery + Send + Sync>,
+    pub repo_query: Box<dyn RepositoryQuery>,
+    pub blob_storage: Box<dyn BlobStorage>,
 }
 
 impl RepositoryConnection {
-    async fn new(repo_addr: &RepositoryAddr, compressed_blob_cache: PathBuf) -> Result<Self> {
-        let repo_query: Box<dyn RepositoryQuery + Send + Sync>;
+    async fn new(repo_addr: &RepositoryAddr) -> Result<Self> {
+        let repo_query: Box<dyn RepositoryQuery>;
 
         match repo_addr {
             RepositoryAddr::Local(local_path) => {
-                let sqlite_url = format!("sqlite://{}/repo.db3", local_path.display());
-                let pool = Arc::new(SqlConnectionPool::new(&sqlite_url).await?);
+                let sqlite_url = format!("sqlite://{}/repo.db3", local_path.display())
+                    .parse()
+                    .unwrap();
+                let pool = Arc::new(SqlConnectionPool::new(sqlite_url).await?);
                 repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Sqlite));
             }
             RepositoryAddr::Remote(spec_uri) => {
-                let uri = Url::parse(spec_uri).unwrap();
-                let mut url_path = String::from(uri.path());
-                let path = url_path.split_off(1); //remove leading /
-                match uri.scheme() {
-                    "lsc" => {
-                        let host = uri.host().unwrap();
-                        let port = uri.port().unwrap_or(80);
-                        let url = format!("http://{}:{}/lsc", host, port);
-                        repo_query = Box::new(HTTPRepositoryQuery::new(url, path));
+                let url = Url::parse(spec_uri).unwrap();
+                let path = String::from(url.path()).split_off(1); //remove leading /
+
+                match url.scheme() {
+                    "http" | "https" => {
+                        repo_query = Box::new(HttpRepositoryQuery::new(url, path));
                     }
                     "mysql" => {
-                        let pool = Arc::new(SqlConnectionPool::new(spec_uri).await?);
+                        let pool =
+                            Arc::new(SqlConnectionPool::new(spec_uri.parse().unwrap()).await?);
                         repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Mysql));
                     }
                     unknown => {
@@ -49,34 +46,26 @@ impl RepositoryConnection {
             }
         };
 
-        let blob_storage_spec = repo_query.read_blob_storage_spec().await?;
+        let blob_storage_url = repo_query.read_blob_storage_spec().await?;
+        let blob_storage = blob_storage_url.into_blob_storage().await?;
 
         Ok(Self {
-            blob_storage_spec,
-            compressed_blob_cache,
             repo_query,
+            blob_storage,
         })
     }
 
-    pub fn query(&self) -> &(dyn RepositoryQuery + Send + Sync) {
+    pub fn query(&self) -> &dyn RepositoryQuery {
         &*self.repo_query
     }
 
-    pub async fn blob_storage(&self) -> Result<Box<dyn BlobStorage + Send + Sync>> {
-        match &self.blob_storage_spec {
-            BlobStorageSpec::LocalDirectory(blob_directory) => Ok(Box::new(DiskBlobStorage {
-                blob_directory: blob_directory.clone(),
-            })),
-            BlobStorageSpec::S3Uri(s3uri) => Ok(Box::new(
-                S3BlobStorage::new(s3uri, self.compressed_blob_cache.clone()).await?,
-            )),
-        }
+    pub fn blob_storage(&self) -> &dyn BlobStorage {
+        &*self.blob_storage
     }
 }
 
 pub async fn connect_to_server(workspace: &Workspace) -> Result<Arc<RepositoryConnection>> {
-    let blob_cache_dir = std::path::Path::new(&workspace.root).join(".lsc/blob_cache");
-    RepositoryConnection::new(&workspace.repo_addr, blob_cache_dir)
+    RepositoryConnection::new(&workspace.repo_addr)
         .await
         .map(Arc::new)
 }

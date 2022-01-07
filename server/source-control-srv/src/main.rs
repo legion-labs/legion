@@ -64,90 +64,84 @@ use std::sync::{Arc, RwLock};
 use anyhow::{Context, Result};
 use http::response::Response;
 use hyper::body::Body;
-use lgn_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
-#[allow(clippy::wildcard_imports)]
-use lgn_source_control::{sql::SqlConnectionPool, *};
-use warp::Filter;
+use lgn_source_control::{
+    commands, BlobStorageUrl, ClearLockRequest, ClountLocksInDomainRequest, CommitExistsRequest,
+    CommitToBranchRequest, FindBranchRequest, FindBranchesInLockDomainRequest, FindLockRequest,
+    FindLocksInDomainRequest, InsertBranchRequest, InsertCommitRequest, InsertLockRequest,
+    InsertWorkspaceRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
+    RepositoryQuery, RepositoryUrl, SaveTreeRequest, ServerRequest, UpdateBranchRequest,
+};
 
 #[macro_use]
 extern crate lazy_static;
 
 lazy_static! {
-    static ref POOLS: RwLock<HashMap<String, Arc<SqlConnectionPool>>> = RwLock::new(HashMap::new());
+    static ref REPOSITORY_QUERIES: RwLock<HashMap<String, Arc<Box<dyn RepositoryQuery>>>> =
+        RwLock::new(HashMap::new());
 }
 
 async fn init_remote_repository_req(name: &str) -> Result<String> {
-    let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
-    let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
-    let db_server_uri = get_sql_uri();
-    let db_uri = format!("{}/{}", db_server_uri, name);
-    let pool = init_mysql_repo_db(&blob_spec, &db_uri).await?;
-    POOLS.write().unwrap().insert(String::from(name), pool);
-    Ok(format!("Created repository {}", name))
+    let repository_url = get_repository_url(name);
+    let blob_storage_url = get_blob_storage_url()?;
+    let repository_connection =
+        commands::create_repository(&repository_url, &Some(blob_storage_url.clone())).await?;
+
+    REPOSITORY_QUERIES.write().unwrap().insert(
+        String::from(name),
+        Arc::new(repository_connection.repo_query),
+    );
+
+    Ok(blob_storage_url.to_string())
 }
 
 async fn destroy_repository_req(name: &str) -> Result<String> {
-    let db_server_uri = get_sql_uri();
-    let db_uri = format!("{}/{}", db_server_uri, name);
-    POOLS.write().unwrap().remove(name);
-    sql::drop_database(&db_uri).await?;
-    Ok(format!("Dropped repository {}", name))
+    let repository_url = get_repository_url(name);
+    REPOSITORY_QUERIES.write().unwrap().remove(name);
+    commands::destroy_repository(&repository_url).await?;
+
+    Ok("".to_string())
 }
 
 #[allow(clippy::unnecessary_wraps)]
 fn read_blob_storage_spec_req(_name: &str) -> Result<String> {
-    let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
-    let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
-    Ok(blob_spec.to_json())
-}
-
-async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>> {
-    {
-        let pool_read = POOLS.read().unwrap();
-        if let Some(p) = pool_read.get(repo_name) {
-            return Ok(p.clone());
-        }
-    }
-
-    let db_server_uri = get_sql_uri();
-    let repo_uri = format!("{}/{}", db_server_uri, repo_name);
-    let p = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
-    POOLS
-        .write()
+    let blob_spec: BlobStorageUrl = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
         .unwrap()
-        .insert(String::from(repo_name), p.clone());
-    Ok(p)
+        .parse()?;
+
+    serde_json::to_string(&blob_spec).context("error serializing blob storage spec")
 }
 
-async fn get_sql_query_interface(repo_name: &str) -> Result<SqlRepositoryQuery> {
-    Ok(SqlRepositoryQuery::new(
-        get_connection_pool(repo_name).await?,
-        Databases::Mysql,
-    ))
+fn get_repository_query(name: &str) -> Result<Arc<Box<dyn RepositoryQuery>>> {
+    REPOSITORY_QUERIES
+        .read()
+        .unwrap()
+        .get(name)
+        .ok_or_else(|| anyhow::anyhow!("repository not found"))
+        .map(Arc::clone)
 }
 
 async fn insert_workspace_req(args: &InsertWorkspaceRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.insert_workspace(&args.spec).await?;
     Ok(String::from(""))
 }
 
 async fn find_branch_req(args: &FindBranchRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query.find_branch(&args.branch_name).await?;
 
     serde_json::to_string(&res).context("error formatting find_branch_req result")
 }
 
 async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query.read_branches().await?;
 
     serde_json::to_string(&res).context("error formatting read_branches_req result")
 }
 
 async fn find_branches_in_lock_domain(args: &FindBranchesInLockDomainRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query
         .find_branches_in_lock_domain(&args.lock_domain_id)
         .await?;
@@ -156,25 +150,25 @@ async fn find_branches_in_lock_domain(args: &FindBranchesInLockDomainRequest) ->
 }
 
 async fn read_commit_req(args: &ReadCommitRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let commit = query.read_commit(&args.commit_id).await?;
     commit.to_json()
 }
 
 async fn read_tree_req(args: &ReadTreeRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let tree = query.read_tree(&args.tree_hash).await?;
     tree.to_json()
 }
 
 async fn insert_lock_req(args: &InsertLockRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.insert_lock(&args.lock).await?;
     Ok(String::from(""))
 }
 
 async fn find_lock_req(args: &FindLockRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query
         .find_lock(&args.lock_domain_id, &args.canonical_relative_path)
         .await?;
@@ -183,52 +177,52 @@ async fn find_lock_req(args: &FindLockRequest) -> Result<String> {
 }
 
 async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query.find_locks_in_domain(&args.lock_domain_id).await?;
 
     serde_json::to_string(&res).context("error formatting find_locks_in_domain result")
 }
 
 async fn save_tree_req(args: &SaveTreeRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.save_tree(&args.tree, &args.hash).await?;
 
     Ok(String::from(""))
 }
 
 async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.insert_commit(&args.commit).await?;
     Ok(String::from(""))
 }
 
 async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.commit_to_branch(&args.commit, &args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query.commit_exists(&args.commit_id).await?;
 
     serde_json::to_string(&res).context("error formatting commit_exists result")
 }
 
 async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.update_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query.insert_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn clear_lock_req(args: &ClearLockRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     query
         .clear_lock(&args.lock_domain_id, &args.canonical_relative_path)
         .await?;
@@ -236,7 +230,7 @@ async fn clear_lock_req(args: &ClearLockRequest) -> Result<String> {
 }
 
 async fn count_locks_in_domain_req(args: &ClountLocksInDomainRequest) -> Result<String> {
-    let query = get_sql_query_interface(&args.repo_name).await?;
+    let query = get_repository_query(&args.repo_name)?;
     let res = query.count_locks_in_domain(&args.lock_domain_id).await?;
 
     serde_json::to_string(&res).context("error formatting count_locks_in_domain_req result")
@@ -270,6 +264,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String> {
     }
 }
 
+#[allow(dead_code)]
 async fn dispatch_request(body: bytes::Bytes) -> Result<warp::reply::Response, warp::Rejection> {
     match dispatch_request_impl(body).await {
         Ok(body) => Ok(Response::builder().body(Body::from(body)).unwrap()),
@@ -283,31 +278,39 @@ async fn dispatch_request(body: bytes::Bytes) -> Result<warp::reply::Response, w
     }
 }
 
-fn get_sql_uri() -> String {
+fn get_repository_url(db_name: &str) -> RepositoryUrl {
     let db_host = std::env::var("LEGION_SRC_CTL_DATABASE_HOST")
         .expect("missing env variable LEGION_SRC_CTL_DATABASE_HOST");
     let db_user = std::env::var("LEGION_SRC_CTL_DATABASE_USERNAME")
         .expect("missing env variable LEGION_SRC_CTL_DATABASE_USERNAME");
     let db_pass = std::env::var("LEGION_SRC_CTL_DATABASE_PASSWORD").unwrap_or_default(); //because it can be empty
-    format!("mysql://{}:{}@{}", db_user, db_pass, db_host)
+
+    format!("mysql://{}:{}@{}/{}", db_user, db_pass, db_host, db_name)
+        .parse()
+        .unwrap()
+}
+
+fn get_blob_storage_url() -> Result<BlobStorageUrl> {
+    std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
+        .unwrap()
+        .parse()
 }
 
 #[allow(clippy::semicolon_if_nothing_returned)]
 #[tokio::main]
 async fn main() {
-    let _s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
-        .expect("missing env variable LEGION_SRC_CTL_BLOB_STORAGE_URI");
-    let _db_server_uri = get_sql_uri();
+    // TODO: This does not compile anymore but since we will trash it right
+    // away once we move to gRPC, let's just comment it.
 
-    let command_filter = warp::path("lsc")
-        .and(warp::body::bytes())
-        .and_then(dispatch_request);
+    //let command_filter = warp::path("lsc")
+    //    .and(warp::body::bytes())
+    //    .and_then(dispatch_request);
 
-    let server_addr_str = std::env::var("LEGION_SRC_CTL_SERVER_ADDR")
-        .expect("missing env variable LEGION_SRC_CTL_SERVER_ADDR");
-    let addr: std::net::SocketAddr = server_addr_str
-        .parse()
-        .expect("Error parsing server address");
+    //let server_addr_str = std::env::var("LEGION_SRC_CTL_SERVER_ADDR")
+    //    .expect("missing env variable LEGION_SRC_CTL_SERVER_ADDR");
+    //let addr: std::net::SocketAddr = server_addr_str
+    //    .parse()
+    //    .expect("Error parsing server address");
 
-    warp::serve(command_filter).run(addr).await;
+    //warp::serve(command_filter).run(addr).await;
 }

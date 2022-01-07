@@ -1,38 +1,76 @@
+use anyhow::{Context, Result};
+use std::cell::RefCell;
 use std::fs;
-use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use url::Url;
 
-use anyhow::{Context, Result};
-use sha2::{Digest, Sha256};
-
-pub enum SearchResult<T, E> {
-    Ok(T),
-    Err(E),
-    None,
+pub(crate) enum UrlOrPath {
+    Url(Url),
+    Path(PathBuf),
 }
 
-pub fn hash_string(data: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(data.as_bytes());
-    format!("{:X}", hasher.finalize())
-}
+/// Parse an URL or a raw path and returns it.
+///
+/// If the URL is a local file path, it is converted to a path.
+pub(crate) fn parse_url_or_path(s: &str) -> Result<UrlOrPath> {
+    let validation = RefCell::new(None);
 
-pub fn create_parent_directory(path: &Path) -> Result<()> {
-    let parent_dir = path.parent().unwrap();
+    let violation_cb = |violation| {
+        *validation.borrow_mut() = Some(violation);
+    };
 
-    if !parent_dir.exists() {
-        fs::create_dir_all(parent_dir).context(format!(
-            "error creating directory: {}",
-            parent_dir.display()
-        ))
-    } else {
-        Ok(())
+    let options = Url::options().syntax_violation_callback(Some(&violation_cb));
+
+    let result = options.parse(s);
+    let validation = *validation.borrow();
+
+    match (result, validation) {
+        (_, Some(url::SyntaxViolation::ExpectedFileDoubleSlash)) => {
+            Err(anyhow::anyhow!("expected file://"))
+        }
+        (Ok(url), _) => match url.scheme() {
+            "file" => {
+                Ok(UrlOrPath::Path(url.to_file_path().map_err(|_err| {
+                    anyhow::anyhow!("failed to convert URL to path")
+                })?))
+            }
+            scheme => {
+                // Assume 1 character schemes are Windows drives.
+                if scheme.len() == 1 {
+                    Ok(UrlOrPath::Path(s.into()))
+                } else {
+                    Ok(UrlOrPath::Url(url))
+                }
+            }
+        },
+        (Err(_), Some(validation)) => Err(anyhow::anyhow!("{}", validation)),
+        (Err(_), None) => Ok(UrlOrPath::Path(s.into())),
     }
 }
 
-pub fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
-    create_parent_directory(path)?;
+pub(crate) fn check_directory_does_not_exist_or_is_empty(path: impl AsRef<Path>) -> Result<()> {
+    match path.as_ref().read_dir() {
+        Ok(mut entries) => {
+            if entries.next().is_none() {
+                Ok(())
+            } else {
+                anyhow::bail!("directory is not empty")
+            }
+        }
+        Err(err) => {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                Ok(())
+            } else {
+                Err(err.into())
+            }
+        }
+    }
+}
+
+pub(crate) fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
+    fs::create_dir_all(path.parent().unwrap())
+        .context(format!("error creating directory: {}", path.display()))?;
 
     let mut file =
         fs::File::create(path).context(format!("error creating file: {}", path.display()))?;
@@ -41,40 +79,32 @@ pub fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
         .context(format!("error writing: {}", path.display()))
 }
 
-pub fn write_new_file(path: &Path, contents: &[u8]) -> Result<()> {
-    create_parent_directory(path)?;
-
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .context(format!("error writing file: {}", path.display()))?;
-
-    file.write_all(contents)
-        .context(format!("error writing: {}", path.display()))
-}
-
-pub fn read_text_file(path: &Path) -> Result<String> {
+pub(crate) fn read_text_file(path: &Path) -> Result<String> {
     fs::read_to_string(path).context(format!("error reading file: {}", path.display()))
 }
 
-pub fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
+pub(crate) fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
     fs::read(path).context(format!("error reading file {}", path.display()))
 }
 
-pub fn make_path_absolute(p: &Path) -> PathBuf {
-    //fs::canonicalize is a trap - it generates crazy unusable "extended length"
-    // paths
-    if p.is_absolute() {
-        PathBuf::from(path_clean::clean(p.to_str().unwrap()))
+pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> PathBuf {
+    //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
+    let path = path.as_ref();
+
+    if path.is_absolute() {
+        PathBuf::from(path_clean::clean(path.to_str().unwrap()))
     } else {
         PathBuf::from(path_clean::clean(
-            std::env::current_dir().unwrap().join(p).to_str().unwrap(),
+            std::env::current_dir()
+                .unwrap()
+                .join(path)
+                .to_str()
+                .unwrap(),
         ))
     }
 }
 
-pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
+pub(crate) fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
     p.strip_prefix(base).map(Path::to_path_buf).context(format!(
         "error stripping prefix: {} is not relative to {}",
         p.display(),
@@ -82,7 +112,7 @@ pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
     ))
 }
 
-pub fn make_canonical_relative_path(
+pub(crate) fn make_canonical_relative_path(
     workspace_root: &Path,
     path_specified: &Path,
 ) -> Result<String> {
@@ -92,7 +122,7 @@ pub fn make_canonical_relative_path(
     Ok(canonical_relative_path)
 }
 
-pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<()> {
+pub(crate) fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<()> {
     let meta = fs::metadata(&file_path)
         .context(format!("error reading metadata: {}", file_path.display()))?;
 
@@ -103,75 +133,4 @@ pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<()> {
         "error setting permissions: {}",
         file_path.display()
     ))
-}
-
-pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<()> {
-    create_parent_directory(file_path)?;
-
-    let output_file = std::fs::File::create(file_path)
-        .context(format!("error creating file: {}", file_path.display()))?;
-
-    let mut encoder = lz4::EncoderBuilder::new()
-        .level(10)
-        .build(output_file)
-        .context("error creating encoder")?;
-
-    encoder
-        .write(contents)
-        .context("error writing to encoder")?;
-
-    encoder.finish().1.context("error finishing encoder")?;
-
-    Ok(())
-}
-
-pub fn lz4_read(compressed: &Path) -> Result<String> {
-    let input_file = std::fs::File::open(compressed)
-        .context(format!("error opening file: {}", compressed.display()))?;
-
-    let mut decoder = lz4::Decoder::new(input_file)
-        .context(format!("error reading file: {}", compressed.display()))?;
-    let mut res = String::new();
-
-    decoder
-        .read_to_string(&mut res)
-        .context(format!("error reading file: {}", compressed.display()))?;
-
-    Ok(res)
-}
-
-pub fn lz4_read_bin(compressed: &Path) -> Result<Vec<u8>> {
-    let input_file = std::fs::File::open(compressed)
-        .context(format!("error opening file: {}", compressed.display()))?;
-    let mut decoder = lz4::Decoder::new(input_file)
-        .context(format!("error reading file: {}", compressed.display()))?;
-    let mut res = Vec::new();
-    decoder
-        .read_to_end(&mut res)
-        .context(format!("error reading file: {}", compressed.display()))?;
-
-    Ok(res)
-}
-
-pub fn lz4_decompress(compressed: &Path, destination: &Path) -> Result<()> {
-    create_parent_directory(destination)?;
-
-    let input_file = std::fs::File::open(compressed)
-        .context(format!("error opening file: {}", compressed.display()))?;
-
-    let mut decoder = lz4::Decoder::new(input_file).context(format!(
-        "error creating decoder from: {}",
-        compressed.display()
-    ))?;
-
-    let mut output_file = std::fs::File::create(destination)
-        .context(format!("error creating file: {}", destination.display()))?;
-
-    std::io::copy(&mut decoder, &mut output_file).context(format!(
-        "error decoding from {} to {}",
-        compressed.display(),
-        destination.display()
-    ))?;
-
-    Ok(())
 }

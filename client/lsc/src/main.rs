@@ -76,24 +76,19 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Initializes a repository stored on a local or remote system
-    #[clap(name = "init-local-repository")]
-    InitLocalRepository {
-        /// The local path
-        directory: String,
-    },
-    /// IInitializes a repository stored on a local or remote system
-    #[clap(name = "init-remote-repository")]
-    InitRemoteRepository {
-        /// The remote URI: mysql://user:pass@host:port/database, lsc://host:port/database
-        uri: String,
-        /// file://somepath, s3://bucket/root
-        blob_storage: Option<String>,
+    #[clap(name = "create-repository")]
+    CreateRepository {
+        /// The repository URL.
+        repository_url: RepositoryUrl,
+        // The optional blob storage URL. If none is specified, one will be
+        // guessed from the repository URL.
+        blob_storage_url: Option<BlobStorageUrl>,
     },
     /// Destroys all repository data permanently
     #[clap(name = "destroy-repository")]
     DestroyRepository {
-        /// file://somepath, mysql://user:pass@host:port/database, lsc://host:port/database
-        uri: String,
+        /// The repository URL.
+        repository_url: RepositoryUrl,
     },
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace")]
@@ -232,8 +227,8 @@ enum Commands {
     /// Contact server
     #[clap(name = "ping")]
     Ping {
-        /// lsc://host:port
-        server_uri: String,
+        /// The repository URL.
+        repository_url: RepositoryUrl,
     },
 }
 
@@ -242,19 +237,41 @@ async fn main() -> anyhow::Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
 
     trace_scope!();
+
+    //let repository_url = command_match
+    //    .value_of(ARG_REPOSITORY_URL)
+    //    .map(RepositoryUrl::from_str)
+    //    .transpose()?
+    //    .unwrap_or_else(RepositoryUrl::from_current_dir)
+    //    .make_absolute(std::env::current_dir()?);
+
+    //let blob_storage_url = command_match
+    //    .value_of(ARG_BLOB_STORAGE_URL)
+    //    .map(BlobStorageUrl::from_str)
+    //    .transpose()?
+    //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
+    //    .transpose()?;
+
     let args = Cli::parse();
+
     match args.command {
-        Commands::InitLocalRepository { directory } => {
-            info!("init-local-repository");
-            lgn_source_control::init_local_repository_command(Path::new(&directory)).await
+        Commands::CreateRepository {
+            repository_url,
+            blob_storage_url,
+        } => {
+            info!("create-repository");
+
+            lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
+                .await?;
+
+            Ok(())
         }
-        Commands::InitRemoteRepository { uri, blob_storage } => {
-            info!("init-remote-repository");
-            lgn_source_control::init_remote_repository_command(&uri, blob_storage.as_deref()).await
-        }
-        Commands::DestroyRepository { uri } => {
+        Commands::DestroyRepository { repository_url } => {
             info!("destroy-repository");
-            lgn_source_control::destroy_repository::destroy_repository_command(&uri).await
+
+            lgn_source_control::commands::destroy_repository(&repository_url).await?;
+
+            Ok(())
         }
         Commands::InitWorkspace {
             workspace_directory,
@@ -392,9 +409,10 @@ async fn main() -> anyhow::Result<()> {
             info!("import-git-branch {} {} ", path, branch);
             import_git_branch_command(Path::new(&path), &branch).await
         }
-        Commands::Ping { server_uri } => {
-            info!("ping {}", server_uri);
-            ping_console_command(&server_uri).await
+        Commands::Ping { repository_url } => {
+            info!("ping {}", &repository_url);
+
+            lgn_source_control::commands::ping(&repository_url).await
         }
     }
 }

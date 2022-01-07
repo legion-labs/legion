@@ -95,8 +95,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;
-    let service =
-        AnalyticsService::new(pool, data_dir).with_context(|| "allocating AnalyticsService")?;
+    let service = AnalyticsService::new(pool, data_dir)
+        .await
+        .with_context(|| "allocating AnalyticsService")?;
     info!("service allocated");
     Server::builder()
         .accept_http1(true)

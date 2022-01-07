@@ -1,34 +1,45 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use reqwest::Url;
 
 use crate::{
-    execute_request, BlobStorageSpec, Branch, ClearLockRequest, ClountLocksInDomainRequest, Commit,
+    execute_request, BlobStorageUrl, Branch, ClearLockRequest, ClountLocksInDomainRequest, Commit,
     CommitExistsRequest, CommitToBranchRequest, FindBranchRequest, FindBranchesInLockDomainRequest,
-    FindLockRequest, FindLocksInDomainRequest, InsertBranchRequest, InsertCommitRequest,
-    InsertLockRequest, InsertWorkspaceRequest, Lock, ReadBlobStorageSpecRequest,
-    ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest, RepositoryQuery, SaveTreeRequest,
-    ServerRequest, Tree, UpdateBranchRequest, Workspace,
+    FindLockRequest, FindLocksInDomainRequest, InitRepositoryRequest, InsertBranchRequest,
+    InsertCommitRequest, InsertLockRequest, InsertWorkspaceRequest, Lock,
+    ReadBlobStorageSpecRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
+    RepositoryQuery, SaveTreeRequest, ServerRequest, Tree, UpdateBranchRequest, Workspace,
 };
 
 // access to repository metadata through a web server
-pub struct HTTPRepositoryQuery {
-    url: String,
+pub struct HttpRepositoryQuery {
+    url: Url,
     repo_name: String,
     client: reqwest::Client,
 }
 
-impl HTTPRepositoryQuery {
-    pub fn new(url: String, repo_name: String) -> Self {
+impl HttpRepositoryQuery {
+    pub fn new(url: Url, repo_name: String) -> Self {
         Self {
             url,
             repo_name,
             client: reqwest::Client::new(),
         }
     }
+
+    pub async fn create_repository(&self, name: &str) -> Result<BlobStorageUrl> {
+        let request = ServerRequest::InitRepo(InitRepositoryRequest {
+            repo_name: String::from(name),
+        });
+
+        let resp = execute_request(&self.client, &self.url, &request).await?;
+
+        resp.parse()
+    }
 }
 
 #[async_trait]
-impl RepositoryQuery for HTTPRepositoryQuery {
+impl RepositoryQuery for HttpRepositoryQuery {
     async fn insert_workspace(&self, spec: &Workspace) -> Result<()> {
         let request = ServerRequest::InsertWorkspace(InsertWorkspaceRequest {
             repo_name: self.repo_name.clone(),
@@ -205,11 +216,12 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         serde_json::from_str(&resp).context("parsing response")
     }
 
-    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec> {
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageUrl> {
         let request = ServerRequest::ReadBlobStorageSpec(ReadBlobStorageSpecRequest {
             repo_name: self.repo_name.clone(),
         });
         let resp = execute_request(&self.client, &self.url, &request).await?;
-        Ok(BlobStorageSpec::from_json(&resp)?)
+
+        serde_json::from_str(&resp).context("parsing response")
     }
 }

@@ -11,16 +11,18 @@ async-trait = "0.1"
 async-recursion = "1"
 aws-config = "0.3"
 aws-sdk-s3 = "0.3"
+bytes = "1"
 chrono = "0.4"
 diffy = "0.2"
 dirs = "4.0"
-futures = "0.3"
 git2 = { version = "0.13", features = ["vendored-openssl"] }
 glob = "0.3"
 http = "0.2"
 lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+log = "0.4"
 lz4 = "1.23"
 path-clean = "0.1"
+pin-project = "1"
 reqwest = { version = "0.11", features = ["blocking"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -31,7 +33,10 @@ sqlx = { version = "0.5", features = [
     "mysql",
     "runtime-tokio-native-tls",
 ] }
+thiserror = "1"
 tokio = { version = "1.13", features = ["full"] }
+tokio-util = { version = "0.6.9", features = ["full"] }
+tokio-stream = "0.1.8"
 unicase = "2.6"
 url = "2.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
