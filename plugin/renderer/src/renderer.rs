@@ -11,13 +11,14 @@ use lgn_graphics_api::{
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
+use crate::components::{DirectionalLight, OmnidirectionalLight, Spotlight};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::{cgen, RenderContext};
+use crate::{cgen, RenderContext, RenderHandle};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -35,10 +36,33 @@ pub struct Renderer {
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
+    omnidirectional_lights_data: OmnidirectionalLightsStaticBuffer,
+    directional_lights_data: DirectionalLightsStaticBuffer,
+    spotlights_data: SpotlightsStaticBuffer,
     bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
     shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
+}
+
+pub type OmnidirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmnidirectionalLight>>;
+pub type DirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<DirectionalLight>>;
+pub type SpotlightsStaticBuffer = RenderHandle<UniformGPUData<Spotlight>>;
+
+macro_rules! impl_static_buffer_accessor {
+    ($name:ident, $buffer_type:ty, $type:ty) => {
+        paste::paste! {
+            pub fn [<acquire_ $name>](&mut self) -> $buffer_type {
+                self.$name.transfer()
+            }
+            pub fn [<release_ $name>](&mut self, $name: $buffer_type) {
+                self.$name = $name;
+            }
+            pub fn [<$name _structured_buffer_view>](&self) -> BufferView{
+                self.$name.structured_buffer_view($type::SIZE as u64)
+            }
+        }
+    };
 }
 
 unsafe impl Send for Renderer {}
@@ -62,6 +86,23 @@ impl Renderer {
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
+        ));
+
+        let omnidirectional_lights_data =
+            OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(
+                &static_buffer,
+                OmnidirectionalLight::SIZE as u64 * 8,
+            ));
+
+        let directional_lights_data =
+            DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
+                &static_buffer,
+                DirectionalLight::SIZE as u64 * 8,
+            ));
+
+        let spotlights_data = SpotlightsStaticBuffer::new(UniformGPUData::<Spotlight>::new(
+            &static_buffer,
+            Spotlight::SIZE as u64 * 8,
         ));
 
         let descriptor_heap_def = DescriptorHeapDef {
@@ -99,6 +140,9 @@ impl Renderer {
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
+            omnidirectional_lights_data,
+            directional_lights_data,
+            spotlights_data,
             bump_allocator_pool: Mutex::new(CpuPool::new()),
             shader_compiler,
             api,
@@ -133,13 +177,27 @@ impl Renderer {
         self.transient_buffer.clone()
     }
 
-    pub fn aquire_transform_data(&mut self) -> TestStaticBuffer {
+    pub fn acquire_transform_data(&mut self) -> TestStaticBuffer {
         self.test_transform_data.transfer()
     }
 
     pub fn release_transform_data(&mut self, test: TestStaticBuffer) {
         self.test_transform_data = test;
     }
+
+    impl_static_buffer_accessor!(
+        omnidirectional_lights_data,
+        OmnidirectionalLightsStaticBuffer,
+        OmnidirectionalLight
+    );
+
+    impl_static_buffer_accessor!(
+        directional_lights_data,
+        DirectionalLightsStaticBuffer,
+        DirectionalLight
+    );
+
+    impl_static_buffer_accessor!(spotlights_data, SpotlightsStaticBuffer, Spotlight);
 
     pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
         &self.static_buffer
@@ -386,7 +444,9 @@ impl Drop for Renderer {
             let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
             graphics_queue.wait_for_queue_idle().unwrap();
         }
-
+        std::mem::drop(self.spotlights_data.take());
+        std::mem::drop(self.directional_lights_data.take());
+        std::mem::drop(self.omnidirectional_lights_data.take());
         std::mem::drop(self.test_transform_data.take());
 
         cgen::shutdown();

@@ -1,6 +1,10 @@
+#![allow(unsafe_code)]
 use crate::{
-    components::{ManipulatorComponent, PickedComponent},
+    components::{
+        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent, Spotlight,
+    },
     egui::egui_plugin::{Egui, EguiPlugin},
+    lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::DefaultMeshes,
 };
@@ -13,8 +17,8 @@ use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
 
 use crate::{
     components::{
-        camera_control, create_camera, CameraComponent, LightComponent, LightSettings, LightType,
-        RenderSurface, RotationComponent, StaticMesh,
+        camera_control, create_camera, CameraComponent, LightComponent, LightType, RenderSurface,
+        StaticMesh,
     },
     labels::RendererSystemLabel,
     RenderContext, Renderer,
@@ -51,7 +55,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(default_meshes);
         app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightSettings>();
+        app.init_resource::<LightingManager>();
 
         app.add_startup_system(create_camera);
 
@@ -60,10 +64,11 @@ impl Plugin for RendererPlugin {
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system(update_ui.before(RendererSystemLabel::FrameUpdate));
+            app.add_system(update_lighting_ui.before(RendererSystemLabel::FrameUpdate));
         }
         app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
+        app.add_system(update_lights.before(RendererSystemLabel::FrameUpdate));
         app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
@@ -90,47 +95,27 @@ fn init_manipulation_manager(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_ui(
+fn update_lighting_ui(
     egui_ctx: Res<'_, Egui>,
-    mut rotations: Query<'_, '_, &mut RotationComponent>,
     mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
-    mut light_settings: ResMut<'_, LightSettings>,
+    mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
-    egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
-        ui.label("Objects");
-        for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("Object {}: ", i));
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.0, 0.0..=5.0)
-                        .text("x"),
-                );
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.1, 0.0..=5.0)
-                        .text("y"),
-                );
-                ui.add(
-                    egui::Slider::new(&mut rotation_component.rotation_speed.2, 0.0..=5.0)
-                        .text("z"),
-                );
-            });
-        }
-
-        ui.checkbox(&mut light_settings.diffuse, "Diffuse");
-        ui.checkbox(&mut light_settings.specular, "Specular");
+    egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
+        ui.checkbox(&mut lighting_manager.diffuse, "Diffuse");
+        ui.checkbox(&mut lighting_manager.specular, "Specular");
         ui.add(
-            egui::Slider::new(&mut light_settings.specular_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.specular_reflection, 0.0..=1.0)
                 .text("specular_reflection"),
         );
         ui.add(
-            egui::Slider::new(&mut light_settings.diffuse_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.diffuse_reflection, 0.0..=1.0)
                 .text("diffuse_reflection"),
         );
         ui.add(
-            egui::Slider::new(&mut light_settings.ambient_reflection, 0.0..=1.0)
+            egui::Slider::new(&mut lighting_manager.ambient_reflection, 0.0..=1.0)
                 .text("ambient_reflection"),
         );
-        ui.add(egui::Slider::new(&mut light_settings.shininess, 1.0..=32.0).text("shininess"));
+        ui.add(egui::Slider::new(&mut lighting_manager.shininess, 1.0..=32.0).text("shininess"));
         ui.label("Lights");
         for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -240,7 +225,7 @@ fn update_transform(
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut gpu_data = renderer.aquire_transform_data();
+    let mut gpu_data = renderer.acquire_transform_data();
 
     for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
         if manipulator.is_none() {
@@ -258,6 +243,108 @@ fn update_transform(
 
     renderer.test_add_update_jobs(updater.job_blocks());
     renderer.release_transform_data(gpu_data);
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn update_lights(
+    mut renderer: ResMut<'_, Renderer>,
+    query: Query<'_, '_, (Entity, &Transform, &LightComponent)>,
+    mut lighting_manager: ResMut<'_, LightingManager>,
+) {
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let omnidirectional_gpu_data = renderer.acquire_omnidirectional_lights_data();
+    let directional_gpu_data = renderer.acquire_directional_lights_data();
+    let spotlights_gpu_data = renderer.acquire_spotlights_data();
+
+    const NUM_LIGHTS: usize = 8;
+
+    let mut omnidirectional_lights_data =
+        Vec::<f32>::with_capacity(OmnidirectionalLight::SIZE * NUM_LIGHTS);
+    let mut directional_lights_data =
+        Vec::<f32>::with_capacity(DirectionalLight::SIZE * NUM_LIGHTS);
+    let mut spotlights_data = Vec::<f32>::with_capacity(Spotlight::SIZE * NUM_LIGHTS);
+    let mut num_directional_lights = 0;
+    let mut num_omnidirectional_lights = 0;
+    let mut num_spotlights = 0;
+
+    for (_entity, transform, light) in query.iter() {
+        if !light.enabled {
+            continue;
+        }
+        match light.light_type {
+            LightType::Directional { direction } => {
+                directional_lights_data.push(direction.x);
+                directional_lights_data.push(direction.y);
+                directional_lights_data.push(direction.z);
+                directional_lights_data.push(light.radiance);
+                directional_lights_data.push(light.color.0);
+                directional_lights_data.push(light.color.1);
+                directional_lights_data.push(light.color.2);
+                num_directional_lights += 1;
+                unsafe {
+                    directional_lights_data
+                        .set_len(DirectionalLight::SIZE / 4 * num_directional_lights as usize);
+                }
+            }
+            LightType::Omnidirectional => {
+                omnidirectional_lights_data.push(transform.translation.x);
+                omnidirectional_lights_data.push(transform.translation.y);
+                omnidirectional_lights_data.push(transform.translation.z);
+                omnidirectional_lights_data.push(light.radiance);
+                omnidirectional_lights_data.push(light.color.0);
+                omnidirectional_lights_data.push(light.color.1);
+                omnidirectional_lights_data.push(light.color.2);
+                num_omnidirectional_lights += 1;
+                unsafe {
+                    omnidirectional_lights_data.set_len(
+                        OmnidirectionalLight::SIZE / 4 * num_omnidirectional_lights as usize,
+                    );
+                }
+            }
+            LightType::Spotlight {
+                direction,
+                cone_angle,
+            } => {
+                spotlights_data.push(transform.translation.x);
+                spotlights_data.push(transform.translation.y);
+                spotlights_data.push(transform.translation.z);
+                spotlights_data.push(light.radiance);
+                spotlights_data.push(direction.x);
+                spotlights_data.push(direction.y);
+                spotlights_data.push(direction.z);
+                spotlights_data.push(cone_angle);
+                spotlights_data.push(light.color.0);
+                spotlights_data.push(light.color.1);
+                spotlights_data.push(light.color.2);
+                num_spotlights += 1;
+                unsafe {
+                    spotlights_data.set_len(Spotlight::SIZE / 4 * num_spotlights as usize);
+                }
+            }
+        }
+    }
+
+    lighting_manager.num_directional_lights = num_directional_lights;
+    lighting_manager.num_omnidirectional_lights = num_omnidirectional_lights;
+    lighting_manager.num_spotlights = num_spotlights;
+
+    if !omnidirectional_lights_data.is_empty() {
+        updater.add_update_jobs(
+            &omnidirectional_lights_data,
+            omnidirectional_gpu_data.offset(),
+        );
+    }
+    if !directional_lights_data.is_empty() {
+        updater.add_update_jobs(&directional_lights_data, directional_gpu_data.offset());
+    }
+    if !spotlights_data.is_empty() {
+        updater.add_update_jobs(&spotlights_data, spotlights_gpu_data.offset());
+    }
+    renderer.test_add_update_jobs(updater.job_blocks());
+
+    renderer.release_omnidirectional_lights_data(omnidirectional_gpu_data);
+    renderer.release_directional_lights_data(directional_gpu_data);
+    renderer.release_spotlights_data(spotlights_gpu_data);
 }
 
 #[allow(
@@ -283,12 +370,11 @@ fn render_update(
         Without<ManipulatorComponent>,
     >,
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
-    q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
+    lighting_manager: Res<'_, LightingManager>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
-    light_settings: Res<'_, LightSettings>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
@@ -304,10 +390,6 @@ fn render_update(
         q_manipulator_drawables
             .iter()
             .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
-
-    let q_lights = q_lights
-        .iter()
-        .collect::<Vec<(&Transform, &LightComponent)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();
@@ -367,8 +449,7 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             camera_component,
-            q_lights.as_slice(),
-            &light_settings,
+            lighting_manager.as_ref(),
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
