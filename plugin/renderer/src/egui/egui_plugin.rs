@@ -120,12 +120,6 @@ fn gather_input(
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
 ) {
-    let mut scroll_delta = egui::vec2(0.0, 0.0);
-    for mouse_wheel_event in mouse_wheel_events.iter() {
-        scroll_delta.x += mouse_wheel_event.x;
-        scroll_delta.y += mouse_wheel_event.y;
-    }
-
     // TODO: zoom_delta
     // TODO: time
     // TODO: predicted_dt: f32,
@@ -143,6 +137,13 @@ fn gather_input(
     // TODO: CompositionUpdate(String),
     // TODO: CompositionEnd(String),
     // TODO: Touch
+
+    for mouse_wheel_event in mouse_wheel_events.iter() {
+        events.push(Event::Scroll(egui::vec2(
+            mouse_wheel_event.x,
+            mouse_wheel_event.y,
+        )));
+    }
 
     for cursor_button_event in cursor_button.iter() {
         events.push(Event::PointerButton {
@@ -173,7 +174,6 @@ fn gather_input(
 
     let raw_input = raw_input.into_inner();
     raw_input.clone_from(&RawInput {
-        scroll_delta,
         events,
         ..RawInput::default()
     });

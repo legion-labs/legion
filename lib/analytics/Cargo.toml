@@ -17,4 +17,4 @@ sqlx = { version = "0.5", features = [
 anyhow = "1.0"
 prost = "0.9"
 serde_json = "1.0"
-async-recursion = "0.3"
+async-recursion = "1"

@@ -7,14 +7,18 @@
         "asft",
         "bincode",
         "Deserialization",
+        "despawning",
+        "despawn",
         "determinator",
         "Graphviz",
+        "openh264",
         "perfetto",
         "proto",
         "Rustdoc",
+        "TIMERR_NOERROR",
         "thiserror",
         "serde",
-        "xxhash",
-        "TIMERR_NOERROR"
+        "webrtc",
+        "xxhash"
     ]
 }

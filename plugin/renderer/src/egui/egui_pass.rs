@@ -100,17 +100,17 @@ impl EguiPass {
         egui_ctx: &egui::CtxRef,
     ) {
         if let Some((version, ..)) = self.texture_data {
-            if version == egui_ctx.texture().version {
+            if version == egui_ctx.font_image().version {
                 return;
             }
         }
 
-        let egui_texture = &egui_ctx.texture();
+        let egui_font_image = &egui_ctx.font_image();
 
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: egui_texture.width as u32,
-                height: egui_texture.height as u32,
+                width: egui_font_image.width as u32,
+                height: egui_font_image.height as u32,
                 depth: 1,
             },
             array_length: 1,
@@ -131,8 +131,8 @@ impl EguiPass {
             .create_view(&TextureViewDef::as_shader_resource_view(&texture_def))
             .unwrap();
 
-        let egui_texture = Arc::clone(&egui_ctx.texture());
-        let pixels = egui_texture
+        let egui_font_image = Arc::clone(&egui_ctx.font_image());
+        let pixels = egui_font_image
             .pixels
             .clone()
             .into_iter()
@@ -180,7 +180,7 @@ impl EguiPass {
             )],
         );
 
-        self.texture_data = Some((egui_texture.version, texture, texture_view));
+        self.texture_data = Some((egui_font_image.version, texture, texture_view));
     }
 
     pub fn render(
