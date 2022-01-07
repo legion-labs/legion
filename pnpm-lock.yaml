@@ -376,6 +376,31 @@ importers:
       ts-proto: 1.95.0
       typescript: 4.5.4
 
+  proto/source-control:
+    specifiers:
+      '@improbable-eng/grpc-web': ^0.15.0
+      browser-headers: ^0.4.1
+      google-protobuf: ^3.19.1
+      jest: ^27.4.5
+      long: ^5.2.0
+      pnpm: ^6.24.2
+      protobufjs: ^6.11.2
+      ts-jest: ^27.1.2
+      ts-proto: ^1.95.0
+      typescript: ^4.5.4
+    dependencies:
+      '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.1
+      browser-headers: 0.4.1
+      google-protobuf: 3.19.1
+      long: 5.2.0
+      pnpm: 6.24.2
+      protobufjs: 6.11.2
+    devDependencies:
+      jest: 27.4.5
+      ts-jest: 27.1.2_jest@27.4.5+typescript@4.5.4
+      ts-proto: 1.95.0
+      typescript: 4.5.4
+
   proto/streaming:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
