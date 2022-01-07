@@ -186,11 +186,11 @@ pub(crate) async fn compute_block_call_tree(
 }
 
 pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
-const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
 fn compute_scope_hash(name: &str) -> u32 {
     //todo: add filename
-    CRC32.checksum(name.as_bytes())
+    const_xxh32(name.as_bytes(), 0)
 }
 
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {

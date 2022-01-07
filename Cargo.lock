@@ -162,7 +162,6 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "crc",
  "lgn-analytics",
  "lgn-source-control",
  "lgn-telemetry",
@@ -175,6 +174,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tonic-web",
+ "xxhash-rust",
 ]
 
 [[package]]
