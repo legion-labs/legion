@@ -1,6 +1,6 @@
 //! Module containing information about compiled assets.
 
-use std::collections::HashMap;
+use std::sync::Arc;
 
 use lgn_content_store::Checksum;
 use serde::{Deserialize, Serialize};
@@ -11,36 +11,44 @@ use crate::ResourceTypeAndId;
 #[derive(Serialize, Deserialize)]
 pub struct CompiledAsset {
     /// The id of the asset.
-    pub guid: ResourceTypeAndId,
+    pub resource_id: ResourceTypeAndId,
     /// The checksum of the asset.
     pub checksum: Checksum,
     /// The size of the asset.
     pub size: usize,
 }
 
-/// `Manifest` contains storage information about assets - their checksums and sizes.
-#[derive(Debug, Default)]
-pub struct Manifest(HashMap<ResourceTypeAndId, (Checksum, usize)>);
+/// `Manifest` contains storage information about assets - their checksums and
+/// sizes.
+///
+/// It can be safely shared between threads.
+#[derive(Debug, Default, Clone)]
+pub struct Manifest(Arc<flurry::HashMap<ResourceTypeAndId, (Checksum, usize)>>);
 
 impl Manifest {
-    /// Retrieve information about `Asset` identified by a given [`crate::ResourceId`], if available.
+    /// Retrieve information about `Asset` identified by a given
+    /// [`crate::ResourceId`], if available.
     pub fn find(&self, type_id: ResourceTypeAndId) -> Option<(Checksum, usize)> {
-        self.0.get(&type_id).copied()
+        self.0.pin().get(&type_id).copied()
     }
 
     /// Add new information about an `Asset`.
-    pub fn insert(&mut self, type_id: ResourceTypeAndId, checksum: Checksum, size: usize) {
-        self.0.insert(type_id, (checksum, size));
+    pub fn insert(&self, type_id: ResourceTypeAndId, checksum: Checksum, size: usize) {
+        self.0.pin().insert(type_id, (checksum, size));
     }
 
     /// An iterator visiting all assets in manifest, in an arbitrary order.
-    pub fn resources(&self) -> impl Iterator<Item = &ResourceTypeAndId> {
-        self.0.keys()
+    pub fn resources(&self) -> Vec<ResourceTypeAndId> {
+        self.0.pin().keys().copied().collect::<Vec<_>>()
     }
 
     /// Extends the manifest with the contents of another manifest.
-    pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0);
+    // Suppress the warning because flurry::HashMap doesn't provide methods taking owning `self`.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn extend(&self, other: Self) {
+        for (id, value) in &other.0.pin() {
+            self.0.pin().insert(*id, *value);
+        }
     }
 }
 
@@ -50,14 +58,14 @@ impl Serialize for Manifest {
         S: serde::Serializer,
     {
         let mut entries: Vec<CompiledAsset> = Vec::new();
-        for (guid, (checksum, size)) in &self.0 {
+        for (guid, (checksum, size)) in &self.0.pin() {
             entries.push(CompiledAsset {
-                guid: *guid,
+                resource_id: *guid,
                 checksum: *checksum,
                 size: *size,
             });
         }
-        entries.sort_by(|a, b| a.guid.partial_cmp(&b.guid).unwrap());
+        entries.sort_by(|a, b| a.resource_id.partial_cmp(&b.resource_id).unwrap());
         entries.serialize(serializer)
     }
 }
@@ -68,9 +76,12 @@ impl<'de> Deserialize<'de> for Manifest {
         D: serde::Deserializer<'de>,
     {
         let entries = Vec::<CompiledAsset>::deserialize(deserializer)?;
-        let mut manifest = Self::default();
+        let manifest = Self::default();
         for asset in entries {
-            manifest.0.insert(asset.guid, (asset.checksum, asset.size));
+            manifest
+                .0
+                .pin()
+                .insert(asset.resource_id, (asset.checksum, asset.size));
         }
         Ok(manifest)
     }

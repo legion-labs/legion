@@ -20,6 +20,7 @@ use lgn_utils::HashMap;
 /// touch, such as when the window loses focus, or on iOS if the user moves the
 /// device against their face.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct TouchInput {
     pub phase: TouchPhase,
     pub position: Vec2,
@@ -36,6 +37,7 @@ pub struct TouchInput {
 
 /// Describes the force of a touch event
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub enum ForceTouch {
     /// On iOS, the force is calibrated so that the same number corresponds to
     /// roughly the same amount of pressure on the screen regardless of the

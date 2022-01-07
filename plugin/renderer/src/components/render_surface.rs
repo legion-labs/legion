@@ -2,22 +2,23 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
-    TextureViewDef,
+    Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage,
+    Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
-use crate::{RenderContext, Renderer, TmpRenderPass};
+use crate::hl_gfx_api::HLCommandBuffer;
+use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
+use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     );
@@ -136,6 +137,8 @@ pub struct RenderSurface {
     num_render_frames: usize,
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
+    picking_renderpass: Arc<RwLock<PickingRenderPass>>,
+    debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
 }
@@ -149,8 +152,16 @@ impl RenderSurface {
         self.extents
     }
 
+    pub fn picking_renderpass(&self) -> Arc<RwLock<PickingRenderPass>> {
+        self.picking_renderpass.clone()
+    }
+
     pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
         self.test_renderpass.clone()
+    }
+
+    pub fn debug_renderpass(&self) -> Arc<RwLock<DebugRenderPass>> {
+        self.debug_renderpass.clone()
     }
 
     pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
@@ -192,30 +203,24 @@ impl RenderSurface {
         &self.resources.depth_stencil_texture_view
     }
 
-    pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
+    pub fn transition_to(&mut self, cmd_buffer: &HLCommandBuffer<'_>, dst_state: ResourceState) {
         let src_state = self.resources.texture_state;
         let dst_state = dst_state;
 
         if src_state != dst_state {
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        &self.resources.texture,
-                        src_state,
-                        dst_state,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.resources.texture,
+                    src_state,
+                    dst_state,
+                )],
+            );
             self.resources.texture_state = dst_state;
         }
     }
 
-    pub fn present<'renderer>(
-        &mut self,
-        render_context: &mut RenderContext<'renderer>,
-        task_pool: &TaskPool,
-    ) {
+    pub fn present(&mut self, render_context: &RenderContext<'_>, task_pool: &TaskPool) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {
@@ -226,8 +231,8 @@ impl RenderSurface {
     }
 
     //
-    // TODO: change that asap. Acquire can't be called more than once per frame. This would result
-    // in a crash.
+    // TODO: change that asap. Acquire can't be called more than once per frame.
+    // This would result in a crash.
     //
     pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
@@ -258,7 +263,9 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(renderer))),
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(renderer))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
         }

@@ -1,8 +1,9 @@
+use std::fs;
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use std::fs;
-use std::path::Path;
 
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,

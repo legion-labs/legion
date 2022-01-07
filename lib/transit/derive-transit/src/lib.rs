@@ -1,6 +1,6 @@
 //! derive-transit library
-//! provides procedural macros like #[derive(Reflect)] to allow reflection and fast serialization
-//!
+//! provides procedural macros like #[derive(Reflect)] to allow reflection and
+//! fast serialization
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

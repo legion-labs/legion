@@ -5,9 +5,10 @@ use crate::Stopwatch;
 
 /// Tracks elapsed time. Enters the finished state once `duration` is reached.
 ///
-/// Non repeating timers will stop tracking and stay in the finished state until reset.
-/// Repeating timers will only be in the finished state on each tick `duration` is reached or
-/// exceeded, and can still be reset at any given point.
+/// Non repeating timers will stop tracking and stay in the finished state until
+/// reset. Repeating timers will only be in the finished state on each tick
+/// `duration` is reached or exceeded, and can still be reset at any given
+/// point.
 ///
 /// Paused timers will not have elapsed time increased.
 #[derive(Component, Clone, Debug, Default)]
@@ -80,8 +81,9 @@ impl Timer {
         self.times_finished > 0
     }
 
-    /// Returns the time elapsed on the timer. Guaranteed to be between 0.0 and `duration`.
-    /// Will only equal `duration` when the timer is finished and non repeating.
+    /// Returns the time elapsed on the timer. Guaranteed to be between 0.0 and
+    /// `duration`. Will only equal `duration` when the timer is finished
+    /// and non repeating.
     ///
     /// See also [`Stopwatch::elapsed`](Stopwatch::elapsed).
     ///
@@ -288,7 +290,8 @@ impl Timer {
         self.stopwatch.paused()
     }
 
-    /// Resets the timer. the reset doesn't affect the `paused` state of the timer.
+    /// Resets the timer. the reset doesn't affect the `paused` state of the
+    /// timer.
     ///
     /// See also [`Stopwatch::reset`](Stopwatch::reset).
     ///
@@ -324,7 +327,8 @@ impl Timer {
         self.elapsed().as_secs_f32() / self.duration().as_secs_f32()
     }
 
-    /// Returns the percentage of the timer remaining time (goes from 0.0 to 1.0).
+    /// Returns the percentage of the timer remaining time (goes from 0.0 to
+    /// 1.0).
     ///
     /// # Examples
     /// ```
@@ -392,7 +396,8 @@ mod tests {
         assert!(!t.repeating());
         assert_eq!(t.percent(), 0.025);
         assert_eq!(t.percent_left(), 0.975);
-        // Tick past the end and make sure elapsed doesn't go past 0.0 and other things update
+        // Tick past the end and make sure elapsed doesn't go past 0.0 and other things
+        // update
         t.unpause();
         t.tick(Duration::from_secs_f32(500.0));
         assert_eq!(t.elapsed_secs(), 10.0);
@@ -432,7 +437,8 @@ mod tests {
         assert_eq!(t.times_finished(), 1);
         assert_eq!(t.percent(), 0.125);
         assert_eq!(t.percent_left(), 0.875);
-        // Continuing to tick should turn off both finished & just_finished for repeating timers
+        // Continuing to tick should turn off both finished & just_finished for
+        // repeating timers
         t.tick(Duration::from_secs_f32(1.0));
         assert_eq!(t.elapsed_secs(), 1.25);
         assert!(!t.finished());

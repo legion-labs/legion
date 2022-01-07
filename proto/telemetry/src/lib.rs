@@ -1,14 +1,47 @@
 //! telemetry protocols
-//!
 
-#[rustfmt::skip]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::doc_markdown,
+    clippy::too_many_lines,
+    clippy::wildcard_imports,
+    clippy::similar_names
+)]
+
+use std::io::{Read, Write};
+
+use anyhow::{Context, Result};
+
 #[path = "../codegen/telemetry.rs"]
 pub mod telemetry;
 
-#[rustfmt::skip]
 #[path = "../codegen/ingestion.rs"]
 pub mod ingestion;
 
-#[rustfmt::skip]
 #[path = "../codegen/analytics.rs"]
 pub mod analytics;
+
+pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
+    let mut compressed = Vec::new();
+    let mut encoder = lz4::EncoderBuilder::new()
+        .level(10)
+        .build(&mut compressed)
+        .with_context(|| "allocating lz4 encoder")?;
+    let _size = encoder
+        .write(src)
+        .with_context(|| "writing to lz4 encoder")?;
+    let (_writer, res) = encoder.finish();
+    res.with_context(|| "closing lz4 encoder")?;
+    Ok(compressed)
+}
+
+pub fn decompress(compressed: &[u8]) -> Result<Vec<u8>> {
+    let mut decompressed = Vec::new();
+    let mut decoder = lz4::Decoder::new(compressed).with_context(|| "allocating lz4 decoder")?;
+    let _size = decoder
+        .read_to_end(&mut decompressed)
+        .with_context(|| "reading lz4-compressed buffer")?;
+    let (_reader, res) = decoder.finish();
+    res?;
+    Ok(decompressed)
+}

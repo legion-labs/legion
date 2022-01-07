@@ -11,15 +11,21 @@ keywords = ["legion"]
 [dependencies]
 # Legion engine
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
 lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 lgn-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
 lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
+lgn-ubercompiler = { path = "../../server/ubercompiler", version = "0.1.0" }
 
 # temp dependency on sample-data, until offline data moved to plugins
 sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }
-generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "offline",
+] }
 
 tokio = { version = "1.13", features = ["full"] }

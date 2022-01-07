@@ -25,14 +25,15 @@ impl Drop for GfxApi {
 impl GfxApi {
     /// # Safety
     ///
-    /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
-    /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
-    /// behavior on the CPU for reasons other than interacting with the GPU.
+    /// GPU programming is fundamentally unsafe, so all  APIs that interact with
+    /// the GPU should be considered unsafe. However,  APIs are only gated
+    /// by unsafe if they can cause undefined behavior on the CPU for
+    /// reasons other than interacting with the GPU.
     #[allow(unsafe_code)]
     pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_api, device_context) = VulkanApi::new(api_def).map_err(|e| {
-            log::error!("Error creating buffer {:?}", e);
+            lgn_telemetry::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 
@@ -55,7 +56,7 @@ impl GfxApi {
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
-            let _create_index = device_context.create_index;
+            let create_index = device_context.create_index;
 
             // This should be the final device context
             std::mem::drop(device_context);
@@ -64,22 +65,23 @@ impl GfxApi {
             match Arc::try_unwrap(inner) {
                 Ok(inner) => std::mem::drop(inner),
                 Err(_arc) => {
-                    return Err(format!(
-                        "Could not destroy device, {} references to it exist",
-                        strong_count
-                    )
-                    .into());
-
                     #[cfg(debug_assertions)]
                     #[cfg(feature = "track-device-contexts")]
                     {
+                        #[allow(clippy::used_underscore_binding)]
                         let mut all_contexts = _arc.all_contexts.lock().unwrap();
-                        all_contexts.remove(&_create_index);
+                        all_contexts.remove(&create_index);
                         for (k, v) in all_contexts.iter_mut() {
                             v.resolve();
                             println!("context allocation: {}\n{:?}", k, v);
                         }
                     }
+
+                    return Err(format!(
+                        "Could not destroy device, {} references to it exist",
+                        strong_count
+                    )
+                    .into());
                 }
             }
         }

@@ -1,16 +1,23 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
-use lgn_telemetry::*;
+use lgn_telemetry::{
+    flush_log_buffer, flush_metrics_buffer, get_process_id, info, init_event_dispatch,
+    init_thread_stream, record_float_metric, record_int_metric, set_max_log_level, trace_scope,
+    LevelFilter, MetricDesc,
+};
 mod debug_event_sink;
-use debug_event_sink::DebugEventSink;
+use debug_event_sink::{expect, DebugEventSink, SharedState, State};
 
-fn test_log_str() {
+fn test_log_str(state: &SharedState) {
     for x in 1..5 {
-        log_static_str(LogLevel::Info, "test");
-        log_string(LogLevel::Info, format!("test {}", x));
+        info!("test");
+        expect(state, &Some(State::Log(String::from("test"))));
+        info!("test {}", x);
+        expect(state, &Some(State::Log(format!("test {}", x))));
     }
     flush_log_buffer();
+    expect(state, &Some(State::ProcessLogBlock(7)));
 }
 
 fn get_tsc_frequency() -> Result<u64, String> {
@@ -23,10 +30,9 @@ fn get_tsc_frequency() -> Result<u64, String> {
     let cpuid = CpuId::new();
     let cpu_brand = cpuid
         .get_processor_brand_string()
-        .map(|b| b.as_str().to_owned())
-        .unwrap_or_else(|| "unknown".to_owned());
+        .map_or_else(|| "unknown".to_owned(), |b| b.as_str().to_owned());
 
-    dbg!(&cpu_brand);
+    println!("CPU brand: {:?}", &cpu_brand);
 
     match cpuid.get_tsc_info() {
         Some(tsc_info) => match tsc_info.tsc_frequency() {
@@ -40,7 +46,7 @@ fn get_tsc_frequency() -> Result<u64, String> {
     }
 }
 
-fn test_log_thread() {
+fn test_log_thread(state: &SharedState) {
     println!("TSC frequency: {}", get_tsc_frequency().unwrap_or_default());
     let mut threads = Vec::new();
     for _ in 1..5 {
@@ -48,7 +54,6 @@ fn test_log_thread() {
             init_thread_stream();
             for _ in 1..1024 {
                 trace_scope!();
-                log_static_str(LogLevel::Info, "test_msg");
             }
         }));
     }
@@ -56,27 +61,34 @@ fn test_log_thread() {
         t.join().unwrap();
     }
     flush_log_buffer();
+    expect(state, &Some(State::ProcessThreadBlock(723)));
 }
 
-fn test_metrics() {
+fn test_metrics(state: &SharedState) {
     static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
         name: "Frame Time",
         unit: "ticks",
     };
-    dbg!(&FRAME_TIME_METRIC);
+    println!("{:?}", &FRAME_TIME_METRIC);
     record_int_metric(&FRAME_TIME_METRIC, 1000);
     record_float_metric(&FRAME_TIME_METRIC, 1.0);
     flush_metrics_buffer();
+    expect(state, &Some(State::ProcessMetricsBlock(2)));
 }
 
 #[test]
 fn test_log() {
-    init_event_dispatch(1024 * 10, 1024 * 12, 1024 * 12, &mut || {
-        Arc::new(DebugEventSink {})
-    })
+    let state = Arc::new(Mutex::new(None));
+    init_event_dispatch(
+        1024 * 10,
+        1024 * 12,
+        1024 * 12,
+        Arc::new(DebugEventSink::new(state.clone())),
+    )
     .unwrap();
+    set_max_log_level(LevelFilter::Trace);
     assert!(get_process_id().is_some());
-    test_log_str();
-    test_log_thread();
-    test_metrics();
+    test_log_str(&state);
+    test_log_thread(&state);
+    test_metrics(&state);
 }

@@ -63,8 +63,8 @@ impl Command for PushChildren {
                 added = true;
             }
 
-            // NOTE: ideally this is just an else statement, but currently that _incorrectly_ fails
-            // borrow-checking
+            // NOTE: ideally this is just an else statement, but currently that
+            // _incorrectly_ fails borrow-checking
             if !added {
                 world
                     .entity_mut(self.parent)
@@ -239,7 +239,8 @@ impl<'w> BuildWorldChildren for EntityMut<'w> {
                     // FIXME: don't erase the previous parent (see #1545)
                     .insert_bundle((Parent(parent), PreviousParent(parent)));
             }
-            // Inserting a bundle in the children entities may change the parent entity's location if they were of the same archetype
+            // Inserting a bundle in the children entities may change the parent entity's
+            // location if they were of the same archetype
             self.update_location();
         }
         if let Some(mut children_component) = self.get_mut::<Children>() {
@@ -261,7 +262,8 @@ impl<'w> BuildWorldChildren for EntityMut<'w> {
                     // FIXME: don't erase the previous parent (see #1545)
                     .insert_bundle((Parent(parent), PreviousParent(parent)));
             }
-            // Inserting a bundle in the children entities may change the parent entity's location if they were of the same archetype
+            // Inserting a bundle in the children entities may change the parent entity's
+            // location if they were of the same archetype
             self.update_location();
         }
 

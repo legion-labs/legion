@@ -1,15 +1,20 @@
 use std::{fmt::Display, sync::Arc};
 
 use lgn_ecs::prelude::*;
+use lgn_input::{
+    keyboard::KeyboardInput,
+    mouse::{MouseButtonInput, MouseMotion, MouseWheel},
+    touch::TouchInput,
+};
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     RenderTaskPool, Renderer,
 };
-use log::{error, info, warn};
+use lgn_telemetry::{error, info, warn};
 use webrtc::{
-    data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
-    peer::peer_connection::RTCPeerConnection,
+    data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    peer_connection::RTCPeerConnection,
 };
 
 mod control_stream;
@@ -69,7 +74,7 @@ impl Streamer {
 
 pub(crate) fn handle_stream_events(
     task_pool: Res<'_, RenderTaskPool>,
-    streamer: ResMut<'_, Streamer>,
+    streamer: Res<'_, Streamer>,
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
@@ -167,29 +172,69 @@ pub(crate) fn handle_stream_events(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
+    mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
+    mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
+    mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
+    mut input_touch_input: EventWriter<'_, '_, TouchInput>,
+    mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
 ) {
     for event in video_stream_events.iter() {
-        let mut render_surface = query.get_mut(event.stream_id.entity).unwrap();
-        let render_pass = render_surface.test_renderpass();
-        match &event.info {
-            VideoStreamEventInfo::Color { id, color } => {
-                log::info!("received color command id={}", id);
-                render_pass.write().set_color(color.0);
+        match query.get_mut(event.stream_id.entity) {
+            Ok(mut render_surface) => {
+                let render_pass = render_surface.test_renderpass();
+
+                match &event.info {
+                    VideoStreamEventInfo::Color { id, color } => {
+                        info!("received color command id={}", id);
+                        render_pass.write().set_color(color.0);
+                    }
+                    VideoStreamEventInfo::Resize { width, height } => {
+                        let resolution = Resolution::new(*width, *height);
+                        render_surface.resize(
+                            &renderer,
+                            RenderSurfaceExtents::new(resolution.width(), resolution.height()),
+                        );
+                    }
+                    VideoStreamEventInfo::Speed { id, speed } => {
+                        info!("received speed command id={}", id);
+                        render_pass.write().set_speed(*speed);
+                    }
+                    VideoStreamEventInfo::Input { input } => {
+                        info!("received input: {:?}", input);
+
+                        match input {
+                            Input::MouseButtonInput(mouse_button_input) => {
+                                input_mouse_button_input.send(mouse_button_input.clone());
+                            }
+                            Input::MouseMotion(mouse_motion) => {
+                                input_mouse_motion.send(mouse_motion.clone());
+                            }
+                            Input::MouseWheel(mouse_wheel) => {
+                                input_mouse_wheel.send(mouse_wheel.clone());
+                            }
+                            Input::TouchInput(touch_input) => {
+                                // A bit unsure why, but unlike other events
+                                // [`legion_input::touch:TouchInput`]
+                                // derives Copy (_and_ `Clone`).
+                                input_touch_input.send(*touch_input);
+                            }
+                            Input::KeyboardInput(keyboard_input) => {
+                                input_keyboard_input.send(keyboard_input.clone());
+                            }
+                        }
+                    }
+                }
             }
-            VideoStreamEventInfo::Resize { width, height } => {
-                let resolution = Resolution::new(*width, *height);
-                render_surface.resize(
-                    &renderer,
-                    RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                );
-            }
-            VideoStreamEventInfo::Speed { id, speed } => {
-                log::info!("received speed command id={}", id);
-                render_pass.write().set_speed(*speed);
+            Err(query_err) => {
+                // TODO
+                // Most likely: "The given entity does not have the requested component"
+                // i.e. the entity associated with the stream-id does not have a RenderSurface
+                eprintln!("{}", query_err);
             }
         }
     }

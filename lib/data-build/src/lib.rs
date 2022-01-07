@@ -1,35 +1,44 @@
 //! Data build module of data processing pipeline.
 //!
-//! > **WORK IN PROGRESS**: *This document describes the current state of the implementation
-//! > and highlights near future development plans.*
+//! > **WORK IN PROGRESS**: *This document describes the current state of the
+//! implementation > and highlights near future development plans.*
 //!
-//! Data build module is part of the engine's data processing pipeline. Its main responsibility
-//! is to transform the resources from the `offline format` used by the editor
-//! into a `runtime format` which is consumed by the engine.
+//! Data build module is part of the engine's data processing pipeline. Its main
+//! responsibility is to transform the resources from the `offline format` used
+//! by the editor into a `runtime format` which is consumed by the engine.
 //!
-//! Runtime data generation is handled by a collection of `data compilers` - limited in scope modules
-//! dedicated to processing a given type of *input resource and its dependencies*. One such process
-//! can produce **many** outputs in form of **derived resources** - either as a supporting *intermediate* data format
-//! or data format ready to be consumed by the runtime engine.
+//! Runtime data generation is handled by a collection of `data compilers` -
+//! limited in scope modules dedicated to processing a given type of *input
+//! resource and its dependencies*. One such process can produce **many**
+//! outputs in form of **derived resources** - either as a supporting
+//! *intermediate* data format or data format ready to be consumed by the
+//! runtime engine.
 //!
 //! Data compilation is:
 //! - **Hermetic** - dependent only on a known set of inputs.
-//! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
+//! - **Deterministic** - the result is bit-by-bit reproducible given the same
+//!   set of inputs.
 //!
-//! All the results of data-compilation are stored in a [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
+//! All the results of data-compilation are stored in a
+//! [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
-//! To support incremental building the data build is persisted on disk in `source.index` and `output.index` files.
-//! Those files contain:
-//! - **source.index** - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - **output.index** - Records of derived resources that are stored in a [`ContentStore`](`lgn_content_store::ContentStore`).
+//! To support incremental building the data build is persisted on disk in
+//! `source.index` and `output.index` files. Those files contain:
+//! - **source.index** - The build-oriented data structure describing resources
+//!   and build dependencies in the [`project`] that is being built.
+//! - **output.index** - Records of derived resources that are stored in a
+//!   [`ContentStore`](`lgn_content_store::ContentStore`).
 //!
-//! For other parts of the data pipeline see [`lgn_data_offline`], [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
+//! For other parts of the data pipeline see [`lgn_data_offline`],
+//! [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
 //!
 //! # Structure on disk
 //!
-//! An example of a [`project`] with 1 source file, 2 offline resources and 2 derived resources on disk looks as follows.
-//! (where **temp/** is an build output directory acting as a *local content store*)
+//! An example of a [`project`] with 1 source file, 2 offline resources and 2
+//! derived resources on disk looks as follows. (where **temp/** is an build
+//! output directory acting as a *local content store*)
+//!
 //! ```markdown
 //!  ./
 //!  | + source/
@@ -52,38 +61,53 @@
 //!
 //! The build process consists of the following steps:
 //!
-//! 1. An update of the `build index` with changes found in the corresponding [`project`].
-//! 2. Processing of data build input arguments:
+//! 1. An update of the `build index` with changes found in the corresponding
+//! [`project`]. 2. Processing of data build input arguments:
 //!     - Find and validate the **source resource** in the [`project`].
-//!     - Validating **build input parameters**: `platform`, `target`, `environment`, `locale`.
-//! 3. Building a **build graph** from input **compile path** and all its dependencies.
-//! 4. Gather information about all required **data compilers**.
-//!     - The information includes **Compiler Hash** based on **build input parameters**
-//! 5. Process **build graph** nodes (*source* and *target* tuples) in order of dependencies:
-//!     - Compute **Context Hash** using **Compiler Hash** and **Databuild Version**
-//!     - Compute **Source Hash** in 2 ways depending on the *source build graph node*:
-//!         - when it is a **source resource**: use a hash of the checksum of its content and all content of its dependencies.
-//!         - when it is a **derived resource**: use the checksum of the output of it's *source build graph node*.
-//! 6. Check the `build index` if there is already existing output for given (**Context Hash**, **Source Hash**) tuple.
-//! 7. If not, compile the resource:
-//!     - Store the resulting resource in [`ContentStore`](`lgn_content_store::ContentStore`) and a record an entry in `build index`.
+//!     - Validating **build input parameters**: `platform`, `target`,
+//!       `environment`, `locale`.
+//! 3. Building a **build graph** from input **compile path** and all its
+//! dependencies. 4. Gather information about all required **data compilers**.
+//!     - The information includes **Compiler Hash** based on **build input
+//!       parameters**
+//! 5. Process **build graph** nodes (*source* and *target* tuples) in order of
+//! dependencies:
+//!     - Compute **Context Hash** using **Compiler Hash** and **Databuild
+//!       Version**
+//!     - Compute **Source Hash** in 2 ways depending on the *source build graph
+//!       node*:
+//!         - when it is a **source resource**: use a hash of the checksum of
+//!           its content and all content of its dependencies.
+//!         - when it is a **derived resource**: use the checksum of the output
+//!           of it's *source build graph node*.
+//! 6. Check the `build index` if there is already existing output for given
+//! (**Context Hash**, **Source Hash**) tuple. 7. If not, compile the resource:
+//!     - Store the resulting resource in
+//!       [`ContentStore`](`lgn_content_store::ContentStore`) and a record an
+//!       entry in `build index`.
 //!     - Add the compiled resource to the resulting `manifest file`.
 //!
 //! # `SourceHash` and `ContextHash`
 //!
-//! The role of the two ids is two allow for incremental data compilation. They are the signature of the resource and the signature of the
-//! context for which they are compiled for. Both values are used in `build index` to cache the compilation results and to be able to retrieve
-//! the results in consecutive builds. Both are created from number of sources:
+//! The role of the two ids is two allow for incremental data compilation. They
+//! are the signature of the resource and the signature of the context for which
+//! they are compiled for. Both values are used in `build index` to cache the
+//! compilation results and to be able to retrieve the results in consecutive
+//! builds. Both are created from number of sources:
 //!
 //! #### `SourceHash` - the signature of the compilation source data
 //!
-//! It identifies the content of a resource being compiled. It is defined in two ways, depending on the resource it describes:
+//! It identifies the content of a resource being compiled. It is defined in two
+//! ways, depending on the resource it describes:
 //!
 //! * For **source resource**:
 //!     * checksum of the resource's content (available in [`.meta`] file).
-//!     * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
+//!     * checksum of content of each of the resource's dependencies (list of
+//!       dependencies is in [`.meta`] file)
 //! * For **derived resource**:
-//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
+//!     * checksum of the output of the directly dependent data compilation (as
+//!       described in the
+//!       [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -97,7 +121,8 @@
 //!   * Compilation locale - i.e.: Language, Region, etc.
 //! * Data-build process version.
 //!
-//! > **TODO**: The above does not take into account `feature switches` that would give  more granular control on the behavior of the data compiler.
+//! > **TODO**: The above does not take into account `feature switches` that
+//! would give  more granular control on the behavior of the data compiler.
 //!
 //! [`.meta`]: ../resources/index.html#resource-meta-file
 //! [`project`]: ../resources/index.html#project-index
@@ -159,68 +184,62 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-use std::io;
+use std::path::PathBuf;
 
-#[derive(Debug)]
+use lgn_data_compiler::compiler_api::CompilerError;
+use thiserror::Error;
+
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
+#[derive(Error, Debug)]
 pub enum Error {
-    /// Project-related error
-    ProjectError,
+    /// Project-related error.
+    #[error("Project-related error: '{0}")]
+    ProjectError(#[source] lgn_data_offline::resource::Error),
     /// Not found.
+    #[error("Not found.")]
     NotFound,
     /// Compiler not found.
+    #[error("Compiler not found.")]
     CompilerNotFound,
     /// IO error.
+    #[error("IO error.")]
     IOError,
-    /// Index integrity error.
-    IntegrityFailure,
     /// Circular dependency in build graph.
+    #[error("Circular dependency in build graph.")]
     CircularDependency,
     /// Index version mismatch.
-    VersionMismatch,
+    #[error("Index version mismatch: '{value}', expected: '{expected}'")]
+    VersionMismatch {
+        /// Current version value.
+        value: String,
+        /// Expected version value.
+        expected: String,
+    },
     /// Content Store invalid.
+    #[error("Content Store invalid.")]
     InvalidContentStore,
     /// Project invalid.
-    InvalidProject,
+    #[error("Project invalid.")]
+    InvalidProject(PathBuf),
     /// Manifest file error.
-    InvalidManifest,
+    #[error("Manifest file error.")]
+    InvalidManifest(Box<dyn std::error::Error + Send + Sync>),
     /// Asset linking failed.
+    #[error("Asset linking failed.")]
     LinkFailed,
     /// Compilation did not produce expected output.
+    #[error("Compilation did not produce expected output.")]
     OutputNotPresent,
     /// Compiler returned an error.
-    CompilerError(io::Error),
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Error::ProjectError => write!(f, "ProjectError"),
-            Error::NotFound => write!(f, "NotFound"),
-            Error::CompilerNotFound => write!(f, "CompilerNotFound"),
-            Error::IOError => write!(f, "IOError"),
-            Error::IntegrityFailure => write!(f, "IntegrityFailure"),
-            Error::CircularDependency => write!(f, "CircularDependency"),
-            Error::VersionMismatch => write!(f, "VersionMismatch"),
-            Error::InvalidContentStore => write!(f, "InvalidContentStore"),
-            Error::InvalidProject => write!(f, "InvalidProject"),
-            Error::InvalidManifest => write!(f, "InvalidManifest"),
-            Error::LinkFailed => write!(f, "LinkFailed"),
-            Error::OutputNotPresent => write!(f, "OutputNotPresent"),
-            Error::CompilerError(_) => write!(f, "CompilerError"),
-        }
-    }
+    #[error("Compiler returned an error.")]
+    CompilerError(CompilerError),
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {
     fn from(err: lgn_data_offline::resource::Error) -> Self {
         match err {
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Self::NotFound,
-            lgn_data_offline::resource::Error::ParseError
-            | lgn_data_offline::resource::Error::IOError(_) => Self::ProjectError,
+            lgn_data_offline::resource::Error::NotFound => Self::NotFound,
+            _ => Self::ProjectError(err),
         }
     }
 }

@@ -1,22 +1,26 @@
+//! Transaction Operation to Delete a Resource
+
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
-pub(crate) struct DeleteResourceOperation {
+/// Operation to Delete a resource
+pub struct DeleteResourceOperation {
     resource_id: ResourceTypeAndId,
     old_resource_name: Option<ResourcePathName>,
     old_resource_data: Option<Vec<u8>>,
 }
 
 impl DeleteResourceOperation {
-    pub fn new(resource_id: ResourceTypeAndId) -> Self {
-        Self {
+    /// Return a newly created `DeleteResourceOperation`
+    pub fn new(resource_id: ResourceTypeAndId) -> Box<Self> {
+        Box::new(Self {
             resource_id,
             old_resource_name: None,
             old_resource_data: None,
-        }
+        })
     }
 }
 
@@ -28,7 +32,7 @@ impl TransactionOperation for DeleteResourceOperation {
             if self.old_resource_name.is_none() {
                 let mut old_resource_data = Vec::<u8>::new();
                 ctx.resource_registry.serialize_resource(
-                    self.resource_id.t,
+                    self.resource_id.kind,
                     &old_handle,
                     &mut old_resource_data,
                 )?;
@@ -54,16 +58,22 @@ impl TransactionOperation for DeleteResourceOperation {
 
         let handle = ctx
             .resource_registry
-            .deserialize_resource(self.resource_id.t, &mut old_resource_data.as_slice())?;
+            .deserialize_resource(self.resource_id.kind, &mut old_resource_data.as_slice())?;
 
-        ctx.project.add_resource_with_id(
-            old_resource_name.clone(),
-            self.resource_id.t,
-            self.resource_id,
-            &handle,
-            &mut ctx.resource_registry,
-        )?;
-        ctx.loaded_resource_handles.insert(self.resource_id, handle);
+        if let Some(resource_type_name) = ctx
+            .resource_registry
+            .get_resource_type_name(self.resource_id.kind)
+        {
+            ctx.project.add_resource_with_id(
+                old_resource_name.clone(),
+                resource_type_name,
+                self.resource_id.kind,
+                self.resource_id,
+                &handle,
+                &mut ctx.resource_registry,
+            )?;
+            ctx.loaded_resource_handles.insert(self.resource_id, handle);
+        }
         Ok(())
     }
 }

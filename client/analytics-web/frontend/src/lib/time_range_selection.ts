@@ -26,7 +26,7 @@ export function DrawSelectedRange(
   const beginPixels = (beginSelection - begin) * msToPixelsFactor;
   const endPixels = (endSelection - begin) * msToPixelsFactor;
 
-  renderingContext.fillStyle = "rgba(64, 64, 200, 0.2)";
+  renderingContext.fillStyle = "rgba(255, 163, 68, 0.2)";
   renderingContext.fillRect(
     beginPixels,
     0,

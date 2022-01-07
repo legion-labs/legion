@@ -42,10 +42,12 @@ impl Plugin for EguiPlugin {
             app.add_startup_system(on_windowless_created);
         }
 
-        app.insert_resource(Egui {
+        let egui = Egui {
             enable: self.enable,
             ..Egui::default()
-        });
+        };
+        //egui.ctx.style().visuals.window_shadow.extrusion = 0.0;
+        app.insert_resource(egui);
         app.insert_resource(RawInput::default());
         app.add_system_to_stage(
             CoreStage::PreUpdate,
@@ -207,11 +209,6 @@ fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
         return;
     }
     egui.ctx.begin_frame(raw_input.to_owned());
-
-    egui::Window::new("Debug").show(&egui.ctx, |ui| {
-        egui.ctx.settings_ui(ui);
-        ui.label(egui.ctx.texture().version);
-    });
 }
 
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {

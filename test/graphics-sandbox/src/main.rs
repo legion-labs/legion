@@ -1,27 +1,34 @@
+//! Test sandbox for graphics programmers
+
+#![allow(clippy::needless_pass_by_value)]
+
 use std::collections::HashMap;
 
-use lgn_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use clap::{AppSettings, Parser};
+
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
-use lgn_input::keyboard::{KeyCode, KeyboardInput};
-use lgn_input::mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
 use lgn_input::InputPlugin;
-use lgn_math::{Quat, Vec3};
+use lgn_math::Vec3;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::components::{
-    CameraComponent, RenderSurface, RenderSurfaceExtents, RenderSurfaceId, RotationComponent,
-    StaticMesh,
+use lgn_renderer::{
+    components::{
+        LightComponent, LightType, RenderSurface, RenderSurfaceExtents, RenderSurfaceId,
+        RotationComponent, StaticMesh,
+    },
+    resources::{DefaultMeshId, DefaultMeshes},
+    {Renderer, RendererPlugin, RendererSystemLabel},
 };
-use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
 use lgn_transform::components::Transform;
 use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
-use lgn_winit::{WinitPlugin, WinitWindows};
+use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 
 struct RenderSurfaces {
     window_id_mapper: HashMap<WindowId, RenderSurfaceId>,
@@ -61,104 +68,70 @@ struct SnapshotFrameCounter {
     frame_target: i32,
 }
 
+#[derive(Parser, Default)]
+#[clap(name = "graphics-sandbox")]
+#[clap(about = "A sandbox for graphics", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Args {
+    /// The width of the window
+    #[clap(short, long, default_value_t = 1280.0)]
+    width: f32,
+    /// The height of the window
+    #[clap(short, long, default_value_t = 720.0)]
+    height: f32,
+    /// Saves a snapshot of the scene
+    #[clap(short, long)]
+    snapshot: bool,
+    /// Name of the setup to launch
+    #[clap(long, default_value = "simple-scene")]
+    setup_name: String,
+    /// Use asset registry data instead of a hardcoded scene
+    #[clap(long)]
+    use_asset_registry: bool,
+    /// Enable egui immediate mode GUI
+    #[clap(long)]
+    egui: bool,
+}
+
 fn main() {
-    const ARG_NAME_WIDTH: &str = "width";
-    const ARG_NAME_HEIGHT: &str = "height";
-    const ARG_NAME_SNAPSHOT: &str = "snapshot";
-    const ARG_NAME_SETUP_NAME: &str = "setup-name";
-    const ARG_NAME_EGUI: &str = "egui";
-    const ARG_NAME_USE_ASSET_REGISTRY: &str = "use-asset-registry";
-    let matches = clap::App::new("graphics-sandbox")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("Legion Labs")
-        .about("A sandbox for graphics")
-        .arg(
-            clap::Arg::with_name(ARG_NAME_WIDTH)
-                .short("w")
-                .long(ARG_NAME_WIDTH)
-                .help("The width of the window")
-                .takes_value(true),
-        )
-        .arg(
-            clap::Arg::with_name(ARG_NAME_HEIGHT)
-                .short("h")
-                .long(ARG_NAME_HEIGHT)
-                .help("The height of the window")
-                .takes_value(true),
-        )
-        .arg(
-            clap::Arg::with_name(ARG_NAME_SNAPSHOT)
-                .short("s")
-                .long(ARG_NAME_SNAPSHOT)
-                .help("Saves a snapshot of the scene")
-                .takes_value(false),
-        )
-        .arg(
-            clap::Arg::with_name(ARG_NAME_SETUP_NAME)
-                .long(ARG_NAME_SETUP_NAME)
-                .help("Name of the setup to launch")
-                .takes_value(true),
-        )
-        .arg(
-            clap::Arg::with_name(ARG_NAME_USE_ASSET_REGISTRY)
-                .long(ARG_NAME_USE_ASSET_REGISTRY)
-                .takes_value(false)
-                .help("Use asset registry data instead of a hardcoded scene"),
-        )
-        .arg(
-            clap::Arg::with_name(ARG_NAME_EGUI)
-                .long(ARG_NAME_EGUI)
-                .takes_value(false)
-                .help("Enable egui immediate mode GUI"),
-        )
-        .get_matches();
-
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-
-    let width = matches
-        .value_of(ARG_NAME_WIDTH)
-        .map(|s| s.parse::<f32>().unwrap())
-        .unwrap_or(1280.0);
-    let height = matches
-        .value_of(ARG_NAME_HEIGHT)
-        .map(|s| s.parse::<f32>().unwrap())
-        .unwrap_or(720.0);
-    let setup_name = matches
-        .value_of(ARG_NAME_SETUP_NAME)
-        .unwrap_or("simple-scene");
+    let args = Args::parse();
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(true, matches.is_present(ARG_NAME_EGUI)))
+        .add_plugin(RendererPlugin::new(true, args.egui, !args.snapshot))
+        .insert_resource(WindowDescriptor {
+            width: args.width,
+            height: args.height,
+            ..WindowDescriptor::default()
+        })
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default());
 
-    if matches.is_present(ARG_NAME_SNAPSHOT) {
+    if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
-            setup_name: setup_name.to_string(),
-            width,
-            height,
+            setup_name: args.setup_name.clone(),
+            width: args.width,
+            height: args.height,
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
-        app.insert_resource(WindowDescriptor {
-            width,
-            height,
-            ..WindowDescriptor::default()
-        });
-        app.add_plugin(WinitPlugin::default())
-            .add_system(on_window_created.exclusive_system())
-            .add_system(on_window_resized.exclusive_system())
-            .add_system(on_window_close_requested.exclusive_system())
-            .add_system(camera_control.system())
-            .insert_resource(RenderSurfaces::new());
+        app.insert_resource(WinitConfig {
+            return_from_run: true,
+        })
+        .add_plugin(WinitPlugin::default())
+        .add_system(on_window_created.exclusive_system())
+        .add_system(on_window_resized.exclusive_system())
+        .add_system(on_window_close_requested.exclusive_system())
+        .insert_resource(RenderSurfaces::new());
     }
-    if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {
+    if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
+    } else if args.setup_name.eq("light_test") {
+        app.add_startup_system(init_light_test);
     } else {
         app.add_startup_system(init_scene);
     }
@@ -166,12 +139,12 @@ fn main() {
 }
 
 fn on_window_created(
-    mut commands: Commands,
-    mut ev_wnd_created: EventReader<WindowCreated>,
-    wnd_list: Res<Windows>,
-    winit_wnd_list: Res<WinitWindows>,
-    renderer: Res<Renderer>,
-    mut render_surfaces: ResMut<RenderSurfaces>,
+    mut commands: Commands<'_, '_>,
+    mut ev_wnd_created: EventReader<'_, '_, WindowCreated>,
+    wnd_list: Res<'_, Windows>,
+    winit_wnd_list: Res<'_, WinitWindows>,
+    renderer: Res<'_, Renderer>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
@@ -186,11 +159,11 @@ fn on_window_created(
 }
 
 fn on_window_resized(
-    mut ev_wnd_resized: EventReader<WindowResized>,
-    wnd_list: Res<Windows>,
-    renderer: Res<Renderer>,
-    mut q_render_surfaces: Query<&mut RenderSurface>,
-    render_surfaces: Res<RenderSurfaces>,
+    mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
+    wnd_list: Res<'_, Windows>,
+    renderer: Res<'_, Renderer>,
+    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    render_surfaces: Res<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -210,10 +183,10 @@ fn on_window_resized(
 }
 
 fn on_window_close_requested(
-    mut commands: Commands,
-    mut ev_wnd_destroyed: EventReader<WindowCloseRequested>,
-    query_render_surface: Query<(Entity, &RenderSurface)>,
-    mut render_surfaces: ResMut<RenderSurfaces>,
+    mut commands: Commands<'_, '_>,
+    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_destroyed.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -230,11 +203,11 @@ fn on_window_close_requested(
 }
 
 fn presenter_snapshot_system(
-    mut commands: Commands,
-    snapshot_descriptor: Res<SnapshotDescriptor>,
-    renderer: Res<Renderer>,
+    mut commands: Commands<'_, '_>,
+    snapshot_descriptor: Res<'_, SnapshotDescriptor>,
+    renderer: Res<'_, Renderer>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
-    mut frame_counter: Local<SnapshotFrameCounter>,
+    mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
         let mut render_surface = RenderSurface::new(
@@ -267,16 +240,106 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_scene(mut commands: Commands) {
-    // plane
+fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+    // sphere 1
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 0,
-            color: (0, 0, 255).into(),
-            offset: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (255, 0, 0).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.1, 0.0, 0.0),
+        });
+
+    // sphere 2
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 255, 0).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.1, 0.0),
+        });
+
+    // sphere 3
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Sphere as usize,
+            (0, 0, 255).into(),
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.0, 0.1),
+        });
+
+    // directional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Directional {
+                direction: Vec3::new(0.5, 1.0, 0.0).normalize(),
+            },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // omnidirectional light 1
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // omnidirectional light 2
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: false,
+        });
+
+    // spotlight
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Spotlight {
+                direction: Vec3::new(0.0, 1.0, 0.0),
+                cone_angle: std::f32::consts::PI / 4.0,
+            },
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
+        });
+}
+
+fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+    // plane
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Plane as usize,
+            (255, 0, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.4, 0.0, 0.0),
         });
@@ -285,11 +348,11 @@ fn init_scene(mut commands: Commands) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 1,
-            color: (255, 0, 0).into(),
-            offset: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Cube as usize,
+            (0, 255, 0).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.4, 0.0),
         });
@@ -298,95 +361,35 @@ fn init_scene(mut commands: Commands) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(StaticMesh {
-            mesh_id: 2,
-            color: (0, 255, 0).into(),
-            offset: 0,
-        })
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshId::Pyramid as usize,
+            (0, 0, 255).into(),
+        ))
         .insert(RotationComponent {
             rotation_speed: (0.0, 0.0, 0.4),
         });
 
-    // camera
+    // omnidirectional light
     commands
         .spawn()
-        .insert(CameraComponent::default())
-        .insert(CameraComponent::default_transform());
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+            enabled: true,
+        });
 }
 
 fn on_snapshot_app_exit(
-    mut commands: Commands,
-    mut app_exit: EventReader<AppExit>,
-    query_render_surface: Query<(Entity, &RenderSurface)>,
+    mut commands: Commands<'_, '_>,
+    mut app_exit: EventReader<'_, '_, AppExit>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
 ) {
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
             commands.entity(entity).despawn();
-        }
-    }
-}
-
-#[derive(Default)]
-struct CameraMoving(bool);
-
-fn camera_control(
-    mut q_cameras: Query<'_, '_, (&mut CameraComponent, &mut Transform)>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
-    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
-    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
-    mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
-    mut camera_moving: Local<CameraMoving>,
-) {
-    for mouse_button_input_event in mouse_button_input_events.iter() {
-        if mouse_button_input_event.button == MouseButton::Right {
-            camera_moving.0 = mouse_button_input_event.state.is_pressed();
-        }
-    }
-
-    if q_cameras.is_empty() || !camera_moving.0 {
-        return;
-    }
-
-    let (mut camera, mut transform) = q_cameras.iter_mut().next().unwrap();
-    {
-        let mut translation = Vec3::default();
-        for keyboard_input_event in keyboard_input_events.iter() {
-            if let Some(key_code) = keyboard_input_event.key_code {
-                match key_code {
-                    KeyCode::W => {
-                        let dir = transform.forward();
-                        translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::S => {
-                        let dir = transform.back();
-                        translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::D => {
-                        let dir = transform.right();
-                        translation += dir * camera.speed / 60.0;
-                    }
-                    KeyCode::A => {
-                        let dir = transform.left();
-                        translation += dir * camera.speed / 60.0;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        let mut rotation = Quat::default();
-        for mouse_motion_event in mouse_motion_events.iter() {
-            rotation *=
-                Quat::from_rotation_y(mouse_motion_event.delta.x * camera.rotation_speed / 60.0);
-            rotation *=
-                Quat::from_rotation_x(mouse_motion_event.delta.y * camera.rotation_speed / 60.0);
-        }
-
-        transform.translation += translation;
-        transform.rotation = rotation * transform.rotation;
-
-        for mouse_wheel_event in mouse_wheel_events.iter() {
-            camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
         }
     }
 }

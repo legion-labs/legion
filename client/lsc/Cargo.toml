@@ -9,11 +9,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1"
-clap = "2.33"
+clap = { version = "3.0", features = ["derive"] }
 lgn-source-control = { path = "../../lib/source-control", version = "0.1.0" }
 lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
-lgn-logger = { path = "../../lib/logger", version = "0.1.0" }
-log = "0.4"
+lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 
 [dev-dependencies]

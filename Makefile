@@ -22,12 +22,13 @@ check-env:
 	cmake --version
 	python3 --version
 	ninja --version
-	yarn --version
+	pnpm --version
 
 check-format:
 	cargo fmt --all -- --check
 
 check-build:
+	cargo check --locked -p lgn-graphics-api --all-targets
 	cargo check --locked --all-targets --all-features
 
 check-clippy:
@@ -67,9 +68,7 @@ codegen:
 build-release:
 	cargo build --release
 
-cov:
-	cargo clean
-	cargo build
+cov: rebuild
 	cargo test --no-run
 	cargo test
 
@@ -109,7 +108,9 @@ book:
 clean:
 	cargo clean
 
+rebuild: clean build
+
 git-clean:
 	git clean -fxd
 
-.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book clean git-clean
+.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book clean git-clean rebuild

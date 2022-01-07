@@ -29,7 +29,8 @@ impl GrpcWebBodyParser {
         self.buf.put(b);
     }
 
-    /// Return any chunk of data that can be passed on to the next layer already.
+    /// Return any chunk of data that can be passed on to the next layer
+    /// already.
     pub fn poll_data(&mut self) -> Poll<Option<Result<BoxBuf>>> {
         match self.body_bytes_remaining {
             // We don't have any clue how many bytes we're going to get.
@@ -47,7 +48,8 @@ impl GrpcWebBodyParser {
                 Poll::Ready(if self.buf.remaining() >= body_length {
                     // We have enough bytes to return the body completely.
                     //
-                    // Set `body_bytes_remaining` to `Some(0)` to reflect that we already sent back the body.
+                    // Set `body_bytes_remaining` to `Some(0)` to reflect that we already sent back
+                    // the body.
                     self.body_bytes_remaining = Some(0);
 
                     Some(Ok(BoxBuf::new(
@@ -70,7 +72,8 @@ impl GrpcWebBodyParser {
                 Poll::Ready(if self.buf.remaining() >= body_bytes_remaining {
                     // We have enough bytes to return the body completely.
                     //
-                    // Set `body_bytes_remaining` to `Some(0)` to reflect that we already sent back the body.
+                    // Set `body_bytes_remaining` to `Some(0)` to reflect that we already sent back
+                    // the body.
                     self.body_bytes_remaining = Some(0);
 
                     Some(Ok(BoxBuf::new(
@@ -151,11 +154,13 @@ impl GrpcWebBodyParser {
     }
 }
 
-/// Parse a HTTP trailer header, returning a `HeaderName` and `HeaderValue` pair.
+/// Parse a HTTP trailer header, returning a `HeaderName` and `HeaderValue`
+/// pair.
 ///
 /// # Arguments
 ///
-/// * `s` - The trailer header to parse, in the format `name:value` with any number of whitespaces
+/// * `s` - The trailer header to parse, in the format `name:value` with any
+///   number of whitespaces
 /// around the different parts.
 fn parse_trailer(s: &str) -> Result<(HeaderName, HeaderValue)> {
     let mut parts = s.trim().splitn(2, ':');

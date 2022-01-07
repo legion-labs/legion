@@ -1,20 +1,24 @@
 <script lang="ts">
-  import { getAllResources, getResourceProperties, ServerType } from "@/api";
+  import { ServerType } from "@lgn/frontend/src/api";
+  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
+  import { Resolution } from "@lgn/frontend/src/lib/types";
+  import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
+  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
+  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
+  import { getAllResources, getResourceProperties } from "@/api";
   import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
-  import Panel from "@/components/Panel.svelte";
-  import TopBar from "@/components/TopBar.svelte";
-  import StatusBar from "@/components/StatusBar.svelte";
-  import Video, { Resolution } from "@/components/Video.svelte";
-  import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
-  import PanelList from "@/components/PanelList.svelte";
+  import ScriptEditor from "@/components/ScriptEditor.svelte";
 
-  const { run: runGetAllResources } = asyncData(getAllResources);
+  const { run: runGetAllResources } = asyncStore(getAllResources);
 
   let currentResourceDescription: ResourceDescription | null = null;
   let fetchAllResources = runGetAllResources();
   let desiredVideoResolution: Resolution | null;
+
+  let editorActiveTab: ServerType;
 
   $: if (currentResourceDescription) {
     getResourceProperties(currentResourceDescription).then((resource) => {
@@ -41,9 +45,9 @@
     <div class="content">
       <div class="secondary-contents">
         <div class="resources">
-          <Panel>
-            <span slot="header">Resources</span>
-            <div class="resources-content" slot="content">
+          <Panel let:isFocused tabs={["Resources"]}>
+            <div slot="tab" let:tab>{tab}</div>
+            <div slot="content" class="resources-content">
               {#await fetchAllResources}
                 <div class="resources-loading">Loading...</div>
               {:then resources}
@@ -51,6 +55,7 @@
                   key="id"
                   items={resources}
                   activeItem={currentResourceDescription}
+                  panelIsFocused={isFocused}
                   on:click={({ detail: resource }) =>
                     setCurrentResourceDescription(resource)}
                   on:itemChange={({ detail: { newItem: resource } }) =>
@@ -75,47 +80,53 @@
         </div>
         <div class="h-separator" />
         <div class="file-system">
-          <Panel>
-            <div slot="header">File System</div>
+          <Panel tabs={["File System"]}>
+            <div slot="tab" let:tab>
+              {tab}
+            </div>
           </Panel>
         </div>
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <Panel>
-          <span slot="header">
-            <span>Main Stream</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
+        <Panel
+          tabs={["editor", "runtime", "script"]}
+          bind:activeTab={editorActiveTab}
+        >
+          <div slot="tab" let:tab>
+            {#if tab === "editor" || tab === "runtime"}
+              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
+              {#if desiredVideoResolution}
+                <span>
+                  - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+                </span>
+              {/if}
+            {:else if tab === "script"}
+              Script
             {/if}
-          </span>
-          <div class="video-container" slot="content">
-            <Video serverType={ServerType.Editor} bind:desiredResolution={desiredVideoResolution} />
           </div>
-        </Panel>
-        <div class="v-separator" />
-        <Panel>
-          <span slot="header">
-            <span>Runtime Stream</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
-            {/if}
-          </span>
           <div class="video-container" slot="content">
-            <Video serverType={ServerType.Runtime} bind:desiredResolution={desiredVideoResolution} />
+            {#if editorActiveTab === "editor" || editorActiveTab === "runtime"}
+              {#key editorActiveTab}
+                <RemoteWindow
+                  serverType={editorActiveTab}
+                  bind:desiredResolution={desiredVideoResolution}
+                />
+              {/key}
+            {:else if editorActiveTab === "script"}
+              <ScriptEditor theme="vs-dark" />
+            {/if}
           </div>
         </Panel>
       </div>
       <div class="v-separator" />
       <div class="secondary-contents">
         <div class="properties">
-          <Panel>
-            <div slot="header">Properties</div>
-            <div slot="content">
+          <Panel tabs={["Properties"]}>
+            <div slot="tab" let:tab>
+              {tab}
+            </div>
+            <div class="properties-content" slot="content">
               <CurrentResourceProperties />
             </div>
           </Panel>
@@ -184,6 +195,10 @@
   }
 
   .properties {
+    @apply h-full;
+  }
+
+  .properties-content {
     @apply h-full;
   }
 </style>

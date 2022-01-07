@@ -1,4 +1,3 @@
-use core::slice;
 use std::fs::File;
 
 use binary_resource::BinaryResource;
@@ -17,7 +16,7 @@ fn find_compiler() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let compilers = list_compilers(slice::from_ref(&common::target_dir()));
+    let compilers = list_compilers(std::slice::from_ref(&common::target_dir()));
     assert_ne!(compilers.len(), 0);
 }
 
@@ -30,7 +29,7 @@ fn compile_atoi() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: text_resource::TextResource::TYPE,
+            kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -43,7 +42,7 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.to_string());
+        let path = resource_dir.join(source.id.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -99,7 +98,7 @@ fn compile_intermediate() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: text_resource::TextResource::TYPE,
+            kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
         let mut proc = text_resource::TextResourceProc {};
@@ -110,7 +109,7 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.to_string());
+        let path = resource_dir.join(source.id.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -188,7 +187,7 @@ fn compile_multi_resource() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: multitext_resource::MultiTextResource::TYPE,
+            kind: multitext_resource::MultiTextResource::TYPE,
             id: ResourceId::new(),
         };
         let mut proc = MultiTextResourceProc {};
@@ -199,7 +198,7 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(source.to_string());
+        let path = resource_dir.join(source.id.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -268,7 +267,7 @@ fn compile_base64() {
 
     let source = {
         let source = ResourceTypeAndId {
-            t: binary_resource::BinaryResource::TYPE,
+            kind: binary_resource::BinaryResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -281,7 +280,7 @@ fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(source.to_string());
+        let path = resource_dir.join(source.id.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");

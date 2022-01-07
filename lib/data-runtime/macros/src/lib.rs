@@ -1,4 +1,5 @@
-//! Procedural macros associated with runtime asset management module of data processing pipeline.
+//! Procedural macros associated with runtime asset management module of data
+//! processing pipeline.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

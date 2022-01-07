@@ -4,7 +4,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{AssetRegistry, Handle, Resource, ResourceTypeAndId};
 
-/// A `ResourceReference` represents a reference to an external resource, that can be promoted to a handle
+/// A `ResourceReference` represents a reference to an external resource, that
+/// can be promoted to a handle
 pub enum Reference<T>
 where
     T: Any + Resource,

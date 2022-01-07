@@ -3,7 +3,7 @@ use lgn_ecs::{
     system::{Command, EntityCommands},
     world::{EntityMut, World},
 };
-use log::debug;
+use lgn_telemetry::debug;
 
 use crate::components::{Children, Parent};
 

@@ -156,8 +156,10 @@ impl Column {
 
     /// # Safety
     /// - index must be in-bounds
-    /// - no other reference to the data of the same row can exist at the same time
-    /// - pointer cannot be dereferenced after mutable reference to this `Column` was live
+    /// - no other reference to the data of the same row can exist at the same
+    ///   time
+    /// - pointer cannot be dereferenced after mutable reference to this
+    ///   `Column` was live
     #[inline]
     pub unsafe fn get_data_unchecked(&self, row: usize) -> *mut u8 {
         debug_assert!(row < self.data.len());
@@ -174,8 +176,10 @@ impl Column {
 
     /// # Safety
     /// - index must be in-bounds
-    /// - no other reference to the ticks of the same row can exist at the same time
-    /// - pointer cannot be dereferenced after mutable reference to this column was live
+    /// - no other reference to the ticks of the same row can exist at the same
+    ///   time
+    /// - pointer cannot be dereferenced after mutable reference to this column
+    ///   was live
     #[inline]
     pub unsafe fn get_ticks_mut_ptr_unchecked(&self, row: usize) -> *mut ComponentTicks {
         debug_assert!(row < self.ticks.len());
@@ -227,8 +231,8 @@ impl Table {
         );
     }
 
-    /// Removes the entity at the given row and returns the entity swapped in to replace it (if an
-    /// entity was swapped in)
+    /// Removes the entity at the given row and returns the entity swapped in to
+    /// replace it (if an entity was swapped in)
     ///
     /// # Safety
     /// `row` must be in-bounds
@@ -245,9 +249,10 @@ impl Table {
         }
     }
 
-    /// Moves the `row` column values to `new_table`, for the columns shared between both tables.
-    /// Returns the index of the new row in `new_table` and the entity in this table swapped in
-    /// to replace it (if an entity was swapped in). missing columns will be "forgotten". It is
+    /// Moves the `row` column values to `new_table`, for the columns shared
+    /// between both tables. Returns the index of the new row in `new_table`
+    /// and the entity in this table swapped in to replace it (if an entity
+    /// was swapped in). missing columns will be "forgotten". It is
     /// the caller's responsibility to drop them
     ///
     /// # Safety
@@ -276,9 +281,10 @@ impl Table {
         }
     }
 
-    /// Moves the `row` column values to `new_table`, for the columns shared between both tables.
-    /// Returns the index of the new row in `new_table` and the entity in this table swapped in
-    /// to replace it (if an entity was swapped in).
+    /// Moves the `row` column values to `new_table`, for the columns shared
+    /// between both tables. Returns the index of the new row in `new_table`
+    /// and the entity in this table swapped in to replace it (if an entity
+    /// was swapped in).
     ///
     /// # Safety
     /// row must be in-bounds
@@ -308,12 +314,14 @@ impl Table {
         }
     }
 
-    /// Moves the `row` column values to `new_table`, for the columns shared between both tables.
-    /// Returns the index of the new row in `new_table` and the entity in this table swapped in
-    /// to replace it (if an entity was swapped in).
+    /// Moves the `row` column values to `new_table`, for the columns shared
+    /// between both tables. Returns the index of the new row in `new_table`
+    /// and the entity in this table swapped in to replace it (if an entity
+    /// was swapped in).
     ///
     /// # Safety
-    /// `row` must be in-bounds. `new_table` must contain every component this table has
+    /// `row` must be in-bounds. `new_table` must contain every component this
+    /// table has
     pub unsafe fn move_to_superset_unchecked(
         &mut self,
         row: usize,
@@ -368,7 +376,8 @@ impl Table {
     /// Allocates space for a new entity
     ///
     /// # Safety
-    /// the allocated row must be written to immediately with valid values in each column
+    /// the allocated row must be written to immediately with valid values in
+    /// each column
     pub unsafe fn allocate(&mut self, entity: Entity) -> usize {
         self.reserve(1);
         let index = self.entities.len();

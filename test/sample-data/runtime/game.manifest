@@ -1,153 +1,96 @@
 [
   {
-    "guid": {
-      "t": "0659c0b6c23b950d",
-      "id": "067d2256-268e-51e3-4258-8b6ced605269"
-    },
+    "resource_id": "(0659c0b6c23b950d,067d2256-268e-51e3-4258-8b6ced605269)",
     "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
     "size": 1000038
   },
   {
-    "guid": {
-      "t": "0659c0b6c23b950d",
-      "id": "34af24bc-bdd5-5bf5-a093-3789be928372"
-    },
+    "resource_id": "(0659c0b6c23b950d,34af24bc-bdd5-5bf5-a093-3789be928372)",
     "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
     "size": 1000038
   },
   {
-    "guid": {
-      "t": "0659c0b6c23b950d",
-      "id": "854788ec-7643-5a4b-3b65-45239181f272"
-    },
+    "resource_id": "(0659c0b6c23b950d,854788ec-7643-5a4b-3b65-45239181f272)",
     "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
     "size": 1000038
   },
   {
-    "guid": {
-      "t": "0659c0b6c23b950d",
-      "id": "f5b04480-d92a-59bf-1106-5b6c2f305f6b"
-    },
+    "resource_id": "(0659c0b6c23b950d,f5b04480-d92a-59bf-1106-5b6c2f305f6b)",
     "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
     "size": 1000038
   },
   {
-    "guid": {
-      "t": "1d9ddd99aad89045",
-      "id": "06fa9348-b29d-5736-65b0-53df470901a0"
-    },
+    "resource_id": "(1d9ddd99aad89045,06fa9348-b29d-5736-65b0-53df470901a0)",
     "checksum": "15b73f1772ab679e76702d8342504dd5",
     "size": 235
   },
   {
-    "guid": {
-      "t": "1d9ddd99aad89045",
-      "id": "2cab115b-cb10-5dee-f1a8-035aa8bbfb1e"
-    },
+    "resource_id": "(1d9ddd99aad89045,2cab115b-cb10-5dee-f1a8-035aa8bbfb1e)",
     "checksum": "701b20b1a8aaabf3e08c84fae9df658c",
     "size": 286
   },
   {
-    "guid": {
-      "t": "1d9ddd99aad89045",
-      "id": "af7e6ef0-c271-565b-c27a-b8cd93c3546a"
-    },
+    "resource_id": "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)",
     "checksum": "d9d62a8fb32f5279575325d40f1bf3b8",
     "size": 586
   },
   {
-    "guid": {
-      "t": "1d9ddd99aad89045",
-      "id": "dba50d61-fa64-53cf-d5c4-ac7bbdc26066"
-    },
+    "resource_id": "(1d9ddd99aad89045,dba50d61-fa64-53cf-d5c4-ac7bbdc26066)",
     "checksum": "84c6349661f5a88ac385d3bafd2f0574",
     "size": 188
   },
   {
-    "guid": {
-      "t": "738a5b850f6f8b3a",
-      "id": "863920eb-3387-5482-38ac-5dd26715f88b"
-    },
+    "resource_id": "(738a5b850f6f8b3a,863920eb-3387-5482-38ac-5dd26715f88b)",
     "checksum": "858de9bef4379b02fa58e90f40a47a1d",
     "size": 230
   },
   {
-    "guid": {
-      "t": "9c9a840b84935d1f",
-      "id": "447273b4-1c0a-551d-84bf-2db8ecbcb04f"
-    },
+    "resource_id": "(9c9a840b84935d1f,447273b4-1c0a-551d-84bf-2db8ecbcb04f)",
     "checksum": "b3727675aedad2e3a72ec704485fef6d",
     "size": 967
   },
   {
-    "guid": {
-      "t": "e0d46a6b35b5717e",
-      "id": "9952387d-7ff7-57e2-ee97-562fff1aa9ec"
-    },
+    "resource_id": "(e0d46a6b35b5717e,9952387d-7ff7-57e2-ee97-562fff1aa9ec)",
     "checksum": "82a302e1cad5a0a885a56173419c85cf",
     "size": 102
   },
   {
-    "guid": {
-      "t": "e0d46a6b35b5717e",
-      "id": "b1181da8-1623-5212-4822-e39c33cc15ab"
-    },
+    "resource_id": "(e0d46a6b35b5717e,b1181da8-1623-5212-4822-e39c33cc15ab)",
     "checksum": "2ab41497efd7e6e832c9c108143e02a0",
     "size": 102
   },
   {
-    "guid": {
-      "t": "e0d46a6b35b5717e",
-      "id": "c4f5239b-320e-5b9c-111a-9461af74e978"
-    },
+    "resource_id": "(e0d46a6b35b5717e,c4f5239b-320e-5b9c-111a-9461af74e978)",
     "checksum": "ba97d1c2f46ebbae9f32edcb1e8f4972",
     "size": 102
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "47c92dfe-a37b-5153-8a86-6aa70c30feaf"
-    },
+    "resource_id": "(e5c099cc30495fed,47c92dfe-a37b-5153-8a86-6aa70c30feaf)",
     "checksum": "f26271049c496a18c5a63e90676ff51b",
     "size": 87
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "6ea6358d-c998-5ef8-6b83-58bd528f247f"
-    },
+    "resource_id": "(e5c099cc30495fed,6ea6358d-c998-5ef8-6b83-58bd528f247f)",
     "checksum": "f26271049c496a18c5a63e90676ff51b",
     "size": 87
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "7e92f087-ba4a-569e-2362-c4942f753330"
-    },
+    "resource_id": "(e5c099cc30495fed,7e92f087-ba4a-569e-2362-c4942f753330)",
     "checksum": "f26271049c496a18c5a63e90676ff51b",
     "size": 87
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "a9e20af7-9772-516e-ad3d-a11bbcefd53b"
-    },
+    "resource_id": "(e5c099cc30495fed,a9e20af7-9772-516e-ad3d-a11bbcefd53b)",
     "checksum": "f26271049c496a18c5a63e90676ff51b",
     "size": 87
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "e178e0d9-45e0-51bf-8cf5-9fc5f2c8052c"
-    },
+    "resource_id": "(e5c099cc30495fed,e178e0d9-45e0-51bf-8cf5-9fc5f2c8052c)",
     "checksum": "f26271049c496a18c5a63e90676ff51b",
     "size": 87
   },
   {
-    "guid": {
-      "t": "e5c099cc30495fed",
-      "id": "e427c8d1-b379-559b-a309-b8305cef7ef3"
-    },
+    "resource_id": "(e5c099cc30495fed,e427c8d1-b379-559b-a309-b8305cef7ef3)",
     "checksum": "03737357aaac789861d40c51f8cf3032",
     "size": 87
   }

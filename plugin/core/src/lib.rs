@@ -89,8 +89,8 @@ pub struct CorePlugin;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, SystemLabel)]
 pub enum CoreSystem {
-    /// Updates the elapsed time. Any system that interacts with [Time] component should run after
-    /// this.
+    /// Updates the elapsed time. Any system that interacts with [Time]
+    /// component should run after this.
     Time,
 }
 

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 //type QuoteRes = quote::__private::TokenStream;
@@ -11,7 +12,7 @@ const HIDDEN_ATTR: &str = "hidden";
 const OFFLINE_ATTR: &str = "offline";
 const TOOLTIP_ATTR: &str = "tooltip";
 const READONLY_ATTR: &str = "readonly";
-const CATEGORY_ATTR: &str = "category";
+const GROUP_ATTR: &str = "group";
 const TRANSIENT_ATTR: &str = "transient";
 const RESOURCE_TYPE_ATTR: &str = "resource_type";
 
@@ -19,22 +20,17 @@ pub struct DataContainerMetaInfo {
     pub name: String,
     pub need_life_time: bool,
     pub members: Vec<MemberMetaInfo>,
+    pub is_resource: bool,
+    pub is_component: bool,
 }
 
 #[allow(clippy::struct_excessive_bools)]
 pub struct MemberMetaInfo {
     pub name: String,
-    pub type_id: syn::Type,
-    pub type_name: String,
-    pub resource_type: Option<syn::Path>,
+    pub type_path: syn::Path,
     pub imports: Vec<syn::Path>,
-    pub offline: bool,
-    pub category: String,
-    pub hidden: bool,
-    pub readonly: bool,
-    pub transient: bool,
-    pub tooltip: String,
     pub default_literal: Option<TokenStream>,
+    pub attributes: BTreeMap<String, String>,
 }
 
 impl DataContainerMetaInfo {
@@ -62,13 +58,13 @@ impl DataContainerMetaInfo {
         self.name.hash(&mut hasher);
         self.members.iter().for_each(|m| {
             m.name.hash(&mut hasher);
-            m.type_name.hash(&mut hasher);
-            if let Some(res) = m.resource_type.as_ref() {
-                res.hash(&mut hasher);
-            }
-            m.type_name.hash(&mut hasher);
-            m.offline.hash(&mut hasher);
-            m.transient.hash(&mut hasher);
+            m.get_type_name().hash(&mut hasher);
+
+            m.attributes.iter().for_each(|(k, v)| {
+                k.hash(&mut hasher);
+                v.hash(&mut hasher);
+            });
+
             m.default_literal
                 .to_token_stream()
                 .to_string()
@@ -85,13 +81,22 @@ pub fn get_data_container_info(
     let mut data_container_meta_info = DataContainerMetaInfo {
         name: item_struct.ident.to_string(),
         need_life_time: false,
+        is_resource: item_struct
+            .attrs
+            .iter()
+            .any(|attr| attr.path.segments.len() == 1 && attr.path.segments[0].ident == "resource"),
+        is_component: item_struct.attrs.iter().any(|attr| {
+            attr.path.segments.len() == 1 && attr.path.segments[0].ident == "component"
+        }),
         members: Vec::new(),
     };
 
     if let syn::Fields::Named(named_fields) = &item_struct.fields {
         for field in &named_fields.named {
-            if let Some(member_info) = get_member_info(field) {
-                data_container_meta_info.members.push(member_info);
+            if let syn::Type::Path(type_path) = &field.ty {
+                data_container_meta_info
+                    .members
+                    .push(get_member_info(field, type_path.path.clone()));
             } else {
                 let str = format!(
                     "Legion: unsupported field type: {}",
@@ -106,56 +111,51 @@ pub fn get_data_container_info(
 
 impl MemberMetaInfo {
     pub fn is_option(&self) -> bool {
-        if let syn::Type::Path(type_path) = &self.type_id {
-            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Option"
-        } else {
-            false
-        }
+        !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Option"
+    }
+
+    pub fn is_offline(&self) -> bool {
+        self.attributes.contains_key(OFFLINE_ATTR)
     }
 
     pub fn is_vec(&self) -> bool {
-        if let syn::Type::Path(type_path) = &self.type_id {
-            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Vec"
-        } else {
-            false
-        }
+        !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Vec"
     }
 
-    pub fn get_runtime_type(&self) -> (TokenStream, Option<syn::Path>) {
-        let member_type = &self.type_id;
-        match self.type_name.as_str() {
-            "String" => {
-                (quote! { #member_type }, None)
-                // TODO: Add support for String to &str conversion
-                //quote! {&'r str },
-            }
+    pub fn get_type_name(&self) -> String {
+        self.type_path.to_token_stream().to_string()
+    }
+
+    pub fn get_runtime_type(&self) -> Option<syn::Path> {
+        match self.get_type_name().as_str() {
             "Option < ResourcePathId >" => {
-                let ty = if let Some(resource_type) = &self.resource_type {
-                    quote! { Option<Reference<#resource_type>> }
+                let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
+                    format!(
+                        "Option<lgn_data_runtime::Reference<{}>>",
+                        resource_type.to_token_stream().to_string()
+                    )
                 } else {
-                    quote! { Option<Reference<Resource>> }
+                    "Option<lgn_data_runtime::Reference<lgn_data_runtime::Resource>>".into()
                 };
-                (ty, syn::parse_str("lgn_data_runtime::Reference").ok())
+                syn::parse_str(ty.as_str()).ok()
             }
             "Vec < ResourcePathId >" => {
-                let ty = if let Some(resource_type) = &self.resource_type {
-                    quote! { Vec<Reference<#resource_type>> }
+                let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
+                    format!(
+                        "Vec<lgn_data_runtime::Reference<{}>>",
+                        resource_type.to_token_stream().to_string()
+                    )
                 } else {
-                    quote! { Vec<Reference<Resource>> }
+                    "Vec<lgn_data_runtime::Reference<lgn_data_runtime::Resource>>".into()
                 };
-                (ty, syn::parse_str("lgn_data_runtime::Reference").ok())
+                syn::parse_str(ty.as_str()).ok()
             }
-
-            _ => (quote! { #member_type }, None),
+            _ => Some(self.type_path.clone()), // Keep same
         }
     }
 
     pub fn _clone_on_compile(&self) -> bool {
-        if let syn::Type::Path(type_path) = &self.type_id {
-            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Vec"
-        } else {
-            false
-        }
+        !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Vec"
     }
 }
 
@@ -176,7 +176,8 @@ fn get_attribute_literal(
     panic!("Legion proc-macro: invalid literal for attribute");
 }
 
-// Retrieive the token for the "default" attributes. Manually parse token to support tuple, arrays, constants, literal.
+// Retrieive the token for the "default" attributes. Manually parse token to
+// support tuple, arrays, constants, literal.
 fn get_default_token_stream(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
 ) -> Option<TokenStream> {
@@ -233,14 +234,14 @@ fn get_default_token_stream(
 
 fn get_resource_type(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
-) -> Option<syn::Path> {
+) -> String {
     let mut attrib_str = String::new();
 
     if let Some(TokenTree::Punct(punct)) = group_iter.peek() {
         if punct.as_char() == '=' {
             group_iter.next();
         } else {
-            return None;
+            panic!("Legion proc-macro: unexpected punct in syntax for attribute 'resource_type'")
         }
     }
 
@@ -258,36 +259,17 @@ fn get_resource_type(
     }
 
     if attrib_str.is_empty() {
-        return None;
+        panic!("Legion proc-macro: empty  attribute 'resource_type'")
     }
-
-    syn::parse_str(&attrib_str).ok()
+    attrib_str
 }
 
-fn metadata_from_type(t: &syn::Type) -> Option<TokenStream> {
-    match t {
-        syn::Type::BareFn(fun) => Some(quote! {#fun}),
-        syn::Type::Path(type_path) => Some(quote! {#type_path}),
-        syn::Type::Reference(reference) => Some(quote! {#reference}),
-        _ => None,
-    }
-}
-
-pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
-    let field_type = metadata_from_type(&field.ty)?;
-
+pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaInfo {
     let mut member_info = MemberMetaInfo {
         name: field.ident.as_ref().unwrap().to_string(),
-        type_id: field.ty.clone(),
-        type_name: field_type.to_string(),
-        resource_type: None,
+        type_path,
         imports: vec![],
-        category: String::default(),
-        offline: false,
-        hidden: false,
-        readonly: false,
-        transient: false,
-        tooltip: String::default(),
+        attributes: BTreeMap::new(),
         default_literal: None,
     };
 
@@ -303,25 +285,32 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                 let mut group_iter = group.stream().into_iter().peekable();
 
                 while let Some(TokenTree::Ident(ident)) = group_iter.next() {
-                    match ident.to_string().as_str() {
+                    let ident = ident.to_string();
+                    match ident.as_str() {
+                        // Default literal token stream
                         DEFAULT_ATTR => {
                             member_info.default_literal = get_default_token_stream(&mut group_iter);
                         }
-                        READONLY_ATTR => member_info.readonly = true,
-                        HIDDEN_ATTR => member_info.hidden = true,
-                        OFFLINE_ATTR => member_info.offline = true,
-                        TRANSIENT_ATTR => member_info.transient = true,
+
+                        // Bool Attributes
+                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ATTR | TRANSIENT_ATTR => {
+                            member_info.attributes.insert(ident, "true".into());
+                        }
+
+                        // ResourceType Attribute
                         RESOURCE_TYPE_ATTR => {
-                            member_info.resource_type = get_resource_type(&mut group_iter);
+                            member_info
+                                .attributes
+                                .insert(ident, get_resource_type(&mut group_iter));
                             member_info
                                 .imports
                                 .push(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
                         }
-                        TOOLTIP_ATTR => {
-                            member_info.tooltip = get_attribute_literal(&mut group_iter);
-                        }
-                        CATEGORY_ATTR => {
-                            member_info.category = get_attribute_literal(&mut group_iter);
+                        // Literal Attributes
+                        GROUP_ATTR | TOOLTIP_ATTR => {
+                            member_info
+                                .attributes
+                                .insert(ident, get_attribute_literal(&mut group_iter));
                         }
                         _ => {}
                     }
@@ -337,5 +326,5 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
             }
         });
 
-    Some(member_info)
+    member_info
 }

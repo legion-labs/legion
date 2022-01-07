@@ -123,13 +123,14 @@ impl ComponentSparseSet {
         self.dense.len() == 0
     }
 
-    /// Inserts the `entity` key and component `value` pair into this sparse set.
-    /// The caller is responsible for ensuring the value is not dropped. This collection will drop
-    /// the value when needed.
+    /// Inserts the `entity` key and component `value` pair into this sparse
+    /// set. The caller is responsible for ensuring the value is not
+    /// dropped. This collection will drop the value when needed.
     ///
     /// # Safety
-    /// The `value` pointer must point to a valid address that matches the `Layout`
-    ///  inside the `ComponentInfo` given when constructing this sparse set.
+    /// The `value` pointer must point to a valid address that matches the
+    /// `Layout`  inside the `ComponentInfo` given when constructing this
+    /// sparse set.
     pub unsafe fn insert(&mut self, entity: Entity, value: *mut u8, change_tick: u32) {
         if let Some(&dense_index) = self.sparse.get(entity) {
             self.dense.replace_unchecked(dense_index, value);
@@ -181,15 +182,16 @@ impl ComponentSparseSet {
         unsafe { Some(&*self.ticks.get_unchecked(dense_index).get()) }
     }
 
-    /// Removes the `entity` from this sparse set and returns a pointer to the associated value (if
-    /// it exists). It is the caller's responsibility to drop the returned ptr (if Some is
-    /// returned).
+    /// Removes the `entity` from this sparse set and returns a pointer to the
+    /// associated value (if it exists). It is the caller's responsibility
+    /// to drop the returned ptr (if Some is returned).
     pub fn remove_and_forget(&mut self, entity: Entity) -> Option<*mut u8> {
         self.sparse.remove(entity).map(|dense_index| {
             self.ticks.swap_remove(dense_index);
             self.entities.swap_remove(dense_index);
             let is_last = dense_index == self.dense.len() - 1;
-            // SAFE: dense_index was just removed from `sparse`, which ensures that it is valid
+            // SAFE: dense_index was just removed from `sparse`, which ensures that it is
+            // valid
             let value = unsafe { self.dense.swap_remove_and_forget_unchecked(dense_index) };
             if !is_last {
                 let swapped_entity = self.entities[dense_index];
@@ -271,11 +273,11 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
             self.dense.push(value);
         }
 
-        // PERF: switch to this. it's faster but it has an invalid memory access on
-        // table_add_remove_many let dense = &mut self.dense;
+        // PERF: switch to this. it's faster but it has an invalid memory access
+        // on table_add_remove_many let dense = &mut self.dense;
         // let indices = &mut self.indices;
-        // let dense_index = *self.sparse.get_or_insert_with(index.clone(), move || {
-        //     if dense.len() == dense.capacity() {
+        // let dense_index = *self.sparse.get_or_insert_with(index.clone(), move
+        // || {     if dense.len() == dense.capacity() {
         //         dense.reserve(64);
         //         indices.reserve(64);
         //     }

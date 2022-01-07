@@ -13,8 +13,8 @@
     CumulativeCallGraphNode,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-    ScopeDesc,
   } from "@lgn/proto-telemetry/codegen/analytics";
+  import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
   import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { formatExecutionTime } from "@/lib/format";
 
@@ -65,9 +65,7 @@
       endMs: params.endMs,
     });
 
-    reply.scopes.forEach(function (scope) {
-      scopes[scope.hash] = scope;
-    });
+    scopes = { ...scopes, ...reply.scopes };
     nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
     nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;
@@ -255,7 +253,7 @@
   .fundiv {
     margin: 5px;
     text-align: left;
-    background-color: rgba(64, 64, 200, 0.1);
+    background-color: #fea446;
     overflow: visible;
     white-space: nowrap;
   }
@@ -266,11 +264,11 @@
 
   .fundiv:hover {
     color: white;
-    background-color: rgba(64, 64, 200, 1);
+    background-color: #ca2f0f;
   }
 
   .fundiv span:hover {
     margin: 0 10px;
-    background-color: rgba(64, 64, 200, 1);
+    background-color: #ca2f0f;
   }
 </style>

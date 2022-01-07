@@ -3,7 +3,6 @@
 //!
 //! * Tracking Issue: [legion/crate/#xx](https://github.com/legion-labs/legion/issues/xx)
 //! * Design Doc: [legion/book/project-resources](/book/todo.html)
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -63,46 +62,42 @@
 
 use std::{fs, path::PathBuf};
 
-use clap::{App, Arg};
+use clap::{AppSettings, Parser};
 use lgn_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
+#[derive(Parser, Default)]
+#[clap(name = "Sample data compiler")]
+#[clap(
+    about = "Will load RON files containing sample data, and generate offline resources and runtime assets, along with manifests.",
+    version,
+    author
+)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Args {
+    /// Folder containing raw/ directory
+    #[clap(long, default_value = "test/sample-data")]
+    root: String,
+    /// Path name of the resource to compile
+    #[clap(long, default_value = "/world/sample_1.ent")]
+    resource: String,
+    /// Clean old folders from the target folder
+    #[clap(short, long)]
+    clean: bool,
+}
+
 fn main() {
-    const ARG_PROJECT_DIR: &str = "root";
-    const ARG_RESOURCE_NAME: &str = "resource";
-    const ARG_CLEAN_NAME: &str = "clean";
+    let args = Args::parse();
 
-    let args = App::new("Sample data compiler")
-        .version(clap::crate_version!())
-        .about("Will load RON files containing sample data, and generate offline resources and runtime assets, along with manifests.")
-        .arg(Arg::with_name(ARG_PROJECT_DIR)
-            .long(ARG_PROJECT_DIR)
-            .takes_value(true)
-            .help("Folder containing raw/ directory"))
-        .arg(Arg::with_name(ARG_RESOURCE_NAME)
-            .long(ARG_RESOURCE_NAME)
-            .takes_value(true)
-            .help("Path name of the resource to compile"))
-        .arg(Arg::with_name(ARG_CLEAN_NAME)
-            .long(ARG_CLEAN_NAME)
-            .help("Clean old folders from the target folder."))
-        .get_matches();
-
-    let project_dir = args.value_of(ARG_PROJECT_DIR).unwrap_or("test/sample-data");
-    let root_resource = args
-        .value_of(ARG_RESOURCE_NAME)
-        .unwrap_or("/world/sample_1.ent");
-    let clean = args.is_present(ARG_CLEAN_NAME);
-
-    if clean {
-        clean_folders(project_dir);
+    if args.clean {
+        clean_folders(&args.root);
     }
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(project_dir);
+    raw_loader::build_offline(&args.root);
 
     // compile offline resources to runtime assets
-    offline_compiler::build(project_dir, &ResourcePathName::from(root_resource));
+    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource));
 }
 
 fn clean_folders(project_dir: &str) {

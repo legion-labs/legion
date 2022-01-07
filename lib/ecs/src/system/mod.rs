@@ -1,12 +1,13 @@
 //! Tools for controlling behavior in an ECS application.
 //!
-//! Systems define how an ECS based application behaves. They have to be registered to a
-//! [`SystemStage`](crate::schedule::SystemStage) to be able to run. A system is usually
-//! written as a normal function that will be automatically converted into a system.
+//! Systems define how an ECS based application behaves. They have to be
+//! registered to a [`SystemStage`](crate::schedule::SystemStage) to be able to
+//! run. A system is usually written as a normal function that will be
+//! automatically converted into a system.
 //!
-//! System functions can have parameters, through which one can query and mutate Legion ECS state.
-//! Only types that implement [`SystemParam`] can be used, automatically fetching data from
-//! the [`World`](crate::world::World).
+//! System functions can have parameters, through which one can query and mutate
+//! Legion ECS state. Only types that implement [`SystemParam`] can be used,
+//! automatically fetching data from the [`World`](crate::world::World).
 //!
 //! System functions often look like this:
 //!
@@ -35,14 +36,14 @@
 //!
 //! # System ordering
 //!
-//! While the execution of systems is usually parallel and not deterministic, there are two
-//! ways to determine a certain degree of execution order:
+//! While the execution of systems is usually parallel and not deterministic,
+//! there are two ways to determine a certain degree of execution order:
 //!
-//! - **System Stages:** They determine hard execution synchronization boundaries inside of
-//!   which systems run in parallel by default.
-//! - **Labeling:** First, systems are labeled upon creation by calling `.label()`. Then,
-//!   methods such as `.before()` and `.after()` are appended to systems to determine
-//!   execution order in respect to other systems.
+//! - **System Stages:** They determine hard execution synchronization
+//!   boundaries inside of which systems run in parallel by default.
+//! - **Labeling:** First, systems are labeled upon creation by calling
+//!   `.label()`. Then, methods such as `.before()` and `.after()` are appended
+//!   to systems to determine execution order in respect to other systems.
 //!
 //! # System parameter list
 //! Following is the complete list of accepted types as system parameters:
@@ -60,9 +61,11 @@
 //! - [`SystemChangeTick`]
 //! - [`Archetypes`](crate::archetype::Archetypes) (Provides Archetype metadata)
 //! - [`Bundles`](crate::bundle::Bundles) (Provides Bundles metadata)
-//! - [`Components`](crate::component::Components) (Provides Components metadata)
+//! - [`Components`](crate::component::Components) (Provides Components
+//!   metadata)
 //! - [`Entities`](crate::entity::Entities) (Provides Entities metadata)
-//! - All tuples between 1 to 16 elements where each element implements [`SystemParam`]
+//! - All tuples between 1 to 16 elements where each element implements
+//!   [`SystemParam`]
 //! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
 
 mod commands;
@@ -692,8 +695,8 @@ mod tests {
         let mut system_state: SystemState<(ResMut<'_, A>, Query<'_, '_, &mut B>)> =
             SystemState::new(&mut world);
 
-        // The following line shouldn't compile because the parameters used are not ReadOnlySystemParam
-        // let (a, query) = system_state.get(&world);
+        // The following line shouldn't compile because the parameters used are not
+        // ReadOnlySystemParam let (a, query) = system_state.get(&world);
 
         let (a, mut query) = system_state.get_mut(&mut world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
@@ -772,7 +775,8 @@ mod tests {
         }
     }
 
-    /// this test exists to show that read-only world-only queries can return data that lives as long as 'world
+    /// this test exists to show that read-only world-only queries can return
+    /// data that lives as long as 'world
     #[test]
     #[allow(unused)]
     fn long_life_test() {
@@ -807,163 +811,29 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn immutable_mut_test() {
+        #[derive(Component, Eq, PartialEq, Debug, Clone, Copy)]
+        struct A(usize);
+
+        let mut world = World::default();
+        world.spawn().insert(A(1));
+        world.spawn().insert(A(2));
+
+        let mut system_state = SystemState::<Query<'_, '_, &mut A>>::new(&mut world);
+        {
+            let mut query = system_state.get_mut(&mut world);
+            assert_eq!(
+                query.iter_mut().map(|m| *m).collect::<Vec<A>>(),
+                vec![A(1), A(2)],
+                "both components returned by iter_mut of &mut"
+            );
+            assert_eq!(
+                query.iter().collect::<Vec<&A>>(),
+                vec![&A(1), &A(2)],
+                "both components returned by iter of &mut"
+            );
+        }
+    }
 }
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn system(mut query: Query<&mut A>, e: Res<Entity>) {
-///     let mut iter = query.iter_mut();
-///     let a = &mut *iter.next().unwrap();
-///
-///     let mut iter2 = query.iter_mut();
-///     let b = &mut *iter2.next().unwrap();
-///
-///     // this should fail to compile
-///     println!("{}", a.0);
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_iter_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn system(mut query: Query<&mut A>, e: Res<Entity>) {
-///     let mut a1 = query.get_mut(*e).unwrap();
-///     let mut a2 = query.get_mut(*e).unwrap();
-///     // this should fail to compile
-///     println!("{} {}", a1.0, a2.0);
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_get_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
-///     let mut q2 = queries.q0();
-///     let mut iter2 = q2.iter_mut();
-///     let mut b = iter2.next().unwrap();
-///
-///     let q1 = queries.q1();
-///     let mut iter = q1.iter();
-///     let a = &*iter.next().unwrap();
-///
-///     // this should fail to compile
-///     b.0 = a.0
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_set_iter_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
-///     let q1 = queries.q1();
-///     let mut iter = q1.iter();
-///     let a = &*iter.next().unwrap();
-///
-///     let mut q2 = queries.q0();
-///     let mut iter2 = q2.iter_mut();
-///     let mut b = iter2.next().unwrap();
-///
-///     // this should fail to compile
-///     b.0 = a.0;
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_set_iter_flip_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
-///     let mut q2 = queries.q0();
-///     let mut b = q2.get_mut(*e).unwrap();
-///
-///     let q1 = queries.q1();
-///     let a = q1.get(*e).unwrap();
-///
-///     // this should fail to compile
-///     b.0 = a.0
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_set_get_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// struct A(usize);
-/// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
-///     let q1 = queries.q1();
-///     let a = q1.get(*e).unwrap();
-///
-///     let mut q2 = queries.q0();
-///     let mut b = q2.get_mut(*e).unwrap();
-///     // this should fail to compile
-///     b.0 = a.0
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_query_set_get_flip_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// use lgn_ecs::system::SystemState;
-/// struct A(usize);
-/// struct B(usize);
-/// struct State {
-///     state_r: SystemState<Query<'static, 'static, &'static A>>,
-///     state_w: SystemState<Query<'static, 'static, &'static mut A>>,
-/// }
-///
-/// impl State {
-///     fn get_component<'w>(&mut self, world: &'w mut World, entity: Entity) {
-///         let q1 = self.state_r.get(&world);
-///         let a1 = q1.get(entity).unwrap();
-///
-///         let mut q2 = self.state_w.get_mut(world);
-///         let a2 = q2.get_mut(entity).unwrap();
-///
-///         // this should fail to compile
-///         println!("{}", a1.0);
-///     }
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_state_get_lifetime_safety_test() {}
-
-/// ```compile_fail
-/// use lgn_ecs::prelude::*;
-/// use lgn_ecs::system::SystemState;
-/// struct A(usize);
-/// struct B(usize);
-/// struct State {
-///     state_r: SystemState<Query<'static, 'static, &'static A>>,
-///     state_w: SystemState<Query<'static, 'static, &'static mut A>>,
-/// }
-///
-/// impl State {
-///     fn get_components<'w>(&mut self, world: &'w mut World) {
-///         let q1 = self.state_r.get(&world);
-///         let a1 = q1.iter().next().unwrap();
-///         let mut q2 = self.state_w.get_mut(world);
-///         let a2 = q2.iter_mut().next().unwrap();
-///         // this should fail to compile
-///         println!("{}", a1.0);
-///     }
-/// }
-/// ```
-#[allow(unused)]
-#[cfg(doc)]
-fn system_state_iter_lifetime_safety_test() {}

@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use generic_data_offline::{DebugCube, TestEntity};
+use generic_data::offline::{DebugCube, TestComponent, TestEntity};
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -125,29 +125,40 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
     let mut registry = ResourceRegistryOptions::new();
     registry = offline_data::register_resource_types(registry);
     registry = lgn_graphics_offline::register_resource_types(registry);
-    registry = generic_data_offline::register_resource_types(registry);
+    registry = generic_data::offline::register_resource_types(registry);
     let registry = registry.create_registry();
 
     (project, registry)
 }
 
-fn ext_to_resource_kind(ext: &str) -> ResourceType {
+fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
     match ext {
-        "ent" => offline_data::Entity::TYPE,
-        "ins" => offline_data::Instance::TYPE,
-        "mat" => lgn_graphics_offline::Material::TYPE,
-        "mesh" => offline_data::Mesh::TYPE,
-        "psd" => lgn_graphics_offline::PsdFile::TYPE,
+        "ent" => (offline_data::Entity::TYPENAME, offline_data::Entity::TYPE),
+        "ins" => (
+            offline_data::Instance::TYPENAME,
+            offline_data::Instance::TYPE,
+        ),
+        "mat" => (
+            lgn_graphics_offline::Material::TYPENAME,
+            lgn_graphics_offline::Material::TYPE,
+        ),
+        "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
+        "psd" => (
+            lgn_graphics_offline::PsdFile::TYPENAME,
+            lgn_graphics_offline::PsdFile::TYPE,
+        ),
         _ => panic!(),
     }
 }
 
-/// Creates resources for all `file_paths` containing default values (empty content).
+/// Creates resources for all `file_paths` containing default values (empty
+/// content).
 ///
 /// The content of resources is loaded later.
 ///
-/// This is done because we need to assign `ResourceId` for all resources before we load them
-/// in order to resolve references from a `ResourcePathName` (/path/to/resource) to `ResourceId` (125463453).
+/// This is done because we need to assign `ResourceId` for all resources before
+/// we load them in order to resolve references from a `ResourcePathName`
+/// (/path/to/resource) to `ResourceId` (125463453).
 fn create_or_find_default(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
@@ -177,15 +188,16 @@ fn build_resource_from_raw(
                 id
             } else {
                 let id = ResourceTypeAndId {
-                    t: kind,
+                    kind: kind.1,
                     id: in_resources[i].1,
                 };
                 project
                     .add_resource_with_id(
                         name.clone(),
-                        kind,
+                        kind.0,
+                        kind.1,
                         id,
-                        resources.new_resource(kind).unwrap(),
+                        resources.new_resource(kind.1).unwrap(),
                         resources,
                     )
                     .unwrap()
@@ -206,9 +218,10 @@ fn build_test_entity(
         if let Ok(id) = project.find_resource(&name) {
             id
         } else {
+            let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
-                t: kind,
+                kind,
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
             let test_entity_handle = resources.new_resource(kind).unwrap();
@@ -218,8 +231,24 @@ fn build_test_entity(
             test_entity.test_float64 = 2.0;
             test_entity.test_int = 1337;
             test_entity.test_position = lgn_math::Vec3::new(0.0, 100.0, 0.0);
+
+            (0..3).for_each(|i| {
+                test_entity
+                    .test_sub_type
+                    .test_components
+                    .push(Box::new(TestComponent { test_i32: i }));
+            });
+            test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
+
             project
-                .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                .add_resource_with_id(
+                    name.clone(),
+                    kind_name,
+                    kind,
+                    id,
+                    test_entity_handle,
+                    resources,
+                )
                 .unwrap()
         }
     };
@@ -243,7 +272,7 @@ fn build_debug_cubes(
         let id = project.find_resource(&name).unwrap_or_else(|_err| {
             let kind = DebugCube::TYPE;
             let id = ResourceTypeAndId {
-                t: kind,
+                kind,
                 id: ResourceId::from_str(cube_ids[index]).unwrap(),
             };
             let cube_entity_handle = resources.new_resource(kind).unwrap();
@@ -277,6 +306,7 @@ fn build_debug_cubes(
             project
                 .add_resource_with_id(
                     name.clone(),
+                    DebugCube::TYPENAME,
                     DebugCube::TYPE,
                     id,
                     cube_entity_handle,

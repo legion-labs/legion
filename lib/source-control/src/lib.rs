@@ -1,5 +1,4 @@
 //! Source control library
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

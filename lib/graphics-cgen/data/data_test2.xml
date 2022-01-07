@@ -1,0 +1,38 @@
+<CGen xmlns="cgen">
+
+    <StructDef Name="LayoutA" >
+        <Member Name="a" Type="float"/>
+        <Member Name="b" Type="float4"/>
+    </StructDef>
+
+    <StructDef Name="LayoutB" >
+        <Member Name="a" Type="LayoutA" />
+        <Member Name="b" Type="float3" />
+    </StructDef>
+
+    <DescriptorSet Name="A" Frequency="0">
+        <ConstantBuffer Name="a" Layout="LayoutA" />
+        <StructuredBuffer Name="b" Layout="LayoutB" />
+        <Texture2D Name="c" Format="R8G8B8A8" />
+        <Texture2D Name="d" Format="R8G8B8A8" />
+    </DescriptorSet>    
+
+    <DescriptorSet Name="B" Frequency="1">
+        <ConstantBuffer Name="a" Layout="LayoutA" />
+        <StructuredBuffer Name="b" Layout="LayoutB" />
+        <Texture2D Name="c" Format="R8G8B8A8" />
+        <StructuredBuffer Name="d" Layout="LayoutB" />
+    </DescriptorSet>
+
+    <PipelineLayout Name="toto">
+        <DescriptorSets>
+            <DescriptorSetRef Ref="A" />
+            <DescriptorSetRef Ref="B" />
+        </DescriptorSets>
+        <PushConstants>
+            <PushConstant Name="a" Layout="float" />
+        </PushConstants>
+    </PipelineLayout>
+
+</CGen>
+

@@ -1,6 +1,5 @@
 #![allow(clippy::pedantic)]
 
-use graphics_api::prelude::*;
 use lgn_ecs::prelude::Component;
 use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
@@ -33,9 +32,11 @@ impl PresenterSnapshot {
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
-        let graphics_queue = renderer.queue(QueueType::Graphics);
-        let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
+        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
+            &renderer.shader_compiler(),
+            device_context,
+            resolution,
+        )?;
 
         Ok(Self {
             snapshot_name: snapshot_name.to_string(),
@@ -46,9 +47,9 @@ impl PresenterSnapshot {
         })
     }
 
-    pub(crate) fn present<'renderer>(
+    pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -99,9 +100,9 @@ impl Presenter for PresenterSnapshot {
         unreachable!();
     }
 
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {

@@ -10,7 +10,8 @@ use super::{
 use crate::{Error, FourCC, Result};
 
 /// Movie Header Atom
-/// This box defines overall information which is media-independent, and relevant to the entire presentation considered as a whole
+/// This box defines overall information which is media-independent, and
+/// relevant to the entire presentation considered as a whole
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MvhdAtom {
     pub version: u8,

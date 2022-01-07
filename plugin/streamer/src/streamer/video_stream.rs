@@ -5,8 +5,8 @@ use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::{self, RBGYUVConverter},
 };
+use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
-use lgn_graphics_api::prelude::*;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
@@ -15,10 +15,10 @@ use lgn_renderer::{
 };
 use lgn_tasks::TaskPool;
 use lgn_telemetry::prelude::*;
-use lgn_utils::{memory::write_any, setting_get_or};
-use log::{debug, warn};
+use lgn_telemetry::{debug, warn};
+use lgn_utils::memory::write_any;
 use serde::Serialize;
-use webrtc::data::data_channel::RTCDataChannel;
+use webrtc::data_channel::RTCDataChannel;
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
@@ -47,10 +47,12 @@ impl VideoStream {
         trace_scope!();
 
         let device_context = renderer.device_context();
-        let graphics_queue = renderer.queue(QueueType::Graphics);
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
+        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
+            &renderer.shader_compiler(),
+            device_context,
+            resolution,
+        )?;
 
         Ok(Self {
             video_data_channel,
@@ -82,9 +84,9 @@ impl VideoStream {
         record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
     }
 
-    pub(crate) fn present<'renderer>(
+    pub(crate) fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -110,7 +112,7 @@ impl VideoStream {
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = setting_get_or!("streamer.max_frame_time", 16_000u64);
+        let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 16_000u64);
 
         if elapsed >= max_frame_time {
             warn!(
@@ -150,9 +152,9 @@ impl Presenter for VideoStream {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
         self.resize(renderer, extents).unwrap();
     }
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         task_pool: &TaskPool,
     ) {

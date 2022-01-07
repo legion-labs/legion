@@ -1,0 +1,4 @@
+packages:
+  - "client/*/frontend"
+  - "lib/*/frontend"
+  - "proto/*"

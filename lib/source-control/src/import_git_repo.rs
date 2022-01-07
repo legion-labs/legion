@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::path::Path;
+
+use anyhow::{Context, Result};
 
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
@@ -115,7 +116,8 @@ async fn import_commit_diff(
 ) -> Result<()> {
     // Let's process deletes first.
     //
-    // Since git is case-sensitive, a file can be seen as being removed and added in the same commit.
+    // Since git is case-sensitive, a file can be seen as being removed and added in
+    // the same commit.
     let mut files_to_delete = vec![];
 
     diff.foreach(
@@ -213,11 +215,11 @@ async fn import_commit_diff(
 }
 
 // import_commit_sequence walks this history by traversing the first parent only
-// and stops when a commit has been previously imported or when the root is found (has no parent).
-// We could try to import the whole commit tree but for our purposes it's not necessary
-// and is significantly more complex.
-// One alternative would be to find the shortest path between the last integrated commit and the
-// top of the branch.
+// and stops when a commit has been previously imported or when the root is
+// found (has no parent). We could try to import the whole commit tree but for
+// our purposes it's not necessary and is significantly more complex.
+// One alternative would be to find the shortest path between the last
+// integrated commit and the top of the branch.
 async fn import_commit_sequence(
     repo_connection: &RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,

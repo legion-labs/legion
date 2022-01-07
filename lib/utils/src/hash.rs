@@ -3,15 +3,16 @@ use std::hash::{BuildHasher, Hash, Hasher};
 use ahash::{AHasher, RandomState};
 use siphasher::sip128::{Hasher128, SipHasher};
 
-/// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
-/// It will rely on the default `Hasher` provided by the std library.
+/// The `DefaultHash` trait is used to obtain a hash value for a single typed
+/// value. It will rely on the default `Hasher` provided by the std library.
 pub trait DefaultHash {
     fn default_hash(&self) -> u64;
 
     fn default_hash_128(&self) -> u128;
 }
 
-// Default implementation of DefaultHash for all types that implement the `Hash` trait.
+// Default implementation of DefaultHash for all types that implement the `Hash`
+// trait.
 impl<T> DefaultHash for T
 where
     T: Hash,
@@ -23,7 +24,8 @@ where
         hasher.finish()
     }
 
-    /// Returns a 128-bit hash value for a single typed value, using `DefaultHasher128`.
+    /// Returns a 128-bit hash value for a single typed value, using
+    /// `DefaultHasher128`.
     fn default_hash_128(&self) -> u128 {
         let mut hasher = DefaultHasher128::new();
         self.hash(&mut hasher);
@@ -91,11 +93,11 @@ impl BuildHasher for FixedState {
 /// `AHash` is designed for performance and is NOT cryptographically secure.
 pub type HashMap<K, V> = std::collections::HashMap<K, V, RandomState>;
 
-/// A stable std hash map implementing `AHash`, a high speed keyed hashing algorithm
-/// intended for use in in-memory hashmaps.
+/// A stable std hash map implementing `AHash`, a high speed keyed hashing
+/// algorithm intended for use in in-memory hashmaps.
 ///
-/// Unlike [`HashMap`] this has an iteration order that only depends on the order
-/// of insertions and deletions and not a random source.
+/// Unlike [`HashMap`] this has an iteration order that only depends on the
+/// order of insertions and deletions and not a random source.
 ///
 /// `AHash` is designed for performance and is NOT cryptographically secure.
 pub type StableHashMap<K, V> = std::collections::HashMap<K, V, FixedState>;
@@ -106,11 +108,11 @@ pub type StableHashMap<K, V> = std::collections::HashMap<K, V, FixedState>;
 /// `AHash` is designed for performance and is NOT cryptographically secure.
 pub type HashSet<K> = std::collections::HashSet<K, RandomState>;
 
-/// A stable std hash set implementing `AHash`, a high speed keyed hashing algorithm
-/// intended for use in in-memory hashmaps.
+/// A stable std hash set implementing `AHash`, a high speed keyed hashing
+/// algorithm intended for use in in-memory hashmaps.
 ///
-/// Unlike [`HashSet`] this has an iteration order that only depends on the order
-/// of insertions and deletions and not a random source.
+/// Unlike [`HashSet`] this has an iteration order that only depends on the
+/// order of insertions and deletions and not a random source.
 ///
 /// `AHash` is designed for performance and is NOT cryptographically secure.
 pub type StableHashSet<K> = std::collections::HashSet<K, FixedState>;

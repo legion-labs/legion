@@ -2,7 +2,6 @@
 //!
 //! * Tracking Issue: [legion/crate/#xx](https://github.com/legion-labs/legion/issues/xx)
 //! * Design Doc: [legion/book/project-resources](/book/todo.html)
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -67,7 +66,8 @@ use std::process::Stdio;
 use anyhow::Context;
 use config::{CommandConfig, Config};
 use lgn_cli::termination_handler::AsyncTerminationHandler;
-use log::{debug, info};
+use lgn_telemetry::{debug, info};
+use lgn_telemetry_sink::TelemetryGuard;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -77,8 +77,7 @@ use tokio::{
 async fn main() -> anyhow::Result<()> {
     let config = Config::new().context("failed to read configuration")?;
 
-    lgn_logger::Logger::init(lgn_logger::Config::default())
-        .context("failed to initialize the logging system")?;
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
 
     debug!("Setting log level to {}.", config.log_level);
     info!("Root is set to: {}", config.root.to_string_lossy());

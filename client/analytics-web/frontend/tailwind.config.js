@@ -1,7 +1,8 @@
+// @ts-check
+
 module.exports = {
   mode: "jit",
-  purge: ["index.html", "./src/**/*.{svelte,ts}"],
-  darkMode: false,
+  content: ["index.html", "./src/**/*.{svelte,ts}"],
   theme: {
     fontFamily: {
       default: "Source Sans Pro,Arial,sans-serif",

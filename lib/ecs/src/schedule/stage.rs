@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
+use lgn_telemetry::{info, trace_scope};
 use lgn_utils::{HashMap, HashSet};
-use log::info;
 
 use super::IntoSystemDescriptor;
 use crate::{
@@ -23,7 +23,8 @@ use crate::{
 /// A type that can run as a step of a [`Schedule`](super::Schedule).
 pub trait Stage: Downcast + Send + Sync {
     /// Runs the stage; this happens once per update.
-    /// Implementors must initialize all of their state and systems before running the first time.
+    /// Implementors must initialize all of their state and systems before
+    /// running the first time.
     fn run(&mut self, world: &mut World);
 }
 
@@ -37,21 +38,25 @@ impl_downcast!(Stage);
 /// risk an ambiguous order that could result in logic bugs, unless they have an
 /// explicit execution ordering constraint between them.
 ///
-/// This occurs because, in the absence of explicit constraints, systems are executed in
-/// an unstable, arbitrary order within each stage that may vary between runs and frames.
+/// This occurs because, in the absence of explicit constraints, systems are
+/// executed in an unstable, arbitrary order within each stage that may vary
+/// between runs and frames.
 ///
-/// Some ambiguities reported by the ambiguity checker may be warranted (to allow two systems to run
-/// without blocking each other) or spurious, as the exact combination of archetypes used may
-/// prevent them from ever conflicting during actual gameplay. You can resolve the warnings produced
-/// by the ambiguity checker by adding `.before` or `.after` to one of the conflicting systems
-/// referencing the other system to force a specific ordering.
+/// Some ambiguities reported by the ambiguity checker may be warranted (to
+/// allow two systems to run without blocking each other) or spurious, as the
+/// exact combination of archetypes used may prevent them from ever conflicting
+/// during actual gameplay. You can resolve the warnings produced
+/// by the ambiguity checker by adding `.before` or `.after` to one of the
+/// conflicting systems referencing the other system to force a specific
+/// ordering.
 ///
-/// The checker may report a system more times than the amount of constraints it would actually need
-/// to have unambiguous order with regards to a group of already-constrained systems.
+/// The checker may report a system more times than the amount of constraints it
+/// would actually need to have unambiguous order with regards to a group of
+/// already-constrained systems.
 pub struct ReportExecutionOrderAmbiguities;
 
-/// Stores and executes systems. Execution order is not defined unless explicitly specified;
-/// see `SystemDescriptor` documentation.
+/// Stores and executes systems. Execution order is not defined unless
+/// explicitly specified; see `SystemDescriptor` documentation.
 pub struct SystemStage {
     /// The WorldId this stage was last run on.
     world_id: Option<WorldId>,
@@ -61,20 +66,25 @@ pub struct SystemStage {
     stage_run_criteria: BoxedRunCriteria,
     /// Topologically sorted run criteria of systems.
     run_criteria: Vec<RunCriteriaContainer>,
-    /// Topologically sorted exclusive systems that want to be run at the start of the stage.
+    /// Topologically sorted exclusive systems that want to be run at the start
+    /// of the stage.
     exclusive_at_start: Vec<ExclusiveSystemContainer>,
-    /// Topologically sorted exclusive systems that want to be run after parallel systems but
-    /// before the application of their command buffers.
+    /// Topologically sorted exclusive systems that want to be run after
+    /// parallel systems but before the application of their command
+    /// buffers.
     exclusive_before_commands: Vec<ExclusiveSystemContainer>,
-    /// Topologically sorted exclusive systems that want to be run at the end of the stage.
+    /// Topologically sorted exclusive systems that want to be run at the end of
+    /// the stage.
     exclusive_at_end: Vec<ExclusiveSystemContainer>,
     /// Topologically sorted parallel systems.
     parallel: Vec<ParallelSystemContainer>,
-    /// Determines if the stage was modified and needs to rebuild its graphs and orders.
+    /// Determines if the stage was modified and needs to rebuild its graphs and
+    /// orders.
     systems_modified: bool,
     /// Determines if the stage's executor was changed.
     executor_modified: bool,
-    /// Newly inserted run criteria that will be initialized at the next opportunity.
+    /// Newly inserted run criteria that will be initialized at the next
+    /// opportunity.
     uninitialized_run_criteria: Vec<(usize, DuplicateLabelStrategy)>,
     /// Newly inserted systems that will be initialized at the next opportunity.
     uninitialized_at_start: Vec<usize>,
@@ -86,6 +96,9 @@ pub struct SystemStage {
     uninitialized_parallel: Vec<usize>,
     /// Saves the value of the World change_tick during the last tick check
     last_tick_check: u32,
+    /// If true, buffers will be automatically applied at the end of the stage.
+    /// If false, buffers must be manually applied.
+    apply_buffers: bool,
 }
 
 impl SystemStage {
@@ -107,6 +120,7 @@ impl SystemStage {
             uninitialized_before_commands: Vec::default(),
             uninitialized_at_end: Vec::default(),
             last_tick_check: Default::default(),
+            apply_buffers: true,
         }
     }
 
@@ -206,31 +220,53 @@ impl SystemStage {
         }
     }
 
+    pub fn apply_buffers(&mut self, world: &mut World) {
+        for container in &mut self.parallel {
+            let system = container.system_mut();
+            // TODO: add system name to async trace scope
+            trace_scope!("system_commands");
+            // let span = info_span!("system_commands", name = &*system.name());
+            // let _guard = span.enter();
+            system.apply_buffers(world);
+        }
+    }
+
+    pub fn set_apply_buffers(&mut self, apply_buffers: bool) {
+        self.apply_buffers = apply_buffers;
+    }
+
     /// Topologically sorted parallel systems.
     ///
-    /// Note that systems won't be fully-formed until the stage has been run at least once.
+    /// Note that systems won't be fully-formed until the stage has been run at
+    /// least once.
     pub fn parallel_systems(&self) -> &[impl SystemContainer] {
         &self.parallel
     }
 
-    /// Topologically sorted exclusive systems that want to be run at the start of the stage.
+    /// Topologically sorted exclusive systems that want to be run at the start
+    /// of the stage.
     ///
-    /// Note that systems won't be fully-formed until the stage has been run at least once.
+    /// Note that systems won't be fully-formed until the stage has been run at
+    /// least once.
     pub fn exclusive_at_start_systems(&self) -> &[impl SystemContainer] {
         &self.exclusive_at_start
     }
 
-    /// Topologically sorted exclusive systems that want to be run at the end of the stage.
+    /// Topologically sorted exclusive systems that want to be run at the end of
+    /// the stage.
     ///
-    /// Note that systems won't be fully-formed until the stage has been run at least once.
+    /// Note that systems won't be fully-formed until the stage has been run at
+    /// least once.
     pub fn exclusive_at_end_systems(&self) -> &[impl SystemContainer] {
         &self.exclusive_at_end
     }
 
-    /// Topologically sorted exclusive systems that want to be run after parallel systems but
-    /// before the application of their command buffers.
+    /// Topologically sorted exclusive systems that want to be run after
+    /// parallel systems but before the application of their command
+    /// buffers.
     ///
-    /// Note that systems won't be fully-formed until the stage has been run at least once.
+    /// Note that systems won't be fully-formed until the stage has been run at
+    /// least once.
     pub fn exclusive_before_commands_systems(&self) -> &[impl SystemContainer] {
         &self.exclusive_before_commands
     }
@@ -401,11 +437,13 @@ impl SystemStage {
         }
     }
 
-    /// Rearranges all systems in topological orders. Systems must be initialized.
+    /// Rearranges all systems in topological orders. Systems must be
+    /// initialized.
     fn rebuild_orders_and_dependencies(&mut self) {
-        // This assertion is there to document that a maximum of `u32::MAX / 8` systems should be
-        // added to a stage to guarantee that change detection has no false positive, but it
-        // can be circumvented using exclusive or chained systems
+        // This assertion is there to document that a maximum of `u32::MAX / 8` systems
+        // should be added to a stage to guarantee that change detection has no
+        // false positive, but it can be circumvented using exclusive or chained
+        // systems
         assert!(
             self.exclusive_at_start.len()
                 + self.exclusive_before_commands.len()
@@ -472,7 +510,8 @@ impl SystemStage {
         );
     }
 
-    /// Logs execution order ambiguities between systems. System orders must be fresh.
+    /// Logs execution order ambiguities between systems. System orders must be
+    /// fresh.
     fn report_ambiguities(&self, world: &World) {
         debug_assert!(!self.systems_modified);
         use std::fmt::Write;
@@ -545,9 +584,10 @@ impl SystemStage {
     fn check_change_ticks(&mut self, world: &mut World) {
         let change_tick = world.change_tick();
         let time_since_last_check = change_tick.wrapping_sub(self.last_tick_check);
-        // Only check after at least `u32::MAX / 8` counts, and at most `u32::MAX / 4` counts
-        // since the max number of [System] in a [SystemStage] is limited to `u32::MAX / 8`
-        // and this function is called at the end of each [SystemStage] loop
+        // Only check after at least `u32::MAX / 8` counts, and at most `u32::MAX / 4`
+        // counts since the max number of [System] in a [SystemStage] is limited
+        // to `u32::MAX / 8` and this function is called at the end of each
+        // [SystemStage] loop
         const MIN_TIME_SINCE_LAST_CHECK: u32 = u32::MAX / 8;
 
         if time_since_last_check > MIN_TIME_SINCE_LAST_CHECK {
@@ -631,8 +671,8 @@ impl SystemStage {
     }
 }
 
-/// Sorts given system containers topologically, populates their resolved dependencies
-/// and run criteria.
+/// Sorts given system containers topologically, populates their resolved
+/// dependencies and run criteria.
 fn process_systems(
     systems: &mut Vec<impl SystemContainer>,
     run_criteria_labels: &HashMap<BoxedRunCriteriaLabel, usize>,
@@ -664,9 +704,9 @@ fn process_systems(
     Ok(())
 }
 
-/// Returns vector containing all pairs of indices of systems with ambiguous execution order,
-/// along with specific components that have triggered the warning.
-/// Systems must be topologically sorted beforehand.
+/// Returns vector containing all pairs of indices of systems with ambiguous
+/// execution order, along with specific components that have triggered the
+/// warning. Systems must be topologically sorted beforehand.
 fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<ComponentId>)> {
     let mut ambiguity_set_labels = HashMap::default();
     for set in systems.iter().flat_map(SystemContainer::ambiguity_sets) {
@@ -716,7 +756,8 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
     let full_bitset: FixedBitSet = (0..systems.len()).collect();
     let mut processed = FixedBitSet::with_capacity(systems.len());
     for (index_a, relations) in all_relations.drain(..).enumerate() {
-        // TODO: prove that `.take(index_a)` would be correct here, and uncomment it if so.
+        // TODO: prove that `.take(index_a)` would be correct here, and uncomment it if
+        // so.
         for index_b in full_bitset.difference(&relations)
         // .take(index_a)
         {
@@ -814,6 +855,13 @@ impl Stage for SystemStage {
                 // Run systems that want to be at the start of stage.
                 for container in &mut self.exclusive_at_start {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }
@@ -826,23 +874,47 @@ impl Stage for SystemStage {
                 }
                 self.executor.run_systems(&mut self.parallel, world);
 
-                // Run systems that want to be between parallel systems and their command buffers.
+                // Run systems that want to be between parallel systems and their command
+                // buffers.
                 for container in &mut self.exclusive_before_commands {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }
 
                 // Apply parallel systems' buffers.
-                for container in &mut self.parallel {
-                    if container.should_run {
-                        container.system_mut().apply_buffers(world);
+                if self.apply_buffers {
+                    for container in &mut self.parallel {
+                        if container.should_run {
+                            // TODO add container name to trace scope
+                            trace_scope!("system_commands");
+                            // let span = info_span!(
+                            //     "system_commands",
+                            //     name = &*container.name()
+                            // );
+                            // let _guard = span.enter();
+                            container.system_mut().apply_buffers(world);
+                        }
                     }
                 }
 
                 // Run systems that want to be at the end of stage.
                 for container in &mut self.exclusive_at_end {
                     if should_run(container, &self.run_criteria, default_should_run) {
+                        // TODO add container name to trace scope
+                        trace_scope!("exclusive_system");
+                        // let system_span = info_span!(
+                        //     "exclusive_system",
+                        //     name = &*container.name()
+                        // );
+                        // let _guard = system_span.enter();
                         container.system_mut().run(world);
                     }
                 }

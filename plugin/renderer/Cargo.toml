@@ -6,25 +6,31 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
-lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
+lgn-graphics-cgen-runtime = { path = "../../lib/graphics-cgen-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
+lgn-input = { path = "../input", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
-lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 lgn-transform = { path = "../transform", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-window = { path = "../window", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 
 anyhow = "1.0"
 bumpalo = "3.8"
-log = "0.4"
-parking_lot = "0.11"
-
-lgn-input = { path = "../input", version = "0.1.0" }
-lgn-window = { path = "../window", version = "0.1.0" }
 egui = "0.15.0"
 epaint = "0.15.0"
+parking_lot = "0.11"
+smallvec = "1.7"
+dolly = "0.1.4"
+
+[build-dependencies]
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-graphics-cgen = { path = "../../lib/graphics-cgen", version = "0.1.0" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 uuid = { version = "0.8", features = ["v4", "serde"] }

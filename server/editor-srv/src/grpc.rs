@@ -1,5 +1,11 @@
+use std::sync::Arc;
+
+use lgn_data_model::{
+    json_utils::{self, get_property_as_json_string},
+    TypeDefinition,
+};
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_data_transaction::{DataManager, LockContext, Transaction};
+use lgn_data_transaction::{DataManager, LockContext, Transaction, UpdatePropertyOperation};
 use lgn_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
@@ -7,8 +13,7 @@ use lgn_editor_proto::{
     SearchResourcesRequest, SearchResourcesResponse, UndoTransactionRequest,
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
-use log::info;
-use std::sync::Arc;
+use lgn_telemetry::info;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
@@ -17,7 +22,8 @@ pub(crate) struct GRPCServer {
 }
 
 impl GRPCServer {
-    /// Instanciate a new `GRPCServer` using the specified `webrtc::WebRTCServer`.
+    /// Instanciate a new `GRPCServer` using the specified
+    /// `webrtc::WebRTCServer`.
     pub(crate) fn new(data_manager: Arc<Mutex<DataManager>>) -> Self {
         Self { data_manager }
     }
@@ -120,37 +126,41 @@ impl Editor for GRPCServer {
             properties: Vec::new(),
         };
 
-        // Refresh for Reflection interface. Might not be present for type with no properties
+        // Refresh for Reflection interface. Might not be present for type with no
+        // properties
         if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
         {
-            let descriptors = reflection.get_property_descriptors().ok_or_else(|| {
-                Status::internal(format!(
-                    "Invalid Property Descriptor for ResourceId: {}",
-                    resource_id
-                ))
-            })?;
+            if let TypeDefinition::Struct(struct_def) = reflection.get_type() {
+                let properties: anyhow::Result<Vec<ResourceProperty>> = struct_def
+                    .fields
+                    .iter()
+                    .map(|descriptor| -> anyhow::Result<ResourceProperty> {
+                        let value = json_utils::get_property_as_json_string(
+                            reflection,
+                            descriptor.field_name.as_str(),
+                        )?;
 
-            let properties: anyhow::Result<Vec<ResourceProperty>> = descriptors
-                .iter()
-                .map(|(_key, descriptor)| -> anyhow::Result<ResourceProperty> {
-                    let value = reflection.read_property(descriptor.name)?;
+                        // TODO: find default values from property property base
+                        let default_value = json_utils::get_property_as_json_string(
+                            reflection,
+                            descriptor.field_name.as_str(),
+                        )?;
 
-                    let default_value = reflection.read_property_default(descriptor.name)?;
+                        return Ok(ResourceProperty {
+                            name: descriptor.field_name.clone(),
+                            ptype: descriptor.field_type.get_type_name().to_lowercase(),
+                            group: String::new(),
+                            default_value: default_value.as_bytes().to_vec(),
+                            value: value.as_bytes().to_vec(),
+                        });
+                    })
+                    .collect();
 
-                    return Ok(ResourceProperty {
-                        name: descriptor.name.into(),
-                        ptype: descriptor.type_name.to_lowercase(),
-                        group: descriptor.group.to_string(),
-                        default_value: default_value.as_bytes().to_vec(),
-                        value: value.as_bytes().to_vec(),
-                    });
-                })
-                .collect();
-
-            if let Ok(properties) = properties {
-                response.properties = properties;
+                if let Ok(properties) = properties {
+                    response.properties = properties;
+                }
             }
         }
 
@@ -176,14 +186,15 @@ impl Editor for GRPCServer {
         let mut data_manager = self.data_manager.lock().await;
         {
             let mut transaction = Transaction::new();
-            request
-                .property_updates
-                .iter()
-                .try_for_each(|update| -> anyhow::Result<()> {
-                    let value = std::str::from_utf8(update.value.as_slice())?;
-                    transaction.update_property(resource_id, update.name.as_str(), value)
-                })
-                .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+            for update in &request.property_updates {
+                transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                    resource_id,
+                    update.name.as_str(),
+                    std::str::from_utf8(update.value.as_slice())
+                        .map_err(|err| Status::internal(err.to_string()))?,
+                ));
+            }
+
             data_manager
                 .commit_transaction(transaction)
                 .await
@@ -198,7 +209,7 @@ impl Editor for GRPCServer {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.t, handle)
+            .get_resource_reflection(resource_id.kind, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request
@@ -207,8 +218,7 @@ impl Editor for GRPCServer {
             .map(|update| -> anyhow::Result<ResourcePropertyUpdate> {
                 Ok(ResourcePropertyUpdate {
                     name: update.name.clone(),
-                    value: reflection
-                        .read_property(update.name.as_str())?
+                    value: get_property_as_json_string(reflection, update.name.as_str())?
                         .as_bytes()
                         .to_vec(),
                 })

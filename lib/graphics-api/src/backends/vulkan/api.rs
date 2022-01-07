@@ -19,13 +19,14 @@ impl fmt::Debug for VulkanApi {
 impl VulkanApi {
     /// # Safety
     ///
-    /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
-    /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
-    /// behavior on the CPU for reasons other than interacting with the GPU.
+    /// GPU programming is fundamentally unsafe, so all  APIs that interact with
+    /// the GPU should be considered unsafe. However,  APIs are only gated
+    /// by unsafe if they can cause undefined behavior on the CPU for
+    /// reasons other than interacting with the GPU.
     pub unsafe fn new(api_def: &ApiDef) -> GfxResult<(Self, DeviceContext)> {
         let app_name = CString::new(api_def.app_name.clone())
             .expect("app name should not contain a byte set to 0");
-        let entry = ash::Entry::new()?;
+        let entry = ash::Entry::linked();
         let vk_instance = VkInstance::new(
             entry,
             &app_name,

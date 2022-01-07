@@ -1,9 +1,11 @@
 //! Interface to interact with data compilers.
 //!
-//! Data compiler is a binary that takes as input [`lgn_data_runtime::Resource`]s.
-//! Because each *data compiler* is an external binary interacting with them can be challenging.
+//! Data compiler is a binary that takes as input
+//! [`lgn_data_runtime::Resource`]s. Because each *data compiler* is an external
+//! binary interacting with them can be challenging.
 //!
-//! [`compiler_cmd`] provides utilities that simplify interactions with data compilers.
+//! [`compiler_cmd`] provides utilities that simplify interactions with data
+//! compilers.
 //!
 //! # Examples
 //!
@@ -41,7 +43,7 @@
 //!     let resource_dir = PathBuf::from("./resources/");
 //!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, &env);
 //!     let output = command.execute("my_compiler.exe").expect("compiled resources");
-//!}
+//! }
 //! ```
 //!
 //! For more about data compilers see [`compiler_api`] module.
@@ -57,17 +59,17 @@ use std::{
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::{CompilationEnv, CompilerDescriptor},
+    compiler_api::{CompilationEnv, CompilerDescriptor, CompilerInfo},
     CompiledResource, CompilerHash,
 };
 
 /// Description of a compiler.
 #[derive(Debug, Clone)]
-pub struct CompilerInfo {
+pub struct CompilerLocation {
     /// Name of the compiler.
     pub name: String,
     /// Binary location.
@@ -75,7 +77,7 @@ pub struct CompilerInfo {
 }
 
 /// Returns a list of compilers found at locations `paths`.
-pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
+pub fn list_compilers(paths: &[impl AsRef<Path>]) -> Vec<CompilerLocation> {
     let mut commands = Vec::new();
     let prefix = "compiler-";
     let suffix = env::consts::EXE_SUFFIX;
@@ -94,7 +96,7 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
                     continue;
                 }
                 let name = filename[prefix.len()..(filename.len() - suffix.len())].to_string();
-                commands.push(CompilerInfo {
+                commands.push(CompilerLocation {
                     name,
                     path: path.clone(),
                 });
@@ -105,8 +107,11 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
     commands
 }
 
-fn search_directories(paths: &[PathBuf]) -> Vec<PathBuf> {
-    let mut dirs = paths.to_owned();
+fn search_directories(paths: &[impl AsRef<Path>]) -> Vec<PathBuf> {
+    let mut dirs = paths
+        .iter()
+        .map(|a| a.as_ref().to_owned())
+        .collect::<Vec<_>>();
     if let Ok(cwd) = env::current_dir() {
         dirs.push(cwd);
     }
@@ -142,7 +147,8 @@ impl CommandBuilder {
         self
     }
 
-    /// Executes the process returning the stdio output or an error on non-zero exit status.
+    /// Executes the process returning the stdio output or an error on non-zero
+    /// exit status.
     fn exec<T: AsRef<OsStr>>(&self, compiler_path: T) -> io::Result<std::process::Output> {
         let mut command = std::process::Command::new(compiler_path);
         command.args(&self.args);
@@ -170,18 +176,8 @@ impl CommandBuilder {
 // Compiler Info Command
 //
 
-#[derive(Serialize, Deserialize, Debug)]
 /// Output of `compiler_info` command.
-pub struct CompilerInfoCmdOutput {
-    /// Data build version of data compiler.
-    pub build_version: String,
-    /// Code version of data compiler.
-    pub code_version: String,
-    /// Resource and Asset data version.
-    pub data_version: String,
-    /// Transformation supported by data compiler.
-    pub transform: Transform,
-}
+pub type CompilerInfoCmdOutput = CompilerInfo;
 
 impl CompilerInfoCmdOutput {
     pub(crate) fn from_descriptor(descriptor: &CompilerDescriptor) -> Self {
@@ -203,7 +199,6 @@ pub(crate) const COMMAND_NAME_COMPILE: &str = "compile";
 pub(crate) const COMMAND_ARG_PLATFORM: &str = "platform";
 pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
-pub(crate) const COMMAND_ARG_RESOURCE_PATH: &str = "resource";
 pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
 pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
 pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
@@ -220,9 +215,10 @@ impl CompilerInfoCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path`, waits
+    /// for completion, returns the result.
     pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerInfoCmdOutput> {
-        let output = self.0.exec(compiler_path)?;
+        let output = self.0.exec(&compiler_path)?;
         CompilerInfoCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -263,7 +259,8 @@ impl CompilerHashCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path`, waits
+    /// for completion, returns the result.
     pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerHashCmdOutput> {
         let output = self.0.exec(compiler_path)?;
         CompilerHashCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
@@ -339,13 +336,14 @@ impl CompilerCompileCmd {
         Self(builder)
     }
 
-    /// Runs the command on compiler process located at `compiler_path` setting the current working directory
-    /// of the compiler to `cwd`, waits for completion, returns the result.
+    /// Runs the command on compiler process located at `compiler_path` setting
+    /// the current working directory of the compiler to `cwd`, waits for
+    /// completion, returns the result.
     pub fn execute(
         &mut self,
         compiler_path: impl AsRef<OsStr>,
     ) -> io::Result<CompilerCompileCmdOutput> {
-        match self.0.exec(compiler_path) {
+        match self.0.exec(compiler_path.as_ref().to_owned()) {
             Ok(output) => CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice())
                 .ok_or_else(|| {
                     eprintln!("Cannot parse compiler output, args: {:?}", self.0.args);
@@ -358,7 +356,11 @@ impl CompilerCompileCmd {
                     )
                 }),
             Err(e) => {
-                eprintln!("Compiler command failed, args: {:?}", self.0.args);
+                eprintln!(
+                    "Compiler command failed: {:?} {:?}",
+                    compiler_path.as_ref(),
+                    self.0.args
+                );
                 Err(e)
             }
         }

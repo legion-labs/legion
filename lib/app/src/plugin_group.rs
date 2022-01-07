@@ -1,7 +1,7 @@
 use std::any::TypeId;
 
+use lgn_telemetry::debug;
 use lgn_utils::HashMap;
-use log::debug;
 
 use crate::{App, Plugin};
 

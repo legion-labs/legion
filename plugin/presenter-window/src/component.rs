@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 use std::convert::TryFrom;
 
-use graphics_api::prelude::*;
+use lgn_graphics_api::prelude::*;
 use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
@@ -45,9 +45,9 @@ impl PresenterWindow {
         }
     }
 
-    pub fn present<'renderer>(
+    pub fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
         //
@@ -62,24 +62,20 @@ impl PresenterWindow {
         //
         // Blit render surface
         //
-        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+        let cmd_buffer = render_context.alloc_command_buffer();
         let swapchain_texture = presentable_frame.swapchain_texture();
-
-        cmd_buffer.begin().unwrap();
 
         {
             render_surface.transition_to(&cmd_buffer, ResourceState::COPY_SRC);
 
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::PRESENT,
-                        ResourceState::COPY_DST,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    swapchain_texture,
+                    ResourceState::PRESENT,
+                    ResourceState::COPY_DST,
+                )],
+            );
 
             let src_texture = render_surface.texture();
             let src_texture_def = src_texture.definition();
@@ -109,37 +105,28 @@ impl PresenterWindow {
                 array_slices: Some([0, 0]),
                 filtering: FilterType::Linear,
             };
-            cmd_buffer
-                .cmd_blit_texture(src_texture, dst_texture, &blit_params)
-                .unwrap();
+            cmd_buffer.blit_texture(src_texture, dst_texture, &blit_params);
 
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::COPY_DST,
-                        ResourceState::PRESENT,
-                    )],
-                )
-                .unwrap();
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    swapchain_texture,
+                    ResourceState::COPY_DST,
+                    ResourceState::PRESENT,
+                )],
+            );
         }
-
-        cmd_buffer.end().unwrap();
 
         //
         // Present
         //
         {
-            let renderer = render_context.renderer();
-            let present_queue = renderer.queue(QueueType::Graphics);
+            let present_queue = render_context.graphics_queue();
             let wait_sem = render_surface.sema();
             presentable_frame
-                .present(&present_queue, wait_sem, &[&cmd_buffer])
+                .present(&present_queue, wait_sem, &mut [cmd_buffer.finalize()])
                 .unwrap();
         }
-
-        render_context.release_cmd_buffer(cmd_buffer);
     }
 }
 
@@ -154,14 +141,14 @@ impl Presenter for PresenterWindow {
         self.extents = extents;
     }
 
-    fn present<'renderer>(
+    fn present(
         &mut self,
-        render_context: &mut RenderContext<'renderer>,
+        render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         _task_pool: &TaskPool,
     ) {
-        // FIXME: if the windows is minimized, we should not resize the RenderSurface and we should not present
-        // the swapchain.
+        // FIXME: if the windows is minimized, we should not resize the RenderSurface
+        // and we should not present the swapchain.
         if self.extents.width() > 1 && self.extents.height() > 1 {
             self.present(render_context, render_surface);
         }

@@ -1,8 +1,10 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(target_arch = "wasm32")]
 use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
+use lgn_telemetry::info;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -46,8 +48,8 @@ impl ScheduleRunnerSettings {
     }
 }
 
-/// Configures an App to run its [Schedule](lgn_ecs::schedule::Schedule) according to a given
-/// [`RunMode`]
+/// Configures an App to run its [Schedule](lgn_ecs::schedule::Schedule)
+/// according to a given [`RunMode`]
 #[derive(Default)]
 pub struct ScheduleRunnerPlugin;
 
@@ -64,6 +66,16 @@ impl Plugin for ScheduleRunnerPlugin {
                     app.update();
                 }
                 RunMode::Loop { wait } => {
+                    static CTRL_C_HIT: AtomicBool = AtomicBool::new(false);
+                    ctrlc::set_handler(move || {
+                        info!("CTRL-C was hit!");
+                        if CTRL_C_HIT.load(Ordering::SeqCst) {
+                            std::process::exit(0);
+                        }
+                        CTRL_C_HIT.store(true, Ordering::SeqCst);
+                    })
+                    .expect("Error setting ctrlc handler");
+
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
@@ -87,6 +99,10 @@ impl Plugin for ScheduleRunnerPlugin {
                             {
                                 return Err(exit.clone());
                             }
+                        }
+
+                        if CTRL_C_HIT.load(Ordering::SeqCst) {
+                            return Err(AppExit {});
                         }
 
                         let end_time = Instant::now();

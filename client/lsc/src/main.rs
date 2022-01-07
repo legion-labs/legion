@@ -1,5 +1,4 @@
 //! Source control CLI
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -57,395 +56,296 @@
 // crate-specific exceptions:
 #![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
 
-use std::{path::Path, str::FromStr};
+use std::{path::Path};
 
-use ::log::info;
-use clap::{App, AppSettings, Arg, SubCommand};
-
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
 use lgn_telemetry::*;
+use lgn_telemetry_sink::TelemetryGuard;
 
-const SUB_COMMAND_CREATE_REPOSITORY: &str = "create-repository";
-const SUB_COMMAND_DESTROY_REPOSITORY: &str = "destroy-repository";
-const SUB_COMMAND_PING: &str = "ping";
+/// Legion Source Control
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Source Control")]
+#[clap(about = "CLI to interact with Legion Source Control", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
 
-const ARG_REPOSITORY_URL: &str = "repository-url";
-const ARG_BLOB_STORAGE_URL: &str = "blob-storage-url";
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Initializes a repository stored on a local or remote system
+    #[clap(name = "create-repository")]
+    CreateRepository {
+        /// The repository URL.
+        repository_url: RepositoryUrl,
+        // The optional blob storage URL. If none is specified, one will be
+        // guessed from the repository URL.
+        blob_storage_url: Option<BlobStorageUrl>,
+    },
+    /// Destroys all repository data permanently
+    #[clap(name = "destroy-repository")]
+    DestroyRepository {
+        /// The repository URL.
+        repository_url: RepositoryUrl,
+    },
+    /// Initializes a workspace and populates it with the latest version of the main branch
+    #[clap(name = "init-workspace")]
+    InitWorkspace {
+        /// lsc workspace directory
+        workspace_directory: String,
+        /// uri printed at the creation of the repository
+        repository_uri: String,
+    },
+    /// Adds local file to the set of pending changes
+    #[clap(name = "add")]
+    Add {
+        /// local path within a workspace
+        path: String,
+    },
+    /// Makes file writable and adds it to the set of pending changes
+    #[clap(name = "edit")]
+    Edit {
+        /// local path within a workspace
+        path: String,
+    },
+    /// Deletes the local file and records the pending change
+    #[clap(name = "delete")]
+    Delete {
+        /// local path within a workspace
+        path: String,
+    },
+    /// Prevent others from modifying the specified file. Locks apply throught all related branches
+    #[clap(name = "lock")]
+    Lock {
+        /// local path within a workspace
+        path: String,
+    },
+    /// Releases a lock, allowing others to modify or lock the file
+    #[clap(name = "unlock")]
+    Unlock {
+        /// local path within a workspace
+        path: String,
+    },
+    /// Prints all the locks in the current lock domain
+    #[clap(name = "list-locks")]
+    ListLocks,
+    /// Prints difference between local file and specified commit
+    #[clap(name = "diff")]
+    Diff {
+        /// ignores diff tool config and prints a patch on stdout
+        #[clap(long)]
+        notool: bool,
+        /// local path within a workspace
+        path: String,
+        /// reference version: a commit id, base or latest
+        #[clap(default_value = "base")]
+        reference: String,
+    },
+    /// Reconciles local modifications with colliding changes from other workspaces
+    #[clap(name = "resolve")]
+    Resolve {
+        /// ignores diff tool config and prints a patch on stdout
+        #[clap(long)]
+        notool: bool,
+        /// local path within a workspace
+        path: String,
+    },
+    /// Creates a new branch based on the state of the workspace
+    #[clap(name = "create-branch")]
+    CreateBranch {
+        /// name of the new branch
+        name: String,
+    },
+    /// Merge the specified branch into the current one
+    #[clap(name = "merge-branch")]
+    MergeBranch {
+        /// name of the branch to merge
+        name: String,
+    },
+    /// Syncs workspace to specified branch
+    #[clap(name = "switch-branch")]
+    SwitchBranch {
+        /// name of the existing branch to sync to
+        name: String,
+    },
+    /// Move the current branch and its descendance to a new lock domain
+    #[clap(name = "detach-branch")]
+    DetachBranch,
+    /// Merges the lock domains of the two branches
+    #[clap(name = "attach-branch")]
+    AttachBranches {
+        /// name of the existing branch to set as parent
+        parent_branch_name: String,
+    },
+    /// Prints a list of all branches
+    #[clap(name = "list-branches")]
+    ListBranches,
+    /// Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.
+    #[clap(name = "revert")]
+    Revert {
+        /// revert all the local changes that match the specified pattern
+        #[clap(long)]
+        glob: bool,
+        /// local path within a workspace
+        path: String,
+    },
+    /// Lists changes in workspace lsc knows about
+    #[clap(name = "local-changes")]
+    LocalChanges,
+    /// Lists commits of the current branch
+    #[clap(name = "log")]
+    Log,
+    /// Updates the workspace with the latest version of the files
+    #[clap(name = "sync")]
+    Sync {
+        /// version to sync to
+        commit_id: Option<String>,
+    },
+    /// Lists the files that are scheduled to be merged following a sync with colliding changes
+    #[clap(name = "resolves-pending")]
+    ResolvesPending,
+    /// Records local changes in the repository as a single transaction
+    #[clap(name = "commit")]
+    Commit {
+        /// commit message
+        #[clap(short, value_delimiter = '\"')]
+        message: Vec<String>,
+    },
+    /// Prints the path to the configuration file and its content
+    #[clap(name = "config")]
+    Config,
+    /// Replicates branches and commits from a git repo
+    #[clap(name = "import-git-branch")]
+    ImportGitBranch {
+        /// Path to the root of a git repository. Should contain a .git subfolder
+        path: String,
+        /// Name of the branch to import
+        branch: String,
+    },
+    /// Contact server
+    #[clap(name = "ping")]
+    Ping {
+        /// The repository URL.
+        repository_url: RepositoryUrl,
+    },
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
 
-    trace_scope!();
+            //let repository_url = command_match
+            //    .value_of(ARG_REPOSITORY_URL)
+            //    .map(RepositoryUrl::from_str)
+            //    .transpose()?
+            //    .unwrap_or_else(RepositoryUrl::from_current_dir)
+            //    .make_absolute(std::env::current_dir()?);
 
-    let matches = App::new("Legion Source Control")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("CLI to interact with Legion Source Control")
-        .subcommand(
-            SubCommand::with_name(SUB_COMMAND_CREATE_REPOSITORY)
-                .about("Create a new local repository that uses the filesystem as its storage backend")
-                .arg(
-                    Arg::with_name(ARG_REPOSITORY_URL)
-                        .help("The local path to the repository. If not specified, uses the current directory")
-                )
-                .arg(
-                    Arg::with_name(ARG_BLOB_STORAGE_URL)
-                        .help("The blob storage URL. If not specified and no default blob storage can be determined, an error will be reported. Example: file://somepath, s3://bucket/root")
-                )
-        )
-        .subcommand(
-            SubCommand::with_name(SUB_COMMAND_DESTROY_REPOSITORY)
-                .about("Destroys all repository data permanently")
-                .arg(
-                    Arg::with_name(ARG_REPOSITORY_URL)
-                        .required(true)
-                        .help("The local path to the repository. If not specified, uses the current directory")
-                )
-        )
-        .subcommand(
-            SubCommand::with_name("init-workspace")
-                .about("Initializes a workspace and populates it with the latest version of the main branch")
-                .arg(
-                    Arg::with_name("workspace-directory")
-                        .required(true)
-                        .help("lsc workspace directory"))
-                .arg(
-                    Arg::with_name("repository-uri")
-                        .required(true)
-                        .help("uri printed at the creation of the repository"))
-        )
-        .subcommand(
-            SubCommand::with_name("add")
-                .about("Adds local file to the set of pending changes")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("edit")
-                .about("Makes file writable and adds it to the set of pending changes")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("delete")
-                .about("Deletes the local file and records the pending change")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("lock")
-                .about("Prevent others from modifying the specified file. Locks apply throught all related branches")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("unlock")
-                .about("Releases a lock, allowing others to modify or lock the file")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("list-locks")
-                .about("Prints all the locks in the current lock domain")
-        )
-        .subcommand(
-            SubCommand::with_name("diff")
-                .about("Prints difference between local file and specified commit")
-                .arg(
-                    Arg::with_name("notool")
-                        .long("notool")
-                        .help("ignores diff tool config and prints a patch on stdout"))
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-                .arg(
-                    Arg::with_name("reference")
-                        .help("reference version: a commit id, base or latest"))
-        )
-        .subcommand(
-            SubCommand::with_name("resolve")
-                .about("Reconciles local modifications with colliding changes from other workspaces")
-                .arg(
-                    Arg::with_name("notool")
-                        .long("notool")
-                        .help("ignores merge tool config"))
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace"))
-        )
-        .subcommand(
-            SubCommand::with_name("create-branch")
-                .about("Creates a new branch based on the state of the workspace")
-                .arg(
-                    Arg::with_name("name")
-                        .required(true)
-                        .help("name of the new branch"))
-        )
-        .subcommand(
-            SubCommand::with_name("merge-branch")
-                .about("Merge the specified branch into the current one")
-                .arg(
-                    Arg::with_name("name")
-                        .required(true)
-                        .help("name of the branch to merge"))
-        )
-        .subcommand(
-            SubCommand::with_name("switch-branch")
-                .about("Syncs workspace to specified branch")
-                .arg(
-                    Arg::with_name("name")
-                        .required(true)
-                        .help("name of the existing branch to sync to"))
-        )
-        .subcommand(
-            SubCommand::with_name("detach-branch")
-                .about("Move the current branch and its descendance to a new lock domain")
+            //let blob_storage_url = command_match
+            //    .value_of(ARG_BLOB_STORAGE_URL)
+            //    .map(BlobStorageUrl::from_str)
+            //    .transpose()?
+            //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
+            //    .transpose()?;
 
-        )
-        .subcommand(
-            SubCommand::with_name("attach-branch")
-                .about("Merges the lock domains of the two branches")
-                .arg(
-                    Arg::with_name("parent-branch-name")
-                        .required(true)
-                        .help("name of the existing branch to set as parent"))
+    let args = Cli::parse();
 
-        )
-        .subcommand(
-            SubCommand::with_name("list-branches")
-                .about("Prints a list of all branches")
-        )
-        .subcommand(
-            SubCommand::with_name("revert")
-                .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
-                .arg(
-                    Arg::with_name("glob")
-                        .long("glob")
-                        .help("revert all the local changes that match the specified pattern"))
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("local path within a workspace")),
-        )
-        .subcommand(
-            SubCommand::with_name("local-changes")
-                .about("Lists changes in workspace lsc knows about")
-        )
-        .subcommand(
-            SubCommand::with_name("log")
-                .about("Lists commits of the current branch")
-        )
-        .subcommand(
-            SubCommand::with_name("sync")
-                .about("Updates the workspace with the latest version of the files")
-                .arg(
-                    Arg::with_name("commit-id")
-                        .help("version to sync to"))
-        )
-        .subcommand(
-            SubCommand::with_name("resolves-pending")
-                .about("Lists the files that are scheduled to be merged following a sync with colliding changes")
-        )
-        .subcommand(
-            SubCommand::with_name("commit")
-                .about("Records local changes in the repository as a single transaction")
-                .arg(
-                    Arg::with_name("message")
-                        .short("m")
-                        .required(true)
-                        .value_delimiter("\"")
-                        .help("commit message"))
-        )
-        .subcommand(
-            SubCommand::with_name("config")
-                .about("Prints the path to the configuration file and its content")
-        )
-        .subcommand(
-            SubCommand::with_name("import-git-branch")
-                .about("Replicates branches and commits from a git repo")
-                .arg(
-                    Arg::with_name("path")
-                        .required(true)
-                        .help("Path to the root of a git repository. Should contain a .git subfolder"))
-                .arg(
-                    Arg::with_name("branch")
-                        .required(true)
-                        .help("Name of the branch to import"))
-        )
-        .subcommand(
-            SubCommand::with_name(SUB_COMMAND_PING)
-                .about("Contact server")
-                .arg(
-                    Arg::with_name(ARG_REPOSITORY_URL)
-                        .required(true)
-                        .help("The local path to the repository. If not specified, uses the current directory")
-                )
-        )
-        .get_matches();
-
-    match matches.subcommand() {
-        (SUB_COMMAND_CREATE_REPOSITORY, Some(command_match)) => {
-            let repository_url = command_match
-                .value_of(ARG_REPOSITORY_URL)
-                .map(RepositoryUrl::from_str)
-                .transpose()?
-                .unwrap_or_else(RepositoryUrl::from_current_dir)
-                .make_absolute(std::env::current_dir()?);
-
-            let blob_storage_url = command_match
-                .value_of(ARG_BLOB_STORAGE_URL)
-                .map(BlobStorageUrl::from_str)
-                .transpose()?
-                .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
-                .transpose()?;
+    match args.command {
+        Commands::CreateRepository { repository_url, blob_storage_url } => {
+            info!("create-repository");
 
             lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)
                 .await?;
 
             Ok(())
         }
-        (SUB_COMMAND_DESTROY_REPOSITORY, Some(command_match)) => {
-            let repository_url = command_match
-                .value_of(ARG_REPOSITORY_URL)
-                .map(RepositoryUrl::from_str)
-                .transpose()?
-                .unwrap_or_else(RepositoryUrl::from_current_dir)
-                .make_absolute(std::env::current_dir()?);
+        Commands::DestroyRepository { repository_url } => {
+            info!("destroy-repository");
 
             lgn_source_control::commands::destroy_repository(&repository_url).await?;
 
             Ok(())
         }
-        ("init-workspace", Some(command_match)) => {
+        Commands::InitWorkspace {
+            workspace_directory,
+            repository_uri,
+        } => {
             info!("init-workspace");
 
-            init_workspace_command(
-                Path::new(command_match.value_of("workspace-directory").unwrap()),
-                command_match.value_of("repository-uri").unwrap(),
-            )
-            .await
+            init_workspace_command(Path::new(&workspace_directory), &repository_uri).await
         }
-        ("add", Some(command_match)) => {
-            let path_arg = command_match.value_of("path").unwrap();
-            info!("add {}", path_arg);
-
-            track_new_file_command(Path::new(path_arg)).await
+        Commands::Add { path } => {
+            info!("add {}", path);
+            track_new_file_command(Path::new(&path)).await
         }
-        ("edit", Some(command_match)) => {
+        Commands::Edit { path } => {
             info!("edit");
-
-            edit_file_command(Path::new(command_match.value_of("path").unwrap())).await
+            edit_file_command(Path::new(&path)).await
         }
-        ("delete", Some(command_match)) => {
+        Commands::Delete { path } => {
             info!("delete");
-
-            delete_file_command(Path::new(command_match.value_of("path").unwrap())).await
+            delete_file_command(Path::new(&path)).await
         }
-        ("lock", Some(command_match)) => {
+        Commands::Lock { path } => {
             info!("lock");
-
-            lock_file_command(Path::new(command_match.value_of("path").unwrap())).await
+            lock_file_command(Path::new(&path)).await
         }
-        ("unlock", Some(command_match)) => {
+        Commands::Unlock { path } => {
             info!("unlock");
-
-            unlock_file_command(Path::new(command_match.value_of("path").unwrap())).await
+            unlock_file_command(Path::new(&path)).await
         }
-        ("list-locks", Some(_command_match)) => {
+        Commands::ListLocks => {
             info!("list-locks");
-
             list_locks_command().await
         }
-        ("diff", Some(command_match)) => {
+        Commands::Diff {
+            notool,
+            path,
+            reference,
+        } => {
             info!("diff");
-            let notool = command_match.is_present("notool");
-            let reference_version_name = command_match.value_of("reference").unwrap_or("base");
-
-            diff_file_command(
-                Path::new(command_match.value_of("path").unwrap()),
-                reference_version_name,
-                !notool,
-            )
-            .await
+            diff_file_command(Path::new(&path), &reference, !notool).await
         }
-        ("resolve", Some(command_match)) => {
+        Commands::Resolve { notool, path } => {
             info!("resolve");
-            let notool = command_match.is_present("notool");
-            let path = Path::new(command_match.value_of("path").unwrap());
-
-            resolve_file_command(path, !notool).await
+            resolve_file_command(Path::new(&path), !notool).await
         }
-        ("create-branch", Some(command_match)) => {
+        Commands::CreateBranch { name } => {
             info!("create-branch");
-            let name = command_match.value_of("name").unwrap();
-
-            create_branch_command(name).await
+            create_branch_command(&name).await
         }
-        ("merge-branch", Some(command_match)) => {
+        Commands::MergeBranch { name } => {
             info!("merge-branch");
-            let name = command_match.value_of("name").unwrap();
-
-            merge_branch_command(name).await
+            merge_branch_command(&name).await
         }
-        ("switch-branch", Some(command_match)) => {
+        Commands::SwitchBranch { name } => {
             info!("switch-branch");
-            let name = command_match.value_of("name").unwrap();
-
-            switch_branch_command(name).await
+            switch_branch_command(&name).await
         }
-        ("detach-branch", Some(_command_match)) => {
+        Commands::DetachBranch => {
             info!("detach-branch");
-
             detach_branch_command().await
         }
-        ("attach-branch", Some(command_match)) => {
-            let parent_branch_name = command_match.value_of("parent-branch-name").unwrap();
+        Commands::AttachBranches { parent_branch_name } => {
             info!("attach-branch {}", parent_branch_name);
-
-            attach_branch_command(parent_branch_name).await
+            attach_branch_command(&parent_branch_name).await
         }
-        ("list-branches", Some(_command_match)) => {
+        Commands::ListBranches => {
             info!("list-branches");
-
             list_branches_command().await
         }
-        ("revert", Some(command_match)) => {
-            let path = command_match.value_of("path").unwrap();
+        Commands::Revert { glob, path } => {
             info!("revert {}", path);
-
-            if command_match.is_present("glob") {
-                revert_glob_command(path).await
+            if glob {
+                revert_glob_command(&path).await
             } else {
-                revert_file_command(Path::new(path)).await
+                revert_file_command(Path::new(&path)).await
             }
         }
-        ("commit", Some(command_match)) => {
-            let mut message = String::from("");
-            for item in command_match.values_of("message").unwrap() {
-                message += item;
-            }
-            info!("commit {:?}", message);
-
-            commit_command(&message).await
-        }
-        ("local-changes", Some(_command_match)) => {
+        Commands::LocalChanges => {
             info!("local-changes");
-
             find_local_changes_command().await.map(|changes| {
                 if changes.is_empty() {
                     println!("No local changes");
@@ -456,7 +356,19 @@ async fn main() -> anyhow::Result<()> {
                 }
             })
         }
-        ("resolves-pending", Some(_command_match)) => {
+        Commands::Log => {
+            info!("log");
+
+            log_command().await
+        }
+        Commands::Sync { commit_id } => {
+            info!("sync");
+            match commit_id {
+                Some(commit_id) => sync_to_command(&commit_id).await,
+                None => sync_command().await,
+            }
+        }
+        Commands::ResolvesPending => {
             info!("resolves-pending");
 
             find_resolves_pending_command()
@@ -474,45 +386,28 @@ async fn main() -> anyhow::Result<()> {
                     }
                 })
         }
-        ("sync", Some(command_match)) => {
-            info!("sync");
-
-            match command_match.value_of("commit-id") {
-                Some(commit_id) => sync_to_command(commit_id).await,
-                None => sync_command().await,
+        Commands::Commit { message } => {
+            let mut aggregate_message = String::from("");
+            for item in message {
+                aggregate_message += &item;
             }
-        }
-        ("log", Some(_command_match)) => {
-            info!("log");
+            info!("commit {:?}", aggregate_message);
 
-            log_command().await
+            commit_command(&aggregate_message).await
         }
-        ("config", Some(_command_match)) => {
+        Commands::Config => {
             info!("config");
 
             print_config_command()
         }
-        ("import-git-branch", Some(command_match)) => {
-            let path_arg = command_match.value_of("path").unwrap();
-            let branch_name = command_match.value_of("branch").unwrap();
-            info!("import-git-branch {} {} ", path_arg, branch_name);
-
-            import_git_branch_command(Path::new(path_arg), branch_name).await
+        Commands::ImportGitBranch { path, branch } => {
+            info!("import-git-branch {} {} ", path, branch);
+            import_git_branch_command(Path::new(&path), &branch).await
         }
-        (SUB_COMMAND_PING, Some(command_match)) => {
-            let repository_url = command_match
-                .value_of(ARG_REPOSITORY_URL)
-                .map(RepositoryUrl::from_str)
-                .transpose()?
-                .unwrap_or_else(RepositoryUrl::from_current_dir)
-                .make_absolute(std::env::current_dir()?);
+        Commands::Ping { repository_url } => {
+            info!("ping {}", &repository_url);
 
             lgn_source_control::commands::ping(&repository_url).await
-        }
-        other_match => {
-            info!("unknown subcommand match");
-
-            anyhow::bail!("unknown subcommand match: {:?}", &other_match)
         }
     }
 }

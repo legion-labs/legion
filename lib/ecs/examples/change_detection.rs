@@ -1,15 +1,17 @@
+#![allow(clippy::needless_pass_by_value)]
+
 use std::ops::Deref;
 
 use lgn_ecs::prelude::*;
 use rand::Rng;
 
-// In this example we will simulate a population of entities. In every tick we will:
-// 1. spawn a new entity with a certain possibility
+// In this example we will simulate a population of entities. In every tick we
+// will: 1. spawn a new entity with a certain possibility
 // 2. age all entities
 // 3. despawn entities with age > 2
 //
-// To demonstrate change detection, there are some console outputs based on changes in
-// the EntityCounter resource and updated Age components
+// To demonstrate change detection, there are some console outputs based on
+// changes in the EntityCounter resource and updated Age components
 fn main() {
     // Create a new empty World to hold our Entities, Components and Resources
     let mut world = World::new();
@@ -19,8 +21,8 @@ fn main() {
 
     // Create a new Schedule, which defines an execution strategy for Systems
     let mut schedule = Schedule::default();
-    // Create a Stage to add to our Schedule. Each Stage in a schedule runs all of its systems
-    // before moving on to the next Stage
+    // Create a Stage to add to our Schedule. Each Stage in a schedule runs all of
+    // its systems before moving on to the next Stage
     let mut update = SystemStage::parallel();
 
     // Add systems to the Stage to execute our app logic
@@ -40,13 +42,15 @@ fn main() {
     }
 }
 
-// This struct will be used as a Resource keeping track of the total amount of spawned entities
+// This struct will be used as a Resource keeping track of the total amount of
+// spawned entities
 #[derive(Debug)]
 struct EntityCounter {
     pub value: i32,
 }
 
-// This struct represents a Component and holds the age in frames of the entity it gets assigned to
+// This struct represents a Component and holds the age in frames of the entity
+// it gets assigned to
 #[derive(Component, Default, Debug)]
 struct Age {
     frames: i32,
@@ -61,8 +65,9 @@ enum SimulationSystem {
 
 // This system randomly spawns a new entity in 60% of all frames
 // The entity will start with an age of 0 frames
-// If an entity gets spawned, we increase the counter in the EntityCounter resource
-fn spawn_entities(mut commands: Commands, mut entity_counter: ResMut<EntityCounter>) {
+// If an entity gets spawned, we increase the counter in the EntityCounter
+// resource
+fn spawn_entities(mut commands: Commands<'_, '_>, mut entity_counter: ResMut<'_, EntityCounter>) {
     if rand::thread_rng().gen_bool(0.6) {
         let entity_id = commands.spawn().insert(Age::default()).id();
         println!("    spawning {:?}", entity_id);
@@ -71,14 +76,15 @@ fn spawn_entities(mut commands: Commands, mut entity_counter: ResMut<EntityCount
 }
 
 // This system prints out changes in our entity collection
-// For every entity that just got the Age component added we will print that it's the
-// entities first birthday. These entities where spawned in the previous frame.
-// For every entity with a changed Age component we will print the new value.
-// In this example the Age component is changed in every frame, so we don't actually
-// need the `Changed` here, but it is still used for the purpose of demonstration.
+// For every entity that just got the Age component added we will print that
+// it's the entities first birthday. These entities where spawned in the
+// previous frame. For every entity with a changed Age component we will print
+// the new value. In this example the Age component is changed in every frame,
+// so we don't actually need the `Changed` here, but it is still used for the
+// purpose of demonstration.
 fn print_changed_entities(
-    entity_with_added_component: Query<Entity, Added<Age>>,
-    entity_with_mutated_component: Query<(Entity, &Age), Changed<Age>>,
+    entity_with_added_component: Query<'_, '_, Entity, Added<Age>>,
+    entity_with_mutated_component: Query<'_, '_, (Entity, &Age), Changed<Age>>,
 ) {
     for entity in entity_with_added_component.iter() {
         println!("    {:?} has it's first birthday!", entity);
@@ -89,14 +95,15 @@ fn print_changed_entities(
 }
 
 // This system iterates over all entities and increases their age in every frame
-fn age_all_entities(mut entities: Query<&mut Age>) {
+fn age_all_entities(mut entities: Query<'_, '_, &mut Age>) {
     for mut age in entities.iter_mut() {
         age.frames += 1;
     }
 }
 
-// This system iterates over all entities in every frame and despawns entities older than 2 frames
-fn remove_old_entities(mut commands: Commands, entities: Query<(Entity, &Age)>) {
+// This system iterates over all entities in every frame and despawns entities
+// older than 2 frames
+fn remove_old_entities(mut commands: Commands<'_, '_>, entities: Query<'_, '_, (Entity, &Age)>) {
     for (entity, age) in entities.iter() {
         if age.frames > 2 {
             println!("    despawning {:?} due to age > 2", entity);
@@ -107,7 +114,7 @@ fn remove_old_entities(mut commands: Commands, entities: Query<(Entity, &Age)>) 
 
 // This system will print the new counter value everytime it was changed since
 // the last execution of the system.
-fn print_counter_when_changed(entity_counter: Res<EntityCounter>) {
+fn print_counter_when_changed(entity_counter: Res<'_, EntityCounter>) {
     if entity_counter.is_changed() {
         println!(
             "    total number of entities spawned: {}",

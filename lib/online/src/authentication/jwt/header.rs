@@ -20,7 +20,8 @@ impl FromStr for Header {
     ///
     /// # Arguments
     ///
-    /// * `base64` - The base64 representation of the header, without its trailing '.'.
+    /// * `base64` - The base64 representation of the header, without its
+    ///   trailing '.'.
     ///
     /// # Errors
     ///

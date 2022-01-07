@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use directories::ProjectDirs;
-use log::{debug, warn};
+use lgn_telemetry::{debug, warn};
 use tokio::sync::{Mutex, MutexGuard};
 
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
@@ -119,7 +119,8 @@ impl<T> Authenticator for TokenCache<T>
 where
     T: Authenticator + Send + Sync,
 {
-    /// Get the access token from the cache if it exists, or performs an implicit refresh.
+    /// Get the access token from the cache if it exists, or performs an
+    /// implicit refresh.
     ///
     /// If that fails to, the call will fall back to the `Authenticator`'s
     /// `login` method, which may prompt the user for credentials.
@@ -149,8 +150,8 @@ where
                         } else {
                             debug!("Reusing cached access token.");
 
-                            // Bail out immediately because we don't need to refresh the token and write it
-                            // to the cache in this case.
+                            // Bail out immediately because we don't need to refresh the token and
+                            // write it to the cache in this case.
                             return Ok(token_set);
                         }
                     }
@@ -170,7 +171,8 @@ where
             }
         };
 
-        // If we can't write the token to the cache, we can't do anything about it but warn the user.
+        // If we can't write the token to the cache, we can't do anything about it but
+        // warn the user.
         if let Err(err) = self.write_token_set_to_cache(&token_set) {
             warn!("Failed to write access token to cache: {}", err);
         }
@@ -184,7 +186,8 @@ where
         self.refresh_login_with(refresh_token, &authenticator).await
     }
 
-    /// Perform a logout, delegating its execution to the owned `Authenticator` and clearing the cache.
+    /// Perform a logout, delegating its execution to the owned `Authenticator`
+    /// and clearing the cache.
     async fn logout(&self) -> Result<()> {
         let authenticator = self.authenticator().await;
 

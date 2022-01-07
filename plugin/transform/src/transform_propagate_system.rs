@@ -6,8 +6,8 @@ use lgn_ecs::{
 
 use crate::components::{Children, GlobalTransform, Parent, Transform};
 
-/// Update [`GlobalTransform`] component of entities based on entity hierarchy and
-/// [`Transform`] component.
+/// Update [`GlobalTransform`] component of entities based on entity hierarchy
+/// and [`Transform`] component.
 pub fn transform_propagate_system(
     mut root_query: Query<
         '_,

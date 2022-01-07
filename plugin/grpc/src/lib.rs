@@ -1,6 +1,7 @@
 //! `gRPC` plugin for Legion's ECS.
 //!
-//! Provides `gRPC` server support to the engine, compatible with the `tonic` crate.
+//! Provides `gRPC` server support to the engine, compatible with the `tonic`
+//! crate.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -66,7 +67,7 @@ use lgn_online::grpc::{
     multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
     Server,
 };
-use log::warn;
+use lgn_telemetry::warn;
 use tonic::transport::NamedService;
 
 pub struct GRPCPluginSettings {

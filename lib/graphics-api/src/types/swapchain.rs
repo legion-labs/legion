@@ -25,7 +25,8 @@ impl Swapchain {
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<Self> {
-        //TODO: Check image count of swapchain and update swapchain_def with swapchain.swapchain_images.len();
+        //TODO: Check image count of swapchain and update swapchain_def with
+        // swapchain.swapchain_images.len();
         let swapchain_def = swapchain_def.clone();
 
         #[cfg(feature = "vulkan")]

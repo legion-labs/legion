@@ -26,8 +26,8 @@ impl<T: Body> GrpcWebResponse<T> {
     }
 }
 
-/// A response to a `gRPC-Web` request that un-webize the response and translates it back into a
-/// classic `gRPC` response.
+/// A response to a `gRPC-Web` request that un-webize the response and
+/// translates it back into a classic `gRPC` response.
 impl<T> Body for GrpcWebResponse<T>
 where
     T: Body,

@@ -1,32 +1,37 @@
-use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
+use std::cell::RefCell;
+
+use lgn_graphics_api::{
+    DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
+    DescriptorSetWriter, QueueType, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
+use lgn_graphics_cgen_runtime::PipelineDataProvider;
 
 use crate::{
+    hl_gfx_api::{HLCommandBuffer, HLQueue},
     memory::BumpAllocatorHandle,
-    resources::{
-        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
-        TransientBufferAllocator,
-    },
+    resources::{CommandBufferPoolHandle, DescriptorPoolHandle, TransientBufferAllocator},
     RenderHandle, Renderer,
 };
 
-type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
+pub(crate) type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
 
-pub struct RenderContext<'a> {
-    renderer: &'a Renderer,
-    cmd_buffer_pool_handle: CommandBufferPoolHandle,
+pub struct RenderContext<'frame> {
+    renderer: &'frame Renderer,
+    cmd_buffer_pool: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
+    descriptor_sets: RefCell<[Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS]>,
 }
 
-impl<'a> RenderContext<'a> {
-    pub fn new(renderer: &'a Renderer) -> Self {
+impl<'frame> RenderContext<'frame> {
+    pub fn new(renderer: &'frame Renderer) -> Self {
         let heap_def = default_descriptor_heap_size();
+
         Self {
             renderer,
-            cmd_buffer_pool_handle: renderer.acquire_command_buffer_pool(QueueType::Graphics),
+            cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
-            // TMP: we should acquire a handle from the renderer
             transient_buffer_allocator: TransientBufferAllocatorHandle::new(
                 TransientBufferAllocator::new(
                     renderer.device_context(),
@@ -35,65 +40,83 @@ impl<'a> RenderContext<'a> {
                 ),
             ),
             bump_allocator: renderer.acquire_bump_allocator(),
+            descriptor_sets: RefCell::new([None; MAX_DESCRIPTOR_SET_LAYOUTS]),
         }
     }
 
-    pub fn renderer(&self) -> &'_ Renderer {
+    pub fn renderer(&self) -> &Renderer {
         self.renderer
     }
 
-    pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
-        assert_eq!(queue_type, QueueType::Graphics);
-        self.cmd_buffer_pool_handle.acquire()
+    pub fn graphics_queue(&self) -> HLQueue<'_> {
+        HLQueue::new(
+            self.renderer.graphics_queue_guard(QueueType::Graphics),
+            &self.cmd_buffer_pool,
+        )
     }
 
-    pub fn release_cmd_buffer(&mut self, handle: CommandBufferHandle) {
-        self.cmd_buffer_pool_handle.release(handle);
+    pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
+        HLCommandBuffer::new(&self.cmd_buffer_pool)
     }
 
-    #[allow(unreachable_code)]
+    pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
+        &self.descriptor_pool
+    }
+
+    #[allow(clippy::todo)]
     pub fn alloc_descriptor_set(
-        &mut self,
+        &self,
         descriptor_set_layout: &DescriptorSetLayout,
-    ) -> DescriptorSetBufWriter {
+    ) -> DescriptorSetWriter<'_> {
+        let bump = self.bump_allocator().bumpalo();
         if let Ok(writer) = self
             .descriptor_pool
-            .allocate_descriptor_set(descriptor_set_layout)
+            .allocate_descriptor_set(descriptor_set_layout, bump)
         {
             writer
         } else {
-            self.renderer
-                .release_descriptor_pool(self.descriptor_pool.transfer());
-            self.descriptor_pool = self
-                .renderer
-                .acquire_descriptor_pool(&default_descriptor_heap_size());
-            self.descriptor_pool
-                .allocate_descriptor_set(descriptor_set_layout)
-                .unwrap()
+            todo!("Descriptor OOM! ")
         }
     }
 
-    pub(crate) fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
-        self.transient_buffer_allocator.transfer()
+    #[allow(clippy::todo)]
+    pub fn write_descriptor_set(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+    ) -> DescriptorSetHandle {
+        let bump = self.bump_allocator().bumpalo();
+        if let Ok(handle) = self
+            .descriptor_pool
+            .write_descriptor_set(descriptor_set, bump)
+        {
+            let mut descriptor_sets = self.descriptor_sets.borrow_mut();
+            descriptor_sets[descriptor_set.layout().definition().frequency as usize] = Some(handle);
+            handle
+        } else {
+            todo!("Descriptor OOM! ")
+        }
     }
 
-    pub fn release_transient_buffer_allocator(&mut self, handle: TransientBufferAllocatorHandle) {
-        self.transient_buffer_allocator = handle;
+    pub fn populate_pipeline_data(&self, pipeline_data: &mut impl PipelineDataProvider) {
+        let descriptor_sets = self.descriptor_sets.borrow();
+        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
+            pipeline_data.set_descriptor_set(i, descriptor_sets[i as usize]);
+        }
     }
 
-    pub fn acquire_bump_allocator(&mut self) -> BumpAllocatorHandle {
-        self.bump_allocator.transfer()
+    pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {
+        &self.transient_buffer_allocator
     }
 
-    pub fn release_bump_allocator(&mut self, handle: BumpAllocatorHandle) {
-        self.bump_allocator = handle;
+    pub fn bump_allocator(&self) -> &BumpAllocatorHandle {
+        &self.bump_allocator
     }
 }
 
-impl<'a> Drop for RenderContext<'a> {
+impl<'frame> Drop for RenderContext<'frame> {
     fn drop(&mut self) {
         self.renderer
-            .release_command_buffer_pool(self.cmd_buffer_pool_handle.transfer());
+            .release_command_buffer_pool(self.cmd_buffer_pool.transfer());
 
         self.renderer
             .release_descriptor_pool(self.descriptor_pool.transfer());
@@ -107,7 +130,6 @@ impl<'a> Drop for RenderContext<'a> {
 
 fn default_descriptor_heap_size() -> DescriptorHeapDef {
     DescriptorHeapDef {
-        transient: true,
         max_descriptor_sets: 4096,
         sampler_count: 128,
         constant_buffer_count: 1024,

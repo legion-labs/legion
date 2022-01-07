@@ -1,11 +1,11 @@
-use anyhow::{Context, Result};
-use async_recursion::async_recursion;
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
+use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use unicase::UniCase;
@@ -204,7 +204,8 @@ pub async fn update_tree_from_changes(
     }
 
     let mut parent_to_children_dir = HashMap::<PathBuf, Vec<TreeNode>>::new();
-    //process leafs before parents to be able to patch parents with hash of children
+    //process leafs before parents to be able to patch parents with hash of
+    // children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
 
     for dir in dir_to_update_by_length {

@@ -5,8 +5,11 @@ members = [
     "lib/*",
     "plugin/*",
     "proto/*",
+    "examples/*",
     "test/*",
     "compiler/*",
+    "build/monorepo",
+    "build/workspace-hack",
 ]
 exclude = []
 
@@ -25,10 +28,9 @@ debug = true
 debug-assertions = false
 panic = 'abort'
 
-[patch.crates-io]
-lambda_runtime = { path = "external/lambda-runtime" }
-lambda_http = { path = "external/lambda-http" }
-tinycom = { path = "external/tinycom-rs" }
-hassle-rs = { path = "external/hassle-rs" }
-vk-mem = { path = "external/vk-mem" }
-ash-window = { path = "external/ash-window" }
+# this is one of the real time-critical sections of the code
+# We want it optimal even even in dev mode
+[profile.dev.package.openh264-sys2]
+opt-level = 3
+debug = true
+debug-assertions = false

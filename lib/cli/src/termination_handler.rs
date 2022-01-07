@@ -1,6 +1,6 @@
 use anyhow::Context;
 use lazy_static::lazy_static;
-use log::{info, warn};
+use lgn_telemetry::{info, warn};
 use tokio::sync::RwLock;
 
 use super::async_reverse_single_lock::AsyncReverseSingleLock;
@@ -11,7 +11,8 @@ lazy_static! {
         AsyncReverseSingleLock::new(&TERMINATION_RWLOCK);
 }
 
-/// `ReverseSingleLock` is a lock that is created locked and that can only be unlocked once.
+/// `ReverseSingleLock` is a lock that is created locked and that can only be
+/// unlocked once.
 pub struct AsyncTerminationHandler {
     rwlock: &'static AsyncReverseSingleLock<'static, ()>,
 }

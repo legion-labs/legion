@@ -1,3 +1,5 @@
+use lgn_telemetry::trace;
+
 use super::VulkanQueue;
 use crate::{CommandPool, CommandPoolDef, DeviceContext, GfxResult};
 
@@ -12,7 +14,7 @@ impl VulkanCommandPool {
         command_pool_def: &CommandPoolDef,
     ) -> GfxResult<Self> {
         let queue_family_index = queue.vk_queue().queue_family_index();
-        log::trace!(
+        trace!(
             "Creating command pool on queue family index {:?}",
             queue_family_index
         );

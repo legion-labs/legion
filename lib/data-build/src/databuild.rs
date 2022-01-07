@@ -7,11 +7,8 @@ use std::time::SystemTime;
 use std::{env, io};
 
 use lgn_content_store::{ContentStore, HddContentStore};
-use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_cmd::{
-    list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
-    CompilerInfoCmd, CompilerInfoCmdOutput,
-};
+use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
+use lgn_data_compiler::compiler_reg::CompilerRegistry;
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -58,25 +55,26 @@ fn compute_context_hash(
 
 /// Data build interface.
 ///
-/// `DataBuild` provides methods to compile offline resources into runtime format.
+/// `DataBuild` provides methods to compile offline resources into runtime
+/// format.
 ///
-/// Data build uses file-based storage to persist the state of data builds and data compilation.
-/// It requires access to offline resources to retrieve resource metadata - through  [`lgn_data_offline::resource::Project`].
+/// Data build uses file-based storage to persist the state of data builds and
+/// data compilation. It requires access to offline resources to retrieve
+/// resource metadata - through  [`lgn_data_offline::resource::Project`].
 ///
 /// # Example Usage
 ///
 /// ```no_run
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+/// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 /// # use std::str::FromStr;
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
-/// let mut build = DataBuildOptions::new(".")
+/// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
-///         .compiler_dir("./compilers/")
 ///         .create(".").expect("new build index");
 ///
 /// build.source_pull().expect("successful source pull");
@@ -95,15 +93,16 @@ fn compute_context_hash(
 ///                         &env,
 ///                      ).expect("compilation output");
 /// ```
+#[derive(Debug)]
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     content_store: HddContentStore,
-    config: DataBuildOptions,
+    compilers: CompilerRegistry,
 }
 
 impl DataBuild {
-    pub(crate) fn new(config: &DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
+    pub(crate) fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
             BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
@@ -124,11 +123,11 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            config: config.clone(),
+            compilers: config.compiler_options.create(),
         })
     }
 
-    pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) fn open(config: DataBuildOptions) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
@@ -138,15 +137,16 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            config: config.clone(),
+            compilers: config.compiler_options.create(),
         })
     }
 
     /// Opens the existing build index.
     ///
-    /// If the build index does not exist it creates one if a project is present in the directory.
+    /// If the build index does not exist it creates one if a project is present
+    /// in the directory.
     pub(crate) fn open_or_create(
-        config: &DataBuildOptions,
+        config: DataBuildOptions,
         project_dir: &Path,
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
@@ -158,7 +158,7 @@ impl DataBuild {
                     build_index,
                     project,
                     content_store,
-                    config: config.clone(),
+                    compilers: config.compiler_options.create(),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
@@ -167,12 +167,7 @@ impl DataBuild {
     }
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).map_err(|e| match e {
-            lgn_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
-            lgn_data_offline::resource::Error::NotFound
-            | lgn_data_offline::resource::Error::InvalidPath => Error::NotFound,
-            lgn_data_offline::resource::Error::IOError(_) => Error::IOError,
-        })
+        Project::open(project_dir).map_err(Error::from)
     }
 
     /// Accessor for the project associated with this builder.
@@ -187,9 +182,11 @@ impl DataBuild {
         self.build_index.lookup_pathid(id)
     }
 
-    /// Updates the build database with information about resources from provided resource database.
+    /// Updates the build database with information about resources from
+    /// provided resource database.
     pub fn source_pull(&mut self) -> Result<i32, Error> {
         let mut updated_resources = 0;
+        self.project.reload()?;
 
         for resource_id in self.project.resource_list() {
             let (resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
@@ -218,15 +215,19 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Compile `compile_path` resource and all its dependencies in the build graph.
+    /// Compile `compile_path` resource and all its dependencies in the build
+    /// graph.
     ///
-    /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
-    /// The specified `manifest_file` is updated with information about changed assets.
+    /// To compile a given `ResourcePathId` it compiles all its dependent
+    /// derived resources. The specified `manifest_file` is updated with
+    /// information about changed assets.
     ///
-    /// Compilation results are stored in [`ContentStore`](`lgn_content_store::ContentStore`)
-    /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    /// Compilation results are stored in
+    /// [`ContentStore`](`lgn_content_store::ContentStore`) specified in
+    /// [`DataBuildOptions`] used to create this `DataBuild`.
     ///
-    /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
+    /// Provided `target`, `platform` and `locale` define the compilation
+    /// context that can yield different compilation results.
     pub fn compile(
         &mut self,
         compile_path: ResourcePathId,
@@ -249,8 +250,8 @@ impl DataBuild {
                     if file.metadata().unwrap().len() == 0 {
                         (Manifest::default(), Some(file))
                     } else {
-                        let manifest_content: Manifest =
-                            serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                        let manifest_content: Manifest = serde_json::from_reader(&file)
+                            .map_err(|e| Error::InvalidManifest(e.into()))?;
                         (manifest_content, Some(file))
                     }
                 } else {
@@ -259,7 +260,7 @@ impl DataBuild {
                         .write(true)
                         .create_new(true)
                         .open(manifest_file)
-                        .map_err(|_e| Error::InvalidManifest)?;
+                        .map_err(|e| Error::InvalidManifest(e.into()))?;
 
                     (Manifest::default(), Some(file))
                 }
@@ -292,12 +293,14 @@ impl DataBuild {
             file.set_len(0).unwrap();
             file.seek(std::io::SeekFrom::Start(0)).unwrap();
             manifest.pre_serialize();
-            serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+            serde_json::to_writer_pretty(&file, &manifest)
+                .map_err(|e| Error::InvalidManifest(e.into()))?;
         }
         Ok(manifest)
     }
 
-    /// Compile `compile_node` of the build graph and update *build index* one or more compilation results.
+    /// Compile `compile_node` of the build graph and update *build index* one
+    /// or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
@@ -308,7 +311,7 @@ impl DataBuild {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         env: &CompilationEnv,
-        compiler_path: &Path,
+        compiler_index: usize,
     ) -> Result<
         (
             Vec<CompiledResourceInfo>,
@@ -339,20 +342,20 @@ impl DataBuild {
                     .collect::<Vec<_>>(),
                 )
             } else {
-                let mut compile_cmd = CompilerCompileCmd::new(
-                    compile_node,
-                    dependencies,
-                    derived_deps,
-                    &self.content_store.address(),
-                    &self.project.resource_dir(),
-                    env,
-                );
-
-                let CompilerCompileCmdOutput {
+                let CompilationOutput {
                     compiled_resources,
                     resource_references,
-                } = compile_cmd
-                    .execute(compiler_path)
+                } = self
+                    .compilers
+                    .compile(
+                        compiler_index,
+                        compile_node.clone(),
+                        dependencies,
+                        derived_deps,
+                        self.content_store.address(),
+                        &self.project.resource_dir(),
+                        env,
+                    )
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
@@ -402,13 +405,15 @@ impl DataBuild {
     ///
     /// Graphviz format documentation can be found [here](https://www.graphviz.org/doc/info/lang.html)
     ///
-    /// `std::string::ToString::to_string` can be used as a default `name_parser`.
+    /// `std::string::ToString::to_string` can be used as a default
+    /// `name_parser`.
     pub fn print_build_graph(
         &self,
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
         let build_graph = self.build_index.generate_build_graph(compile_path);
+        #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
             format!("label = \"{}\"", (name_parser)(nr.1))
@@ -423,10 +428,14 @@ impl DataBuild {
         format!("{:?}", dot)
     }
 
-    /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build index* with compilation results.
-    /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
-    /// The returned results can be accessed by  [`lgn_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
+    /// Compile a resource identified by [`ResourcePathId`] and all its
+    /// dependencies and update the *build index* with compilation results.
+    /// Returns a list of (id, checksum, size) of created resources and
+    /// information about their dependencies. The returned results can be
+    /// accessed by  [`lgn_content_store::ContentStore`] specified in
+    /// [`DataBuildOptions`] used to create this `DataBuild`.
+    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
+    // contexts (platform, target, locale, etc).
     #[allow(clippy::too_many_lines)]
     fn compile_path(
         &mut self,
@@ -443,20 +452,6 @@ impl DataBuild {
         })?;
 
         let compiler_details = {
-            let compilers = list_compilers(&self.config.compiler_search_paths);
-
-            let info_cmd = CompilerInfoCmd::default();
-            let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers
-                .iter()
-                .filter_map(|info| {
-                    info_cmd
-                        .execute(&info.path)
-                        .ok()
-                        .filter(|res| res.build_version == Self::version())
-                        .map(|res| ((*info).clone(), res))
-                })
-                .collect();
-
             let unique_transforms = {
                 let mut transforms = vec![];
                 for node in &topological_order {
@@ -474,23 +469,16 @@ impl DataBuild {
                 transforms
             };
 
-            let compiler_hash_cmd = CompilerHashCmd::new(env);
-
             unique_transforms
                 .into_iter()
                 .map(|transform| {
-                    compilers
-                        .iter()
-                        .find(|info| info.1.transform == transform)
-                        .map_or(Err(Error::CompilerNotFound), |e| {
-                            let res = compiler_hash_cmd
-                                .execute(&e.0.path)
-                                .map_err(Error::CompilerError)?;
-
-                            Ok((transform, (e.0.path.clone(), res.compiler_hash)))
-                        })
+                    let (compiler_index, compiler_hash) = self
+                        .compilers
+                        .get_hash(transform, env)
+                        .map_err(|_e| Error::CompilerNotFound)?;
+                    Ok((transform, (compiler_index, compiler_hash)))
                 })
-                .collect::<Result<HashMap<_, _>, _>>()?
+                .collect::<Result<HashMap<_, _>, Error>>()?
         };
         let mut compiled_resources = vec![];
         let mut compiled_references = vec![];
@@ -543,16 +531,18 @@ impl DataBuild {
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
-                let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
+                let (compiler_index, compiler_hash) = *compiler_details.get(&transform).unwrap();
 
-                // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
+                // todo: not sure if transform is the right thing here. resource_path_id better?
+                // transform is already defined by the compiler_hash so it seems redundant.
+                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
 
                 let source_hash = {
                     if direct_dependency.is_source() {
                         //
-                        // todo(kstasik): source_hash computation can include filtering of resource types in the future.
-                        // the same resource can have a different source_hash depending on the compiler
+                        // todo(kstasik): source_hash computation can include filtering of resource
+                        // types in the future. the same resource can have a
+                        // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
                         self.build_index
@@ -604,7 +594,7 @@ impl DataBuild {
                     &dependencies,
                     &accumulated_dependencies,
                     env,
-                    compiler_path,
+                    compiler_index,
                 )?;
 
                 // we check if the expected named output was produced.
@@ -638,7 +628,8 @@ impl DataBuild {
         })
     }
 
-    /// Create asset files in runtime format containing compiled resources that include reference (load-time dependency) information
+    /// Create asset files in runtime format containing compiled resources that
+    /// include reference (load-time dependency) information
     /// based on provided compilation information.
     /// Currently each resource is linked into a separate *asset file*.
     fn link(

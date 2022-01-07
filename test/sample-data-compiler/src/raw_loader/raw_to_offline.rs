@@ -74,15 +74,18 @@ fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
     id
 }
 
-// Resolved a raw representation of asset_path such as "runtime_texture(offline_texture(image/ground.psd, 'albedo'))"
-// into a offline ResourcePathId such as "Some((13b5a84e,000000007f8d831386fd3fef)|1960578643_albedo)"
+// Resolved a raw representation of asset_path such as
+// "runtime_texture(offline_texture(image/ground.psd, 'albedo'))" into a offline
+// ResourcePathId such as
+// "Some((13b5a84e,000000007f8d831386fd3fef)|1960578643_albedo)"
 fn lookup_asset_path(
     references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     path: &str,
 ) -> Option<ResourcePathId> {
     let source = source_resource(path);
-    let output = lookup_reference(references, source).map(ResourcePathId::from);
-    let output = output.map(|id| push_transforms(id, path));
+    let output = lookup_reference(references, source)
+        .map(ResourcePathId::from)
+        .map(|id| push_transforms(id, path));
     match &output {
         Some(resolved_path) => {
             println!("Path Resolved: {} -> {}", path, resolved_path);

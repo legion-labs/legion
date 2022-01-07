@@ -1,3 +1,32 @@
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallTreeNode {
+    #[prost(uint32, tag = "1")]
+    pub hash: u32,
+    #[prost(double, tag = "2")]
+    pub begin_ms: f64,
+    #[prost(double, tag = "3")]
+    pub end_ms: f64,
+    #[prost(message, repeated, tag = "4")]
+    pub children: ::prost::alloc::vec::Vec<CallTreeNode>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScopeDesc {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub filename: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "3")]
+    pub line: u32,
+    #[prost(uint32, tag = "4")]
+    pub hash: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallTree {
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
+    #[prost(message, optional, tag = "2")]
+    pub root: ::core::option::Option<CallTreeNode>,
+}
 /// find_process
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindProcessRequest {
@@ -62,24 +91,13 @@ pub struct ListStreamBlocksReply {
 pub struct Span {
     #[prost(uint32, tag = "1")]
     pub scope_hash: u32,
-    /// how many function calls are above this one in the thread
-    #[prost(uint32, tag = "2")]
-    pub depth: u32,
-    #[prost(double, tag = "3")]
+    #[prost(double, tag = "2")]
     pub begin_ms: f64,
-    #[prost(double, tag = "4")]
+    #[prost(double, tag = "3")]
     pub end_ms: f64,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScopeDesc {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub filename: ::prost::alloc::string::String,
-    #[prost(uint32, tag = "3")]
-    pub line: u32,
+    ///\[0-255\] non-linear transformation of occupancy for spans that are a lower level of detail
     #[prost(uint32, tag = "4")]
-    pub hash: u32,
+    pub alpha: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansRequest {
@@ -89,21 +107,34 @@ pub struct BlockSpansRequest {
     pub stream: ::core::option::Option<super::telemetry::Stream>,
     #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "4")]
+    pub lod_id: u32,
+}
+/// one span track contains spans at one height of call stack
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SpanTrack {
+    #[prost(message, repeated, tag = "1")]
+    pub spans: ::prost::alloc::vec::Vec<Span>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SpanBlockLod {
+    #[prost(uint32, tag = "1")]
+    pub lod_id: u32,
+    #[prost(message, repeated, tag = "2")]
+    pub tracks: ::prost::alloc::vec::Vec<SpanTrack>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockSpansReply {
-    #[prost(message, repeated, tag = "1")]
-    pub scopes: ::prost::alloc::vec::Vec<ScopeDesc>,
-    #[prost(message, repeated, tag = "2")]
-    pub spans: ::prost::alloc::vec::Vec<Span>,
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
+    #[prost(message, optional, tag = "2")]
+    pub lod: ::core::option::Option<SpanBlockLod>,
     #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
     #[prost(double, tag = "4")]
     pub begin_ms: f64,
     #[prost(double, tag = "5")]
     pub end_ms: f64,
-    #[prost(uint32, tag = "6")]
-    pub max_depth: u32,
 }
 /// process_cumulative_call_graph
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -150,8 +181,8 @@ pub struct CumulativeCallGraphNode {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CumulativeCallGraphReply {
-    #[prost(message, repeated, tag = "1")]
-    pub scopes: ::prost::alloc::vec::Vec<ScopeDesc>,
+    #[prost(map = "uint32, message", tag = "1")]
+    pub scopes: ::std::collections::HashMap<u32, ScopeDesc>,
     #[prost(message, repeated, tag = "2")]
     pub nodes: ::prost::alloc::vec::Vec<CumulativeCallGraphNode>,
 }
@@ -160,6 +191,12 @@ pub struct CumulativeCallGraphReply {
 pub struct ProcessLogRequest {
     #[prost(message, optional, tag = "1")]
     pub process: ::core::option::Option<super::telemetry::Process>,
+    /// included
+    #[prost(uint64, tag = "2")]
+    pub begin: u64,
+    /// excluded
+    #[prost(uint64, tag = "3")]
+    pub end: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LogEntry {
@@ -172,6 +209,23 @@ pub struct LogEntry {
 pub struct ProcessLogReply {
     #[prost(message, repeated, tag = "1")]
     pub entries: ::prost::alloc::vec::Vec<LogEntry>,
+    /// included
+    #[prost(uint64, tag = "2")]
+    pub begin: u64,
+    /// excluded
+    #[prost(uint64, tag = "3")]
+    pub end: u64,
+}
+/// nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessNbLogEntriesRequest {
+    #[prost(string, tag = "1")]
+    pub process_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessNbLogEntriesReply {
+    #[prost(uint64, tag = "1")]
+    pub count: u64,
 }
 /// list_process_children
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -371,6 +425,22 @@ pub mod performance_analytics_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn nb_process_log_entries(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ProcessNbLogEntriesRequest>,
+        ) -> Result<tonic::Response<super::ProcessNbLogEntriesReply>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/analytics.PerformanceAnalytics/nb_process_log_entries",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         pub async fn list_process_streams(
             &mut self,
             request: impl tonic::IntoRequest<super::ListProcessStreamsRequest>,
@@ -496,6 +566,10 @@ pub mod performance_analytics_server {
             &self,
             request: tonic::Request<super::ProcessLogRequest>,
         ) -> Result<tonic::Response<super::ProcessLogReply>, tonic::Status>;
+        async fn nb_process_log_entries(
+            &self,
+            request: tonic::Request<super::ProcessNbLogEntriesRequest>,
+        ) -> Result<tonic::Response<super::ProcessNbLogEntriesReply>, tonic::Status>;
         async fn list_process_streams(
             &self,
             request: tonic::Request<super::ListProcessStreamsRequest>,
@@ -723,6 +797,40 @@ pub mod performance_analytics_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = list_process_log_entriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/analytics.PerformanceAnalytics/nb_process_log_entries" => {
+                    #[allow(non_camel_case_types)]
+                    struct nb_process_log_entriesSvc<T: PerformanceAnalytics>(pub Arc<T>);
+                    impl<T: PerformanceAnalytics>
+                        tonic::server::UnaryService<super::ProcessNbLogEntriesRequest>
+                        for nb_process_log_entriesSvc<T>
+                    {
+                        type Response = super::ProcessNbLogEntriesReply;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ProcessNbLogEntriesRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).nb_process_log_entries(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = nb_process_log_entriesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

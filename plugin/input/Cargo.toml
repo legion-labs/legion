@@ -18,6 +18,7 @@ lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
 
 # other
 serde = { version = "1.0", features = ["derive"], optional = true }

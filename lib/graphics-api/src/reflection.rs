@@ -1,3 +1,4 @@
+use lgn_telemetry::error;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +14,8 @@ pub struct ShaderResourceBindingKey {
 
 /// A data source within a shader. Often a descriptor or push constant.
 ///
-/// A `ShaderResource` may be specified by hand or generated using shader-compiler
+/// A `ShaderResource` may be specified by hand or generated using
+/// shader-compiler
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -50,7 +52,8 @@ impl ShaderResource {
     }
 }
 
-/// Reflection data for a pipeline, created by merging shader stage reflection data
+/// Reflection data for a pipeline, created by merging shader stage reflection
+/// data
 #[derive(Default, Clone, Debug)]
 pub struct PipelineReflection {
     pub shader_resources: Vec<ShaderResource>,
@@ -77,7 +80,7 @@ fn merge_pushconstant(reflections: &[&PipelineReflection]) -> GfxResult<Option<P
             if let Some(other_push_constant) = reflection.push_constant {
                 if push_constant.size != other_push_constant.size {
                     let message = "Cannot merge pushconstants of different size".to_owned();
-                    log::error!("{}", message);
+                    error!("{}", message);
                     return Err(message.into());
                 }
                 push_constant.used_in_shader_stages |= other_push_constant.used_in_shader_stages;
@@ -111,7 +114,7 @@ fn merge_resources(reflections: &[&PipelineReflection]) -> GfxResult<Vec<ShaderR
                         } else {
                             let message =
                                 "Cannot merge shader resource of different size".to_owned();
-                            log::error!("{}", message);
+                            error!("{}", message);
                             return Err(message.into());
                         }
                     }

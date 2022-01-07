@@ -60,7 +60,10 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 use lgn_telemetry::prelude::*;
-use lgn_telemetry::{decompress, ContainerMetadata};
+use lgn_telemetry_proto::decompress;
+use lgn_telemetry_proto::telemetry::{
+    Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
+};
 use lgn_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;
@@ -74,9 +77,9 @@ pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     Ok(pool)
 }
 
-fn process_from_row(row: &sqlx::any::AnyRow) -> lgn_telemetry::ProcessInfo {
+fn process_from_row(row: &sqlx::any::AnyRow) -> ProcessInfo {
     let tsc_frequency: i64 = row.get("tsc_frequency");
-    lgn_telemetry::ProcessInfo {
+    ProcessInfo {
         process_id: row.get("process_id"),
         exe: row.get("exe"),
         username: row.get("username"),
@@ -94,7 +97,7 @@ fn process_from_row(row: &sqlx::any::AnyRow) -> lgn_telemetry::ProcessInfo {
 pub async fn processes_by_name_substring(
     connection: &mut sqlx::AnyConnection,
     filter: &str,
-) -> Result<Vec<lgn_telemetry::ProcessInfo>> {
+) -> Result<Vec<ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
@@ -115,7 +118,7 @@ pub async fn processes_by_name_substring(
 pub async fn find_process(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<lgn_telemetry::ProcessInfo> {
+) -> Result<ProcessInfo> {
     let row = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
          FROM processes
@@ -243,7 +246,7 @@ pub async fn search_processes(
 pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: &str,
-) -> Result<Vec<lgn_telemetry::ProcessInfo>> {
+) -> Result<Vec<ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
@@ -265,7 +268,7 @@ pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
     tag: &str,
-) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+) -> Result<Vec<StreamInfo>> {
     let rows = sqlx::query(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -294,7 +297,7 @@ pub async fn find_process_streams_tagged(
         let properties_str: String = r.get("properties");
         let properties: std::collections::HashMap<String, String> =
             serde_json::from_str(&properties_str).unwrap();
-        res.push(lgn_telemetry::StreamInfo {
+        res.push(StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
@@ -309,7 +312,7 @@ pub async fn find_process_streams_tagged(
 pub async fn find_process_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+) -> Result<Vec<StreamInfo>> {
     let rows = sqlx::query(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -336,7 +339,7 @@ pub async fn find_process_streams(
         let properties_str: String = r.get("properties");
         let properties: std::collections::HashMap<String, String> =
             serde_json::from_str(&properties_str).unwrap();
-        res.push(lgn_telemetry::StreamInfo {
+        res.push(StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
@@ -351,28 +354,28 @@ pub async fn find_process_streams(
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+) -> Result<Vec<StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "log").await
 }
 
 pub async fn find_process_thread_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+) -> Result<Vec<StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
 pub async fn find_process_metrics_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+) -> Result<Vec<StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "metrics").await
 }
 
 pub async fn find_stream(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<lgn_telemetry::StreamInfo> {
+) -> Result<StreamInfo> {
     let row = sqlx::query(
         "SELECT process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -395,7 +398,7 @@ pub async fn find_stream(
     let properties_str: String = row.get("properties");
     let properties: std::collections::HashMap<String, String> =
         serde_json::from_str(&properties_str).unwrap();
-    Ok(lgn_telemetry::StreamInfo {
+    Ok(StreamInfo {
         stream_id: String::from(stream_id),
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
@@ -408,7 +411,7 @@ pub async fn find_stream(
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
-) -> Result<lgn_telemetry::EncodedBlock> {
+) -> Result<EncodedBlock> {
     let row = sqlx::query(
         "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
@@ -420,7 +423,7 @@ pub async fn find_block(
     .await
     .with_context(|| "find_block")?;
 
-    let block = lgn_telemetry::EncodedBlock {
+    let block = EncodedBlock {
         block_id: String::from(block_id),
         stream_id: row.get("stream_id"),
         begin_time: row.get("begin_time"),
@@ -436,7 +439,7 @@ pub async fn find_block(
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
+) -> Result<Vec<EncodedBlock>> {
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
@@ -448,7 +451,7 @@ pub async fn find_stream_blocks(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| lgn_telemetry::EncodedBlock {
+    .map(|r| EncodedBlock {
         block_id: r.get("block_id"),
         stream_id: String::from(stream_id),
         begin_time: r.get("begin_time"),
@@ -467,7 +470,7 @@ pub async fn find_stream_blocks_in_range(
     stream_id: &str,
     begin_time: &str,
     end_time: &str,
-) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
+) -> Result<Vec<EncodedBlock>> {
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
@@ -483,7 +486,7 @@ pub async fn find_stream_blocks_in_range(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| lgn_telemetry::EncodedBlock {
+    .map(|r| EncodedBlock {
         block_id: r.get("block_id"),
         stream_id: String::from(stream_id),
         begin_time: r.get("begin_time"),
@@ -550,7 +553,7 @@ fn container_metadata_as_transit_udt_vec(
 
 // parse_block calls fun for each object in the block until fun returns `false`
 pub fn parse_block<F>(
-    stream: &lgn_telemetry::StreamInfo,
+    stream: &StreamInfo,
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
     fun: F,
 ) -> Result<()>
@@ -583,7 +586,8 @@ fn format_log_level(level: u8) -> &'static str {
     }
 }
 
-// find_process_log_entry calls pred(time_ticks,entry_str) with each log entry until pred returns Some(x)
+// find_process_log_entry calls pred(time_ticks,entry_str) with each log entry
+// until pred returns Some(x)
 pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -620,6 +624,38 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
         }
     }
     Ok(found_entry)
+}
+
+// for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log
+// entry until fun returns false mad
+pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    stream: &StreamInfo,
+    block: &EncodedBlock,
+    mut fun: Predicate,
+) -> Result<()> {
+    let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+    parse_block(stream, &payload, |val| {
+        if let Value::Object(obj) = val {
+            match obj.type_name.as_str() {
+                "LogMsgEvent" | "LogDynMsgEvent" => {
+                    let time = obj.get::<i64>("time").unwrap();
+                    let entry = format!(
+                        "[{}] {}",
+                        format_log_level(obj.get::<u8>("level").unwrap()),
+                        obj.get::<String>("msg").unwrap()
+                    );
+                    if !fun(time, entry) {
+                        return false; //do not continue
+                    }
+                }
+                _ => {}
+            }
+        }
+        true //continue
+    })?;
+    Ok(())
 }
 
 pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
@@ -660,12 +696,12 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_transit::Object)>(
 #[async_recursion::async_recursion]
 pub async fn for_each_process_in_tree<F>(
     pool: &sqlx::AnyPool,
-    root: &lgn_telemetry::ProcessInfo,
+    root: &ProcessInfo,
     rec_level: u16,
     fun: F,
 ) -> Result<()>
 where
-    F: Fn(&lgn_telemetry::ProcessInfo, u16) + std::marker::Send + Clone,
+    F: Fn(&ProcessInfo, u16) + std::marker::Send + Clone,
 {
     fun(root, rec_level);
     let mut connection = pool.acquire().await?;
@@ -687,11 +723,13 @@ pub mod prelude {
     pub use crate::find_block;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;
     pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
     pub use crate::find_stream_blocks_in_range;
+    pub use crate::for_each_log_entry_in_block;
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;

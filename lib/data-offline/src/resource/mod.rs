@@ -1,17 +1,18 @@
 //! Offline management of resources.
 //!
-//! [`Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes both on-disk storage and source control interactions.
+//! [`Project`] keeps track of resources that are part of the project and is
+//! responsible for their storage - which includes both on-disk storage and
+//! source control interactions.
 //!
-//! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
+//! [`ResourceRegistry`] takes responsibility of managing the in-memory
+//! representation of resources.
 
 use std::any::Any;
-use std::collections::HashMap;
 use std::io;
 
+use lgn_data_model::TypeReflection;
 use lgn_data_runtime::Asset;
-use lgn_utils::DefaultHash;
 
-use crate::PropertyDescriptor;
 use crate::ResourcePathId;
 
 /// The trait defines a resource that can be stored in a [`Project`].
@@ -20,44 +21,20 @@ pub trait OfflineResource: Asset {
     type Processor: ResourceProcessor + Send + Sync + Default + 'static;
 }
 
-/// The trait defines the reflection interface
-pub trait ResourceReflection {
-    /// Interface defining field serialization by name
-    fn write_property(&mut self, _field_name: &str, _field_value: &str) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("write_property not implemented"))
-    }
-
-    /// Interface defining field serialization by name
-    fn read_property(&self, _field_name: &str) -> anyhow::Result<String> {
-        Err(anyhow::anyhow!("read_property not implemented"))
-    }
-
-    /// Interface defining field serialization by name
-    fn read_property_default(&self, _field_name: &str) -> anyhow::Result<String> {
-        Err(anyhow::anyhow!("read_property_default not implemented"))
-    }
-
-    /// Retrieve the Property Descriptors for a Resource
-    fn get_property_descriptors(&self) -> Option<&HashMap<u64, PropertyDescriptor>> {
-        None
-    }
-
-    /// Retrieve a Property Descriptor for a field
-    fn get_property_descriptor(&self, field_name: &str) -> Option<&PropertyDescriptor> {
-        if let Some(descriptors) = self.get_property_descriptors() {
-            return descriptors.get(&field_name.default_hash());
-        }
-        None
-    }
-}
-
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
-    /// Interface returning a resource in a default state. Useful when creating a new resource.
+    /// Interface returning a resource in a default state. Useful when creating
+    /// a new resource.
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync>;
 
-    /// Interface returning a list of resources that `resource` depends on for building.
+    /// Interface returning a list of resources that `resource` depends on for
+    /// building.
     fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId>;
+
+    /// Return the name of the Resource type that the processor can process.
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        None
+    }
 
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
@@ -76,7 +53,7 @@ pub trait ResourceProcessor {
     fn get_resource_reflection<'a>(
         &self,
         _resource: &'a dyn Any,
-    ) -> Option<&'a dyn ResourceReflection> {
+    ) -> Option<&'a dyn TypeReflection> {
         None
     }
 
@@ -84,7 +61,7 @@ pub trait ResourceProcessor {
     fn get_resource_reflection_mut<'a>(
         &self,
         _resource: &'a mut dyn Any,
-    ) -> Option<&'a mut dyn ResourceReflection> {
+    ) -> Option<&'a mut dyn TypeReflection> {
         None
     }
 }

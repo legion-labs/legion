@@ -58,6 +58,14 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::missing_errors_doc)]
 
+#[path = "../codegen/cgen/rust/mod.rs"]
+#[allow(clippy::all)]
+#[allow(dead_code)]
+#[rustfmt::skip]
+mod cgen;
+#[allow(unused_imports)]
+use cgen::*;
+
 mod labels;
 pub use labels::*;
 
@@ -73,12 +81,20 @@ pub use render_handle::*;
 mod render_context;
 pub use render_context::*;
 
-mod resources;
+pub mod resources;
 
 mod memory;
 
 pub mod components;
+
+pub mod picking;
+
 pub mod static_mesh_render_data;
 
 pub use lgn_tasks::ComputeTaskPool as RenderTaskPool;
+pub mod debug_display;
 pub mod egui;
+
+pub mod hl_gfx_api;
+
+pub(crate) mod render_pass;

@@ -10,14 +10,14 @@ license = "MIT OR Apache-2.0"
 lgn-graphics-api = { path = "../graphics-api", version = "0.1.0" }
 lgn-pso-compiler = { path = "../pso-compiler", version = "0.1.0" }
 lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-log = "0.4"
+lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
 raw-window-handle = "0.4"
 crossbeam-channel = "0.5"
 instant = "0.1"
 anyhow = "1.0"
 
 # vulkan backend
-ash = { version = ">= 0.33", optional = true }
+ash = { version = ">= 0.33", features = ["linked"], optional = true }
 
 [features]
 default = []

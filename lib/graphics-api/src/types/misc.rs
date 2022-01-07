@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Buffer, BufferView, Sampler, Texture, TextureView};
 
-/// Information about the device, mostly limits, requirements (like memory alignment), and flags to
-/// indicate whether certain features are supported
+/// Information about the device, mostly limits, requirements (like memory
+/// alignment), and flags to indicate whether certain features are supported
 #[derive(Clone, Copy)]
 pub struct DeviceInfo {
     pub supports_multithreaded_usage: bool,
@@ -32,30 +32,32 @@ pub struct DeviceInfo {
     // metal_draw_index_vertex_offset_supported: bool,
 }
 
-/// Used to indicate which type of queue to use. Some operations require certain types of queues.
+/// Used to indicate which type of queue to use. Some operations require certain
+/// types of queues.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum QueueType {
-    /// Graphics queues generally supports all operations and are a safe default choice
+    /// Graphics queues generally supports all operations and are a safe default
+    /// choice
     Graphics,
 
     /// Compute queues can be used for compute-based work.
     Compute,
 
-    /// Transfer queues are generally limited to basic operations like copying data from buffers
-    /// to images.
+    /// Transfer queues are generally limited to basic operations like copying
+    /// data from buffers to images.
     Transfer,
 
-    /// Decode queues are not available on all device but allow use of dedicated hardware to encode
-    /// videos
+    /// Decode queues are not available on all device but allow use of dedicated
+    /// hardware to encode videos
     Decode,
 
-    /// Encode queues are not available on all device but allow use of dedicated hardware to encode
-    /// videos
+    /// Encode queues are not available on all device but allow use of dedicated
+    /// hardware to encode videos
     Encode,
 }
 
-/// The color space an image data is in. The correct color space often varies between texture types
-/// (like normal maps vs. albedo maps).
+/// The color space an image data is in. The correct color space often varies
+/// between texture types (like normal maps vs. albedo maps).
 #[derive(Copy, Clone, Debug)]
 pub enum ColorType {
     Linear,
@@ -66,10 +68,10 @@ pub enum ColorType {
 // TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT = 0x01,
 // /// Use on-tile memory to store this texture
 // TEXTURE_CREATION_FLAG_ON_TILE = 0x20,
-// /// Force 2D instead of automatically determining dimension based on width, height, depth
-// TEXTURE_CREATION_FLAG_FORCE_2D = 0x80,
-// /// Force 3D instead of automatically determining dimension based on width, height, depth
-// TEXTURE_CREATION_FLAG_FORCE_3D = 0x100,
+// /// Force 2D instead of automatically determining dimension based on width,
+// height, depth TEXTURE_CREATION_FLAG_FORCE_2D = 0x80,
+// /// Force 3D instead of automatically determining dimension based on width,
+// height, depth TEXTURE_CREATION_FLAG_FORCE_3D = 0x100,
 // /// Display target
 // TEXTURE_CREATION_FLAG_ALLOW_DISPLAY_TARGET = 0x200,
 // /// Create an sRGB texture.
@@ -182,7 +184,8 @@ impl Default for ColorFlags {
     }
 }
 
-/// Indicates how the memory will be accessed and affects where in memory it needs to be allocated.
+/// Indicates how the memory will be accessed and affects where in memory it
+/// needs to be allocated.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MemoryUsage {
     Unknown,
@@ -206,9 +209,10 @@ pub enum PresentSuccessResult {
     /// The image was shown and the swapchain can continue to be used.
     Success,
 
-    /// The image was shown and the swapchain can continue to be used. However, this result also
-    /// hints that there is a more optimal configuration for the swapchain to be in. This is vague
-    /// because the precise meaning varies between platform. For example, windows may return this
+    /// The image was shown and the swapchain can continue to be used. However,
+    /// this result also hints that there is a more optimal configuration
+    /// for the swapchain to be in. This is vague because the precise
+    /// meaning varies between platform. For example, windows may return this
     /// when the application is minimized.
     SuccessSuboptimal,
 
@@ -223,12 +227,13 @@ pub enum PresentSuccessResult {
 /// Indicates the current state of a fence.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum FenceStatus {
-    /// The fence was submitted to the command buffer and signaled as completed by the GPU
+    /// The fence was submitted to the command buffer and signaled as completed
+    /// by the GPU
     Complete,
     /// The fence will be signaled as complete later by the GPU
     Incomplete,
-    /// The fence was never submitted, or was submitted and already returned complete once, putting
-    /// it back into the unsubmitted state
+    /// The fence was never submitted, or was submitted and already returned
+    /// complete once, putting it back into the unsubmitted state
     Unsubmitted,
 }
 
@@ -281,7 +286,8 @@ pub enum PipelineType {
     Compute = 1,
 }
 
-/// Affects how quickly vertex attributes are consumed from buffers, similar to `vkVertexInputRate`
+/// Affects how quickly vertex attributes are consumed from buffers, similar to
+/// `vkVertexInputRate`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VertexAttributeRate {
     Vertex,
@@ -294,8 +300,9 @@ impl Default for VertexAttributeRate {
     }
 }
 
-/// Determines if the contents of an image attachment in a renderpass begins with its previous
-/// contents, a clear value, or undefined data. Similar to `vkAttachmentLoadOp`
+/// Determines if the contents of an image attachment in a renderpass begins
+/// with its previous contents, a clear value, or undefined data. Similar to
+/// `vkAttachmentLoadOp`
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum LoadOp {
     DontCare,
@@ -309,8 +316,8 @@ impl Default for LoadOp {
     }
 }
 
-/// Determines if the contents of an image attachment in a render pass will store the resulting
-/// state for use after the render pass
+/// Determines if the contents of an image attachment in a render pass will
+/// store the resulting state for use after the render pass
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum StoreOp {
     /// Do not store the image, leaving the contents of it undefined
@@ -326,7 +333,8 @@ impl Default for StoreOp {
     }
 }
 
-/// How to intepret vertex data into a form of geometry. Similar to `vkPrimitiveTopology`
+/// How to intepret vertex data into a form of geometry. Similar to
+/// `vkPrimitiveTopology`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum PrimitiveTopology {
@@ -434,8 +442,9 @@ impl Default for StencilOp {
     }
 }
 
-/// Determines if we cull polygons that are front-facing or back-facing. Facing direction is
-/// determined by `FrontFace`, sometimes called "winding order". Similar to `vkCullModeFlags`
+/// Determines if we cull polygons that are front-facing or back-facing. Facing
+/// direction is determined by `FrontFace`, sometimes called "winding order".
+/// Similar to `vkCullModeFlags`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum CullMode {
@@ -450,8 +459,8 @@ impl Default for CullMode {
     }
 }
 
-/// Determines what winding order is considered the front face of a polygon. Similar to
-/// `vkFrontFace`
+/// Determines what winding order is considered the front face of a polygon.
+/// Similar to `vkFrontFace`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FrontFace {
@@ -483,12 +492,12 @@ impl Default for FillMode {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FilterType {
-    /// Finds the closest value in the texture and uses it. Commonly used for "pixel-perfect"
-    /// assets.
+    /// Finds the closest value in the texture and uses it. Commonly used for
+    /// "pixel-perfect" assets.
     Nearest,
 
-    /// "Averages" color values of the texture. A common choice for most cases but may make some
-    /// "pixel-perfect" assets appear blurry
+    /// "Averages" color values of the texture. A common choice for most cases
+    /// but may make some "pixel-perfect" assets appear blurry
     Linear,
 }
 
@@ -498,8 +507,8 @@ impl Default for FilterType {
     }
 }
 
-/// Affects image sampling, particularly for UV coordinates outside the [0, 1] range. Similar to
-/// `vkSamplerAddressMode`
+/// Affects image sampling, particularly for UV coordinates outside the [0, 1]
+/// range. Similar to `vkSamplerAddressMode`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum AddressMode {
@@ -541,8 +550,8 @@ impl Hash for ColorClearValue {
     }
 }
 
-/// A clear values for depth/stencil attachments. One or both values may be used depending on the
-/// format of the attached image
+/// A clear values for depth/stencil attachments. One or both values may be used
+/// depending on the format of the attached image
 #[derive(Clone, Copy, Debug)]
 pub struct DepthStencilClearValue {
     pub depth: f32,
@@ -565,17 +574,20 @@ impl Hash for DepthStencilClearValue {
     }
 }
 
-/// Determines if a barrier is transferring a resource from one queue to another.
+/// Determines if a barrier is transferring a resource from one queue to
+/// another.
 pub enum BarrierQueueTransition {
     /// No queue transition will take place
     None,
 
-    /// A barrier for the "sending" queue. Contains the "receiving" queue. (the "sending" queue is
-    /// inferred by the queue on which the barrier is submitted)
+    /// A barrier for the "sending" queue. Contains the "receiving" queue. (the
+    /// "sending" queue is inferred by the queue on which the barrier is
+    /// submitted)
     ReleaseTo(QueueType),
 
-    /// A barrier for the "receiving" queue. Contains the "sending" queue. (the "receiving" queue is
-    /// inferred by the queue on which the barrier is submitted)
+    /// A barrier for the "receiving" queue. Contains the "sending" queue. (the
+    /// "receiving" queue is inferred by the queue on which the barrier is
+    /// submitted)
     AcquireFrom(QueueType),
 }
 
@@ -585,8 +597,8 @@ impl Default for BarrierQueueTransition {
     }
 }
 
-/// A memory barrier for buffers. This is used to transition buffers between resource states and
-/// possibly from one queue to another
+/// A memory barrier for buffers. This is used to transition buffers between
+/// resource states and possibly from one queue to another
 pub struct BufferBarrier<'a> {
     pub buffer: &'a Buffer,
     pub src_state: ResourceState,
@@ -594,8 +606,8 @@ pub struct BufferBarrier<'a> {
     pub queue_transition: BarrierQueueTransition,
 }
 
-/// A memory barrier for textures. This is used to transition textures between resource states and
-/// possibly from one queue to another.
+/// A memory barrier for textures. This is used to transition textures between
+/// resource states and possibly from one queue to another.
 pub struct TextureBarrier<'a> {
     pub texture: &'a Texture,
     pub src_state: ResourceState,
@@ -709,23 +721,33 @@ pub struct CmdCopyTextureParams {
 }
 
 /// Wraps all the possible types used to fill a `DescriptorSet`
+#[derive(Clone, Copy)]
 pub enum DescriptorRef<'a> {
+    Undefined,
     Sampler(&'a Sampler),
     BufferView(&'a BufferView),
     TextureView(&'a TextureView),
 }
 
+impl<'a> Default for DescriptorRef<'a> {
+    fn default() -> Self {
+        Self::Undefined
+    }
+}
+
 /// Set the texture tiling (internally swizzled, linear)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TextureTiling {
-    /// Optimal for the underlying format, probably swizzled for efficient sampling
+    /// Optimal for the underlying format, probably swizzled for efficient
+    /// sampling
     Optimal,
     /// Linear, usefull
     Linear,
 }
 
-// notes: this should probably have a mut version (see how to be generic over mutability)
-// notes: having drop implement unmap would be wise, and do the same for buffer map/unmap
+// notes: this should probably have a mut version (see how to be generic over
+// mutability) notes: having drop implement unmap would be wise, and do the same
+// for buffer map/unmap
 /// Used when mapping a texture
 pub struct TextureSubResource<'a> {
     pub data: &'a [u8],

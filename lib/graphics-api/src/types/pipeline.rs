@@ -36,7 +36,7 @@ impl Pipeline {
         #[cfg(feature = "vulkan")]
         let platform_pipeline = VulkanPipeline::new_graphics_pipeline(device_context, pipeline_def)
             .map_err(|e| {
-                log::error!("Error creating graphics pipeline {:?}", e);
+                lgn_telemetry::error!("Error creating graphics pipeline {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
@@ -57,7 +57,7 @@ impl Pipeline {
         #[cfg(feature = "vulkan")]
         let platform_pipeline = VulkanPipeline::new_compute_pipeline(device_context, pipeline_def)
             .map_err(|e| {
-                log::error!("Error creating compute pipeline {:?}", e);
+                lgn_telemetry::error!("Error creating compute pipeline {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

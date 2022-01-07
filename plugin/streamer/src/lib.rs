@@ -74,16 +74,15 @@ pub struct StreamerPlugin;
 
 impl Plugin for StreamerPlugin {
     fn build(&self, app: &mut App) {
-        // This channel is used a communication mechanism between the async server threads and the game-loop.
+        // This channel is used a communication mechanism between the async server
+        // threads and the game-loop.
         let (stream_events_sender, stream_events_receiver) = crossbeam::channel::unbounded();
 
         // The streamer is the game-loop representative of the whole streaming system.
         let streamer = streamer::Streamer::new(stream_events_receiver);
 
-        let time = Time::default();
-
         app.insert_resource(streamer)
-            .insert_resource(time)
+            .init_resource::<Time>()
             .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams);

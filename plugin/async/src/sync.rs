@@ -50,7 +50,8 @@ impl<'a, T> DerefMut for LazyMutexGuard<'a, T> {
 }
 
 impl<T> LazyMutex<T> {
-    /// Instanciate a new `LazyMutex` from a future that returns its future value.
+    /// Instanciate a new `LazyMutex` from a future that returns its future
+    /// value.
     pub fn new<F>(f: F) -> Self
     where
         F: Future<Output = T> + Send + 'static,

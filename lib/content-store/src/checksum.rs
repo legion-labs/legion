@@ -7,7 +7,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub struct Checksum(u128);
 
 impl Checksum {
-    /// Return the memory representation of this integer as a byte array in big-endian (network) byte order.
+    /// Return the memory representation of this integer as a byte array in
+    /// big-endian (network) byte order.
     pub const fn to_be_bytes(self) -> [u8; 16] {
         self.0.to_be_bytes()
     }

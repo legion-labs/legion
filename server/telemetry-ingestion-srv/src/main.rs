@@ -1,10 +1,11 @@
 //! Telemetry Ingestion Server
 //!
-//! Accepts telemetry data throough grpc, stores the metadata in sqlite and the raw event payload in local binary files.
+//! Accepts telemetry data throough grpc, stores the metadata in sqlite and the
+//! raw event payload in local binary files.
 //!
 //! Env variables:
-//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local directory where data will be dumped
-//!
+//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local directory where
+//!    data will be dumped
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -68,14 +69,14 @@ mod local_telemetry_db;
 use anyhow::{Context, Result};
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
+use lgn_telemetry_sink::TelemetryGuard;
 use local_ingestion_service::LocalIngestionService;
 use local_telemetry_db::{alloc_sql_pool, get_blocks_directory, get_data_directory};
 use tonic::transport::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     let addr = "127.0.0.1:8080".parse()?;
 
     let blocks_folder = get_blocks_directory()?;

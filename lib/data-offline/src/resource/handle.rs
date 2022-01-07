@@ -60,7 +60,8 @@ impl ResourceHandleUntyped {
         resource.downcast_ref::<T>()
     }
 
-    /// Retrieve a mutable reference to resource of type `T` from [`ResourceRegistry`].
+    /// Retrieve a mutable reference to resource of type `T` from
+    /// [`ResourceRegistry`].
     pub fn get_mut<'a, T: Any + Resource>(
         &'_ self,
         registry: &'a mut ResourceRegistry,
@@ -72,8 +73,9 @@ impl ResourceHandleUntyped {
     /// Converts the untyped handle into a typed handle.
     pub fn typed<T: Any + Resource>(self) -> ResourceHandle<T> {
         let v = ResourceHandle::<T>::create(self.id, self.refcount_tx.clone());
-        // the intent here is to not decrement the refcount as the newly returned `v` will take care of it
-        // when it goes out of scope. mem::forget stops the destructor of self from running.
+        // the intent here is to not decrement the refcount as the newly returned `v`
+        // will take care of it when it goes out of scope. mem::forget stops the
+        // destructor of self from running.
         #[allow(clippy::mem_forget)]
         std::mem::forget(self);
         v
@@ -125,7 +127,8 @@ impl<T: Any + Resource> ResourceHandle<T> {
         resource.downcast_ref::<T>()
     }
 
-    /// Retrieve a mutable reference to resource of type `T` from [`ResourceRegistry`].
+    /// Retrieve a mutable reference to resource of type `T` from
+    /// [`ResourceRegistry`].
     pub fn get_mut<'a>(&'_ self, registry: &'a mut ResourceRegistry) -> Option<&'a mut T> {
         let resource = registry.get_mut(&self.internal)?;
         resource.downcast_mut::<T>()

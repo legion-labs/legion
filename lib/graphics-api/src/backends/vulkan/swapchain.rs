@@ -4,6 +4,7 @@ use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
 use ash::vk::Extent2D;
+use lgn_telemetry::{debug, error, info, trace};
 use raw_window_handle::HasRawWindowHandle;
 
 use super::VulkanRawImage;
@@ -14,33 +15,35 @@ use crate::{
     TextureViewDef,
 };
 
-/// Used to select which `PresentMode` is preferred. Some of this is hardware/platform dependent and
-/// it's a good idea to read the Vulkan spec.
+/// Used to select which `PresentMode` is preferred. Some of this is
+/// hardware/platform dependent and it's a good idea to read the Vulkan spec.
 ///
-/// `Fifo` is always available on Vulkan devices that comply with the spec and is a good default for
-/// many cases.
+/// `Fifo` is always available on Vulkan devices that comply with the spec and
+/// is a good default for many cases.
 ///
 /// Values here match `VkPresentModeKHR`
 #[derive(Copy, Clone, Debug)]
 pub(super) enum VkPresentMode {
-    /// (`VK_PRESENT_MODE_IMMEDIATE_KHR`) - No internal buffering, and can result in screen
-    /// tearin.
+    /// (`VK_PRESENT_MODE_IMMEDIATE_KHR`) - No internal buffering, and can
+    /// result in screen tearin.
     Immediate = 0,
 
-    /// (`VK_PRESENT_MODE_MAILBOX_KHR`) - This allows rendering as fast as the hardware will
-    /// allow, but queues the rendered images in a way that avoids tearing. In other words, if the
-    /// hardware renders 10 frames within a single vertical blanking period, the first 9 will be
-    /// dropped. This is the best choice for lowest latency where power consumption is not a
-    /// concern.
+    /// (`VK_PRESENT_MODE_MAILBOX_KHR`) - This allows rendering as fast as the
+    /// hardware will allow, but queues the rendered images in a way that
+    /// avoids tearing. In other words, if the hardware renders 10 frames
+    /// within a single vertical blanking period, the first 9 will be
+    /// dropped. This is the best choice for lowest latency where power
+    /// consumption is not a concern.
     Mailbox = 1,
 
-    /// (`VK_PRESENT_MODE_FIFO_KHR`) - Default option, guaranteed to be available, and locks
-    /// screen draw to vsync. This is a good default choice generally, and more power efficient
-    /// than mailbox, but can have higher latency than mailbox.
+    /// (`VK_PRESENT_MODE_FIFO_KHR`) - Default option, guaranteed to be
+    /// available, and locks screen draw to vsync. This is a good default
+    /// choice generally, and more power efficient than mailbox, but can
+    /// have higher latency than mailbox.
     Fifo = 2,
 
-    /// (`VK_PRESENT_MODE_FIFO_RELAXED_KHR`) - Similar to Fifo but if rendering is late,
-    /// screen tearing can be observed.
+    /// (`VK_PRESENT_MODE_FIFO_RELAXED_KHR`) - Similar to Fifo but if rendering
+    /// is late, screen tearing can be observed.
     FifoRelaxed = 3,
 }
 
@@ -100,7 +103,7 @@ impl VulkanSwapchain {
     ) -> GfxResult<Self> {
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
-            ash_window::create_surface(
+            crate::backends::vulkan::create_surface(
                 &*device_context.vk_entry(),
                 device_context.vk_instance(),
                 raw_window_handle,
@@ -140,14 +143,14 @@ impl VulkanSwapchain {
     }
 
     pub fn destroy(&mut self) {
-        log::trace!("destroying VulkanSwapchain");
+        trace!("destroying VulkanSwapchain");
 
         unsafe {
             ManuallyDrop::drop(&mut self.swapchain);
             self.surface_loader.destroy_surface(self.surface, None);
         }
 
-        log::trace!("destroyed VulkanSwapchain");
+        trace!("destroyed VulkanSwapchain");
     }
 
     pub fn dedicated_present_queue(&self) -> Option<vk::Queue> {
@@ -293,8 +296,8 @@ struct CreateSwapchainResult {
     dedicated_present_queue: Option<vk::Queue>,
 }
 
-/// Handles setting up the swapchain resources required to present. This is discarded and recreated
-/// whenever the swapchain is rebuilt
+/// Handles setting up the swapchain resources required to present. This is
+/// discarded and recreated whenever the swapchain is rebuilt
 pub(crate) struct SwapchainVulkanInstance {
     device_context: DeviceContext,
     swapchain_info: SwapchainInfo,
@@ -321,14 +324,14 @@ impl SwapchainVulkanInstance {
             )?;
 
         let surface_format = Self::choose_swapchain_format(&available_formats);
-        log::info!("Surface format: {:?}", surface_format);
+        info!("Surface format: {:?}", surface_format);
 
         let present_mode =
             Self::choose_present_mode(&available_present_modes, present_mode_priority);
-        log::info!("Present mode: {:?}", present_mode);
+        info!("Present mode: {:?}", present_mode);
 
         let extents = Self::choose_extents(&surface_capabilities, window_inner_size);
-        log::info!("Extents: {:?}", extents);
+        info!("Extents: {:?}", extents);
 
         let present_queue_family_index = Self::choose_present_queue_family_index(
             surface,
@@ -472,8 +475,8 @@ impl SwapchainVulkanInstance {
         available_present_modes: &[vk::PresentModeKHR],
         present_mode_priority: &[VkPresentMode],
     ) -> vk::PresentModeKHR {
-        log::info!("Available present modes: {:?}", available_present_modes);
-        log::info!("Preferred present modes: {:?}", present_mode_priority);
+        info!("Available present modes: {:?}", available_present_modes);
+        info!("Preferred present modes: {:?}", present_mode_priority);
 
         let mut best_present_mode = None;
 
@@ -494,8 +497,9 @@ impl SwapchainVulkanInstance {
         surface_capabilities: &vk::SurfaceCapabilitiesKHR,
         window_inner_size: Extent2D,
     ) -> ash::vk::Extent2D {
-        // Copied from num-traits under MIT/Apache-2.0 dual license. It doesn't make much sense
-        // to pull in a whole crate just for this utility function. This will be in std rust soon
+        // Copied from num-traits under MIT/Apache-2.0 dual license. It doesn't make
+        // much sense to pull in a whole crate just for this utility function.
+        // This will be in std rust soon
         fn clamp<T: PartialOrd>(input: T, min: T, max: T) -> T {
             debug_assert!(min <= max, "min must be less than or equal to max");
             if input < min {
@@ -507,21 +511,21 @@ impl SwapchainVulkanInstance {
             }
         }
 
-        log::trace!(
+        trace!(
             "swapchain surface capability min {:?}",
             surface_capabilities.min_image_extent
         );
-        log::trace!(
+        trace!(
             "swapchain surface capability max {:?}",
             surface_capabilities.max_image_extent
         );
-        log::trace!(
+        trace!(
             "swapchain surface capability current {:?}",
             surface_capabilities.current_extent
         );
 
         let mut actual_extent = if surface_capabilities.current_extent.width != std::u32::MAX {
-            log::debug!(
+            debug!(
                 "Swapchain extents chosen by surface capabilities ({} {})",
                 surface_capabilities.current_extent.width,
                 surface_capabilities.current_extent.height,
@@ -534,10 +538,9 @@ impl SwapchainVulkanInstance {
                 .height(window_inner_size.height)
                 .build();
 
-            log::debug!(
+            debug!(
                 "Swapchain extents chosen by inner window size ({} {})",
-                window_inner_size.width,
-                window_inner_size.height,
+                window_inner_size.width, window_inner_size.height,
             );
 
             actual_extent
@@ -545,8 +548,8 @@ impl SwapchainVulkanInstance {
 
         // Force x and y >=1 due to spec VUID-VkSwapchainCreateInfoKHR-imageExtent-01689
         // I've seen surface capability return a max size of 0, tripping
-        // VUID-VkSwapchainCreateInfoKHR-imageExtent-01274. This unfortunately seems like a bug, we
-        // should still have > 0 sizes.
+        // VUID-VkSwapchainCreateInfoKHR-imageExtent-01274. This unfortunately seems
+        // like a bug, we should still have > 0 sizes.
         actual_extent.width = clamp(
             actual_extent.width,
             surface_capabilities.min_image_extent.width,
@@ -560,7 +563,7 @@ impl SwapchainVulkanInstance {
         )
         .max(1);
 
-        log::debug!("chose swapchain extents {:?}", actual_extent);
+        debug!("chose swapchain extents {:?}", actual_extent);
         actual_extent
     }
 
@@ -572,7 +575,7 @@ impl SwapchainVulkanInstance {
         graphics_queue_family_index: u32,
     ) -> VkResult<u32> {
         let graphics_queue_family_supports_present = unsafe {
-            log::debug!("Use the graphics queue family to present");
+            debug!("Use the graphics queue family to present");
             surface_loader.get_physical_device_surface_support(
                 physical_device,
                 graphics_queue_family_index,
@@ -588,7 +591,7 @@ impl SwapchainVulkanInstance {
             for (queue_family_index, _) in all_queue_families.iter().enumerate() {
                 let queue_family_index = queue_family_index as u32;
 
-                log::debug!("Use dedicated present queue family");
+                debug!("Use dedicated present queue family");
                 let supports_present = unsafe {
                     surface_loader.get_physical_device_surface_support(
                         physical_device,
@@ -604,7 +607,7 @@ impl SwapchainVulkanInstance {
             }
 
             // Could not find any present queue family
-            log::error!("Could not find suitable present queue family");
+            error!("Could not find suitable present queue family");
             Err(vk::Result::ERROR_UNKNOWN)
         }
     }
@@ -621,10 +624,11 @@ impl SwapchainVulkanInstance {
         old_swapchain: Option<vk::SwapchainKHR>,
         present_queue_family_index: u32,
     ) -> VkResult<CreateSwapchainResult> {
-        log::trace!("VkSwapchain::create_swapchain");
-        // "simply sticking to this minimum means that we may sometimes have to wait on the driver
-        // to complete internal operations before we can acquire another image to render to.
-        // Therefore it is recommended to request at least one more image than the minimum"
+        trace!("VkSwapchain::create_swapchain");
+        // "simply sticking to this minimum means that we may sometimes have to wait on
+        // the driver to complete internal operations before we can acquire
+        // another image to render to. Therefore it is recommended to request at
+        // least one more image than the minimum"
         let mut min_image_count = surface_capabilities.min_image_count + 1;
 
         // But if there is a limit, we must not exceed it
@@ -650,13 +654,14 @@ impl SwapchainVulkanInstance {
             .clipped(true);
 
         if let Some(old_swapchain) = old_swapchain {
-            log::trace!("include old swapchain in swapchain_create_info");
+            trace!("include old swapchain in swapchain_create_info");
             swapchain_create_info = swapchain_create_info.old_swapchain(old_swapchain);
         }
 
-        // We must choose concurrent or exclusive image sharing mode. We only choose concurrent if
-        // the queue families are not the same, which is uncommon. If we do choose concurrent, we
-        // must provide this list of queue families.
+        // We must choose concurrent or exclusive image sharing mode. We only choose
+        // concurrent if the queue families are not the same, which is uncommon.
+        // If we do choose concurrent, we must provide this list of queue
+        // families.
         let queue_families = [
             device_context
                 .vk_queue_family_indices()
@@ -693,13 +698,13 @@ impl SwapchainVulkanInstance {
 
 impl Drop for SwapchainVulkanInstance {
     fn drop(&mut self) {
-        log::trace!("destroying VkSwapchain");
+        trace!("destroying VkSwapchain");
 
         unsafe {
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);
         }
 
-        log::trace!("destroyed VkSwapchain");
+        trace!("destroyed VkSwapchain");
     }
 }

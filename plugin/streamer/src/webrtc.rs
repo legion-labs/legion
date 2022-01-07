@@ -1,17 +1,15 @@
 use std::sync::Arc;
 
 use interceptor::registry::Registry;
-use log::{debug, info, warn};
+use lgn_telemetry::{debug, info, warn};
 use webrtc::{
-    api::{
-        interceptor_registry::register_default_interceptors, media_engine::MediaEngine, APIBuilder,
-        API,
-    },
-    data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
-    peer::{
-        configuration::RTCConfiguration, ice::ice_server::RTCIceServer,
-        peer_connection::RTCPeerConnection, peer_connection_state::RTCPeerConnectionState,
+    api::{media_engine::MediaEngine, APIBuilder, API},
+    data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    ice_transport::ice_server::RTCIceServer,
+    peer_connection::{
+        configuration::RTCConfiguration, peer_connection_state::RTCPeerConnectionState,
         sdp::session_description::RTCSessionDescription, signaling_state::RTCSignalingState,
+        RTCPeerConnection,
     },
 };
 
@@ -25,7 +23,7 @@ pub(crate) struct WebRTCServer {
 }
 
 impl WebRTCServer {
-    /// Instanciate a new `WebRTCServer` with its own media engin and
+    /// Instantiate a new `WebRTCServer` with its own media engin and
     /// interceptors registry.
     ///
     /// Typically, a single `WebRTCServer` is enough for any given application.
@@ -36,14 +34,20 @@ impl WebRTCServer {
         // Register default codecs
         media_engine.register_default_codecs()?;
 
-        // Create a InterceptorRegistry. This is the user configurable RTP/RTCP Pipeline.
-        // This provides NACKs, RTCP Reports and other features. If you use `webrtc.NewPeerConnection`
-        // this is enabled by default. If you are manually managing You MUST create a InterceptorRegistry
+        // Create a InterceptorRegistry. This is the user configurable RTP/RTCP
+        // Pipeline. This provides NACKs, RTCP Reports and other features. If
+        // you use `webrtc.NewPeerConnection` this is enabled by default. If you
+        // are manually managing You MUST create a InterceptorRegistry
         // for each PeerConnection.
         let mut registry = Registry::new();
 
         // Use the default set of Interceptors
-        registry = register_default_interceptors(registry, &mut media_engine)?;
+        // Function here became async... https://github.com/webrtc-rs/webrtc/pull/146
+        // registry =
+        // webrtc::api::interceptor_registry::register_default_interceptors(registry,
+        // &mut media_engine)?;
+        registry = webrtc::api::interceptor_registry::configure_nack(registry, &mut media_engine);
+        registry = webrtc::api::interceptor_registry::configure_rtcp_reports(registry);
 
         // Create the API object with the MediaEngine
         let api = APIBuilder::new()
@@ -78,7 +82,8 @@ impl WebRTCServer {
 
         // Block until ICE Gathering is complete, disabling trickle ICE
         // we do this because we only can exchange one signaling message
-        // in a production application you should exchange ICE Candidates via OnICECandidate
+        // in a production application you should exchange ICE Candidates via
+        // OnICECandidate
         let _ = gather_complete.recv().await;
 
         // Output the answer in base64 so we can paste it in browser
@@ -318,7 +323,7 @@ trait RTCDataChannelID {
     fn name(&self) -> String;
 }
 
-impl RTCDataChannelID for webrtc::data::data_channel::RTCDataChannel {
+impl RTCDataChannelID for RTCDataChannel {
     fn name(&self) -> String {
         format!("{}-{}", self.label(), self.id())
     }

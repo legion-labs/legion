@@ -2,6 +2,7 @@ syntax = "proto3";
 import public "process.proto";
 import public "stream.proto";
 import public "block.proto";
+import public "calltree.proto";
 
 package analytics;
 
@@ -11,6 +12,7 @@ service PerformanceAnalytics {
     rpc find_process(FindProcessRequest) returns (FindProcessReply);
     rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
     rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
+    rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
@@ -70,31 +72,34 @@ message ListStreamBlocksReply{
 // Span: represents a function call instance
 message Span{
     uint32 scope_hash = 1;
-    uint32 depth = 2; // how many function calls are above this one in the thread
-    double begin_ms = 3;
-    double end_ms = 4;
-}
-
-message ScopeDesc{
-    string name = 1;
-    string filename = 2;
-    uint32 line = 3;
-    uint32 hash = 4;
+    double begin_ms = 2;
+    double end_ms = 3;
+    uint32 alpha = 4; //[0-255] non-linear transformation of occupancy for spans that are a lower level of detail
 }
 
 message BlockSpansRequest{
     telemetry.Process process = 1;
     telemetry.Stream stream = 2;
     string block_id = 3;
+    uint32 lod_id = 4;
+}
+
+// one span track contains spans at one height of call stack
+message SpanTrack{
+    repeated Span spans = 1;
+}
+
+message SpanBlockLOD{
+    uint32 lod_id = 1;
+    repeated SpanTrack tracks = 2;
 }
 
 message BlockSpansReply{
-    repeated ScopeDesc scopes = 1;
-    repeated Span spans = 2;
+    map<uint32,ScopeDesc> scopes = 1;
+    SpanBlockLOD lod = 2;
     string block_id = 3;
     double begin_ms = 4;
     double end_ms = 5;
-    uint32 max_depth = 6;
 }
 
 // process_cumulative_call_graph
@@ -126,13 +131,15 @@ message CumulativeCallGraphNode{
 }
 
 message CumulativeCallGraphReply{
-    repeated ScopeDesc scopes = 1;
+    map<uint32,ScopeDesc> scopes = 1;
     repeated CumulativeCallGraphNode nodes = 2;
 }
 
 // list_process_log_entries
 message ProcessLogRequest{
     telemetry.Process process = 1;
+    uint64 begin = 2; // included
+    uint64 end = 3;   // excluded
 }
 
 message LogEntry{
@@ -142,6 +149,17 @@ message LogEntry{
 
 message ProcessLogReply{
     repeated LogEntry entries = 1;
+    uint64 begin = 2; // included
+    uint64 end = 3;   // excluded
+}
+
+// nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+message ProcessNbLogEntriesRequest{
+    string process_id = 1;
+}
+
+message ProcessNbLogEntriesReply{
+    uint64 count = 1;
 }
 
 // list_process_children

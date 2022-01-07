@@ -1,13 +1,13 @@
 #![allow(clippy::too_many_lines)]
-use std::{mem, ptr};
+use lgn_telemetry::trace;
 
-use super::{internal, VulkanRootSignature};
+use super::internal;
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContext, GfxResult,
-    IndexBufferBinding, Pipeline, ResourceState, ResourceUsage, RootSignature, Texture,
-    TextureBarrier, VertexBufferBinding,
+    IndexBufferBinding, Pipeline, PipelineType, ResourceState, ResourceUsage, RootSignature,
+    Texture, TextureBarrier, VertexBufferBinding,
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
@@ -19,7 +19,7 @@ impl VulkanCommandBuffer {
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
         let vk_command_pool = command_pool.vk_command_pool();
-        log::trace!("Creating command buffers from pool {:?}", vk_command_pool);
+        trace!("Creating command buffers from pool {:?}", vk_command_pool);
         let command_buffer_level = if command_buffer_def.is_secondary {
             ash::vk::CommandBufferLevel::SECONDARY
         } else {
@@ -106,7 +106,7 @@ impl CommandBuffer {
                     .texture()
                     .take_is_undefined_layout()
                 {
-                    log::trace!(
+                    trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         color_target,
                         ResourceState::UNDEFINED,
@@ -126,7 +126,7 @@ impl CommandBuffer {
                     .texture()
                     .take_is_undefined_layout()
                 {
-                    log::trace!(
+                    trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         depth_target,
                         ResourceState::UNDEFINED,
@@ -259,7 +259,8 @@ impl CommandBuffer {
     }
 
     pub(crate) fn cmd_bind_pipeline_platform(&self, pipeline: &Pipeline) {
-        //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
+        //TODO: Add verification that the pipeline is compatible with the renderpass
+        // created by the targets
         let pipeline_bind_point =
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
@@ -310,22 +311,19 @@ impl CommandBuffer {
 
     pub(crate) fn cmd_bind_descriptor_set_handle_platform(
         &self,
+        pipeline_type: PipelineType,
         root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) {
-        let bind_point = root_signature.pipeline_type();
-
         unsafe {
             self.inner
                 .device_context
                 .vk_device()
                 .cmd_bind_descriptor_sets(
                     self.inner.platform_command_buffer.vk_command_buffer,
-                    super::internal::pipeline_type_pipeline_bind_point(bind_point),
-                    root_signature
-                        .platform_root_signature()
-                        .vk_pipeline_layout(),
+                    super::internal::pipeline_type_pipeline_bind_point(pipeline_type),
+                    root_signature.vk_pipeline_layout(),
                     set_index,
                     &[descriptor_set_handle.vk_type],
                     &[],
@@ -333,21 +331,14 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn cmd_push_constants_platform<T: Sized>(
-        &self,
-        root_signature: &VulkanRootSignature,
-        constants: &T,
-    ) {
-        let constants_size = mem::size_of::<T>();
-        let constants_ptr = (constants as *const T).cast::<u8>();
+    pub(crate) fn cmd_push_constant_platform(&self, root_signature: &RootSignature, data: &[u8]) {
         unsafe {
-            let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
             self.inner.device_context.vk_device().cmd_push_constants(
                 self.inner.platform_command_buffer.vk_command_buffer,
                 root_signature.vk_pipeline_layout(),
                 ash::vk::ShaderStageFlags::ALL,
                 0,
-                data_slice,
+                data,
             );
         }
     }
@@ -553,8 +544,9 @@ impl CommandBuffer {
             let subresource_range =
                 image_subresource_range(barrier.texture, barrier.array_slice, barrier.mip_slice);
 
-            // First transition is always from undefined. Doing it here can save downstream code
-            // from having to implement a "first time" path and a "normal" path
+            // First transition is always from undefined. Doing it here can save downstream
+            // code from having to implement a "first time" path and a "normal"
+            // path
             let old_layout = if barrier.texture.take_is_undefined_layout() {
                 ash::vk::ImageLayout::UNDEFINED
             } else {
@@ -562,7 +554,7 @@ impl CommandBuffer {
             };
 
             let new_layout = internal::resource_state_to_image_layout(barrier.dst_state).unwrap();
-            log::trace!(
+            trace!(
                 "Transition texture {:?} from {:?} to {:?}",
                 barrier.texture,
                 old_layout,
@@ -616,6 +608,24 @@ impl CommandBuffer {
                     &vk_image_barriers,
                 );
             }
+        }
+    }
+
+    pub(crate) fn cmd_fill_buffer_platform(
+        &self,
+        dst_buffer: &Buffer,
+        offset: u64,
+        size: u64,
+        data: u32,
+    ) {
+        unsafe {
+            self.inner.device_context.vk_device().cmd_fill_buffer(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                dst_buffer.vk_buffer(),
+                offset,
+                size,
+                data,
+            );
         }
     }
 

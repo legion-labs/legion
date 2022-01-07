@@ -1,6 +1,7 @@
 use lgn_math::IVec2;
 use lgn_utils::HashMap;
 use lgn_window::{Window, WindowDescriptor, WindowId, WindowMode};
+use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 
 #[derive(Debug, Default)]
@@ -30,36 +31,56 @@ impl WinitWindows {
             WindowMode::BorderlessFullscreen => winit_window_builder.with_fullscreen(Some(
                 winit::window::Fullscreen::Borderless(event_loop.primary_monitor()),
             )),
-            WindowMode::Fullscreen { use_size } => winit_window_builder.with_fullscreen(Some(
-                winit::window::Fullscreen::Exclusive(if use_size {
-                    get_fitting_videomode(
-                        &event_loop.primary_monitor().unwrap(),
-                        window_descriptor.width as u32,
-                        window_descriptor.height as u32,
-                    )
-                } else {
-                    get_best_videomode(&event_loop.primary_monitor().unwrap())
-                }),
+            WindowMode::Fullscreen => {
+                winit_window_builder.with_fullscreen(Some(winit::window::Fullscreen::Exclusive(
+                    get_best_videomode(&event_loop.primary_monitor().unwrap()),
+                )))
+            }
+            WindowMode::SizedFullscreen => winit_window_builder.with_fullscreen(Some(
+                winit::window::Fullscreen::Exclusive(get_fitting_videomode(
+                    &event_loop.primary_monitor().unwrap(),
+                    window_descriptor.width as u32,
+                    window_descriptor.height as u32,
+                )),
             )),
             WindowMode::Windowed => {
                 let WindowDescriptor {
                     width,
                     height,
+                    position,
                     scale_factor_override,
                     ..
                 } = window_descriptor;
-                let size = scale_factor_override.map_or_else(
-                    || winit::dpi::Size::from(winit::dpi::LogicalSize::new(*width, *height)),
-                    |sf| {
-                        winit::dpi::Size::from(
-                            winit::dpi::LogicalSize::new(*width, *height).to_physical::<f64>(sf),
-                        )
-                    },
-                );
-                winit_window_builder.with_inner_size(size)
+
+                if let Some(position) = position {
+                    if let Some(sf) = scale_factor_override {
+                        winit_window_builder = winit_window_builder.with_position(
+                            winit::dpi::LogicalPosition::new(
+                                f64::from(position[0]),
+                                f64::from(position[1]),
+                            )
+                            .to_physical::<f64>(*sf),
+                        );
+                    } else {
+                        winit_window_builder =
+                            winit_window_builder.with_position(winit::dpi::LogicalPosition::new(
+                                f64::from(position[0]),
+                                f64::from(position[1]),
+                            ));
+                    }
+                }
+                if let Some(sf) = scale_factor_override {
+                    winit_window_builder.with_inner_size(
+                        winit::dpi::LogicalSize::new(*width, *height).to_physical::<f64>(*sf),
+                    )
+                } else {
+                    winit_window_builder
+                        .with_inner_size(winit::dpi::LogicalSize::new(*width, *height))
+                }
             }
             .with_resizable(window_descriptor.resizable)
-            .with_decorations(window_descriptor.decorations),
+            .with_decorations(window_descriptor.decorations)
+            .with_transparent(window_descriptor.transparent),
         };
 
         let constraints = window_descriptor.resize_constraints.check_constraints();
@@ -138,6 +159,7 @@ impl WinitWindows {
             .map(|position| IVec2::new(position.x, position.y));
         let inner_size = winit_window.inner_size();
         let scale_factor = winit_window.scale_factor();
+        let raw_window_handle = winit_window.raw_window_handle();
         self.windows.insert(winit_window.id(), winit_window);
         Window::new(
             window_id,
@@ -146,6 +168,7 @@ impl WinitWindows {
             inner_size.height,
             scale_factor,
             position,
+            raw_window_handle,
         )
     }
 
@@ -159,6 +182,7 @@ impl WinitWindows {
         self.winit_to_window_id.get(&id).copied()
     }
 }
+
 pub fn get_fitting_videomode(
     monitor: &winit::monitor::MonitorHandle,
     width: u32,
@@ -205,7 +229,8 @@ pub fn get_best_videomode(monitor: &winit::monitor::MonitorHandle) -> winit::mon
     modes.first().unwrap().clone()
 }
 
-// WARNING: this only works under the assumption that wasm runtime is single threaded
+// WARNING: this only works under the assumption that wasm runtime is single
+// threaded
 #[cfg(target_arch = "wasm32")]
 unsafe impl Send for WinitWindows {}
 #[cfg(target_arch = "wasm32")]

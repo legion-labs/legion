@@ -80,8 +80,6 @@ It also supports manual RGBA edition with 4 different inputs.
     hColor = { r, g, b, a: 255 };
   }
 
-  $: dispatch("change", colors);
-
   /** Called when the user changes the Saturation and Value */
   function svSelect(
     event: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }
@@ -98,6 +96,8 @@ It also supports manual RGBA edition with 4 different inputs.
       v: 100 - yPercentage,
       a: colors.hsv.a,
     });
+
+    dispatch("change", colors);
   }
 
   function updateHue(
@@ -107,6 +107,8 @@ It also supports manual RGBA edition with 4 different inputs.
       ...colors.hsv,
       h: +event.currentTarget.value,
     });
+
+    dispatch("change", colors);
   }
 
   function updateAlpha(
@@ -117,6 +119,8 @@ It also supports manual RGBA edition with 4 different inputs.
       ...colors.hsv,
       a: +event.currentTarget.value,
     });
+
+    dispatch("change", colors);
   }
 
   function updateRgbaColor(
@@ -128,6 +132,8 @@ It also supports manual RGBA edition with 4 different inputs.
         ...colors.rgba,
         [key]: newColorPart,
       });
+
+      dispatch("change", colors);
     }
   }
 

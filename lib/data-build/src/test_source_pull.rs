@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
@@ -36,6 +37,7 @@ fn no_dependencies() {
         let id = project
             .add_resource(
                 ResourcePathName::new("resource"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resources
                     .new_resource(refs_resource::TestResource::TYPE)
@@ -46,7 +48,7 @@ fn no_dependencies() {
         ResourcePathId::from(id)
     };
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -80,6 +82,7 @@ fn with_dependency() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resources
                     .new_resource(refs_resource::TestResource::TYPE)
@@ -101,6 +104,7 @@ fn with_dependency() {
         let parent_id = project
             .add_resource(
                 ResourcePathName::new("parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
@@ -112,7 +116,7 @@ fn with_dependency() {
         )
     };
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -149,6 +153,7 @@ fn with_derived_dependency() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("intermediate_child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resources
                     .new_resource(refs_resource::TestResource::TYPE)
@@ -173,6 +178,7 @@ fn with_derived_dependency() {
         let _parent_id = project
             .add_resource(
                 ResourcePathName::new("intermetidate_parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
@@ -180,7 +186,7 @@ fn with_derived_dependency() {
             .unwrap();
     }
 
-    let mut build = DataBuildOptions::new(&output_dir)
+    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("to create index");

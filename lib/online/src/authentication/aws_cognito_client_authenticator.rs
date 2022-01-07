@@ -8,22 +8,24 @@ use hyper::{
     Body, Client, Request, Response, Server, StatusCode,
 };
 use hyper_rustls::HttpsConnector;
-use log::{debug, info, warn};
+use lgn_telemetry::{debug, info, warn};
 use tokio::sync::{Mutex, MutexGuard};
 use url::Url;
 
 use super::{Authenticator, Error, Result};
 
 type AuthClient = Client<HttpsConnector<HttpConnector>>;
-/// An `AwsCognitoClientAuthenticator`'s primary goal is to authenticate a user and return a
-/// `ClientTokenSet` containing the user's id, access and refresh tokens.
+/// An `AwsCognitoClientAuthenticator`'s primary goal is to authenticate a user
+/// and return a `ClientTokenSet` containing the user's id, access and refresh
+/// tokens.
 ///
 /// It can do so by:
-/// - Authenticating the user interactively with the identity provider in a web-browser.
+/// - Authenticating the user interactively with the identity provider in a
+///   web-browser.
 /// - Exchanging a refresh token for a new access token.
 ///
-/// It can also validate a user's access token and return a `UserInfo` struct containing the user's
-/// profile.
+/// It can also validate a user's access token and return a `UserInfo` struct
+/// containing the user's profile.
 pub struct AwsCognitoClientAuthenticator {
     pub domain_name: String,
     pub region: String,
@@ -123,10 +125,13 @@ impl AwsCognitoClientAuthenticator {
         // If there is no explicit port, assume the default port for the scheme.
         let port = redirect_uri.port().unwrap_or(80);
 
-        let client = Mutex::new(
-            hyper::Client::builder()
-                .build::<_, hyper::Body>(hyper_rustls::HttpsConnector::with_native_roots()),
-        );
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
+
+        let client = Mutex::new(hyper::Client::builder().build::<_, hyper::Body>(https_connector));
 
         Ok(Self {
             domain_name,
@@ -533,8 +538,8 @@ impl Authenticator for AwsCognitoClientAuthenticator {
 
     /// Get a token set from a refresh token.
     ///
-    /// If the call does not return a new refresh token within the `TokenSet`, the specified
-    /// refresh token will be filled in instead.
+    /// If the call does not return a new refresh token within the `TokenSet`,
+    /// the specified refresh token will be filled in instead.
     async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
         let client = self.client().await;
 

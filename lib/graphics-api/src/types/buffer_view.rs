@@ -1,6 +1,7 @@
-use super::{deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, GPUViewType, ResourceUsage};
-#[cfg(any(feature = "vulkan"))]
-use super::{Descriptor, ShaderResourceType};
+use super::{
+    deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, Descriptor, GPUViewType, ResourceUsage,
+    ShaderResourceType,
+};
 use crate::GfxResult;
 
 #[derive(Clone, Copy, Debug)]
@@ -11,9 +12,6 @@ pub struct BufferViewDef {
     pub element_size: u64,
     pub buffer_view_flags: BufferViewFlags,
 }
-
-// const buffer : offset, size
-// structbuffer
 
 impl BufferViewDef {
     pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
@@ -46,6 +44,26 @@ impl BufferViewDef {
             },
             byte_offset: 0,
             element_count: buffer_def.size / struct_size,
+            element_size: struct_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
+    pub fn as_structured_buffer_with_offset(
+        buffer_size: u64,
+        struct_size: u64,
+        read_only: bool,
+        byte_offset: u64,
+    ) -> Self {
+        assert!(buffer_size % struct_size == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResourceView
+            } else {
+                GPUViewType::UnorderedAccessView
+            },
+            byte_offset,
+            element_count: buffer_size / struct_size,
             element_size: struct_size,
             buffer_view_flags: BufferViewFlags::empty(),
         }
@@ -129,6 +147,10 @@ impl BufferView {
                 size,
             }),
         })
+    }
+
+    pub fn definition(&self) -> &BufferViewDef {
+        &self.inner.definition
     }
 
     pub(crate) fn buffer(&self) -> &Buffer {

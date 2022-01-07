@@ -1,8 +1,9 @@
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::path::Path;
 
 use crate::{
     assert_not_locked, clear_local_changes, clear_pending_branch_merges, connect_to_server,

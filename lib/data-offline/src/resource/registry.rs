@@ -1,12 +1,10 @@
 use std::sync::Arc;
 use std::{any::Any, collections::HashMap, io};
 
+use lgn_data_model::TypeReflection;
 use lgn_data_runtime::ResourceType;
 
-use super::{
-    OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
-    ResourceReflection,
-};
+use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 use crate::ResourcePathId;
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
@@ -27,7 +25,8 @@ impl ResourceRegistryOptions {
     ///
     /// # Panics
     ///
-    /// Panics if a processor for a resource of type `kind` is already registered.
+    /// Panics if a processor for a resource of type `kind` is already
+    /// registered.
     pub fn add_type_processor(
         mut self,
         ty: ResourceType,
@@ -38,11 +37,13 @@ impl ResourceRegistryOptions {
         self
     }
 
-    /// Same as `add_type_processor` but adds a default processor of `OfflineResource`.
+    /// Same as `add_type_processor` but adds a default processor of
+    /// `OfflineResource`.
     ///
     /// # Panics
     ///
-    /// Panics if a processor for a resource of type `kind` is already registered.
+    /// Panics if a processor for a resource of type `kind` is already
+    /// registered.
     pub fn add_type<T: OfflineResource>(self) -> Self {
         self.add_type_processor(T::TYPE, Box::new(T::Processor::default()))
     }
@@ -65,9 +66,9 @@ impl ResourceRegistryOptions {
 /// The registry of resources currently available in memory.
 ///
 /// While `Project` is responsible for managing on disk/source control resources
-/// the `ResourceRegistry` manages resources that are in memory. Therefore it is possible
-/// that some resources are in memory but not known to `Project` or are part of the `Project`
-/// but are not currently loaded to memory.
+/// the `ResourceRegistry` manages resources that are in memory. Therefore it is
+/// possible that some resources are in memory but not known to `Project` or are
+/// part of the `Project` but are not currently loaded to memory.
 pub struct ResourceRegistry {
     id_generator: ResourceHandleId,
     refcount_channel: (
@@ -92,7 +93,8 @@ impl ResourceRegistry {
 
     /// Create a new resource of a given type in a default state.
     ///
-    /// The default state of the resource is defined by the registered `ResourceProcessor`.
+    /// The default state of the resource is defined by the registered
+    /// `ResourceProcessor`.
     pub fn new_resource(&mut self, kind: ResourceType) -> Option<ResourceHandleUntyped> {
         #[allow(clippy::option_if_let_else)]
         if let Some(processor) = self.processors.get_mut(&kind) {
@@ -103,7 +105,8 @@ impl ResourceRegistry {
         }
     }
 
-    /// Creates an instance of a resource and deserializes content from provided reader.
+    /// Creates an instance of a resource and deserializes content from provided
+    /// reader.
     pub fn deserialize_resource(
         &mut self,
         kind: ResourceType,
@@ -190,7 +193,8 @@ impl ResourceRegistry {
         }
     }
 
-    /// Returns a reference to a resource behind the handle, None if the resource does not exist.
+    /// Returns a reference to a resource behind the handle, None if the
+    /// resource does not exist.
     pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Any> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             return Some(resource.as_ref());
@@ -198,7 +202,8 @@ impl ResourceRegistry {
         None
     }
 
-    /// Returns a mutable reference to a resource behind the handle, None if the resource does not exist.
+    /// Returns a mutable reference to a resource behind the handle, None if the
+    /// resource does not exist.
     pub fn get_mut<'a>(&'a mut self, handle: &ResourceHandleUntyped) -> Option<&'a mut dyn Any> {
         if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
             return Some(resource.as_mut());
@@ -211,7 +216,7 @@ impl ResourceRegistry {
         &'a self,
         kind: ResourceType,
         handle: &ResourceHandleUntyped,
-    ) -> Option<&'a dyn ResourceReflection> {
+    ) -> Option<&'a dyn TypeReflection> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             if let Some(processor) = self.processors.get(&kind) {
                 return processor.get_resource_reflection(resource.as_ref());
@@ -225,13 +230,28 @@ impl ResourceRegistry {
         &'a mut self,
         kind: ResourceType,
         handle: &ResourceHandleUntyped,
-    ) -> Option<&'a mut dyn ResourceReflection> {
+    ) -> Option<&'a mut dyn TypeReflection> {
         if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
             if let Some(processor) = self.processors.get(&kind) {
                 return processor.get_resource_reflection_mut(resource.as_mut());
             }
         }
         None
+    }
+
+    /// Return the list of the Resource Type supported by the `ResourceRegisry`
+    pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
+        self.processors
+            .iter()
+            .filter_map(|(k, processor)| processor.get_resource_type_name().map(|n| (*k, n)))
+            .collect()
+    }
+
+    /// Return the name of a Resource Type
+    pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
+        self.processors
+            .get(&kind)
+            .and_then(|processor| processor.get_resource_type_name())
     }
 
     /// Returns the number of loaded resources.
@@ -299,6 +319,10 @@ mod tests {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
+        }
+
+        fn get_resource_type_name(&self) -> Option<&'static str> {
+            Some(SampleResource::TYPENAME)
         }
 
         fn write_resource(
@@ -416,6 +440,10 @@ mod tests {
             .create_registry();
 
         let mut resources = resources.lock().unwrap();
+        assert_eq!(
+            resources.get_resource_types()[0],
+            (SampleResource::TYPE, SampleResource::TYPENAME)
+        );
 
         let created_handle = resources
             .new_resource(SampleResource::TYPE)

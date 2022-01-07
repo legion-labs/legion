@@ -22,10 +22,14 @@ pub type GrpcClient = GenericGrpcClient<hyper::Client<HttpsConnector<HttpConnect
 impl GrpcClient {
     /// Instanciate a new `gRPC` client that operates over a HTTP 2 connection.
     ///
-    /// Such a client cannot call `gRPC` servers that operate over HTTP 1 or are behind a non-HTTP
-    /// 2 compatible proxy.
+    /// Such a client cannot call `gRPC` servers that operate over HTTP 1 or are
+    /// behind a non-HTTP 2 compatible proxy.
     pub fn new(uri: Uri) -> Self {
-        let https_connector = HttpsConnector::with_native_roots();
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
         let client = hyper::Client::builder()
             .pool_max_idle_per_host(std::usize::MAX)
             .pool_idle_timeout(None)
@@ -40,11 +44,17 @@ pub type GrpcWebClient =
     GenericGrpcClient<GrpcWebClientImpl<hyper::Client<HttpsConnector<HttpConnector>, BoxBody>>>;
 
 impl GrpcWebClient {
-    /// Instanciate a new `gRPC` client that operates over a HTTP 1.1 connection using `gRPC-Web`.
+    /// Instanciate a new `gRPC` client that operates over a HTTP 1.1 connection
+    /// using `gRPC-Web`.
     ///
-    /// The client expects the remote server to understand the `gRPC-Web` protocol.
+    /// The client expects the remote server to understand the `gRPC-Web`
+    /// protocol.
     pub fn new(uri: Uri) -> Self {
-        let https_connector = HttpsConnector::with_native_roots();
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
         let client = hyper::Client::builder()
             .pool_max_idle_per_host(std::usize::MAX)
             .pool_idle_timeout(None)
@@ -103,7 +113,8 @@ mod tests {
             "https://user:password@host:port/foo/bar?query=string#fragment",
         );
 
-        // The scheme, authority and path+query should be taken from the second argument.
+        // The scheme, authority and path+query should be taken from the second
+        // argument.
         let req = prepare_grpc_request(req, &uri);
 
         assert_eq!(

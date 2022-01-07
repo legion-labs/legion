@@ -8,7 +8,7 @@ use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
 mod common;
 
 fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
-    let path = dir.join(id.to_string());
+    let path = dir.join(id.id.to_string());
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};
@@ -48,7 +48,7 @@ fn command_compile() {
     let content = "test content";
 
     let source = ResourceTypeAndId {
-        t: refs_resource::TestResource::TYPE,
+        kind: refs_resource::TestResource::TYPE,
         id: ResourceId::new(),
     };
     create_test_resource(source, &resource_dir, content);

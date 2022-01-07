@@ -3,6 +3,7 @@ use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
 use ash::vk;
+use lgn_telemetry::{debug, error, info, trace, warn};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
@@ -35,21 +36,21 @@ pub extern "system" fn vulkan_debug_callback(
                 }
 
                 if !ignored {
-                    log::error!("{:?}", msg);
+                    error!("{:?}", msg);
                     panic!();
                 }
             } else if flags.intersects(vk::DebugUtilsMessageSeverityFlagsEXT::WARNING) {
-                log::warn!("{:?}", msg);
+                warn!("{:?}", msg);
             } else if flags.intersects(vk::DebugUtilsMessageSeverityFlagsEXT::INFO) {
-                log::info!("{:?}", msg);
+                info!("{:?}", msg);
             } else {
-                log::debug!("{:?}", msg);
+                debug!("{:?}", msg);
             }
         } else {
-            log::error!("Received null message pointer in vulkan_debug_callback");
+            error!("Received null message pointer in vulkan_debug_callback");
         }
     } else {
-        log::error!("Received null data pointer in vulkan_debug_callback");
+        error!("Received null data pointer in vulkan_debug_callback");
     }
 
     vk::FALSE
@@ -64,10 +65,10 @@ pub struct VkDebugReporter {
 impl Drop for VkDebugReporter {
     fn drop(&mut self) {
         unsafe {
-            log::trace!("destroying VkDebugReporter");
+            trace!("destroying VkDebugReporter");
             self.debug_report_loader
                 .destroy_debug_utils_messenger(self.debug_callback, None);
-            log::trace!("destroyed VkDebugReporter");
+            trace!("destroyed VkDebugReporter");
         }
     }
 }

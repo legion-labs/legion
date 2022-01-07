@@ -2,7 +2,9 @@ use std::fs;
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+use lgn_data_compiler::{
+    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
     ResourcePathId,
@@ -42,6 +44,7 @@ fn build_device() {
         project
             .add_resource(
                 ResourcePathName::new("test_source"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource,
                 &mut resources,
@@ -63,18 +66,21 @@ fn build_device() {
     };
 
     // create build index.
-    let mut build = DataBuildOptions::new(&buildindex_dir)
-        .content_store(&ContentStoreAddr::from(cas.clone()))
-        .compiler_dir(target_dir)
-        .create(project_dir)
-        .expect("new build index");
+    let mut build = DataBuildOptions::new(
+        &buildindex_dir,
+        CompilerRegistryOptions::from_dir(target_dir),
+    )
+    .content_store(&ContentStoreAddr::from(cas.clone()))
+    .create(project_dir)
+    .expect("new build index");
     build.source_pull().expect("successful pull");
 
     // the transformation below will reverse source resource's content.
     let derived = ResourcePathId::from(source_id).push(refs_asset::RefsAsset::TYPE);
     let derived_content = initial_content.chars().rev().collect::<String>();
 
-    // build derived resource first, so that buildindex is aware of the ResourcePathId
+    // build derived resource first, so that buildindex is aware of the
+    // ResourcePathId
     build
         .compile(
             derived.clone(),
@@ -178,13 +184,14 @@ fn no_intermediate_resource() {
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
+                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource,
                     &mut resources,
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir)
+        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");
@@ -259,13 +266,14 @@ fn with_intermediate_resource() {
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
+                    text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource,
                     &mut resources,
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir)
+        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");

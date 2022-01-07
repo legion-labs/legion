@@ -1,7 +1,6 @@
 //! Telemetry library
 //!
 //! Provides logging, metrics, memory and performance profiling
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -59,44 +58,36 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
-pub mod compression;
 pub mod dispatch;
 pub mod dual_time;
 pub mod event_block;
-pub mod event_block_sink;
-pub mod grpc_event_sink;
+pub mod event_sink;
+pub mod event_stream;
 pub mod guard;
 pub mod log_block;
 pub mod log_events;
 pub mod metric_event;
 pub mod metrics_block;
 pub mod panic_hook;
-mod queue_metadata;
 pub mod scope;
-pub mod stream;
 pub mod thread_block;
 pub mod thread_events;
 
-pub use compression::*;
 pub use dual_time::*;
-pub use event_block_sink::*;
-pub use grpc_event_sink::*;
-pub use lgn_transit::HeterogeneousQueue;
+pub use event_sink::*;
+pub use event_stream::*;
+pub use log;
 pub use log_block::*;
 pub use metrics_block::*;
 pub use scope::*;
-pub use stream::*;
 pub use thread_block::*;
 pub use thread_events::*;
-
-pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
-pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
-pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
-pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
 
 pub mod prelude {
     pub use crate::dispatch::*;
     pub use crate::guard::*;
+    // re-exporting log macros for convenience
+    pub use crate::log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
     pub use crate::log_events::*;
     pub use crate::metric_event::*;
     pub use crate::trace_scope;

@@ -1,14 +1,20 @@
 {
+  "name": "legion",
+  "version": "0.0.1",
+  "description": "monorepo for legion labs",
   "private": true,
-  "workspaces": [
-    "client/*/frontend",
-    "proto/*"
-  ],
+  "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "build": "yarn workspaces run build",
-    "check:all": "yarn workspaces run check:all",
-    "test": "yarn workspaces run test",
-    "analytics:dev": "yarn workspace analytics-web run dev",
-    "editor:dev": "yarn workspace editor run dev"
+    "build": "pnpm -r build",
+    "check:all": "pnpm -r check:all",
+    "clean": "pnpm -r clean && rimraf node_modules",
+    "test": "pnpm -r test",
+    "prettier:fix": "pnpm -r prettier:fix",
+    "analytics:dev": "pnpm -C client/analytics-web/frontend dev",
+    "editor:dev": "pnpm -C client/editor/frontend dev",
+    "runtime:dev": "pnpm -C client/runtime/frontend dev"
+  },
+  "devDependencies": {
+    "rimraf": "^3.0.2"
   }
 }

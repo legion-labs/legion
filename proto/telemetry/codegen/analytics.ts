@@ -6,6 +6,7 @@ import { BrowserHeaders } from "browser-headers";
 import { Process } from "./process";
 import { Stream } from "./stream";
 import { Block } from "./block";
+import { ScopeDesc } from "./calltree";
 
 export const protobufPackage = "analytics";
 
@@ -61,32 +62,40 @@ export interface ListStreamBlocksReply {
  */
 export interface Span {
   scopeHash: number;
-  /** how many function calls are above this one in the thread */
-  depth: number;
   beginMs: number;
   endMs: number;
-}
-
-export interface ScopeDesc {
-  name: string;
-  filename: string;
-  line: number;
-  hash: number;
+  /** [0-255] non-linear transformation of occupancy for spans that are a lower level of detail */
+  alpha: number;
 }
 
 export interface BlockSpansRequest {
   process: Process | undefined;
   stream: Stream | undefined;
   blockId: string;
+  lodId: number;
+}
+
+/** one span track contains spans at one height of call stack */
+export interface SpanTrack {
+  spans: Span[];
+}
+
+export interface SpanBlockLOD {
+  lodId: number;
+  tracks: SpanTrack[];
 }
 
 export interface BlockSpansReply {
-  scopes: ScopeDesc[];
-  spans: Span[];
+  scopes: { [key: number]: ScopeDesc };
+  lod: SpanBlockLOD | undefined;
   blockId: string;
   beginMs: number;
   endMs: number;
-  maxDepth: number;
+}
+
+export interface BlockSpansReply_ScopesEntry {
+  key: number;
+  value: ScopeDesc | undefined;
 }
 
 /** process_cumulative_call_graph */
@@ -118,13 +127,22 @@ export interface CumulativeCallGraphNode {
 }
 
 export interface CumulativeCallGraphReply {
-  scopes: ScopeDesc[];
+  scopes: { [key: number]: ScopeDesc };
   nodes: CumulativeCallGraphNode[];
+}
+
+export interface CumulativeCallGraphReply_ScopesEntry {
+  key: number;
+  value: ScopeDesc | undefined;
 }
 
 /** list_process_log_entries */
 export interface ProcessLogRequest {
   process: Process | undefined;
+  /** included */
+  begin: number;
+  /** excluded */
+  end: number;
 }
 
 export interface LogEntry {
@@ -134,6 +152,19 @@ export interface LogEntry {
 
 export interface ProcessLogReply {
   entries: LogEntry[];
+  /** included */
+  begin: number;
+  /** excluded */
+  end: number;
+}
+
+/** nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply); */
+export interface ProcessNbLogEntriesRequest {
+  processId: string;
+}
+
+export interface ProcessNbLogEntriesReply {
+  count: number;
 }
 
 /** list_process_children */
@@ -422,11 +453,11 @@ export const ProcessInstance = {
         ? Process.toJSON(message.processInfo)
         : undefined);
     message.nbCpuBlocks !== undefined &&
-      (obj.nbCpuBlocks = message.nbCpuBlocks);
+      (obj.nbCpuBlocks = Math.round(message.nbCpuBlocks));
     message.nbLogBlocks !== undefined &&
-      (obj.nbLogBlocks = message.nbLogBlocks);
+      (obj.nbLogBlocks = Math.round(message.nbLogBlocks));
     message.nbMetricBlocks !== undefined &&
-      (obj.nbMetricBlocks = message.nbMetricBlocks);
+      (obj.nbMetricBlocks = Math.round(message.nbMetricBlocks));
     return obj;
   },
 
@@ -816,21 +847,21 @@ export const ListStreamBlocksReply = {
   },
 };
 
-const baseSpan: object = { scopeHash: 0, depth: 0, beginMs: 0, endMs: 0 };
+const baseSpan: object = { scopeHash: 0, beginMs: 0, endMs: 0, alpha: 0 };
 
 export const Span = {
   encode(message: Span, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.scopeHash !== 0) {
       writer.uint32(8).uint32(message.scopeHash);
     }
-    if (message.depth !== 0) {
-      writer.uint32(16).uint32(message.depth);
-    }
     if (message.beginMs !== 0) {
-      writer.uint32(25).double(message.beginMs);
+      writer.uint32(17).double(message.beginMs);
     }
     if (message.endMs !== 0) {
-      writer.uint32(33).double(message.endMs);
+      writer.uint32(25).double(message.endMs);
+    }
+    if (message.alpha !== 0) {
+      writer.uint32(32).uint32(message.alpha);
     }
     return writer;
   },
@@ -846,13 +877,13 @@ export const Span = {
           message.scopeHash = reader.uint32();
           break;
         case 2:
-          message.depth = reader.uint32();
-          break;
-        case 3:
           message.beginMs = reader.double();
           break;
-        case 4:
+        case 3:
           message.endMs = reader.double();
+          break;
+        case 4:
+          message.alpha = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -868,10 +899,6 @@ export const Span = {
       object.scopeHash !== undefined && object.scopeHash !== null
         ? Number(object.scopeHash)
         : 0;
-    message.depth =
-      object.depth !== undefined && object.depth !== null
-        ? Number(object.depth)
-        : 0;
     message.beginMs =
       object.beginMs !== undefined && object.beginMs !== null
         ? Number(object.beginMs)
@@ -880,120 +907,34 @@ export const Span = {
       object.endMs !== undefined && object.endMs !== null
         ? Number(object.endMs)
         : 0;
+    message.alpha =
+      object.alpha !== undefined && object.alpha !== null
+        ? Number(object.alpha)
+        : 0;
     return message;
   },
 
   toJSON(message: Span): unknown {
     const obj: any = {};
-    message.scopeHash !== undefined && (obj.scopeHash = message.scopeHash);
-    message.depth !== undefined && (obj.depth = message.depth);
+    message.scopeHash !== undefined &&
+      (obj.scopeHash = Math.round(message.scopeHash));
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
+    message.alpha !== undefined && (obj.alpha = Math.round(message.alpha));
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<Span>, I>>(object: I): Span {
     const message = { ...baseSpan } as Span;
     message.scopeHash = object.scopeHash ?? 0;
-    message.depth = object.depth ?? 0;
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
+    message.alpha = object.alpha ?? 0;
     return message;
   },
 };
 
-const baseScopeDesc: object = { name: "", filename: "", line: 0, hash: 0 };
-
-export const ScopeDesc = {
-  encode(
-    message: ScopeDesc,
-    writer: _m0.Writer = _m0.Writer.create()
-  ): _m0.Writer {
-    if (message.name !== "") {
-      writer.uint32(10).string(message.name);
-    }
-    if (message.filename !== "") {
-      writer.uint32(18).string(message.filename);
-    }
-    if (message.line !== 0) {
-      writer.uint32(24).uint32(message.line);
-    }
-    if (message.hash !== 0) {
-      writer.uint32(32).uint32(message.hash);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): ScopeDesc {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.name = reader.string();
-          break;
-        case 2:
-          message.filename = reader.string();
-          break;
-        case 3:
-          message.line = reader.uint32();
-          break;
-        case 4:
-          message.hash = reader.uint32();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.filename =
-      object.filename !== undefined && object.filename !== null
-        ? String(object.filename)
-        : "";
-    message.line =
-      object.line !== undefined && object.line !== null
-        ? Number(object.line)
-        : 0;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    return message;
-  },
-
-  toJSON(message: ScopeDesc): unknown {
-    const obj: any = {};
-    message.name !== undefined && (obj.name = message.name);
-    message.filename !== undefined && (obj.filename = message.filename);
-    message.line !== undefined && (obj.line = message.line);
-    message.hash !== undefined && (obj.hash = message.hash);
-    return obj;
-  },
-
-  fromPartial<I extends Exact<DeepPartial<ScopeDesc>, I>>(
-    object: I
-  ): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    message.name = object.name ?? "";
-    message.filename = object.filename ?? "";
-    message.line = object.line ?? 0;
-    message.hash = object.hash ?? 0;
-    return message;
-  },
-};
-
-const baseBlockSpansRequest: object = { blockId: "" };
+const baseBlockSpansRequest: object = { blockId: "", lodId: 0 };
 
 export const BlockSpansRequest = {
   encode(
@@ -1008,6 +949,9 @@ export const BlockSpansRequest = {
     }
     if (message.blockId !== "") {
       writer.uint32(26).string(message.blockId);
+    }
+    if (message.lodId !== 0) {
+      writer.uint32(32).uint32(message.lodId);
     }
     return writer;
   },
@@ -1027,6 +971,9 @@ export const BlockSpansRequest = {
           break;
         case 3:
           message.blockId = reader.string();
+          break;
+        case 4:
+          message.lodId = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1050,6 +997,10 @@ export const BlockSpansRequest = {
       object.blockId !== undefined && object.blockId !== null
         ? String(object.blockId)
         : "";
+    message.lodId =
+      object.lodId !== undefined && object.lodId !== null
+        ? Number(object.lodId)
+        : 0;
     return message;
   },
 
@@ -1062,6 +1013,7 @@ export const BlockSpansRequest = {
     message.stream !== undefined &&
       (obj.stream = message.stream ? Stream.toJSON(message.stream) : undefined);
     message.blockId !== undefined && (obj.blockId = message.blockId);
+    message.lodId !== undefined && (obj.lodId = Math.round(message.lodId));
     return obj;
   },
 
@@ -1078,27 +1030,156 @@ export const BlockSpansRequest = {
         ? Stream.fromPartial(object.stream)
         : undefined;
     message.blockId = object.blockId ?? "";
+    message.lodId = object.lodId ?? 0;
     return message;
   },
 };
 
-const baseBlockSpansReply: object = {
-  blockId: "",
-  beginMs: 0,
-  endMs: 0,
-  maxDepth: 0,
+const baseSpanTrack: object = {};
+
+export const SpanTrack = {
+  encode(
+    message: SpanTrack,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.spans) {
+      Span.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SpanTrack {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.spans.push(Span.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SpanTrack {
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
+    return message;
+  },
+
+  toJSON(message: SpanTrack): unknown {
+    const obj: any = {};
+    if (message.spans) {
+      obj.spans = message.spans.map((e) => (e ? Span.toJSON(e) : undefined));
+    } else {
+      obj.spans = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SpanTrack>, I>>(
+    object: I
+  ): SpanTrack {
+    const message = { ...baseSpanTrack } as SpanTrack;
+    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
+    return message;
+  },
 };
+
+const baseSpanBlockLOD: object = { lodId: 0 };
+
+export const SpanBlockLOD = {
+  encode(
+    message: SpanBlockLOD,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.lodId !== 0) {
+      writer.uint32(8).uint32(message.lodId);
+    }
+    for (const v of message.tracks) {
+      SpanTrack.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SpanBlockLOD {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.tracks = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.lodId = reader.uint32();
+          break;
+        case 2:
+          message.tracks.push(SpanTrack.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SpanBlockLOD {
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.lodId =
+      object.lodId !== undefined && object.lodId !== null
+        ? Number(object.lodId)
+        : 0;
+    message.tracks = (object.tracks ?? []).map((e: any) =>
+      SpanTrack.fromJSON(e)
+    );
+    return message;
+  },
+
+  toJSON(message: SpanBlockLOD): unknown {
+    const obj: any = {};
+    message.lodId !== undefined && (obj.lodId = Math.round(message.lodId));
+    if (message.tracks) {
+      obj.tracks = message.tracks.map((e) =>
+        e ? SpanTrack.toJSON(e) : undefined
+      );
+    } else {
+      obj.tracks = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SpanBlockLOD>, I>>(
+    object: I
+  ): SpanBlockLOD {
+    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    message.lodId = object.lodId ?? 0;
+    message.tracks = object.tracks?.map((e) => SpanTrack.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+const baseBlockSpansReply: object = { blockId: "", beginMs: 0, endMs: 0 };
 
 export const BlockSpansReply = {
   encode(
     message: BlockSpansReply,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    for (const v of message.scopes) {
-      ScopeDesc.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
-    for (const v of message.spans) {
-      Span.encode(v!, writer.uint32(18).fork()).ldelim();
+    Object.entries(message.scopes).forEach(([key, value]) => {
+      BlockSpansReply_ScopesEntry.encode(
+        { key: key as any, value },
+        writer.uint32(10).fork()
+      ).ldelim();
+    });
+    if (message.lod !== undefined) {
+      SpanBlockLOD.encode(message.lod, writer.uint32(18).fork()).ldelim();
     }
     if (message.blockId !== "") {
       writer.uint32(26).string(message.blockId);
@@ -1109,9 +1190,6 @@ export const BlockSpansReply = {
     if (message.endMs !== 0) {
       writer.uint32(41).double(message.endMs);
     }
-    if (message.maxDepth !== 0) {
-      writer.uint32(48).uint32(message.maxDepth);
-    }
     return writer;
   },
 
@@ -1119,16 +1197,21 @@ export const BlockSpansReply = {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = [];
-    message.spans = [];
+    message.scopes = {};
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.scopes.push(ScopeDesc.decode(reader, reader.uint32()));
+          const entry1 = BlockSpansReply_ScopesEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry1.value !== undefined) {
+            message.scopes[entry1.key] = entry1.value;
+          }
           break;
         case 2:
-          message.spans.push(Span.decode(reader, reader.uint32()));
+          message.lod = SpanBlockLOD.decode(reader, reader.uint32());
           break;
         case 3:
           message.blockId = reader.string();
@@ -1138,9 +1221,6 @@ export const BlockSpansReply = {
           break;
         case 5:
           message.endMs = reader.double();
-          break;
-        case 6:
-          message.maxDepth = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1152,10 +1232,16 @@ export const BlockSpansReply = {
 
   fromJSON(object: any): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = (object.scopes ?? []).map((e: any) =>
-      ScopeDesc.fromJSON(e)
-    );
-    message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      acc[Number(key)] = ScopeDesc.fromJSON(value);
+      return acc;
+    }, {});
+    message.lod =
+      object.lod !== undefined && object.lod !== null
+        ? SpanBlockLOD.fromJSON(object.lod)
+        : undefined;
     message.blockId =
       object.blockId !== undefined && object.blockId !== null
         ? String(object.blockId)
@@ -1168,31 +1254,22 @@ export const BlockSpansReply = {
       object.endMs !== undefined && object.endMs !== null
         ? Number(object.endMs)
         : 0;
-    message.maxDepth =
-      object.maxDepth !== undefined && object.maxDepth !== null
-        ? Number(object.maxDepth)
-        : 0;
     return message;
   },
 
   toJSON(message: BlockSpansReply): unknown {
     const obj: any = {};
+    obj.scopes = {};
     if (message.scopes) {
-      obj.scopes = message.scopes.map((e) =>
-        e ? ScopeDesc.toJSON(e) : undefined
-      );
-    } else {
-      obj.scopes = [];
+      Object.entries(message.scopes).forEach(([k, v]) => {
+        obj.scopes[k] = ScopeDesc.toJSON(v);
+      });
     }
-    if (message.spans) {
-      obj.spans = message.spans.map((e) => (e ? Span.toJSON(e) : undefined));
-    } else {
-      obj.spans = [];
-    }
+    message.lod !== undefined &&
+      (obj.lod = message.lod ? SpanBlockLOD.toJSON(message.lod) : undefined);
     message.blockId !== undefined && (obj.blockId = message.blockId);
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
-    message.maxDepth !== undefined && (obj.maxDepth = message.maxDepth);
     return obj;
   },
 
@@ -1200,12 +1277,99 @@ export const BlockSpansReply = {
     object: I
   ): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
-    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[Number(key)] = ScopeDesc.fromPartial(value);
+      }
+      return acc;
+    }, {});
+    message.lod =
+      object.lod !== undefined && object.lod !== null
+        ? SpanBlockLOD.fromPartial(object.lod)
+        : undefined;
     message.blockId = object.blockId ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
-    message.maxDepth = object.maxDepth ?? 0;
+    return message;
+  },
+};
+
+const baseBlockSpansReply_ScopesEntry: object = { key: 0 };
+
+export const BlockSpansReply_ScopesEntry = {
+  encode(
+    message: BlockSpansReply_ScopesEntry,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).uint32(message.key);
+    }
+    if (message.value !== undefined) {
+      ScopeDesc.encode(message.value, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): BlockSpansReply_ScopesEntry {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.uint32();
+          break;
+        case 2:
+          message.value = ScopeDesc.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockSpansReply_ScopesEntry {
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    message.key =
+      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromJSON(object.value)
+        : undefined;
+    return message;
+  },
+
+  toJSON(message: BlockSpansReply_ScopesEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined &&
+      (obj.value = message.value ? ScopeDesc.toJSON(message.value) : undefined);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockSpansReply_ScopesEntry>, I>>(
+    object: I
+  ): BlockSpansReply_ScopesEntry {
+    const message = {
+      ...baseBlockSpansReply_ScopesEntry,
+    } as BlockSpansReply_ScopesEntry;
+    message.key = object.key ?? 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromPartial(object.value)
+        : undefined;
     return message;
   },
 };
@@ -1400,7 +1564,7 @@ export const NodeStats = {
     message.max !== undefined && (obj.max = message.max);
     message.avg !== undefined && (obj.avg = message.avg);
     message.median !== undefined && (obj.median = message.median);
-    message.count !== undefined && (obj.count = message.count);
+    message.count !== undefined && (obj.count = Math.round(message.count));
     return obj;
   },
 
@@ -1470,7 +1634,7 @@ export const CallGraphEdge = {
 
   toJSON(message: CallGraphEdge): unknown {
     const obj: any = {};
-    message.hash !== undefined && (obj.hash = message.hash);
+    message.hash !== undefined && (obj.hash = Math.round(message.hash));
     message.weight !== undefined && (obj.weight = message.weight);
     return obj;
   },
@@ -1564,7 +1728,7 @@ export const CumulativeCallGraphNode = {
 
   toJSON(message: CumulativeCallGraphNode): unknown {
     const obj: any = {};
-    message.hash !== undefined && (obj.hash = message.hash);
+    message.hash !== undefined && (obj.hash = Math.round(message.hash));
     message.stats !== undefined &&
       (obj.stats = message.stats ? NodeStats.toJSON(message.stats) : undefined);
     if (message.callers) {
@@ -1610,9 +1774,12 @@ export const CumulativeCallGraphReply = {
     message: CumulativeCallGraphReply,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    for (const v of message.scopes) {
-      ScopeDesc.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
+    Object.entries(message.scopes).forEach(([key, value]) => {
+      CumulativeCallGraphReply_ScopesEntry.encode(
+        { key: key as any, value },
+        writer.uint32(10).fork()
+      ).ldelim();
+    });
     for (const v of message.nodes) {
       CumulativeCallGraphNode.encode(v!, writer.uint32(18).fork()).ldelim();
     }
@@ -1628,13 +1795,19 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = [];
+    message.scopes = {};
     message.nodes = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.scopes.push(ScopeDesc.decode(reader, reader.uint32()));
+          const entry1 = CumulativeCallGraphReply_ScopesEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry1.value !== undefined) {
+            message.scopes[entry1.key] = entry1.value;
+          }
           break;
         case 2:
           message.nodes.push(
@@ -1653,9 +1826,12 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = (object.scopes ?? []).map((e: any) =>
-      ScopeDesc.fromJSON(e)
-    );
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      acc[Number(key)] = ScopeDesc.fromJSON(value);
+      return acc;
+    }, {});
     message.nodes = (object.nodes ?? []).map((e: any) =>
       CumulativeCallGraphNode.fromJSON(e)
     );
@@ -1664,12 +1840,11 @@ export const CumulativeCallGraphReply = {
 
   toJSON(message: CumulativeCallGraphReply): unknown {
     const obj: any = {};
+    obj.scopes = {};
     if (message.scopes) {
-      obj.scopes = message.scopes.map((e) =>
-        e ? ScopeDesc.toJSON(e) : undefined
-      );
-    } else {
-      obj.scopes = [];
+      Object.entries(message.scopes).forEach(([k, v]) => {
+        obj.scopes[k] = ScopeDesc.toJSON(v);
+      });
     }
     if (message.nodes) {
       obj.nodes = message.nodes.map((e) =>
@@ -1687,14 +1862,99 @@ export const CumulativeCallGraphReply = {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
+      [key: number]: ScopeDesc;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[Number(key)] = ScopeDesc.fromPartial(value);
+      }
+      return acc;
+    }, {});
     message.nodes =
       object.nodes?.map((e) => CumulativeCallGraphNode.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseProcessLogRequest: object = {};
+const baseCumulativeCallGraphReply_ScopesEntry: object = { key: 0 };
+
+export const CumulativeCallGraphReply_ScopesEntry = {
+  encode(
+    message: CumulativeCallGraphReply_ScopesEntry,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).uint32(message.key);
+    }
+    if (message.value !== undefined) {
+      ScopeDesc.encode(message.value, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): CumulativeCallGraphReply_ScopesEntry {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.uint32();
+          break;
+        case 2:
+          message.value = ScopeDesc.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CumulativeCallGraphReply_ScopesEntry {
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    message.key =
+      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromJSON(object.value)
+        : undefined;
+    return message;
+  },
+
+  toJSON(message: CumulativeCallGraphReply_ScopesEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined &&
+      (obj.value = message.value ? ScopeDesc.toJSON(message.value) : undefined);
+    return obj;
+  },
+
+  fromPartial<
+    I extends Exact<DeepPartial<CumulativeCallGraphReply_ScopesEntry>, I>
+  >(object: I): CumulativeCallGraphReply_ScopesEntry {
+    const message = {
+      ...baseCumulativeCallGraphReply_ScopesEntry,
+    } as CumulativeCallGraphReply_ScopesEntry;
+    message.key = object.key ?? 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? ScopeDesc.fromPartial(object.value)
+        : undefined;
+    return message;
+  },
+};
+
+const baseProcessLogRequest: object = { begin: 0, end: 0 };
 
 export const ProcessLogRequest = {
   encode(
@@ -1703,6 +1963,12 @@ export const ProcessLogRequest = {
   ): _m0.Writer {
     if (message.process !== undefined) {
       Process.encode(message.process, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.begin !== 0) {
+      writer.uint32(16).uint64(message.begin);
+    }
+    if (message.end !== 0) {
+      writer.uint32(24).uint64(message.end);
     }
     return writer;
   },
@@ -1716,6 +1982,12 @@ export const ProcessLogRequest = {
       switch (tag >>> 3) {
         case 1:
           message.process = Process.decode(reader, reader.uint32());
+          break;
+        case 2:
+          message.begin = longToNumber(reader.uint64() as Long);
+          break;
+        case 3:
+          message.end = longToNumber(reader.uint64() as Long);
           break;
         default:
           reader.skipType(tag & 7);
@@ -1731,6 +2003,12 @@ export const ProcessLogRequest = {
       object.process !== undefined && object.process !== null
         ? Process.fromJSON(object.process)
         : undefined;
+    message.begin =
+      object.begin !== undefined && object.begin !== null
+        ? Number(object.begin)
+        : 0;
+    message.end =
+      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
     return message;
   },
 
@@ -1740,6 +2018,8 @@ export const ProcessLogRequest = {
       (obj.process = message.process
         ? Process.toJSON(message.process)
         : undefined);
+    message.begin !== undefined && (obj.begin = Math.round(message.begin));
+    message.end !== undefined && (obj.end = Math.round(message.end));
     return obj;
   },
 
@@ -1751,6 +2031,8 @@ export const ProcessLogRequest = {
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
         : undefined;
+    message.begin = object.begin ?? 0;
+    message.end = object.end ?? 0;
     return message;
   },
 };
@@ -1818,7 +2100,7 @@ export const LogEntry = {
   },
 };
 
-const baseProcessLogReply: object = {};
+const baseProcessLogReply: object = { begin: 0, end: 0 };
 
 export const ProcessLogReply = {
   encode(
@@ -1827,6 +2109,12 @@ export const ProcessLogReply = {
   ): _m0.Writer {
     for (const v of message.entries) {
       LogEntry.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.begin !== 0) {
+      writer.uint32(16).uint64(message.begin);
+    }
+    if (message.end !== 0) {
+      writer.uint32(24).uint64(message.end);
     }
     return writer;
   },
@@ -1842,6 +2130,12 @@ export const ProcessLogReply = {
         case 1:
           message.entries.push(LogEntry.decode(reader, reader.uint32()));
           break;
+        case 2:
+          message.begin = longToNumber(reader.uint64() as Long);
+          break;
+        case 3:
+          message.end = longToNumber(reader.uint64() as Long);
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1855,6 +2149,12 @@ export const ProcessLogReply = {
     message.entries = (object.entries ?? []).map((e: any) =>
       LogEntry.fromJSON(e)
     );
+    message.begin =
+      object.begin !== undefined && object.begin !== null
+        ? Number(object.begin)
+        : 0;
+    message.end =
+      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
     return message;
   },
 
@@ -1867,6 +2167,8 @@ export const ProcessLogReply = {
     } else {
       obj.entries = [];
     }
+    message.begin !== undefined && (obj.begin = Math.round(message.begin));
+    message.end !== undefined && (obj.end = Math.round(message.end));
     return obj;
   },
 
@@ -1875,6 +2177,136 @@ export const ProcessLogReply = {
   ): ProcessLogReply {
     const message = { ...baseProcessLogReply } as ProcessLogReply;
     message.entries = object.entries?.map((e) => LogEntry.fromPartial(e)) || [];
+    message.begin = object.begin ?? 0;
+    message.end = object.end ?? 0;
+    return message;
+  },
+};
+
+const baseProcessNbLogEntriesRequest: object = { processId: "" };
+
+export const ProcessNbLogEntriesRequest = {
+  encode(
+    message: ProcessNbLogEntriesRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ProcessNbLogEntriesRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessNbLogEntriesRequest {
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    return message;
+  },
+
+  toJSON(message: ProcessNbLogEntriesRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesRequest>, I>>(
+    object: I
+  ): ProcessNbLogEntriesRequest {
+    const message = {
+      ...baseProcessNbLogEntriesRequest,
+    } as ProcessNbLogEntriesRequest;
+    message.processId = object.processId ?? "";
+    return message;
+  },
+};
+
+const baseProcessNbLogEntriesReply: object = { count: 0 };
+
+export const ProcessNbLogEntriesReply = {
+  encode(
+    message: ProcessNbLogEntriesReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.count !== 0) {
+      writer.uint32(8).uint64(message.count);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ProcessNbLogEntriesReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.count = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessNbLogEntriesReply {
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    message.count =
+      object.count !== undefined && object.count !== null
+        ? Number(object.count)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: ProcessNbLogEntriesReply): unknown {
+    const obj: any = {};
+    message.count !== undefined && (obj.count = Math.round(message.count));
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesReply>, I>>(
+    object: I
+  ): ProcessNbLogEntriesReply {
+    const message = {
+      ...baseProcessNbLogEntriesReply,
+    } as ProcessNbLogEntriesReply;
+    message.count = object.count ?? 0;
     return message;
   },
 };
@@ -2493,6 +2925,10 @@ export interface PerformanceAnalytics {
     request: DeepPartial<ProcessLogRequest>,
     metadata?: grpc.Metadata
   ): Promise<ProcessLogReply>;
+  nb_process_log_entries(
+    request: DeepPartial<ProcessNbLogEntriesRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessNbLogEntriesReply>;
   list_process_streams(
     request: DeepPartial<ListProcessStreamsRequest>,
     metadata?: grpc.Metadata
@@ -2530,6 +2966,7 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     this.find_process = this.find_process.bind(this);
     this.list_process_children = this.list_process_children.bind(this);
     this.list_process_log_entries = this.list_process_log_entries.bind(this);
+    this.nb_process_log_entries = this.nb_process_log_entries.bind(this);
     this.list_process_streams = this.list_process_streams.bind(this);
     this.list_recent_processes = this.list_recent_processes.bind(this);
     this.search_processes = this.search_processes.bind(this);
@@ -2589,6 +3026,17 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticslist_process_log_entriesDesc,
       ProcessLogRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  nb_process_log_entries(
+    request: DeepPartial<ProcessNbLogEntriesRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessNbLogEntriesReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticsnb_process_log_entriesDesc,
+      ProcessNbLogEntriesRequest.fromPartial(request),
       metadata
     );
   }
@@ -2769,6 +3217,29 @@ export const PerformanceAnalyticslist_process_log_entriesDesc: UnaryMethodDefini
       deserializeBinary(data: Uint8Array) {
         return {
           ...ProcessLogReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticsnb_process_log_entriesDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "nb_process_log_entries",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return ProcessNbLogEntriesRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessNbLogEntriesReply.decode(data),
           toObject() {
             return this;
           },

@@ -41,7 +41,8 @@ async fn create_processes_table(connection: &mut sqlx::AnyConnection) -> Result<
 }
 
 async fn create_streams_table(connection: &mut sqlx::AnyConnection) -> Result<()> {
-    // storing tags as text is simplistic - we should move to a tags table if we keep the telemetry metadata in a SQL db
+    // storing tags as text is simplistic - we should move to a tags table if we
+    // keep the telemetry metadata in a SQL db
     let sql = "
          CREATE TABLE streams(
                   stream_id VARCHAR(36), 

@@ -1,5 +1,5 @@
-//! Base Windowing plugin, provides base events to be sent by the inherent implementation
-//!
+//! Base Windowing plugin, provides base events to be sent by the inherent
+//! implementation
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -58,6 +58,7 @@
 #![allow()]
 
 mod event;
+mod raw_window_handle;
 mod system;
 mod window;
 mod windows;
@@ -66,6 +67,8 @@ pub use event::*;
 pub use system::*;
 pub use window::*;
 pub use windows::*;
+
+pub use crate::raw_window_handle::*;
 
 pub mod prelude {
     #[doc(hidden)]
@@ -113,9 +116,8 @@ impl Plugin for WindowPlugin {
             let window_descriptor = app
                 .world
                 .get_resource::<WindowDescriptor>()
-                .map_or_else(WindowDescriptor::default, |descriptor| {
-                    (*descriptor).clone()
-                });
+                .map(|descriptor| (*descriptor).clone())
+                .unwrap_or_default();
             let mut create_window_event = app
                 .world
                 .get_resource_mut::<Events<CreateWindow>>()

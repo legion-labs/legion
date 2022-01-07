@@ -25,8 +25,9 @@ use crate::{
 ///
 /// # Derive
 ///
-/// This trait can be derived with the [`derive@super::SystemParam`] macro. The only requirement
-/// is that every struct field must also implement `SystemParam`.
+/// This trait can be derived with the [`derive@super::SystemParam`] macro. The
+/// only requirement is that every struct field must also implement
+/// `SystemParam`.
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -50,14 +51,17 @@ pub trait SystemParam: Sized {
     type Fetch: for<'w, 's> SystemParamFetch<'w, 's>;
 }
 
+pub type SystemParamItem<'w, 's, P> = <<P as SystemParam>::Fetch as SystemParamFetch<'w, 's>>::Item;
+
 /// The state of a [`SystemParam`].
 ///
 /// # Safety
 ///
-/// It is the implementor's responsibility to ensure `system_meta` is populated with the _exact_
-/// [`World`] access used by the `SystemParamState` (and associated [`SystemParamFetch`]).
-/// Additionally, it is the implementor's responsibility to ensure there is no
-/// conflicting access across all `SystemParams`.
+/// It is the implementor's responsibility to ensure `system_meta` is populated
+/// with the _exact_ [`World`] access used by the `SystemParamState` (and
+/// associated [`SystemParamFetch`]). Additionally, it is the implementor's
+/// responsibility to ensure there is no conflicting access across all
+/// `SystemParams`.
 pub unsafe trait SystemParamState: Send + Sync + 'static {
     /// Values of this type can be used to adjust the behavior of the
     /// system parameter. For instance, this can be used to pass
@@ -83,15 +87,17 @@ pub unsafe trait SystemParamState: Send + Sync + 'static {
 /// A [`SystemParamFetch`] that only reads a given [`World`].
 ///
 /// # Safety
-/// This must only be implemented for [`SystemParamFetch`] impls that exclusively read the World passed in to [`SystemParamFetch::get_param`]
+/// This must only be implemented for [`SystemParamFetch`] impls that
+/// exclusively read the World passed in to [`SystemParamFetch::get_param`]
 pub unsafe trait ReadOnlySystemParamFetch {}
 
 pub trait SystemParamFetch<'world, 'state>: SystemParamState {
     type Item;
     /// # Safety
     ///
-    /// This call might access any of the input parameters in an unsafe way. Make sure the data
-    /// access is safe in the context of the system scheduler.
+    /// This call might access any of the input parameters in an unsafe way.
+    /// Make sure the data access is safe in the context of the system
+    /// scheduler.
     unsafe fn get_param(
         state: &'state mut Self,
         system_meta: &SystemMeta,
@@ -116,8 +122,9 @@ where
 {
 }
 
-// SAFE: Relevant query ComponentId and ArchetypeComponentId access is applied to SystemMeta. If
-// this QueryState conflicts with any prior access, a panic will occur.
+// SAFE: Relevant query ComponentId and ArchetypeComponentId access is applied
+// to SystemMeta. If this QueryState conflicts with any prior access, a panic
+// will occur.
 unsafe impl<Q: WorldQuery + 'static, F: WorldQuery + 'static> SystemParamState for QueryState<Q, F>
 where
     F::Fetch: FilterFetch,
@@ -188,7 +195,7 @@ fn assert_component_access_compatibility(
         .map(|component_id| world.components.get_info(component_id).unwrap().name())
         .collect::<Vec<&str>>();
     let accesses = conflicting_components.join(", ");
-    panic!("Query<{}, {}> in system {} accesses component(s) {} in a way that conflicts with a previous system parameter. Allowing this would break Rust's mutability rules. Consider using `Without<T>` to create disjoint Queries or merging conflicting Queries into a `QuerySet`.",
+    panic!("error[B0001]: Query<{}, {}> in system {} accesses component(s) {} in a way that conflicts with a previous system parameter. Consider using `Without<T>` to create disjoint Queries or merging conflicting Queries into a `QuerySet`.",
                 query_type, filter_type, system_name, accesses);
 }
 
@@ -214,7 +221,8 @@ impl<T> Resource for T where T: Send + Sync + 'static {}
 ///
 /// # Panics
 ///
-/// Panics when used as a [`SystemParameter`](SystemParam) if the resource does not exist.
+/// Panics when used as a [`SystemParameter`](SystemParam) if the resource does
+/// not exist.
 ///
 /// Use `Option<Res<T>>` instead if the resource might not always exist.
 pub struct Res<'w, T: Resource> {
@@ -237,14 +245,14 @@ where
 }
 
 impl<'w, T: Resource> Res<'w, T> {
-    /// Returns true if (and only if) this resource been added since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been added since the last
+    /// execution of this system.
     pub fn is_added(&self) -> bool {
         self.ticks.is_added(self.last_change_tick, self.change_tick)
     }
 
-    /// Returns true if (and only if) this resource been changed since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been changed since the last
+    /// execution of this system.
     pub fn is_changed(&self) -> bool {
         self.ticks
             .is_changed(self.last_change_tick, self.change_tick)
@@ -280,8 +288,8 @@ impl<'a, T: Resource> SystemParam for Res<'a, T> {
     type Fetch = ResState<T>;
 }
 
-// SAFE: Res ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this Res
-// conflicts with any prior access, a panic will occur.
+// SAFE: Res ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this Res conflicts with any prior access, a panic will occur.
 unsafe impl<T: Resource> SystemParamState for ResState<T> {
     type Config = ();
 
@@ -290,7 +298,7 @@ unsafe impl<T: Resource> SystemParamState for ResState<T> {
         let combined_access = system_meta.component_access_set.combined_access_mut();
         if combined_access.has_write(component_id) {
             panic!(
-                "Res<{}> in system {} conflicts with a previous ResMut<{0}> access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: Res<{}> in system {} conflicts with a previous ResMut<{0}> access. Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         }
         combined_access.add_read(component_id);
@@ -391,8 +399,8 @@ impl<'a, T: Resource> SystemParam for ResMut<'a, T> {
     type Fetch = ResMutState<T>;
 }
 
-// SAFE: Res ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this Res
-// conflicts with any prior access, a panic will occur.
+// SAFE: Res ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this Res conflicts with any prior access, a panic will occur.
 unsafe impl<T: Resource> SystemParamState for ResMutState<T> {
     type Config = ();
 
@@ -401,11 +409,11 @@ unsafe impl<T: Resource> SystemParamState for ResMutState<T> {
         let combined_access = system_meta.component_access_set.combined_access_mut();
         if combined_access.has_write(component_id) {
             panic!(
-                "ResMut<{}> in system {} conflicts with a previous ResMut<{0}> access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: ResMut<{}> in system {} conflicts with a previous ResMut<{0}> access. Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         } else if combined_access.has_read(component_id) {
             panic!(
-                "ResMut<{}> in system {} conflicts with a previous Res<{0}> access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: ResMut<{}> in system {} conflicts with a previous Res<{0}> access. Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         }
         combined_access.add_write(component_id);
@@ -535,8 +543,9 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
 
 /// A system local [`SystemParam`].
 ///
-/// A local may only be accessed by the system itself and is therefore not visible to other systems.
-/// If two or more systems specify the same local type each will have their own unique local.
+/// A local may only be accessed by the system itself and is therefore not
+/// visible to other systems. If two or more systems specify the same local type
+/// each will have their own unique local.
 ///
 /// # Examples
 ///
@@ -623,7 +632,8 @@ impl<'w, 's, T: Resource + FromWorld> SystemParamFetch<'w, 's> for LocalState<T>
     }
 }
 
-/// A [`SystemParam`] that grants access to the entities that had their `T` [`Component`] removed.
+/// A [`SystemParam`] that grants access to the entities that had their `T`
+/// [`Component`] removed.
 ///
 /// # Examples
 ///
@@ -650,7 +660,8 @@ pub struct RemovedComponents<'a, T: Component> {
 }
 
 impl<'a, T: Component> RemovedComponents<'a, T> {
-    /// Returns an iterator over the entities that had their `T` [`Component`] removed.
+    /// Returns an iterator over the entities that had their `T` [`Component`]
+    /// removed.
     pub fn iter(&self) -> std::iter::Copied<std::slice::Iter<'_, Entity>> {
         self.world.removed_with_id(self.component_id)
     }
@@ -669,8 +680,8 @@ impl<'a, T: Component> SystemParam for RemovedComponents<'a, T> {
     type Fetch = RemovedComponentsState<T>;
 }
 
-// SAFE: no component access. removed component entity collections can be read in parallel and are
-// never mutably borrowed during system execution
+// SAFE: no component access. removed component entity collections can be read
+// in parallel and are never mutably borrowed during system execution
 unsafe impl<T: Component> SystemParamState for RemovedComponentsState<T> {
     type Config = ();
 
@@ -704,10 +715,10 @@ impl<'w, 's, T: Component> SystemParamFetch<'w, 's> for RemovedComponentsState<T
 
 /// Shared borrow of a non-[`Send`] resource.
 ///
-/// Only `Send` resources may be accessed with the [`Res`] [`SystemParam`]. In case that the
-/// resource does not implement `Send`, this `SystemParam` wrapper can be used. This will instruct
-/// the scheduler to instead run the system on the main thread so that it doesn't send the resource
-/// over to another thread.
+/// Only `Send` resources may be accessed with the [`Res`] [`SystemParam`]. In
+/// case that the resource does not implement `Send`, this `SystemParam` wrapper
+/// can be used. This will instruct the scheduler to instead run the system on
+/// the main thread so that it doesn't send the resource over to another thread.
 ///
 /// # Panics
 ///
@@ -734,14 +745,14 @@ where
 }
 
 impl<'w, T: 'static> NonSend<'w, T> {
-    /// Returns true if (and only if) this resource been added since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been added since the last
+    /// execution of this system.
     pub fn is_added(&self) -> bool {
         self.ticks.is_added(self.last_change_tick, self.change_tick)
     }
 
-    /// Returns true if (and only if) this resource been changed since the last execution of this
-    /// system.
+    /// Returns true if (and only if) this resource been changed since the last
+    /// execution of this system.
     pub fn is_changed(&self) -> bool {
         self.ticks
             .is_changed(self.last_change_tick, self.change_tick)
@@ -766,8 +777,9 @@ impl<'a, T: 'static> SystemParam for NonSend<'a, T> {
     type Fetch = NonSendState<T>;
 }
 
-// SAFE: NonSendComponentId and ArchetypeComponentId access is applied to SystemMeta. If this
-// NonSend conflicts with any prior access, a panic will occur.
+// SAFE: NonSendComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this NonSend conflicts with any prior access, a panic will
+// occur.
 unsafe impl<T: 'static> SystemParamState for NonSendState<T> {
     type Config = ();
 
@@ -778,7 +790,7 @@ unsafe impl<T: 'static> SystemParamState for NonSendState<T> {
         let combined_access = system_meta.component_access_set.combined_access_mut();
         if combined_access.has_write(component_id) {
             panic!(
-                "NonSend<{}> in system {} conflicts with a previous mutable resource access ({0}). Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: NonSend<{}> in system {} conflicts with a previous mutable resource access ({0}). Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         }
         combined_access.add_read(component_id);
@@ -882,8 +894,9 @@ impl<'a, T: 'static> SystemParam for NonSendMut<'a, T> {
     type Fetch = NonSendMutState<T>;
 }
 
-// SAFE: NonSendMut ComponentId and ArchetypeComponentId access is applied to SystemMeta. If this
-// NonSendMut conflicts with any prior access, a panic will occur.
+// SAFE: NonSendMut ComponentId and ArchetypeComponentId access is applied to
+// SystemMeta. If this NonSendMut conflicts with any prior access, a panic will
+// occur.
 unsafe impl<T: 'static> SystemParamState for NonSendMutState<T> {
     type Config = ();
 
@@ -894,11 +907,11 @@ unsafe impl<T: 'static> SystemParamState for NonSendMutState<T> {
         let combined_access = system_meta.component_access_set.combined_access_mut();
         if combined_access.has_write(component_id) {
             panic!(
-                "NonSendMut<{}> in system {} conflicts with a previous mutable resource access ({0}). Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: NonSendMut<{}> in system {} conflicts with a previous mutable resource access ({0}). Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         } else if combined_access.has_read(component_id) {
             panic!(
-                "NonSendMut<{}> in system {} conflicts with a previous immutable resource access ({0}). Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "error[B0002]: NonSendMut<{}> in system {} conflicts with a previous immutable resource access ({0}). Consider removing the duplicate access.",
                 std::any::type_name::<T>(), system_meta.name);
         }
         combined_access.add_write(component_id);
@@ -1233,3 +1246,12 @@ macro_rules! impl_system_param_tuple {
 }
 
 all_tuples!(impl_system_param_tuple, 0, 16, P);
+
+pub mod lifetimeless {
+    pub type SQuery<Q, F = ()> = super::Query<'static, 'static, Q, F>;
+    pub type Read<T> = &'static T;
+    pub type Write<T> = &'static mut T;
+    pub type SRes<T> = super::Res<'static, T>;
+    pub type SResMut<T> = super::ResMut<'static, T>;
+    pub type SCommands = crate::system::Commands<'static, 'static>;
+}

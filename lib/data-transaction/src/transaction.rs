@@ -1,11 +1,6 @@
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use log::{info, warn};
+use lgn_telemetry::{info, warn};
 
-use crate::create_resource_operation::CreateResourceOperation;
-use crate::delete_resource_operation::DeleteResourceOperation;
-use crate::update_property_operation::UpdatePropertyOperation;
 use crate::LockContext;
 
 /// Definition of a Transaction
@@ -17,7 +12,7 @@ pub struct Transaction {
 }
 
 #[async_trait]
-pub(crate) trait TransactionOperation {
+pub trait TransactionOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
 }
@@ -47,7 +42,8 @@ impl Transaction {
             }
         }
 
-        // If an ops failed, save the error state to rollback all the previous transaction's operations
+        // If an ops failed, save the error state to rollback all the previous
+        // transaction's operations
         if let Some((op_err, rollback_index)) = rollback_state {
             warn!("Transaction {} failed to commit: {}", &self.id, op_err);
             for op in self.operations.iter().take(rollback_index).rev() {
@@ -103,42 +99,9 @@ impl Transaction {
         }
     }
 
-    /// Queue the Creation of a new Resource, return its `ResourceId`
-    pub fn create_resource(
-        &mut self,
-        resource_path: ResourcePathName,
-        resource_type: ResourceType,
-    ) -> anyhow::Result<ResourceTypeAndId> {
-        let resource_id = ResourceTypeAndId {
-            t: resource_type,
-            id: ResourceId::new(),
-        };
-        self.operations.push(Box::new(CreateResourceOperation::new(
-            resource_id,
-            resource_path,
-        )));
-        Ok(resource_id)
-    }
-
-    /// Queue the Delete of the Resources
-    pub fn delete_resource(&mut self, resource_id: ResourceTypeAndId) -> anyhow::Result<()> {
-        self.operations
-            .push(Box::new(DeleteResourceOperation::new(resource_id)));
-        Ok(())
-    }
-
-    /// Queue Update of the Property of a Resource using Reflection
-    pub fn update_property(
-        &mut self,
-        resource_id: ResourceTypeAndId,
-        property_name: &str,
-        new_value: &str,
-    ) -> anyhow::Result<()> {
-        self.operations.push(Box::new(UpdatePropertyOperation::new(
-            resource_id,
-            property_name,
-            new_value,
-        )));
-        Ok(())
+    /// Add a new operation to the transaction
+    pub fn add_operation(mut self, op: Box<dyn TransactionOperation + Send + Sync>) -> Self {
+        self.operations.push(op);
+        self
     }
 }

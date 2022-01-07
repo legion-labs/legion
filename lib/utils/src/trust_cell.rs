@@ -1,10 +1,13 @@
-// This is originally from the shred project. (I wanted to avoid pulling in all dependencies)
+// This is originally from the shred project. (I wanted to avoid pulling in all
+// dependencies)
 //
-// Shouldn't have any functional changes (i.e. added some allow dead_code, ran cargo fmt)
+// Shouldn't have any functional changes (i.e. added some allow dead_code, ran
+// cargo fmt)
 //
 // Original source available on github: https://github.com/slide-rs/shred
 //
-// shred is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
+// shred is distributed under the terms of both the MIT license and the Apache
+// License (Version 2.0).
 //
 // See LICENSE-APACHE and LICENSE-MIT.
 
@@ -63,9 +66,10 @@ pub struct Ref<'a, T: ?Sized> {
 impl<'a, T: ?Sized> Ref<'a, T> {
     // ADDED: I had some code like this:
     //
-    //   let w : &'a systems::TrustCell<resource::ResourceMap> = &*self.resource_map;
-    //   let w_borrow : systems::trust_cell::Ref<'a, resource::ResourceMap> = w.borrow();
-    //   let w_ref : &'a resource::ResourceMap = &*w_borrow;
+    //   let w : &'a systems::TrustCell<resource::ResourceMap> =
+    // &*self.resource_map;   let w_borrow : systems::trust_cell::Ref<'a,
+    // resource::ResourceMap> = w.borrow();   let w_ref : &'a
+    // resource::ResourceMap = &*w_borrow;
     //
     // It did not compile because it complained w_borrow did not live long enough.
     // Adding this getter allowed me to use the ref as-is.

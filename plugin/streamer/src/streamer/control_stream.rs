@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use lgn_ecs::prelude::*;
+use lgn_telemetry::error;
 use lgn_telemetry::prelude::*;
 use serde::Serialize;
-use webrtc::data::data_channel::RTCDataChannel;
+use webrtc::data_channel::RTCDataChannel;
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "control_msg")]
@@ -36,7 +37,7 @@ impl ControlStream {
 
             Ok(async move {
                 if let Err(err) = control_data_channel.send(&buffer).await {
-                    log::error!("Error sending hello message on control stream: {}", err);
+                    error!("Error sending hello message on control stream: {}", err);
                 }
             })
         } else {

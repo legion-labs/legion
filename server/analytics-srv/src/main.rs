@@ -3,8 +3,10 @@
 //! Feeds data to the analytics-web interface.
 //!
 //! Env variables:
-//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local telemetry directory
-//!
+//!  - `LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY` : local telemetry
+//!    directory
+//!  - `LEGION_TELEMETRY_CACHE_DIRECTORY` : local directory where reusable
+//!    computations will be stored
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -63,6 +65,7 @@
 #![allow()]
 
 mod analytics_service;
+mod cache;
 mod call_tree;
 mod cumulative_call_graph;
 mod metrics;
@@ -74,6 +77,7 @@ use anyhow::{Context, Result};
 use lgn_analytics::alloc_sql_pool;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
+use lgn_telemetry_sink::TelemetryGuard;
 use tonic::transport::Server;
 
 fn get_data_directory() -> Result<PathBuf> {
@@ -86,15 +90,14 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
-    let _telemetry_guard = TelemetrySystemGuard::new();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let _telemetry_guard = TelemetryGuard::new().unwrap();
     trace_scope!();
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;
-    let service = AnalyticsService::new(pool, data_dir);
-    log::info!("service allocated");
+    let service =
+        AnalyticsService::new(pool, data_dir).await.with_context(|| "allocating AnalyticsService")?;
+    info!("service allocated");
     Server::builder()
         .accept_http1(true)
         .add_service(tonic_web::enable(PerformanceAnalyticsServer::new(service)))

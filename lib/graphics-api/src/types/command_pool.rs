@@ -31,7 +31,7 @@ impl CommandPool {
         let platform_command_pool =
             VulkanCommandPool::new(&device_context, queue.platform_queue(), command_pool_def)
                 .map_err(|e| {
-                    log::error!("Error creating command pool {:?}", e);
+                    lgn_telemetry::error!("Error creating command pool {:?}", e);
                     ash::vk::Result::ERROR_UNKNOWN
                 })?;
 

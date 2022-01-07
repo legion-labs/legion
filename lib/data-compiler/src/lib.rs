@@ -127,18 +127,21 @@ impl Manifest {
         self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
     }
 
-    /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an offline [`Manifest`].
+    /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an
+    /// offline [`Manifest`].
     ///
-    /// Provided filter functor will be used to determine if a given asset should be included in the manifest.
+    /// Provided filter functor will be used to determine if a given asset
+    /// should be included in the manifest.
     ///
-    /// This is a temporary solution that will be replaced by a **packaging** process.
-    /// For now, we simply create a runtime manifest by filtering out non-asset resources
-    /// and by identifying content by `ResourceId` - which runtime operates on.
+    /// This is a temporary solution that will be replaced by a **packaging**
+    /// process. For now, we simply create a runtime manifest by filtering
+    /// out non-asset resources and by identifying content by `ResourceId` -
+    /// which runtime operates on.
     pub fn into_rt_manifest(
         self,
         filter: fn(&ResourcePathId) -> bool,
     ) -> lgn_data_runtime::manifest::Manifest {
-        let mut output = lgn_data_runtime::manifest::Manifest::default();
+        let output = lgn_data_runtime::manifest::Manifest::default();
 
         let runtime_resources = self
             .compiled_resources
@@ -245,4 +248,6 @@ impl fmt::Display for Locale {
 
 pub mod compiler_api;
 pub mod compiler_cmd;
+pub mod compiler_reflection;
+pub mod compiler_reg;
 pub mod compiler_utils;

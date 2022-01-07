@@ -1,25 +1,28 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::{sync::atomic::AtomicU64, sync::Mutex};
 
+use lgn_telemetry::trace;
 use raw_window_handle::HasRawWindowHandle;
 
 use super::deferred_drop::DeferredDropper;
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDeviceContext;
-#[cfg(any(feature = "vulkan"))]
-use crate::DeviceInfo;
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
-    DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
+    DescriptorSetLayout, DescriptorSetLayoutDef, DeviceInfo, ExtensionMode, Fence, GfxResult,
     GraphicsPipelineDef, Instance, Pipeline, PipelineReflection, Queue, QueueType, RootSignature,
     RootSignatureDef, Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef,
     ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
-/// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
-/// spec to understand precisely what these types mean
+/// Used to specify which type of physical device is preferred. It's recommended
+/// to read the Vulkan spec to understand precisely what these types mean
 ///
-/// Values here match `VkPhysicalDeviceType`, `DiscreteGpu` is the recommended default
+/// Values here match `VkPhysicalDeviceType`, `DiscreteGpu` is the recommended
+/// default
 #[derive(Copy, Clone, Debug)]
 pub enum PhysicalDeviceType {
     /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_OTHER`
@@ -50,7 +53,7 @@ pub(crate) struct DeviceContextInner {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+    pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 
     #[cfg(feature = "vulkan")]
     pub(crate) platform_device_context: VulkanDeviceContext,
@@ -73,14 +76,14 @@ impl std::fmt::Debug for DeviceContext {
 impl Drop for DeviceContextInner {
     fn drop(&mut self) {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
-            log::trace!("destroying device");
+            trace!("destroying device");
             self.deferred_dropper.destroy();
 
             #[cfg(any(feature = "vulkan"))]
             self.platform_device_context.destroy();
 
             //self.surface_loader.destroy_surface(self.surface, None);
-            log::trace!("destroyed device");
+            trace!("destroyed device");
         }
     }
 }
@@ -105,7 +108,7 @@ impl DeviceContextInner {
         let (platform_device_context, device_info) =
             VulkanDeviceContext::new(instance.platform_instance, windowing_mode, video_mode)
                 .map_err(|e| {
-                    log::error!("Error creating device context {:?}", e);
+                    lgn_telemetry::error!("Error creating device context {:?}", e);
                     ash::vk::Result::ERROR_UNKNOWN
                 })?;
 
@@ -154,7 +157,7 @@ impl Clone for DeviceContext {
                     .insert(create_index, create_backtrace);
             }
 
-            log::trace!("Cloned VulkanDeviceContext create_index {}", create_index);
+            trace!("Cloned VulkanDeviceContext create_index {}", create_index);
             create_index
         };
         Self {
@@ -289,6 +292,10 @@ impl DeviceContext {
     }
 
     pub fn device_info(&self) -> &DeviceInfo {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
+        #[cfg(any(feature = "vulkan"))]
         &self.inner.device_info
     }
 }

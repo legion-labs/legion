@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use http::{Request, Response};
 use lambda_http::handler;
-use log::info;
+use lgn_telemetry::info;
 use tonic::{body::BoxBody, transport::NamedService};
 use tower::Service;
 

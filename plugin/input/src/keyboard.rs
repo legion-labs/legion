@@ -5,6 +5,7 @@ use crate::{ElementState, Input};
 
 /// A key input event from a keyboard device
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct KeyboardInput {
     pub scan_code: u32,
     pub key_code: Option<KeyCode>,
@@ -178,10 +179,12 @@ pub enum KeyCode {
     Grave,
     Kana,
     Kanji,
+    /// The left alt key. Maps to left option on Mac.
     LAlt,
     LBracket,
     LControl,
     LShift,
+    /// The left Windows key. Maps to left Command on Mac.
     LWin,
     Mail,
     MediaSelect,
@@ -202,10 +205,12 @@ pub enum KeyCode {
     PlayPause,
     Power,
     PrevTrack,
+    /// The right alt key. Maps to right option on Mac.
     RAlt,
     RBracket,
     RControl,
     RShift,
+    /// The right Windows key. Maps to right Command on Mac.
     RWin,
     Semicolon,
     Slash,

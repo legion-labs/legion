@@ -17,7 +17,7 @@ use lgn_online::{
     authentication::{self, Authenticator, ClientTokenSet},
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
-use log::{error, info};
+use lgn_telemetry::{error, info};
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
@@ -57,7 +57,8 @@ static INIT: std::sync::Once = std::sync::Once::new();
 #[cfg(test)]
 fn setup_test_logger() {
     INIT.call_once(|| {
-        lgn_logger::Logger::init(lgn_logger::Config::default()).unwrap();
+        let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::new();
+        std::mem::forget(telemetry_guard);
     });
 }
 

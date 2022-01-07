@@ -3,20 +3,22 @@ use std::sync::{Arc, Mutex};
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
+use lgn_telemetry::{debug, warn};
 
 use crate::{backends::vulkan::VkQueueFamilyIndices, DeviceContext};
 
-/// Has the indexes for all the queue families we will need. It's possible that a single queue
-/// family will need to be shared across these usages
+/// Has the indexes for all the queue families we will need. It's possible that
+/// a single queue family will need to be shared across these usages
 ///
-/// The graphics queue ALWAYS supports transfer and compute operations. The queue families chosen
-/// here will try to be "dedicated" families. Sharing resources across families is complex and has
-/// overhead. It's completely reasonable to use the graphics queue family for everything for many
+/// The graphics queue ALWAYS supports transfer and compute operations. The
+/// queue families chosen here will try to be "dedicated" families. Sharing
+/// resources across families is complex and has overhead. It's completely
+/// reasonable to use the graphics queue family for everything for many
 /// applications.
 ///
-/// Present queue is not here because if we need a dedicated present queue, it will be found and
-/// used by the swapchain directly. There is a single global lock for all dedicated present queues
-/// on `DeviceContext`.
+/// Present queue is not here because if we need a dedicated present queue, it
+/// will be found and used by the swapchain directly. There is a single global
+/// lock for all dedicated present queues on `DeviceContext`.
 
 pub struct VkQueueInner {
     device_context: DeviceContext,
@@ -36,8 +38,9 @@ impl Drop for VkQueueInner {
     }
 }
 
-/// Represents a single queue within a family. These can be safely cloned/shared but all queues must
-/// be dropped before dropping their owning device. The queue has a lock so it is thread-safe
+/// Represents a single queue within a family. These can be safely cloned/shared
+/// but all queues must be dropped before dropping their owning device. The
+/// queue has a lock so it is thread-safe
 #[derive(Clone)]
 pub struct VkQueue {
     inner: Arc<VkQueueInner>,
@@ -73,8 +76,8 @@ impl VkQueue {
     }
 }
 
-// Intentionally doesn't hold a DeviceContext as this is indirectly held by DeviceContext and would
-// create a cyclical reference
+// Intentionally doesn't hold a DeviceContext as this is indirectly held by
+// DeviceContext and would create a cyclical reference
 struct UnallocatedQueueInner {
     queue_family_index: u32,
     queue_index: u32,
@@ -152,7 +155,8 @@ impl VkQueueAllocator {
         if self.allocator_config.allocation_strategy
             == VkQueueAllocationStrategy::ShareFirstQueueInFamily
         {
-            // Just wipe out anything that gets returned to us. We don't need these notifications.
+            // Just wipe out anything that gets returned to us. We don't need these
+            // notifications.
             if self.drop_rx.try_recv().is_ok() {
                 // Not needed, all of these are instance of available_queues[0]
             }
@@ -175,11 +179,13 @@ impl VkQueueAllocator {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VkQueueAllocationStrategy {
-    /// Find an appropriate queue family and use the 0th queue. Allocating a queue returns the same
-    /// one each time. These instances are shared/ref-counted
+    /// Find an appropriate queue family and use the 0th queue. Allocating a
+    /// queue returns the same one each time. These instances are
+    /// shared/ref-counted
     ShareFirstQueueInFamily,
-    /// Set aside N queues and treat them as an allocated/freed resource. Allocation may fail if
-    /// allocated queue count exceeds size of the pool
+    /// Set aside N queues and treat them as an allocated/freed resource.
+    /// Allocation may fail if allocated queue count exceeds size of the
+    /// pool
     Pool(u32),
 }
 
@@ -214,7 +220,7 @@ impl VkQueueRequirements {
                     first_queue_index,
                 };
             }
-            log::warn!(
+            warn!(
                 "Not enough available queues in queue family {} to create pool of size {}. Falling back to ShareFirstQueueInFamily behavior",
                 queue_family,
                 count
@@ -239,14 +245,14 @@ impl VkQueueRequirements {
         decode_allocation_strategy: VkQueueAllocationStrategy,
         encode_allocation_strategy: VkQueueAllocationStrategy,
     ) -> Self {
-        log::debug!(
+        debug!(
             "Determine required queue counts. Allocation strategies: Graphics: {:?}, Compute: {:?}, Transfer: {:?}",
             graphics_allocation_strategy,
             queue_allocation_strategy,
             transfer_allocation_strategy
         );
-        log::debug!("Queue family indices: {:?}", queue_family_indices);
-        log::debug!("Queue families: {:?}", all_queue_families);
+        debug!("Queue family indices: {:?}", queue_family_indices);
+        debug!("Queue families: {:?}", all_queue_families);
 
         let mut queue_counts = FnvHashMap::default();
         let graphics_allocation_config = Self::determine_queue_allocation_strategy(
@@ -290,24 +296,24 @@ impl VkQueueRequirements {
                     )
                 });
 
-        log::debug!("Queue counts: {:?}", queue_counts);
-        log::debug!(
+        debug!("Queue counts: {:?}", queue_counts);
+        debug!(
             "Graphics queue allocation config: {:?}",
             graphics_allocation_config
         );
-        log::debug!(
+        debug!(
             "Compute queue allocation config: {:?}",
             compute_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             transfer_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             decode_allocation_config
         );
-        log::debug!(
+        debug!(
             "Transfer queue allocation config: {:?}",
             encode_allocation_config
         );
@@ -338,7 +344,7 @@ impl VkQueueAllocatorSet {
         all_queue_families: &[ash::vk::QueueFamilyProperties],
         queue_requirements: VkQueueRequirements,
     ) -> Self {
-        log::debug!("Creating queue allocators");
+        debug!("Creating queue allocators");
 
         // let mut queue_allocators = FnvHashMap::default();
         let mut all_queues = FnvHashMap::default();

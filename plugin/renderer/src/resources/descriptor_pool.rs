@@ -1,31 +1,63 @@
+use bumpalo::Bump;
 use lgn_graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, DeviceContext,
-    GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider,
+    DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter, GfxResult,
 };
 
 use super::OnFrameEventHandler;
 use crate::RenderHandle;
 
-pub(crate) struct DescriptorPool {
-    heap: DescriptorHeap,
+pub struct DescriptorPool {
+    descriptor_heap: DescriptorHeap,
+    descriptor_heap_partition: RenderHandle<DescriptorHeapPartition>,
 }
 
 impl DescriptorPool {
-    pub(crate) fn new(device_context: &DeviceContext, heap_def: &DescriptorHeapDef) -> Self {
+    pub(crate) fn new(
+        descriptor_heap: DescriptorHeap,
+        heap_partition_def: &DescriptorHeapDef,
+    ) -> Self {
+        let descriptor_heap_partition = RenderHandle::new(
+            descriptor_heap
+                .alloc_partition(true, heap_partition_def)
+                .unwrap(),
+        );
         Self {
-            heap: device_context.create_descriptor_heap(heap_def).unwrap(),
+            descriptor_heap,
+            descriptor_heap_partition,
         }
     }
 
-    pub(crate) fn allocate_descriptor_set(
-        &mut self,
-        descriptor_set_layout: &DescriptorSetLayout,
-    ) -> GfxResult<DescriptorSetBufWriter> {
-        self.heap.allocate_descriptor_set(descriptor_set_layout)
+    pub fn descriptor_heap_partition_mut(&self) -> &DescriptorHeapPartition {
+        &self.descriptor_heap_partition
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.heap.reset().unwrap();
+    pub fn allocate_descriptor_set<'frame>(
+        &self,
+        descriptor_set_layout: &DescriptorSetLayout,
+        bump: &'frame Bump,
+    ) -> GfxResult<DescriptorSetWriter<'frame>> {
+        self.descriptor_heap_partition
+            .get_writer(descriptor_set_layout, bump)
+    }
+
+    pub fn write_descriptor_set<'frame>(
+        &self,
+        descriptor_set: &impl DescriptorSetDataProvider,
+        bump: &'frame Bump,
+    ) -> GfxResult<DescriptorSetHandle> {
+        self.descriptor_heap_partition.write(descriptor_set, bump)
+    }
+
+    fn reset(&self) {
+        self.descriptor_heap_partition.reset().unwrap();
+    }
+}
+
+impl Drop for DescriptorPool {
+    fn drop(&mut self) {
+        self.descriptor_heap
+            .free_partition(self.descriptor_heap_partition.take());
     }
 }
 
@@ -37,4 +69,4 @@ impl OnFrameEventHandler for DescriptorPool {
     fn on_end_frame(&mut self) {}
 }
 
-pub(crate) type DescriptorPoolHandle = RenderHandle<DescriptorPool>;
+pub type DescriptorPoolHandle = RenderHandle<DescriptorPool>;

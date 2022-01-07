@@ -120,6 +120,7 @@
       renderingContext.lineTo(x, y);
     }
     renderingContext.lineWidth = 2;
+    renderingContext.strokeStyle = "#ca2f0f";
     renderingContext.stroke();
   }
 

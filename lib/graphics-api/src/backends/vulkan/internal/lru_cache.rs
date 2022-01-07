@@ -9,9 +9,10 @@ pub struct LruCacheEntry<T: Clone> {
     last_usage: u64,
 }
 
-//NOTE: This has O(n) cost to evict oldest entry. But this is intended to be used for things that
-// are expensive to create and not a huge number of entries. It could be improved by adding a
-// priority queue, but then there is overhead per access instead of per create.
+//NOTE: This has O(n) cost to evict oldest entry. But this is intended to be
+// used for things that are expensive to create and not a huge number of
+// entries. It could be improved by adding a priority queue, but then there is
+// overhead per access instead of per create.
 pub struct LruCache<T: Clone> {
     entries: FnvHashMap<u64, LruCacheEntry<T>>,
     next_usage_index: u64,

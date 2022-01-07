@@ -1,9 +1,13 @@
+//! Transaction Operation to Update a Resource property through Reflection
+
 use async_trait::async_trait;
+use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
-pub(crate) struct UpdatePropertyOperation {
+/// Operation to update a Property Value through reflection
+pub struct UpdatePropertyOperation {
     resource_id: ResourceTypeAndId,
     property_name: String,
     new_value: String,
@@ -11,13 +15,14 @@ pub(crate) struct UpdatePropertyOperation {
 }
 
 impl UpdatePropertyOperation {
-    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Self {
-        Self {
+    /// Return a newly created `UpdatePropertyOperation`
+    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Box<Self> {
+        Box::new(Self {
             resource_id,
             property_name: property_name.into(),
             new_value: new_value.into(),
             old_value: None,
-        }
+        })
     }
 }
 
@@ -27,18 +32,25 @@ impl TransactionOperation for UpdatePropertyOperation {
         let resource_handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
-            .ok_or(Error::InvalidResourceReflection(self.resource_id))?;
+            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.t, resource_handle)
-            .ok_or(Error::InvalidResourceReflection(self.resource_id))?;
+            .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
+            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         if self.old_value.is_none() {
-            self.old_value = Some(reflection.read_property(self.property_name.as_str())?);
+            self.old_value = Some(get_property_as_json_string(
+                reflection,
+                self.property_name.as_str(),
+            )?);
         }
 
-        reflection.write_property(self.property_name.as_str(), self.new_value.as_str())?;
+        set_property_from_json_string(
+            reflection,
+            self.property_name.as_str(),
+            self.new_value.as_str(),
+        )?;
         ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
@@ -52,9 +64,14 @@ impl TransactionOperation for UpdatePropertyOperation {
 
             let reflection = ctx
                 .resource_registry
-                .get_resource_reflection_mut(self.resource_id.t, handle)
-                .ok_or(Error::InvalidResourceReflection(self.resource_id))?;
-            reflection.write_property(self.property_name.as_str(), old_value.as_str())?;
+                .get_resource_reflection_mut(self.resource_id.kind, handle)
+                .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
+
+            set_property_from_json_string(
+                reflection,
+                self.property_name.as_str(),
+                old_value.as_str(),
+            )?;
             ctx.changed_resources.insert(self.resource_id);
         }
         Ok(())

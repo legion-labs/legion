@@ -21,7 +21,7 @@ impl Queue {
     pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_queue = VulkanQueue::new(device_context, queue_type).map_err(|e| {
-            log::error!("Error creating buffer {:?}", e);
+            lgn_telemetry::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 
@@ -113,6 +113,9 @@ impl Queue {
         bind_pages: &[PagedBufferAllocation],
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
+        #[cfg(not(any(feature = "vulkan")))]
+        unimplemented!();
+
         #[cfg(any(feature = "vulkan"))]
         self.inner.platform_queue.commmit_sparse_bindings(
             prev_frame_semaphore,

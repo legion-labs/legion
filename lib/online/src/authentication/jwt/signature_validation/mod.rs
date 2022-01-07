@@ -16,8 +16,8 @@ pub enum ValidationResult<'a> {
 }
 
 impl ValidationResult<'_> {
-    /// Returns the current validation result or calls the specified function if the result is
-    /// `ValidationResult::Unsupported`.
+    /// Returns the current validation result or calls the specified function if
+    /// the result is `ValidationResult::Unsupported`.
     ///
     /// # Example
     ///
@@ -78,7 +78,8 @@ impl ValidationResult<'_> {
     }
 }
 
-/// A type implementing `SignatureValidation` is able to validate the signature of a JWT.
+/// A type implementing `SignatureValidation` is able to validate the signature
+/// of a JWT.
 pub trait SignatureValidation {
     fn validate_signature<'a>(
         &self,
@@ -106,8 +107,8 @@ impl SignatureValidation for NoSignatureValidation {
 }
 /// Chains two `SignatureValidation`s that will be tried in sequence.
 ///
-/// If the first `SignatureValidation` returns `ValidationResult::Unsupported`, the second one will
-/// be tried.
+/// If the first `SignatureValidation` returns `ValidationResult::Unsupported`,
+/// the second one will be tried.
 pub struct SignatureValidationChain<First, Second> {
     first: First,
     second: Second,
@@ -143,8 +144,8 @@ where
 
 /// Chains any number  of `SignatureValidation`s that will be tried in sequence.
 ///
-/// The first `SignatureValidation` that doesn't return `ValidationResult::Unsupported` will stop
-/// the chain.
+/// The first `SignatureValidation` that doesn't return
+/// `ValidationResult::Unsupported` will stop the chain.
 #[macro_export]
 macro_rules! chain {
     ($x:expr) => {

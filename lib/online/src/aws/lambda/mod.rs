@@ -1,9 +1,9 @@
-use log::error;
+use lgn_telemetry::{error, info};
 
 pub mod api_gateway;
 
-/// Run a lambda once locally by expecting a JSON event payload on the specified reader, and writing
-/// the JSON event response to the specified writer.
+/// Run a lambda once locally by expecting a JSON event payload on the specified
+/// reader, and writing the JSON event response to the specified writer.
 ///
 /// # Examples
 ///
@@ -74,7 +74,7 @@ where
     O: serde::Serialize,
 {
     if !is_running_as_lambda() {
-        log::info!("`AWS_LAMBDA_RUNTIME_API` is not set, running locally and expecting event as JSON on stdin");
+        info!("`AWS_LAMBDA_RUNTIME_API` is not set, running locally and expecting event as JSON on stdin");
         run_lambda_once(handler, std::io::stdin(), &mut std::io::stdout())
             .await
             .map_err(|err| {

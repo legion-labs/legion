@@ -7,19 +7,24 @@ use lgn_utils::HashSet;
 
 /// A "press-able" input of type `T`.
 ///
-/// This type can be used as a resource to keep the current state of an input, by reacting to
-/// events from the input. For a given input value:
+/// This type can be used as a resource to keep the current state of an input,
+/// by reacting to events from the input. For a given input value:
 ///
 /// * [`Input::pressed`] will return `true` between a press and a release event.
-/// * [`Input::just_pressed`] will return `true` for one frame after a press event.
-/// * [`Input::just_released`] will return `true` for one frame after a release event.
+/// * [`Input::just_pressed`] will return `true` for one frame after a press
+///   event.
+/// * [`Input::just_released`] will return `true` for one frame after a release
+///   event.
 ///
-/// In case multiple systems are checking for [`Input::just_pressed`] or [`Input::just_released`]
-/// but only one should react, for example in the case of triggering
-/// [`State`] change, you should consider clearing the input state, either by:
+/// In case multiple systems are checking for [`Input::just_pressed`] or
+/// [`Input::just_released`] but only one should react, for example in the case
+/// of triggering [`State`] change, you should consider clearing the input
+/// state, either by:
 ///
-/// * Using [`Input::clear_just_pressed`] or [`Input::clear_just_released`] instead.
-/// * Calling [`Input::clear`] or [`Input::reset`] immediately after the state change.
+/// * Using [`Input::clear_just_pressed`] or [`Input::clear_just_released`]
+///   instead.
+/// * Calling [`Input::clear`] or [`Input::reset`] immediately after the state
+///   change.
 ///
 /// ## Notes when adding this resource for a new input type
 ///
@@ -27,7 +32,8 @@ use lgn_utils::HashSet;
 ///
 /// * Call the [`Input::press`] method for each press event.
 /// * Call the [`Input::release`] method for each release event.
-/// * Call the [`Input::clear`] method at each frame start, before processing events.
+/// * Call the [`Input::clear`] method at each frame start, before processing
+///   events.
 #[derive(Debug)]
 pub struct Input<T> {
     pressed: HashSet<T>,
@@ -84,9 +90,10 @@ where
         inputs.into_iter().any(|it| self.just_pressed(it))
     }
 
-    /// Clear the "just pressed" state of `input`. Future calls to [`Input::just_pressed`] for the
-    /// given input will return false until a new press event occurs.
-    /// Returns true if `input` is currently "just pressed"
+    /// Clear the "just pressed" state of `input`. Future calls to
+    /// [`Input::just_pressed`] for the given input will return false until
+    /// a new press event occurs. Returns true if `input` is currently "just
+    /// pressed"
     pub fn clear_just_pressed(&mut self, input: T) -> bool {
         self.just_pressed.remove(&input)
     }
@@ -101,9 +108,10 @@ where
         inputs.into_iter().any(|it| self.just_released(it))
     }
 
-    /// Clear the "just released" state of `input`. Future calls to [`Input::just_released`] for the
-    /// given input will return false until a new release event occurs.
-    /// Returns true if `input` is currently "just released"
+    /// Clear the "just released" state of `input`. Future calls to
+    /// [`Input::just_released`] for the given input will return false until
+    /// a new release event occurs. Returns true if `input` is currently
+    /// "just released"
     pub fn clear_just_released(&mut self, input: T) -> bool {
         self.just_released.remove(&input)
     }

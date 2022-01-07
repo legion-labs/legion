@@ -39,11 +39,13 @@ impl ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
-    /// The path the resource was compiled from, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")
+    /// The path the resource was compiled from, i.e.:
+    /// "ResourcePathId("anim.fbx").push("anim.offline")
     pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: AssetHash,
     pub(crate) source_hash: AssetHash,
-    /// The path the resource was compiled into, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
+    /// The path the resource was compiled into, i.e.:
+    /// "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_checksum: Checksum,
     pub(crate) compiled_size: usize,
@@ -219,11 +221,21 @@ impl BuildIndex {
             Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
 
         if !project_path.exists() {
-            return Err(Error::InvalidProject);
+            return Err(Error::InvalidProject(project_path));
         }
 
-        if source_content.version != version || output_content.version != version {
-            return Err(Error::VersionMismatch);
+        if source_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: source_content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        if output_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: output_content.version,
+                expected: version.to_owned(),
+            });
         }
 
         Ok(Self {
@@ -237,7 +249,7 @@ impl BuildIndex {
 
     pub(crate) fn open_project(&self) -> Result<Project, Error> {
         let project_path = self.project_path()?;
-        Project::open(project_path).map_err(|_e| Error::InvalidProject)
+        Project::open(&project_path).map_err(|_e| Error::InvalidProject(project_path))
     }
 
     /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
@@ -247,7 +259,7 @@ impl BuildIndex {
     ) -> Result<PathBuf, Error> {
         let project_path = buildindex_dir.join(projectindex_path);
         if !project_path.exists() {
-            Err(Error::InvalidProject)
+            Err(Error::InvalidProject(project_path))
         } else {
             Ok(project_path)
         }
@@ -257,7 +269,8 @@ impl BuildIndex {
         Self::construct_project_path(&self.buildindex_dir, &self.source_content.project_index)
     }
 
-    /// Create an ordered build graph with edges directed towards `compile_path`.
+    /// Create an ordered build graph with edges directed towards
+    /// `compile_path`.
     pub(crate) fn generate_build_graph(
         &self,
         compile_path: ResourcePathId,
@@ -571,7 +584,7 @@ mod tests {
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            t: refs_resource::TestResource::TYPE,
+            kind: refs_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);
@@ -627,7 +640,7 @@ mod tests {
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            t: refs_resource::TestResource::TYPE,
+            kind: refs_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);

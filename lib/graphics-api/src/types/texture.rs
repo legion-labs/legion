@@ -29,8 +29,8 @@ impl Drop for TextureInner {
     }
 }
 
-/// Holds the `vk::Image` and allocation as well as a few `vk::ImageViews` depending on the
-/// provided `ResourceType` in the `texture_def`.
+/// Holds the `vk::Image` and allocation as well as a few `vk::ImageViews`
+/// depending on the provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct Texture {
     pub(crate) inner: Drc<TextureInner>,
@@ -73,7 +73,8 @@ impl Texture {
         self.inner.texture_id
     }
 
-    // Command buffers check this to see if an image needs to be transitioned from UNDEFINED
+    // Command buffers check this to see if an image needs to be transitioned from
+    // UNDEFINED
     #[cfg(any(feature = "vulkan"))]
     pub(crate) fn take_is_undefined_layout(&self) -> bool {
         self.inner

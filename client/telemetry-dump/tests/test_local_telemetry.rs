@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::*;
-use lgn_analytics::*;
-use lgn_test_utils::*;
+use anyhow::{Context, Result};
+use lgn_analytics::{alloc_sql_pool, find_process};
+use lgn_test_utils::{create_test_dir, syscall};
 use sqlx::Row;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");
@@ -68,13 +68,13 @@ async fn find_process_with_metrics_data(connection: &mut sqlx::AnyConnection) ->
 #[test]
 fn test_list_processes() {
     let data_path = setup_data_dir("list-processes");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "recent-processes"])
+    dump_cli_sys(&[data_path.to_str().unwrap(), "recent-processes"]);
 }
 
 #[test]
 fn test_find_processes() {
     let data_path = setup_data_dir("find-processes");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "find-processes", "exe"])
+    dump_cli_sys(&[data_path.to_str().unwrap(), "find-processes", "exe"]);
 }
 
 #[tokio::main]
@@ -95,7 +95,7 @@ async fn test_process_tree() -> Result<()> {
 #[test]
 fn test_logs_by_process() {
     let data_path = setup_data_dir("logs_by_process");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "logs-by-process"])
+    dump_cli_sys(&[data_path.to_str().unwrap(), "logs-by-process"]);
 }
 
 #[tokio::main]

@@ -58,6 +58,9 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
 use anyhow::{Context, Result};
 use http::response::Response;
 use hyper::body::Body;
@@ -68,9 +71,6 @@ use lgn_source_control::{
     InsertWorkspaceRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
     RepositoryQuery, RepositoryUrl, SaveTreeRequest, ServerRequest, UpdateBranchRequest,
 };
-#[allow(clippy::wildcard_imports)]
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 
 #[macro_use]
 extern crate lazy_static;

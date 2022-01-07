@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::{env, vec};
@@ -6,6 +7,7 @@ use std::{env, vec};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::CompilationEnv;
+use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_compiler::{Locale, Manifest, Platform, Target};
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_offline::{
@@ -18,6 +20,7 @@ use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
 
 use crate::databuild::CompileOutput;
+use crate::Error;
 use crate::{databuild::DataBuild, DataBuildOptions};
 
 fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
@@ -60,6 +63,7 @@ fn create_resource(
     project
         .add_resource(
             name,
+            refs_resource::TestResource::TYPENAME,
             refs_resource::TestResource::TYPE,
             &resource_b,
             resources,
@@ -116,6 +120,7 @@ fn compile_change_no_deps() {
         let resource_id = project
             .add_resource(
                 ResourcePathName::new("resource"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -125,10 +130,9 @@ fn compile_change_no_deps() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut config = DataBuildOptions::new(output_dir);
-    config
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir());
+    let config =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path);
 
     let source = ResourcePathId::from(resource_id);
     let target = source.push(refs_asset::RefsAsset::TYPE);
@@ -170,6 +174,10 @@ fn compile_change_no_deps() {
 
     // ..re-compile changed resource..
     let modified_checksum = {
+        let config =
+            DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+                .content_store(&contentstore_path);
+
         let mut build = config.open().expect("to open index");
         build.source_pull().expect("failed to pull from project");
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
@@ -193,9 +201,9 @@ fn compile_change_no_deps() {
     assert_ne!(original_checksum, modified_checksum);
 }
 
-/// Creates a project with 5 resources with dependencies setup as depicted below.
-/// t(A) depicts a dependency on a `derived resource A` transformed  by `t`.
-/// Returns an array of resources from A to E where A is at index 0.
+/// Creates a project with 5 resources with dependencies setup as depicted
+/// below. t(A) depicts a dependency on a `derived resource A` transformed  by
+/// `t`. Returns an array of resources from A to E where A is at index 0.
 //
 // t(A) -> A -> t(B) -> B -> t(C) -> C
 //         |            |
@@ -271,6 +279,7 @@ fn intermediate_resource() {
         project
             .add_resource(
                 ResourcePathName::new("resource"),
+                text_resource::TextResource::TYPENAME,
                 text_resource::TextResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -280,11 +289,11 @@ fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&cas_addr)
-        .compiler_dir(target_dir())
-        .create(project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&cas_addr)
+            .create(project_dir)
+            .expect("new build index");
 
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
@@ -353,11 +362,11 @@ fn unnamed_cache_use() {
     let resource_list = setup_project(&project_dir);
     let root_resource = resource_list[0];
 
-    let mut build = DataBuildOptions::new(&output_dir)
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&ContentStoreAddr::from(output_dir))
+            .create(&project_dir)
+            .expect("new build index");
     build.source_pull().expect("successful pull");
 
     //
@@ -461,6 +470,7 @@ fn named_path_cache_use() {
         project
             .add_resource(
                 ResourcePathName::new("resource"),
+                multitext_resource::MultiTextResource::TYPENAME,
                 multitext_resource::MultiTextResource::TYPE,
                 &resource_handle,
                 &mut resources,
@@ -470,11 +480,11 @@ fn named_path_cache_use() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&cas_addr)
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("new build index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&cas_addr)
+            .create(&project_dir)
+            .expect("new build index");
 
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
@@ -486,8 +496,9 @@ fn named_path_cache_use() {
     let integer_path_1 = split_text1_path.push(integer_asset::IntegerAsset::TYPE);
 
     //
-    // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer path 0"
-    //                    -> text_resource("text_1") -> integer_asset <= "integer path 1"
+    // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer
+    // path 0"                    -> text_resource("text_1") -> integer_asset <=
+    // "integer path 1"
     //
 
     // compile "integer path 0"
@@ -693,6 +704,7 @@ fn link() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,
@@ -711,6 +723,7 @@ fn link() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
@@ -719,15 +732,16 @@ fn link() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir())
-        .create(&project_dir)
-        .expect("to create index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path)
+            .create(&project_dir)
+            .expect("to create index");
 
     build.source_pull().unwrap();
 
-    // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
+    // for now each resource is a separate file so we need to validate that the
+    // compile output and link output produce the same number of resources
 
     let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
@@ -750,7 +764,8 @@ fn link() {
             .any(|compiled| compiled.checksum == obj.compiled_checksum));
     }
 
-    // ... and each output resource need to exist as exactly one resource object (although having different checksum).
+    // ... and each output resource need to exist as exactly one resource object
+    // (although having different checksum).
     for output in link_output {
         assert_eq!(
             compile_output
@@ -776,6 +791,7 @@ fn verify_manifest() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resources
                     .new_resource(refs_resource::TestResource::TYPE)
@@ -797,6 +813,7 @@ fn verify_manifest() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
+                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,
@@ -805,11 +822,11 @@ fn verify_manifest() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir)
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir())
-        .create(project_dir)
-        .expect("to create index");
+    let mut build =
+        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
+            .content_store(&contentstore_path)
+            .create(project_dir)
+            .expect("to create index");
 
     build.source_pull().unwrap();
 
@@ -818,7 +835,7 @@ fn verify_manifest() {
     let compile_path = ResourcePathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
     let manifest = build
         .compile(
-            compile_path,
+            compile_path.clone(),
             Some(output_manifest_file.clone()),
             &test_env(),
         )
@@ -848,5 +865,20 @@ fn verify_manifest() {
             .compiled_resources
             .iter()
             .any(|res| res.checksum == resource.checksum));
+    }
+
+    // malformed manifest as input.
+    {
+        let invalid_manifest_file = work_dir.path().join("invalid.manifest");
+        let mut file = File::create(&invalid_manifest_file).expect("create empty file");
+        file.write_all(b"junk")
+            .expect("to write junk into manifest");
+
+        let invalid = build.compile(compile_path, Some(invalid_manifest_file), &test_env());
+        assert!(
+            matches!(invalid, Err(Error::InvalidManifest(_))),
+            "{:?}",
+            invalid
+        );
     }
 }

@@ -1,17 +1,18 @@
 use lgn_ecs::world::World;
 use lgn_tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPoolBuilder};
-use log::trace;
+use lgn_telemetry::trace;
 
-/// Defines a simple way to determine how many threads to use given the number of remaining cores
-/// and number of total cores
+/// Defines a simple way to determine how many threads to use given the number
+/// of remaining cores and number of total cores
 #[derive(Clone)]
 pub struct TaskPoolThreadAssignmentPolicy {
     /// Force using at least this many threads
     pub min_threads: usize,
     /// Under no circumstance use more than this many threads for this pool
     pub max_threads: usize,
-    /// Target using this percentage of total cores, clamped by min_threads and max_threads. It is
-    /// permitted to use 1.0 to try to use all remaining threads
+    /// Target using this percentage of total cores, clamped by min_threads and
+    /// max_threads. It is permitted to use 1.0 to try to use all remaining
+    /// threads
     pub percent: f32,
 }
 
@@ -25,23 +26,23 @@ impl TaskPoolThreadAssignmentPolicy {
         // Limit ourselves to the number of cores available
         desired = desired.min(remaining_threads);
 
-        // Clamp by min_threads, max_threads. (This may result in us using more threads than are
-        // available, this is intended. An example case where this might happen is a device with
-        // <= 2 threads.
+        // Clamp by min_threads, max_threads. (This may result in us using more threads
+        // than are available, this is intended. An example case where this
+        // might happen is a device with <= 2 threads.
         desired.clamp(self.min_threads, self.max_threads)
     }
 }
 
-/// Helper for configuring and creating the default task pools. For end-users who want full control,
-/// insert the default task pools into the resource map manually. If the pools are already inserted,
-/// this helper will do nothing.
+/// Helper for configuring and creating the default task pools. For end-users
+/// who want full control, insert the default task pools into the resource map
+/// manually. If the pools are already inserted, this helper will do nothing.
 #[derive(Clone)]
 pub struct DefaultTaskPoolOptions {
-    /// If the number of physical cores is less than min_total_threads, force using
-    /// min_total_threads
+    /// If the number of physical cores is less than min_total_threads, force
+    /// using min_total_threads
     pub min_total_threads: usize,
-    /// If the number of physical cores is grater than max_total_threads, force using
-    /// max_total_threads
+    /// If the number of physical cores is grater than max_total_threads, force
+    /// using max_total_threads
     pub max_total_threads: usize,
 
     /// Used to determine number of IO threads to allocate
@@ -93,7 +94,8 @@ impl DefaultTaskPoolOptions {
         }
     }
 
-    /// Inserts the default thread pools into the given resource map based on the configured values
+    /// Inserts the default thread pools into the given resource map based on
+    /// the configured values
     pub fn create_default_pools(&self, world: &mut World) {
         let total_threads =
             lgn_tasks::logical_core_count().clamp(self.min_total_threads, self.max_total_threads);

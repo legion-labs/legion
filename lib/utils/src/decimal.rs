@@ -1,8 +1,8 @@
 use std::hash::Hasher;
 
-// This is an f32 that supports Hash and Eq. Generally this is dangerous, but here we're
-// not doing any sort of fp-arithmetic and not expecting NaN. We should be deterministically
-// parsing a string and creating a float from it.
+// This is an f32 that supports Hash and Eq. Generally this is dangerous, but
+// here we're not doing any sort of fp-arithmetic and not expecting NaN. We
+// should be deterministically parsing a string and creating a float from it.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct DecimalF32(pub f32);
 
@@ -39,9 +39,9 @@ impl std::hash::Hash for DecimalF32 {
     }
 }
 
-// This is an f64 that supports Hash and Eq. Generally this is dangerous, but here we're
-// not doing any sort of fp-arithmetic and not expecting NaN. We should be deterministically
-// parsing a string and creating a float from it.
+// This is an f64 that supports Hash and Eq. Generally this is dangerous, but
+// here we're not doing any sort of fp-arithmetic and not expecting NaN. We
+// should be deterministically parsing a string and creating a float from it.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct DecimalF64(pub f64);
 

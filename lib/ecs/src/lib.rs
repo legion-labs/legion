@@ -1,7 +1,6 @@
 //! Legion ECS  
 //!
 //! TODO: write documentation.
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -100,6 +99,8 @@ pub mod prelude {
         world::{FromWorld, Mut, World},
     };
 }
+
+pub use lgn_ecs_macros::all_tuples;
 
 #[cfg(test)]
 mod tests {
@@ -1005,8 +1006,9 @@ mod tests {
 
         world.clear_trackers();
 
-        // ensure inserting multiple components set changed state for all components and set added
-        // state for non existing components even when changing archetype.
+        // ensure inserting multiple components set changed state for all components and
+        // set added state for non existing components even when changing
+        // archetype.
         world.entity_mut(e4).insert_bundle((A(0), B(0)));
 
         assert!(get_filtered::<Added<A>>(&mut world).is_empty());

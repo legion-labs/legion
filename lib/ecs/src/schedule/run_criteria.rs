@@ -11,21 +11,21 @@ use crate::{
     world::World,
 };
 
-/// Determines whether a system should be executed or not, and how many times it should be ran each
-/// time the stage is executed.
+/// Determines whether a system should be executed or not, and how many times it
+/// should be ran each time the stage is executed.
 ///
-/// A stage will loop over its run criteria and systems until no more systems need to be executed
-/// and no more run criteria need to be checked.
-/// - Any systems with run criteria that returns [`Yes`] will be ran exactly one more time during
-///   the stage's execution that tick.
-/// - Any systems with run criteria that returns [`No`] are not ran for the rest of the stage's
-///   execution that tick.
-/// - Any systems with run criteria that returns [`YesAndCheckAgain`] will be ran during this
-///   iteration of the loop. After all the systems that need to run are ran, that criteria will be
-///   checked again.
-/// - Any systems with run criteria that returns [`NoAndCheckAgain`] will not be ran during this
-///   iteration of the loop. After all the systems that need to run are ran, that criteria will be
-///   checked again.
+/// A stage will loop over its run criteria and systems until no more systems
+/// need to be executed and no more run criteria need to be checked.
+/// - Any systems with run criteria that returns [`Yes`] will be ran exactly one
+///   more time during the stage's execution that tick.
+/// - Any systems with run criteria that returns [`No`] are not ran for the rest
+///   of the stage's execution that tick.
+/// - Any systems with run criteria that returns [`YesAndCheckAgain`] will be
+///   ran during this iteration of the loop. After all the systems that need to
+///   run are ran, that criteria will be checked again.
+/// - Any systems with run criteria that returns [`NoAndCheckAgain`] will not be
+///   ran during this iteration of the loop. After all the systems that need to
+///   run are ran, that criteria will be checked again.
 ///
 /// [`Yes`]: ShouldRun::Yes
 /// [`No`]: ShouldRun::No
@@ -37,13 +37,15 @@ pub enum ShouldRun {
     Yes,
     /// No, the system should not run for the rest of this tick.
     No,
-    /// Yes, the system should run, and after all systems in this stage have run, the criteria
-    /// should be checked again. This will cause the stage to loop over the remaining systems and
-    /// criteria this tick until they no longer need to be checked.
+    /// Yes, the system should run, and after all systems in this stage have
+    /// run, the criteria should be checked again. This will cause the stage
+    /// to loop over the remaining systems and criteria this tick until they
+    /// no longer need to be checked.
     YesAndCheckAgain,
-    /// No, the system should not run right now, but after all systems in this stage have run, the
-    /// criteria should be checked again. This will cause the stage to loop over the remaining
-    /// systems and criteria this tick until they no longer need to be checked.
+    /// No, the system should not run right now, but after all systems in this
+    /// stage have run, the criteria should be checked again. This will
+    /// cause the stage to loop over the remaining systems and criteria this
+    /// tick until they no longer need to be checked.
     NoAndCheckAgain,
 }
 
@@ -273,10 +275,12 @@ pub trait RunCriteriaDescriptorCoercion<Param> {
     /// this criteria will be discarded before initialization.
     fn label_discard_if_duplicate(self, label: impl RunCriteriaLabel) -> RunCriteriaDescriptor;
 
-    /// Specifies that this criteria must be evaluated before a criteria with the given label.
+    /// Specifies that this criteria must be evaluated before a criteria with
+    /// the given label.
     fn before(self, label: impl RunCriteriaLabel) -> RunCriteriaDescriptor;
 
-    /// Specifies that this criteria must be evaluated after a criteria with the given label.
+    /// Specifies that this criteria must be evaluated after a criteria with the
+    /// given label.
     fn after(self, label: impl RunCriteriaLabel) -> RunCriteriaDescriptor;
 }
 
@@ -358,8 +362,8 @@ pub struct RunCriteria {
 }
 
 impl RunCriteria {
-    /// Constructs a new run criteria that will retrieve the result of the criteria `label`
-    /// and pipe it as input to `system`.
+    /// Constructs a new run criteria that will retrieve the result of the
+    /// criteria `label` and pipe it as input to `system`.
     pub fn pipe(
         label: impl RunCriteriaLabel,
         system: impl System<In = ShouldRun, Out = ShouldRun>,

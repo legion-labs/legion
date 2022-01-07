@@ -18,8 +18,7 @@ async fn find_server_process_id(
         |_time, entry| {
             if let Some(Ok(msg)) = re
                 .captures(&entry)
-                .map(|captures| captures.name("msg"))
-                .flatten()
+                .and_then(|captures| captures.name("msg"))
                 .map(|mat| json::parse(mat.as_str()))
             {
                 if msg["control_msg"] == "hello" {
@@ -51,8 +50,7 @@ async fn find_client_edition_commands(
         |time, entry| {
             if let Some(Ok(cmd)) = re
                 .captures(&entry)
-                .map(|captures| captures.name("cmd"))
-                .flatten()
+                .and_then(|captures| captures.name("cmd"))
                 .map(|mat| json::parse(mat.as_str()))
             {
                 if let Some(command_id) = cmd["id"].as_str() {
@@ -80,8 +78,7 @@ async fn find_server_edition_commands(
         |time, entry| {
             if let Some(command_id) = re
                 .captures(&entry)
-                .map(|captures| captures.name("id"))
-                .flatten()
+                .and_then(|captures| captures.name("id"))
                 .map(|mat| mat.as_str())
             {
                 res.push((time, String::from(command_id)));
@@ -169,7 +166,7 @@ pub async fn print_edition_latency(
     }
 
     let start_client_process = client_process_info.start_ticks;
-    dbg!(start_client_process);
+    println!("{}", start_client_process);
     let edition_commands =
         find_client_edition_commands(connection, data_path, editor_client_process_id).await?;
     println!("\nclient command latencies:");
@@ -178,6 +175,7 @@ pub async fn print_edition_latency(
             if let Some((_time, frame_id)) =
                 find_timed_event(&server_frames, *server_command_reception_time)
             {
+                #[allow(clippy::cast_precision_loss)]
                 if let Some(client_reception_time) =
                     client_frames_reception_timestamp.get(&frame_id)
                 {

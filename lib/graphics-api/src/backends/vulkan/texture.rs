@@ -2,15 +2,17 @@ use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
+use lgn_telemetry::{error, trace};
 
 use crate::{
     DeviceContext, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
     TextureSubResource,
 };
 
-// This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
-// or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
-// will not destroy the image when VulkanRawImage is dropped
+// This is used to allow the underlying image/allocation to be removed from a
+// VulkanTexture, or to init a VulkanTexture with an existing image/allocation.
+// If the allocation is none, we will not destroy the image when VulkanRawImage
+// is dropped
 #[derive(Debug)]
 pub(crate) struct VulkanRawImage {
     pub(crate) vk_image: vk::Image,
@@ -20,15 +22,15 @@ pub(crate) struct VulkanRawImage {
 impl VulkanRawImage {
     fn destroy_image(&mut self, device_context: &DeviceContext) {
         if let Some(allocation) = self.vk_allocation.take() {
-            log::trace!("destroying ImageVulkan");
+            trace!("destroying ImageVulkan");
             assert_ne!(self.vk_image, vk::Image::null());
             device_context
                 .vk_allocator()
                 .destroy_image(self.vk_image, &allocation);
             self.vk_image = vk::Image::null();
-            log::trace!("destroyed ImageVulkan");
+            trace!("destroyed ImageVulkan");
         } else {
-            log::trace!("ImageVulkan has no allocation associated with it, not destroying image");
+            trace!("ImageVulkan has no allocation associated with it, not destroying image");
             self.vk_image = vk::Image::null();
         }
     }
@@ -124,8 +126,8 @@ impl VulkanTexture {
                 vk::MemoryPropertyFlags::empty()
             };
 
-            //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the format for
-            // the various ways we might use it
+            //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the
+            // format for the various ways we might use it
             let allocation_create_info = vk_mem::AllocationCreateInfo {
                 usage: texture_def.mem_usage.into(),
                 flags: vk_mem::AllocationCreateFlags::NONE,
@@ -160,7 +162,7 @@ impl VulkanTexture {
                 .vk_allocator()
                 .create_image(&image_create_info, &allocation_create_info)
                 .map_err(|_e| {
-                    log::error!("Error creating image");
+                    error!("Error creating image");
                     vk::Result::ERROR_UNKNOWN
                 })?;
 

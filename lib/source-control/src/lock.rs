@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use std::path::Path;
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -10,7 +10,8 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Lock {
-    pub relative_path: String, //needs to have a stable representation across platforms because it seeds the hash
+    pub relative_path: String, /* needs to have a stable representation across platforms because
+                                * it seeds the hash */
     pub lock_domain_id: String,
     pub workspace_id: String,
     pub branch_name: String,

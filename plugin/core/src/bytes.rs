@@ -1,7 +1,8 @@
 #![allow(unsafe_code)]
 
-// NOTE: we can reexport common traits and methods from bytemuck to avoid requiring dependency most of
-// the time, but unfortunately we can't use derive macros that way due to hardcoded path in generated code.
+// NOTE: we can reexport common traits and methods from bytemuck to avoid
+// requiring dependency most of the time, but unfortunately we can't use derive
+// macros that way due to hardcoded path in generated code.
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
 pub use lgn_derive::Bytes;
 
@@ -12,7 +13,8 @@ pub use lgn_derive::Bytes;
 
 /// Converts the implementing type to bytes by writing them to a given buffer
 pub trait Bytes {
-    /// Converts the implementing type to bytes by writing them to a given buffer
+    /// Converts the implementing type to bytes by writing them to a given
+    /// buffer
     fn write_bytes(&self, buffer: &mut [u8]);
 
     /// The number of bytes that will be written when calling `write_bytes`

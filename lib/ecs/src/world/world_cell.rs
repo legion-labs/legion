@@ -12,8 +12,9 @@ use crate::{
     world::{Mut, World},
 };
 
-/// Exposes safe mutable access to multiple resources at a time in a World. Attempting to access
-/// World in a way that violates Rust's mutability rules will panic thanks to runtime checks.
+/// Exposes safe mutable access to multiple resources at a time in a World.
+/// Attempting to access World in a way that violates Rust's mutability rules
+/// will panic thanks to runtime checks.
 pub struct WorldCell<'w> {
     pub(crate) world: &'w mut World,
     pub(crate) access: Rc<RefCell<ArchetypeComponentAccess>>,
@@ -171,7 +172,8 @@ impl<'w, T> Drop for WorldBorrowMut<'w, T> {
 
 impl<'w> WorldCell<'w> {
     pub(crate) fn new(world: &'w mut World) -> Self {
-        // this is cheap because ArchetypeComponentAccess::new() is const / allocation free
+        // this is cheap because ArchetypeComponentAccess::new() is const / allocation
+        // free
         let access = std::mem::replace(
             &mut world.archetype_component_access,
             ArchetypeComponentAccess::new(),

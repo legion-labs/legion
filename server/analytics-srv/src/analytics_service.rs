@@ -1,11 +1,14 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
+use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
+use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FetchProcessMetricRequest;
 use lgn_telemetry_proto::analytics::FindProcessReply;
@@ -24,12 +27,16 @@ use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
 use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_telemetry_proto::analytics::ProcessMetricsReply;
+use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
+use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
-use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
 
+use crate::cache::DiskCache;
+use crate::call_tree::compute_block_call_tree;
 use crate::call_tree::compute_block_spans;
+use crate::call_tree::reduce_lod;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::metrics;
 
@@ -69,14 +76,19 @@ impl Drop for RequestGuard {
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_dir: PathBuf,
+    cache: DiskCache,
 }
 
 impl AnalyticsService {
-    pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Self {
-        Self { pool, data_dir }
+    pub async fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
+        Ok(Self {
+            pool,
+            data_dir,
+            cache: DiskCache::new().await?,
+        })
     }
 
-    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry::ProcessInfo> {
+    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
         let mut connection = self.pool.acquire().await?;
         find_process(&mut connection, process_id).await
     }
@@ -99,7 +111,7 @@ impl AnalyticsService {
     async fn list_process_streams_impl(
         &self,
         process_id: &str,
-    ) -> Result<Vec<lgn_telemetry::StreamInfo>> {
+    ) -> Result<Vec<lgn_telemetry_sink::StreamInfo>> {
         let mut connection = self.pool.acquire().await?;
         find_process_streams(&mut connection, process_id).await
     }
@@ -107,24 +119,70 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
+    ) -> Result<Vec<lgn_telemetry_sink::EncodedBlock>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }
 
+    async fn get_call_tree(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
+    ) -> Result<CallTree> {
+        let cache_item_name = format!("tree_{}", block_id);
+        self.cache
+            .get_or_put(&cache_item_name, async {
+                let mut connection = self.pool.acquire().await?;
+                compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
+                    .await
+            })
+            .await
+    }
+
+    async fn compute_spans_lod(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
+        lod_id: u32,
+    ) -> Result<BlockSpansReply> {
+        if lod_id == 0 {
+            let tree = self.get_call_tree(process, stream, block_id).await?;
+            return compute_block_spans(tree, block_id);
+        }
+        let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
+        let lod0 = lod0_reply.lod.unwrap();
+        let reduced = reduce_lod(&lod0, lod_id);
+        Ok(BlockSpansReply {
+            scopes: lod0_reply.scopes,
+            lod: Some(reduced),
+            block_id: block_id.to_owned(),
+            begin_ms: lod0_reply.begin_ms,
+            end_ms: lod0_reply.end_ms,
+        })
+    }
+
+    #[async_recursion]
     async fn block_spans_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
-        stream: &lgn_telemetry::StreamInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
+        lod_id: u32,
     ) -> Result<BlockSpansReply> {
-        let mut connection = self.pool.acquire().await?;
-        compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
+        let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
+        self.cache
+            .get_or_put(&cache_item_name, async {
+                self.compute_spans_lod(process, stream, block_id, lod_id)
+                    .await
+            })
+            .await
     }
 
     async fn process_cumulative_call_graph_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
         begin_ms: f64,
         end_ms: f64,
     ) -> Result<CumulativeCallGraphReply> {
@@ -136,26 +194,65 @@ impl AnalyticsService {
     #[allow(clippy::cast_precision_loss)]
     async fn process_log_impl(
         &self,
-        process: &lgn_telemetry::ProcessInfo,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        begin: u64,
+        end: u64,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
         let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64; // factor out
         let ts_offset = process.start_ticks;
-        for_each_process_log_entry(
-            &mut connection,
-            &self.data_dir,
-            &process.process_id,
-            |ts, entry| {
-                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
-                entries.push(LogEntry {
-                    msg: entry,
-                    time_ms,
-                });
-            },
-        )
-        .await?;
-        Ok(ProcessLogReply { entries })
+        let mut entry_index: u64 = 0;
+        for stream in find_process_log_streams(&mut connection, &process.process_id).await? {
+            for block in find_stream_blocks(&mut connection, &stream.stream_id).await? {
+                if (entry_index + block.nb_objects as u64) < begin {
+                    entry_index += block.nb_objects as u64;
+                } else {
+                    for_each_log_entry_in_block(
+                        &mut connection,
+                        &self.data_dir,
+                        &stream,
+                        &block,
+                        |ts, entry| {
+                            if entry_index >= end {
+                                return false;
+                            }
+                            if entry_index >= begin {
+                                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
+                                entries.push(LogEntry {
+                                    msg: entry,
+                                    time_ms,
+                                });
+                            }
+                            entry_index += 1;
+
+                            true
+                        },
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        Ok(ProcessLogReply {
+            entries,
+            begin,
+            end: entry_index,
+        })
+    }
+
+    async fn nb_process_log_entries_impl(
+        &self,
+        process_id: &str,
+    ) -> Result<ProcessNbLogEntriesReply> {
+        let mut connection = self.pool.acquire().await?;
+        let mut count: u64 = 0;
+        for stream in find_process_log_streams(&mut connection, process_id).await? {
+            for b in find_stream_blocks(&mut connection, &stream.stream_id).await? {
+                count += b.nb_objects as u64;
+            }
+        }
+        Ok(ProcessNbLogEntriesReply { count })
     }
 
     async fn list_process_children_impl(&self, process_id: &str) -> Result<ProcessChildrenReply> {
@@ -209,7 +306,7 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<FindProcessRequest>,
     ) -> Result<Response<FindProcessReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("find_process");
+        info!("find_process");
         let find_request = request.into_inner();
         match self.find_process_impl(&find_request.process_id).await {
             Ok(process) => {
@@ -229,11 +326,11 @@ impl PerformanceAnalytics for AnalyticsService {
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("list_recent_processes");
+        info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
-                log::info!("list_recent_processes_impl ok");
+                info!("list_recent_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -250,13 +347,13 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<SearchProcessRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("search_processes");
+        info!("search_processes");
         let inner = request.into_inner();
-        dbg!(&inner.search);
+        debug!("{}", &inner.search);
         match self.search_processes_impl(&inner.search).await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
-                log::info!("list_recent_processes_impl ok");
+                info!("list_recent_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -273,7 +370,7 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
         let _guard = RequestGuard::new();
-        log::info!("list_process_streams");
+        info!("list_process_streams");
         let list_request = request.into_inner();
         match self
             .list_process_streams_impl(&list_request.process_id)
@@ -281,7 +378,7 @@ impl PerformanceAnalytics for AnalyticsService {
         {
             Ok(streams) => {
                 let reply = ListStreamsReply { streams };
-                log::info!("list_process_streams ok");
+                info!("list_process_streams ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -335,12 +432,13 @@ impl PerformanceAnalytics for AnalyticsService {
                 &inner_request.process.unwrap(),
                 &inner_request.stream.unwrap(),
                 &inner_request.block_id,
+                inner_request.lod_id,
             )
             .await
         {
             Ok(block_spans) => Ok(Response::new(block_spans)),
             Err(e) => {
-                return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
+                return Err(Status::internal(format!("Error in block_spans: {}", e)));
             }
         }
     }
@@ -383,10 +481,40 @@ impl PerformanceAnalytics for AnalyticsService {
                 "Missing process in list_process_log_entries",
             )));
         }
-        match self.process_log_impl(&inner_request.process.unwrap()).await {
+        match self
+            .process_log_impl(
+                &inner_request.process.unwrap(),
+                inner_request.begin,
+                inner_request.end,
+            )
+            .await
+        {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in list_process_log_entries: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn nb_process_log_entries(
+        &self,
+        request: Request<ProcessNbLogEntriesRequest>,
+    ) -> Result<Response<ProcessNbLogEntriesReply>, Status> {
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        if inner_request.process_id.is_empty() {
+            return Err(Status::internal(String::from(
+                "Missing process_id in nb_process_log_entries",
+            )));
+        }
+        match self
+            .nb_process_log_entries_impl(&inner_request.process_id)
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in nb_process_log_entries: {}",
                 e
             ))),
         }

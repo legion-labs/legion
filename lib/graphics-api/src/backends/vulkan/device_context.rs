@@ -1,9 +1,13 @@
 use std::ffi::CStr;
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use ash::extensions::khr;
 use ash::vk;
 use fnv::FnvHashMap;
+use lgn_telemetry::{debug, info, trace, warn};
 
 use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
@@ -62,10 +66,12 @@ pub(crate) struct VulkanDeviceContext {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
+    #[allow(dead_code)]
     next_create_index: AtomicU64,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
+    #[allow(dead_code)]
     all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
@@ -291,7 +297,7 @@ fn query_physical_device_info(
         PhysicalDeviceType::DiscreteGpu,
         PhysicalDeviceType::IntegratedGpu,
     ];
-    log::info!(
+    info!(
         "Preferred device types: {:?}",
         physical_device_type_priority
     );
@@ -306,7 +312,7 @@ fn query_physical_device_info(
 
     let extensions: Vec<ash::vk::ExtensionProperties> =
         unsafe { instance.enumerate_device_extension_properties(device)? };
-    log::debug!("Available device extensions: {:#?}", extensions);
+    debug!("Available device extensions: {:#?}", extensions);
     let mut required_extensions = vec![];
     match windowing_mode {
         ExtensionMode::Disabled => {}
@@ -314,9 +320,9 @@ fn query_physical_device_info(
             if check_extensions_availability(&[khr::Swapchain::name()], &extensions) {
                 required_extensions.push(khr::Swapchain::name());
             } else if windowing_mode == ExtensionMode::EnabledIfAvailable {
-                log::info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
             } else {
-                log::warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
                 return Ok(None);
             }
         }
@@ -333,9 +339,9 @@ fn query_physical_device_info(
             if check_extensions_availability(&video_extensions, &extensions) {
                 required_extensions.extend_from_slice(&video_extensions);
             } else if video_mode == ExtensionMode::EnabledIfAvailable {
-                log::info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
             } else {
-                log::warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
                 return Ok(None);
             }
         }
@@ -361,7 +367,7 @@ fn query_physical_device_info(
         let extensions_rank: i32 = required_extensions.len().try_into().unwrap();
         let score = device_type_rank * 1000 + extensions_rank * 10;
 
-        log::info!(
+        info!(
             "Found suitable device '{}' API: {} DriverVersion: {} Score = {}",
             device_name,
             vk_version_to_string(properties.api_version),
@@ -379,21 +385,22 @@ fn query_physical_device_info(
             required_extensions,
         };
 
-        log::trace!("{:#?}", properties);
+        trace!("{:#?}", properties);
         Ok(Some(result))
     } else {
-        log::info!(
+        info!(
             "Found unsuitable device '{}' API: {} DriverVersion: {} could not find queue families",
             device_name,
             vk_version_to_string(properties.api_version),
             vk_version_to_string(properties.driver_version)
         );
-        log::trace!("{:#?}", properties);
+        trace!("{:#?}", properties);
         Ok(None)
     }
 }
 
-//TODO: Could improve this by looking at vendor/device ID, VRAM size, supported feature set, etc.
+//TODO: Could improve this by looking at vendor/device ID, VRAM size, supported
+// feature set, etc.
 #[allow(clippy::too_many_lines)]
 fn find_queue_families(
     all_queue_families: &[ash::vk::QueueFamilyProperties],
@@ -404,10 +411,10 @@ fn find_queue_families(
     let mut decode_queue_family_index = None;
     let mut encode_queue_family_index = None;
 
-    log::info!("Available queue families:");
+    info!("Available queue families:");
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
-        log::info!("Queue Family {}", queue_family_index);
-        log::info!("{:#?}", queue_family);
+        info!("Queue Family {}", queue_family_index);
+        info!("{:#?}", queue_family);
     }
 
     //
@@ -428,7 +435,8 @@ fn find_queue_families(
     // Find a compute queue family in the following order of preference:
     // - Doesn't support graphics
     // - Supports graphics but hasn't already been claimed by graphics
-    // - Fallback to using the graphics queue family as it's guaranteed to support compute
+    // - Fallback to using the graphics queue family as it's guaranteed to support
+    //   compute
     //
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
         let queue_family_index = queue_family_index as u32;
@@ -438,20 +446,22 @@ fn find_queue_families(
             queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
 
         if !supports_graphics && supports_compute {
-            // Ideally we want to find a dedicated compute queue (i.e. doesn't support graphics)
+            // Ideally we want to find a dedicated compute queue (i.e. doesn't support
+            // graphics)
             compute_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_compute
             && compute_queue_family_index.is_none()
             && Some(queue_family_index) != graphics_queue_family_index
         {
-            // Otherwise accept the first queue that supports compute that is NOT the graphics queue
+            // Otherwise accept the first queue that supports compute that is NOT the
+            // graphics queue
             compute_queue_family_index = Some(queue_family_index);
         }
     }
 
-    // If we didn't find a compute queue family != graphics queue family, settle for using the
-    // graphics queue family. It's guaranteed to support compute.
+    // If we didn't find a compute queue family != graphics queue family, settle for
+    // using the graphics queue family. It's guaranteed to support compute.
     if compute_queue_family_index.is_none() {
         compute_queue_family_index = graphics_queue_family_index;
     }
@@ -460,7 +470,8 @@ fn find_queue_families(
     // Find a transfer queue family in the following order of preference:
     // - Doesn't support graphics or compute
     // - Supports graphics but hasn't already been claimed by compute or graphics
-    // - Fallback to using the graphics queue family as it's guaranteed to support transfers
+    // - Fallback to using the graphics queue family as it's guaranteed to support
+    //   transfers
     //
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
         let queue_family_index = queue_family_index as u32;
@@ -480,13 +491,14 @@ fn find_queue_families(
             && Some(queue_family_index) != graphics_queue_family_index
             && Some(queue_family_index) != compute_queue_family_index
         {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             transfer_queue_family_index = Some(queue_family_index);
         }
     }
 
-    // If we didn't find a transfer queue family != graphics queue family, settle for using the
-    // graphics queue family. It's guaranteed to support transfer.
+    // If we didn't find a transfer queue family != graphics queue family, settle
+    // for using the graphics queue family. It's guaranteed to support transfer.
     if transfer_queue_family_index.is_none() {
         transfer_queue_family_index = graphics_queue_family_index;
     }
@@ -512,7 +524,8 @@ fn find_queue_families(
             decode_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_decode && decode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             decode_queue_family_index = Some(queue_family_index);
         }
     }
@@ -538,12 +551,13 @@ fn find_queue_families(
             encode_queue_family_index = Some(queue_family_index);
             break;
         } else if supports_decode && encode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            // Otherwise accept the first queue that supports transfers that is NOT the
+            // graphics queue or compute queue
             encode_queue_family_index = Some(queue_family_index);
         }
     }
 
-    log::info!(
+    info!(
         "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}  Decode QF: {:?}  Encode QF: {:?}",
         graphics_queue_family_index,
         compute_queue_family_index,
@@ -586,7 +600,8 @@ fn create_logical_device(
         .map(|name| name.as_ptr())
         .collect();
 
-    // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)
+    // Add VK_KHR_portability_subset if the extension exists (this is mandated by
+    // spec)
     for extension in &physical_device_info.extension_properties {
         let extension_name = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
 
@@ -596,15 +611,17 @@ fn create_logical_device(
         }
     }
 
-    // Features enabled here by default are supported very widely (only unsupported devices on
-    // vulkan.gpuinfo.org are SwiftShader, a software renderer.
+    // Features enabled here by default are supported very widely (only unsupported
+    // devices on vulkan.gpuinfo.org are SwiftShader, a software renderer.
     let features = vk::PhysicalDeviceFeatures::builder()
         .sampler_anisotropy(true)
         .sample_rate_shading(true)
         // Used for debug drawing lines/points
         .fill_mode_non_solid(true)
         .sparse_binding(true)
-        .sparse_residency_buffer(true);
+        .sparse_residency_buffer(true)
+        .fragment_stores_and_atomics(true)
+        .wide_lines(true);
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {

@@ -4,7 +4,7 @@ use lgn_streaming_proto::{
     streamer_server::{Streamer, StreamerServer},
     InitializeStreamRequest, InitializeStreamResponse,
 };
-use log::{debug, info, warn};
+use lgn_telemetry::{debug, info, warn};
 use tonic::{Request, Response, Status};
 
 use crate::{streamer::StreamEvent, webrtc::WebRTCServer};
@@ -17,7 +17,8 @@ pub(crate) struct GRPCServer {
 
 /// Stream represents an established stream.
 impl GRPCServer {
-    /// Instanciate a new `GRPCServer` using the specified `webrtc::WebRTCServer`.
+    /// Instantiate a new `GRPCServer` using the specified
+    /// `webrtc::WebRTCServer`.
     pub(crate) fn new(
         webrtc_server: WebRTCServer,
         stream_events_sender: crossbeam::channel::Sender<StreamEvent>,

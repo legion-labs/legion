@@ -1,5 +1,6 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
+use lgn_data_model::implement_primitive_type_def;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
@@ -19,46 +20,61 @@ impl Transform {
 
 /// Identifier of a path in a build graph.
 ///
-/// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
-/// the `ResourcePathId` uniquely identifies any resource/node in the build graph.
+/// Considering a build graph where nodes represent *resources* and edges
+/// representing *transformations* between resources the `ResourcePathId`
+/// uniquely identifies any resource/node in the build graph.
 ///
-/// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type between two resource types.
+/// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type
+/// between two resource types.
 ///
-/// Each node in the graph can optionally contain a `name` property allowing to identify a specific compilation output
-/// at a given node.
+/// Each node in the graph can optionally contain a `name` property allowing to
+/// identify a specific compilation output at a given node.
 ///
-/// `ResourcePathId` identifies a concrete source resource with a `ResourceId` - that also defines `ResourceType` of that resource.
-/// Furthermore, it defines an ordered list of `ContentType`s this *source resource* must be transformed into during the data build process.
+/// `ResourcePathId` identifies a concrete source resource with a `ResourceId` -
+/// that also defines `ResourceType` of that resource. Furthermore, it defines
+/// an ordered list of `ContentType`s this *source resource* must be transformed
+/// into during the data build process.
 ///
 /// # Example
 ///
-/// The following example illustrates creation of *source resource* containing geometry and
-/// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
+/// The following example illustrates creation of *source resource* containing
+/// geometry and definition of a path representing a *derived resource* of a
+/// runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use lgn_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
-/// # use lgn_data_runtime::ResourceType;
-/// # use std::path::PathBuf;
-/// # let resources = ResourceRegistryOptions::new().create_registry();
-/// # let mut resources = resources.lock().unwrap();
-/// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
-/// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
-/// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
-/// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
+/// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+/// use lgn_data_runtime::ResourceType;
+/// use lgn_data_offline::ResourcePathId;
+/// use std::path::PathBuf;
+/// let resources = ResourceRegistryOptions::new().create_registry();
+/// let mut resources = resources.lock().unwrap();
+/// let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
+/// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
+/// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
 /// // create a resource and add it to the project
-/// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
-/// let resource_id = project.add_resource(ResourcePathName::new("new resource"),
-///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
-///
+/// let source_geometry_type = ResourceType::new(SOURCE_GEOMETRY.as_bytes());
+/// let resource_handle = resources.new_resource(source_geometry_type).unwrap();
+/// let resource_id = project
+///     .add_resource(
+///         ResourcePathName::new("new resource"),
+///         SOURCE_GEOMETRY,
+///         source_geometry_type,
+///         &resource_handle,
+///         &mut resources,
+///     )
+///     .unwrap();
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
-/// let target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
+/// let _target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
 /// ```
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {
     source: ResourceTypeAndId,
     transforms: Vec<(ResourceType, Option<String>)>,
 }
+
+implement_primitive_type_def!(ResourcePathId);
 
 impl From<ResourceTypeAndId> for ResourcePathId {
     fn from(type_id: ResourceTypeAndId) -> Self {
@@ -147,7 +163,8 @@ impl<'de> Deserialize<'de> for ResourcePathId {
 }
 
 impl ResourcePathId {
-    /// Appends a new node to the build path represented by this `ResourcePathId`.
+    /// Appends a new node to the build path represented by this
+    /// `ResourcePathId`.
     ///
     /// The node is identified by the appended `kind`.
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
@@ -157,7 +174,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Appends a new node to the build path represented by this `ResourcePathId`.
+    /// Appends a new node to the build path represented by this
+    /// `ResourcePathId`.
     ///
     /// The node is identified by the appended tuple of (`kind`, `name`).
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
@@ -169,7 +187,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Create a new [`ResourcePathId`] by changing the last node's `name` property.
+    /// Create a new [`ResourcePathId`] by changing the last node's `name`
+    /// property.
     pub fn new_named(&self, name: &str) -> Self {
         assert!(!self.is_source(), "Source path cannot be named");
         let mut cloned = self.clone();
@@ -187,7 +206,8 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Returns true if last transformation contains `name` part, false otherwise.
+    /// Returns true if last transformation contains `name` part, false
+    /// otherwise.
     pub fn is_named(&self) -> bool {
         if let Some((_, name)) = self.transforms.last() {
             !name.is_none()
@@ -208,7 +228,7 @@ impl ResourcePathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ResourceType {
         if self.transforms.is_empty() {
-            self.source.t
+            self.source.kind
         } else {
             self.transforms.last().unwrap().0
         }
@@ -226,18 +246,20 @@ impl ResourcePathId {
 
     /// Returns true if the path identifies a `source resource`.
     ///
-    /// Source resource has no transformations attached to it and is backed by user-defined data.
+    /// Source resource has no transformations attached to it and is backed by
+    /// user-defined data.
     pub fn is_source(&self) -> bool {
         self.transforms.is_empty()
     }
 
-    /// Returns the last transformation that must be applied to produce the resource.
+    /// Returns the last transformation that must be applied to produce the
+    /// resource.
     ///
     /// Returns None if self is a `source resource`.
     pub fn last_transform(&self) -> Option<Transform> {
         match self.transforms.len() {
             0 => None,
-            1 => Some(Transform::new(self.source.t, self.transforms[0].0)),
+            1 => Some(Transform::new(self.source.kind, self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some(Transform::new(
@@ -248,7 +270,8 @@ impl ResourcePathId {
         }
     }
 
-    /// Returns a `ResourcePathId` that represents a direct dependency in the build graph.
+    /// Returns a `ResourcePathId` that represents a direct dependency in the
+    /// build graph.
     ///
     /// None if self represents a source dependency.
     pub fn direct_dependency(&self) -> Option<Self> {
@@ -266,13 +289,14 @@ impl ResourcePathId {
             self.source
         } else {
             ResourceTypeAndId {
-                t: self.content_type(),
+                kind: self.content_type(),
                 id: ResourceId::from_obj(&self),
             }
         }
     }
 
-    /// Produces an iterator over transformations contained within the resource path.
+    /// Produces an iterator over transformations contained within the resource
+    /// path.
     ///
     /// # Example
     ///
@@ -281,7 +305,7 @@ impl ResourcePathId {
     /// # use lgn_data_offline::{ResourcePathId};
     /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
     /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
-    /// let source = ResourceTypeAndId { t: FOO_TYPE, id: ResourceId::new() };
+    /// let source = ResourceTypeAndId { kind: FOO_TYPE, id: ResourceId::new() };
     /// let path = ResourcePathId::from(source).push(BAR_TYPE).push_named(FOO_TYPE, "parameter");
     ///
     /// let mut transforms = path.transforms();
@@ -313,7 +337,7 @@ impl<'a> Iterator for Transforms<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.target_index < self.path_id.transforms.len() {
             let source = if self.target_index == 0 {
-                self.path_id.source.t
+                self.path_id.source.kind
             } else {
                 self.path_id.transforms[self.target_index - 1].0
             };
@@ -339,7 +363,7 @@ mod tests {
     #[test]
     fn simple_path() {
         let source = ResourceTypeAndId {
-            t: test_resource::TestResource::TYPE,
+            kind: test_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -356,7 +380,7 @@ mod tests {
     #[test]
     fn named_path() {
         let source = ResourceTypeAndId {
-            t: test_resource::TestResource::TYPE,
+            kind: test_resource::TestResource::TYPE,
             id: ResourceId::new(),
         };
 
@@ -372,7 +396,7 @@ mod tests {
         let foo_type = ResourceType::new(b"foo");
         let bar_type = ResourceType::new(b"bar");
         let source = ResourceTypeAndId {
-            t: foo_type,
+            kind: foo_type,
             id: ResourceId::new(),
         };
 

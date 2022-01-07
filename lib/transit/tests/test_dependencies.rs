@@ -35,7 +35,7 @@ fn test_deps() {
     });
 
     let reflection = LogMsgQueue::reflect_contained();
-    dbg!(reflection);
+    println!("{:?}", reflection);
 
     let mut deps = DepQueue::new(1024);
 
@@ -54,6 +54,6 @@ fn test_deps() {
     assert_eq!(40, deps.len_bytes());
 
     for x in deps.iter() {
-        dbg!(x);
+        println!("{:?}", x);
     }
 }

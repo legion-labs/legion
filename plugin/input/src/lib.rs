@@ -1,6 +1,5 @@
-//! Abstract input events, acts like an intermediary on between another plugin generating
-//! events and another plugin consuming them
-//!
+//! Abstract input events, acts like an intermediary on between another plugin
+//! generating events and another plugin consuming them
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -75,7 +74,7 @@ pub mod prelude {
     pub use crate::{
         gamepad::{
             Gamepad, GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, GamepadEvent,
-            GamepadEventType,
+            GamepadEventType, Gamepads,
         },
         keyboard::KeyCode,
         mouse::MouseButton,
@@ -85,12 +84,13 @@ pub mod prelude {
 }
 
 use gamepad::{
-    gamepad_event_system, GamepadAxis, GamepadButton, GamepadEvent, GamepadEventRaw,
-    GamepadSettings,
+    gamepad_connection_system, gamepad_event_system, GamepadAxis, GamepadButton, GamepadEvent,
+    GamepadEventRaw, GamepadSettings,
 };
 use keyboard::{keyboard_input_system, KeyCode, KeyboardInput};
 use lgn_app::prelude::*;
 use mouse::{mouse_button_input_system, MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
+use prelude::Gamepads;
 use touch::{touch_screen_input_system, TouchInput, Touches};
 
 /// Adds keyboard and mouse input to an App
@@ -123,12 +123,17 @@ impl Plugin for InputPlugin {
             .add_event::<GamepadEvent>()
             .add_event::<GamepadEventRaw>()
             .init_resource::<GamepadSettings>()
+            .init_resource::<Gamepads>()
             .init_resource::<Input<GamepadButton>>()
             .init_resource::<Axis<GamepadAxis>>()
             .init_resource::<Axis<GamepadButton>>()
             .add_system_to_stage(
                 CoreStage::PreUpdate,
                 gamepad_event_system.label(InputSystem),
+            )
+            .add_system_to_stage(
+                CoreStage::PreUpdate,
+                gamepad_connection_system.label(InputSystem),
             )
             // touch
             .add_event::<TouchInput>()

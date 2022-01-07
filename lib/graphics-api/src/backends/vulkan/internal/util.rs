@@ -66,7 +66,7 @@ pub(crate) fn resource_type_buffer_creation_flags(
 }
 
 pub(crate) fn image_format_to_aspect_mask(
-    format: Format, /*, include_stencil: bool*/
+    format: Format, /* , include_stencil: bool */
 ) -> vk::ImageAspectFlags {
     match format {
         // Depth only
@@ -211,13 +211,15 @@ pub(crate) fn queue_type_to_family_index(
             device_context
                 .vk_queue_family_indices()
                 .decode_queue_family_index
-                .unwrap() // we just assert if the decode queue is used when not available
+                .unwrap() // we just assert if the decode queue is used when not
+                          // available
         }
         QueueType::Encode => {
             device_context
                 .vk_queue_family_indices()
                 .encode_queue_family_index
-                .unwrap() // we just assert if the decode queue is used when not available
+                .unwrap() // we just assert if the decode queue is used when not
+                          // available
         }
     }
 }
@@ -248,8 +250,8 @@ pub(crate) fn determine_pipeline_stage_flags(
                 // Not supported
                 //flags |= vk::PipelineStageFlags::GEOMETRY_SHADER;
                 //flags |= vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER;
-                //flags |= vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER;
-                // raytracing
+                //flags |= vk::PipelineStageFlags::
+                // TESSELLATION_EVALUATION_SHADER; raytracing
             }
 
             if access_flags.intersects(vk::AccessFlags::INPUT_ATTACHMENT_READ) {
@@ -365,12 +367,12 @@ pub(crate) fn rasterizer_state_to_create_info(
         .depth_bias_constant_factor(rasterizer_state.depth_bias)
         .depth_bias_clamp(0.0)
         .depth_bias_slope_factor(rasterizer_state.depth_bias_slope_scaled)
-        .line_width(1.0)
+        .line_width(rasterizer_state.line_width)
         .build()
 }
 
-//WARNING: This struct has pointers into the attachments vector. Don't mutate or drop the
-// attachments vector
+//WARNING: This struct has pointers into the attachments vector. Don't mutate
+// or drop the attachments vector
 pub struct BlendStateVkCreateInfo {
     _attachments: Vec<vk::PipelineColorBlendAttachmentState>,
     blend_state: vk::PipelineColorBlendStateCreateInfo,

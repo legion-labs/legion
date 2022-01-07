@@ -10,7 +10,8 @@ use crate::{AssetRegistry, Ref, Resource, ResourceTypeAndId};
 //
 //
 
-/// Arc<Inner> is responsible for sending a 'unload' message when last reference is dropped.
+/// Arc<Inner> is responsible for sending a 'unload' message when last reference
+/// is dropped.
 #[derive(Debug)]
 struct Inner {
     type_id: ResourceTypeAndId,
@@ -32,14 +33,16 @@ pub struct ReferenceUntyped {
 }
 
 impl ReferenceUntyped {
-    /// Attempts to upgrade the non-owning reference to an owning `HandleUntyped`.
+    /// Attempts to upgrade the non-owning reference to an owning
+    /// `HandleUntyped`.
     ///
     /// Returns [`None`] if the inner value has since been dropped.
     pub fn upgrade(&self) -> Option<HandleUntyped> {
         self.inner.upgrade().map(HandleUntyped::from_inner)
     }
 
-    /// Gets the number of strong ([`HandleUntyped`] and [`Handle`]) pointers pointing to a Resource.
+    /// Gets the number of strong ([`HandleUntyped`] and [`Handle`]) pointers
+    /// pointing to a Resource.
     pub fn strong_count(&self) -> usize {
         self.inner.strong_count()
     }

@@ -129,15 +129,16 @@ impl AssetRegistryOptions {
         }
     }
 
-    /// Specifying `directory device` will mount a device that allows to read resources
-    /// from a specified directory.
+    /// Specifying `directory device` will mount a device that allows to read
+    /// resources from a specified directory.
     pub fn add_device_dir(mut self, path: impl AsRef<Path>) -> Self {
         self.devices.push(Box::new(vfs::DirDevice::new(path)));
         self
     }
 
-    /// Specifying `content-addressable storage device` will mount a device that allows
-    /// to read resources from a specified content store through provided manifest.
+    /// Specifying `content-addressable storage device` will mount a device that
+    /// allows to read resources from a specified content store through
+    /// provided manifest.
     pub fn add_device_cas(
         mut self,
         content_store: Box<dyn ContentStore>,
@@ -148,10 +149,11 @@ impl AssetRegistryOptions {
         self
     }
 
-    /// Specifying `build device` will mount a device that allows to build resources
-    /// as they are being requested.
+    /// Specifying `build device` will mount a device that allows to build
+    /// resources as they are being requested.
     ///
-    /// `force_recompile` if set will cause each load request to go through data compilation.
+    /// `force_recompile` if set will cause each load request to go through data
+    /// compilation.
     pub fn add_device_build(
         mut self,
         content_store: Box<dyn ContentStore>,
@@ -172,7 +174,8 @@ impl AssetRegistryOptions {
         self
     }
 
-    /// Enables support of a given [`Resource`] by adding corresponding [`AssetLoader`].
+    /// Enables support of a given [`Resource`] by adding corresponding
+    /// [`AssetLoader`].
     pub fn add_loader<A: Asset>(mut self) -> Self {
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
@@ -217,13 +220,15 @@ struct Inner {
 
 /// Registry of all loaded [`Resource`]s.
 ///
-/// Provides an API to load assets by their [`crate::ResourceId`]. The lifetime of an [`Resource`] is determined
-/// by the reference counted [`HandleUntyped`] and [`Handle`].
+/// Provides an API to load assets by their [`crate::ResourceId`]. The lifetime
+/// of an [`Resource`] is determined by the reference counted [`HandleUntyped`]
+/// and [`Handle`].
 ///
 /// # Safety:
 ///
-/// The `update` method can only be called when no outstanding references `Ref` to resources exist.
-/// No other method can be called concurrently with `update` method.
+/// The `update` method can only be called when no outstanding references `Ref`
+/// to resources exist. No other method can be called concurrently with `update`
+/// method.
 ///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
@@ -233,10 +238,12 @@ pub struct AssetRegistry {
     load_thread: Cell<Option<JoinHandle<()>>>,
 }
 
-/// A resource loading event is emitted when a resource is loaded, unloaded, or loading fails
+/// A resource loading event is emitted when a resource is loaded, unloaded, or
+/// loading fails
 #[derive(Clone)]
 pub enum ResourceLoadEvent {
-    /// Successful resource load, resulting from either a handle load, or the loading of a dependency
+    /// Successful resource load, resulting from either a handle load, or the
+    /// loading of a dependency
     Loaded(HandleUntyped),
     /// Resource unload event
     Unloaded(ResourceTypeAndId),
@@ -279,12 +286,14 @@ impl AssetRegistry {
         self.loader.reload(type_id)
     }
 
-    /// Returns a handle to the resource if a handle to this resource already exists.
+    /// Returns a handle to the resource if a handle to this resource already
+    /// exists.
     pub fn get_untyped(&self, type_id: ResourceTypeAndId) -> Option<HandleUntyped> {
         self.loader.get_handle(type_id)
     }
 
-    /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
+    /// Same as [`Self::load_untyped`] but blocks until the resource load
+    /// completes or returns an error.
     pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         let handle = self.loader.load(type_id);
         // todo: this will be improved with async/await
@@ -296,13 +305,15 @@ impl AssetRegistry {
         handle
     }
 
-    /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
+    /// Same as [`Self::load_untyped`] but the returned handle is generic over
+    /// asset type `T` for convenience.
     pub fn load<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
-    /// Same as [`Self::load`] but blocks until the resource load completes or returns an error.
+    /// Same as [`Self::load`] but blocks until the resource load completes or
+    /// returns an error.
     pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
@@ -376,8 +387,9 @@ impl AssetRegistry {
         self.read_inner().load_errors.contains_key(&type_id)
     }
 
-    /// Subscribe to load events, to know when resources are loaded and unloaded.
-    /// Returns a channel receiver that will receive `ResourceLoadEvent`s.
+    /// Subscribe to load events, to know when resources are loaded and
+    /// unloaded. Returns a channel receiver that will receive
+    /// `ResourceLoadEvent`s.
     pub fn subscribe_to_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.write_inner().load_event_senders.push(sender);
@@ -392,7 +404,8 @@ mod tests {
     mod refs_asset {
         //! This module defines a test asset.
         //!
-        //! It is used to test the data compilation process until we have a proper asset available.
+        //! It is used to test the data compilation process until we have a
+        //! proper asset available.
 
         use std::{any::Any, io, sync::Arc};
 
@@ -466,7 +479,7 @@ mod tests {
                 return Ok(None);
             }
             Ok(Some(Reference::Passive(ResourceTypeAndId {
-                t: ResourceType::from_raw(underlying_type),
+                kind: ResourceType::from_raw(underlying_type),
                 id: ResourceId::from_raw(underlying_id),
             })))
         }
@@ -481,11 +494,11 @@ mod tests {
 
     fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let checksum = content_store.store(content).unwrap();
@@ -503,7 +516,7 @@ mod tests {
 
     fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
@@ -531,7 +544,7 @@ mod tests {
         ];
 
         let child_id = ResourceTypeAndId {
-            t: refs_asset::RefsAsset::TYPE,
+            kind: refs_asset::RefsAsset::TYPE,
             id: ResourceId::new_explicit(1),
         };
 
@@ -543,7 +556,7 @@ mod tests {
             );
             let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
             let id = ResourceTypeAndId {
-                t: refs_asset::RefsAsset::TYPE,
+                kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
             };
             manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
@@ -636,7 +649,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped(ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(7),
             });
             internal_id = a.id();
@@ -664,7 +677,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped_sync(ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(7),
             });
             internal_id = a.id();

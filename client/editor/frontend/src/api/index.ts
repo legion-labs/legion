@@ -1,75 +1,17 @@
-import log from "@/lib/log";
+import log from "@lgn/frontend/src/lib/log";
 import {
   GrpcWebImpl as EditorGrpcWebImpl,
   EditorClientImpl,
   ResourceDescription,
 } from "@lgn/proto-editor/codegen/editor";
-import {
-  GrpcWebImpl as StreamingGrpcWebImpl,
-  StreamerClientImpl,
-} from "@lgn/proto-streaming/codegen/streaming";
-import {} from "@lgn/proto-runtime/codegen/runtime";
 
-export enum ServerType {
-  Editor = 0,
-  Runtime = 1,
-}
-
-// TODO: Move to config
 const editorServerURL = "http://[::1]:50051";
-const runtimeServerURL = "http://[::1]:50052";
 
-// Some functions useful when dealing with the api
-
-const stringToBytes = (s: string) => new TextEncoder().encode(s);
-
-const jsonToBytes = (j: Record<string, unknown>) =>
-  stringToBytes(JSON.stringify(j));
-
-const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
-
-const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
-
-export const editorClient = new EditorClientImpl(
+const editorClient = new EditorClientImpl(
   new EditorGrpcWebImpl(editorServerURL, {
     debug: false,
   })
 );
-
-export const editorStreamerClient = new StreamerClientImpl(
-  new StreamingGrpcWebImpl(editorServerURL, {
-    debug: false,
-  })
-);
-
-export const runtimeStreamerClient = new StreamerClientImpl(
-  new StreamingGrpcWebImpl(runtimeServerURL, {
-    debug: false,
-  })
-);
-
-/**
- * Initialize the video player stream
- * @param serverType
- * @param localSessionDescription
- * @returns a valid RTC sessions description to use with an RTCPeerConnection
- */
-export async function initializeStream(
-  serverType: ServerType,
-  localSessionDescription: RTCSessionDescription
-) {
-  let client;
-  if (serverType == ServerType.Editor) {
-    client = editorStreamerClient;
-  } else {
-    client = runtimeStreamerClient;
-  }
-  const response = await client.initializeStream({
-    rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
-  });
-
-  return new RTCSessionDescription(bytesToJson(response.rtcSessionDescription));
-}
 
 /**
  * Eagerly fetches all the resource descriptions on the server
@@ -95,7 +37,7 @@ export async function getAllResources() {
   return getMoreResources("");
 }
 
-type ResourcePropertyTemplate<Value, Type extends string> = {
+type ResourcePropertyBase<Value, Type extends string> = {
   defaultValue: Value;
   value: Value;
   name: string;
@@ -103,35 +45,35 @@ type ResourcePropertyTemplate<Value, Type extends string> = {
   group: string;
 };
 
-export type BooleanProperty = ResourcePropertyTemplate<boolean, "bool">;
+export type BooleanProperty = ResourcePropertyBase<boolean, "bool">;
 
 export type Speed = number;
 
-export type SpeedProperty = ResourcePropertyTemplate<Speed, "speed">;
+export type SpeedProperty = ResourcePropertyBase<Speed, "speed">;
 
 export type Color = number;
 
-export type ColorProperty = ResourcePropertyTemplate<Color, "color">;
+export type ColorProperty = ResourcePropertyBase<Color, "color">;
 
-export type StringProperty = ResourcePropertyTemplate<string, "string">;
+export type StringProperty = ResourcePropertyBase<string, "string">;
 
-export type NumberProperty = ResourcePropertyTemplate<
+export type NumberProperty = ResourcePropertyBase<
   number,
   "i32" | "u32" | "f32" | "f64"
 >;
 
 export type Vec3 = [number, number, number];
 
-export type Vec3Property = ResourcePropertyTemplate<Vec3, "vec3">;
+export type Vec3Property = ResourcePropertyBase<Vec3, "vec3">;
 
 export type Quat = [number, number, number, number];
 
-export type QuatProperty = ResourcePropertyTemplate<Quat, "quat">;
+export type QuatProperty = ResourcePropertyBase<Quat, "quat">;
 
 // Uint8Array might fit better here, but it requires some value conversion at runtime
 export type VecU8 = number[];
 
-export type VecU8Property = ResourcePropertyTemplate<VecU8, "vec < u8 >">;
+export type VecU8Property = ResourcePropertyBase<VecU8, "vec < u8 >">;
 
 export type ResourceProperty =
   | BooleanProperty
@@ -170,7 +112,7 @@ export function propertyIsString(
 export function propertyIsNumber(
   property: ResourceProperty
 ): property is NumberProperty {
-  return ["i32", "u32", "f32", "f64"].includes(property.ptype);
+  return ["i32", "u32", "f32", "f64", "usize"].includes(property.ptype);
 }
 
 export function propertyIsVec3(
@@ -267,37 +209,9 @@ export async function updateResourceProperties(
 
 /**
  * Used for logging purpose
- * @param jsonMsg
- * @returns
- */
-export async function onReceiveControlMessage(jsonMsg: string) {
-  log.info("video", `Received control message. msg=${jsonMsg}`);
-}
-
-/**
- * Used for logging purpose
  * @param jsonCommand
  * @returns
  */
 export async function onSendEditionCommand(jsonCommand: string) {
   log.info("video", `Sending edition_command=${jsonCommand}`);
-}
-
-// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
-/**
- * Used for logging and telemetry purpose
- * @param _chunkHeader
- * @returns
- */
-export async function onVideoChunkReceived(_chunkHeader: string) {
-  return;
-}
-
-// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
-/**
- * Used for logging and telemetry purpose
- * @returns
- */
-export async function onVideoClose() {
-  return;
 }

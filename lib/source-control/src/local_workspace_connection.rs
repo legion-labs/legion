@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
 use sqlx::Connection;
 
 pub struct LocalWorkspaceConnection {

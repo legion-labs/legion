@@ -1,6 +1,7 @@
 //! This module defines a test asset.
 //!
-//! It is used to test the data compilation process until we have a proper asset available.
+//! It is used to test the data compilation process until we have a proper asset
+//! available.
 
 use std::{any::Any, io, sync::Arc};
 
@@ -69,7 +70,7 @@ where
         return Ok(None);
     }
     Ok(Some(Reference::Passive(ResourceTypeAndId {
-        t: ResourceType::from_raw(underlying_type),
+        kind: ResourceType::from_raw(underlying_type),
         id: ResourceId::from_raw(underlying_id),
     })))
 }

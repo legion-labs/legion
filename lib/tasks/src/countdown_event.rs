@@ -7,23 +7,25 @@ use event_listener::Event;
 
 #[derive(Debug)]
 struct CountdownEventInner {
-    /// Async primitive that can be awaited and signalled. We fire it when counter hits 0.
+    /// Async primitive that can be awaited and signalled. We fire it when
+    /// counter hits 0.
     event: Event,
 
     /// The number of decrements remaining
     counter: AtomicIsize,
 }
 
-/// A counter that starts with an initial count `n`. Once it is decremented `n` times, it will be
-/// "ready". Call `listen` to get a future that can be awaited.
+/// A counter that starts with an initial count `n`. Once it is decremented `n`
+/// times, it will be "ready". Call `listen` to get a future that can be
+/// awaited.
 #[derive(Clone, Debug)]
 pub struct CountdownEvent {
     inner: Arc<CountdownEventInner>,
 }
 
 impl CountdownEvent {
-    /// Creates a `CountdownEvent` that must be decremented `n` times for listeners to be
-    /// signalled
+    /// Creates a `CountdownEvent` that must be decremented `n` times for
+    /// listeners to be signalled
     pub fn new(n: isize) -> Self {
         let inner = CountdownEventInner {
             event: Event::new(),
@@ -35,26 +37,28 @@ impl CountdownEvent {
         }
     }
 
-    /// Get the number of times decrement must be called to trigger notifying all listeners
+    /// Get the number of times decrement must be called to trigger notifying
+    /// all listeners
     pub fn get(&self) -> isize {
         self.inner.counter.load(Ordering::Acquire)
     }
 
-    /// Decrement the counter by one. If this is the Nth call, trigger all listeners
+    /// Decrement the counter by one. If this is the Nth call, trigger all
+    /// listeners
     pub fn decrement(&self) {
         // If we are the last decrementer, notify listeners
         let value = self.inner.counter.fetch_sub(1, Ordering::AcqRel);
         if value <= 1 {
             self.inner.event.notify(std::usize::MAX);
 
-            // Reset to 0 - wrapping an isize negative seems unlikely but should probably do it
-            // anyways.
+            // Reset to 0 - wrapping an isize negative seems unlikely but should probably do
+            // it anyways.
             self.inner.counter.store(0, Ordering::Release);
         }
     }
 
-    /// Resets the counter. Any listens following this point will not be notified until decrement
-    /// is called N times
+    /// Resets the counter. Any listens following this point will not be
+    /// notified until decrement is called N times
     pub fn reset(&self, n: isize) {
         self.inner.counter.store(n, Ordering::Release);
     }
@@ -63,8 +67,9 @@ impl CountdownEvent {
     pub async fn listen(&self) {
         let mut listener = None;
 
-        // The complexity here is due to Event not necessarily signalling awaits that are placed
-        // after the await is called. So we must check the counter AFTER taking a listener.
+        // The complexity here is due to Event not necessarily signalling awaits that
+        // are placed after the await is called. So we must check the counter
+        // AFTER taking a listener.
         loop {
             // We're done, break
             if self.inner.counter.load(Ordering::Acquire) <= 0 {
@@ -120,8 +125,8 @@ mod tests {
         event.notify(std::usize::MAX);
         futures_lite::future::block_on(listener1);
 
-        // If all listeners are notified, the structure should now be cleared. We're free to listen
-        // again
+        // If all listeners are notified, the structure should now be cleared. We're
+        // free to listen again
         let listener2 = event.listen();
         let listener3 = event.listen();
 

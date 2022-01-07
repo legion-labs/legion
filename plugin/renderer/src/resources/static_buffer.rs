@@ -1,18 +1,18 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    alloc::Layout,
+    sync::{Arc, Mutex},
+};
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, Queue, QueueType, ResourceCreation,
-    ResourceState, ResourceUsage, Semaphore,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
+    ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
 
-use parking_lot::RwLockReadGuard;
-
-use crate::{RenderContext, RenderHandle};
-
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
+use crate::{RenderContext, RenderHandle};
 
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,
@@ -42,7 +42,6 @@ impl UnifiedStaticBuffer {
         }
         let buffer_def = BufferDef {
             size: virtual_buffer_size,
-            queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             creation_flags,
         };
@@ -140,39 +139,35 @@ impl UnifiedStaticBuffer {
         prev_frame_semaphore: &Semaphore,
         unbind_semaphore: &Semaphore,
         bind_semaphore: &Semaphore,
-        render_context: &mut RenderContext<'_>,
-        graphics_queue: &RwLockReadGuard<'_, Queue>,
+        render_context: &RenderContext<'_>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
         let mut last_semaphore = None;
+        let graphics_queue = render_context.graphics_queue();
         if let Some(binding_manager) = &mut inner.binding_manager {
             last_semaphore = Some(binding_manager.commmit_sparse_bindings(
-                graphics_queue,
+                &graphics_queue,
                 prev_frame_semaphore,
                 unbind_semaphore,
                 bind_semaphore,
             ));
         }
 
-        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+        let cmd_buffer = render_context.alloc_command_buffer();
 
-        cmd_buffer.begin().unwrap();
-
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &inner.buffer,
-                    src_state: ResourceState::SHADER_RESOURCE,
-                    dst_state: ResourceState::COPY_DST,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &inner.buffer,
+                src_state: ResourceState::SHADER_RESOURCE,
+                dst_state: ResourceState::COPY_DST,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
 
         for job in &inner.job_blocks {
-            cmd_buffer.cmd_copy_buffer_to_buffer(
+            cmd_buffer.copy_buffer_to_buffer(
                 &job.upload_allocation.buffer,
                 &inner.buffer,
                 &job.upload_jobs,
@@ -180,19 +175,15 @@ impl UnifiedStaticBuffer {
         }
         inner.job_blocks.clear();
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[BufferBarrier {
-                    buffer: &inner.buffer,
-                    src_state: ResourceState::COPY_DST,
-                    dst_state: ResourceState::SHADER_RESOURCE,
-                    queue_transition: BarrierQueueTransition::None,
-                }],
-                &[],
-            )
-            .unwrap();
-
-        cmd_buffer.end().unwrap();
+        cmd_buffer.resource_barrier(
+            &[BufferBarrier {
+                buffer: &inner.buffer,
+                src_state: ResourceState::COPY_DST,
+                dst_state: ResourceState::SHADER_RESOURCE,
+                queue_transition: BarrierQueueTransition::None,
+            }],
+            &[],
+        );
 
         let mut wait_sems = Vec::new();
         if let Some(wait_sem) = last_semaphore {
@@ -202,11 +193,7 @@ impl UnifiedStaticBuffer {
             }
         }
 
-        graphics_queue
-            .submit(&[&cmd_buffer], &wait_sems, &[], None)
-            .unwrap();
-
-        render_context.release_cmd_buffer(cmd_buffer);
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &wait_sems, &[], None);
     }
 
     pub fn read_only_view(&self) -> BufferView {
@@ -297,7 +284,7 @@ impl UniformGPUDataUploadJobBlock {
             for i in 0..data.len() as u64 {
                 let data_size = std::mem::size_of::<T>() as u64;
                 self.upload_jobs.push(BufferCopy {
-                    src_offset: upload_offset,
+                    src_offset: upload_offset + (i * data_size),
                     dst_offset: dst_offset + (i * data_size),
                     size: data_size,
                 });
@@ -326,6 +313,8 @@ impl UniformGPUDataUpdater {
     }
 
     pub fn add_update_jobs<T>(&mut self, data: &[T], dst_offset: u64) {
+        let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
+
         while self.job_blocks.is_empty()
             || !self
                 .job_blocks
@@ -333,8 +322,14 @@ impl UniformGPUDataUpdater {
                 .unwrap()
                 .add_update_jobs(data, dst_offset)
         {
+            let data_layout = Layout::from_size_align(
+                std::cmp::max(self.block_size as usize, upload_size_in_bytes as usize),
+                std::mem::align_of::<T>(),
+            )
+            .unwrap();
+
             self.job_blocks.push(UniformGPUDataUploadJobBlock::new(
-                self.paged_buffer.allocate_page(self.block_size),
+                self.paged_buffer.allocate_page(data_layout),
             ));
         }
     }

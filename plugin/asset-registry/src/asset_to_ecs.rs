@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_renderer::components::{RotationComponent, StaticMesh};
+use lgn_renderer::{
+    components::{RotationComponent, StaticMesh},
+    resources::DefaultMeshes,
+};
 use lgn_transform::prelude::*;
 use sample_data_runtime as runtime_data;
 
@@ -14,13 +17,14 @@ pub(crate) fn load_ecs_asset<T>(
     registry: &ResMut<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+    default_meshes: &Res<'_, DefaultMeshes>,
 ) -> bool
 where
     T: AssetToECS + Resource + 'static,
 {
-    if asset_id.t == T::TYPE {
+    if asset_id.kind == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map);
+            let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map, default_meshes);
 
             if let Some(entity_id) = entity {
                 if let Some(old_entity) = asset_to_entity_map.insert(*asset_id, entity_id) {
@@ -49,6 +53,7 @@ pub(crate) trait AssetToECS {
         _commands: &mut Commands<'_, '_>,
         _asset: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         None
     }
@@ -59,6 +64,7 @@ impl AssetToECS for runtime_data::Entity {
         commands: &mut Commands<'_, '_>,
         runtime_entity: &Self,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         let mut entity = commands.spawn();
 
@@ -75,7 +81,12 @@ impl AssetToECS for runtime_data::Entity {
                 entity.insert(StaticMesh {
                     mesh_id: static_mesh.mesh_id,
                     color: (255, 0, 0).into(),
-                    offset: 0,
+                    vertex_offset: default_meshes.mesh_offset_from_id(static_mesh.mesh_id as u32),
+                    num_verticies: default_meshes
+                        .mesh_from_id(static_mesh.mesh_id as u32)
+                        .num_vertices() as u32,
+                    world_offset: 0,
+                    picking_id: 0,
                 });
             }
             //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
@@ -91,7 +102,8 @@ impl AssetToECS for runtime_data::Entity {
         }
         entity.insert(GlobalTransform::identity());
 
-        // parent, if it exists, must already be loaded since parents load their children
+        // parent, if it exists, must already be loaded since parents load their
+        // children
         let parent = runtime_entity
             .parent
             .as_ref()
@@ -116,6 +128,7 @@ impl AssetToECS for runtime_data::Instance {
         commands: &mut Commands<'_, '_>,
         _instance: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         let entity = commands.spawn();
 
@@ -129,11 +142,12 @@ impl AssetToECS for runtime_data::Mesh {}
 
 impl AssetToECS for lgn_graphics_runtime::Texture {}
 
-impl AssetToECS for generic_data_runtime::DebugCube {
+impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         instance: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         let mut entity = commands.spawn();
 
@@ -145,7 +159,12 @@ impl AssetToECS for generic_data_runtime::DebugCube {
         entity.insert(StaticMesh {
             mesh_id: instance.mesh_id,
             color: instance.color,
-            offset: 0,
+            vertex_offset: default_meshes.mesh_offset_from_id(instance.mesh_id as u32),
+            num_verticies: default_meshes
+                .mesh_from_id(instance.mesh_id as u32)
+                .num_vertices() as u32,
+            world_offset: 0,
+            picking_id: 0,
         });
 
         entity.insert(RotationComponent {

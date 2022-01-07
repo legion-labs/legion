@@ -1,24 +1,22 @@
-use std::{
-    hash::{Hash, Hasher},
-    num::NonZeroU32,
-};
+use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
-#[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use super::{
+use strum::IntoStaticStr;
+
+use crate::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
-    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
-    VertexAttributeRate,
+    DescriptorSetLayout, Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage,
+    MipMapMode, PrimitiveTopology, ResourceFlags, RootSignature, SampleCount, Shader, ShaderModule,
+    ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
-use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
-/// Controls if an extension is enabled or not. The requirements/behaviors of validation is
-/// API-specific.
+/// Controls if an extension is enabled or not. The requirements/behaviors of
+/// validation is API-specific.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ExtensionMode {
     /// Do not enable the related extensions
@@ -27,19 +25,21 @@ pub enum ExtensionMode {
     /// Enable extensions if available.
     EnabledIfAvailable,
 
-    /// Enable validation, and fail if we cannot enable it or detect that it is not enabled through
-    /// external means. (Details on this are API-specific)
+    /// Enable validation, and fail if we cannot enable it or detect that it is
+    /// not enabled through external means. (Details on this are
+    /// API-specific)
     Enabled,
 }
 
 /// General configuration that all APIs will make best effort to respect
 pub struct ApiDef {
-    /// Used as a hint for drivers for what is being run. There are no special requirements for
-    /// this. It is not visible to end-users.
+    /// Used as a hint for drivers for what is being run. There are no special
+    /// requirements for this. It is not visible to end-users.
     pub app_name: String,
 
-    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
-    /// during development but very expensive. Applications should not ship with validation enabled.
+    /// Used to enable/disable validation at runtime. Not all APIs allow this.
+    /// Validation is helpful during development but very expensive.
+    /// Applications should not ship with validation enabled.
     pub validation_mode: ExtensionMode,
 
     /// Don't enable Window interop extensions
@@ -201,13 +201,17 @@ bitflags::bitflags! {
 
 #[derive(Clone, Debug)]
 pub struct Descriptor {
-    pub(crate) name: String,
-    pub(crate) binding: u32,
-    pub(crate) shader_resource_type: ShaderResourceType,
-    #[cfg(feature = "vulkan")]
-    pub(crate) vk_type: ash::vk::DescriptorType,
-    pub(crate) element_count: u32,
-    pub(crate) update_data_offset: u32,
+    pub name: String,
+    pub binding: u32,
+    pub shader_resource_type: ShaderResourceType,
+    pub element_count: u32,
+    pub update_data_offset: u32,
+}
+
+impl Descriptor {
+    pub fn element_count_normalized(&self) -> u32 {
+        self.element_count.max(1)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -397,15 +401,16 @@ impl TextureViewDef {
 /// Used to create a `CommandPool`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandPoolDef {
-    /// Set to true if the command buffers allocated from the pool are expected to have very short
-    /// lifetimes
+    /// Set to true if the command buffers allocated from the pool are expected
+    /// to have very short lifetimes
     pub transient: bool,
 }
 
 /// Used to create a `CommandBuffer`
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandBufferDef {
-    /// Secondary command buffers are used to encode a single pass on multiple threads
+    /// Secondary command buffers are used to encode a single pass on multiple
+    /// threads
     pub is_secondary: bool,
 }
 
@@ -426,7 +431,9 @@ pub struct ShaderStageDef {
     pub shader_module: ShaderModule,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Copy, strum::Display, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, IntoStaticStr,
+)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,
@@ -444,7 +451,7 @@ pub enum ShaderResourceType {
     TextureCubeArray = 0x20_00,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
     pub binding: u32,
@@ -458,7 +465,7 @@ impl DescriptorDef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct DescriptorSetLayoutDef {
     pub frequency: u32,
     pub descriptor_defs: Vec<DescriptorDef>,
@@ -479,14 +486,14 @@ impl Default for DescriptorSetLayoutDef {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
-    pub size: NonZeroU32,
+    pub size: u32,
 }
 
+#[derive(Default, Debug, Hash)]
 pub struct RootSignatureDef {
-    pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -494,19 +501,8 @@ pub struct RootSignatureDef {
 impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
         Self {
-            pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
             push_constant_def: self.push_constant_def,
-        }
-    }
-}
-
-impl Default for RootSignatureDef {
-    fn default() -> Self {
-        Self {
-            pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: Vec::new(),
-            push_constant_def: None,
         }
     }
 }
@@ -595,7 +591,8 @@ pub struct VertexLayout {
     pub buffers: Vec<VertexLayoutBuffer>,
 }
 
-/// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".
+/// Affects depth testing and stencil usage. Commonly used to enable
+/// "Z-buffering".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct DepthState {
@@ -636,7 +633,8 @@ impl Default for DepthState {
     }
 }
 
-/// Affects rasterization, commonly used to enable backface culling or wireframe rendering
+/// Affects rasterization, commonly used to enable backface culling or wireframe
+/// rendering
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RasterizerState {
@@ -648,6 +646,7 @@ pub struct RasterizerState {
     pub depth_clamp_enable: bool,
     pub multisample: bool,
     pub scissor: bool,
+    pub line_width: f32,
     // Hash implemented manually below, don't forget to update it!
 }
 
@@ -663,6 +662,7 @@ impl PartialEq for RasterizerState {
             && self.depth_clamp_enable == other.depth_clamp_enable
             && self.multisample == other.multisample
             && self.scissor == other.scissor
+            && self.line_width == other.line_width
     }
 }
 
@@ -676,6 +676,7 @@ impl Hash for RasterizerState {
         self.depth_clamp_enable.hash(&mut state);
         self.multisample.hash(&mut state);
         self.scissor.hash(&mut state);
+        DecimalF32(self.line_width).hash(&mut state);
     }
 }
 
@@ -690,6 +691,7 @@ impl Default for RasterizerState {
             depth_clamp_enable: false,
             multisample: false,
             scissor: false,
+            line_width: 1.0,
         }
     }
 }
@@ -748,21 +750,21 @@ impl BlendStateRenderTarget {
     }
 }
 
-/// Affects the way the result of a pixel shader is blended with a value it will overwrite. Commonly
-/// used to enable "alpha-blending".
+/// Affects the way the result of a pixel shader is blended with a value it will
+/// overwrite. Commonly used to enable "alpha-blending".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct BlendState {
     /// Individual blend states for blend targets
     pub render_target_blend_states: Vec<BlendStateRenderTarget>,
 
-    /// Indicates which blend targets to affect. Blend targets with unset bits are left in default
-    /// state.
+    /// Indicates which blend targets to affect. Blend targets with unset bits
+    /// are left in default state.
     pub render_target_mask: BlendStateTargets,
 
-    /// If false, `render_target_blend_states[0]` will apply to all render targets indicated by
-    /// `render_target_mask`. If true, we index into `render_target_blend_states` based on the
-    /// render target's index.
+    /// If false, `render_target_blend_states[0]` will apply to all render
+    /// targets indicated by `render_target_mask`. If true, we index into
+    /// `render_target_blend_states` based on the render target's index.
     pub independent_blend: bool,
 }
 
@@ -825,7 +827,6 @@ pub struct ComputePipelineDef<'a> {
 /// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
-    pub transient: bool,
     pub max_descriptor_sets: u32,
     pub sampler_count: u32,
     pub constant_buffer_count: u32,
@@ -838,11 +839,9 @@ pub struct DescriptorHeapDef {
 impl DescriptorHeapDef {
     pub fn from_descriptor_set_layout_def(
         definition: &DescriptorSetLayoutDef,
-        transient: bool,
         max_descriptor_sets: u32,
     ) -> Self {
         let mut result = Self {
-            transient,
             max_descriptor_sets,
             ..Self::default()
         };

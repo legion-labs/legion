@@ -16,17 +16,18 @@ use crate::{
 
 /// An ordered collection of components.
 ///
-/// Commonly used for spawning entities and adding and removing components in bulk. This
-/// trait is automatically implemented for tuples of components: `(ComponentA, ComponentB)`
-/// is a very convenient shorthand when working with one-off collections of components. Note
-/// that both the unit type `()` and `(ComponentA, )` are valid bundles. The unit bundle is
-/// particularly useful for spawning multiple empty entities by using
-/// [`Commands::spawn_batch`](crate::system::Commands::spawn_batch).
+/// Commonly used for spawning entities and adding and removing components in
+/// bulk. This trait is automatically implemented for tuples of components:
+/// `(ComponentA, ComponentB)` is a very convenient shorthand when working with
+/// one-off collections of components. Note that both the unit type `()` and
+/// `(ComponentA, )` are valid bundles. The unit bundle is particularly useful
+/// for spawning multiple empty entities by using [`Commands::
+/// spawn_batch`](crate::system::Commands::spawn_batch).
 ///
 /// # Examples
 ///
-/// Typically, you will simply use `#[derive(Bundle)]` when creating your own `Bundle`. Each
-/// struct field is a component:
+/// Typically, you will simply use `#[derive(Bundle)]` when creating your own
+/// `Bundle`. Each struct field is a component:
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -72,27 +73,29 @@ use crate::{
 ///
 /// # Safety
 ///
-/// - [`Bundle::component_ids`] must return the `ComponentId` for each component type in the bundle, in the
-///   _exact_ order that [`Bundle::get_components`] is called.
-/// - [`Bundle::from_components`] must call `func` exactly once for each [`ComponentId`] returned by
-///   [`Bundle::component_ids`].
+/// - [`Bundle::component_ids`] must return the `ComponentId` for each component
+///   type in the bundle, in the _exact_ order that [`Bundle::get_components`]
+///   is called.
+/// - [`Bundle::from_components`] must call `func` exactly once for each
+///   [`ComponentId`] returned by [`Bundle::component_ids`].
 pub unsafe trait Bundle: Send + Sync + 'static {
-    /// Gets this [Bundle]'s component ids, in the order of this bundle's Components
+    /// Gets this [Bundle]'s component ids, in the order of this bundle's
+    /// Components
     fn component_ids(components: &mut Components, storages: &mut Storages) -> Vec<ComponentId>;
 
-    /// Calls `func`, which should return data for each component in the bundle, in the order of
-    /// this bundle's Components
+    /// Calls `func`, which should return data for each component in the bundle,
+    /// in the order of this bundle's Components
     ///
     /// # Safety
-    /// Caller must return data for each component in the bundle, in the order of this bundle's
-    /// Components
+    /// Caller must return data for each component in the bundle, in the order
+    /// of this bundle's Components
     unsafe fn from_components(func: impl FnMut() -> *mut u8) -> Self
     where
         Self: Sized;
 
-    /// Calls `func` on each value, in the order of this bundle's Components. This will
-    /// "`mem::forget`" the bundle fields, so callers are responsible for dropping the fields if
-    /// that is desirable.
+    /// Calls `func` on each value, in the order of this bundle's Components.
+    /// This will "`mem::forget`" the bundle fields, so callers are
+    /// responsible for dropping the fields if that is desirable.
     fn get_components(self, func: impl FnMut(*mut u8));
 }
 
@@ -259,7 +262,9 @@ impl BundleInfo {
     }
 
     /// # Safety
-    /// `table` must be the "new" table for `entity`. `table_row` must have space allocated for the `entity`, `bundle` must match this `BundleInfo`'s type
+    /// `table` must be the "new" table for `entity`. `table_row` must have
+    /// space allocated for the `entity`, `bundle` must match this
+    /// `BundleInfo`'s type
     #[inline]
     #[allow(clippy::too_many_arguments)]
     unsafe fn write_components<T: Bundle>(
@@ -303,8 +308,9 @@ impl BundleInfo {
         });
     }
 
-    /// Adds a bundle to the given archetype and returns the resulting archetype. This could be the same
-    /// [`ArchetypeId`], in the event that adding the given bundle does not result in an Archetype change.
+    /// Adds a bundle to the given archetype and returns the resulting
+    /// archetype. This could be the same [`ArchetypeId`], in the event that
+    /// adding the given bundle does not result in an Archetype change.
     /// Results are cached in the Archetype Graph to avoid redundant work.
     pub(crate) fn add_bundle_to_archetype(
         &self,
@@ -344,7 +350,8 @@ impl BundleInfo {
             let table_id;
             let table_components;
             let sparse_set_components;
-            // the archetype changes when we add this bundle. prepare the new archetype and storages
+            // the archetype changes when we add this bundle. prepare the new archetype and
+            // storages
             {
                 let current_archetype = &archetypes[archetype_id];
                 table_components = if new_table_components.is_empty() {
@@ -411,7 +418,8 @@ pub(crate) enum InsertBundleResult<'a> {
 
 impl<'a, 'b> BundleInserter<'a, 'b> {
     /// # Safety
-    /// `entity` must currently exist in the source archetype for this inserter. `archetype_index` must be `entity`'s location in the archetype.
+    /// `entity` must currently exist in the source archetype for this inserter.
+    /// `archetype_index` must be `entity`'s location in the archetype.
     /// `T` must match this `BundleInfo`'s type
     #[inline]
     pub unsafe fn insert<T: Bundle>(
@@ -426,7 +434,8 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
         };
         match &mut self.result {
             InsertBundleResult::SameArchetype => {
-                // PERF: this could be looked up during Inserter construction and stored (but borrowing makes this nasty)
+                // PERF: this could be looked up during Inserter construction and stored (but
+                // borrowing makes this nasty)
                 let add_bundle = self
                     .archetype
                     .edges()
@@ -451,7 +460,8 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
                 let new_location = new_archetype.allocate(entity, result.table_row);
                 self.entities.meta[entity.id as usize].location = new_location;
 
-                // PERF: this could be looked up during Inserter construction and stored (but borrowing makes this nasty)
+                // PERF: this could be looked up during Inserter construction and stored (but
+                // borrowing makes this nasty)
                 let add_bundle = self
                     .archetype
                     .edges()
@@ -493,7 +503,8 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
                     } else if new_archetype.id() == swapped_location.archetype_id {
                         new_archetype
                     } else {
-                        // SAFE: the only two borrowed archetypes are above and we just did collision checks
+                        // SAFE: the only two borrowed archetypes are above and we just did
+                        // collision checks
                         &mut *self
                             .archetypes_ptr
                             .add(swapped_location.archetype_id.index())
@@ -503,7 +514,8 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
                         .set_entity_table_row(swapped_location.index, result.table_row);
                 }
 
-                // PERF: this could be looked up during Inserter construction and stored (but borrowing makes this nasty)
+                // PERF: this could be looked up during Inserter construction and stored (but
+                // borrowing makes this nasty)
                 let add_bundle = self
                     .archetype
                     .edges()
@@ -540,7 +552,8 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
         self.table.reserve(additional);
     }
     /// # Safety
-    /// `entity` must be allocated (but non existent), `T` must match this `BundleInfo`'s type
+    /// `entity` must be allocated (but non existent), `T` must match this
+    /// `BundleInfo`'s type
     #[inline]
     pub unsafe fn spawn_non_existent<T: Bundle>(
         &mut self,
@@ -568,7 +581,8 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
     #[inline]
     pub unsafe fn spawn<T: Bundle>(&mut self, bundle: T) -> Entity {
         let entity = self.entities.alloc();
-        // SAFE: entity is allocated (but non-existent), `T` matches this BundleInfo's type
+        // SAFE: entity is allocated (but non-existent), `T` matches this BundleInfo's
+        // type
         self.spawn_non_existent(entity, bundle);
         entity
     }

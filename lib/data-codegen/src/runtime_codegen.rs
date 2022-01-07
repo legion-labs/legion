@@ -1,70 +1,28 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
-type QuoteRes = quote::__private::TokenStream;
-
-/// Generate Runtime members definition
-fn generate_runtime_fields(members: &[MemberMetaInfo]) -> (Vec<QuoteRes>, Vec<syn::Path>) {
-    let mut imports = vec![];
-    let fields = members
-        .iter()
-        .filter(|m| !m.offline)
-        .map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            let (runtime_type, import_path) = m.get_runtime_type();
-            if let Some(import_path) = import_path {
-                if !imports.contains(&import_path) {
-                    imports.push(import_path);
-                }
-            }
-            quote! { pub #member_ident : #runtime_type, }
-        })
-        .collect();
-
-    (fields, imports)
-}
-
-/// Generate 'Default' implementation for runtime members
-fn generate_runtime_defaults(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .filter(|m| !m.offline)
-        .map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            if let Some(default_value) = &m.default_literal {
-                if let Ok(syn::Lit::Str(_) | syn::Lit::ByteStr(_)) =
-                    syn::parse2::<syn::Lit>(default_value.clone())
-                {
-                    quote! { #member_ident : #default_value.into(),}
-                } else {
-                    quote! { #member_ident : #default_value, }
-                }
-            } else if m.is_option() {
-                quote! {#member_ident : None, }
-            } else if m.is_vec() {
-                quote! {#member_ident : Vec::new(), }
-            } else {
-                quote! { #member_ident : Default::default(), }
-            }
-        })
-        .collect()
-}
+use crate::reflection::DataContainerMetaInfo;
 
 /// Generate code `AssetLoader` Runtime Registration
 pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
-    let entries: Vec<QuoteRes> = structs
+    let entries: Vec<TokenStream> = structs
         .iter()
+        .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
             let type_name = format_ident!("{}", &struct_meta.name);
             quote! { .add_loader::<#type_name>() }
         })
         .collect();
-    quote! {
-        pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
-            registry
-            #(#entries)*
+
+    if !entries.is_empty() {
+        quote! {
+            pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
+                registry
+                #(#entries)*
+            }
         }
+    } else {
+        quote! {}
     }
 }
 
@@ -72,8 +30,6 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     let runtime_identifier = format_ident!("{}", data_container_info.name);
     let runtime_name = format!("runtime_{}", data_container_info.name).to_lowercase();
     let runtime_loader = format_ident!("{}Loader", data_container_info.name);
-    let (runtime_fields, import_types) = generate_runtime_fields(&data_container_info.members);
-    let runtime_fields_defaults = generate_runtime_defaults(&data_container_info.members);
 
     let life_time = if data_container_info.need_life_time() {
         quote! {<'r>}
@@ -84,9 +40,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     let use_quotes = if add_uses {
         quote! {
         use std::{any::Any, io};
-        use serde::{Deserialize, Serialize};
         use lgn_data_runtime::{Asset, AssetLoader,Resource};
-        #(use #import_types;)*
         }
     } else {
         quote! {}
@@ -96,24 +50,8 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         #use_quotes
 
-        // Runtime Structure
-        #[derive(Serialize, Deserialize)]
-        pub struct #runtime_identifier #life_time {
-            #(#runtime_fields)*
-        }
-
         impl #life_time Resource for #runtime_identifier #life_time {
             const TYPENAME: &'static str = #runtime_name;
-        }
-
-        // Runtime default implementation
-        #[allow(clippy::derivable_impls)]
-        impl #life_time Default for #runtime_identifier #life_time {
-            fn default() -> Self {
-                Self {
-                    #(#runtime_fields_defaults)*
-                }
-            }
         }
 
         impl #life_time Asset for #runtime_identifier #life_time {

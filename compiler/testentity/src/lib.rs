@@ -1,5 +1,6 @@
 // BEGIN - Legion Labs lints v0.6
-// do not change or add/remove here, but one can add exceptions after this section
+// do not change or add/remove here, but one can add exceptions after this
+// section
 #![deny(unsafe_code)]
 #![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
 // Rustdoc lints
@@ -54,4 +55,5 @@
 // crate-specific exceptions:
 #![allow()]
 
+// TODO: Replace by using Reflection conversion
 include!(concat!(env!("OUT_DIR"), "/compiler_testentity.rs"));

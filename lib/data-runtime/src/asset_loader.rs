@@ -27,8 +27,9 @@ struct AssetReference {
 ///
 /// Contains the result of loading a single file.
 struct LoadOutput {
-    /// None here means the asset was already loaded before so it doesn't have to be
-    /// loaded again. It will still contribute to reference count though.
+    /// None here means the asset was already loaded before so it doesn't have
+    /// to be loaded again. It will still contribute to reference count
+    /// though.
     assets: Vec<(ResourceTypeAndId, Option<Box<dyn Any + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
@@ -54,9 +55,11 @@ struct LoadState {
     /// Otherwise it is a load of a dependent Resource.
     load_id: Option<LoadId>,
     /// List of Resources in asset file identified by `primary_id`.
-    /// None indicates a skipped secondary resource that was already loaded through another resource file.
+    /// None indicates a skipped secondary resource that was already loaded
+    /// through another resource file.
     assets: Vec<(HandleUntyped, Option<Box<dyn Any + Send + Sync>>)>,
-    /// The list of Resources that need to be loaded before the LoadState can be considered completed.
+    /// The list of Resources that need to be loaded before the LoadState can be
+    /// considered completed.
     references: Vec<HandleUntyped>,
 }
 
@@ -310,7 +313,7 @@ impl AssetLoaderIO {
         let (_, primary_resource) = output.assets.first_mut().unwrap();
 
         if let Some(boxed) = primary_resource {
-            let loader = self.loaders.get_mut(&primary_id.t).unwrap();
+            let loader = self.loaders.get_mut(&primary_id.kind).unwrap();
             loader.load_init(boxed.as_mut());
         }
         assert!(self.loaded_resources.contains(&primary_id));
@@ -337,7 +340,8 @@ impl AssetLoaderIO {
                 .any(|state| state.primary_handle == primary_handle)
         {
             // todo: we should create a LoadState based on existing load state?
-            // this way the load result will be notified when the resource is actually loaded.
+            // this way the load result will be notified when the resource is actually
+            // loaded.
             return Ok(());
         }
         let asset_data = self
@@ -464,17 +468,19 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.id().t).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.id().kind).unwrap();
                         loader.load_init(boxed.as_mut());
                     }
-                    // if there is no boxed asset here, it means it was already loaded before.
+                    // if there is no boxed asset here, it means it was already
+                    // loaded before.
                 }
 
                 for (handle, _) in &loaded.assets {
                     self.loaded_resources.insert(handle.id());
                 }
 
-                // send primary asset with load_id. all secondary assets without to not cause load notification.
+                // send primary asset with load_id. all secondary assets without to not cause
+                // load notification.
                 let mut asset_iter = loaded.assets.into_iter();
                 let primary_asset = asset_iter.next().unwrap().1.unwrap();
                 self.result_tx
@@ -507,7 +513,7 @@ impl AssetLoaderIO {
         let mut content = Vec::new();
         reader.read_to_end(&mut content)?;
 
-        let asset_type = type_id.t;
+        let asset_type = type_id.kind;
         let loader = loaders.get_mut(&asset_type).unwrap();
         let boxed_asset = loader.load(&mut &content[..])?;
 
@@ -547,7 +553,7 @@ impl AssetLoaderIO {
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
             let asset_ref = ResourceTypeAndId {
-                t: ResourceType::from_raw(reader.read_u64::<LittleEndian>()?),
+                kind: ResourceType::from_raw(reader.read_u64::<LittleEndian>()?),
                 id: ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
             };
             reference_list.push(AssetReference {
@@ -563,7 +569,7 @@ impl AssetLoaderIO {
             )
         };
         assert_eq!(
-            asset_type, primary_id.t,
+            asset_type, primary_id.kind,
             "The asset must be of primary id's type"
         );
 
@@ -615,11 +621,11 @@ mod tests {
 
     fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let checksum = content_store
@@ -689,11 +695,11 @@ mod tests {
     #[test]
     fn load_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let checksum = content_store
@@ -752,10 +758,10 @@ mod tests {
     #[test]
     fn load_failed_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let parent_id = ResourceTypeAndId {
-            t: test_asset::TestAsset::TYPE,
+            kind: test_asset::TestAsset::TYPE,
             id: ResourceId::new_explicit(2),
         };
 
@@ -808,16 +814,16 @@ mod tests {
     #[test]
     fn load_with_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let parent_content = "parent";
 
         let parent_id = ResourceTypeAndId {
-            t: test_asset::TestAsset::TYPE,
+            kind: test_asset::TestAsset::TYPE,
             id: ResourceId::new_explicit(2),
         };
         let child_id = ResourceTypeAndId {
-            t: test_asset::TestAsset::TYPE,
+            kind: test_asset::TestAsset::TYPE,
             id: ResourceId::new_explicit(1),
         };
 
@@ -917,11 +923,11 @@ mod tests {
     #[test]
     fn reload_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
-        let mut manifest = Manifest::default();
+        let manifest = Manifest::default();
 
         let asset_id = {
             let id = ResourceTypeAndId {
-                t: test_asset::TestAsset::TYPE,
+                kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let checksum = content_store

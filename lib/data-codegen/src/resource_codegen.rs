@@ -1,135 +1,28 @@
-use lgn_utils::DefaultHash;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
-type QuoteRes = quote::__private::TokenStream;
-
-/// Generic the JSON read serialization.
-/// Values not present in JSON will be initialized at default value
-/// Skip 'transient' value
-fn generate_offline_json_reads(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .filter(|m| !m.transient)
-        .map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            let member_name = &m.name;
-            quote! {
-                if let Some(value) = values.get(#member_name) {
-                    instance.#member_ident = serde_json::from_value(value.clone()).unwrap();
-                }
-            }
-        })
-        .collect()
-}
-
-/// Generate the JSON write serialization for members.
-/// Don't serialize members at default values
-/// Skip 'transient' value
-fn generate_offline_json_writes(
-    default_ident: &syn::Ident,
-    members: &[MemberMetaInfo],
-) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .filter(|m| !m.transient)
-        .map(|m| {
-            let member_ident = format_ident!("{}", &m.name);
-            let prop_id = Literal::byte_string(format!("\t\"{}\" : ", &m.name).as_bytes());
-            quote! {
-                if instance.#member_ident != #default_ident.#member_ident {
-                    if let Ok(json_string) = serde_json::to_string(&instance.#member_ident) {
-                        writer.write_all(b",\n")?;
-                        writer.write_all(#prop_id)?;
-                        writer.write_all(json_string.as_bytes())?;
-                    }
-                }
-            }
-        })
-        .collect()
-}
-
-/// Generate the JSON write serialization for members.
-/// Don't serialize members at default values
-/// Skip 'transient' value
-fn generate_reflection_write(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .filter(|m| !m.transient)
-        .map(|m| {
-            let hash_value = m.name.default_hash();
-            let member_ident = format_ident!("{}", &m.name);
-            quote! { #hash_value => {
-                self.#member_ident = serde_json::from_str(field_value)?;
-            },
-            }
-        })
-        .collect()
-}
-
-/// Generate the JSON write serialization for members.
-/// Don't serialize members at default values
-/// Skip 'transient' value
-fn generate_reflection_read(
-    default_ident: Option<&syn::Ident>,
-    members: &[MemberMetaInfo],
-) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .filter(|m| !m.transient)
-        .map(|m| {
-            let hash_value: u64 = m.name.default_hash();
-            let member_ident = format_ident!("{}", &m.name);
-            if let Some(default_ident) = default_ident {
-                quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(Into::into),
-                }
-            }
-            else {
-                quote! { #hash_value => serde_json::to_string(&self.#member_ident).map_err(Into::into),
-                }
-            }
-        })
-        .collect()
-}
-
-/// Generate the JSON write serialization for members.
-/// Don't serialize members at default values
-/// Skip 'transient' value
-fn generate_property_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
-    members
-        .iter()
-        .map(|m| {
-            let hash_value: u64 = m.name.default_hash();
-            let prop_name = &m.name;
-            let group_name = &m.category;
-            let prop_type = &m.type_name;
-            quote! {
-                map.insert(#hash_value, PropertyDescriptor {
-                    name : #prop_name,
-                    type_name : #prop_type,
-                    group : #group_name,
-                });
-            }
-        })
-        .collect()
-}
+use crate::reflection::DataContainerMetaInfo;
 
 /// Generate Code for Resource Registration
 pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
-    let entries: Vec<QuoteRes> = structs
+    let entries: Vec<TokenStream> = structs
         .iter()
+        .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
             let type_name = format_ident!("{}", &struct_meta.name);
             quote! { .add_type::<#type_name>() }
         })
         .collect();
 
-    quote! {
-        pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
-            registry
-            #(#entries)*
+    if !entries.is_empty() {
+        quote! {
+            pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
+                registry
+                #(#entries)*
+            }
         }
+    } else {
+        quote! {}
     }
 }
 
@@ -139,38 +32,14 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
 
-    //let offline_fields_parse_str = generate_offline_parse_str(&data_container_info.members);
-    let offline_default_instance =
-        format_ident!("DEFAULT_{}", data_container_info.name.to_uppercase());
-
-    let offline_default_descriptor =
-        format_ident!("__{}_DESCRIPTORS", data_container_info.name.to_uppercase());
-
-    let reflection_writer = generate_reflection_write(&data_container_info.members);
-    let reflection_read_default = generate_reflection_read(
-        Some(&offline_default_instance),
-        &data_container_info.members,
-    );
-    let reflection_read = generate_reflection_read(None, &data_container_info.members);
-
-    let offline_fields_editor_descriptors =
-        generate_property_descriptors(&data_container_info.members);
-
-    let class_name = &data_container_info.name;
-    let offline_fields_json_reads = generate_offline_json_reads(&data_container_info.members);
-    let offline_fields_json_writes =
-        generate_offline_json_writes(&offline_default_instance, &data_container_info.members);
-
     let use_quotes = if add_uses {
         let imports = data_container_info.imports();
         quote! {
             use std::{any::Any, io};
-            use lgn_data_offline::{PropertyDescriptor,
-                resource::{OfflineResource, ResourceProcessor, ResourceReflection},
+            use lgn_data_offline::{
+                resource::{OfflineResource, ResourceProcessor},
             };
             use lgn_data_runtime::{Asset, AssetLoader, Resource};
-            use lgn_utils::DefaultHash;
-            use std::collections::HashMap;
             #(use #imports;)*
         }
     } else {
@@ -180,14 +49,6 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     quote! {
 
         #use_quotes
-
-        lazy_static::lazy_static! {
-            static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
-                let mut map = HashMap::new();
-                #(#offline_fields_editor_descriptors)*
-                map
-            };
-        }
 
         impl Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;
@@ -206,69 +67,38 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         impl AssetLoader for #offline_identifier_processor {
             fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-                let mut instance = #offline_identifier { ..#offline_identifier::default()};
-
-                let values : serde_json::Value = serde_json::from_reader(reader).map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
-                if values["_class"] == #class_name {
-                    #(#offline_fields_json_reads)*
-                }
-                else {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Invalid class identifier"));
-                }
+                let mut instance = #offline_identifier::default();
+                let values : serde_json::Value = serde_json::from_reader(reader)
+                    .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+                lgn_data_model::json_utils::reflection_apply_json_edit::<#offline_identifier>(&mut instance, &values)
+                    .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
                 Ok(Box::new(instance))
             }
 
             fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
         }
 
-        impl ResourceReflection for #offline_identifier {
-            /// Interface defining field serialization by name
-            fn write_property(&mut self, field_name: &str, field_value: &str) -> anyhow::Result<()> {
-                match field_name.default_hash() {
-                    #(#reflection_writer)*
-                    _ => return Err(anyhow::anyhow!("write_property error: invalid field '{}'", field_name)),
-                }
-                Ok(())
-            }
-
-            /// Interface defining field serialization by name
-            fn read_property(&self, field_name: &str) -> anyhow::Result<String> {
-                match field_name.default_hash() {
-                    #(#reflection_read)*
-                    _ => return Err(anyhow::anyhow!("read_property error: invalid field '{}'", field_name)),
-                }
-            }
-
-            /// Interface defining field serialization by name
-            fn read_property_default(&self, field_name: &str) -> anyhow::Result<String> {
-                match field_name.default_hash() {
-                    #(#reflection_read_default)*
-                    _ => return Err(anyhow::anyhow!("read_property_default error: invalid field '{}'", field_name)),
-                }
-            }
-
-            fn get_property_descriptors(&self) -> Option<&'static HashMap<u64,PropertyDescriptor>> {
-                Some(&#offline_default_descriptor)
-            }
-        }
 
         impl ResourceProcessor for #offline_identifier_processor {
             fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
-                Box::new(#offline_identifier { ..#offline_identifier::default() })
+                Box::new(#offline_identifier::default())
             }
 
             fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<lgn_data_offline::ResourcePathId> {
                 vec![]
             }
 
-            #[allow(clippy::float_cmp,clippy::too_many_lines)]
+            fn get_resource_type_name(&self) -> Option<&'static str> {
+                Some(#offline_identifier::TYPENAME)
+            }
+
             fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
-                writer.write_all(b"{\n\t\"_class\" : \"")?;
-                writer.write_all(#class_name.to_string().as_bytes())?;
-                writer.write_all(b"\"")?;
-                #(#offline_fields_json_writes)*
-                writer.write_all(b"\n}\n")?;
+                let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).
+                    map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+
+                serde_json::to_writer_pretty(writer, &values).
+                    map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
                 Ok(1)
             }
 
@@ -277,14 +107,14 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 self.load(reader)
             }
 
-            fn get_resource_reflection<'a>(&self, resource: &'a dyn Any) -> Option<&'a dyn ResourceReflection> {
+            fn get_resource_reflection<'a>(&self, resource: &'a dyn Any) -> Option<&'a dyn lgn_data_model::TypeReflection> {
                 if let Some(instance) = resource.downcast_ref::<#offline_identifier>() {
                     return Some(instance);
                 }
                 None
             }
 
-            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn Any) -> Option<&'a mut dyn ResourceReflection> {
+            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn Any) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
                 if let Some(instance) = resource.downcast_mut::<#offline_identifier>() {
                     return Some(instance);
                 }

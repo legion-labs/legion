@@ -1,5 +1,4 @@
 //! The asset registry plugin provides loading of runtime assets.
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -60,54 +59,55 @@
 mod asset_entities;
 mod asset_handles;
 mod asset_to_ecs;
+mod config;
 mod loading_states;
-mod settings;
 
 use std::{fs::File, path::Path, sync::Arc};
 
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
-use lgn_app::Plugin;
+pub use config::{AssetRegistrySettings, DataBuildConfig};
+use lgn_app::prelude::*;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
+use lgn_renderer::resources::DefaultMeshes;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
-pub use settings::AssetRegistrySettings;
-pub use settings::DataBuildSettings;
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
-        if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
-            let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
+    fn build(&self, app: &mut App) {
+        if let Some(mut config) = app.world.get_resource_mut::<AssetRegistrySettings>() {
+            let content_store_addr = ContentStoreAddr::from(config.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
-                let manifest = Self::read_manifest(&settings.game_manifest);
-                if settings.assets_to_load.is_empty() {
-                    settings.assets_to_load = manifest.resources().copied().collect();
+                let manifest = Self::read_or_default(&config.game_manifest);
+
+                if config.assets_to_load.is_empty() {
+                    config.assets_to_load = manifest.resources();
                 }
 
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
                 registry = lgn_graphics_runtime::add_loaders(registry);
-                registry = generic_data_runtime::add_loaders(registry);
+                registry = generic_data::runtime::add_loaders(registry);
 
-                if let Some(databuild_settings) = &settings.databuild_settings {
+                if let Some(databuild_config) = &config.databuild_config {
                     registry = registry.add_device_build(
                         Box::new(content_store),
-                        ContentStoreAddr::from(settings.content_store_addr.clone()),
-                        manifest,
-                        &databuild_settings.build_bin,
-                        &databuild_settings.buildindex,
+                        ContentStoreAddr::from(config.content_store_addr.clone()),
+                        manifest.clone(),
+                        &databuild_config.build_bin,
+                        &databuild_config.buildindex,
                         false,
                     );
                 } else {
-                    registry = registry.add_device_cas(Box::new(content_store), manifest);
+                    registry = registry.add_device_cas(Box::new(content_store), manifest.clone());
                 }
 
                 let registry = registry.create();
@@ -119,6 +119,7 @@ impl Plugin for AssetRegistryPlugin {
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
                     .insert_resource(load_events)
+                    .insert_resource(manifest)
                     .add_startup_system(Self::setup)
                     .add_system(Self::update_registry)
                     .add_system(Self::update_assets)
@@ -126,7 +127,7 @@ impl Plugin for AssetRegistryPlugin {
             } else {
                 eprintln!(
                     "Unable to open content storage in {:?}",
-                    settings.content_store_addr
+                    config.content_store_addr
                 );
             }
         } else {
@@ -137,20 +138,20 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     /// Initial plugin setup.
-    /// Request load for all assets specified in settings.
+    /// Request load for all assets specified in config.
     fn setup(
         registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
-        settings: ResMut<'_, AssetRegistrySettings>,
+        config: ResMut<'_, AssetRegistrySettings>,
     ) {
-        for asset_id in &settings.assets_to_load {
+        for asset_id in &config.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
 
         drop(registry);
-        drop(settings);
+        drop(config);
     }
 
     fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {
@@ -159,12 +160,14 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn update_assets(
         registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
         mut commands: Commands<'_, '_>,
+        default_meshes: Res<'_, DefaultMeshes>,
     ) {
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
@@ -177,40 +180,46 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<lgn_graphics_runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) && !load_ecs_asset::<lgn_graphics_runtime::Texture>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                        ) && !load_ecs_asset::<generic_data_runtime::DebugCube>(
+                            &default_meshes,
+                        ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &default_meshes,
                         ) {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
-                                asset_id.t, asset_id
+                                asset_id.kind, asset_id
                             );
                         }
 
@@ -239,7 +248,8 @@ impl AssetRegistryPlugin {
                     let asset_id = asset_handle.id();
                     if asset_loading_states.get(asset_id).is_none() {
                         // Received a load event for an untracked asset.
-                        // Most likely, this load has occurred because of loading of dependant resources.
+                        // Most likely, this load has occurred because of loading of dependant
+                        // resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
                         asset_handles.insert(asset_id, asset_handle);
                     }
@@ -268,7 +278,7 @@ impl AssetRegistryPlugin {
         drop(load_events_rx);
     }
 
-    fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
+    fn read_or_default(manifest_path: impl AsRef<Path>) -> Manifest {
         match File::open(manifest_path) {
             Ok(file) => serde_json::from_reader(file).unwrap_or_default(),
             Err(_e) => Manifest::default(),

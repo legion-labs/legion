@@ -6,26 +6,36 @@
 //! * Data containers that generate rust files
 //!
 //! There is 2 ways of handling generated files in the rust ecosystem:
-//! * Relying on `OUT_DIR` environment variable to generate in place any necessary file. (tonic, windows api, ...)
-//! * Generating the files in the repo and committing them to the repo. (rust-analyser, rusoto, ...)
+//! * Relying on `OUT_DIR` environment variable to generate in place any
+//!   necessary file. (tonic, windows api, ...)
+//! * Generating the files in the repo and committing them to the repo.
+//!   (rust-analyser, rusoto, ...)
 //!
-//! We can't generate files in the crate directory and not have them committed, since we have to think about the case of an external dependency being downloaded in the local immutable register.
+//! We can't generate files in the crate directory and not have them committed,
+//! since we have to think about the case of an external dependency being
+//! downloaded in the local immutable register.
 //!
 //! Advantages:
-//! * Improves readability and UX of generated files (Go to definition works in VS Code, looking at code from github)
-//! * Allows inclusion of generated files from other systems (Javasctript, hlsl in a uniform manner) since `OUT_DIR` is only know during the cargo build of a given crate.
+//! * Improves readability and UX of generated files (Go to definition works in
+//!   VS Code, looking at code from github)
+//! * Allows inclusion of generated files from other systems (Javasctript, hlsl
+//!   in a uniform manner) since `OUT_DIR` is only know during the cargo build
+//!   of a given crate.
 //!
 //! Drawbacks:
 //! * Dummy conflict in generated code
-//! * We lose the ability to modify some src files from the github web interface since you
-//! * Confusion about non generated code and generated code (although mitigated by conventions)
+//! * We lose the ability to modify some src files from the github web interface
+//!   since you
+//! * Confusion about non generated code and generated code (although mitigated
+//!   by conventions)
 //!
 //! Restriction and rules:
 //! * We can't have binary files checked in
-//! * Modification of the generated files would not be allowed under any circumstances, the build machines fail if any change was detected
-//! * Files whose generation ca be driven by features, or that are platform dependent would still use `OUT_DIR`.
+//! * Modification of the generated files would not be allowed under any
+//!   circumstances, the build machines fail if any change was detected
+//! * Files whose generation ca be driven by features, or that are platform
+//!   dependent would still use `OUT_DIR`.
 //! * Other cases where the in repo generation doesn't bring much
-//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -83,10 +93,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::ffi::OsStr;
-use std::fmt::Formatter;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    ffi::OsStr,
+    fmt::Formatter,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -114,162 +126,31 @@ bitflags! {
 }
 
 pub struct Context {
-    crate_out_dir: String,
-    codegen_dir: String,
-    validate: bool,
+    codegen_out_dir: PathBuf,
+    codegen_repo_dir: PathBuf,
+    validation_only: bool,
 }
 
 impl Context {
-    pub fn new(validate: bool) -> Self {
+    fn new(validation_only: bool) -> Self {
         Self {
-            crate_out_dir: std::env::var("OUT_DIR").unwrap(),
-            codegen_dir: String::from("./codegen"),
-            validate,
+            codegen_out_dir: Path::new(&std::env::var("OUT_DIR").unwrap()).join("codegen"),
+            codegen_repo_dir: PathBuf::from("./codegen"),
+            validation_only,
         }
+    }
+
+    pub fn codegen_out_dir(&self) -> &Path {
+        &self.codegen_out_dir
     }
 }
 
-/// Build proto files
+/// run commands in the shell
 ///
 /// # Errors
-/// Returns a generation error or an IO error
-///
-#[cfg(feature = "proto-codegen")]
-pub fn build_protos(
-    context: &Context,
-    protos: &[impl AsRef<Path>],
-    includes: &[impl AsRef<Path>],
-    lang: Language,
-) -> Result<()> {
-    let out_dir = PathBuf::from(&context.crate_out_dir);
-
-    if lang.contains(Language::RUST) {
-        tonic_build::configure()
-            .out_dir(&out_dir)
-            .compile(protos, includes)?;
-    }
-    if lang.contains(Language::TYPESCRIPT) {
-        if Path::new("./package.json").exists() {
-            {
-                let lock = named_lock::NamedLock::create("yarn_install").unwrap();
-                let _guard = lock.lock().unwrap();
-                run_cmd("yarn", &["install"], ".")?;
-            }
-            let mut proto_plugin = PathBuf::from("./node_modules/.bin/protoc-gen-ts_proto");
-            if cfg!(windows) {
-                proto_plugin = PathBuf::from(".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd");
-            }
-            if !proto_plugin.exists() {
-                return Err(Error::Build(
-                    "missing `ts-proto` in your package dependency".to_string(),
-                ));
-            }
-            let plugin_arg = format!("--plugin=protoc-gen-ts_proto={}", proto_plugin.display());
-            let proto_out_arg = format!("--ts_proto_out={}", out_dir.display());
-            let mut args = vec![
-                plugin_arg.as_str(),
-                proto_out_arg.as_str(),
-                "--ts_proto_opt=esModuleInterop=true",
-                "--ts_proto_opt=outputClientImpl=grpc-web",
-                "--ts_proto_opt=env=browser",
-                "--ts_proto_opt=lowerCaseServiceMethods=true",
-            ];
-            let includes: Vec<_> = includes
-                .iter()
-                .map(|path| format!("--proto_path={}", path.as_ref().to_str().unwrap()))
-                .collect();
-            let mut include_args: Vec<_> =
-                includes.iter().map(std::string::String::as_str).collect();
-            args.append(&mut include_args);
-
-            let mut protos_args: Vec<_> = protos
-                .iter()
-                .map(|path| path.as_ref().to_str().unwrap())
-                .collect();
-            args.append(&mut protos_args);
-            run_cmd("protoc", &args, ".")?;
-        } else {
-            return Err(Error::Build(
-                "a package.json file needs to be next to the build.rs".to_string(),
-            ));
-        }
-    }
-
-    for proto in protos {
-        println!("cargo:rerun-if-changed={}", proto.as_ref().display());
-    }
-
-    Ok(())
-}
-
-/// Handle the copy/validation of the output files
-///
-/// # Errors
-/// Returns a generation error or an IO error
-///
-/// #[cfg(feature = "web-appgen")]
-pub fn build_web_app() -> Result<()> {
-    if let Ok(yarn_path) = which::which("yarn") {
-        let frontend_dir = "frontend";
-        {
-            let lock = named_lock::NamedLock::create("yarn_install").unwrap();
-            let _guard = lock.lock().unwrap();
-            run_cmd(&yarn_path, &["install"], frontend_dir)?;
-        }
-        run_cmd(&yarn_path, &["build"], frontend_dir)?;
-
-        // JS ecosystem forces us to have output files in our sources hierarchy
-        // we are filtering files
-        std::fs::read_dir(frontend_dir)
-            .unwrap()
-            .map(|res| res.map(|entry| entry.path()))
-            .filter_map(|path| {
-                if let Ok(path) = path {
-                    if let Some(file_name) = path.file_name() {
-                        if file_name != "dist" && file_name != "node_modules" {
-                            return Some(path);
-                        }
-                    }
-                }
-                None
-            })
-            .for_each(|path| {
-                // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-            });
-    } else {
-        std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
-        println!("cargo:rerun-if-env-changed=PATH");
-    }
-    Ok(())
-}
-
-/// Handle the copy/validation of the output files
-///
-/// # Errors
-/// Returns a generation error or an IO error
-///
-pub fn handle_output(context: &Context) -> Result<()> {
-    let diffs = diff(&context.crate_out_dir, &context.codegen_dir)?;
-    for diff in &diffs {
-        if context.validate {
-            println!("cargo:warning={}", diff);
-        } else {
-            diff.apply()?;
-        }
-    }
-    if context.validate && !diffs.is_empty() {
-        Err(Error::Build(format!(
-            "Generated files different from source (number of diffs: {})",
-            diffs.len()
-        )))
-    } else {
-        Ok(())
-    }
-}
-
-fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result<()> {
+/// Returns a `Error::MissingTool` if the command is not found
+/// Returns a `Error::Build` if the command fails
+pub fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result<()> {
     let command_path = which::which(command_path.as_ref())
         .map_err(|_err| Error::MissingTool(command_path.as_ref().to_str().unwrap().to_string()))?;
     let success = Command::new(&command_path)
@@ -287,6 +168,43 @@ fn run_cmd<S: AsRef<OsStr>>(command_path: S, args: &[&str], dir: &str) -> Result
             args.join(" "),
             dir
         )))
+    }
+}
+
+/// Creates a generation context, and cleans the temporary output folder
+///
+/// # Errors
+/// Returns a generation error or an IO error
+pub fn pre_codegen(validation_mode: bool) -> Result<Context> {
+    let context = Context::new(validation_mode);
+    if context.codegen_out_dir.exists() {
+        std::fs::remove_dir_all(&context.codegen_out_dir)?;
+    }
+    std::fs::create_dir_all(&context.codegen_out_dir)?;
+
+    Ok(context)
+}
+
+/// Handle the copy/validation of the output files
+///
+/// # Errors
+/// Returns a generation error or an IO error
+pub fn post_codegen(context: &Context) -> Result<()> {
+    let diffs = diff(&context.codegen_out_dir, &context.codegen_repo_dir)?;
+    for diff in &diffs {
+        if context.validation_only {
+            println!("cargo:warning={}", diff);
+        } else {
+            diff.apply()?;
+        }
+    }
+    if context.validation_only && !diffs.is_empty() {
+        Err(Error::Build(format!(
+            "Generated files different from source (number of diffs: {})",
+            diffs.len()
+        )))
+    } else {
+        Ok(())
     }
 }
 

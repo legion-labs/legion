@@ -6,6 +6,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use lgn_telemetry::{flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, trace_scope};
+use lgn_telemetry_sink::TelemetryGuard;
+use lgn_test_utils::{create_test_dir, syscall};
+
 fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
     let path = path.as_ref();
     let contents = contents.as_ref();
@@ -46,32 +50,32 @@ fn lsc_cli_sys_fail(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, false);
 }
 
-async fn init_test_repo(test_dir: &Path, name: &str) -> String {
+fn init_test_repo(test_dir: &Path, name: &str) -> String {
     trace_scope!();
-    match std::env::var("lgn_source_control_TEST_HOST") {
-        Ok(test_host_uri) => {
-            let repo_uri = format!("{}/{}", test_host_uri, name);
+    if let Ok(test_host_uri) = std::env::var("lgn_source_control_TEST_HOST") {
+        let repo_uri = format!("{}/{}", test_host_uri, name);
 
-            let _status = Command::new(LSC_CLI_EXE_VAR)
-                .current_dir(test_dir)
-                .args(["destroy-repository", &repo_uri])
-                .status()
-                .expect("failed to execute command");
+        let _status = Command::new(LSC_CLI_EXE_VAR)
+            .current_dir(test_dir)
+            .args(["destroy-repository", &repo_uri])
+            .status()
+            .expect("failed to execute command");
 
-            match std::env::var("lgn_source_control_TEST_BLOB_STORAGE") {
-                Ok(blob_storage_uri) => lsc_cli_sys(
-                    test_dir,
-                    &["create-repository", &repo_uri, &blob_storage_uri],
-                ),
-                Err(_) => lsc_cli_sys(test_dir, &["create-repository", &repo_uri]),
-            }
-            repo_uri
+        match std::env::var("lgn_source_control_TEST_BLOB_STORAGE") {
+            Ok(blob_storage_uri) => lsc_cli_sys(
+                test_dir,
+                &["init-remote-repository", &repo_uri, &blob_storage_uri],
+            ),
+            Err(_) => lsc_cli_sys(test_dir, &["create-repository", &repo_uri]),
         }
-        Err(_) => {
-            let repo_dir = test_dir.join("repo");
-            lsc_cli_sys(test_dir, &["create-repository", repo_dir.to_str().unwrap()]);
-            String::from(repo_dir.to_str().unwrap())
-        }
+        repo_uri
+    } else {
+        let repo_dir = test_dir.join("repo");
+        lsc_cli_sys(
+            test_dir,
+            &["create-repository", repo_dir.to_str().unwrap()],
+        );
+        String::from(repo_dir.to_str().unwrap())
     }
 }
 
@@ -86,13 +90,13 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 
 #[test]
 fn local_repo_suite() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let test_dir = init_test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
+    let repo_uri = init_test_repo(&test_dir, "local_repo_suite");
 
     lsc_cli_sys(
         &test_dir,
@@ -192,26 +196,25 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["sync"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn local_single_branch_merge_flow() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let test_dir = init_test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri =
-        tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
+    let repo_uri = init_test_repo(&test_dir, "local_single_branch_merge_flow");
 
     lsc_cli_sys(
         &test_dir,
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file1.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
 
@@ -245,12 +248,13 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&work1, &["resolves-pending"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_print_config() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
@@ -260,12 +264,13 @@ fn test_print_config() {
     }
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_branch() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let test_dir = init_test_dir("test_branch");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -276,18 +281,17 @@ fn test_branch() {
     }
 
     let work1 = test_dir.join("work1");
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
+    let repo_uri = init_test_repo(&test_dir, "test_branch");
 
     lsc_cli_sys(
         &test_dir,
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file1.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
 
-    write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file2.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
 
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
@@ -297,15 +301,11 @@ fn test_branch() {
 
     lsc_cli_sys(&work1, &["delete", "file2.txt"]);
 
-    write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file3.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "file3.txt"]);
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
-    write_file(
-        &work1.join("dir0/deep/inner_task.txt"),
-        "line1\n".as_bytes(),
-    )
-    .unwrap();
+    write_file(&work1.join("dir0/deep/inner_task.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "dir0/deep/inner_task.txt"]);
 
     lsc_cli_sys(&work1, &["commit", r#"-m"task complete""#]);
@@ -336,8 +336,9 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["commit", r#"-m"merge task branch""#]);
     lsc_cli_sys(&work1, &["log"]);
 
-    //now that task has been merge into main, doing the merge the other way should be a ff merge
-    //but for ff detection to work, the previous commit has to have the two parents
+    //now that task has been merge into main, doing the merge the other way should
+    // be a ff merge but for ff detection to work, the previous commit has to
+    // have the two parents
     lsc_cli_sys(&work1, &["switch-branch", "task"]);
     lsc_cli_sys(&work1, &["merge-branch", "main"]); //fast-forward
 
@@ -360,12 +361,13 @@ fn test_branch() {
     //lsc_cli_sys(&work1, &["log"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 #[test]
 fn test_locks() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let test_dir = init_test_dir("test_locks");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -377,8 +379,7 @@ fn test_locks() {
 
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
+    let repo_uri = init_test_repo(&test_dir, "test_locks");
 
     lsc_cli_sys(
         &test_dir,
@@ -386,7 +387,7 @@ fn test_locks() {
     );
 
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
-    write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("dir/deep/file1.txt"), b"line1\n").unwrap();
 
     lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
@@ -402,7 +403,7 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["commit", r#"-m"non-edit file1 in task branch""#]);
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
-    write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    write_file(&work1.join("file2.txt"), b"line1\n").unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file2 in task main""#]);
     lsc_cli_sys(&work1, &["switch-branch", "task"]);
@@ -475,6 +476,7 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }
 
 fn get_root_git_directory() -> PathBuf {
@@ -489,13 +491,12 @@ fn get_root_git_directory() -> PathBuf {
 #[test]
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
-    init_telemetry();
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    let telemetry_guard = TelemetryGuard::new();
+    std::mem::forget(telemetry_guard);
     trace_scope!();
     let test_dir = init_test_dir("test_import_git");
     let work1 = test_dir.join("work1");
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
+    let repo_uri = init_test_repo(&test_dir, "test_import_git");
 
     lsc_cli_sys(
         &test_dir,
@@ -510,4 +511,5 @@ fn test_import_git() {
     );
     flush_log_buffer();
     flush_metrics_buffer();
+    flush_thread_buffer();
 }

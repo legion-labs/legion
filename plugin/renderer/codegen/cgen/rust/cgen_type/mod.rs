@@ -1,0 +1,20 @@
+// This is generated file. Do not edit manually
+
+pub(crate) mod layout_d;
+#[allow(unused_imports)]
+pub(crate) use layout_d::*;
+pub(crate) mod layout_c;
+#[allow(unused_imports)]
+pub(crate) use layout_c::*;
+pub(crate) mod layout_a;
+#[allow(unused_imports)]
+pub(crate) use layout_a::*;
+pub(crate) mod layout_b;
+#[allow(unused_imports)]
+pub(crate) use layout_b::*;
+pub(crate) mod view_data;
+#[allow(unused_imports)]
+pub(crate) use view_data::*;
+pub(crate) mod push_constant_data;
+#[allow(unused_imports)]
+pub(crate) use push_constant_data::*;

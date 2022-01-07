@@ -1,9 +1,12 @@
 #![allow(clippy::too_many_lines)]
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
-use crate::{Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, Texture};
+use crate::{
+    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
+};
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
     ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,
@@ -33,7 +36,7 @@ impl CommandBuffer {
         #[cfg(feature = "vulkan")]
         let platform_command_buffer = VulkanCommandBuffer::new(command_pool, command_buffer_def)
             .map_err(|e| {
-                log::error!("Error creating command buffer {:?}", e);
+                lgn_telemetry::error!("Error creating command buffer {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
@@ -154,12 +157,14 @@ impl CommandBuffer {
 
     pub fn cmd_bind_descriptor_set_handle(
         &self,
+        pipeline_type: PipelineType,
         root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
         self.cmd_bind_descriptor_set_handle_platform(
+            pipeline_type,
             root_signature,
             set_index,
             descriptor_set_handle,
@@ -167,13 +172,10 @@ impl CommandBuffer {
         Ok(())
     }
 
-    pub fn cmd_push_constants<T: Sized>(
-        &self,
-        root_signature: &RootSignature,
-        constants: &T,
-    ) -> GfxResult<()> {
+    #[allow(unsafe_code)]
+    pub fn cmd_push_constant(&self, root_signature: &RootSignature, data: &[u8]) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.cmd_push_constants_platform(root_signature.platform_root_signature(), constants);
+        self.cmd_push_constant_platform(root_signature, data);
         Ok(())
     }
 
@@ -253,6 +255,11 @@ impl CommandBuffer {
         #[cfg(any(feature = "vulkan"))]
         self.cmd_resource_barrier_platform(buffer_barriers, texture_barriers);
         Ok(())
+    }
+
+    pub fn cmd_fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+        #[cfg(any(feature = "vulkan"))]
+        self.cmd_fill_buffer_platform(dst_buffer, offset, size, data);
     }
 
     pub fn cmd_copy_buffer_to_buffer(

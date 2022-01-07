@@ -1,7 +1,7 @@
-use std::{io::Read, path::PathBuf};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use hassle_rs::{Dxc, DxcIncludeHandler};
+use hassle_rs::Dxc;
 use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
@@ -10,6 +10,8 @@ use spirv_reflect::types::{
 };
 use spirv_tools::{opt::Optimizer, TargetEnv};
 
+use crate::{file_server::FileServerIncludeHandler, FileSystem};
+
 pub struct CompileDefine {
     name: String,
     value: Option<String>,
@@ -17,7 +19,7 @@ pub struct CompileDefine {
 
 pub enum ShaderSource {
     Code(String),
-    Path(PathBuf),
+    Path(String),
 }
 
 pub struct EntryPoint {
@@ -32,15 +34,6 @@ pub struct CompileParams {
     pub entry_points: Vec<EntryPoint>,
 }
 
-impl CompileParams {
-    fn path_as_string(&self) -> &str {
-        match &self.shader_source {
-            ShaderSource::Code(_) => "_code.hlsl",
-            ShaderSource::Path(path) => path.to_str().unwrap(),
-        }
-    }
-}
-
 pub struct SpirvBinary {
     pub bytecode: Vec<u8>,
 }
@@ -50,29 +43,59 @@ pub struct CompileResult {
     pub spirv_binaries: Vec<SpirvBinary>,
 }
 
-pub struct HlslCompiler {
+struct HlslCompilerInner {
     dxc: Dxc,
+    filesystem: FileSystem,
+}
+
+#[derive(Clone)]
+pub struct HlslCompiler {
+    inner: Arc<HlslCompilerInner>,
 }
 
 impl HlslCompiler {
-    pub fn new() -> Result<Self> {
+    /// Create a new HLSL compiler.
+    ///
+    /// # Errors
+    /// fails if the Dxc library cannot be loaded.
+    ///
+    pub fn new(filesystem: FileSystem) -> Result<Self> {
         Ok(Self {
-            dxc: Dxc::new(None)?,
+            inner: Arc::new(HlslCompilerInner {
+                dxc: Dxc::new(None)?,
+                filesystem,
+            }),
         })
     }
 
-    pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
-        // Shader source
-        let shader_code = self.get_shader_source(params)?;
+    pub fn filesystem(&self) -> FileSystem {
+        self.inner.filesystem.clone()
+    }
 
+    // pub fn new(src_folders: Vec<&str>) -> Result<Self> {
+    //     let mut file_server = FileServer::new();
+    //     for src_folder in src_folders {
+    //         file_server.add_root_folder(&src_folder)?;
+    //     }
+    //     Ok(Self {
+    //         dxc: Dxc::new(None)?,
+    //         file_server: Arc::new(file_server),
+    //     })
+    // }
+
+    /// Compile an HLSL shader.
+    ///
+    /// # Errors
+    /// fails if the shader cannot be compiled.
+    ///
+    pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
         // For each compilation target
         let mut spirv_binaries = Vec::with_capacity(params.entry_points.len());
         let mut pipeline_reflection = PipelineReflection::default();
 
         for (entry_point_idx, _) in params.entry_points.iter().enumerate() {
             // Compilation
-            let unopt_spirv =
-                self.compile_to_unoptimized_spirv(params, entry_point_idx, &shader_code)?;
+            let unopt_spirv = self.compile_to_unoptimized_spirv(params, entry_point_idx)?;
 
             // Reflection
             let shader_reflection =
@@ -94,30 +117,10 @@ impl HlslCompiler {
         })
     }
 
-    fn get_shader_source(&self, params: &CompileParams) -> Result<String> {
-        let shader_code = {
-            match &params.shader_source {
-                ShaderSource::Code(code) => code.to_string(),
-                ShaderSource::Path(path) => match std::fs::File::open(path) {
-                    Ok(mut file) => {
-                        let mut shader_code = String::new();
-                        file.read_to_string(&mut shader_code)?;
-                        shader_code
-                    }
-                    Err(e) => {
-                        return Err(anyhow!(e));
-                    }
-                },
-            }
-        };
-        Ok(shader_code)
-    }
-
     fn compile_to_unoptimized_spirv(
         &self,
         params: &CompileParams,
         entry_point_idx: usize,
-        shader_code: &str,
     ) -> Result<SpirvBinary> {
         let shader_product = &params.entry_points[entry_point_idx];
 
@@ -134,13 +137,20 @@ impl HlslCompiler {
                 .map(|x| (x.name.as_str(), x.value.as_deref())),
         );
 
+        // dxc.exe -Od -spirv -fspv-target-env=vulkan1.1 -I d:\\temp\\ -E main_vs -H -T
+        // vs_6_0 shaders\shader.hlsl
+
         let bytecode = self
             .compile_internal(
-                params.path_as_string(),
-                shader_code,
+                &params.shader_source,
                 &shader_product.name,
                 &shader_product.target_profile,
-                &["-Od", "-spirv", "-fspv-target-env=vulkan1.1"],
+                &[
+                    "-Od",
+                    "-spirv",
+                    "-fspv-target-env=vulkan1.1",
+                    // "-I d:\\temp\\",
+                ],
                 &defines,
             )
             .map_err(|err| anyhow!(err))?;
@@ -213,7 +223,7 @@ impl HlslCompiler {
         }
     }
 
-    /// Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
+    /// Reference: <https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst>
     fn to_shader_resource_type(
         descriptor_binding: &ReflectDescriptorBinding,
     ) -> ShaderResourceType {
@@ -301,19 +311,31 @@ impl HlslCompiler {
 
     fn compile_internal(
         &self,
-        source_name: &str,
-        shader_text: &str,
+        shader_source: &ShaderSource,
         entry_point: &str,
         target_profile: &str,
         args: &[&str],
         defines: &[(&str, Option<&str>)],
     ) -> Result<Vec<u8>> {
-        let dxc = &self.dxc;
+        let dxc = &self.inner.dxc;
         let compiler = dxc.create_compiler()?;
         let library = dxc.create_library()?;
 
+        let (shader_path, shader_text) = match shader_source {
+            ShaderSource::Code(text) => ("_code.hlsl".to_owned(), text.clone()),
+            ShaderSource::Path(path) => (
+                self.inner
+                    .filesystem
+                    .translate_path(path)?
+                    .as_path()
+                    .display()
+                    .to_string(),
+                self.inner.filesystem.get_file_content(path)?,
+            ),
+        };
+
         let blob = library
-            .create_blob_with_encoding_from_str(shader_text)
+            .create_blob_with_encoding_from_str(&shader_text)
             .map_err(|x| {
                 anyhow!(
                     "Failed to create blob with encoding from string (HRESULT: {})",
@@ -323,11 +345,13 @@ impl HlslCompiler {
 
         let result = compiler.compile(
             &blob,
-            source_name,
+            &shader_path,
             entry_point,
             target_profile,
             args,
-            Some(Box::new(DefaultIncludeHandler {})),
+            Some(Box::new(FileServerIncludeHandler(
+                self.inner.filesystem.clone(),
+            ))),
             defines,
         );
 
@@ -341,21 +365,6 @@ impl HlslCompiler {
 
                 Ok(result_blob.to_vec())
             }
-        }
-    }
-}
-
-struct DefaultIncludeHandler {}
-
-impl DxcIncludeHandler for DefaultIncludeHandler {
-    fn load_source(&self, filename: String) -> Option<String> {
-        match std::fs::File::open(filename) {
-            Ok(mut f) => {
-                let mut content = String::new();
-                f.read_to_string(&mut content).unwrap();
-                Some(content)
-            }
-            Err(_) => None,
         }
     }
 }
@@ -449,7 +458,8 @@ mod tests {
 
     #[test]
     fn compile_vs_shader() {
-        let compiler = HlslCompiler::new().expect(
+        let filesystem = FileSystem::new(".").unwrap();
+        let compiler = HlslCompiler::new(filesystem).expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );
 
@@ -480,7 +490,8 @@ mod tests {
 
     #[test]
     fn compile_ps_shader() {
-        let compiler = HlslCompiler::new().expect(
+        let filesystem = FileSystem::new(".").unwrap();
+        let compiler = HlslCompiler::new(filesystem).expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );
 

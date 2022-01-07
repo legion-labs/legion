@@ -1,23 +1,23 @@
 #![allow(unsafe_code)]
 
-use std::num::NonZeroU32;
-
 use anyhow::Result;
-use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use lgn_transform::components::Transform;
-use parking_lot::{RwLock, RwLockReadGuard};
+use lgn_graphics_api::Queue;
+use lgn_graphics_api::{
+    ApiDef, BufferView, DescriptorDef, DescriptorHeap, DescriptorHeapDef, DescriptorSetLayoutDef,
+    DeviceContext, Fence, FenceStatus, GfxApi, PushConstantDef, QueueType, RootSignature,
+    RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
+use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
     UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::static_mesh_render_data::StaticMeshRenderData;
-use crate::RenderContext;
+use crate::{cgen, RenderContext};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -28,13 +28,15 @@ pub struct Renderer {
     sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
-    command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
-    descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
+    descriptor_heap: DescriptorHeap,
+    command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
+    descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
-    bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
+    bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
+    shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -49,12 +51,28 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
+        let filesystem = FileSystem::new(".")?;
+        filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
 
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
+        let shader_compiler = HlslCompiler::new(filesystem).unwrap();
+
+        cgen::initialize(device_context);
+
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
             &static_buffer,
             64 * 1024,
         ));
+
+        let descriptor_heap_def = DescriptorHeapDef {
+            max_descriptor_sets: 32 * 4096,
+            sampler_count: 32 * 128,
+            constant_buffer_count: 32 * 1024,
+            buffer_count: 32 * 1024,
+            rw_buffer_count: 32 * 1024,
+            texture_count: 32 * 1024,
+            rw_texture_count: 32 * 1024,
+        };
 
         Ok(Self {
             frame_idx: 0,
@@ -73,12 +91,16 @@ impl Renderer {
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
-            command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            descriptor_heap: device_context
+                .create_descriptor_heap(&descriptor_heap_def)
+                .unwrap(),
+            command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
+            descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
             test_transform_data,
-            bump_allocator_pool: RwLock::new(CpuPool::new()),
+            bump_allocator_pool: Mutex::new(CpuPool::new()),
+            shader_compiler,
             api,
         })
     }
@@ -95,11 +117,15 @@ impl Renderer {
         self.render_frame_idx
     }
 
-    pub fn queue(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
+    pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
             _ => unreachable!(),
         }
+    }
+
+    pub fn shader_compiler(&self) -> HlslCompiler {
+        self.shader_compiler.clone()
     }
 
     // TMP: change that.
@@ -115,15 +141,15 @@ impl Renderer {
         self.test_transform_data = test;
     }
 
-    pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
+        &self.static_buffer
+    }
+
+    pub fn test_add_update_jobs(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 
-    pub fn flush_update_jobs(
-        &self,
-        render_context: &mut RenderContext<'_>,
-        graphics_queue: &RwLockReadGuard<'_, Queue>,
-    ) {
+    pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
         let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
         let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
         let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
@@ -133,7 +159,6 @@ impl Renderer {
             unbind_semaphore,
             bind_semaphore,
             render_context,
-            graphics_queue,
         );
     }
 
@@ -147,13 +172,13 @@ impl Renderer {
         &self,
         queue_type: QueueType,
     ) -> CommandBufferPoolHandle {
-        let queue = self.queue(queue_type);
-        let mut pool = self.command_buffer_pools.write();
+        let queue = self.graphics_queue_guard(queue_type);
+        let mut pool = self.command_buffer_pools.lock();
         pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
     }
 
     pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
-        let mut pool = self.command_buffer_pools.write();
+        let mut pool = self.command_buffer_pools.lock();
         pool.release(handle);
     }
 
@@ -161,22 +186,22 @@ impl Renderer {
         &self,
         heap_def: &DescriptorHeapDef,
     ) -> DescriptorPoolHandle {
-        let mut pool = self.descriptor_pools.write();
-        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
+        let mut pool = self.descriptor_pools.lock();
+        pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
     }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
-        let mut pool = self.descriptor_pools.write();
+        let mut pool = self.descriptor_pools.lock();
         pool.release(handle);
     }
 
     pub(crate) fn acquire_bump_allocator(&self) -> BumpAllocatorHandle {
-        let mut pool = self.bump_allocator_pool.write();
+        let mut pool = self.bump_allocator_pool.lock();
         pool.acquire_or_create(BumpAllocator::new)
     }
 
     pub(crate) fn release_bump_allocator(&self, handle: BumpAllocatorHandle) {
-        let mut pool = self.bump_allocator_pool.write();
+        let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
 
@@ -205,15 +230,15 @@ impl Renderer {
         // Broadcast begin frame event
         //
         {
-            let mut pool = self.command_buffer_pools.write();
+            let mut pool = self.command_buffer_pools.lock();
             pool.begin_frame();
         }
         {
-            let mut pool = self.descriptor_pools.write();
+            let mut pool = self.descriptor_pools.lock();
             pool.begin_frame();
         }
         {
-            let mut pool = self.bump_allocator_pool.write();
+            let mut pool = self.bump_allocator_pool.lock();
             pool.begin_frame();
         }
 
@@ -234,52 +259,26 @@ impl Renderer {
         //
 
         {
-            let mut pool = self.command_buffer_pools.write();
+            let mut pool = self.command_buffer_pools.lock();
             pool.end_frame();
         }
         {
-            let mut pool = self.descriptor_pools.write();
+            let mut pool = self.descriptor_pools.lock();
             pool.end_frame();
         }
         {
-            let mut pool = self.bump_allocator_pool.write();
+            let mut pool = self.bump_allocator_pool.lock();
             pool.end_frame();
         }
     }
-}
 
-impl Drop for Renderer {
-    fn drop(&mut self) {
-        std::mem::drop(self.test_transform_data.take());
+    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> (Shader, RootSignature) {
+        let device_context = self.device_context();
 
-        let graphics_queue = self.queue(QueueType::Graphics);
-        graphics_queue.wait_for_queue_idle().unwrap();
-    }
-}
-
-pub struct TmpRenderPass {
-    static_meshes: Vec<StaticMeshRenderData>,
-    root_signature: RootSignature,
-    pipeline: Pipeline,
-    pub color: [f32; 4],
-    pub speed: f32,
-}
-
-impl TmpRenderPass {
-    #![allow(clippy::too_many_lines)]
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-        //
-        // Shaders
-        //
-        let shader_compiler = HlslCompiler::new().unwrap();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
-
+        let shader_compiler = self.shader_compiler();
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
+                shader_source: ShaderSource::Path(shader_source),
                 glob_defines: Vec::new(),
                 entry_points: vec![
                     EntryPoint {
@@ -363,14 +362,13 @@ impl TmpRenderPass {
         }
 
         let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
                 .push_constant
                 .map(|x| PushConstantDef {
                     used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
+                    size: x.size,
                 }),
         };
 
@@ -378,230 +376,19 @@ impl TmpRenderPass {
             .create_root_signature(&root_signature_def)
             .unwrap();
 
-        //
-        // Pipeline state
-        //
-        let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 12,
-                    gl_attribute_name: Some("normal".to_owned()),
-                },
-            ],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 24,
-                rate: VertexAttributeRate::Vertex,
-            }],
-        };
-
-        let depth_state = DepthState {
-            depth_test_enable: true,
-            depth_write_enable: true,
-            depth_compare_op: CompareOp::Less,
-            stencil_test_enable: false,
-            stencil_read_mask: 0xFF,
-            stencil_write_mask: 0xFF,
-            front_depth_fail_op: StencilOp::default(),
-            front_stencil_compare_op: CompareOp::Always,
-            front_stencil_fail_op: StencilOp::default(),
-            front_stencil_pass_op: StencilOp::default(),
-            back_depth_fail_op: StencilOp::default(),
-            back_stencil_compare_op: CompareOp::Always,
-            back_stencil_fail_op: StencilOp::default(),
-            back_stencil_pass_op: StencilOp::default(),
-        };
-
-        let pipeline = device_context
-            .create_graphics_pipeline(&GraphicsPipelineDef {
-                shader: &shader,
-                root_signature: &root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_enabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &RasterizerState::default(),
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: Some(Format::D32_SFLOAT),
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-            .unwrap();
-
-        //
-        // Per frame resources
-        //
-        let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0),
-            StaticMeshRenderData::new_cube(0.5),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0),
-        ];
-
-        Self {
-            static_meshes,
-            root_signature,
-            pipeline,
-            color: [0f32, 0f32, 0.2f32, 1.0f32],
-            speed: 1.0f32,
-        }
+        (shader, root_signature)
     }
+}
 
-    pub fn set_color(&mut self, color: [f32; 4]) {
-        self.color = color;
-    }
-
-    pub fn set_speed(&mut self, speed: f32) {
-        self.speed = speed;
-    }
-
-    pub fn render(
-        &self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
-        render_surface: &mut RenderSurface,
-        static_meshes: &[(&Transform, &StaticMesh)],
-        camera_transform: &Transform,
-    ) {
+impl Drop for Renderer {
+    fn drop(&mut self) {
         {
-            let bump = render_context.acquire_bump_allocator();
-            let x = bump.alloc(3);
-            *x += 1;
-            render_context.release_bump_allocator(bump);
+            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
+            graphics_queue.wait_for_queue_idle().unwrap();
         }
 
-        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+        std::mem::drop(self.test_transform_data.take());
 
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue(self.color),
-                }],
-                &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_stencil_texture_view(),
-                    depth_load_op: LoadOp::Clear,
-                    stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::DontCare,
-                    stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
-                }),
-            )
-            .unwrap();
-
-        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
-
-        let descriptor_set_layout = &self
-            .pipeline
-            .root_signature()
-            .definition()
-            .descriptor_set_layouts[0];
-
-        let fov_y_radians: f32 = 45.0;
-        let width = render_surface.extents().width() as f32;
-        let height = render_surface.extents().height() as f32;
-        let aspect_ratio: f32 = width / height;
-        let z_near: f32 = 0.01;
-        let z_far: f32 = 100.0;
-        let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
-
-        let view_matrix = Mat4::look_at_lh(
-            camera_transform.translation,
-            camera_transform.translation + camera_transform.forward(),
-            Vec3::new(0.0, 1.0, 0.0),
-        );
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
-
-        for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
-            let mesh_id = static_mesh_component.mesh_id;
-            if mesh_id >= self.static_meshes.len() {
-                continue;
-            }
-
-            let mesh = &self.static_meshes[static_mesh_component.mesh_id];
-
-            let mut sub_allocation =
-                transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
-
-            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
-
-            let color: (f32, f32, f32, f32) = (
-                f32::from(static_mesh_component.color.r) / 255.0f32,
-                f32::from(static_mesh_component.color.g) / 255.0f32,
-                f32::from(static_mesh_component.color.b) / 255.0f32,
-                f32::from(static_mesh_component.color.a) / 255.0f32,
-            );
-
-            let world = transform.compute_matrix();
-            let mut push_constant_data: [f32; 52] = [0.0; 52];
-            world.write_cols_to_slice(&mut push_constant_data[0..]);
-            view_matrix.write_cols_to_slice(&mut push_constant_data[16..]);
-            projection_matrix.write_cols_to_slice(&mut push_constant_data[32..]);
-            push_constant_data[48] = color.0;
-            push_constant_data[49] = color.1;
-            push_constant_data[50] = color.2;
-            push_constant_data[51] = 1.0;
-
-            sub_allocation =
-                transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.const_buffer_view();
-
-            let mut descriptor_set_writer =
-                render_context.alloc_descriptor_set(descriptor_set_layout);
-
-            descriptor_set_writer
-                .set_descriptors(
-                    "const_data",
-                    0,
-                    &[DescriptorRef::BufferView(&const_buffer_view)],
-                )
-                .unwrap();
-
-            descriptor_set_writer
-                .set_descriptors(
-                    "static_buffer",
-                    0,
-                    &[DescriptorRef::BufferView(
-                        &render_context.renderer().static_buffer_ro_view(),
-                    )],
-                )
-                .unwrap();
-
-            let descriptor_set_handle =
-                descriptor_set_writer.flush(render_context.renderer().device_context());
-
-            cmd_buffer
-                .cmd_bind_descriptor_set_handle(
-                    &self.root_signature,
-                    descriptor_set_layout.definition().frequency,
-                    descriptor_set_handle,
-                )
-                .unwrap();
-
-            cmd_buffer
-                .cmd_push_constants(&self.root_signature, &(static_mesh_component.offset))
-                .unwrap();
-
-            cmd_buffer
-                .cmd_draw((mesh.num_vertices()) as u32, 0)
-                .unwrap();
-        }
-
-        render_context.release_transient_buffer_allocator(transient_allocator);
-
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        cgen::shutdown();
     }
 }

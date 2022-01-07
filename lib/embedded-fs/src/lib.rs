@@ -1,5 +1,6 @@
 //! Legion Embedded FS
-//! This crates exposes a file system allowing you use files embedded from different crates
+//! This crates exposes a file system allowing you use files embedded from
+//! different crates
 //!
 //! Usage is as follow, to add files in shader-1 crate:
 //! ```text
@@ -78,13 +79,14 @@
 // crate-specific exceptions:
 #![allow()]
 
-use bus::{Bus, BusReader};
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use bus::{Bus, BusReader};
+use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 
 pub struct EmbeddedFile {
     pub content: &'static [u8],

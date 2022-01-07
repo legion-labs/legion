@@ -2,15 +2,15 @@ use std::task::{Context, Poll};
 
 use http::{HeaderMap, HeaderValue, Method, Request, Response, Version};
 use http_body::{combinators::UnsyncBoxBody, Body};
-use log::{debug, warn};
+use lgn_telemetry::{debug, warn};
 use tonic::codegen::{BoxFuture, StdError};
 use tower::Service;
 
 use super::super::consts::{GRPC, GRPC_WEB, PROTOBUF};
 use super::Error;
 
-/// A gRPC-Web client wrapper that causes all outgoing `gRPC` requests to be sent as HTTP 1.1
-/// gRPC-Web requests.
+/// A gRPC-Web client wrapper that causes all outgoing `gRPC` requests to be
+/// sent as HTTP 1.1 gRPC-Web requests.
 #[derive(Clone)]
 pub struct GrpcWebClient<C> {
     inner: C,
@@ -42,9 +42,10 @@ impl<C> GrpcWebClient<C> {
         let resp = self.inner.call(request);
 
         Box::pin(async move {
-            // This might look complex but we just wrap the response body data into a `BoxBuf`,
-            // convert its error into an `Error`, and then wrap the response body into a
-            // `UnsyncBoxBody` so that the end result satisfies our response type.
+            // This might look complex but we just wrap the response body data into a
+            // `BoxBuf`, convert its error into an `Error`, and then wrap the
+            // response body into a `UnsyncBoxBody` so that the end result
+            // satisfies our response type.
             //
             // This allows us to keep any streaming/trailers support and pass them through
             // untouched.
@@ -121,17 +122,17 @@ impl<C> GrpcWebClient<C> {
             .insert(http::header::CONTENT_TYPE, content_type.clone());
         req.headers_mut().insert(http::header::ACCEPT, content_type);
 
-        // If `gRPC` clients were allowed to send trailers, this is where we would extend the
-        // request and include them. Luckily for us, this is not supported so we don't have to
-        // care.
+        // If `gRPC` clients were allowed to send trailers, this is where we would
+        // extend the request and include them. Luckily for us, this is not
+        // supported so we don't have to care.
 
         Ok(req)
     }
 
     /// Transforms a `gRPC`-web request into its HTTP 2 equivalent.
     ///
-    /// This functions assumes that the request that caused the specified response was transformed
-    /// with `coerce_request`.
+    /// This functions assumes that the request that caused the specified
+    /// response was transformed with `coerce_request`.
     fn coerce_response_from_protobuf<ReqBody, ResBody>(
         resp: C::Future,
     ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>

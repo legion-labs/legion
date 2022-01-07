@@ -9,7 +9,8 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
-hassle-rs = "0.5"
+hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
+normpath = "0.3"
 spirv-reflect = "0.2"
 spirv-tools = "0.7"
 anyhow = "1"

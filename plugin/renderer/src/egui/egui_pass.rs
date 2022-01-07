@@ -1,11 +1,12 @@
+use std::sync::Arc;
+
+use lgn_graphics_api::prelude::*;
+
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
+use crate::hl_gfx_api::HLCommandBuffer;
 use crate::RenderContext;
 use crate::Renderer;
-use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use std::num::NonZeroU32;
-use std::sync::Arc;
 
 pub struct EguiPass {
     root_signature: RootSignature,
@@ -18,116 +19,8 @@ impl EguiPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-
-        //
-        // Shaders
-        //
-        let shader_compiler = HlslCompiler::new().unwrap();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap();
-
-        let shader_build_result = shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
-                glob_defines: Vec::new(),
-                entry_points: vec![
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_vs".to_owned(),
-                        target_profile: "vs_6_0".to_owned(),
-                    },
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_ps".to_owned(),
-                        target_profile: "ps_6_0".to_owned(),
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
-
-        //
-        // Root signature
-        //
-
-        let mut descriptor_set_layouts = Vec::new();
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let shader_resources: Vec<_> = shader_build_result
-                .pipeline_reflection
-                .shader_resources
-                .iter()
-                .filter(|x| x.set_index as usize == set_index)
-                .collect();
-
-            if !shader_resources.is_empty() {
-                let descriptor_defs = shader_resources
-                    .iter()
-                    .map(|sr| DescriptorDef {
-                        name: sr.name.clone(),
-                        binding: sr.binding,
-                        shader_resource_type: sr.shader_resource_type,
-                        array_size: sr.element_count,
-                    })
-                    .collect();
-
-                let def = DescriptorSetLayoutDef {
-                    frequency: set_index as u32,
-                    descriptor_defs,
-                };
-                let descriptor_set_layout =
-                    device_context.create_descriptorset_layout(&def).unwrap();
-                descriptor_set_layouts.push(descriptor_set_layout);
-            }
-        }
-
-        let root_signature_def = RootSignatureDef {
-            pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: shader_build_result
-                .pipeline_reflection
-                .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
-                    size: NonZeroU32::new(x.size).unwrap(),
-                }),
-        };
-
-        let root_signature = device_context
-            .create_root_signature(&root_signature_def)
-            .unwrap();
-
+        let (shader, root_signature) =
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/ui.hlsl"));
         //
         // Pipeline state
         //
@@ -202,8 +95,8 @@ impl EguiPass {
 
     pub fn update_font_texture(
         &mut self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         egui_ctx: &egui::CtxRef,
     ) {
         if let Some((version, ..)) = self.texture_data {
@@ -263,59 +156,51 @@ impl EguiPass {
 
         buffer_memory.copy_to_host_visible_buffer(&pixels);
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &texture,
-                    ResourceState::UNDEFINED,
-                    ResourceState::COPY_DST,
-                )],
-            )
-            .unwrap();
-
-        cmd_buffer
-            .cmd_copy_buffer_to_texture(
-                &staging_buffer,
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
                 &texture,
-                &CmdCopyBufferToTextureParams::default(),
-            )
-            .unwrap();
+                ResourceState::UNDEFINED,
+                ResourceState::COPY_DST,
+            )],
+        );
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &texture,
-                    ResourceState::COPY_DST,
-                    ResourceState::SHADER_RESOURCE,
-                )],
-            )
-            .unwrap();
+        cmd_buffer.copy_buffer_to_texture(
+            &staging_buffer,
+            &texture,
+            &CmdCopyBufferToTextureParams::default(),
+        );
+
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                &texture,
+                ResourceState::COPY_DST,
+                ResourceState::SHADER_RESOURCE,
+            )],
+        );
 
         self.texture_data = Some((egui_texture.version, texture, texture_view));
     }
 
     pub fn render(
         &self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &CommandBuffer,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &RenderSurface,
         egui: &Egui,
     ) {
-        cmd_buffer
-            .cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
-                    load_op: LoadOp::Load,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue([0.0; 4]),
-                }],
-                &None,
-            )
-            .unwrap();
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_surface.render_target_view(),
+                load_op: LoadOp::Load,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue([0.0; 4]),
+            }],
+            &None,
+        );
 
-        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+        cmd_buffer.bind_pipeline(&self.pipeline);
 
         let descriptor_set_layout = &self
             .pipeline
@@ -324,30 +209,28 @@ impl EguiPass {
             .descriptor_set_layouts[0];
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
-            .set_descriptors(
+            .set_descriptors_by_name(
                 "font_texture",
-                0,
                 &[DescriptorRef::TextureView(
                     &self.texture_data.as_ref().unwrap().2,
                 )],
             )
             .unwrap();
         descriptor_set_writer
-            .set_descriptors("font_sampler", 0, &[DescriptorRef::Sampler(&self.sampler)])
+            .set_descriptors_by_name("font_sampler", &[DescriptorRef::Sampler(&self.sampler)])
             .unwrap();
         let descriptor_set_handle =
             descriptor_set_writer.flush(render_context.renderer().device_context());
 
-        cmd_buffer
-            .cmd_bind_descriptor_set_handle(
-                &self.root_signature,
-                descriptor_set_layout.definition().frequency,
-                descriptor_set_handle,
-            )
-            .unwrap();
+        cmd_buffer.bind_descriptor_set_handle(
+            PipelineType::Graphics,
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency,
+            descriptor_set_handle,
+        );
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 
-        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let transient_allocator = render_context.transient_buffer_allocator();
 
         for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
             if mesh.is_empty() {
@@ -371,12 +254,15 @@ impl EguiPass {
                 .collect();
 
             let sub_allocation =
-                transient_allocator.copy_data(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
+                transient_allocator.copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+
+            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
             let sub_allocation =
-                transient_allocator.copy_data(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
-            sub_allocation.bind_as_index_buffer(cmd_buffer, IndexType::Uint32);
+                transient_allocator.copy_data_slice(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
+
+            cmd_buffer
+                .bind_buffer_suballocation_as_index_buffer(&sub_allocation, IndexType::Uint32);
 
             let scale = 1.0;
             let push_constant_data: [f32; 6] = [
@@ -388,16 +274,9 @@ impl EguiPass {
                 render_surface.extents().height() as f32 / egui.ctx.pixels_per_point(),
             ];
 
-            cmd_buffer
-                .cmd_push_constants(&self.root_signature, &push_constant_data)
-                .unwrap();
+            cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-            cmd_buffer
-                .cmd_draw_indexed(mesh.indices.len() as u32, 0, 0)
-                .unwrap();
+            cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
         }
-
-        cmd_buffer.cmd_end_render_pass().unwrap();
-        render_context.release_transient_buffer_allocator(transient_allocator);
     }
 }

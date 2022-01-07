@@ -1,0 +1,54 @@
+mod level_0;
+
+struct LayoutA {
+    a: [Float1; 3],
+    b: Float2,
+}
+
+struct LayoutB {
+    a: Float3,
+    b: Float4,
+    c: LayoutA,
+}
+
+struct ViewData {
+    view: Float4x4,
+    projection: Float4x4,
+}
+
+struct PushConstantData {
+    color: Float4,
+}
+
+#[DescriptorSet(frequency = 0)]
+struct ViewDescriptorSet {
+    view_data: ConstantBuffer<ViewData>,
+}
+
+#[DescriptorSet(frequency = 1, transient)]
+struct FrameDescriptorSet {
+    smp: Sampler,
+    smp_arr: [Sampler; 10],
+    cb: ConstantBuffer<LayoutA>,
+    #[Field(transient)]
+    cb_tr: ConstantBuffer<LayoutA>,
+    sb: StructuredBuffer<LayoutA>,
+    sb_arr: [StructuredBuffer<LayoutA>; 10],
+    rw_sb: RWStructuredBuffer<LayoutA>,
+    bab: ByteAddressBuffer,
+    rw_bab: RWByteAddressBuffer,
+    tex2d: Texture2D<Float4>,
+    rw_tex2d: RWTexture2D<Float4>,
+    tex3d: Texture3D<Float4>,
+    rw_tex3d: RWTexture3D<Float4>,
+    tex2darr: Texture2DArray<Float4>,
+    rw_tex2darr: RWTexture2DArray<Float4>,
+    rw_texcube: TextureCube<Float4>,
+    rw_texcubearr: TextureCubeArray<Float4>,
+}
+
+#[PipelineLayout]
+struct TmpPipelineLayout {
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    push_constant: PushConstant<PushConstantData>,
+}

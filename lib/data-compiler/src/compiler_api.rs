@@ -1,16 +1,19 @@
 //! Data compiler interface.
 //!
-//! Data compiler is a binary that takes as input a [`lgn_data_runtime::Resource`] and Resources it depends on and produces
-//! one or more [`lgn_data_runtime::Resource`]s that are stored in a [`ContentStore`]. As a results it creates new
-//! or updates existing [`Manifest`] file containing metadata about the derived resources.
+//! Data compiler is a binary that takes as input a
+//! [`lgn_data_runtime::Resource`] and Resources it depends on and produces
+//! one or more [`lgn_data_runtime::Resource`]s that are stored in a
+//! [`ContentStore`]. As a results it creates new or updates existing
+//! [`Manifest`] file containing metadata about the derived resources.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
 //!
 //! # Data Compiler's main()
 //!
-//! A data compiler binary must use a [`compiler_main`] function provided by this module.
-//! The signature requires data compiler to provide a static [`CompilerDescriptor`] structure defining
-//! the properties of the data compiler.
+//! A data compiler binary must use a [`compiler_main`] function provided by
+//! this module. The signature requires data compiler to provide a static
+//! [`CompilerDescriptor`] structure defining the properties of the data
+//! compiler.
 //!
 //! Below you can see a minimum code required to compile a data compiler:
 //!
@@ -37,9 +40,9 @@
 //!    code: &'static str,
 //!    data: &'static str,
 //!    env: &CompilationEnv,
-//!) -> CompilerHash {
+//! ) -> CompilerHash {
 //!    todo!()
-//!}
+//! }
 //!
 //! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
 //!    todo!()
@@ -64,22 +67,22 @@
 use std::{
     env,
     io::{self, stdout},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
-use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::AssetRegistryOptions;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     compiler_cmd::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_RESOURCE_PATH,
-        COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH,
-        COMMAND_NAME_INFO,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
+        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
@@ -96,10 +99,12 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// *Data Compiler's* output.
 ///
-/// Includes data which allows to load and validate [`lgn_data_runtime::Resource`]s stored in [`ContentStore`].
-/// As well as references between resources that define load-time dependencies.
+/// Includes data which allows to load and validate
+/// [`lgn_data_runtime::Resource`]s stored in [`ContentStore`]. As well as
+/// references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
+#[derive(Debug)]
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
@@ -117,6 +122,19 @@ pub struct CompilationEnv {
     pub locale: Locale,
 }
 
+/// Compiler information.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CompilerInfo {
+    /// Data build version of data compiler.
+    pub build_version: String,
+    /// Code version of data compiler.
+    pub code_version: String,
+    /// Resource and Asset data version.
+    pub data_version: String,
+    /// Transformation supported by data compiler.
+    pub transform: Transform,
+}
+
 /// Context of the current compilation process.
 pub struct CompilerContext<'a> {
     /// Compilation input - direct dependency of target.
@@ -128,7 +146,7 @@ pub struct CompilerContext<'a> {
     /// Pre-configures asset registry builder.
     resources: Option<AssetRegistryOptions>,
     /// Compilation environment.
-    pub env: CompilationEnv,
+    pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
     output_store: &'a mut dyn ContentStore,
 }
@@ -230,9 +248,87 @@ impl std::fmt::Display for CompilerError {
     }
 }
 
-fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
-    match matches.subcommand() {
-        (COMMAND_NAME_INFO, _) => {
+impl CompilerDescriptor {
+    pub(crate) fn compiler_hash(&self, env: &CompilationEnv) -> CompilerHash {
+        (self.compiler_hash_func)(self.code_version, self.data_version, env)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn compile(
+        &self,
+        compile_path: ResourcePathId,
+        dependencies: &[ResourcePathId],
+        derived_deps: &[CompiledResource],
+        cas_addr: ContentStoreAddr,
+        resource_dir: &Path,
+        env: &CompilationEnv,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let transform = compile_path
+            .last_transform()
+            .ok_or(CompilerError::InvalidTransform)?;
+        if self.transform != &transform {
+            return Err(CompilerError::InvalidTransform);
+        }
+
+        let source_store =
+            HddContentStore::open(cas_addr.clone()).ok_or(CompilerError::AssetStoreError)?;
+        let mut output_store =
+            HddContentStore::open(cas_addr).ok_or(CompilerError::AssetStoreError)?;
+        let manifest = Manifest {
+            compiled_resources: derived_deps.to_owned(),
+        };
+
+        /*
+        eprintln!("# Target: {}({})", derived, derived.resource_id());
+        if let Some(source) = derived.direct_dependency() {
+            eprintln!("# Source: {}({})", source, source.resource_id());
+        }
+        for derived_input in &manifest.compiled_resources {
+            eprintln!(
+                "# Derived Input: {}({}) chk: {} size: {}",
+                derived_input.path,
+                derived_input.path.resource_id(),
+                derived_input.checksum,
+                derived_input.size
+            );
+        }
+
+        eprintln!("# Resource Dir: {:?}", &resource_dir);
+        let paths = std::fs::read_dir(&resource_dir).unwrap();
+        for path in paths {
+            eprintln!("## File: {}", path.unwrap().path().display());
+        }
+
+        eprintln!("# CAS Dir: {:?}", &cas_dir);
+        let paths = std::fs::read_dir(&cas_dir).unwrap();
+        for path in paths {
+            eprintln!("## File: {}", path.unwrap().path().display());
+        }
+        */
+
+        let manifest = manifest.into_rt_manifest(|_rpid| true);
+
+        let registry = AssetRegistryOptions::new()
+            .add_device_cas(Box::new(source_store), manifest)
+            .add_device_dir(resource_dir); // todo: filter dependencies only
+
+        assert!(!compile_path.is_named());
+        let context = CompilerContext {
+            source: compile_path.direct_dependency().unwrap(),
+            target_unnamed: compile_path,
+            dependencies,
+            resources: Some(registry),
+            env,
+            output_store: &mut output_store,
+        };
+
+        (self.compile_func)(context)
+    }
+}
+
+fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
+    match command {
+        Commands::Info => {
             serde_json::to_writer_pretty(
                 stdout(),
                 &CompilerInfoCmdOutput::from_descriptor(descriptor),
@@ -240,15 +336,53 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
         }
-        (COMMAND_NAME_COMPILER_HASH, Some(cmd_args)) => {
-            let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
-            let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
-            let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
-
-            let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
+        Commands::CompilerHash {
+            target,
+            platform,
+            locale,
+        } => {
+            let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
-                Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
-            let locale = Locale::new(locale);
+                Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
+            let locale = Locale::new(&locale);
+
+            let env = CompilationEnv {
+                target,
+                platform,
+                locale,
+            };
+            let compiler_hash = descriptor.compiler_hash(&env);
+
+            let output = CompilerHashCmdOutput { compiler_hash };
+            serde_json::to_writer_pretty(stdout(), &output)
+                .map_err(|_e| CompilerError::StdoutError)?;
+            Ok(())
+        }
+        Commands::Compile {
+            resource: resource_path,
+            src_deps,
+            der_deps,
+            resource_dir,
+            compiled_asset_store,
+            target,
+            platform,
+            locale,
+        } => {
+            let derived = ResourcePathId::from_str(&resource_path)
+                .map_err(|_e| CompilerError::InvalidResourceId)?;
+            let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
+            let platform =
+                Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
+            let locale = Locale::new(&locale);
+            let dependencies: Vec<ResourcePathId> = src_deps
+                .iter()
+                .filter_map(|s| ResourcePathId::from_str(s).ok())
+                .collect();
+            let derived_deps: Vec<CompiledResource> = der_deps
+                .iter()
+                .filter_map(|s| CompiledResource::from_str(s).ok())
+                .collect();
+            let cas_addr = ContentStoreAddr::from(compiled_asset_store.as_str());
 
             let env = CompilationEnv {
                 target,
@@ -256,106 +390,14 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 locale,
             };
 
-            let compiler_hash = (descriptor.compiler_hash_func)(
-                descriptor.code_version,
-                descriptor.data_version,
+            let compilation_output = descriptor.compile(
+                derived,
+                &dependencies,
+                &derived_deps,
+                cas_addr,
+                &resource_dir,
                 &env,
-            );
-            let output = CompilerHashCmdOutput { compiler_hash };
-            serde_json::to_writer_pretty(stdout(), &output)
-                .map_err(|_e| CompilerError::StdoutError)?;
-            Ok(())
-        }
-        (COMMAND_NAME_COMPILE, Some(cmd_args)) => {
-            let derived = cmd_args.value_of(COMMAND_ARG_RESOURCE_PATH).unwrap();
-            let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
-            let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
-            let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
-
-            let derived =
-                ResourcePathId::from_str(derived).map_err(|_e| CompilerError::InvalidResourceId)?;
-            let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
-            let platform =
-                Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
-            let locale = Locale::new(locale);
-            let dependencies: Vec<ResourcePathId> = cmd_args
-                .values_of(COMMAND_ARG_SRC_DEPS)
-                .unwrap_or_default()
-                .filter_map(|s| ResourcePathId::from_str(s).ok())
-                .collect();
-            let derived_deps: Vec<CompiledResource> = cmd_args
-                .values_of(COMMAND_ARG_DER_DEPS)
-                .unwrap_or_default()
-                .filter_map(|s| CompiledResource::from_str(s).ok())
-                .collect();
-            let cas_dir = cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap();
-            let asset_store_path = ContentStoreAddr::from(cas_dir);
-            let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
-
-            let transform = derived
-                .last_transform()
-                .ok_or(CompilerError::InvalidTransform)?;
-            if descriptor.transform != &transform {
-                return Err(CompilerError::InvalidTransform);
-            }
-
-            let source_store = HddContentStore::open(asset_store_path.clone())
-                .ok_or(CompilerError::AssetStoreError)?;
-            let mut output_store =
-                HddContentStore::open(asset_store_path).ok_or(CompilerError::AssetStoreError)?;
-            let manifest = Manifest {
-                compiled_resources: derived_deps,
-            };
-
-            /*
-            eprintln!("# Target: {}({})", derived, derived.resource_id());
-            if let Some(source) = derived.direct_dependency() {
-                eprintln!("# Source: {}({})", source, source.resource_id());
-            }
-            for derived_input in &manifest.compiled_resources {
-                eprintln!(
-                    "# Derived Input: {}({}) chk: {} size: {}",
-                    derived_input.path,
-                    derived_input.path.resource_id(),
-                    derived_input.checksum,
-                    derived_input.size
-                );
-            }
-
-            eprintln!("# Resource Dir: {:?}", &resource_dir);
-            let paths = std::fs::read_dir(&resource_dir).unwrap();
-            for path in paths {
-                eprintln!("## File: {}", path.unwrap().path().display());
-            }
-
-            eprintln!("# CAS Dir: {:?}", &cas_dir);
-            let paths = std::fs::read_dir(&cas_dir).unwrap();
-            for path in paths {
-                eprintln!("## File: {}", path.unwrap().path().display());
-            }
-            */
-
-            let manifest = manifest.into_rt_manifest(|_rpid| true);
-
-            let registry = AssetRegistryOptions::new()
-                .add_device_cas(Box::new(source_store), manifest)
-                .add_device_dir(resource_dir); // todo: filter dependencies only
-
-            assert!(!derived.is_named());
-            let context = CompilerContext {
-                source: derived.direct_dependency().unwrap(),
-                target_unnamed: derived,
-                dependencies: &dependencies,
-                resources: Some(registry),
-                env: CompilationEnv {
-                    target,
-                    platform,
-                    locale,
-                },
-                output_store: &mut output_store,
-            };
-
-            let compilation_output = (descriptor.compile_func)(context)?;
+            )?;
 
             let output = CompilerCompileCmdOutput {
                 compiled_resources: compilation_output.compiled_resources,
@@ -365,116 +407,83 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
         }
-        _ => Err(CompilerError::UnknownCommand),
     }
+}
+
+#[derive(Parser, Debug)]
+#[clap(name = "TODO: compiler name")]
+#[clap(about = "CLI to query a local telemetry data lake", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Information about the compiler.
+    #[clap(name = COMMAND_NAME_INFO)]
+    Info,
+    /// Compiler Hash list based on provided build context information.
+    #[clap(name = COMMAND_NAME_COMPILER_HASH)]
+    CompilerHash {
+        /// Build target (Game, Server, etc).
+        #[clap(long)]
+        target: String,
+        /// Build platform (Windows, Unix, etc).
+        #[clap(long)]
+        platform: String,
+        /// Build localization (en, fr, etc).
+        #[clap(long)]
+        locale: String,
+    },
+    /// Compile given resource.
+    #[clap(name = COMMAND_NAME_COMPILE)]
+    Compile {
+        /// Resource to compile.
+        resource: String,
+        /// Source dependencies.
+        #[clap(long = COMMAND_ARG_SRC_DEPS, multiple_values=true)]
+        src_deps: Vec<String>,
+        /// Derived dependencies.
+        #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
+        der_deps: Vec<String>,
+        /// Resource directory.
+        #[clap(long = COMMAND_ARG_RESOURCE_DIR)]
+        resource_dir: PathBuf,
+        /// Compiled asset store.
+        #[clap(long = COMMAND_ARG_COMPILED_ASSET_STORE)]
+        compiled_asset_store: String,
+        /// Build target (Game, Server, etc).
+        #[clap(long = COMMAND_ARG_TARGET)]
+        target: String,
+        /// Build platform (Windows, Unix, etc).
+        #[clap(long = COMMAND_ARG_PLATFORM)]
+        platform: String,
+        /// Build localization (en, fr, etc).
+        #[clap(long = COMMAND_ARG_LOCALE)]
+        locale: String,
+    },
 }
 
 /// The main function of every data compiler.
 ///
-/// This must be called by the data compiler. It will parse and validate command line arguments
-/// and invoke the appropriate function on the `CompilerDescriptor` interface.
-/// The result will be written out to stdout.
+/// This must be called by the data compiler. It will parse and validate command
+/// line arguments and invoke the appropriate function on the
+/// `CompilerDescriptor` interface. The result will be written out to stdout.
 ///
-/// > **NOTE**: Data compiler must not write to stdout because this could break the specific output that is expected.
+/// > **NOTE**: Data compiler must not write to stdout because this could break
+/// the specific output that is expected.
 // TODO: remove the limitation above.
 pub fn compiler_main(
     args: env::Args,
     descriptor: &CompilerDescriptor,
 ) -> Result<(), CompilerError> {
-    let matches = clap::App::new("todo: compiler name")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .version(descriptor.code_version)
-        .about("todo: about")
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_INFO).about("Information about the compiler."),
-        )
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_COMPILER_HASH)
-                .about("Compiler Hash list based on provided build context information.")
-                .arg(
-                    Arg::with_name(COMMAND_ARG_TARGET)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_TARGET)
-                        .help("Build target (Game, Server, etc)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_PLATFORM)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_PLATFORM)
-                        .help("Build platform (Windows, Unix, etc)"),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_LOCALE)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_LOCALE)
-                        .help("Build localization (en, fr, etc)"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name(COMMAND_NAME_COMPILE)
-                .about("Compile given resource.")
-                .arg(
-                    Arg::with_name(COMMAND_ARG_RESOURCE_PATH)
-                        .required(true)
-                        .help("Path in build graph to compile."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_SRC_DEPS)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_SRC_DEPS)
-                        .multiple(true)
-                        .help("Source dependencies to include."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_DER_DEPS)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_DER_DEPS)
-                        .multiple(true)
-                        .help("List of derived dependencies (id, hash, size)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_RESOURCE_DIR)
-                        .takes_value(true)
-                        .required(true)
-                        .long(COMMAND_ARG_RESOURCE_DIR)
-                        .help("Root resource directory."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_COMPILED_ASSET_STORE)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_COMPILED_ASSET_STORE)
-                        .required(true)
-                        .multiple(true)
-                        .help("Content Store addresses where resources will be output."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_TARGET)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_TARGET)
-                        .help("Build target (Game, Server, etc)."),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_PLATFORM)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_PLATFORM)
-                        .help("Build platform (Windows, Unix, etc)"),
-                )
-                .arg(
-                    Arg::with_name(COMMAND_ARG_LOCALE)
-                        .required(true)
-                        .takes_value(true)
-                        .long(COMMAND_ARG_LOCALE)
-                        .help("Build localization (en, fr, etc)"),
-                ),
-        )
-        .get_matches_from(args);
-
-    let result = run(&matches, descriptor);
+    let args = Cli::try_parse_from(args).map_err(|err| {
+        eprintln!("{}", err);
+        CompilerError::InvalidArgs
+    })?;
+    let result = run(args.command, descriptor);
     if let Err(error) = &result {
         eprintln!("Compiler Failed With: '{:?}'", error);
     }

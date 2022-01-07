@@ -1,0 +1,62 @@
+syntax = "proto3";
+package resource_browser;
+
+service ResourceBrowser {
+  rpc SearchResources(SearchResourcesRequest) returns (SearchResourcesResponse);
+
+  rpc CreateResource(CreateResourceRequest) returns (CreateResourceResponse);
+
+  rpc GetResourceTypeNames(GetResourceTypeNamesRequest)
+      returns (GetResourceTypeNamesResponse);
+
+  rpc ImportResource(ImportResourceRequest) returns (ImportResourceResponse);
+
+  rpc DeleteResource(DeleteResourceRequest) returns (DeleteResourceResponse);
+
+  rpc RenameResource(RenameResourceRequest) returns (RenameResourceResponse);
+
+  rpc CloneResource(CloneResourceRequest) returns (CloneResourceResponse);
+}
+
+message SearchResourcesRequest { string searchToken = 1; }
+message SearchResourcesResponse {
+  string nextSearchToken = 1;
+  uint64 total = 2;
+  repeated ResourceDescription resourceDescriptions = 3;
+}
+
+message ResourceDescription {
+  string id = 1;
+  string path = 2;
+  uint32 version = 3;
+}
+
+message GetResourceTypeNamesRequest {}
+message GetResourceTypeNamesResponse { repeated string resource_types = 1; }
+
+message CreateResourceRequest {
+  string resource_type = 1;
+  string resource_path = 2;
+}
+message CreateResourceResponse { string new_id = 1; }
+
+message ImportResourceRequest {
+  string resource_name = 1;
+  string shared_file_path = 2;
+}
+message ImportResourceResponse { string new_id = 1; }
+
+message DeleteResourceRequest { string id = 1; }
+message DeleteResourceResponse {}
+
+message RenameResourceRequest {
+  string id = 1;
+  string new_path = 2;
+}
+message RenameResourceResponse {}
+
+message CloneResourceRequest {
+  string source_id = 1;
+  string clone_path = 2;
+}
+message CloneResourceResponse { string new_id = 1; }

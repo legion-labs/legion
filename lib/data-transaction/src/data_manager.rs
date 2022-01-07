@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
-use log::info;
+use lgn_telemetry::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::{LockContext, Transaction};
+use crate::{build_manager::BuildManager, LockContext, Transaction};
 
 /// Error returned by the Transaction System.
 #[derive(Error, Debug)]
@@ -41,18 +41,19 @@ pub enum Error {
 
     /// Invalid Resource Reflection
     #[error("Resource {0} doesn't have reflection.")]
-    InvalidResourceReflection(ResourceTypeAndId),
+    InvalidTypeReflection(ResourceTypeAndId),
 }
 
 /// System that manage the current state of the Loaded Offline Data
 pub struct DataManager {
     commited_transactions: Vec<Transaction>,
     rollbacked_transactions: Vec<Transaction>,
+    pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
 
     pub(crate) project: Arc<Mutex<Project>>,
     pub(crate) resource_registry: Arc<Mutex<ResourceRegistry>>,
     pub(crate) asset_registry: Arc<AssetRegistry>,
-    pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
+    pub(crate) build_manager: Arc<Mutex<BuildManager>>,
 }
 
 impl DataManager {
@@ -61,6 +62,7 @@ impl DataManager {
         project: Arc<Mutex<Project>>,
         resource_registry: Arc<Mutex<ResourceRegistry>>,
         asset_registry: Arc<AssetRegistry>,
+        build_manager: BuildManager,
     ) -> Self {
         Self {
             commited_transactions: Vec::new(),
@@ -69,6 +71,7 @@ impl DataManager {
             resource_registry,
             asset_registry,
             loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
+            build_manager: Arc::new(Mutex::new(build_manager)),
         }
     }
 
@@ -83,7 +86,7 @@ impl DataManager {
                 .load_resource(resource_id, &mut resource_registry)
                 .map_or_else(
                     |err| {
-                        log::warn!("Failed to load {}: {}", resource_id, err);
+                        warn!("Failed to load {}: {}", resource_id, err);
                     },
                     |handle| resource_handles.insert(resource_id, handle),
                 );

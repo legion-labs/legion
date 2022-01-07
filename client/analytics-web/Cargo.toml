@@ -15,13 +15,14 @@ lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-online = { path = "../../lib/online", version = "0.1.0" }
 lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 anyhow = "1.0.44"
-clap = "2.33"
+clap = { version = "3.0", features = ["derive"] }
 url = "2.2.2"
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 directories = "4"
 
 [build-dependencies]
-lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../../lib/build-utils-web", version = "0.1.0" }
 tauri-build = "1.0.0-beta.4"
 
 [features]
