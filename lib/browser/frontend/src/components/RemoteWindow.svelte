@@ -73,7 +73,7 @@
     }
   };
 
-  const initialize = () => {
+  function initialize() {
     if (!videoElement) {
       log.error("video", "Video element couldn't be found");
 
@@ -168,16 +168,13 @@
     };
 
     videoChannel.onopen = () => {
-      log.debug("video", "Video channel is now open.");
-      if (videoChannel) {
-        videoChannel.send(
-          JSON.stringify({
-            event: "color",
-            id: "background",
-            color: backgroundColors[serverType],
-          })
-        );
+      if (!videoChannel || !desiredResolution) {
+        log.error("video", "Video channel couldn't be open.");
+
+        return;
       }
+
+      log.debug("video", "Video channel is now open.");
     };
 
     videoChannel.onclose = () => {
@@ -187,6 +184,53 @@
     videoChannel.onmessage = async (message: MessageEvent<ArrayBuffer>) => {
       if (!videoElement) {
         return;
+      }
+
+      // If the message is very small it's unlikely to be a frame
+      if (message.data.byteLength < 100) {
+        try {
+          const jsonMessage = JSON.parse(
+            new TextDecoder().decode(message.data)
+          );
+
+          if (
+            videoChannel &&
+            desiredResolution &&
+            jsonMessage.type === "initialized"
+          ) {
+            const normalizedDesiredResolution =
+              normalizeDesiredResolution(desiredResolution);
+
+            if (
+              !normalizedDesiredResolution ||
+              normalizedDesiredResolution.width == 0 ||
+              normalizedDesiredResolution.height == 0
+            ) {
+              return;
+            }
+
+            log.debug(
+              "video",
+              `Resolution is: ${normalizedDesiredResolution.width}x${normalizedDesiredResolution.height}`
+            );
+
+            videoChannel.send(
+              JSON.stringify({
+                event: "initialize",
+                color: backgroundColors[serverType],
+                width: normalizedDesiredResolution.width,
+                height: normalizedDesiredResolution.height,
+              })
+            );
+          }
+        } catch {
+          log.error(
+            "Couldn't JSON parse what seemed to be a message coming from the server"
+          );
+        } finally {
+          // Block the message and don't push it into the player
+          return;
+        }
       }
 
       // videoElement is augmented with the `videoPlayer` action and will
@@ -212,34 +256,46 @@
 
       onReceiveControlMessage(jsonMsg);
     };
-  };
+  }
 
   const resizeVideo = debounce((desiredResolution: Resolution) => {
     if (!videoAlreadyRendered) {
       return;
     }
 
-    // Ensure our resolution is a multiple of two.
-    const height = desiredResolution.height & ~1;
-    const width = desiredResolution.width & ~1;
+    const normalizedDesiredResolution =
+      normalizeDesiredResolution(desiredResolution);
 
-    if (width == 0 || height == 0) {
+    if (
+      !normalizedDesiredResolution ||
+      normalizedDesiredResolution.width == 0 ||
+      normalizedDesiredResolution.height == 0
+    ) {
       return;
     }
 
-    log.debug("video", `Desired resolution is now: ${width}x${height}`);
+    log.debug(
+      "video",
+      `Desired resolution is now: ${normalizedDesiredResolution.width}x${normalizedDesiredResolution.height}`
+    );
 
     if (videoChannel && videoChannel.readyState === "open") {
-      videoChannel.send(JSON.stringify({ event: "resize", width, height }));
+      videoChannel.send(
+        JSON.stringify({
+          event: "resize",
+          width: normalizedDesiredResolution.width,
+          height: normalizedDesiredResolution.height,
+        })
+      );
     }
   }, resizeVideoTimeout);
 
-  const onVideoResize = ({ width, height }: DOMRectReadOnly) => {
+  function onVideoResize({ width, height }: DOMRectReadOnly) {
     desiredResolution = {
       width: Math.round(width),
       height: Math.round(height),
     };
-  };
+  }
 
   function onRemoteWindowInput(input: RemoteWindowInput) {
     if (!videoChannel || videoChannel.readyState !== "open") {
@@ -252,6 +308,20 @@
     }
 
     videoChannel.send(JSON.stringify({ event: "input", input }));
+  }
+
+  function normalizeDesiredResolution(
+    desiredResolution: Resolution
+  ): Resolution | null {
+    // Ensure our resolution is a multiple of two.
+    const width = desiredResolution.width & ~1;
+    const height = desiredResolution.height & ~1;
+
+    if (width == 0 || height == 0) {
+      return null;
+    }
+
+    return { width, height };
   }
 
   $: if (

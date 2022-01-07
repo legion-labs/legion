@@ -1,5 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
+use bytes::Bytes;
 use lgn_app::AppExit;
 use lgn_ecs::prelude::*;
 use lgn_input::{
@@ -105,14 +106,25 @@ pub(crate) fn handle_stream_events(
             }
             StreamEvent::VideoChannelOpened(stream_id, data_channel) => {
                 let resolution = Resolution::new(1024, 768);
+
+                let video_player_data_channel = Arc::clone(&data_channel);
+
+                let video_stream =
+                    VideoStream::new(&renderer, resolution, video_player_data_channel).unwrap();
+
                 let mut render_surface = RenderSurface::new(
                     &renderer,
                     RenderSurfaceExtents::new(resolution.width(), resolution.height()),
                 );
-                render_surface.register_presenter(|| {
-                    VideoStream::new(&renderer, resolution, data_channel).unwrap()
-                });
+                render_surface.register_presenter(|| video_stream);
                 commands.entity(stream_id.entity).insert(render_surface);
+
+                task_pool.spawn(async move {
+                    data_channel
+                        .send(&Bytes::from(r#"{"type": "initialized"}"#))
+                        .await
+                        .unwrap();
+                });
 
                 info!(
                     "Video channel is now opened for stream {}: adding a video-stream component",
@@ -190,19 +202,32 @@ pub(crate) fn update_streams(
                 let render_pass = render_surface.test_renderpass();
 
                 match &event.info {
-                    VideoStreamEventInfo::Color { id, color } => {
-                        info!("received color command id={}", id);
+                    VideoStreamEventInfo::Initialize {
+                        color,
+                        width,
+                        height,
+                    } => {
+                        info!("received initialize command");
+
+                        let resolution = Resolution::new(*width, *height);
+
+                        render_surface.resize(
+                            &renderer,
+                            RenderSurfaceExtents::new(resolution.width(), resolution.height()),
+                        );
+
                         render_pass.write().set_color(color.0);
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
                         let resolution = Resolution::new(*width, *height);
+
                         render_surface.resize(
                             &renderer,
                             RenderSurfaceExtents::new(resolution.width(), resolution.height()),
                         );
                     }
-                    VideoStreamEventInfo::Speed { id, speed } => {
-                        info!("received speed command id={}", id);
+                    VideoStreamEventInfo::Speed { speed } => {
+                        info!("received speed command {}", speed);
                         render_pass.write().set_speed(*speed);
                     }
                     VideoStreamEventInfo::Input { input } => {

@@ -101,10 +101,14 @@ pub(crate) enum Input {
 pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "resize")]
     Resize { width: u32, height: u32 },
-    #[serde(rename = "color")]
-    Color { id: String, color: Color },
+    #[serde(rename = "initialize")]
+    Initialize {
+        color: Color,
+        width: u32,
+        height: u32,
+    },
     #[serde(rename = "speed")]
-    Speed { id: String, speed: f32 },
+    Speed { speed: f32 },
     #[serde(rename = "input")]
     Input { input: Input },
 }
