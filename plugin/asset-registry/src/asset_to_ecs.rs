@@ -6,6 +6,7 @@ use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
     resources::DefaultMeshes,
 };
+use lgn_telemetry::info;
 use lgn_transform::prelude::*;
 use sample_data_runtime as runtime_data;
 
@@ -31,14 +32,14 @@ where
                     commands.entity(old_entity).despawn();
                 }
 
-                println!(
+                info!(
                     "Loaded {}: {} -> ECS id: {:?}",
                     T::TYPENAME,
                     *asset_id,
                     entity_id,
                 );
             } else {
-                println!("Loaded {}: {}", T::TYPENAME, *asset_id);
+                info!("Loaded {}: {}", T::TYPENAME, *asset_id);
             }
         }
 

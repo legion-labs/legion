@@ -4,7 +4,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_telemetry::info;
+use lgn_telemetry::{info, trace_scope};
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -48,6 +49,27 @@ impl ScheduleRunnerSettings {
     }
 }
 
+fn set_time_period() {
+    // Windows is quantum for sleep can be set process wide and to a minimum of 1ms
+    // even though it's set, depending on the windows version the value can be overridden
+    // https://docs.microsoft.com/en-us/windows/win32/api/timeapi/nf-timeapi-timebeginperiod
+    #[cfg(windows)]
+    #[allow(unsafe_code)]
+    unsafe {
+        use lgn_telemetry::error;
+        use windows::Win32::Media::timeBeginPeriod;
+        use windows::Win32::Media::TIMERR_NOERROR;
+
+        const SLEEP_QUANTUM_MS: u32 = 1;
+        let result = timeBeginPeriod(SLEEP_QUANTUM_MS);
+        if result != TIMERR_NOERROR {
+            error!("timeBeginPeriod failed with error code {}", result);
+        } else {
+            info!("timeBeginPeriod set to {}ms", SLEEP_QUANTUM_MS);
+        }
+    }
+}
+
 /// Configures an App to run its [Schedule](lgn_ecs::schedule::Schedule)
 /// according to a given [`RunMode`]
 #[derive(Default)]
@@ -66,27 +88,37 @@ impl Plugin for ScheduleRunnerPlugin {
                     app.update();
                 }
                 RunMode::Loop { wait } => {
+                    if wait.is_some() {
+                        set_time_period();
+                    }
+
                     static CTRL_C_HIT: AtomicBool = AtomicBool::new(false);
                     ctrlc::set_handler(move || {
-                        info!("CTRL-C was hit!");
+                        info!("Ctrl+C was hit!");
                         if CTRL_C_HIT.load(Ordering::SeqCst) {
                             std::process::exit(0);
                         }
                         CTRL_C_HIT.store(true, Ordering::SeqCst);
                     })
-                    .expect("Error setting ctrlc handler");
+                    .expect("Error setting Ctrl+C handler");
 
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
+                        trace_scope!();
                         let start_time = Instant::now();
 
-                        if let Some(app_exit_events) =
+                        if let Some(mut app_exit_events) =
                             app.world.get_resource_mut::<Events<AppExit>>()
                         {
                             if let Some(exit) = app_exit_event_reader.iter(&app_exit_events).last()
                             {
                                 return Err(exit.clone());
+                            }
+                            // give a chance for the app to handle the event during an update
+                            // in case there is system reacting to the event and doing some cleanup
+                            if CTRL_C_HIT.load(Ordering::SeqCst) {
+                                app_exit_events.send(AppExit);
                             }
                         }
 
@@ -99,10 +131,6 @@ impl Plugin for ScheduleRunnerPlugin {
                             {
                                 return Err(exit.clone());
                             }
-                        }
-
-                        if CTRL_C_HIT.load(Ordering::SeqCst) {
-                            return Err(AppExit {});
                         }
 
                         let end_time = Instant::now();
@@ -119,8 +147,10 @@ impl Plugin for ScheduleRunnerPlugin {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
+                        trace_scope!();
                         while let Ok(delay) = tick(&mut app, wait) {
                             if let Some(delay) = delay {
+                                trace_scope!("sleep");
                                 std::thread::sleep(delay);
                             }
                         }

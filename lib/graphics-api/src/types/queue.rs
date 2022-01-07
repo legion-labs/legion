@@ -1,3 +1,5 @@
+use lgn_telemetry::trace_scope;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
 use crate::{
@@ -67,6 +69,7 @@ impl Queue {
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
+        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
@@ -85,6 +88,7 @@ impl Queue {
         wait_semaphores: &[&Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
+        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 

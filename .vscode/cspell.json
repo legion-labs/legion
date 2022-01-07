@@ -1,15 +1,24 @@
 {
     "ignoreRegExpList": [
-        "clippy::[a-z_]+"
+        "clippy::[a-z_]+",
+        "rustdoc::[a-z_]+"
     ],
     "words": [
         "asft",
         "bincode",
         "Deserialization",
+        "despawning",
+        "despawn",
         "determinator",
         "Graphviz",
+        "openh264",
         "perfetto",
+        "proto",
+        "Rustdoc",
+        "TIMERR_NOERROR",
         "thiserror",
+        "serde",
+        "webrtc",
         "xxhash"
     ]
 }

@@ -1,6 +1,4 @@
 use anyhow::Result;
-use lgn_telemetry::*;
-use lgn_test_utils::*;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -71,10 +69,7 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
         repo_uri
     } else {
         let repo_dir = test_dir.join("repo");
-        lsc_cli_sys(
-            test_dir,
-            &["create-repository", repo_dir.to_str().unwrap()],
-        );
+        lsc_cli_sys(test_dir, &["create-repository", repo_dir.to_str().unwrap()]);
         String::from(repo_dir.to_str().unwrap())
     }
 }

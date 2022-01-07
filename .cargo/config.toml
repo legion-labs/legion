@@ -3,6 +3,8 @@ name = "Legion Labs"
 email = "devs@legionlabs.com"
 vcs = "none"
 
+################################################################################
+
 [alias]
 md = "run --package lgn-monorepo --bin lgn-monorepo --"
 m = "run -q --release --package lgn-monorepo --bin lgn-monorepo --"
@@ -13,5 +15,32 @@ mtest = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- test"
 mdoc = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- doc"
 mrun = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- run"
 
+################################################################################
+
+# To be set if necesseary to enable sanitizers
+#[build]
+#rustflags = ["-C", "link-args=-fsanitize=address"]
+
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
+
+[profile.dev]
+panic = 'abort'
+
+[profile.release]
+opt-level = 3
+debug = true
+debug-assertions = false
+panic = 'abort'
+
+[profile.bench]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+# this is one of the real time-critical sections of the code
+# We want it optimal even even in dev mode
+[profile.dev.package.openh264-sys2]
+opt-level = 3
+debug = true
+debug-assertions = false

@@ -6,14 +6,11 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_transform::prelude::Transform;
 
 use crate::{
-    components::{
-        CameraComponent, LightComponent, LightSettings, LightType, ManipulatorComponent,
-        PickedComponent, RenderSurface, StaticMesh,
-    },
+    components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
+    lighting::LightingManager,
     RenderContext, Renderer,
 };
 
@@ -94,14 +91,9 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(
-            &StaticMesh,
-            Option<&PickedComponent>,
-            Option<&ManipulatorComponent>,
-        )],
+        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera: &CameraComponent,
-        lights: &[(&Transform, &LightComponent)],
-        light_settings: &LightSettings,
+        lighting_manager: &LightingManager,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -138,151 +130,42 @@ impl TmpRenderPass {
         );
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        const NUM_LIGHTS: usize = 8;
-        const DIRECTIONAL_LIGHT_SIZE: usize = 32;
-        const OMNIDIRECTIONAL_LIGHT_SIZE: usize = 32;
-        const SPOTLIGHT_SIZE: usize = 32;
-
-        // Lights
-        let mut directional_lights_data =
-            Vec::<f32>::with_capacity(DIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
-        let mut omnidirectional_lights_data =
-            Vec::<f32>::with_capacity(OMNIDIRECTIONAL_LIGHT_SIZE * NUM_LIGHTS);
-        let mut spotlights_data = Vec::<f32>::with_capacity(SPOTLIGHT_SIZE * NUM_LIGHTS);
-        let mut num_directional_lights = 0;
-        let mut num_omnidirectional_lights = 0;
-        let mut num_spotlights = 0;
-        for (transform, light) in lights {
-            if !light.enabled {
-                continue;
-            }
-            match light.light_type {
-                LightType::Directional { direction } => {
-                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                    directional_lights_data.push(direction_in_view.x);
-                    directional_lights_data.push(direction_in_view.y);
-                    directional_lights_data.push(direction_in_view.z);
-                    directional_lights_data.push(light.radiance);
-                    directional_lights_data.push(light.color.0);
-                    directional_lights_data.push(light.color.1);
-                    directional_lights_data.push(light.color.2);
-                    num_directional_lights += 1;
-                    unsafe {
-                        directional_lights_data
-                            .set_len(DIRECTIONAL_LIGHT_SIZE / 4 * num_directional_lights as usize);
-                    }
-                }
-                LightType::Omnidirectional => {
-                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-
-                    omnidirectional_lights_data.push(transform_in_view.x);
-                    omnidirectional_lights_data.push(transform_in_view.y);
-                    omnidirectional_lights_data.push(transform_in_view.z);
-                    omnidirectional_lights_data.push(light.radiance);
-                    omnidirectional_lights_data.push(light.color.0);
-                    omnidirectional_lights_data.push(light.color.1);
-                    omnidirectional_lights_data.push(light.color.2);
-                    num_omnidirectional_lights += 1;
-                    unsafe {
-                        omnidirectional_lights_data.set_len(
-                            OMNIDIRECTIONAL_LIGHT_SIZE / 4 * num_omnidirectional_lights as usize,
-                        );
-                    }
-                }
-                LightType::Spotlight {
-                    direction,
-                    cone_angle,
-                } => {
-                    let transform_in_view = view_matrix.mul_vec4(transform.translation.extend(1.0));
-                    let direction_in_view = view_matrix.mul_vec4(direction.extend(0.0));
-
-                    spotlights_data.push(transform_in_view.x);
-                    spotlights_data.push(transform_in_view.y);
-                    spotlights_data.push(transform_in_view.z);
-                    spotlights_data.push(light.radiance);
-                    spotlights_data.push(direction_in_view.x);
-                    spotlights_data.push(direction_in_view.y);
-                    spotlights_data.push(direction_in_view.z);
-                    spotlights_data.push(cone_angle);
-                    spotlights_data.push(light.color.0);
-                    spotlights_data.push(light.color.1);
-                    spotlights_data.push(light.color.2);
-                    num_spotlights += 1;
-                    unsafe {
-                        spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * num_spotlights as usize);
-                    }
-                }
-            }
-        }
+        let mut constant_data = Vec::with_capacity(32);
         unsafe {
-            directional_lights_data.set_len(DIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
-            omnidirectional_lights_data.set_len(OMNIDIRECTIONAL_LIGHT_SIZE / 4 * NUM_LIGHTS);
-            spotlights_data.set_len(SPOTLIGHT_SIZE / 4 * NUM_LIGHTS);
+            constant_data.set_len(32);
         }
+        view_matrix.write_cols_to_slice(&mut constant_data[0..]);
+        projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
 
-        let directional_lights_buffer_view = transient_allocator
-            .copy_data_slice(&directional_lights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(DIRECTIONAL_LIGHT_SIZE as u64, true);
+        let camera_buffer_view = transient_allocator
+            .copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER)
+            .const_buffer_view();
 
-        let omnidirectional_lights_buffer_view = transient_allocator
-            .copy_data_slice(
-                &omnidirectional_lights_data,
-                ResourceUsage::AS_SHADER_RESOURCE,
-            )
-            .structured_buffer_view(OMNIDIRECTIONAL_LIGHT_SIZE as u64, true);
+        let lighting_manager_view = transient_allocator
+            .copy_data_slice(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+            .const_buffer_view();
 
-        let spotlights_buffer_view = transient_allocator
-            .copy_data_slice(&spotlights_data, ResourceUsage::AS_SHADER_RESOURCE)
-            .structured_buffer_view(SPOTLIGHT_SIZE as u64, true);
-
-        for (_index, (static_mesh_component, picked_component, manipulator_component)) in
-            static_meshes.iter().enumerate()
-        {
-            if manipulator_component.is_some() {
-                continue;
-            }
-
-            let color: (f32, f32, f32, f32) = (
-                f32::from(static_mesh_component.color.r) / 255.0f32,
-                f32::from(static_mesh_component.color.g) / 255.0f32,
-                f32::from(static_mesh_component.color.b) / 255.0f32,
-                f32::from(static_mesh_component.color.a) / 255.0f32,
-            );
-
-            let mut constant_data = [0.0; 45];
-
-            view_matrix.write_cols_to_slice(&mut constant_data[0..]);
-            projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
-            constant_data[32] = color.0;
-            constant_data[33] = color.1;
-            constant_data[34] = color.2;
-            constant_data[35] = 1.0;
-            constant_data[36] = f32::from_bits(num_directional_lights);
-            constant_data[37] = f32::from_bits(num_omnidirectional_lights);
-            constant_data[38] = f32::from_bits(num_spotlights);
-            constant_data[39] = f32::from_bits(light_settings.diffuse as u32);
-            constant_data[40] = f32::from_bits(light_settings.specular as u32);
-            constant_data[41] = light_settings.specular_reflection;
-            constant_data[42] = light_settings.diffuse_reflection;
-            constant_data[43] = light_settings.ambient_reflection;
-            constant_data[44] = light_settings.shininess;
-
-            let sub_allocation =
-                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.const_buffer_view();
-
+        for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "const_data",
-                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                    "camera",
+                    &[DescriptorRef::BufferView(&camera_buffer_view)],
                 )
                 .unwrap();
 
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "lighting_manager",
+                    &[DescriptorRef::BufferView(&lighting_manager_view)],
+                )
+                .unwrap();
+
+            let directional_lights_buffer_view = render_context
+                .renderer()
+                .directional_lights_data_structured_buffer_view();
             descriptor_set_writer
                 .set_descriptors_by_name(
                     "directional_lights",
@@ -290,6 +173,9 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
+            let omnidirectional_lights_buffer_view = render_context
+                .renderer()
+                .omnidirectional_lights_data_structured_buffer_view();
             descriptor_set_writer
                 .set_descriptors_by_name(
                     "omnidirectional_lights",
@@ -299,6 +185,9 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
+            let spotlights_buffer_view = render_context
+                .renderer()
+                .spotlights_data_structured_buffer_view();
             descriptor_set_writer
                 .set_descriptors_by_name(
                     "spotlights",
@@ -324,14 +213,26 @@ impl TmpRenderPass {
                 descriptor_set_handle,
             );
 
-            let mut push_constant_data: [u32; 3] = [0; 3];
-            push_constant_data[0] = static_mesh_component.vertex_offset;
-            push_constant_data[1] = static_mesh_component.world_offset;
+            let color: (f32, f32, f32, f32) = (
+                f32::from(static_mesh.color.r) / 255.0f32,
+                f32::from(static_mesh.color.g) / 255.0f32,
+                f32::from(static_mesh.color.b) / 255.0f32,
+                f32::from(static_mesh.color.a) / 255.0f32,
+            );
+
+            let mut push_constant_data = [0; 8];
+            push_constant_data[0] = static_mesh.vertex_offset;
+            push_constant_data[1] = static_mesh.world_offset;
             push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
+            push_constant_data[3] = 0; // padding
+            push_constant_data[4] = color.0.to_bits();
+            push_constant_data[5] = color.1.to_bits();
+            push_constant_data[6] = color.2.to_bits();
+            push_constant_data[7] = color.3.to_bits();
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
-            cmd_buffer.draw(static_mesh_component.num_verticies, 0);
+            cmd_buffer.draw(static_mesh.num_verticies, 0);
 
             /*/ WIP
             {

@@ -5,7 +5,7 @@ use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::{self, RBGYUVConverter},
 };
-use lgn_config::config_get_or;
+//use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_presenter::offscreen_helper::{self, Resolution};
@@ -112,15 +112,15 @@ impl VideoStream {
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 16_000u64);
+        //let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 16_000u64);
 
-        if elapsed >= max_frame_time {
-            warn!(
-                "stream: frame {:?} took {}ms",
-                self.frame_id,
-                elapsed / 1000
-            );
-        }
+        //if elapsed >= max_frame_time {
+        //    warn!(
+        //        "stream: frame {:?} took {}ms",
+        //        self.frame_id,
+        //        elapsed / 1000
+        //    );
+        //}
 
         let video_data_channel = Arc::clone(&self.video_data_channel);
         let frame_id = self.frame_id;

@@ -1,7 +1,7 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_input::keyboard::KeyCode;
-use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::Transform;
 
 use crate::{
@@ -77,8 +77,7 @@ impl ManipulatorPart {
             .insert(ManipulatorComponent {
                 part_type,
                 part_num,
-                local_translation: transform.translation,
-                local_rotation: transform.rotation,
+                local_transform: transform,
                 active: false,
                 selected: false,
                 transparent,
@@ -269,7 +268,7 @@ impl ManipulatorManager {
         part: usize,
         base_entity_transform: &Transform,
         camera: &CameraComponent,
-        picking_pos_world_space: Vec3,
+        picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
@@ -280,7 +279,7 @@ impl ManipulatorManager {
                 AxisComponents::from_component_id(part),
                 base_entity_transform,
                 camera,
-                picking_pos_world_space,
+                picked_pos,
                 screen_size,
                 cursor_pos,
             ),
@@ -288,7 +287,7 @@ impl ManipulatorManager {
                 RotationComponents::from_component_id(part),
                 base_entity_transform,
                 camera,
-                picking_pos_world_space,
+                picked_pos,
                 screen_size,
                 cursor_pos,
             ),
@@ -296,7 +295,7 @@ impl ManipulatorManager {
                 AxisComponents::from_component_id(part),
                 base_entity_transform,
                 camera,
-                picking_pos_world_space,
+                picked_pos,
                 screen_size,
                 cursor_pos,
             ),
@@ -318,25 +317,45 @@ impl ManipulatorManager {
     pub fn manipulator_transform_from_entity_transform(
         &self,
         entity_transform: &Transform,
-        manipulator: &ManipulatorComponent,
         manipulator_transform: &mut Transform,
     ) {
         let inner = self.inner.lock().unwrap();
 
-        let mut local_translation = manipulator.local_translation;
+        *manipulator_transform = Transform::from_translation(entity_transform.translation);
         if inner.current_type == ManipulatorType::Scale {
-            local_translation = entity_transform
-                .rotation
-                .mul_vec3(manipulator.local_translation);
+            *manipulator_transform = manipulator_transform.with_rotation(entity_transform.rotation);
         }
+    }
 
-        manipulator_transform.translation = entity_transform.translation + local_translation;
+    pub fn scale_manipulator_for_viewport(
+        entity_transform: &Transform,
+        manipulator_transform: &Transform,
+        view_matrix: &Mat4,
+        projection_matrix: &Mat4,
+    ) -> Mat4 {
+        let world_pos = Vec4::new(
+            entity_transform.translation.x,
+            entity_transform.translation.y,
+            entity_transform.translation.z,
+            1.0,
+        );
+        let view_pos = view_matrix.mul_vec4(world_pos);
+        let x_offset = view_pos + Vec4::new(0.5, 0.0, 0.0, 0.0);
+        let y_offset = view_pos + Vec4::new(0.0, 0.5, 0.0, 0.0);
 
-        if inner.current_type == ManipulatorType::Scale {
-            manipulator_transform.rotation = entity_transform
-                .rotation
-                .mul_quat(manipulator.local_rotation)
-                .normalize();
-        }
+        let proj_pos = projection_matrix.mul_vec4(view_pos);
+        let x_proj = projection_matrix.mul_vec4(x_offset);
+        let y_proj = projection_matrix.mul_vec4(y_offset);
+
+        let x_scale = 0.2 / ((x_proj.x / x_proj.w) - (proj_pos.x / proj_pos.w));
+        let y_scale = 0.2 / ((y_proj.y / y_proj.w) - (proj_pos.y / proj_pos.w));
+
+        let manip_scale = x_scale + y_scale * 0.5;
+
+        let local_matrix = manipulator_transform.compute_matrix();
+        let world_matrix = entity_transform.compute_matrix();
+        let scale_matrix = Mat4::from_scale(Vec3::new(manip_scale, manip_scale, manip_scale));
+
+        world_matrix * scale_matrix * local_matrix
     }
 }

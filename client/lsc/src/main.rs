@@ -56,7 +56,7 @@
 // crate-specific exceptions:
 #![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
 
-use std::{path::Path};
+use std::path::Path;
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
@@ -236,24 +236,27 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
 
-            //let repository_url = command_match
-            //    .value_of(ARG_REPOSITORY_URL)
-            //    .map(RepositoryUrl::from_str)
-            //    .transpose()?
-            //    .unwrap_or_else(RepositoryUrl::from_current_dir)
-            //    .make_absolute(std::env::current_dir()?);
+    //let repository_url = command_match
+    //    .value_of(ARG_REPOSITORY_URL)
+    //    .map(RepositoryUrl::from_str)
+    //    .transpose()?
+    //    .unwrap_or_else(RepositoryUrl::from_current_dir)
+    //    .make_absolute(std::env::current_dir()?);
 
-            //let blob_storage_url = command_match
-            //    .value_of(ARG_BLOB_STORAGE_URL)
-            //    .map(BlobStorageUrl::from_str)
-            //    .transpose()?
-            //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
-            //    .transpose()?;
+    //let blob_storage_url = command_match
+    //    .value_of(ARG_BLOB_STORAGE_URL)
+    //    .map(BlobStorageUrl::from_str)
+    //    .transpose()?
+    //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
+    //    .transpose()?;
 
     let args = Cli::parse();
 
     match args.command {
-        Commands::CreateRepository { repository_url, blob_storage_url } => {
+        Commands::CreateRepository {
+            repository_url,
+            blob_storage_url,
+        } => {
             info!("create-repository");
 
             lgn_source_control::commands::create_repository(&repository_url, &blob_storage_url)

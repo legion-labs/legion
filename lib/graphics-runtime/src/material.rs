@@ -7,6 +7,7 @@ use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
     ResourceTypeAndId,
 };
+use lgn_telemetry::info;
 
 use crate::Texture;
 
@@ -64,7 +65,7 @@ impl AssetLoader for MaterialLoader {
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
         let material = asset.downcast_mut::<Material>().unwrap();
-        println!("runtime material loaded");
+        info!("runtime material loaded");
 
         // activate references
         if let Some(registry) = &self.registry {

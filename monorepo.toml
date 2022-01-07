@@ -10,10 +10,11 @@ sccache = { version = "0.2.15" }
 # dependencies lints
 [dependencies]
 bans = [
-    { name = "clap", version = "2", suggestion = "use clap 3.0 or above" },
-    { name = "structopts", version = "*", suggestion = "use clap 3.0 or above" },
+    { name = "clap", version = "2", suggestion = "use `clap` 3.0 or above" },
+    { name = "structopts", version = "*", suggestion = "use `clap` 3.0 or above" },
+    { name = "winapi", version = "*", suggestion = "use `windows` or above" },
     #{ name = "lazy_static", version = "*", suggestion = "use once_cell instead" },
-    { name = "log", version = "*", suggestion = "use lgn-telemetry instead", exceptions = [
+    { name = "log", version = "*", suggestion = "use `lgn-telemetry` instead", exceptions = [
         "lgn-telemetry",
     ] },
 ]

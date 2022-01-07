@@ -12,25 +12,3 @@ members = [
     "build/workspace-hack",
 ]
 exclude = []
-
-[profile.dev]
-panic = 'abort'
-
-[profile.release]
-opt-level = 3
-debug = true
-debug-assertions = false
-panic = 'abort'
-
-[profile.bench]
-opt-level = 3
-debug = true
-debug-assertions = false
-panic = 'abort'
-
-# this is one of the real time-critical sections of the code
-# We want it optimal even even in dev mode
-[profile.dev.package.openh264-sys2]
-opt-level = 3
-debug = true
-debug-assertions = false

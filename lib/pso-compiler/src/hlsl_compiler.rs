@@ -349,9 +349,7 @@ impl HlslCompiler {
             entry_point,
             target_profile,
             args,
-            Some(Box::new(FileServerIncludeHandler(
-                self.inner.filesystem.clone(),
-            ))),
+            Some(&mut FileServerIncludeHandler(self.inner.filesystem.clone())),
             defines,
         );
 

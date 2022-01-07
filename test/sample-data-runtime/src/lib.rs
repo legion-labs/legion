@@ -67,6 +67,7 @@ use lgn_data_runtime::{
 };
 use lgn_graphics_runtime::Material;
 use lgn_math::prelude::*;
+use lgn_telemetry::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
@@ -117,7 +118,7 @@ impl AssetLoader for EntityLoader {
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
         let entity = asset.downcast_mut::<Entity>().unwrap();
-        println!("runtime entity \"{}\" loaded", entity.name);
+        info!("runtime entity \"{}\" loaded", entity.name);
 
         // activate references
         if let Some(registry) = &self.registry {
@@ -306,7 +307,7 @@ impl AssetLoader for InstanceLoader {
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
         let instance = asset.downcast_mut::<Instance>().unwrap();
-        println!("runtime instance loaded");
+        info!("runtime instance loaded");
 
         // activate references
         if let Some(registry) = &self.registry {
@@ -345,7 +346,7 @@ impl AssetLoader for MeshLoader {
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
         let mesh = asset.downcast_mut::<Mesh>().unwrap();
-        println!("runtime mesh loaded");
+        info!("runtime mesh loaded");
 
         // activate references
         if let Some(registry) = &self.registry {

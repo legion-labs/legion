@@ -23,7 +23,7 @@
   }
 
   .handler {
-    @apply h-6 w-6 rounded-full bg-gray-700 group-hover:bg-gray-400 transition-all;
+    @apply h-6 w-6 rounded-full bg-gray-700 group-hover:bg-gray-500 transition-all;
   }
 
   .handler-off {
@@ -31,6 +31,6 @@
   }
 
   .handler-on {
-    @apply ml-5;
+    @apply ml-5 bg-gray-400;
   }
 </style>
