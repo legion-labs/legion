@@ -4,8 +4,7 @@ use std::{hash::Hash, marker::PhantomData};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    deferred_drop::Drc, DeviceContext, GfxResult, PipelineReflection, ShaderStageDef,
-    ShaderStageFlags,
+    deferred_drop::Drc, DeviceContext, PipelineReflection, ShaderStageDef, ShaderStageFlags,
 };
 
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
@@ -56,7 +55,7 @@ impl Shader {
         device_context: &DeviceContext,
         stages: Vec<ShaderStageDef>,
         pipeline_reflection: &PipelineReflection,
-    ) -> GfxResult<Self> {
+    ) -> Self {
         // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
         let mut stage_flags = ShaderStageFlags::empty();
         for stage in &stages {
@@ -69,9 +68,9 @@ impl Shader {
             pipeline_reflection: pipeline_reflection.clone(),
         };
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(inner),
-        })
+        }
     }
 
     pub fn stages(&self) -> &[ShaderStageDef] {

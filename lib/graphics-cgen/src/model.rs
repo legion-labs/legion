@@ -161,7 +161,7 @@ where
         model.get_from_objectid(self.object_id).unwrap()
     }
 
-    pub fn id(&self) -> u32 {
+    pub fn id(self) -> u32 {
         self.object_id.object_index
     }
 }
@@ -182,7 +182,7 @@ impl ModelObjectId {
         }
     }
 
-    pub fn object_id(&self) -> u32 {
+    pub fn object_id(self) -> u32 {
         self.object_index
     }
 }
@@ -530,7 +530,7 @@ pub enum DescriptorDef {
 }
 
 impl DescriptorDef {
-    pub fn into_shader_resource_type(&self) -> ShaderResourceType {
+    pub fn to_shader_resource_type(&self) -> ShaderResourceType {
         match self {
             crate::model::DescriptorDef::Sampler => ShaderResourceType::Sampler,
             crate::model::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,

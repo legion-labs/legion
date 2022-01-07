@@ -15,7 +15,7 @@ pub struct ResourceHash(u64);
 
 impl ResourceHash {
     /// Retrieve value of resource hash as an unsigned 64 bit integer.
-    pub fn get(&self) -> u64 {
+    pub fn get(self) -> u64 {
         self.0
     }
 }

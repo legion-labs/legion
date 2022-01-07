@@ -101,7 +101,7 @@ impl HlslCompiler {
             let shader_reflection =
                 Self::extract_reflection_info(&unopt_spirv, params, entry_point_idx);
             pipeline_reflection =
-                PipelineReflection::merge(&pipeline_reflection, &shader_reflection)?;
+                PipelineReflection::merge(&pipeline_reflection, &shader_reflection);
 
             // Optimize
             let opt_spirv = Self::optimize_spirv(&unopt_spirv)?;

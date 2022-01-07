@@ -186,11 +186,11 @@ impl TextureDef {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GPUViewType {
-    ConstantBufferView,
-    ShaderResourceView,
-    UnorderedAccessView,
-    RenderTargetView,
-    DepthStencilView,
+    ConstantBuffer,
+    ShaderResource,
+    UnorderedAccess,
+    RenderTarget,
+    DepthStencil,
 }
 
 bitflags::bitflags! {
@@ -231,9 +231,9 @@ pub enum ViewDimension {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlaneSlice {
-    DefaultPlane,
-    DepthPlane,
-    StencilPlane,
+    Default,
+    Depth,
+    Stencil,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -250,11 +250,11 @@ pub struct TextureViewDef {
 impl TextureViewDef {
     pub fn as_shader_resource_view(texture_def: &TextureDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::ShaderResourceView,
+            gpu_view_type: GPUViewType::ShaderResource,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
             mip_count: texture_def.mip_count,
-            plane_slice: PlaneSlice::DefaultPlane,
+            plane_slice: PlaneSlice::Default,
             first_array_slice: 0,
             array_size: texture_def.array_length,
         }
@@ -262,11 +262,11 @@ impl TextureViewDef {
 
     pub fn as_render_target_view(_texture: &TextureDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::RenderTargetView,
+            gpu_view_type: GPUViewType::RenderTarget,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
             mip_count: 1,
-            plane_slice: PlaneSlice::DefaultPlane,
+            plane_slice: PlaneSlice::Default,
             first_array_slice: 0,
             array_size: 1,
         }
@@ -274,11 +274,11 @@ impl TextureViewDef {
 
     pub fn as_depth_stencil_view(_texture: &TextureDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::DepthStencilView,
+            gpu_view_type: GPUViewType::DepthStencil,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
             mip_count: 1,
-            plane_slice: PlaneSlice::DefaultPlane,
+            plane_slice: PlaneSlice::Default,
             first_array_slice: 0,
             array_size: 1,
         }
@@ -298,7 +298,7 @@ impl TextureViewDef {
         }
 
         match self.gpu_view_type {
-            GPUViewType::ShaderResourceView => {
+            GPUViewType::ShaderResource => {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_SHADER_RESOURCE));
@@ -310,16 +310,16 @@ impl TextureViewDef {
                     }
                     ViewDimension::_2DArray => {}
                     ViewDimension::_3D | ViewDimension::Cube => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
+                        assert!(self.plane_slice == PlaneSlice::Default);
                         assert!(self.first_array_slice == 0);
                         assert!(self.array_size == 1);
                     }
                     ViewDimension::CubeArray => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
+                        assert!(self.plane_slice == PlaneSlice::Default);
                     }
                 }
             }
-            GPUViewType::UnorderedAccessView => {
+            GPUViewType::UnorderedAccess => {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_UNORDERED_ACCESS));
@@ -333,14 +333,14 @@ impl TextureViewDef {
                     }
                     ViewDimension::_2DArray => {}
                     ViewDimension::_3D => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
+                        assert!(self.plane_slice == PlaneSlice::Default);
                     }
                     ViewDimension::Cube | ViewDimension::CubeArray => {
                         panic!();
                     }
                 }
             }
-            GPUViewType::RenderTargetView => {
+            GPUViewType::RenderTarget => {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_RENDER_TARGET));
@@ -354,14 +354,14 @@ impl TextureViewDef {
                     }
                     ViewDimension::_2DArray => {}
                     ViewDimension::_3D => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
+                        assert!(self.plane_slice == PlaneSlice::Default);
                     }
                     ViewDimension::Cube | ViewDimension::CubeArray => {
                         panic!();
                     }
                 }
             }
-            GPUViewType::DepthStencilView => {
+            GPUViewType::DepthStencil => {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_DEPTH_STENCIL));
@@ -379,7 +379,7 @@ impl TextureViewDef {
                     }
                 }
             }
-            GPUViewType::ConstantBufferView => {
+            GPUViewType::ConstantBuffer => {
                 panic!();
             }
         }

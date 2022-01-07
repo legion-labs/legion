@@ -6,11 +6,11 @@ pub enum Error {
     #[error("invalid authorization URL: {0}")]
     InvalidAuthorizationUrl(String),
     #[error("internal server error: {0}")]
-    InternalServerError(hyper::Error),
+    InternalServer(hyper::Error),
     #[error("failed to execute the interactive login process: {0}")]
-    InteractiveProcessError(std::io::Error),
+    InteractiveProcess(std::io::Error),
     #[error("internal error: {0}")]
-    InternalError(String),
+    Internal(String),
     #[error(transparent)]
     Other(#[from] StdError),
 }

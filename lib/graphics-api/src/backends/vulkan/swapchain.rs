@@ -189,7 +189,7 @@ impl VulkanSwapchain {
             })
             .collect();
 
-        command_buffer.cmd_resource_barrier(&[], &image_barriers)?;
+        command_buffer.cmd_resource_barrier(&[], &image_barriers);
 
         command_buffer.end()?;
         queue.submit(&[&command_buffer], &[], &[], None)?;
@@ -230,7 +230,7 @@ impl VulkanSwapchain {
             }
             fence.set_submitted(false);
             // todo(jal)
-            Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
+            Err(GfxError::String("GfxError::VkError(e)".to_string()))
         }
     }
 
@@ -256,7 +256,7 @@ impl VulkanSwapchain {
             self.last_image_suboptimal = false;
             semaphore.set_signal_available(false);
             // todo(jal)
-            Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
+            Err(GfxError::String("GfxError::VkError(e)".to_string()))
         }
     }
 

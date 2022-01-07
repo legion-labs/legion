@@ -64,9 +64,9 @@ impl<'rc> HLQueue<'rc> {
         self.queue.present(swapchain, wait_semaphores, image_index)
     }
 
-    pub fn wait_for_queue_idle(&self) {
+    pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
         trace_scope!("present");
-        self.queue.wait_for_queue_idle().unwrap();
+        self.queue.wait_for_queue_idle()
     }
 
     pub fn commmit_sparse_bindings<'a>(

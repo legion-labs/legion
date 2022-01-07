@@ -5,7 +5,7 @@ use crate::FourCC;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("{0}")]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error("{0}")]
     InvalidData(&'static str),
     #[error("{0} not found")]

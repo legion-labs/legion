@@ -19,8 +19,8 @@ pub struct Gamepads {
 
 impl Gamepads {
     /// Returns true if the [Gamepads] contains a [Gamepad].
-    pub fn contains(&self, gamepad: &Gamepad) -> bool {
-        self.gamepads.contains(gamepad)
+    pub fn contains(&self, gamepad: Gamepad) -> bool {
+        self.gamepads.contains(&gamepad)
     }
 
     /// Iterates over registered [Gamepad]s

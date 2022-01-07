@@ -367,7 +367,7 @@ pub enum FrameType {
     /// Encoder not ready or parameters are invalidate.
     Invalid,
     /// IDR frame in H.264
-    IDR,
+    Idr,
     /// I frame type
     I,
     /// P frame type
@@ -387,7 +387,7 @@ impl FrameType {
 
         #[allow(non_upper_case_globals)]
         match native {
-            videoFrameTypeIDR => Self::IDR,
+            videoFrameTypeIDR => Self::Idr,
             videoFrameTypeI => Self::I,
             videoFrameTypeP => Self::P,
             videoFrameTypeSkip => Self::Skip,
@@ -426,7 +426,7 @@ mod test {
         converter.convert_rgb(src, (1.0, 1.0, 1.0));
 
         let stream = encoder.encode(&converter)?;
-        assert_eq!(stream.frame_type, FrameType::IDR);
+        assert_eq!(stream.frame_type, FrameType::Idr);
         assert_eq!(stream.layers.len(), 2);
         assert!(!stream.layers[0].is_video);
         assert_eq!(stream.layers[0].nal_units.len(), 2);

@@ -194,7 +194,7 @@ use thiserror::Error;
 pub enum Error {
     /// Project-related error.
     #[error("Project-related error: '{0}")]
-    ProjectError(#[source] lgn_data_offline::resource::Error),
+    Project(#[source] lgn_data_offline::resource::Error),
     /// Not found.
     #[error("Not found.")]
     NotFound,
@@ -203,7 +203,7 @@ pub enum Error {
     CompilerNotFound,
     /// IO error.
     #[error("IO error.")]
-    IOError,
+    Io,
     /// Circular dependency in build graph.
     #[error("Circular dependency in build graph.")]
     CircularDependency,
@@ -232,14 +232,14 @@ pub enum Error {
     OutputNotPresent,
     /// Compiler returned an error.
     #[error("Compiler returned an error.")]
-    CompilerError(CompilerError),
+    Compiler(CompilerError),
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {
     fn from(err: lgn_data_offline::resource::Error) -> Self {
         match err {
             lgn_data_offline::resource::Error::NotFound => Self::NotFound,
-            _ => Self::ProjectError(err),
+            _ => Self::Project(err),
         }
     }
 }

@@ -62,13 +62,13 @@ pub struct PipelineReflection {
 }
 
 impl PipelineReflection {
-    pub fn merge(left_op: &Self, right_op: &Self) -> GfxResult<Self> {
+    pub fn merge(left_op: &Self, right_op: &Self) -> Self {
         let arr = [left_op, right_op];
-        Ok(Self {
+        Self {
             shader_resources: merge_resources(&arr).unwrap(),
             push_constant: merge_pushconstant(&arr).unwrap(),
             compute_threads_per_group: None,
-        })
+        }
     }
 }
 

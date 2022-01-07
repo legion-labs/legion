@@ -161,14 +161,14 @@ impl BuildIndex {
             .write(true)
             .create_new(true)
             .open(source_index)
-            .map_err(|_e| Error::IOError)?;
+            .map_err(|_e| Error::Io)?;
 
         let output_file = OpenOptions::new()
             .read(true)
             .write(true)
             .create_new(true)
             .open(output_index)
-            .map_err(|_e| Error::IOError)?;
+            .map_err(|_e| Error::Io)?;
 
         let source = SourceContent {
             version: String::from(version),
@@ -185,8 +185,8 @@ impl BuildIndex {
 
         // todo: write the output file
 
-        serde_json::to_writer(&source_file, &source).map_err(|_e| Error::IOError)?;
-        serde_json::to_writer(&output_file, &output).map_err(|_e| Error::IOError)?;
+        serde_json::to_writer(&source_file, &source).map_err(|_e| Error::Io)?;
+        serde_json::to_writer(&output_file, &output).map_err(|_e| Error::Io)?;
 
         Ok(Self {
             source_content: source,
@@ -213,9 +213,9 @@ impl BuildIndex {
             .map_err(|_e| Error::NotFound)?;
 
         let source_content: SourceContent =
-            serde_json::from_reader(&source_file).map_err(|_e| Error::IOError)?;
+            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
         let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|_e| Error::IOError)?;
+            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
 
         let project_path =
             Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
@@ -544,12 +544,12 @@ impl BuildIndex {
         self.source_file.set_len(0).unwrap();
         self.source_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&self.source_file, &self.source_content)
-            .map_err(|_e| Error::IOError)?;
+            .map_err(|_e| Error::Io)?;
 
         self.output_file.set_len(0).unwrap();
         self.output_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         let r = serde_json::to_writer_pretty(&self.output_file, &self.output_content);
-        r.map_err(|_e| Error::IOError)
+        r.map_err(|_e| Error::Io)
     }
 }
 

@@ -129,7 +129,7 @@ impl Mp4Stream {
         // XXX largesize
         trak.mdia.minf.stbl.stco = Some(StcoAtom::default());
         match config.media_conf {
-            MediaConfig::AvcConfig(ref avc_config) => {
+            MediaConfig::Avc(ref avc_config) => {
                 trak.tkhd.set_width(avc_config.width);
                 trak.tkhd.set_height(avc_config.height);
 
@@ -141,7 +141,7 @@ impl Mp4Stream {
                 let avc1 = Avc1Atom::new(avc_config);
                 trak.mdia.minf.stbl.stsd.avc1 = Some(avc1);
             }
-            MediaConfig::HevcConfig(ref hevc_config) => {
+            MediaConfig::Hevc(ref hevc_config) => {
                 trak.tkhd.set_width(hevc_config.width);
                 trak.tkhd.set_height(hevc_config.height);
 
@@ -151,20 +151,20 @@ impl Mp4Stream {
                 let hev1 = Hev1Atom::new(hevc_config);
                 trak.mdia.minf.stbl.stsd.hev1 = Some(hev1);
             }
-            MediaConfig::Vp9Config(ref config) => {
+            MediaConfig::Vp9(ref config) => {
                 trak.tkhd.set_width(config.width);
                 trak.tkhd.set_height(config.height);
 
                 trak.mdia.minf.stbl.stsd.vp09 = Some(Vp09Atom::new(config));
             }
-            MediaConfig::AacConfig(ref aac_config) => {
+            MediaConfig::Aac(ref aac_config) => {
                 let smhd = SmhdAtom::default();
                 trak.mdia.minf.smhd = Some(smhd);
 
                 let mp4a = Mp4aAtom::new(aac_config);
                 trak.mdia.minf.stbl.stsd.mp4a = Some(mp4a);
             }
-            MediaConfig::TtxtConfig(ref _ttxt_config) => {
+            MediaConfig::Ttxt(ref _ttxt_config) => {
                 let tx3g = Tx3gAtom::default();
                 trak.mdia.minf.stbl.stsd.tx3g = Some(tx3g);
             }

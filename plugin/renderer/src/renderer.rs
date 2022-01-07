@@ -284,7 +284,7 @@ impl Renderer {
         // Now, it is safe to free memory
         //
         let device_context = self.api.device_context();
-        device_context.free_gpu_memory().unwrap();
+        device_context.free_gpu_memory();
 
         //
         // Broadcast begin frame event
@@ -371,23 +371,21 @@ impl Renderer {
             )
             .unwrap();
 
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
+        let shader = device_context.create_shader(
+            vec![
+                ShaderStageDef {
+                    entry_point: "main_vs".to_owned(),
+                    shader_stage: ShaderStageFlags::VERTEX,
+                    shader_module: vert_shader_module,
+                },
+                ShaderStageDef {
+                    entry_point: "main_ps".to_owned(),
+                    shader_stage: ShaderStageFlags::FRAGMENT,
+                    shader_module: frag_shader_module,
+                },
+            ],
+            &shader_build_result.pipeline_reflection,
+        );
 
         //
         // Root signature

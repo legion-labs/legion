@@ -239,7 +239,7 @@ impl DeviceContext {
         &self,
         stages: Vec<ShaderStageDef>,
         pipeline_reflection: &PipelineReflection,
-    ) -> GfxResult<Shader> {
+    ) -> Shader {
         Shader::new(self, stages, pipeline_reflection)
     }
 
@@ -286,9 +286,8 @@ impl DeviceContext {
         &self.inner.deferred_dropper
     }
 
-    pub fn free_gpu_memory(&self) -> GfxResult<()> {
+    pub fn free_gpu_memory(&self) {
         self.inner.deferred_dropper.flush();
-        Ok(())
     }
 
     pub fn device_info(&self) -> &DeviceInfo {

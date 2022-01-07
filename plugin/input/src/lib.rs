@@ -154,7 +154,7 @@ pub enum ElementState {
 }
 
 impl ElementState {
-    pub fn is_pressed(&self) -> bool {
+    pub fn is_pressed(self) -> bool {
         matches!(self, ElementState::Pressed)
     }
 }

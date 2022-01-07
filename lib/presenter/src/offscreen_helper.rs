@@ -169,7 +169,7 @@ impl OffscreenHelper {
                 },
             ],
             &shader_build_result.pipeline_reflection,
-        )?;
+        );
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
@@ -406,9 +406,9 @@ impl OffscreenHelper {
 
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
 
-        graphics_queue.wait_for_queue_idle();
+        graphics_queue.wait_for_queue_idle()?;
 
-        let sub_resource = copy_texture.map_texture().unwrap();
+        let sub_resource = copy_texture.map_texture()?;
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);
         copy_texture.unmap_texture();
         Ok(())

@@ -91,7 +91,7 @@ fn gather_window_resize(
     mut window_resized_events: EventReader<'_, '_, WindowResized>,
 ) {
     for window_resized_event in window_resized_events.iter() {
-        picking_manager.set_screen_rect(&Vec2::new(
+        picking_manager.set_screen_rect(Vec2::new(
             window_resized_event.width,
             window_resized_event.height,
         ));

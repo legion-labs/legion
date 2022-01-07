@@ -52,7 +52,7 @@ impl UnifiedStaticBuffer {
         assert!(virtual_buffer_size % required_alignment as u64 == 0);
 
         let ro_view_def = BufferViewDef::as_byte_address_buffer(buffer.definition(), true);
-        let read_only_view = BufferView::from_buffer(&buffer, &ro_view_def).unwrap();
+        let read_only_view = BufferView::from_buffer(&buffer, &ro_view_def);
 
         let mut allocation = None;
         let mut binding_manager = None;

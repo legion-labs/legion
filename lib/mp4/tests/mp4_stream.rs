@@ -46,7 +46,7 @@ fn test_add() {
     let (idr, _) = find_nal(h264);
     mp4_stream
         .write_index(
-            &MediaConfig::AvcConfig(AvcConfig {
+            &MediaConfig::Avc(AvcConfig {
                 width: 128,
                 height: 128,
                 seq_param_set: sps.into(),

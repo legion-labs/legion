@@ -11,11 +11,11 @@ pub struct TrackConfig {
 impl From<MediaConfig> for TrackConfig {
     fn from(media_conf: MediaConfig) -> Self {
         match media_conf {
-            MediaConfig::AvcConfig(avc_conf) => Self::from(avc_conf),
-            MediaConfig::HevcConfig(hevc_conf) => Self::from(hevc_conf),
-            MediaConfig::Vp9Config(vp9_config) => Self::from(vp9_config),
-            MediaConfig::AacConfig(aac_conf) => Self::from(aac_conf),
-            MediaConfig::TtxtConfig(ttxt_conf) => Self::from(ttxt_conf),
+            MediaConfig::Avc(avc_conf) => Self::from(avc_conf),
+            MediaConfig::Hevc(hevc_conf) => Self::from(hevc_conf),
+            MediaConfig::Vp9(vp9_config) => Self::from(vp9_config),
+            MediaConfig::Aac(aac_conf) => Self::from(aac_conf),
+            MediaConfig::Ttxt(ttxt_conf) => Self::from(ttxt_conf),
         }
     }
 }
@@ -26,7 +26,7 @@ impl From<AvcConfig> for TrackConfig {
             track_type: TrackType::Video,
             timescale: 90000,              // XXX
             language: String::from("und"), // XXX
-            media_conf: MediaConfig::AvcConfig(avc_conf),
+            media_conf: MediaConfig::Avc(avc_conf),
         }
     }
 }
@@ -37,7 +37,7 @@ impl From<HevcConfig> for TrackConfig {
             track_type: TrackType::Video,
             timescale: 90000,              // XXX
             language: String::from("und"), // XXX
-            media_conf: MediaConfig::HevcConfig(hevc_conf),
+            media_conf: MediaConfig::Hevc(hevc_conf),
         }
     }
 }
@@ -48,7 +48,7 @@ impl From<Vp9Config> for TrackConfig {
             track_type: TrackType::Video,
             timescale: 90000,              // XXX
             language: String::from("und"), // XXX
-            media_conf: MediaConfig::Vp9Config(vp9_conf),
+            media_conf: MediaConfig::Vp9(vp9_conf),
         }
     }
 }
@@ -59,7 +59,7 @@ impl From<AacConfig> for TrackConfig {
             track_type: TrackType::Audio,
             timescale: 1000,               // XXX
             language: String::from("und"), // XXX
-            media_conf: MediaConfig::AacConfig(aac_conf),
+            media_conf: MediaConfig::Aac(aac_conf),
         }
     }
 }
@@ -70,7 +70,7 @@ impl From<TtxtConfig> for TrackConfig {
             track_type: TrackType::Subtitle,
             timescale: 1000,               // XXX
             language: String::from("und"), // XXX
-            media_conf: MediaConfig::TtxtConfig(txtt_conf),
+            media_conf: MediaConfig::Ttxt(txtt_conf),
         }
     }
 }

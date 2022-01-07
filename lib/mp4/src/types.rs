@@ -22,6 +22,7 @@ impl std::str::FromStr for FourCC {
 }
 
 impl FourCC {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub const fn new(val: &[u8; 4]) -> Self {
         Self(u32::from_be_bytes(*val))
     }
@@ -151,7 +152,7 @@ impl From<TrackType> for FourCC {
 }
 
 impl TrackType {
-    pub fn friendly_name(&self) -> &'static str {
+    pub fn friendly_name(self) -> &'static str {
         match self {
             TrackType::Video => "VideoHandler",
             TrackType::Audio => "SoundHandler",
@@ -170,9 +171,9 @@ const MEDIA_TYPE_TTXT: &str = "ttxt";
 pub enum MediaType {
     H264,
     H265,
-    VP9,
-    AAC,
-    TTXT,
+    Vp9,
+    Aac,
+    Ttxt,
 }
 
 impl fmt::Display for MediaType {
@@ -188,9 +189,9 @@ impl TryFrom<&str> for MediaType {
         match media {
             MEDIA_TYPE_H264 => Ok(Self::H264),
             MEDIA_TYPE_H265 => Ok(Self::H265),
-            MEDIA_TYPE_VP9 => Ok(Self::VP9),
-            MEDIA_TYPE_AAC => Ok(Self::AAC),
-            MEDIA_TYPE_TTXT => Ok(Self::TTXT),
+            MEDIA_TYPE_VP9 => Ok(Self::Vp9),
+            MEDIA_TYPE_AAC => Ok(Self::Aac),
+            MEDIA_TYPE_TTXT => Ok(Self::Ttxt),
             _ => Err(Error::InvalidData("unsupported media type")),
         }
     }
@@ -201,9 +202,9 @@ impl From<MediaType> for &str {
         match val {
             MediaType::H264 => MEDIA_TYPE_H264,
             MediaType::H265 => MEDIA_TYPE_H265,
-            MediaType::VP9 => MEDIA_TYPE_VP9,
-            MediaType::AAC => MEDIA_TYPE_AAC,
-            MediaType::TTXT => MEDIA_TYPE_TTXT,
+            MediaType::Vp9 => MEDIA_TYPE_VP9,
+            MediaType::Aac => MEDIA_TYPE_AAC,
+            MediaType::Ttxt => MEDIA_TYPE_TTXT,
         }
     }
 }
@@ -213,21 +214,21 @@ impl From<&MediaType> for &str {
         match val {
             MediaType::H264 => MEDIA_TYPE_H264,
             MediaType::H265 => MEDIA_TYPE_H265,
-            MediaType::VP9 => MEDIA_TYPE_VP9,
-            MediaType::AAC => MEDIA_TYPE_AAC,
-            MediaType::TTXT => MEDIA_TYPE_TTXT,
+            MediaType::Vp9 => MEDIA_TYPE_VP9,
+            MediaType::Aac => MEDIA_TYPE_AAC,
+            MediaType::Ttxt => MEDIA_TYPE_TTXT,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AvcProfile {
-    AvcConstrainedBaseline, // 66 with constraint set 1
-    AvcBaseline,            // 66,
-    AvcMain,                // 77,
-    AvcExtended,            // 88,
-    AvcHigh,                /* 100
-                             * TODO Progressive High Profile, Constrained High Profile, ... */
+    ConstrainedBaseline, // 66 with constraint set 1
+    Baseline,            // 66,
+    Main,                // 77,
+    Extended,            // 88,
+    High,                /* 100
+                          * TODO Progressive High Profile, Constrained High Profile, ... */
 }
 
 impl TryFrom<(u8, u8)> for AvcProfile {
@@ -236,11 +237,11 @@ impl TryFrom<(u8, u8)> for AvcProfile {
         let profile = value.0;
         let constraint_set1_flag = value.1 & 0x40 >> 6;
         match (profile, constraint_set1_flag) {
-            (66, 1) => Ok(Self::AvcConstrainedBaseline),
-            (66, 0) => Ok(Self::AvcBaseline),
-            (77, _) => Ok(Self::AvcMain),
-            (88, _) => Ok(Self::AvcExtended),
-            (100, _) => Ok(Self::AvcHigh),
+            (66, 1) => Ok(Self::ConstrainedBaseline),
+            (66, 0) => Ok(Self::Baseline),
+            (77, _) => Ok(Self::Main),
+            (88, _) => Ok(Self::Extended),
+            (100, _) => Ok(Self::High),
             _ => Err(Error::InvalidData("unsupported avc profile")),
         }
     }
@@ -249,11 +250,11 @@ impl TryFrom<(u8, u8)> for AvcProfile {
 impl fmt::Display for AvcProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let profile = match self {
-            AvcProfile::AvcConstrainedBaseline => "Constrained Baseline",
-            AvcProfile::AvcBaseline => "Baseline",
-            AvcProfile::AvcMain => "Main",
-            AvcProfile::AvcExtended => "Extended",
-            AvcProfile::AvcHigh => "High",
+            AvcProfile::ConstrainedBaseline => "Constrained Baseline",
+            AvcProfile::Baseline => "Baseline",
+            AvcProfile::Main => "Main",
+            AvcProfile::Extended => "Extended",
+            AvcProfile::High => "High",
         };
         write!(f, "{}", profile)
     }
@@ -446,7 +447,7 @@ impl TryFrom<u8> for SampleFreqIndex {
 }
 
 impl SampleFreqIndex {
-    pub fn freq(&self) -> u32 {
+    pub fn freq(self) -> u32 {
         match self {
             SampleFreqIndex::Freq96000 => 96000,
             SampleFreqIndex::Freq88200 => 88200,
@@ -551,11 +552,11 @@ pub struct TtxtConfig {}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MediaConfig {
-    AvcConfig(AvcConfig),
-    HevcConfig(HevcConfig),
-    Vp9Config(Vp9Config),
-    AacConfig(AacConfig),
-    TtxtConfig(TtxtConfig),
+    Avc(AvcConfig),
+    Hevc(HevcConfig),
+    Vp9(Vp9Config),
+    Aac(AacConfig),
+    Ttxt(TtxtConfig),
 }
 
 #[derive(Debug)]

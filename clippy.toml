@@ -1,0 +1,5 @@
+# This will change once we become more stable
+avoid-breaking-exported-api = false
+# disallowed-types = [{ path = "rustc_hash::FxHashMap", reason = "use this instead" }]
+# disallowed-methods = [{ path = "std::vec::Vec::leak", reason = "no leaking memory" }]
+# enforced-import-renames = [ { path = "serde_json::Value", rename = "JsonValue" }]

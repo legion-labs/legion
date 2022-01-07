@@ -137,6 +137,8 @@ pub struct Window {
 }
 
 #[derive(Debug)]
+// All commands happen to start with set but we can introduce new variants that do not
+#[allow(clippy::enum_variant_names)]
 pub enum WindowCommand {
     SetWindowMode {
         mode: WindowMode,

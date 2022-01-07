@@ -81,6 +81,7 @@ impl PropertyCollector for ResourcePropertyCollector {
             let mut json = serde_json::Serializer::new(&mut output);
 
             let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+            #[allow(unsafe_code)]
             unsafe {
                 (primitive_descriptor.base_descriptor.dynamic_serialize)(
                     item_info.base,

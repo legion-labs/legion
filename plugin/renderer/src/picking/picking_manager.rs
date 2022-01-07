@@ -47,7 +47,7 @@ impl PickingIdBlock {
         }
     }
 
-    pub fn release_picking_id(&mut self, picking_id: &u32) {
+    pub fn release_picking_id(&mut self, picking_id: u32) {
         let generation = (picking_id >> 24) + 1;
         let picking_id = picking_id & 0x00FFFFFF;
         assert!(picking_id >= self.base_picking_id);
@@ -175,7 +175,7 @@ impl PickingManager {
             let block_id = base_id / inner.block_size as u32;
 
             if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
-                block.release_picking_id(picking_id);
+                block.release_picking_id(*picking_id);
             } else {
                 panic!();
             }
@@ -254,10 +254,10 @@ impl PickingManager {
         inner.screen_rect
     }
 
-    pub fn set_screen_rect(&self, screen_rect: &Vec2) {
+    pub fn set_screen_rect(&self, screen_rect: Vec2) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        inner.screen_rect = *screen_rect;
+        inner.screen_rect = screen_rect;
     }
 
     pub(crate) fn set_picked(&self, picked_data_set: &[PickingData]) {

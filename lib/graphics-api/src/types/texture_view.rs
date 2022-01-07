@@ -69,14 +69,14 @@ impl TextureView {
             | ShaderResourceType::Texture2DArray
             | ShaderResourceType::TextureCube
             | ShaderResourceType::TextureCubeArray => {
-                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView
+                self.inner.definition.gpu_view_type == GPUViewType::ShaderResource
                     && self.inner.definition.array_size == 1
             }
 
             ShaderResourceType::RWTexture2D
             | ShaderResourceType::RWTexture2DArray
             | ShaderResourceType::RWTexture3D => {
-                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView
+                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccess
                     && self.inner.definition.array_size == 1
             }
         }

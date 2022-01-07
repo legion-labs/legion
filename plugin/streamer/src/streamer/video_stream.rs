@@ -230,7 +230,7 @@ impl VideoStreamEncoder {
                 if self.write_index {
                     self.mp4
                         .write_index(
-                            &MediaConfig::AvcConfig(AvcConfig {
+                            &MediaConfig::Avc(AvcConfig {
                                 width: self.resolution.width().try_into().unwrap(),
                                 height: self.resolution.height().try_into().unwrap(),
                                 seq_param_set: sps.into(),
@@ -256,7 +256,7 @@ impl VideoStreamEncoder {
 
                 self.mp4
                     .write_sample(
-                        stream.frame_type == encoder::FrameType::IDR,
+                        stream.frame_type == encoder::FrameType::Idr,
                         &vec,
                         &mut self.writer,
                     )
