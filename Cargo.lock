@@ -4818,6 +4818,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-source-control-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "lgn-build-utils",
+ "lgn-build-utils-proto",
+ "prost",
+ "prost-types",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
 name = "lgn-streamer"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,225 @@
+syntax = "proto3";
+package source_control;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service SourceControl {
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {};
+  rpc CreateRepository(CreateRepositoryRequest)
+      returns (CreateRepositoryResponse) {};
+  rpc DestroyRepository(DestroyRepositoryRequest)
+      returns (DestroyRepositoryResponse) {};
+  rpc GetBlobStorageUrl(GetBlobStorageUrlRequest)
+      returns (GetBlobStorageUrlResponse) {};
+  rpc InsertWorkspace(InsertWorkspaceRequest)
+      returns (InsertWorkspaceResponse) {};
+  rpc FindBranch(FindBranchRequest) returns (FindBranchResponse) {};
+  rpc ReadBranches(ReadBranchesRequest) returns (ReadBranchesResponse) {};
+  rpc FindBranchesInLockDomain(FindBranchesInLockDomainRequest)
+      returns (FindBranchesInLockDomainResponse) {};
+  rpc ReadCommit(ReadCommitRequest) returns (ReadCommitResponse) {};
+  rpc ReadTree(ReadTreeRequest) returns (ReadTreeResponse) {};
+  rpc InsertLock(InsertLockRequest) returns (InsertLockResponse) {};
+  rpc FindLock(FindLockRequest) returns (FindLockResponse) {};
+  rpc FindLocksInDomain(FindLocksInDomainRequest)
+      returns (FindLocksInDomainResponse) {};
+  rpc SaveTree(SaveTreeRequest) returns (SaveTreeResponse) {};
+  rpc InsertCommit(InsertCommitRequest) returns (InsertCommitResponse) {};
+  rpc CommitToBranch(CommitToBranchRequest) returns (CommitToBranchResponse) {};
+  rpc CommitExists(CommitExistsRequest) returns (CommitExistsResponse) {};
+  rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {};
+  rpc InsertBranch(InsertBranchRequest) returns (InsertBranchResponse) {};
+  rpc ClearLock(ClearLockRequest) returns (ClearLockResponse) {};
+  rpc CountLocksInDomain(CountLocksInDomainRequest)
+      returns (CountLocksInDomainResponse) {};
+}
+
+message CreateRepositoryRequest { string repository_name = 1; }
+
+message CreateRepositoryResponse { string blob_storage_url = 1; }
+
+message DestroyRepositoryRequest { string repository_name = 1; }
+
+message DestroyRepositoryResponse {}
+
+message GetBlobStorageUrlRequest { string repository_name = 1; }
+
+message GetBlobStorageUrlResponse { string blob_storage_url = 1; }
+
+message InsertWorkspaceRequest {
+  string repository_name = 1;
+  Workspace workspace = 2;
+}
+
+message InsertWorkspaceResponse {}
+
+message Workspace {
+  string id = 1;
+  string repository_address = 2;
+  string root = 3;
+  string owner = 4;
+}
+
+message FindBranchRequest {
+  string repository_name = 1;
+  string branch_name = 2;
+}
+
+message FindBranchResponse {
+  oneof branch { Branch value = 1; }
+}
+
+message Branch {
+  string name = 1;
+  string head = 2;
+  string parent = 3;
+  string lock_domain_id = 4;
+}
+
+message ReadBranchesRequest { string repository_name = 1; }
+
+message ReadBranchesResponse { repeated Branch value = 1; }
+
+message FindBranchesInLockDomainRequest {
+  string repository_name = 1;
+  string lock_domain_id = 2;
+}
+
+message FindBranchesInLockDomainResponse { repeated Branch branch = 1; }
+
+message ReadCommitRequest {
+  string repository_name = 1;
+  string commit_id = 2;
+}
+
+message ReadCommitResponse { Commit commit = 1; }
+
+message Commit {
+  string id = 1;
+  string owner = 2;
+  string message = 3;
+  repeated HashedChange changes = 4;
+  string root_hash = 5;
+  repeated string parents = 6;
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+message HashedChange {
+  string relative_path = 1;
+  string hash = 2;
+  ChangeType change_type = 3;
+}
+
+enum ChangeType {
+  EDIT = 0;
+  ADD = 1;
+  DELETE = 2;
+}
+
+message ReadTreeRequest {
+  string repository_name = 1;
+  string tree_hash = 2;
+}
+
+message ReadTreeResponse { Tree tree = 1; }
+
+message TreeNode {
+  string name = 1;
+  string hash = 2;
+}
+
+message Tree {
+  repeated TreeNode directory_nodes = 1;
+  repeated TreeNode file_nodes = 2;
+}
+
+message InsertLockRequest {
+  string repository_name = 1;
+  Lock lock = 2;
+}
+
+message InsertLockResponse {}
+
+message Lock {
+  string relative_path = 1;
+  string lock_domain_id = 2;
+  string workspace_id = 3;
+  string branch_name = 4;
+}
+
+message FindLockRequest {
+  string repository_name = 1;
+  string lock_domain_id = 2;
+  string canonical_relative_path = 3;
+}
+
+message FindLockResponse {
+  oneof lock { Lock value = 1; }
+}
+
+message FindLocksInDomainRequest {
+  string repository_name = 1;
+  string lock_domain_id = 2;
+}
+
+message FindLocksInDomainResponse { repeated Lock locks = 1; }
+
+message SaveTreeRequest {
+  string repository_name = 1;
+  Tree tree = 2;
+  string hash = 3;
+}
+
+message SaveTreeResponse {}
+
+message InsertCommitRequest {
+  string repository_name = 1;
+  Commit commit = 2;
+}
+
+message InsertCommitResponse {}
+
+message CommitToBranchRequest {
+  string repository_name = 1;
+  Commit commit = 2;
+  Branch branch = 3;
+}
+
+message CommitToBranchResponse {}
+
+message CommitExistsRequest {
+  string repository_name = 1;
+  string commit_id = 2;
+}
+
+message CommitExistsResponse { bool exists = 1; }
+
+message UpdateBranchRequest {
+  string repository_name = 1;
+  Branch branch = 2;
+}
+
+message UpdateBranchResponse {}
+
+message InsertBranchRequest {
+  string repository_name = 1;
+  Branch branch = 2;
+}
+
+message InsertBranchResponse {}
+
+message ClearLockRequest {
+  string repository_name = 1;
+  string lock_domain_id = 2;
+  string canonical_relative_path = 3;
+}
+
+message ClearLockResponse {}
+
+message CountLocksInDomainRequest {
+  string repository_name = 1;
+  string lock_domain_id = 2;
+}
+
+message CountLocksInDomainResponse { int32 count = 1; }
