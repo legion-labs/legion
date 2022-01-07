@@ -1,6 +1,7 @@
 {
     "ignoreRegExpList": [
-        "clippy::[a-z_]+"
+        "clippy::[a-z_]+",
+        "rustdoc::[a-z_]+"
     ],
     "words": [
         "asft",
@@ -9,7 +10,10 @@
         "determinator",
         "Graphviz",
         "perfetto",
+        "proto",
+        "Rustdoc",
         "thiserror",
+        "serde",
         "xxhash",
         "TIMERR_NOERROR"
     ]
