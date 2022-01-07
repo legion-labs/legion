@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_source_control::{BlobStorage, LocalBlobStorage};
+use lgn_source_control::{BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry::prelude::*;
 
 pub struct DiskCache {
-    storage: LocalBlobStorage,
+    storage: Lz4BlobStorageAdapter<LocalBlobStorage>,
 }
 
 impl DiskCache {
@@ -21,7 +21,7 @@ impl DiskCache {
         }
 
         Ok(Self {
-            storage: LocalBlobStorage::new(directory).await?,
+            storage: Lz4BlobStorageAdapter::new(LocalBlobStorage::new(directory).await?),
         })
     }
 
