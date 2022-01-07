@@ -18,3 +18,10 @@ memoffset = "0.6"
 log = { version = "0.4", features = ["std"] }
 thread-id = "4.0"
 lazy_static = "1.4"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "thread_marker"
+harness = false
