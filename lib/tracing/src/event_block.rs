@@ -17,17 +17,23 @@ where
     }
 }
 
-pub trait TelemetryBlock {
-    type Queue;
+pub trait ExtractDeps {
+    type DepsQueue;
+    fn extract(&self) -> Self::DepsQueue;
+}
+
+pub trait TracingBlock {
+    type Queue: ExtractDeps;
+
     fn new(buffer_size: usize, stream_id: String) -> Self;
     fn len_bytes(&self) -> usize;
     fn nb_objects(&self) -> usize;
     fn events_mut(&mut self) -> &mut Self::Queue;
 }
 
-impl<Q> TelemetryBlock for EventBlock<Q>
+impl<Q> TracingBlock for EventBlock<Q>
 where
-    Q: lgn_tracing_transit::HeterogeneousQueue,
+    Q: lgn_tracing_transit::HeterogeneousQueue + ExtractDeps,
 {
     type Queue = Q;
     fn new(buffer_size: usize, stream_id: String) -> Self {

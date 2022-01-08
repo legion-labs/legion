@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use crate::event_block::TelemetryBlock;
+use crate::event_block::TracingBlock;
 
 #[derive(Debug)]
 pub struct EventStream<Block, DepsQueue> {
@@ -17,7 +17,7 @@ pub struct EventStream<Block, DepsQueue> {
 
 impl<Block, DepsQueue> EventStream<Block, DepsQueue>
 where
-    Block: TelemetryBlock,
+    Block: TracingBlock,
 {
     pub fn new(
         buffer_size: usize,
@@ -61,16 +61,12 @@ where
         Arc::get_mut(&mut self.current_block).unwrap().events_mut()
     }
 
-    pub fn get_process_id(&self) -> String {
-        self.process_id.clone()
+    pub fn process_id(&self) -> &str {
+        &self.process_id
     }
 
-    pub fn get_tags(&self) -> Vec<String> {
-        self.tags.clone()
-    }
-
-    pub fn get_properties(&self) -> HashMap<String, String> {
-        self.properties.clone()
+    pub fn tags(&self) -> &[String] {
+        &self.tags
     }
 
     pub fn properties(&self) -> &HashMap<String, String> {

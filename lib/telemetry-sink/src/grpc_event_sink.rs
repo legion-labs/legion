@@ -7,7 +7,7 @@ use lgn_telemetry_proto::{
     },
 };
 use lgn_tracing::{
-    error, event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
+    error, event_block::TracingBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
     ThreadBlock,
 };
 
@@ -207,19 +207,19 @@ impl EventSink for GRPCEventSink {
 
 fn get_stream_info<Block, DepsQueue>(stream: &EventStream<Block, DepsQueue>) -> StreamInfo
 where
-    Block: TelemetryBlock,
+    Block: TracingBlock,
     DepsQueue: lgn_tracing_transit::HeterogeneousQueue,
-    <Block as TelemetryBlock>::Queue: lgn_tracing_transit::HeterogeneousQueue,
+    <Block as TracingBlock>::Queue: lgn_tracing_transit::HeterogeneousQueue,
 {
     let dependencies_meta = make_queue_metedata::<DepsQueue>();
     let obj_meta = make_queue_metedata::<Block::Queue>();
     StreamInfo {
-        process_id: stream.get_process_id(),
-        stream_id: stream.stream_id().to_string(),
+        process_id: stream.process_id().to_owned(),
+        stream_id: stream.stream_id().to_owned(),
         dependencies_metadata: Some(dependencies_meta),
         objects_metadata: Some(obj_meta),
-        tags: stream.get_tags(),
-        properties: stream.get_properties(),
+        tags: stream.tags().to_owned(),
+        properties: stream.properties().clone(),
     }
 }
 

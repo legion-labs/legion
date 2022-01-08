@@ -7,7 +7,7 @@ use std::{
 use chrono::Utc;
 use log::{warn, LevelFilter};
 
-use crate::event_block::TelemetryBlock;
+use crate::event_block::TracingBlock;
 use crate::metrics_block::MetricsStream;
 use crate::{
     now, BeginScopeEvent, EndScopeEvent, EventSink, FloatMetricEvent, IntegerMetricEvent, Level,

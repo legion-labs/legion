@@ -6,6 +6,7 @@
     "words": [
         "asft",
         "bincode",
+        "Deps",
         "Deserialization",
         "despawning",
         "despawn",
