@@ -55,8 +55,10 @@ impl<'frame> DescriptorSetWriter<'frame> {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index(descriptor_index, update_datas);
-        Ok(())
+        {
+            self.set_descriptors_by_index(descriptor_index, update_datas);
+            Ok(())
+        }
     }
 
     #[allow(clippy::todo)]
