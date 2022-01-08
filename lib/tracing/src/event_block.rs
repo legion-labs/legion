@@ -10,7 +10,7 @@ pub struct EventBlock<Q> {
 
 impl<Q> EventBlock<Q>
 where
-    Q: lgn_transit::HeterogeneousQueue,
+    Q: lgn_tracing_transit::HeterogeneousQueue,
 {
     pub fn close(&mut self) {
         self.end = Some(DualTime::now());
@@ -27,7 +27,7 @@ pub trait TelemetryBlock {
 
 impl<Q> TelemetryBlock for EventBlock<Q>
 where
-    Q: lgn_transit::HeterogeneousQueue,
+    Q: lgn_tracing_transit::HeterogeneousQueue,
 {
     type Queue = Q;
     fn new(buffer_size: usize, stream_id: String) -> Self {

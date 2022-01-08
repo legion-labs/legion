@@ -9,7 +9,7 @@ use lgn_tracing::{
     MetricsMsgQueueAny, ReferencedMetricDesc, ReferencedScope, ScopeDesc, ThreadBlock,
     ThreadDepsQueue, ThreadEventQueueAny,
 };
-use lgn_transit::{HeterogeneousQueue, StaticString};
+use lgn_tracing_transit::{HeterogeneousQueue, StaticString};
 
 pub trait StreamBlock {
     fn encode(&self) -> Result<EncodedBlock>;

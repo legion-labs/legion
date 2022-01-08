@@ -15,7 +15,7 @@ fn gen_read_method(
                 unsafe{
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
-                    let value_size = if <#value_type_id as lgn_transit::InProcSerialize>::IS_CONST_SIZE {
+                    let value_size = if <#value_type_id as lgn_tracing_transit::InProcSerialize>::IS_CONST_SIZE {
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
@@ -24,7 +24,7 @@ fn gen_read_method(
                         next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
                         Some(size_instance)
                     };
-                    let obj = #any_ident::#value_type_id( <#value_type_id as lgn_transit::InProcSerialize>::read_value(begin_obj, value_size) );
+                    let obj = #any_ident::#value_type_id( <#value_type_id as lgn_tracing_transit::InProcSerialize>::read_value(begin_obj, value_size) );
                     (obj,next_object_offset)
                 }
             },
@@ -71,7 +71,7 @@ fn gen_hetero_queue_impl(
 ) -> quote::__private::TokenStream {
     let read_method = gen_read_method(type_args, any_ident);
     quote! {
-        impl lgn_transit::HeterogeneousQueue for #struct_identifier {
+        impl lgn_tracing_transit::HeterogeneousQueue for #struct_identifier {
             type Item = #any_ident;
 
             fn new(buffer_size: usize) -> Self {
@@ -157,7 +157,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
             #[inline]
             pub fn push<T>(&mut self, value: T)
             where
-                T: lgn_transit::InProcSerialize + #type_index_ident,
+                T: lgn_tracing_transit::InProcSerialize + #type_index_ident,
             {
                 self.obj_counter += 1;
 

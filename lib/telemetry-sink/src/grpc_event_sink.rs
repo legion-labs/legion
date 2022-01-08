@@ -208,8 +208,8 @@ impl EventSink for GRPCEventSink {
 fn get_stream_info<Block, DepsQueue>(stream: &EventStream<Block, DepsQueue>) -> StreamInfo
 where
     Block: TelemetryBlock,
-    DepsQueue: lgn_transit::HeterogeneousQueue,
-    <Block as TelemetryBlock>::Queue: lgn_transit::HeterogeneousQueue,
+    DepsQueue: lgn_tracing_transit::HeterogeneousQueue,
+    <Block as TelemetryBlock>::Queue: lgn_tracing_transit::HeterogeneousQueue,
 {
     let dependencies_meta = make_queue_metedata::<DepsQueue>();
     let obj_meta = make_queue_metedata::<Block::Queue>();
@@ -223,7 +223,7 @@ where
     }
 }
 
-fn make_queue_metedata<Queue: lgn_transit::HeterogeneousQueue>() -> ContainerMetadata {
+fn make_queue_metedata<Queue: lgn_tracing_transit::HeterogeneousQueue>() -> ContainerMetadata {
     let udts = Queue::reflect_contained();
     ContainerMetadata {
         types: udts

@@ -4,7 +4,7 @@ use lgn_tracing::{
     log, EventSink, Level, LogBlock, LogMsgQueueAny, LogStream, MetricsBlock, MetricsMsgQueueAny,
     MetricsStream, ProcessInfo, ThreadBlock, ThreadEventQueueAny, ThreadStream,
 };
-use lgn_transit::HeterogeneousQueue;
+use lgn_tracing_transit::HeterogeneousQueue;
 use LogMsgQueueAny::{LogDynMsgEvent, LogMsgEvent};
 use MetricsMsgQueueAny::{FloatMetricEvent, IntegerMetricEvent};
 use ThreadEventQueueAny::{BeginScopeEvent, EndScopeEvent};

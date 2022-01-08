@@ -12,7 +12,7 @@ lgn-source-control = { path = "../../lib/source-control", version = "0.1.0" }
 lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
-lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
+lgn-tracing-transit = { path = "../../lib/tracing-transit", version = "0.1.0" }
 anyhow = "1.0"
 async-recursion = "1"
 chrono = "0.4"

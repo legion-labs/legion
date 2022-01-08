@@ -10,7 +10,7 @@ use lgn_tracing::{
     log, log::Log, EventSink, LogBlock, LogStream, MetricsBlock, MetricsStream, ProcessInfo,
     ThreadBlock, ThreadEventQueueAny, ThreadStream,
 };
-use lgn_transit::HeterogeneousQueue;
+use lgn_tracing_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
 
 pub struct ImmediateEventSink {

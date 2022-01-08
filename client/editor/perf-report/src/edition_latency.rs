@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
-use lgn_transit::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,

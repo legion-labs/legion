@@ -1,4 +1,4 @@
-use lgn_transit::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 #[derive(TransitReflect)]
 #[allow(dead_code)]

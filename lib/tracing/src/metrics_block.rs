@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lgn_transit::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 use crate::prelude::*;
 use crate::{event_block::EventBlock, EventStream};

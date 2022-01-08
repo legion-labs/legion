@@ -10,7 +10,7 @@ use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
-use lgn_transit::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 trait ThreadBlockProcessor {
     fn on_begin_scope(&mut self, scope_name: String, ts: i64);

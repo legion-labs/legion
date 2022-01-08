@@ -1,4 +1,4 @@
-use lgn_transit::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 pub trait MetricEvent {
     fn get_metric(&self) -> &'static MetricDesc;

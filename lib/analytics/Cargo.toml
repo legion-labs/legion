@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-tracing = { path = "../tracing", version = "0.1.0" }
-lgn-transit = { path = "../transit", version = "0.1.0" }
+lgn-tracing-transit = { path = "../tracing-transit", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 sqlx = { version = "0.5", features = [
     "sqlite",

@@ -167,7 +167,7 @@ dependencies = [
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
- "lgn-transit",
+ "lgn-tracing-transit",
  "prost",
  "sqlx",
  "tokio",
@@ -2246,7 +2246,7 @@ dependencies = [
  "lgn-tauri",
  "lgn-telemetry-sink",
  "lgn-tracing",
- "lgn-transit",
+ "lgn-tracing-transit",
  "prost",
  "regex",
  "serde",
@@ -3868,7 +3868,7 @@ dependencies = [
  "async-recursion",
  "lgn-telemetry-proto",
  "lgn-tracing",
- "lgn-transit",
+ "lgn-tracing-transit",
  "prost",
  "serde_json",
  "sqlx",
@@ -4380,7 +4380,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-derive-transit"
+name = "lgn-derive-tracing-transit"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -4935,7 +4935,7 @@ dependencies = [
  "json",
  "lgn-telemetry-proto",
  "lgn-tracing",
- "lgn-transit",
+ "lgn-tracing-transit",
  "prost",
  "simple_logger",
  "tokio",
@@ -4959,7 +4959,7 @@ dependencies = [
  "criterion",
  "lazy_static",
  "lgn-tracing-proc-macros",
- "lgn-transit",
+ "lgn-tracing-transit",
  "lgn-utils",
  "log",
  "memoffset 0.6.5",
@@ -4980,6 +4980,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-tracing-transit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lgn-derive-tracing-transit",
+ "lgn-utils",
+ "memoffset 0.6.5",
+ "serde",
+]
+
+[[package]]
 name = "lgn-transform"
 version = "0.1.0"
 dependencies = [
@@ -4989,17 +5000,6 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "smallvec",
-]
-
-[[package]]
-name = "lgn-transit"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "lgn-derive-transit",
- "lgn-utils",
- "memoffset 0.6.5",
- "serde",
 ]
 
 [[package]]
@@ -8452,7 +8452,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-tracing",
- "lgn-transit",
+ "lgn-tracing-transit",
  "lz4",
  "prost",
  "sqlx",

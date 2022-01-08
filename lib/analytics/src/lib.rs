@@ -64,7 +64,7 @@ use lgn_telemetry_proto::telemetry::{
     Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
 use lgn_tracing::prelude::*;
-use lgn_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
+use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;
 
@@ -529,7 +529,7 @@ pub async fn fetch_block_payload(
 
 fn container_metadata_as_transit_udt_vec(
     value: &ContainerMetadata,
-) -> Vec<lgn_transit::UserDefinedType> {
+) -> Vec<lgn_tracing_transit::UserDefinedType> {
     value
         .types
         .iter()
@@ -673,7 +673,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     Ok(())
 }
 
-pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_transit::Object)>(
+pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_tracing_transit::Object)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
