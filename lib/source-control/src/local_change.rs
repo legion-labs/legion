@@ -2,14 +2,15 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,
     make_canonical_relative_path, make_file_read_only, make_path_absolute, read_current_branch,
-    read_workspace_spec, sql::execute_sql, trace_scope, LocalWorkspaceConnection,
-    RepositoryConnection, RepositoryQuery,
+    read_workspace_spec, sql::execute_sql, LocalWorkspaceConnection, RepositoryConnection,
+    RepositoryQuery,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,10 +94,10 @@ pub async fn find_local_change(
     }))
 }
 
+#[trace_function]
 pub async fn read_local_changes(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
 ) -> Result<Vec<LocalChange>> {
-    trace_scope!();
     let rows = sqlx::query(
         "SELECT relative_path, change_type
              FROM changes",
@@ -119,8 +120,8 @@ pub async fn read_local_changes(
     Ok(res)
 }
 
+#[trace_function]
 pub async fn find_local_changes_command() -> Result<Vec<LocalChange>> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -201,8 +202,8 @@ pub async fn track_new_file(
     save_local_change(workspace_transaction, &local_change).await
 }
 
+#[trace_function]
 pub async fn track_new_file_command(path_specified: &Path) -> Result<()> {
-    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
@@ -253,8 +254,8 @@ pub async fn edit_file(
     make_file_read_only(&abs_path, false)
 }
 
+#[trace_function]
 pub async fn edit_file_command(path_specified: &Path) -> Result<()> {
-    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;

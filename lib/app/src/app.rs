@@ -10,7 +10,7 @@ use lgn_ecs::{
     system::Resource,
     world::World,
 };
-use lgn_telemetry::{debug, trace_scope};
+use lgn_telemetry::{debug, trace_function};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_utils::HashMap;
 
@@ -91,8 +91,8 @@ impl App {
     /// Advances the execution of the [`Schedule`] by one cycle.
     ///
     /// See [`Schedule::run_once`] for more details.
+    #[trace_function]
     pub fn update(&mut self) {
-        trace_scope!();
         self.schedule.run(&mut self.world);
         for sub_app in self.sub_apps.values_mut() {
             (sub_app.runner)(&mut self.world, &mut sub_app.app);
@@ -104,9 +104,8 @@ impl App {
     ///
     /// Finalizes the [`App`] configuration. For general usage, see the example
     /// on the item level documentation.
+    #[trace_function]
     pub fn run(&mut self) {
-        trace_scope!();
-
         let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
         (runner)(app);
@@ -768,11 +767,11 @@ impl App {
     /// App::new().add_plugin(lgn_transform::TransformPlugin::default());
     /// ```
     #[allow(clippy::needless_pass_by_value)]
+    #[trace_function]
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
     where
         T: Plugin,
     {
-        trace_scope!();
         debug!("added plugin: {}", plugin.name());
         plugin.build(self);
         self
@@ -800,7 +799,6 @@ impl App {
     ///     .add_plugins(MinimalPlugins);
     /// ```
     pub fn add_plugins<T: PluginGroup>(&mut self, mut group: T) -> &mut Self {
-        trace_scope!();
         let mut plugin_group_builder = PluginGroupBuilder::default();
         group.build(&mut plugin_group_builder);
         plugin_group_builder.finish(self);
@@ -836,12 +834,12 @@ impl App {
     ///             group.add_before::<lgn_transform::TransformPlugin, _>(MyOwnPlugin)
     ///         });
     /// ```
+    #[trace_function]
     pub fn add_plugins_with<T, F>(&mut self, mut group: T, func: F) -> &mut Self
     where
         T: PluginGroup,
         F: FnOnce(&mut PluginGroupBuilder) -> &mut PluginGroupBuilder,
     {
-        trace_scope!();
         let mut plugin_group_builder = PluginGroupBuilder::default();
         group.build(&mut plugin_group_builder);
         func(&mut plugin_group_builder);

@@ -67,8 +67,8 @@ use std::{
 use lgn_telemetry::prelude::*;
 
 //std::fs::remove_dir_all leaves read-only files and reports an error
+#[trace_function]
 fn force_delete_all(dir: &Path) {
-    trace_scope!();
     fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
         if dir.is_dir() {
             for entry in fs::read_dir(dir)? {
@@ -102,8 +102,8 @@ fn force_delete_all(dir: &Path) {
 
 // create_test_dir creates a directory (or cleans its contents) under the
 // `target` folder that will outlive the execution of the test.
+#[trace_function]
 pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
-    trace_scope!();
     let path = parent_path.join(test_name);
 
     if path.exists() {
@@ -115,8 +115,8 @@ pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
 
 // syscall will execute `command` from the `wd` directory and validate that the
 // error code matches `should_succeed`
+#[trace_function]
 pub fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
-    trace_scope!();
     println!("{} {}", command, args.join(" "));
     let status = Command::new(command)
         .current_dir(wd)

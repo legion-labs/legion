@@ -44,7 +44,7 @@ impl GitCli {
     /// The return value can be iterated on to get a list of paths.
     pub fn tracked_files(&self) -> Result<&Utf8Paths0> {
         self.tracked_files.get_or_try_init(|| {
-            trace_scope!();
+            trace_scope!("GitCli::tracked_files::init");
             // TODO: abstract out SCM and command-running functionality.
             let output = self
                 .git_command()

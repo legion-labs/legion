@@ -4800,7 +4800,6 @@ dependencies = [
  "glob",
  "http",
  "lgn-telemetry",
- "log",
  "lz4",
  "path-clean",
  "pin-project",
@@ -4921,6 +4920,7 @@ dependencies = [
  "chrono",
  "criterion",
  "lazy_static",
+ "lgn-telemetry-proc-macros",
  "lgn-transit",
  "lgn-utils",
  "log",
@@ -4929,6 +4929,16 @@ dependencies = [
  "thread-id",
  "uuid",
  "whoami",
+]
+
+[[package]]
+name = "lgn-telemetry-proc-macros"
+version = "0.1.0"
+dependencies = [
+ "lgn-telemetry",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

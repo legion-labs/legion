@@ -18,8 +18,8 @@ struct NodeStatsAcc {
 }
 
 impl NodeStatsAcc {
+    #[trace_function]
     pub fn new() -> Self {
-        trace_scope!();
         Self {
             durations_ms: Vec::new(),
             parents: HashMap::new(),
@@ -30,8 +30,8 @@ impl NodeStatsAcc {
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
+#[trace_function]
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
-    trace_scope!();
     let mut edges: Vec<CallGraphEdge> = edges_acc
         .iter()
         .filter(|(hash, _weight)| **hash != 0)
@@ -44,11 +44,12 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     edges
 }
 
+#[trace_function]
 fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
-    trace_scope!();
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 
+#[trace_function]
 fn record_tree_stats(
     tree: &CallTreeNode,
     filter_begin_ms: f64,
@@ -56,7 +57,6 @@ fn record_tree_stats(
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
-    trace_scope!();
     if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
         return;
     }

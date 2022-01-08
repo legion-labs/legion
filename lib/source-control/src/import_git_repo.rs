@@ -1,12 +1,13 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
     find_workspace_root, make_canonical_relative_path, read_workspace_spec, revert_file,
-    trace_scope, track_new_file, write_file, ChangeType, LocalWorkspaceConnection,
-    RepositoryConnection, RepositoryQuery,
+    track_new_file, write_file, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
+    RepositoryQuery,
 };
 
 fn format_commit(c: &git2::Commit<'_>) -> String {
@@ -349,8 +350,8 @@ async fn import_branch(
     import_commit_sequence(repo_connection, workspace_connection, git_repo, &commit).await
 }
 
+#[trace_function]
 pub async fn import_git_branch_command(git_root_path: &Path, branch_name: &str) -> Result<()> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

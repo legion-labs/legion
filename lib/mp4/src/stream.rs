@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 
 use crate::atoms::avc1::Avc1Atom;
 use crate::atoms::ftyp::FtypAtom;
@@ -117,8 +117,8 @@ impl Mp4Stream {
     }
 
     /// # Errors
+    #[trace_function]
     pub fn write_index<W: Write>(&mut self, config: &TrackConfig, writer: &mut W) -> Result<()> {
-        trace_scope!();
         let mut trak = TrakAtom::default();
         trak.tkhd.track_id = 1;
         trak.mdia.mdhd.timescale = config.timescale;
@@ -197,13 +197,13 @@ impl Mp4Stream {
     }
 
     /// # Errors
+    #[trace_function]
     pub fn write_sample<W: Write>(
         &mut self,
         key_frame: bool,
         content: &[u8],
         writer: &mut W,
     ) -> Result<()> {
-        trace_scope!();
         let duration = 90000 / self.fps;
         let timestamp = self.moof.mfhd.sequence_number * duration;
         self.moof.mfhd.sequence_number += 1;

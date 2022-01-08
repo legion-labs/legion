@@ -8,7 +8,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::Instant;
 
 use indexmap::IndexMap;
-use lgn_telemetry::{info, trace_scope, warn};
+use lgn_telemetry::{info, trace_function, warn};
 
 use crate::context::Context;
 use crate::{Error, Result};
@@ -182,8 +182,8 @@ impl Cargo {
     /// If log is true, any environment variable overrides will be logged, the full command will be logged,
     /// and after the command's output reaches stdout, the command will be printed again along with the time took
     /// to process the command (wallclock) in ms.
+    #[trace_function]
     fn do_run(&mut self, log: bool) -> Result<Output> {
-        trace_scope!();
         // these arguments are passed through cargo/x to underlying executable (test, clippy, etc)
         if !self.pass_through_args.is_empty() {
             self.inner.arg("--").args(&self.pass_through_args);

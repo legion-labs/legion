@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
-    connect_to_server, find_workspace_root, read_workspace_spec, sql::execute_sql, trace_scope,
+    connect_to_server, find_workspace_root, read_workspace_spec, sql::execute_sql,
     LocalWorkspaceConnection,
 };
 
@@ -105,8 +106,8 @@ pub async fn read_current_branch(connection: &mut sqlx::AnyConnection) -> Result
     Ok((name, commit_id))
 }
 
+#[trace_function]
 pub async fn create_branch_command(name: &str) -> Result<()> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -131,8 +132,8 @@ pub async fn create_branch_command(name: &str) -> Result<()> {
     .await
 }
 
+#[trace_function]
 pub async fn list_branches_command() -> Result<()> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;

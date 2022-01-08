@@ -18,7 +18,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
     c.bench_function("no_dispatch/trace_scope", |b| {
         b.iter(|| {
-            trace_scope!();
+            trace_scope!("test");
         })
     });
 }

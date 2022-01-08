@@ -292,7 +292,7 @@ pub fn winit_runner_with(mut app: App) {
     let event_handler = move |event: Event<'_, ()>,
                               event_loop: &EventLoopWindowTarget<()>,
                               control_flow: &mut ControlFlow| {
-        trace_scope!();
+        trace_scope!("winit_plugin::event_handler");
         *control_flow = ControlFlow::Poll;
 
         if let Some(app_exit_events) = app.world.get_resource_mut::<Events<AppExit>>() {

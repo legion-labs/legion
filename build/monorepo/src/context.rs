@@ -3,6 +3,7 @@
 
 use camino::{Utf8Path, Utf8PathBuf};
 use guppy::graph::PackageGraph;
+use lgn_telemetry::trace_function;
 use lgn_telemetry::trace_scope;
 use once_cell::sync::OnceCell;
 
@@ -23,8 +24,8 @@ pub struct Context {
 }
 
 impl Context {
+    #[trace_function]
     pub fn new() -> Result<Self> {
-        trace_scope!();
         const X_DEPTH: usize = 2;
         let workspace_root = Utf8Path::new(&env!("CARGO_MANIFEST_DIR"))
             .ancestors()
@@ -70,7 +71,7 @@ impl Context {
 
     pub fn package_graph(&self) -> Result<&PackageGraph> {
         self.package_graph.get_or_try_init(|| {
-            trace_scope!();
+            trace_scope!("Context::package_graph::init");
             let mut cmd = guppy::MetadataCommand::new();
             cmd.current_dir(self.workspace_root);
             guppy::graph::PackageGraph::from_command(&mut cmd)
@@ -80,7 +81,7 @@ impl Context {
 
     pub fn git_cli(&self) -> Result<&GitCli> {
         self.git_cli.get_or_try_init(|| {
-            trace_scope!();
+            trace_scope!("Context::git_cli::init");
             GitCli::new(self.workspace_root())
         })
     }
@@ -108,6 +109,7 @@ impl Context {
     /// For a given list of workspace packages, returns a tuple of (known, unknown) packages.
     ///
     /// Initializes the package graph if it isn't already done so, and returns an error if the
+    #[trace_function]
     pub fn partition_workspace_names<'a, B>(
         &self,
         names: impl IntoIterator<Item = &'a str>,
@@ -115,7 +117,6 @@ impl Context {
     where
         B: Default + Extend<&'a str>,
     {
-        trace_scope!();
         let workspace = self.package_graph()?.workspace();
         let (known, unknown) = names
             .into_iter()

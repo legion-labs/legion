@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuard::new()
         .unwrap()
         .with_log_level(LevelFilter::Info);
-    trace_scope!();
+    trace_scope!("analytics-srv::main");
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;

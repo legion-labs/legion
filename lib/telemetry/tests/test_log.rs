@@ -53,7 +53,7 @@ fn test_log_thread(state: &SharedState) {
         threads.push(thread::spawn(|| {
             init_thread_stream();
             for _ in 1..1024 {
-                trace_scope!();
+                trace_scope!("test");
             }
         }));
     }

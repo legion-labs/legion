@@ -105,7 +105,7 @@ impl Plugin for ScheduleRunnerPlugin {
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
-                        trace_scope!();
+                        trace_scope!("ScheduleRunnerPlugin::tick");
                         let start_time = Instant::now();
 
                         if let Some(mut app_exit_events) =
@@ -147,7 +147,6 @@ impl Plugin for ScheduleRunnerPlugin {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        trace_scope!();
                         while let Ok(delay) = tick(&mut app, wait) {
                             if let Some(delay) = delay {
                                 trace_scope!("sleep");

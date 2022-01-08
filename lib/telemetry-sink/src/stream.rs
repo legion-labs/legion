@@ -4,7 +4,7 @@ use anyhow::Result;
 use lgn_telemetry::event_block::TelemetryBlock;
 use lgn_telemetry::{
     LogBlock, LogDepsQueue, LogMsgQueueAny, MetricEvent, MetricsBlock, MetricsDepsQueue,
-    MetricsMsgQueueAny, ReferencedMetricDesc, ReferencedScope, ScopeEvent, ThreadBlock,
+    MetricsMsgQueueAny, ReferencedMetricDesc, ReferencedScope, ScopeDesc, ThreadBlock,
     ThreadDepsQueue, ThreadEventQueueAny,
 };
 use lgn_telemetry_proto::compress;
@@ -126,28 +126,26 @@ impl StreamBlock for MetricsBlock {
     }
 }
 
-fn record_scope_event_dependencies<T: ScopeEvent>(
-    evt: &T,
+fn record_scope_event_dependencies(
+    evt_desc: &'static ScopeDesc,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut ThreadDepsQueue,
 ) {
-    let get_scope = evt.get_scope();
-    let ptr = get_scope as usize as u64;
+    let ptr = evt_desc as *const _ as u64;
     if recorded_deps.insert(ptr) {
-        let desc = get_scope();
-        let name = StaticString::from(desc.name);
+        let name = StaticString::from(evt_desc.name);
         if recorded_deps.insert(name.ptr as u64) {
             deps.push(name);
         }
-        let filename = StaticString::from(desc.filename);
+        let filename = StaticString::from(evt_desc.filename);
         if recorded_deps.insert(filename.ptr as u64) {
             deps.push(filename);
         }
         deps.push(ReferencedScope {
             id: ptr,
-            name: desc.name.as_ptr(),
-            filename: desc.filename.as_ptr(),
-            line: desc.line,
+            name: evt_desc.name.as_ptr(),
+            filename: evt_desc.filename.as_ptr(),
+            line: evt_desc.line,
         });
     }
 }
@@ -163,10 +161,10 @@ impl StreamBlock for ThreadBlock {
         for x in self.events.iter() {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
-                    record_scope_event_dependencies(&evt, &mut recorded_deps, &mut deps);
+                    record_scope_event_dependencies(evt.scope, &mut recorded_deps, &mut deps);
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
-                    record_scope_event_dependencies(&evt, &mut recorded_deps, &mut deps);
+                    record_scope_event_dependencies(evt.scope, &mut recorded_deps, &mut deps);
                 }
             }
         }

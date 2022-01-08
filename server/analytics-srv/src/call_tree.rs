@@ -68,8 +68,8 @@ impl CallTreeBuilder {
         }
     }
 
+    #[trace_function]
     pub fn finish(mut self) -> CallTree {
-        trace_scope!();
         if self.stack.is_empty() {
             return CallTree {
                 scopes: ScopeHashMap::new(),
@@ -94,8 +94,8 @@ impl CallTreeBuilder {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
+    #[trace_function]
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
-        trace_scope!();
         if let Some(mut top) = self.stack.pop() {
             top.children.push(scope);
             self.stack.push(top);
@@ -121,8 +121,8 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
+    #[trace_function]
     fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
-        trace_scope!();
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
         self.record_scope_desc(hash, scope_name);
@@ -135,8 +135,8 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
+    #[trace_function]
     fn on_end_scope(&mut self, scope_name: String, ts: i64) {
-        trace_scope!();
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
         if let Some(mut old_top) = self.stack.pop() {
@@ -193,8 +193,8 @@ fn compute_scope_hash(name: &str) -> u32 {
     const_xxh32(name.as_bytes(), 0)
 }
 
+#[trace_function]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
-    trace_scope!();
     let span = Span {
         scope_hash: tree.hash,
         begin_ms: tree.begin_ms,
@@ -211,8 +211,8 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
     }
 }
 
+#[trace_function]
 pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
-    trace_scope!();
     if tree.root.is_none() {
         anyhow::bail!("no root in call tree of block {}", block_id);
     }

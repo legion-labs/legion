@@ -1,10 +1,10 @@
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 use semver::VersionReq;
 
 use crate::{context::Context, Error, Result};
 
+#[trace_function]
 pub fn run(ctx: &Context) -> Result<()> {
-    trace_scope!();
     let workspace = ctx.package_graph()?.workspace();
     let bans: Vec<_> = ctx
         .config()

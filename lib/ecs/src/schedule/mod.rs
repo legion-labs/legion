@@ -347,7 +347,7 @@ impl Schedule {
     pub fn run_once(&mut self, world: &mut World) {
         for label in &self.stage_order {
             // TODO: add stage name to trace scope
-            trace_scope!();
+            trace_scope!("run_once::label");
             // let stage_span = info_span!("stage", name = ?label);
             // let _stage_guard = stage_span.enter();
             let stage = self.stages.get_mut(label).unwrap();

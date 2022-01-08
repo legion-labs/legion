@@ -3,13 +3,12 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result};
 
 use crate::{
-    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec, trace_scope,
+    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
     verify_empty_lock_domain, LocalWorkspaceConnection,
 };
 
+#[lgn_telemetry::trace_function]
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
-    trace_scope!();
-
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

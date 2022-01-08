@@ -203,7 +203,7 @@ pub fn build_runtime(
     app
 }
 
+#[trace_function]
 pub fn start_runtime(app: &mut App) {
-    trace_scope!();
     app.run();
 }

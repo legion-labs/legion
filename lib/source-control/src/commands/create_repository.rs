@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use log::info;
+use lgn_telemetry::{info, trace_function};
 use reqwest::Url;
 
 use crate::http_repository_query::HttpRepositoryQuery;
@@ -13,7 +13,7 @@ use crate::{
     init_config_database, init_forest_database, init_lock_database, init_workspace_database,
     insert_config, make_path_absolute,
     sql::{create_database, SqlConnectionPool},
-    trace_scope, BlobStorageUrl, Branch, Commit, RepositoryQuery, Tree,
+    BlobStorageUrl, Branch, Commit, RepositoryQuery, Tree,
 };
 use crate::{RepositoryConnection, RepositoryUrl};
 
@@ -42,12 +42,11 @@ pub async fn create_repository(
     }
 }
 
+#[trace_function]
 async fn create_local_repository(
     directory: impl AsRef<Path>,
     blob_storage_url: &Option<BlobStorageUrl>,
 ) -> Result<RepositoryConnection> {
-    trace_scope!();
-
     let directory = directory.as_ref();
 
     check_directory_does_not_exist_or_is_empty(directory)?;
@@ -87,12 +86,11 @@ async fn create_local_repository(
     })
 }
 
+#[trace_function]
 async fn create_mysql_repository(
     url: &Url,
     blob_storage_url: &Option<BlobStorageUrl>,
 ) -> Result<RepositoryConnection> {
-    trace_scope!();
-
     let blob_storage_url = blob_storage_url.as_ref().ok_or_else(|| {
         anyhow::anyhow!(
             "refusing to create a MySQL repository as no blob storage URL was specified"
@@ -116,9 +114,8 @@ async fn create_mysql_repository(
     })
 }
 
+#[trace_function]
 async fn create_lsc_repository(url: &Url) -> Result<RepositoryConnection> {
-    trace_scope!();
-
     let repo_name = url.path().trim_start_matches('/');
     let mut url = url.clone();
     url.set_path("");

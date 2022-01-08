@@ -1,16 +1,17 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 
 use crate::{
     clear_local_change, clear_resolve_pending, connect_to_server, fetch_tree_subdir,
     find_local_change, find_resolve_pending, find_workspace_root, make_canonical_relative_path,
     make_file_read_only, make_path_absolute, read_current_branch, read_local_changes,
-    read_workspace_spec, trace_scope, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
+    read_workspace_spec, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
 };
 
+#[trace_function]
 pub async fn revert_glob_command(pattern: &str) -> Result<()> {
-    trace_scope!();
     let mut nb_errors = 0;
 
     let matcher = glob::Pattern::new(pattern).context("error parsing glob pattern")?;
@@ -33,7 +34,6 @@ pub async fn revert_glob_command(pattern: &str) -> Result<()> {
             }
         }
     }
-
     workspace_transaction
         .commit()
         .await
@@ -100,8 +100,8 @@ pub async fn revert_file(
     }
 }
 
+#[trace_function]
 pub async fn revert_file_command(path: &Path) -> Result<()> {
-    trace_scope!();
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

@@ -2,20 +2,21 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 use url::Url;
 
 use crate::{
     connect_to_server, create_workspace_branch_table, download_tree,
     init_branch_merge_pending_database, init_local_changes_database, init_resolve_pending_database,
-    insert_current_branch, make_path_absolute, sql::create_database, trace_scope,
-    write_workspace_spec, LocalWorkspaceConnection, RepositoryAddr, Workspace,
+    insert_current_branch, make_path_absolute, sql::create_database, write_workspace_spec,
+    LocalWorkspaceConnection, RepositoryAddr, Workspace,
 };
 
+#[trace_function]
 pub async fn init_workspace_command(
     specified_workspace_directory: &Path,
     repo_location: &str,
 ) -> Result<()> {
-    trace_scope!();
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
     let lsc_dir = workspace_directory.join(".lsc");

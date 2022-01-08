@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::prelude::*;
+use lgn_telemetry::trace_function;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -9,7 +10,7 @@ use crate::{
     assert_not_locked, clear_local_changes, clear_pending_branch_merges, connect_to_server,
     find_workspace_root, make_file_read_only, read_bin_file, read_current_branch,
     read_local_changes, read_pending_branch_merges, read_workspace_spec, sql::execute_sql,
-    trace_scope, update_current_branch, update_tree_from_changes, Branch, ChangeType, LocalChange,
+    update_current_branch, update_tree_from_changes, Branch, ChangeType, LocalChange,
     LocalWorkspaceConnection, RepositoryConnection,
 };
 
@@ -32,6 +33,7 @@ pub struct Commit {
 }
 
 impl Commit {
+    #[trace_function]
     pub fn new(
         id: String,
         owner: String,
@@ -40,7 +42,6 @@ impl Commit {
         root_hash: String,
         parents: Vec<String>,
     ) -> Self {
-        trace_scope!();
         let date_time_utc = Utc::now().to_rfc3339();
         assert!(!parents.contains(&id));
         Self {
@@ -54,15 +55,13 @@ impl Commit {
         }
     }
 
+    #[trace_function]
     pub fn from_json(contents: &str) -> Result<Self> {
-        trace_scope!();
-
         serde_json::from_str(contents).context("parsing commit")
     }
 
+    #[trace_function]
     pub fn to_json(&self) -> Result<String> {
-        trace_scope!();
-
         serde_json::to_string(&self).context(format!("serializing commit {}", self.id))
     }
 }
@@ -112,8 +111,8 @@ async fn upload_localy_edited_blobs(
     Ok(res)
 }
 
+#[trace_function]
 fn make_local_files_read_only(workspace_root: &Path, changes: &[HashedChange]) -> Result<()> {
-    trace_scope!();
     for change in changes {
         if change.change_type != ChangeType::Delete {
             let full_path = workspace_root.join(&change.relative_path);

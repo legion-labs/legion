@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 
 use crate::formats::YUVSource;
 
@@ -20,8 +20,8 @@ impl RBGYUVConverter {
     }
 
     #[allow(clippy::cast_precision_loss)]
+    #[trace_function]
     fn convert_internal<PixR: Fn(usize, usize) -> (f32, f32, f32)>(&mut self, pixel_reader: PixR) {
-        trace_scope!();
         let width = self.width;
         let height = self.height;
 

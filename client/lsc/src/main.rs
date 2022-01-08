@@ -236,7 +236,7 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
 
-    trace_scope!();
+    trace_scope!("lsc::main");
 
     //let repository_url = command_match
     //    .value_of(ARG_REPOSITORY_URL)

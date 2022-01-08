@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-utils = { path = "../utils", version = "0.1.0" }
 lgn-transit = { path = "../transit", version = "0.1.0" }
+lgn-telemetry-proc-macros = { path = "./macros", version = "0.1.0" }
 anyhow = "1.0"
 raw-cpuid = "10.2.0"
 whoami = "1.2"

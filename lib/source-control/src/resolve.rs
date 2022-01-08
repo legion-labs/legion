@@ -4,13 +4,13 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use lgn_telemetry::trace_function;
 use sqlx::Row;
 
 use crate::{
     connect_to_server, download_temp_file, fetch_tree_subdir, find_workspace_root,
     make_canonical_relative_path, make_path_absolute, read_bin_file, read_workspace_spec,
-    sql::execute_sql, trace_scope, write_file, Config, LocalWorkspaceConnection,
-    RepositoryConnection, TempPath,
+    sql::execute_sql, write_file, Config, LocalWorkspaceConnection, RepositoryConnection, TempPath,
 };
 
 #[derive(Debug)]
@@ -130,8 +130,8 @@ async fn read_resolves_pending(
     .collect())
 }
 
+#[trace_function]
 pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -160,6 +160,7 @@ pub async fn find_file_hash_at_commit(
     }
 }
 
+#[trace_function]
 fn run_merge_program(
     relative_path: &Path,
     abs_path: &str,
@@ -167,7 +168,6 @@ fn run_merge_program(
     base_path: &str,
     output_path: &str,
 ) -> Result<()> {
-    trace_scope!();
     let config = Config::read_config()?;
     let external_command_vec: Vec<_> = config
         .find_merge_command(relative_path)
@@ -221,8 +221,8 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
     Ok(())
 }
 
+#[trace_function]
 pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<()> {
-    trace_scope!();
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

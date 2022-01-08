@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(feature = "vulkan"))]
 use std::sync::atomic::Ordering;
 
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};
@@ -124,8 +124,8 @@ impl Texture {
         &self.inner.texture_def
     }
 
+    #[trace_function]
     pub fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
-        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 

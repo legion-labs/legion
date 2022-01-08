@@ -102,7 +102,6 @@ pub use diff::*;
 pub use forest::*;
 pub use import_git_repo::*;
 pub use init_workspace::*;
-pub(crate) use lgn_telemetry::trace_scope;
 pub use local_change::*;
 pub use local_workspace_connection::*;
 pub use lock::*;

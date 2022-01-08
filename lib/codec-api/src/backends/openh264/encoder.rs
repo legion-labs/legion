@@ -4,7 +4,7 @@
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::ptr::{addr_of_mut, null};
 
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
     SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,
@@ -255,8 +255,8 @@ impl Encoder {
     /// # Panics
     ///
     /// Panics if the source image dimension don't match the configured format.
+    #[trace_function]
     pub fn encode<T: YUVSource>(&mut self, yuv_source: &T) -> Result<EncodedBitStream<'_>, Error> {
-        trace_scope!();
         assert_eq!(yuv_source.width(), self.params.iPicWidth);
         assert_eq!(yuv_source.height(), self.params.iPicHeight);
 

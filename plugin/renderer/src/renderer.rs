@@ -9,7 +9,7 @@ use lgn_graphics_api::{
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::components::{DirectionalLight, OmnidirectionalLight, Spotlight};
@@ -263,9 +263,8 @@ impl Renderer {
         let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
-
+    #[trace_function]
     pub(crate) fn begin_frame(&mut self) {
-        trace_scope!();
         //
         // Update frame indices
         //
@@ -306,8 +305,8 @@ impl Renderer {
         self.transient_buffer.begin_frame();
     }
 
+    #[trace_function]
     pub(crate) fn end_frame(&mut self) {
-        trace_scope!();
         let graphics_queue = self.graphics_queue.write();
         let frame_fence = &self.frame_fences[self.render_frame_idx];
 
@@ -333,8 +332,8 @@ impl Renderer {
         }
     }
 
+    #[trace_function]
     pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> (Shader, RootSignature) {
-        trace_scope!();
         let device_context = self.device_context();
 
         let shader_compiler = self.shader_compiler();

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{on_end_scope, GetScopeDesc};
+use crate::on_end_scope;
 
 #[derive(Debug)]
 pub struct ScopeDesc {
@@ -12,56 +12,51 @@ pub struct ScopeDesc {
 pub struct ScopeGuard {
     // the value of the function pointer will identity the scope uniquely within that process
     // instance
-    pub get_scope_desc: GetScopeDesc,
+    pub scope_desc: &'static ScopeDesc,
     pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
 }
 
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
-        on_end_scope(self.get_scope_desc);
+        on_end_scope(self.scope_desc);
     }
 }
 
-pub fn type_name_of<T>(_: &T) -> &'static str {
-    //until type_name_of_val is out of nightly-only
-    std::any::type_name::<T>()
+//pub const fn type_name_of<T>(_: &T) -> &'static str {
+//    //until type_name_of_val is out of nightly-only
+//    std::any::type_name::<T>()
+//}
+
+/// Returns the name of the calling function without a long module path prefix.
+#[macro_export]
+macro_rules! function_name {
+    () => {{
+        // Okay, this is ugly, I get it. However, this is the best we can get on a stable rust.
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            std::any::type_name::<T>()
+        }
+        let name = type_name_of(f);
+        // `3` is the length of the `::f`.
+        &name[..name.len() - 3]
+    }};
 }
 
 #[macro_export]
 macro_rules! trace_scope {
-    ($name:tt) => {
-        fn _scope_named() -> $crate::ScopeDesc {
-            $crate::ScopeDesc {
-                name: $name,
-                filename: file!(),
-                line: line!(),
-            }
-        }
+    ($scope_id:ident, $name:expr) => {
+        static $scope_id: $crate::ScopeDesc = $crate::ScopeDesc {
+            name: $name,
+            filename: file!(),
+            line: line!(),
+        };
         let guard_named = $crate::ScopeGuard {
-            get_scope_desc: _scope_named,
+            scope_desc: &$scope_id,
             _dummy_ptr: std::marker::PhantomData::default(),
         };
-        $crate::on_begin_scope(_scope_named);
+        $crate::on_begin_scope(&$scope_id);
     };
-    () => {
-        fn _scope() -> $crate::ScopeDesc {
-            // no need to build the ScopeDesc object until we serialize the events
-            fn outer_function_name() -> &'static str {
-                let inner = $crate::type_name_of(&_scope);
-                static TAIL_LEN: usize = "_scope".len() + 2;
-                &inner[0..inner.len() - TAIL_LEN]
-            }
-
-            $crate::ScopeDesc {
-                name: outer_function_name(),
-                filename: file!(),
-                line: line!(),
-            }
-        }
-        let guard = $crate::ScopeGuard {
-            get_scope_desc: _scope,
-            _dummy_ptr: std::marker::PhantomData::default(),
-        };
-        $crate::on_begin_scope(_scope);
+    ($name:expr) => {
+        $crate::trace_scope!(_SCOPE_NAMED, $name);
     };
 }

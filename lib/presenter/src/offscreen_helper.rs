@@ -3,7 +3,7 @@
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_renderer::{components::RenderSurface, RenderContext};
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Resolution {
@@ -269,13 +269,13 @@ impl OffscreenHelper {
         }
     }
 
+    #[trace_function]
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        trace_scope!();
         //
         // Render
         //

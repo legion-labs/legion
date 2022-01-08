@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_scope;
+use lgn_telemetry::trace_function;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
@@ -62,6 +62,7 @@ impl Queue {
         CommandPool::new(self, command_pool_def)
     }
 
+    #[trace_function]
     pub fn submit(
         &self,
         command_buffers: &[&CommandBuffer],
@@ -69,7 +70,6 @@ impl Queue {
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
-        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
@@ -82,13 +82,13 @@ impl Queue {
         )
     }
 
+    #[trace_function]
     pub fn present(
         &self,
         swapchain: &Swapchain,
         wait_semaphores: &[&Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
-        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 

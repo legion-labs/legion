@@ -10,9 +10,9 @@ use log::{warn, LevelFilter};
 use crate::event_block::TelemetryBlock;
 use crate::metrics_block::MetricsStream;
 use crate::{
-    now, BeginScopeEvent, EndScopeEvent, EventSink, FloatMetricEvent, GetScopeDesc,
-    IntegerMetricEvent, Level, LogBlock, LogDynMsgEvent, LogMsgEvent, LogStream, MetricDesc,
-    MetricsBlock, NullEventSink, ProcessInfo, ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
+    now, BeginScopeEvent, EndScopeEvent, EventSink, FloatMetricEvent, IntegerMetricEvent, Level,
+    LogBlock, LogDynMsgEvent, LogMsgEvent, LogStream, MetricDesc, MetricsBlock, NullEventSink,
+    ProcessInfo, ScopeDesc, ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
 };
 
 struct Dispatch {
@@ -428,11 +428,11 @@ where
 }
 
 #[inline]
-pub fn on_begin_scope(scope: GetScopeDesc) {
+pub fn on_begin_scope(scope: &'static ScopeDesc) {
     on_thread_event(BeginScopeEvent { time: now(), scope });
 }
 
 #[inline]
-pub fn on_end_scope(scope: GetScopeDesc) {
+pub fn on_end_scope(scope: &'static ScopeDesc) {
     on_thread_event(EndScopeEvent { time: now(), scope });
 }

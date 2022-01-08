@@ -552,6 +552,7 @@ fn container_metadata_as_transit_udt_vec(
 }
 
 // parse_block calls fun for each object in the block until fun returns `false`
+#[trace_function]
 pub fn parse_block<F>(
     stream: &StreamInfo,
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
@@ -560,7 +561,6 @@ pub fn parse_block<F>(
 where
     F: FnMut(Value) -> bool,
 {
-    trace_scope!();
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
     let dependencies = read_dependencies(

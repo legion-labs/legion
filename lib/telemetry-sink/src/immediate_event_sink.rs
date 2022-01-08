@@ -8,7 +8,7 @@ use std::{
 
 use lgn_telemetry::{
     log, log::Log, EventSink, LogBlock, LogStream, MetricsBlock, MetricsStream, ProcessInfo,
-    ScopeEvent, ThreadBlock, ThreadEventQueueAny, ThreadStream,
+    ThreadBlock, ThreadEventQueueAny, ThreadStream,
 };
 use lgn_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
@@ -155,16 +155,16 @@ impl EventSink for ImmediateEventSink {
                         ThreadEventQueueAny::BeginScopeEvent(evt) => (
                             "B",
                             evt.time,
-                            evt.get_scope()().name,
-                            evt.get_scope()().filename,
-                            evt.get_scope()().line,
+                            evt.scope.name,
+                            evt.scope.filename,
+                            evt.scope.line,
                         ),
                         ThreadEventQueueAny::EndScopeEvent(evt) => (
                             "E",
                             evt.time,
-                            evt.get_scope()().name,
-                            evt.get_scope()().filename,
-                            evt.get_scope()().line,
+                            evt.scope.name,
+                            evt.scope.filename,
+                            evt.scope.line,
                         ),
                     };
                     let time = 1000.0 * 1000.0 * (tick - process_data.start_ticks) as f64

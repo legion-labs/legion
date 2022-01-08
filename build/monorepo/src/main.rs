@@ -157,7 +157,7 @@ enum Commands {
 fn main() -> Result<()> {
     let _telemetry_guard = TelemetryGuard::new().unwrap();
 
-    trace_scope!();
+    trace_scope!("monorepo::main");
 
     let args = Cli::parse();
     let ctx = context::Context::new()?;
