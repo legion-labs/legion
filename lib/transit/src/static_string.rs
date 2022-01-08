@@ -31,9 +31,7 @@ impl Reflect for StaticString {
 }
 
 impl InProcSerialize for StaticString {
-    fn is_size_static() -> bool {
-        false
-    }
+    const IS_CONST_SIZE: bool = false;
 
     fn get_value_size(&self) -> Option<u32> {
         let id_size = std::mem::size_of::<usize>() as u32;

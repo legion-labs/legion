@@ -4,9 +4,7 @@ use crate::InProcSerialize;
 pub struct DynString(pub String);
 
 impl InProcSerialize for DynString {
-    fn is_size_static() -> bool {
-        false
-    }
+    const IS_CONST_SIZE: bool = false;
 
     fn get_value_size(&self) -> Option<u32> {
         Some(self.0.len() as u32)

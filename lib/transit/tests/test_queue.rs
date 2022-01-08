@@ -21,8 +21,12 @@ declare_queue_struct!(
 
 #[test]
 fn test_queue() {
-    assert!(<MyTestEvent as InProcSerialize>::is_size_static());
-    assert!(<OtherEvent as InProcSerialize>::is_size_static());
+    #[allow(clippy::assertions_on_constants)]
+    // not going to introduce a crate for this :)
+    {
+        assert!(<MyTestEvent as InProcSerialize>::IS_CONST_SIZE);
+        assert!(<OtherEvent as InProcSerialize>::IS_CONST_SIZE);
+    }
 
     let mut q = MyQueue::new(1024);
     q.push(MyTestEvent {

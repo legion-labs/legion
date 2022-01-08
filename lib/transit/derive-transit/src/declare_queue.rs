@@ -15,7 +15,7 @@ fn gen_read_method(
                 unsafe{
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
-                    let value_size = if <#value_type_id as lgn_transit::InProcSerialize>::is_size_static(){
+                    let value_size = if <#value_type_id as lgn_transit::InProcSerialize>::IS_CONST_SIZE {
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
@@ -154,6 +154,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                 self.buffer
             }
 
+            #[inline]
             pub fn push<T>(&mut self, value: T)
             where
                 T: lgn_transit::InProcSerialize + #type_index_ident,
@@ -164,7 +165,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                 self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);
 
                 let buffer_size_before = self.buffer.len();
-                if T::is_size_static() {
+                if T::IS_CONST_SIZE {
                     value.write_value(&mut self.buffer);
                     assert!(self.buffer.len() == buffer_size_before + std::mem::size_of::<T>());
                 } else {

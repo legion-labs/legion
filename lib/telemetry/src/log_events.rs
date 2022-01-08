@@ -19,9 +19,7 @@ pub struct LogDynMsgEvent {
 }
 
 impl InProcSerialize for LogDynMsgEvent {
-    fn is_size_static() -> bool {
-        false
-    }
+    const IS_CONST_SIZE: bool = false;
 
     fn get_value_size(&self) -> Option<u32> {
         Some(self.msg.get_value_size().unwrap() + 1 + std::mem::size_of::<u64>() as u32)
