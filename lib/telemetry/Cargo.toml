@@ -23,5 +23,9 @@ lazy_static = "1.4"
 criterion = "0.3"
 
 [[bench]]
-name = "thread_marker"
+name = "with_no_dispatch"
+harness = false
+
+[[bench]]
+name = "with_dispatch"
 harness = false
