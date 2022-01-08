@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 };
 use lgn_renderer::hl_gfx_api::HLQueue;
 use lgn_renderer::RenderHandle;
-use lgn_telemetry::{debug, error, info, trace};
+use lgn_tracing::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being
 /// created/destroyed. This is optional.

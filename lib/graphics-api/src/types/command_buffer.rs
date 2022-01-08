@@ -36,7 +36,7 @@ impl CommandBuffer {
         #[cfg(feature = "vulkan")]
         let platform_command_buffer = VulkanCommandBuffer::new(command_pool, command_buffer_def)
             .map_err(|e| {
-                lgn_telemetry::error!("Error creating command buffer {:?}", e);
+                lgn_tracing::error!("Error creating command buffer {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

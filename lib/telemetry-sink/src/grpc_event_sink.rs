@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use lgn_telemetry::{
-    error, event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
-    ThreadBlock,
-};
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
     telemetry::{
         ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo, UdtMember, UserDefinedType,
     },
+};
+use lgn_tracing::{
+    error, event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
+    ThreadBlock,
 };
 
 use crate::stream::StreamBlock;
@@ -125,7 +125,7 @@ impl GRPCEventSink {
 }
 
 impl EventSink for GRPCEventSink {
-    fn on_startup(&self, process_info: lgn_telemetry::ProcessInfo) {
+    fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
         if let Err(e) = self.sender.send(SinkEvent::Startup(ProcessInfo {
             process_id: process_info.process_id,
             exe: process_info.exe,
@@ -153,7 +153,7 @@ impl EventSink for GRPCEventSink {
 
     fn on_log(&self, _: &log::Record<'_>) {}
 
-    fn on_init_log_stream(&self, log_stream: &lgn_telemetry::LogStream) {
+    fn on_init_log_stream(&self, log_stream: &lgn_tracing::LogStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(log_stream)))
@@ -168,7 +168,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_metrics_stream(&self, metrics_stream: &lgn_telemetry::MetricsStream) {
+    fn on_init_metrics_stream(&self, metrics_stream: &lgn_tracing::MetricsStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(metrics_stream)))
@@ -186,7 +186,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_thread_stream(&self, thread_stream: &lgn_telemetry::ThreadStream) {
+    fn on_init_thread_stream(&self, thread_stream: &lgn_tracing::ThreadStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(thread_stream)))

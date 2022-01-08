@@ -90,7 +90,7 @@ impl DescriptorSetLayout {
         #[cfg(feature = "vulkan")]
         let (platform_layout, descriptors) =
             VulkanDescriptorSetLayout::new(device_context, definition).map_err(|e| {
-                lgn_telemetry::error!("Error creating platform descriptor set layout {:?}", e);
+                lgn_tracing::error!("Error creating platform descriptor set layout {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

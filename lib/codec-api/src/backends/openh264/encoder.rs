@@ -4,7 +4,7 @@
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::ptr::{addr_of_mut, null};
 
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
     SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,

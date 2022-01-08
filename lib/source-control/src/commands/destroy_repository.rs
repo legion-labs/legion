@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::{sql, RepositoryUrl};

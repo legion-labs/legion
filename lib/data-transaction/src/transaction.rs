@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_telemetry::{info, warn};
+use lgn_tracing::{info, warn};
 
 use crate::LockContext;
 

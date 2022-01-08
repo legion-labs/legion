@@ -31,7 +31,7 @@ impl Fence {
     pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_fence = VulkanFence::new(device_context).map_err(|e| {
-            lgn_telemetry::error!("Error creating platform fence {:?}", e);
+            lgn_tracing::error!("Error creating platform fence {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

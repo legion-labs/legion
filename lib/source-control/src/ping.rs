@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::server_request::{execute_request, PingRequest, ServerRequest};
 
 pub async fn ping_console_command(server_uri: &str) -> Result<()> {
-    lgn_telemetry::trace_scope!();
+    lgn_tracing::trace_scope!();
     let request = ServerRequest::Ping(PingRequest {
         specified_uri: String::from(server_uri),
     });

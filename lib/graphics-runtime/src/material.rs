@@ -7,7 +7,7 @@ use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
     ResourceTypeAndId,
 };
-use lgn_telemetry::info;
+use lgn_tracing::info;
 
 use crate::Texture;
 

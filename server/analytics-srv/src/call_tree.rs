@@ -2,7 +2,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
@@ -10,6 +9,7 @@ use lgn_telemetry_proto::analytics::ScopeDesc;
 use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
 use lgn_telemetry_proto::analytics::SpanTrack;
+use lgn_tracing::prelude::*;
 use lgn_transit::prelude::*;
 
 trait ThreadBlockProcessor {

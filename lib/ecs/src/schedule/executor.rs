@@ -1,5 +1,5 @@
 use downcast_rs::{impl_downcast, Downcast};
-use lgn_telemetry::trace_scope;
+use lgn_tracing::trace_scope;
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
 

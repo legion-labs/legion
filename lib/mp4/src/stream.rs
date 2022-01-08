@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::atoms::avc1::Avc1Atom;
 use crate::atoms::ftyp::FtypAtom;

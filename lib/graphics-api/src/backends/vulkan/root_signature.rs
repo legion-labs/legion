@@ -1,7 +1,7 @@
 use std::cmp;
 
 use ash::vk;
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use crate::{
     DeviceContext, GfxResult, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,

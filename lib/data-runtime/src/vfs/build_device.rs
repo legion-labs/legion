@@ -6,7 +6,7 @@ use std::{
 };
 
 use lgn_content_store::{ContentStore, ContentStoreAddr};
-use lgn_telemetry::info;
+use lgn_tracing::info;
 
 use super::Device;
 use crate::{manifest::Manifest, ResourceTypeAndId};

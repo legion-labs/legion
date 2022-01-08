@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(feature = "vulkan"))]
 use std::sync::atomic::Ordering;
 
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};

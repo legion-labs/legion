@@ -17,7 +17,7 @@ use lgn_online::{
     authentication::{self, Authenticator, ClientTokenSet},
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
-use lgn_telemetry::{error, info};
+use lgn_tracing::{error, info};
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},

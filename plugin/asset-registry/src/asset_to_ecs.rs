@@ -6,7 +6,7 @@ use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
     resources::DefaultMeshes,
 };
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data_runtime as runtime_data;
 

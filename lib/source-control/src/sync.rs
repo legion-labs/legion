@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use sha2::{Digest, Sha256};
 
 use crate::{

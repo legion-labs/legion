@@ -8,7 +8,7 @@ use hyper::{
     Body, Client, Request, Response, Server, StatusCode,
 };
 use hyper_rustls::HttpsConnector;
-use lgn_telemetry::{debug, info, warn};
+use lgn_tracing::{debug, info, warn};
 use tokio::sync::{Mutex, MutexGuard};
 use url::Url;
 

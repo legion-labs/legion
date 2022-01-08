@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     Error, Result,
 };
-use lgn_telemetry::{info, trace_function};
+use lgn_tracing::{info, trace_function};
 use std::{
     ffi::OsString,
     fs::create_dir_all,

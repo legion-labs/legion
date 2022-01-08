@@ -3,7 +3,7 @@ use crate::{
     RepositoryUrl,
 };
 use anyhow::Result;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 #[trace_function]
 pub async fn ping(repo_url: &RepositoryUrl) -> Result<()> {

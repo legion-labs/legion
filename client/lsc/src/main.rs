@@ -60,8 +60,8 @@ use std::path::Path;
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
-use lgn_telemetry::*;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::*;
 
 /// Legion Source Control
 #[derive(Parser, Debug)]

@@ -59,11 +59,11 @@
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
     Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
+use lgn_tracing::prelude::*;
 use lgn_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;

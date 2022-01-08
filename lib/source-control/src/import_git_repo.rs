@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,

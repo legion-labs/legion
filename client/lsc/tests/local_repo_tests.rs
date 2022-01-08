@@ -4,11 +4,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use lgn_telemetry::{
-    flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, trace_function, trace_scope,
-};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_test_utils::{create_test_dir, syscall};
+use lgn_tracing::{
+    flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, trace_function, trace_scope,
+};
 
 fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
     let path = path.as_ref();

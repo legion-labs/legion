@@ -3,7 +3,7 @@ use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
 use ash::vk;
-use lgn_telemetry::{debug, error, info, trace, warn};
+use lgn_tracing::{debug, error, info, trace, warn};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug

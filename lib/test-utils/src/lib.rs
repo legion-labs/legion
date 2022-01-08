@@ -64,7 +64,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_telemetry::prelude::*;
+use lgn_tracing::prelude::*;
 
 //std::fs::remove_dir_all leaves read-only files and reports an error
 #[trace_function]

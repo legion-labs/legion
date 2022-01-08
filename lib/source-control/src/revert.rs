@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::{
     clear_local_change, clear_resolve_pending, connect_to_server, fetch_tree_subdir,

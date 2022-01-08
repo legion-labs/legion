@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use relative_path::RelativePath;
 
 use crate::{

@@ -2,7 +2,7 @@ use lgn_graphics_api::{
     CommandBuffer, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult, Queue, Semaphore,
     Swapchain,
 };
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use parking_lot::RwLockReadGuard;
 
 use crate::resources::{CommandBufferHandle, CommandBufferPool};

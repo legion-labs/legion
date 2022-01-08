@@ -9,7 +9,7 @@ use lgn_graphics_api::{
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::components::{DirectionalLight, OmnidirectionalLight, Spotlight};

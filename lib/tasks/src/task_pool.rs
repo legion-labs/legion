@@ -7,7 +7,7 @@ use std::{
 };
 
 use futures_lite::{future, pin};
-use lgn_telemetry::TelemetryThreadGuard;
+use lgn_tracing::TelemetryThreadGuard;
 
 use crate::Task;
 

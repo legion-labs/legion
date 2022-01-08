@@ -1,5 +1,5 @@
 use lgn_math::{DVec2, IVec2, Vec2};
-use lgn_telemetry::warn;
+use lgn_tracing::warn;
 use raw_window_handle::RawWindowHandle;
 use uuid::Uuid;
 

@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
 lgn-transit = { path = "../../lib/transit", version = "0.1.0" }

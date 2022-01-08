@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
@@ -23,7 +23,7 @@ impl Queue {
     pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_queue = VulkanQueue::new(device_context, queue_type).map_err(|e| {
-            lgn_telemetry::error!("Error creating buffer {:?}", e);
+            lgn_tracing::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

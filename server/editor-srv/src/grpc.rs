@@ -13,7 +13,7 @@ use lgn_editor_proto::{
     SearchResourcesRequest, SearchResourcesResponse, UndoTransactionRequest,
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 

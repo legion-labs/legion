@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::formats::YUVSource;
 

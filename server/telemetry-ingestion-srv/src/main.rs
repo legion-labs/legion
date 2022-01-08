@@ -67,9 +67,9 @@ mod local_ingestion_service;
 mod local_telemetry_db;
 
 use anyhow::{Context, Result};
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::prelude::*;
 use local_ingestion_service::LocalIngestionService;
 use local_telemetry_db::{alloc_sql_pool, get_blocks_directory, get_data_directory};
 use tonic::transport::Server;

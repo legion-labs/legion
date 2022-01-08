@@ -1,6 +1,6 @@
 use determinator::rules::PathMatch;
 use determinator::Determinator;
-use lgn_telemetry::{trace_function, trace_scope};
+use lgn_tracing::{trace_function, trace_scope};
 
 use crate::context::Context;
 use crate::{action_step, Error, Result};

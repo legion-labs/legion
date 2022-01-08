@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use lgn_telemetry::debug;
+use lgn_tracing::debug;
 use lgn_utils::HashMap;
 
 use crate::{App, Plugin};

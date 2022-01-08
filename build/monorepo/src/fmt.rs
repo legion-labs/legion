@@ -1,7 +1,7 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::{cargo::Cargo, context::Context, Result};
 use std::ffi::OsString;

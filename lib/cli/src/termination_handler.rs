@@ -1,6 +1,6 @@
 use anyhow::Context;
 use lazy_static::lazy_static;
-use lgn_telemetry::{info, warn};
+use lgn_tracing::{info, warn};
 use tokio::sync::RwLock;
 
 use super::async_reverse_single_lock::AsyncReverseSingleLock;

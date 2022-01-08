@@ -60,8 +60,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{AppSettings, Parser};
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
-use lgn_telemetry::LevelFilter;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::LevelFilter;
 
 #[derive(Parser, Debug)]
 #[clap(name = "graphics-cgen")]

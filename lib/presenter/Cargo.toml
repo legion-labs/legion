@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 lgn-graphics-api = { path = "../graphics-api", version = "0.1.0" }
 lgn-pso-compiler = { path = "../pso-compiler", version = "0.1.0" }
 lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 raw-window-handle = "0.4"
 crossbeam-channel = "0.5"
 instant = "0.1"

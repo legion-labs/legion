@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_telemetry::{trace_function, trace_scope};
+use lgn_tracing::{trace_function, trace_scope};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 

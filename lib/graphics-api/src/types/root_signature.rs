@@ -38,7 +38,7 @@ impl RootSignature {
         #[cfg(feature = "vulkan")]
         let platform_root_signature = VulkanRootSignature::new(device_context, definition)
             .map_err(|e| {
-                lgn_telemetry::error!("Error creating platform root signature {:?}", e);
+                lgn_tracing::error!("Error creating platform root signature {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

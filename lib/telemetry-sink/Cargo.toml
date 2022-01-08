@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 lgn-transit = { path = "../transit", version = "0.1.0" }
 anyhow = "1.0"
 chrono = "0.4"

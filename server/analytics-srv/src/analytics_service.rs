@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
@@ -31,6 +30,7 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
 
 use crate::cache::DiskCache;
@@ -56,14 +56,14 @@ impl RequestGuard {
         };
         record_int_metric(&REQUEST_ID_METRIC, previous_count);
 
-        let begin_ticks = lgn_telemetry::now();
+        let begin_ticks = lgn_tracing::now();
         Self { begin_ticks }
     }
 }
 
 impl Drop for RequestGuard {
     fn drop(&mut self) {
-        let end_ticks = lgn_telemetry::now();
+        let end_ticks = lgn_tracing::now();
         let duration = end_ticks - self.begin_ticks;
         static REQUEST_TIME_METRIC: MetricDesc = MetricDesc {
             name: "Request Time",

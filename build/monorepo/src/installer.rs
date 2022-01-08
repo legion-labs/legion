@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{cargo::Cargo, config::CargoInstallation, context::Context, ignore_step};
-use lgn_telemetry::{error, info, trace_function};
+use lgn_tracing::{error, info, trace_function};
 use std::{collections::HashMap, process::Command};
 
 pub struct Installer {

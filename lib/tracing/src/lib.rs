@@ -91,7 +91,7 @@ pub mod prelude {
     pub use crate::log_events::*;
     pub use crate::metric_event::*;
     pub use crate::trace_scope;
-    pub use lgn_telemetry_proc_macros::*;
+    pub use lgn_tracing_proc_macros::*;
 }
 
 pub use prelude::*;

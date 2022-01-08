@@ -164,9 +164,9 @@ dependencies = [
  "chrono",
  "lgn-analytics",
  "lgn-source-control",
- "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-transit",
  "prost",
  "sqlx",
@@ -504,8 +504,8 @@ dependencies = [
  "lambda_runtime",
  "lgn-online",
  "lgn-streaming-proto",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "serde",
  "serde_json",
  "tokio",
@@ -2244,8 +2244,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-online",
  "lgn-tauri",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-transit",
  "prost",
  "regex",
@@ -2291,8 +2291,8 @@ dependencies = [
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-streamer",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-transform",
  "sample-data-offline",
  "sample-data-runtime",
@@ -3866,8 +3866,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
- "lgn-telemetry",
  "lgn-telemetry-proto",
+ "lgn-tracing",
  "lgn-transit",
  "prost",
  "serde_json",
@@ -3882,8 +3882,8 @@ dependencies = [
  "instant",
  "lgn-derive",
  "lgn-ecs",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-utils",
  "ron",
  "serde",
@@ -3905,7 +3905,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-runtime",
  "lgn-renderer",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-transform",
  "sample-data-runtime",
  "serde_json",
@@ -3971,7 +3971,7 @@ dependencies = [
  "anyhow",
  "ctrlc",
  "lazy_static",
- "lgn-telemetry",
+ "lgn-tracing",
  "tokio",
 ]
 
@@ -3980,7 +3980,7 @@ name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
- "lgn-telemetry",
+ "lgn-tracing",
  "openh264-sys2",
  "smallvec",
 ]
@@ -4169,7 +4169,7 @@ name = "lgn-config"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "lgn-telemetry",
+ "lgn-tracing",
  "serde",
  "toml",
 ]
@@ -4194,7 +4194,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-math",
  "lgn-tasks",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
 ]
 
@@ -4328,7 +4328,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime-macros",
  "lgn-ecs",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
  "serde_json",
@@ -4360,7 +4360,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
  "serde_json",
@@ -4397,7 +4397,7 @@ dependencies = [
  "fxhash",
  "lgn-ecs-macros",
  "lgn-tasks",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "parking_lot 0.11.2",
  "rand 0.8.4",
@@ -4446,7 +4446,7 @@ dependencies = [
  "bumpalo",
  "crossbeam-channel 0.5.1",
  "fnv",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "raw-window-handle 0.4.2",
  "serde",
@@ -4463,8 +4463,8 @@ dependencies = [
  "fxhash",
  "heck 0.4.0",
  "lgn-graphics-api",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "proc-macro2",
  "relative-path",
  "strum 0.23.0",
@@ -4509,7 +4509,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "lgn-data-runtime",
- "lgn-telemetry",
+ "lgn-tracing",
 ]
 
 [[package]]
@@ -4528,9 +4528,9 @@ dependencies = [
  "lgn-presenter-snapshot",
  "lgn-presenter-window",
  "lgn-renderer",
- "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-test-utils",
+ "lgn-tracing",
  "lgn-transform",
  "lgn-window",
  "lgn-winit",
@@ -4547,7 +4547,7 @@ dependencies = [
  "lgn-async",
  "lgn-ecs",
  "lgn-online",
- "lgn-telemetry",
+ "lgn-tracing",
  "tonic",
 ]
 
@@ -4558,7 +4558,7 @@ dependencies = [
  "lgn-app",
  "lgn-ecs",
  "lgn-math",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
 ]
@@ -4594,8 +4594,8 @@ dependencies = [
  "hex",
  "indexmap",
  "indoc",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "once_cell",
  "rayon",
  "semver 1.0.4",
@@ -4614,7 +4614,7 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
- "lgn-telemetry",
+ "lgn-tracing",
  "num-rational",
  "serde",
  "serde_json",
@@ -4638,8 +4638,8 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lambda_http",
  "lambda_runtime",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "pin-project",
  "prost",
  "reqwest",
@@ -4673,7 +4673,7 @@ dependencies = [
  "lgn-graphics-api",
  "lgn-pso-compiler",
  "lgn-renderer",
- "lgn-telemetry",
+ "lgn-tracing",
  "raw-window-handle 0.4.2",
 ]
 
@@ -4742,7 +4742,7 @@ dependencies = [
  "lgn-math",
  "lgn-pso-compiler",
  "lgn-tasks",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
@@ -4799,7 +4799,7 @@ dependencies = [
  "git2",
  "glob",
  "http",
- "lgn-telemetry",
+ "lgn-tracing",
  "lz4",
  "path-clean",
  "pin-project",
@@ -4857,7 +4857,7 @@ dependencies = [
  "lgn-renderer",
  "lgn-streaming-proto",
  "lgn-tasks",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
  "serde_json",
@@ -4887,7 +4887,7 @@ dependencies = [
  "event-listener",
  "futures-lite",
  "instant",
- "lgn-telemetry",
+ "lgn-tracing",
  "num_cpus",
  "wasm-bindgen-futures",
 ]
@@ -4907,35 +4907,6 @@ dependencies = [
 name = "lgn-tauri-macros"
 version = "0.1.0"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "lgn-telemetry"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "criterion",
- "lazy_static",
- "lgn-telemetry-proc-macros",
- "lgn-transit",
- "lgn-utils",
- "log",
- "memoffset 0.6.5",
- "raw-cpuid",
- "thread-id",
- "uuid",
- "whoami",
-]
-
-[[package]]
-name = "lgn-telemetry-proc-macros"
-version = "0.1.0"
-dependencies = [
- "lgn-telemetry",
  "proc-macro2",
  "quote",
  "syn",
@@ -4962,8 +4933,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "json",
- "lgn-telemetry",
  "lgn-telemetry-proto",
+ "lgn-tracing",
  "lgn-transit",
  "prost",
  "simple_logger",
@@ -4976,7 +4947,36 @@ dependencies = [
 name = "lgn-test-utils"
 version = "0.1.0"
 dependencies = [
- "lgn-telemetry",
+ "lgn-tracing",
+]
+
+[[package]]
+name = "lgn-tracing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "criterion",
+ "lazy_static",
+ "lgn-tracing-proc-macros",
+ "lgn-transit",
+ "lgn-utils",
+ "log",
+ "memoffset 0.6.5",
+ "raw-cpuid",
+ "thread-id",
+ "uuid",
+ "whoami",
+]
+
+[[package]]
+name = "lgn-tracing-proc-macros"
+version = "0.1.0"
+dependencies = [
+ "lgn-tracing",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -4986,7 +4986,7 @@ dependencies = [
  "lgn-app",
  "lgn-ecs",
  "lgn-math",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "smallvec",
 ]
@@ -5041,7 +5041,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-math",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "raw-window-handle 0.4.2",
  "uuid",
@@ -5057,7 +5057,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-input",
  "lgn-math",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-utils",
  "lgn-window",
  "raw-window-handle 0.4.2",
@@ -5198,9 +5198,9 @@ dependencies = [
  "anyhow",
  "clap 3.0.5",
  "lgn-source-control",
- "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-test-utils",
+ "lgn-tracing",
  "tokio",
 ]
 
@@ -7130,8 +7130,8 @@ dependencies = [
  "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "tauri",
  "tauri-build",
  "url",
@@ -7155,7 +7155,7 @@ dependencies = [
  "lgn-presenter-window",
  "lgn-renderer",
  "lgn-streamer",
- "lgn-telemetry",
+ "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
@@ -7356,7 +7356,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-runtime",
  "lgn-math",
- "lgn-telemetry",
+ "lgn-tracing",
  "serde",
  "typetag",
 ]
@@ -8449,9 +8449,9 @@ dependencies = [
  "fs_extra",
  "json",
  "lgn-analytics",
- "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-test-utils",
+ "lgn-tracing",
  "lgn-transit",
  "lz4",
  "prost",
@@ -8465,9 +8465,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "lgn-telemetry",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "prost",
  "serde_json",
  "sqlx",
@@ -9224,8 +9224,8 @@ dependencies = [
  "anyhow",
  "clap 3.0.5",
  "lgn-cli",
- "lgn-telemetry",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "tokio",
 ]
 

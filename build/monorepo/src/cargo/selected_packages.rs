@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use clap::Args;
 use guppy::graph::{BuildTargetId, DependencyDirection};
-use lgn_telemetry::{trace_function, warn};
+use lgn_tracing::{trace_function, warn};
 
 use crate::changed_since::changed_since_impl;
 use crate::context::Context;

@@ -32,7 +32,7 @@ impl TextureView {
 
         #[cfg(feature = "vulkan")]
         let platform_texture_view = VulkanTextureView::new(texture, view_def).map_err(|e| {
-            lgn_telemetry::error!("Error creating platform texture view {:?}", e);
+            lgn_tracing::error!("Error creating platform texture view {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use sqlx::Row;
 
 use crate::{

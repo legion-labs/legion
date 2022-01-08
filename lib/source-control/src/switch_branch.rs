@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::{
     connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,

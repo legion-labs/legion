@@ -104,7 +104,7 @@ pub fn trace_function(
     function.block.stmts.insert(
         0,
         parse_quote! {
-            lgn_telemetry::trace_scope!(_SCOPE_FUNC, concat!(module_path!(), "::", #function_name));
+            lgn_tracing::trace_scope!(_SCOPE_FUNC, concat!(module_path!(), "::", #function_name));
         },
     );
     proc_macro::TokenStream::from(quote! {
@@ -138,7 +138,7 @@ pub fn log_function(
     function.block.stmts.insert(
         0,
         parse_quote! {
-            lgn_telemetry::trace!(#function_name);
+            lgn_tracing::trace!(#function_name);
         },
     );
     proc_macro::TokenStream::from(quote! {

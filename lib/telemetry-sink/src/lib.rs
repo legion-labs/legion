@@ -60,7 +60,7 @@
 
 use std::sync::Arc;
 
-use lgn_telemetry::{prelude::*, EventSink};
+use lgn_tracing::{prelude::*, EventSink};
 
 mod grpc_event_sink;
 mod immediate_event_sink;

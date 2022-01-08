@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use determinator::Utf8Paths0;
 use guppy::{graph::PackageGraph, MetadataCommand};
 use indoc::formatdoc;
-use lgn_telemetry::{debug, info, trace_scope};
+use lgn_tracing::{debug, info, trace_scope};
 use once_cell::sync::OnceCell;
 use std::{
     borrow::Cow,

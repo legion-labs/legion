@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 

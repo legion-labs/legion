@@ -1,7 +1,7 @@
 use camino::Utf8PathBuf;
 use guppy::graph::cargo::CargoResolverVersion;
 use hakari::{HakariBuilder, HakariOutputOptions};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use toml_edit::Document;
 
 use crate::{action_step, context::Context, Error, Result};

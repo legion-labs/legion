@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use lgn_ecs::prelude::*;
-use lgn_telemetry::error;
-use lgn_telemetry::prelude::*;
+use lgn_tracing::error;
+use lgn_tracing::prelude::*;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 

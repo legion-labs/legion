@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
-use lgn_telemetry::{info, warn};
+use lgn_tracing::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;
 

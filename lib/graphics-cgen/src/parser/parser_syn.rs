@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use lgn_telemetry::{trace, warn};
+use lgn_tracing::{trace, warn};
 use relative_path::RelativePath;
 use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
 

@@ -68,7 +68,7 @@ use lgn_input::{
     touch::TouchInput,
 };
 use lgn_math::{ivec2, DVec2, Vec2};
-use lgn_telemetry::{error, trace, trace_scope, warn};
+use lgn_tracing::{error, trace, trace_scope, warn};
 use lgn_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ReceivedCharacter,
     WindowBackendScaleFactorChanged, WindowCloseRequested, WindowCreated, WindowFocused,

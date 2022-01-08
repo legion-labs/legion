@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use lgn_telemetry::{
+use lgn_tracing::{
     flush_log_buffer, flush_metrics_buffer, get_process_id, info, init_event_dispatch,
     init_thread_stream, record_float_metric, record_int_metric, set_max_log_level, trace_scope,
     LevelFilter, MetricDesc,

@@ -85,8 +85,8 @@ mod tools;
 //mod package;
 
 use clap::{Parser, Subcommand};
-use lgn_telemetry::trace_scope;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::trace_scope;
 
 use error::Error;
 

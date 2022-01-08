@@ -5,7 +5,7 @@ use crate::git::GitCli;
 use crate::{context::Context, Error, Result};
 use determinator::{Determinator, DeterminatorSet};
 use guppy::graph::{cargo::CargoResolverVersion, DependencyDirection};
-use lgn_telemetry::{flush_thread_buffer, init_thread_stream, trace, trace_function, trace_scope};
+use lgn_tracing::{flush_thread_buffer, init_thread_stream, trace, trace_function, trace_scope};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {

@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use ash::extensions::khr;
 use ash::vk;
 use fnv::FnvHashMap;
-use lgn_telemetry::{debug, info, trace, warn};
+use lgn_tracing::{debug, info, trace, warn};
 
 use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,

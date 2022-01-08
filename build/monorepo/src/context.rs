@@ -3,8 +3,8 @@
 
 use camino::{Utf8Path, Utf8PathBuf};
 use guppy::graph::PackageGraph;
-use lgn_telemetry::trace_function;
-use lgn_telemetry::trace_scope;
+use lgn_tracing::trace_function;
+use lgn_tracing::trace_scope;
 use once_cell::sync::OnceCell;
 
 use crate::config::MonorepoConfig;

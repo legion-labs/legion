@@ -1,5 +1,5 @@
 #![allow(clippy::too_many_lines)]
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use super::internal;
 use crate::{

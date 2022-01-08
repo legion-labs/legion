@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use lgn_telemetry::error;
+use lgn_tracing::error;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetWriter;

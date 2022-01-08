@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use lgn_telemetry::{info, trace_function};
+use lgn_tracing::{info, trace_function};
 use reqwest::Url;
 
 use crate::http_repository_query::HttpRepositoryQuery;

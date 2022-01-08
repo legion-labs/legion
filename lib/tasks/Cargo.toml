@@ -6,7 +6,7 @@ description = "A task executor for the Legion Engine"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 futures-lite = "1.12"
 event-listener = "2.5"
 async-executor = "1.4"

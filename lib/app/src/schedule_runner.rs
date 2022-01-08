@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_telemetry::{info, trace_scope};
+use lgn_tracing::{info, trace_scope};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
@@ -56,7 +56,7 @@ fn set_time_period() {
     #[cfg(windows)]
     #[allow(unsafe_code)]
     unsafe {
-        use lgn_telemetry::error;
+        use lgn_tracing::error;
         use windows::Win32::Media::timeBeginPeriod;
         use windows::Win32::Media::TIMERR_NOERROR;
 

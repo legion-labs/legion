@@ -4,7 +4,7 @@ use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
 use ash::vk::Extent2D;
-use lgn_telemetry::{debug, error, info, trace};
+use lgn_tracing::{debug, error, info, trace};
 use raw_window_handle::HasRawWindowHandle;
 
 use super::VulkanRawImage;

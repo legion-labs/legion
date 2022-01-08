@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 
 use crate::{
     connect_to_server, find_branch_commits, find_workspace_root, read_current_branch,

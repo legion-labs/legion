@@ -8,7 +8,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::Instant;
 
 use indexmap::IndexMap;
-use lgn_telemetry::{info, trace_function, warn};
+use lgn_tracing::{info, trace_function, warn};
 
 use crate::context::Context;
 use crate::{Error, Result};

@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs};
 
 use camino::Utf8Path;
 use determinator::rules::DeterminatorRules;
-use lgn_telemetry::trace_function;
+use lgn_tracing::trace_function;
 use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result};

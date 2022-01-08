@@ -22,7 +22,7 @@ lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 lgn-transform = { path = "../transform", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-window = { path = "../window", version = "0.1.0" }
-lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 
 anyhow = "1.0"
 bumpalo = "3.8"

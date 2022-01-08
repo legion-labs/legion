@@ -14,7 +14,7 @@ lgn-data-build = { path = "../data-build", version = "0.1.0" }
 lgn-content-store = { path = "../content-store", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
 lgn-data-model = { path = "../data-model" }
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 
 # others
 serde = { version = "1.0", features = ["derive"] }

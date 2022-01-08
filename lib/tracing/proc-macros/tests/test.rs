@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use lgn_telemetry::{NullEventSink, TelemetrySystemGuard, TelemetryThreadGuard};
-use lgn_telemetry_proc_macros::{log_function, trace_function};
+use lgn_tracing::{NullEventSink, TelemetrySystemGuard, TelemetryThreadGuard};
+use lgn_tracing_proc_macros::{log_function, trace_function};
 
 #[trace_function]
 fn trace_func() {}

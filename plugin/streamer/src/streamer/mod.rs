@@ -13,7 +13,7 @@ use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     RenderTaskPool, Renderer,
 };
-use lgn_telemetry::{error, info, warn};
+use lgn_tracing::{error, info, warn};
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,

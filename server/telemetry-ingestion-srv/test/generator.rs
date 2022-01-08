@@ -1,7 +1,7 @@
 //! Generator test
 
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

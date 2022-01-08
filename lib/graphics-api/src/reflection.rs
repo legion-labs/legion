@@ -1,4 +1,4 @@
-use lgn_telemetry::error;
+use lgn_tracing::error;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 

@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use lgn_telemetry::{
+use lgn_tracing::{
     log, log::Log, EventSink, LogBlock, LogStream, MetricsBlock, MetricsStream, ProcessInfo,
     ThreadBlock, ThreadEventQueueAny, ThreadStream,
 };

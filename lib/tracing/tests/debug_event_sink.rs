@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use lgn_telemetry::{
+use lgn_tracing::{
     log, EventSink, Level, LogBlock, LogMsgQueueAny, LogStream, MetricsBlock, MetricsMsgQueueAny,
     MetricsStream, ProcessInfo, ThreadBlock, ThreadEventQueueAny, ThreadStream,
 };

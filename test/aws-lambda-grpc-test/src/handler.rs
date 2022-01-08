@@ -1,7 +1,7 @@
 use lgn_streaming_proto::{
     streamer_server::Streamer, InitializeStreamRequest, InitializeStreamResponse,
 };
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use tonic::{Request, Response, Status};
 
 pub struct MyStreamer;

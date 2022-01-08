@@ -75,7 +75,7 @@ use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_streamer::StreamerPlugin;
-use lgn_telemetry::prelude::*;
+use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]

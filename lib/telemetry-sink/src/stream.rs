@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use lgn_telemetry::event_block::TelemetryBlock;
-use lgn_telemetry::{
+use lgn_telemetry_proto::compress;
+use lgn_telemetry_proto::telemetry::Block as EncodedBlock;
+use lgn_tracing::event_block::TelemetryBlock;
+use lgn_tracing::{
     LogBlock, LogDepsQueue, LogMsgQueueAny, MetricEvent, MetricsBlock, MetricsDepsQueue,
     MetricsMsgQueueAny, ReferencedMetricDesc, ReferencedScope, ScopeDesc, ThreadBlock,
     ThreadDepsQueue, ThreadEventQueueAny,
 };
-use lgn_telemetry_proto::compress;
-use lgn_telemetry_proto::telemetry::Block as EncodedBlock;
 use lgn_transit::{HeterogeneousQueue, StaticString};
 
 pub trait StreamBlock {

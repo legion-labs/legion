@@ -5,7 +5,7 @@ use crate::{
     context::Context,
     Result,
 };
-use lgn_telemetry::{info, trace_function};
+use lgn_tracing::{info, trace_function};
 use std::ffi::OsString;
 
 #[derive(Debug, clap::Args)]

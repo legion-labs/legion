@@ -6,7 +6,7 @@ use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-use lgn_telemetry::{debug, error, info, log_enabled, trace, warn, Level};
+use lgn_tracing::{debug, error, info, log_enabled, trace, warn, Level};
 
 use crate::backends::vulkan::check_extensions_availability;
 use crate::backends::vulkan::VkDebugReporter;

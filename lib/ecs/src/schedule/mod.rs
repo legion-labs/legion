@@ -20,7 +20,7 @@ pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
-use lgn_telemetry::trace_scope;
+use lgn_tracing::trace_scope;
 use lgn_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;

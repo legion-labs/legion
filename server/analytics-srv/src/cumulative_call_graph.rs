@@ -3,11 +3,11 @@ use std::{cmp::min, path::Path};
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
+use lgn_tracing::prelude::*;
 
 use crate::call_tree::{compute_block_call_tree, ScopeHashMap}; //todo: move to analytics lib
 
