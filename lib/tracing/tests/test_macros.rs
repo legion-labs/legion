@@ -62,14 +62,12 @@ fn test_thread_spans(state: SharedState) {
     println!("TSC frequency: {}", get_tsc_frequency().unwrap_or_default());
     let mut threads = Vec::new();
     for _ in 0..5 {
-        //let state = state.clone();
         threads.push(thread::spawn(move || {
             init_thread_stream();
             for _ in 0..1024 {
                 trace_scope!("test");
             }
             flush_thread_buffer();
-            //expect_state!(state, Some(State::ProcessThreadBlock(2048)));
         }));
     }
     for t in threads {
@@ -118,7 +116,7 @@ fn test_log() {
     let state = Arc::new(Mutex::new(None));
     init_event_dispatch(
         10 * 1024,
-        1024 * 1024,
+        64 * 1024,
         12 * 1024,
         Arc::new(DebugEventSink::new(state.clone())),
     )
