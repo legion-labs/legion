@@ -7,7 +7,6 @@ use std::{
 };
 
 use futures_lite::{future, pin};
-use lgn_tracing::TelemetryThreadGuard;
 
 use crate::Task;
 
@@ -138,7 +137,8 @@ impl TaskPool {
 
                 thread_builder
                     .spawn(move || {
-                        let _telemetry_thread_guard = TelemetryThreadGuard::new();
+                        let _telemetry_thread_guard =
+                            lgn_tracing::guard::TelemetryThreadGuard::new();
 
                         let shutdown_future = ex.run(shutdown_rx.recv());
                         // Use unwrap_err because we expect a Closed error

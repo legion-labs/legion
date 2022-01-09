@@ -1,6 +1,9 @@
-//! Telemetry library
+//! Tracing crate
 //!
 //! Provides logging, metrics, memory and performance profiling
+//!
+//!  Have the lowest impact on the critical path of execution while
+//! providing great visibility
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -59,38 +62,30 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
 pub mod dispatch;
-pub mod dual_time;
 pub mod event_block;
 pub mod event_sink;
 pub mod event_stream;
 pub mod guard;
 pub mod log_block;
 pub mod log_events;
-pub mod metric_event;
+
+pub mod metric_events;
 pub mod metrics_block;
 pub mod panic_hook;
-pub mod scope;
 pub mod thread_block;
 pub mod thread_events;
 
-pub use dual_time::*;
-pub use event_sink::*;
-pub use event_stream::*;
-pub use log;
-pub use log_block::*;
-pub use metrics_block::*;
-pub use scope::*;
-pub use thread_block::*;
-pub use thread_events::*;
+#[macro_use]
+mod macros;
+mod levels;
+mod time;
 
 pub mod prelude {
-    pub use crate::dispatch::*;
-    pub use crate::guard::*;
-    // re-exporting log macros for convenience
-    pub use crate::log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
-    pub use crate::log_events::*;
-    pub use crate::metric_event::*;
-    pub use crate::trace_scope;
+    pub use crate::levels::*;
+    pub use crate::time::*;
+    pub use crate::{
+        debug, error, info, log, log_enabled, metric_float, metric_int, trace, trace_scope, warn,
+    };
     pub use lgn_tracing_proc_macros::*;
 }
 

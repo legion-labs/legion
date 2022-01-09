@@ -1,8 +1,12 @@
 use anyhow::Result;
 use lgn_telemetry_proto::compress;
 use lgn_telemetry_proto::telemetry::Block as EncodedBlock;
-use lgn_tracing::event_block::{ExtractDeps, TracingBlock};
-use lgn_tracing::{LogBlock, MetricsBlock, ThreadBlock};
+use lgn_tracing::{
+    event_block::{ExtractDeps, TracingBlock},
+    log_block::LogBlock,
+    metrics_block::MetricsBlock,
+    thread_block::ThreadBlock,
+};
 
 pub trait StreamBlock {
     fn encode(&self) -> Result<EncodedBlock>;

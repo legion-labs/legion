@@ -1,19 +1,23 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::{
     cell::Cell,
     sync::{Arc, Mutex},
 };
 
 use chrono::Utc;
-use log::{warn, LevelFilter};
 
 use crate::event_block::TracingBlock;
-use crate::metrics_block::MetricsStream;
-use crate::{
-    now, BeginScopeEvent, EndScopeEvent, EventSink, FloatMetricEvent, IntegerMetricEvent, Level,
-    LogBlock, LogDynMsgEvent, LogMsgEvent, LogStream, MetricDesc, MetricsBlock, NullEventSink,
-    ProcessInfo, ScopeDesc, ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
+use crate::event_sink::{EventSink, NullEventSink, ProcessInfo};
+use crate::log_block::{LogBlock, LogStream};
+use crate::log_events::{
+    LogDesc, LogStaticStrEvent, LogStaticStrInteropEvent, LogStringEvent, LogStringInteropEvent,
 };
+use crate::metric_events::{FloatMetricEvent, IntegerMetricEvent, MetricDesc};
+use crate::metrics_block::{MetricsBlock, MetricsStream};
+use crate::thread_block::{ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream};
+use crate::thread_events::{BeginThreadSpanEvent, EndThreadSpanEvent, ThreadSpanDesc};
+use crate::{info, now, warn, Level};
 
 struct Dispatch {
     process_id: String,
@@ -137,32 +141,29 @@ impl Dispatch {
     }
 
     #[inline]
-    fn int_metric(&mut self, metric: &'static MetricDesc, value: u64) {
+    fn int_metric(&mut self, desc: &'static MetricDesc, value: u64) {
         let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream.get_events_mut().push(IntegerMetricEvent {
-            metric,
-            value,
-            time,
-        });
+        metrics_stream
+            .get_events_mut()
+            .push(IntegerMetricEvent { desc, value, time });
         if metrics_stream.is_full() {
-            // Release the lock before calling on_log_buffer_full
+            // Release the lock before calling flush_metrics_buffer
             drop(metrics_stream);
             self.flush_metrics_buffer();
         }
     }
 
     #[inline]
-    fn float_metric(&mut self, metric: &'static MetricDesc, value: f64) {
+    fn float_metric(&mut self, desc: &'static MetricDesc, value: f64) {
         let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream.get_events_mut().push(FloatMetricEvent {
-            metric,
-            value,
-            time,
-        });
+        metrics_stream
+            .get_events_mut()
+            .push(FloatMetricEvent { desc, value, time });
         if metrics_stream.is_full() {
             drop(metrics_stream);
+            // Release the lock before calling flush_metrics_buffer
             self.flush_metrics_buffer();
         }
     }
@@ -183,54 +184,58 @@ impl Dispatch {
         self.sink.on_process_metrics_block(old_event_block);
     }
 
-    #[inline]
-    fn log_enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.sink.on_log_enabled(metadata)
-    }
-
-    fn log(&mut self, record: &log::Record<'_>) {
-        self.sink.on_log(record);
-        if let Some(static_str) = record.args().as_str() {
-            self.log_static_str(record.level(), static_str);
-        } else {
-            self.log_string(
-                record.level(),
-                format!("target={} {}", record.metadata().target(), record.args()),
-            );
-        }
+    fn log_enabled(&mut self, level: Level, target: &str) -> bool {
+        self.sink.on_log_enabled(level, target)
     }
 
     #[inline]
-    fn log_static_str(&mut self, level: Level, msg: &'static str) {
+    fn log(&mut self, desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
         let time = now();
+        self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
-        if log_stream.is_empty() {
-            return;
+        if args.as_str().is_some() {
+            log_stream
+                .get_events_mut()
+                .push(LogStaticStrEvent { desc, time });
+        } else {
+            log_stream.get_events_mut().push(LogStringEvent {
+                desc,
+                time,
+                dyn_str: lgn_tracing_transit::DynString(args.to_string()),
+            });
         }
-        log_stream.get_events_mut().push(LogMsgEvent {
-            time,
-            level: level as u8,
-            msg_len: msg.len() as u32,
-            msg: msg.as_ptr(),
-        });
         if log_stream.is_full() {
-            // Release the lock before calling on_log_buffer_full
+            // Release the lock before calling flush_log_buffer
             drop(log_stream);
             self.flush_log_buffer();
         }
     }
 
     #[inline]
-    fn log_string(&mut self, level: Level, msg: String) {
+    fn log_interop(&mut self, desc: &LogDesc, args: &fmt::Arguments<'_>) {
         let time = now();
+        self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
-        log_stream.get_events_mut().push(LogDynMsgEvent {
-            time,
-            level: level as u8,
-            msg: lgn_tracing_transit::DynString(msg),
-        });
+        if let Some(msg) = args.as_str() {
+            log_stream.get_events_mut().push(LogStaticStrInteropEvent {
+                time,
+                level: desc.level,
+                target_len: desc.target.len() as u32,
+                target: desc.target.as_ptr(),
+                msg_len: msg.len() as u32,
+                msg: msg.as_ptr(),
+            });
+        } else {
+            log_stream.get_events_mut().push(LogStringInteropEvent {
+                time,
+                level: desc.level,
+                target_len: desc.target.len() as u32,
+                target: desc.target.as_ptr(),
+                msg: lgn_tracing_transit::DynString(args.to_string()),
+            });
+        }
         if log_stream.is_full() {
-            // Release the lock before calling on_log_buffer_full()
+            // Release the lock before calling flush_log_buffer
             drop(log_stream);
             self.flush_log_buffer();
         }
@@ -265,10 +270,7 @@ impl Dispatch {
     }
 }
 
-struct LogDispatch;
-
 static mut G_DISPATCH: Option<Dispatch> = None;
-static LOG_DISPATCHER: LogDispatch = LogDispatch;
 
 thread_local! {
     static LOCAL_THREAD_STREAM: Cell<Option<ThreadStream>> = Cell::new(None);
@@ -279,7 +281,7 @@ pub fn init_event_dispatch(
     thread_buffer_size: usize,
     metrics_buffer_size: usize,
     sink: Arc<dyn EventSink>,
-) -> Result<(), String> {
+) -> anyhow::Result<()> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
     }
@@ -293,43 +295,16 @@ pub fn init_event_dispatch(
                 metrics_buffer_size,
                 sink,
             ));
-            log::set_logger(&LOG_DISPATCHER).unwrap();
             Ok(())
         } else {
-            log::info!("event dispatch already initialized");
-            Err(String::from("event dispatch already initialized"))
+            info!("event dispatch already initialized");
+            Err(anyhow::anyhow!("event dispatch already initialized"))
         }
     }
-}
-
-impl log::Log for LogDispatch {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        unsafe {
-            if let Some(d) = &mut G_DISPATCH {
-                d.log_enabled(metadata)
-            } else {
-                false
-            }
-        }
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        unsafe {
-            if let Some(d) = &mut G_DISPATCH {
-                d.log(record);
-            }
-        }
-    }
-    fn flush(&self) {}
 }
 
 #[inline]
-pub fn set_max_log_level(level_filter: LevelFilter) {
-    log::set_max_level(level_filter);
-}
-
-#[inline]
-pub fn get_process_id() -> Option<String> {
+pub fn process_id() -> Option<String> {
     unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
 }
 
@@ -356,6 +331,35 @@ pub fn record_float_metric(metric_desc: &'static MetricDesc, value: f64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.float_metric(metric_desc, value);
+        }
+    }
+}
+
+#[inline]
+pub fn log(desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log(desc, args);
+        }
+    }
+}
+
+#[inline]
+pub fn log_interop(desc: &LogDesc, args: &fmt::Arguments<'_>) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log_interop(desc, args);
+        }
+    }
+}
+
+#[inline]
+pub fn log_enabled(target: &str, level: Level) -> bool {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log_enabled(level, target)
+        } else {
+            false
         }
     }
 }
@@ -428,11 +432,17 @@ where
 }
 
 #[inline]
-pub fn on_begin_scope(scope: &'static ScopeDesc) {
-    on_thread_event(BeginScopeEvent { time: now(), scope });
+pub fn on_begin_scope(scope: &'static ThreadSpanDesc) {
+    on_thread_event(BeginThreadSpanEvent {
+        time: now(),
+        thread_span_desc: scope,
+    });
 }
 
 #[inline]
-pub fn on_end_scope(scope: &'static ScopeDesc) {
-    on_thread_event(EndScopeEvent { time: now(), scope });
+pub fn on_end_scope(scope: &'static ThreadSpanDesc) {
+    on_thread_event(EndThreadSpanEvent {
+        time: now(),
+        thread_span_desc: scope,
+    });
 }

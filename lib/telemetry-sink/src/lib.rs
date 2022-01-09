@@ -60,8 +60,6 @@
 
 use std::sync::Arc;
 
-use lgn_tracing::{prelude::*, EventSink};
-
 mod grpc_event_sink;
 mod immediate_event_sink;
 mod stream;
@@ -73,6 +71,11 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+use lgn_tracing::{
+    event_sink::EventSink,
+    guard::{TelemetrySystemGuard, TelemetryThreadGuard},
+    set_max_level, LevelFilter,
+};
 
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
@@ -81,18 +84,24 @@ pub struct TelemetryGuard {
 }
 
 impl TelemetryGuard {
-    pub fn new() -> anyhow::Result<Self, String> {
+    pub fn new() -> anyhow::Result<Self> {
         let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
             Ok(url) => Arc::new(GRPCEventSink::new(&url)),
             Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
                 std::env::var("LGN_TRACE_FILE").ok(),
-            )),
+            )?),
         };
         #[cfg(debug_assertions)]
-        set_max_log_level(LevelFilter::Info);
+        {
+            log::set_max_level(log::LevelFilter::Info);
+            set_max_level(LevelFilter::Info);
+        }
 
         #[cfg(not(debug_assertions))]
-        set_max_log_level(LevelFilter::Warn);
+        {
+            log::set_max_level(log::LevelFilter::Warn);
+            set_max_level(LevelFilter::Warn);
+        }
 
         // order here is important
         Ok(Self {
@@ -100,8 +109,16 @@ impl TelemetryGuard {
             _thread_guard: TelemetryThreadGuard::new(),
         })
     }
-    pub fn with_log_level(self, leve_filter: LevelFilter) -> Self {
-        set_max_log_level(leve_filter);
+    pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
+        let level_filter = match level_filter {
+            LevelFilter::Off => log::LevelFilter::Off,
+            LevelFilter::Error => log::LevelFilter::Error,
+            LevelFilter::Warn => log::LevelFilter::Warn,
+            LevelFilter::Info => log::LevelFilter::Info,
+            LevelFilter::Debug => log::LevelFilter::Debug,
+            LevelFilter::Trace => log::LevelFilter::Trace,
+        };
+        log::set_max_level(level_filter);
         self
     }
 }

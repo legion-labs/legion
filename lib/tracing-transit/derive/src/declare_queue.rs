@@ -127,6 +127,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
 
         #[derive(Debug)]
+        #[allow(clippy::enum_variant_names)]
         pub enum #any_ident{
             #(#type_args(#type_args),)*
         }

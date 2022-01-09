@@ -2,47 +2,56 @@ use std::collections::HashSet;
 
 use lgn_tracing_transit::prelude::*;
 
-use crate::event_block::ExtractDeps;
-use crate::prelude::*;
-use crate::{event_block::EventBlock, EventStream};
+use crate::{
+    event_block::{EventBlock, ExtractDeps},
+    event_stream::EventStream,
+    metric_events::{FloatMetricEvent, IntegerMetricEvent, MetricDesc, ReferencedMetricDesc},
+};
 
 declare_queue_struct!(
     struct MetricsMsgQueue<IntegerMetricEvent, FloatMetricEvent> {}
 );
 
-#[derive(Debug, TransitReflect)]
-pub struct ReferencedMetricDesc {
-    pub id: u64,
-    pub name: *const u8,
-    pub unit: *const u8,
-}
-
-impl InProcSerialize for ReferencedMetricDesc {}
-
 declare_queue_struct!(
     struct MetricsDepsQueue<StaticString, ReferencedMetricDesc> {}
 );
 
-fn record_metric_event_dependencies<T: MetricEvent>(
-    evt: &T,
+fn record_metric_event_dependencies(
+    metric_desc: &MetricDesc,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut MetricsDepsQueue,
 ) {
-    let metric = evt.get_metric();
-    let metric_ptr = std::ptr::addr_of!(*metric) as u64;
+    let metric_ptr = metric_desc as *const _ as u64;
     if recorded_deps.insert(metric_ptr) {
-        let name = StaticString::from(metric.name);
+        let name = StaticString::from(metric_desc.name);
         if recorded_deps.insert(name.ptr as u64) {
             deps.push(name);
         }
-        let unit = StaticString::from(metric.unit);
+        let unit = StaticString::from(metric_desc.unit);
         if recorded_deps.insert(unit.ptr as u64) {
             deps.push(unit);
         }
+        let target = StaticString::from(metric_desc.target);
+        if recorded_deps.insert(target.ptr as u64) {
+            deps.push(target);
+        }
+        let module_path = StaticString::from(metric_desc.module_path);
+        if recorded_deps.insert(module_path.ptr as u64) {
+            deps.push(module_path);
+        }
+        let file = StaticString::from(metric_desc.file);
+        if recorded_deps.insert(file.ptr as u64) {
+            deps.push(file);
+        }
         deps.push(ReferencedMetricDesc {
             id: metric_ptr,
-            name: metric.name.as_ptr(),
-            unit: metric.unit.as_ptr(),
+            name: metric_desc.name.as_ptr(),
+            unit: metric_desc.unit.as_ptr(),
+            target: metric_desc.target.as_ptr(),
+            module_path: metric_desc.module_path.as_ptr(),
+            file: metric_desc.file.as_ptr(),
+            line: metric_desc.line,
+            lod: metric_desc.lod,
         });
     }
 }
@@ -56,10 +65,10 @@ impl ExtractDeps for MetricsMsgQueue {
         for x in self.iter() {
             match x {
                 MetricsMsgQueueAny::IntegerMetricEvent(evt) => {
-                    record_metric_event_dependencies(&evt, &mut recorded_deps, &mut deps);
+                    record_metric_event_dependencies(evt.desc, &mut recorded_deps, &mut deps);
                 }
                 MetricsMsgQueueAny::FloatMetricEvent(evt) => {
-                    record_metric_event_dependencies(&evt, &mut recorded_deps, &mut deps);
+                    record_metric_event_dependencies(evt.desc, &mut recorded_deps, &mut deps);
                 }
             }
         }

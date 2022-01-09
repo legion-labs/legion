@@ -30,6 +30,7 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
 
@@ -50,11 +51,7 @@ impl RequestGuard {
     fn new() -> Self {
         init_thread_stream();
         let previous_count = REQUEST_COUNT.fetch_add(1, Ordering::SeqCst);
-        static REQUEST_ID_METRIC: MetricDesc = MetricDesc {
-            name: "Request ID",
-            unit: "count",
-        };
-        record_int_metric(&REQUEST_ID_METRIC, previous_count);
+        metric_int!("count", "Request Count", previous_count);
 
         let begin_ticks = lgn_tracing::now();
         Self { begin_ticks }
@@ -65,11 +62,7 @@ impl Drop for RequestGuard {
     fn drop(&mut self) {
         let end_ticks = lgn_tracing::now();
         let duration = end_ticks - self.begin_ticks;
-        static REQUEST_TIME_METRIC: MetricDesc = MetricDesc {
-            name: "Request Time",
-            unit: "ticks",
-        };
-        record_int_metric(&REQUEST_TIME_METRIC, duration as u64);
+        metric_int!("ticks", "Request Duration", duration as u64);
     }
 }
 

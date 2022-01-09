@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
@@ -9,7 +9,13 @@ use lgn_telemetry_proto::{
 use lgn_tracing::{
     error,
     event_block::{ExtractDeps, TracingBlock},
-    log, EventSink, EventStream, LogBlock, MetricsBlock, ThreadBlock,
+    event_sink::EventSink,
+    event_stream::EventStream,
+    log_block::{LogBlock, LogStream},
+    log_events::LogDesc,
+    metrics_block::{MetricsBlock, MetricsStream},
+    thread_block::{ThreadBlock, ThreadStream},
+    Level,
 };
 
 use crate::stream::StreamBlock;
@@ -126,7 +132,7 @@ impl GRPCEventSink {
 }
 
 impl EventSink for GRPCEventSink {
-    fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
+    fn on_startup(&self, process_info: lgn_tracing::event_sink::ProcessInfo) {
         if let Err(e) = self.sender.send(SinkEvent::Startup(ProcessInfo {
             process_id: process_info.process_id,
             exe: process_info.exe,
@@ -148,13 +154,13 @@ impl EventSink for GRPCEventSink {
         // nothing to do
     }
 
-    fn on_log_enabled(&self, _: &log::Metadata<'_>) -> bool {
+    fn on_log_enabled(&self, _: Level, _: &str) -> bool {
         true
     }
 
-    fn on_log(&self, _: &log::Record<'_>) {}
+    fn on_log(&self, _desc: &LogDesc, _time: i64, _args: &fmt::Arguments<'_>) {}
 
-    fn on_init_log_stream(&self, log_stream: &lgn_tracing::LogStream) {
+    fn on_init_log_stream(&self, log_stream: &LogStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(log_stream)))
@@ -169,7 +175,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_metrics_stream(&self, metrics_stream: &lgn_tracing::MetricsStream) {
+    fn on_init_metrics_stream(&self, metrics_stream: &MetricsStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(metrics_stream)))
@@ -187,7 +193,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_thread_stream(&self, thread_stream: &lgn_tracing::ThreadStream) {
+    fn on_init_thread_stream(&self, thread_stream: &ThreadStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(thread_stream)))

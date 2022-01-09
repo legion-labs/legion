@@ -1,14 +1,19 @@
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-    init_thread_stream, panic_hook::init_panic_hook, shutdown_event_dispatch, EventSink,
+    dispatch::{
+        flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
+        init_thread_stream, on_end_scope, shutdown_event_dispatch,
+    },
+    event_sink::EventSink,
+    panic_hook::init_panic_hook,
+    thread_events::ThreadSpanDesc,
 };
 
 pub struct TelemetrySystemGuard {}
 
 impl TelemetrySystemGuard {
-    pub fn new(sink: Arc<dyn EventSink>) -> anyhow::Result<Self, String> {
+    pub fn new(sink: Arc<dyn EventSink>) -> anyhow::Result<Self> {
         init_telemetry(sink)?;
         Ok(Self {})
     }
@@ -20,7 +25,7 @@ impl std::ops::Drop for TelemetrySystemGuard {
     }
 }
 
-pub fn init_telemetry(sink: Arc<dyn EventSink>) -> anyhow::Result<(), String> {
+pub fn init_telemetry(sink: Arc<dyn EventSink>) -> anyhow::Result<()> {
     init_event_dispatch(10 * 1024 * 1024, 10 * 1024 * 1024, 1024 * 1024, sink)?;
     init_panic_hook();
     Ok(())
@@ -55,5 +60,18 @@ impl std::ops::Drop for TelemetryThreadGuard {
 impl Default for TelemetryThreadGuard {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct ThreadSpanGuard {
+    // the value of the function pointer will identity the scope uniquely within that process
+    // instance
+    pub thread_span_desc: &'static ThreadSpanDesc,
+    pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
+}
+
+impl Drop for ThreadSpanGuard {
+    fn drop(&mut self) {
+        on_end_scope(self.thread_span_desc);
     }
 }

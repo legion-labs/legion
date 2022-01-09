@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -7,11 +8,53 @@ use std::{
 };
 
 use lgn_tracing::{
-    log, log::Log, EventSink, LogBlock, LogStream, MetricsBlock, MetricsStream, ProcessInfo,
-    ThreadBlock, ThreadEventQueueAny, ThreadStream,
+    dispatch::{flush_log_buffer, log_enabled, log_interop},
+    event_sink::{EventSink, ProcessInfo},
+    log_block::{LogBlock, LogStream},
+    log_events::LogDesc,
+    metrics_block::{MetricsBlock, MetricsStream},
+    thread_block::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
+    Level,
 };
 use lgn_tracing_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
+
+struct LogDispatch;
+
+impl log::Log for LogDispatch {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        let level = match metadata.level() {
+            log::Level::Error => Level::Error,
+            log::Level::Warn => Level::Warn,
+            log::Level::Info => Level::Info,
+            log::Level::Debug => Level::Debug,
+            log::Level::Trace => Level::Trace,
+        };
+        log_enabled(metadata.target(), level)
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        let level = match record.level() {
+            log::Level::Error => Level::Error,
+            log::Level::Warn => Level::Warn,
+            log::Level::Info => Level::Info,
+            log::Level::Debug => Level::Debug,
+            log::Level::Trace => Level::Trace,
+        };
+        let log_desc = LogDesc {
+            level: level as u32,
+            fmt_str: record.args().as_str().unwrap_or(""),
+            target: record.module_path_static().unwrap_or("unknown"),
+            module_path: record.module_path_static().unwrap_or("unknown"),
+            file: record.file_static().unwrap_or("unknown"),
+            line: record.line().unwrap_or(0),
+        };
+        log_interop(&log_desc, record.args());
+    }
+    fn flush(&self) {
+        flush_log_buffer();
+    }
+}
 
 pub struct ImmediateEventSink {
     simple_logger: SimpleLogger,
@@ -27,14 +70,17 @@ struct ProcessData {
 }
 
 impl ImmediateEventSink {
-    pub fn new(chrome_trace_file: Option<String>) -> Self {
-        Self {
+    pub fn new(chrome_trace_file: Option<String>) -> anyhow::Result<Self> {
+        static LOG_DISPATCHER: LogDispatch = LogDispatch;
+        log::set_logger(&LOG_DISPATCHER)
+            .map_err(|_err| anyhow::anyhow!("Error creating immediate event sink"))?;
+        Ok(Self {
             simple_logger: SimpleLogger::new().with_utc_timestamps(),
             chrome_trace_file,
             process_data: RwLock::new(None),
             thread_ids: RwLock::new(HashMap::new()),
             chrome_events: Mutex::new(json::Array::new()),
-        }
+        })
     }
 }
 
@@ -89,12 +135,31 @@ impl EventSink for ImmediateEventSink {
         }
     }
 
-    fn on_log_enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.simple_logger.enabled(metadata)
+    fn on_log_enabled(&self, _level: Level, _target: &str) -> bool {
+        true
     }
-    fn on_log(&self, record: &log::Record<'_>) {
-        self.simple_logger.log(record);
+
+    fn on_log(&self, desc: &LogDesc, _time: i64, args: &fmt::Arguments<'_>) {
+        let lvl = match desc.level() {
+            Level::Error => log::Level::Error,
+            Level::Warn => log::Level::Warn,
+            Level::Info => log::Level::Info,
+            Level::Debug => log::Level::Debug,
+            Level::Trace => log::Level::Trace,
+        };
+        let record = log::RecordBuilder::new()
+            .args(*args)
+            .target(desc.target)
+            .level(lvl)
+            .file_static(Some(desc.file))
+            .line(Some(desc.line))
+            .module_path_static(Some(desc.module_path))
+            .build();
+
+        use log::Log;
+        self.simple_logger.log(&record);
     }
+
     fn on_init_log_stream(&self, _: &LogStream) {}
     fn on_process_log_block(&self, _: Arc<LogBlock>) {}
 
@@ -152,19 +217,19 @@ impl EventSink for ImmediateEventSink {
             if let Some((thread_id, _)) = self.thread_ids.read().unwrap().get(&block.stream_id) {
                 for x in block.events.iter() {
                     let (phase, tick, name, file, line) = match x {
-                        ThreadEventQueueAny::BeginScopeEvent(evt) => (
+                        ThreadEventQueueAny::BeginThreadSpanEvent(evt) => (
                             "B",
                             evt.time,
-                            evt.scope.name,
-                            evt.scope.filename,
-                            evt.scope.line,
+                            evt.thread_span_desc.name,
+                            evt.thread_span_desc.file,
+                            evt.thread_span_desc.line,
                         ),
-                        ThreadEventQueueAny::EndScopeEvent(evt) => (
+                        ThreadEventQueueAny::EndThreadSpanEvent(evt) => (
                             "E",
                             evt.time,
-                            evt.scope.name,
-                            evt.scope.filename,
-                            evt.scope.line,
+                            evt.thread_span_desc.name,
+                            evt.thread_span_desc.file,
+                            evt.thread_span_desc.line,
                         ),
                     };
                     let time = 1000.0 * 1000.0 * (tick - process_data.start_ticks) as f64

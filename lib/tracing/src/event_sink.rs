@@ -1,6 +1,12 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
-use crate::{LogBlock, LogStream, MetricsBlock, MetricsStream, ThreadBlock, ThreadStream};
+use crate::{
+    log_block::{LogBlock, LogStream},
+    log_events::LogDesc,
+    metrics_block::{MetricsBlock, MetricsStream},
+    thread_block::{ThreadBlock, ThreadStream},
+    Level,
+};
 
 #[derive(Debug)]
 pub struct ProcessInfo {
@@ -22,8 +28,8 @@ pub trait EventSink {
     fn on_startup(&self, process_info: ProcessInfo);
     fn on_shutdown(&self);
 
-    fn on_log_enabled(&self, metadata: &log::Metadata<'_>) -> bool;
-    fn on_log(&self, record: &log::Record<'_>);
+    fn on_log_enabled(&self, level: Level, target: &str) -> bool;
+    fn on_log(&self, desc: &LogDesc, time: i64, args: &fmt::Arguments<'_>);
     fn on_init_log_stream(&self, log_stream: &LogStream);
     fn on_process_log_block(&self, log_block: Arc<LogBlock>);
 
@@ -39,10 +45,10 @@ impl EventSink for NullEventSink {
     fn on_startup(&self, _: ProcessInfo) {}
     fn on_shutdown(&self) {}
 
-    fn on_log_enabled(&self, _: &log::Metadata<'_>) -> bool {
+    fn on_log_enabled(&self, _: Level, _: &str) -> bool {
         false
     }
-    fn on_log(&self, _: &log::Record<'_>) {}
+    fn on_log(&self, _: &LogDesc, _: i64, _: &fmt::Arguments<'_>) {}
     fn on_init_log_stream(&self, _: &LogStream) {}
     fn on_process_log_block(&self, _: Arc<LogBlock>) {}
 

@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use lgn_tracing::prelude::*;
+use lgn_tracing::{error, metric_int, trace_scope};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("no_dispatch/log", |b| {
@@ -7,13 +7,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             error!("test");
         })
     });
-    static METRIC: MetricDesc = MetricDesc {
-        name: "name",
-        unit: "unit",
-    };
     c.bench_function("no_dispatch/metric", |b| {
         b.iter(|| {
-            record_int_metric(&METRIC, 0);
+            metric_int!("unit", "name", 0);
         })
     });
     c.bench_function("no_dispatch/trace_scope", |b| {
