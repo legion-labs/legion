@@ -83,8 +83,8 @@ fn test_thread_spans(state: SharedState) {
 }
 
 fn test_metrics(state: &SharedState) {
-    metric_int!("ticks", "Frame Time", 1000);
-    metric_float!("ticks", "Frame Time", 1.0);
+    metric_int!("Frame Time", "ticks", 1000);
+    metric_float!("Frame Time", "ticks", 1.0);
     flush_metrics_buffer();
     expect_state!(state, Some(State::ProcessMetricsBlock(2)));
 }

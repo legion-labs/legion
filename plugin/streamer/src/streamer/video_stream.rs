@@ -22,7 +22,7 @@ use webrtc::data_channel::RTCDataChannel;
 
 #[trace_function]
 fn record_frame_time_metric(microseconds: u64) {
-    metric_int!("us", "Video Stream Frame Time", microseconds);
+    metric_int!("Video Stream Frame Time", "us", microseconds);
 }
 
 #[derive(Component)]
@@ -72,7 +72,7 @@ impl VideoStream {
     }
 
     fn record_frame_id_metric(&self) {
-        metric_int!("frame_id", "Frame ID begin present", self.frame_id as u64);
+        metric_int!("Frame ID begin present", "frame_id", self.frame_id as u64);
     }
 
     #[trace_function]

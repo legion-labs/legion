@@ -1,3 +1,94 @@
+/// Records a integer metric.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::trace_scope;
+///
+/// # fn main() {
+/// #
+/// trace_scope!("scope");
+/// # }
+/// ```
+#[macro_export]
+macro_rules! trace_scope {
+    ($scope_id:ident, $name:expr) => {
+        static $scope_id: $crate::thread_events::ThreadSpanDesc =
+            $crate::thread_events::ThreadSpanDesc {
+                lod: 0,
+                name: $name,
+                target: "",
+                module_path: module_path!(),
+                file: file!(),
+                line: line!(),
+            };
+        let guard_named = $crate::guard::ThreadSpanGuard {
+            thread_span_desc: &$scope_id,
+            _dummy_ptr: std::marker::PhantomData::default(),
+        };
+        $crate::dispatch::on_begin_scope(&$scope_id);
+    };
+    ($name:expr) => {
+        $crate::trace_scope!(_SCOPE_NAMED, $name);
+    };
+}
+
+/// Records a integer metric.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::metric_int;
+///
+/// # fn main() {
+/// #
+/// metric_int!("Frame Time", "ticks", 1000);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! metric_int {
+    ($name:literal, $unit:literal, $value:expr) => {{
+        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
+            lod: 0,
+            name: $name,
+            unit: $unit,
+            target: "",
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        $crate::dispatch::record_int_metric(&METRIC_DESC, $value);
+    }};
+}
+
+/// Records a float metric.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::metric_float;
+///
+/// # fn main() {
+/// #
+/// metric_float!("Frame Time", "ticks", 1000.0);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! metric_float {
+    ($name:literal, $unit:literal, $value:expr) => {{
+        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
+            lod: 0,
+            name: $name,
+            unit: $unit,
+            target: "",
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        $crate::dispatch::record_float_metric(&METRIC_DESC, $value);
+    }};
+}
+
 /// The standard logging macro.
 ///
 /// This macro will generically log with the specified `Level` and `format!`
@@ -197,61 +288,6 @@ macro_rules! log_enabled {
     ($lvl:expr) => {
         $crate::log_enabled!(target: $crate::__log_module_path!(), $lvl)
     };
-}
-
-#[macro_export]
-macro_rules! trace_scope {
-    ($scope_id:ident, $name:expr) => {
-        static $scope_id: $crate::thread_events::ThreadSpanDesc =
-            $crate::thread_events::ThreadSpanDesc {
-                lod: 0,
-                name: $name,
-                target: "",
-                module_path: module_path!(),
-                file: file!(),
-                line: line!(),
-            };
-        let guard_named = $crate::guard::ThreadSpanGuard {
-            thread_span_desc: &$scope_id,
-            _dummy_ptr: std::marker::PhantomData::default(),
-        };
-        $crate::dispatch::on_begin_scope(&$scope_id);
-    };
-    ($name:expr) => {
-        $crate::trace_scope!(_SCOPE_NAMED, $name);
-    };
-}
-
-#[macro_export]
-macro_rules! metric_int {
-    ($unit:expr, $name:expr, $value:expr) => {{
-        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
-            lod: 0,
-            name: $name,
-            unit: $unit,
-            target: "",
-            module_path: module_path!(),
-            file: file!(),
-            line: line!(),
-        };
-        $crate::dispatch::record_int_metric(&METRIC_DESC, $value);
-    }};
-}
-
-#[macro_export]
-macro_rules! metric_float {
-    ($unit:expr, $name:expr, $value:expr) => {{
-        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
-            lod: 0,
-            name: $name,
-            unit: $unit,
-            target: "",
-            module_path: module_path!(),
-            file: file!(),
-            line: line!(),
-        };
-        $crate::dispatch::record_float_metric(&METRIC_DESC, $value);
-    }};
 }
 
 //pub const fn type_name_of<T>(_: &T) -> &'static str {

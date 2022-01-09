@@ -51,7 +51,7 @@ impl RequestGuard {
     fn new() -> Self {
         init_thread_stream();
         let previous_count = REQUEST_COUNT.fetch_add(1, Ordering::SeqCst);
-        metric_int!("count", "Request Count", previous_count);
+        metric_int!("Request Count", "count", previous_count);
 
         let begin_ticks = lgn_tracing::now();
         Self { begin_ticks }
@@ -62,7 +62,7 @@ impl Drop for RequestGuard {
     fn drop(&mut self) {
         let end_ticks = lgn_tracing::now();
         let duration = end_ticks - self.begin_ticks;
-        metric_int!("ticks", "Request Duration", duration as u64);
+        metric_int!("Request Duration", "ticks", duration as u64);
     }
 }
 

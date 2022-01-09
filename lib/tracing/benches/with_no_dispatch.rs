@@ -9,7 +9,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
     c.bench_function("no_dispatch/metric", |b| {
         b.iter(|| {
-            metric_int!("unit", "name", 0);
+            metric_int!("name", "unit", 0);
         })
     });
     c.bench_function("no_dispatch/trace_scope", |b| {
