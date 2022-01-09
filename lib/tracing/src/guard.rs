@@ -3,7 +3,7 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::{
     dispatch::{
         flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-        init_thread_stream, on_end_scope, shutdown_event_dispatch,
+        init_thread_stream, on_end_scope, shutdown_dispatch,
     },
     event_sink::EventSink,
     panic_hook::init_panic_hook,
@@ -34,7 +34,7 @@ pub fn init_telemetry(sink: Arc<dyn EventSink>) -> anyhow::Result<()> {
 pub fn shutdown_telemetry() {
     flush_log_buffer();
     flush_metrics_buffer();
-    shutdown_event_dispatch();
+    shutdown_dispatch();
 }
 
 pub struct TelemetryThreadGuard {

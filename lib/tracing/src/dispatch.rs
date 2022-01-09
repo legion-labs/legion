@@ -19,6 +19,183 @@ use crate::thread_block::{ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream};
 use crate::thread_events::{BeginThreadSpanEvent, EndThreadSpanEvent, ThreadSpanDesc};
 use crate::{info, now, warn, Level};
 
+pub fn init_event_dispatch(
+    log_buffer_size: usize,
+    thread_buffer_size: usize,
+    metrics_buffer_size: usize,
+    sink: Arc<dyn EventSink>,
+) -> anyhow::Result<()> {
+    lazy_static::lazy_static! {
+        static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
+    }
+    let _guard = INIT_MUTEX.lock().unwrap();
+
+    unsafe {
+        if G_DISPATCH.is_none() {
+            G_DISPATCH = Some(Dispatch::new(
+                log_buffer_size,
+                thread_buffer_size,
+                metrics_buffer_size,
+                sink,
+            ));
+            Ok(())
+        } else {
+            info!("event dispatch already initialized");
+            Err(anyhow::anyhow!("event dispatch already initialized"))
+        }
+    }
+}
+
+#[inline]
+pub fn process_id() -> Option<String> {
+    unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
+}
+
+#[inline]
+pub fn shutdown_dispatch() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.shutdown();
+        }
+    }
+}
+
+#[inline]
+pub fn int_metric(metric_desc: &'static MetricDesc, value: u64) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.int_metric(metric_desc, value);
+        }
+    }
+}
+
+#[inline]
+pub fn float_metric(metric_desc: &'static MetricDesc, value: f64) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.float_metric(metric_desc, value);
+        }
+    }
+}
+
+#[inline]
+pub fn log(desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log(desc, args);
+        }
+    }
+}
+
+#[inline]
+pub fn log_interop(desc: &LogDesc, args: &fmt::Arguments<'_>) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log_interop(desc, args);
+        }
+    }
+}
+
+#[inline]
+pub fn log_enabled(target: &str, level: Level) -> bool {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.log_enabled(level, target)
+        } else {
+            false
+        }
+    }
+}
+
+#[inline]
+pub fn flush_log_buffer() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.flush_log_buffer();
+        }
+    }
+}
+
+#[inline]
+pub fn flush_metrics_buffer() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.flush_metrics_buffer();
+        }
+    }
+}
+
+//todo: should be implicit by default but limit the maximum number of tracked
+// threads
+#[inline]
+pub fn init_thread_stream() {
+    LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        if (*cell.as_ptr()).is_some() {
+            return;
+        }
+        if let Some(d) = &mut G_DISPATCH {
+            d.init_thread_stream(cell);
+        } else {
+            warn!("dispatch not initialized, cannot init thread stream, events will be lost for this thread");
+        }
+    });
+}
+
+#[inline]
+pub fn flush_thread_buffer() {
+    LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        let opt_stream = &mut *cell.as_ptr();
+        if let Some(stream) = opt_stream {
+            match &mut G_DISPATCH {
+                Some(d) => {
+                    d.flush_thread_buffer(stream);
+                }
+                None => {
+                    panic!("threads are recording but there is no event dispatch");
+                }
+            }
+        }
+    });
+}
+
+#[inline]
+pub fn on_begin_scope(scope: &'static ThreadSpanDesc) {
+    on_thread_event(BeginThreadSpanEvent {
+        time: now(),
+        thread_span_desc: scope,
+    });
+}
+
+#[inline]
+pub fn on_end_scope(scope: &'static ThreadSpanDesc) {
+    on_thread_event(EndThreadSpanEvent {
+        time: now(),
+        thread_span_desc: scope,
+    });
+}
+
+static mut G_DISPATCH: Option<Dispatch> = None;
+
+thread_local! {
+    static LOCAL_THREAD_STREAM: Cell<Option<ThreadStream>> = Cell::new(None);
+}
+
+#[inline]
+fn on_thread_event<T>(event: T)
+where
+    T: lgn_tracing_transit::InProcSerialize + ThreadEventQueueTypeIndex,
+{
+    LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        let opt_stream = &mut *cell.as_ptr();
+        if let Some(stream) = opt_stream {
+            stream.get_events_mut().push(event);
+            if stream.is_full() {
+                flush_thread_buffer();
+            }
+        }
+    });
+}
+
 struct Dispatch {
     process_id: String,
     log_buffer_size: usize,
@@ -268,181 +445,4 @@ impl Dispatch {
         Arc::get_mut(&mut old_block).unwrap().close();
         self.sink.on_process_thread_block(old_block);
     }
-}
-
-static mut G_DISPATCH: Option<Dispatch> = None;
-
-thread_local! {
-    static LOCAL_THREAD_STREAM: Cell<Option<ThreadStream>> = Cell::new(None);
-}
-
-pub fn init_event_dispatch(
-    log_buffer_size: usize,
-    thread_buffer_size: usize,
-    metrics_buffer_size: usize,
-    sink: Arc<dyn EventSink>,
-) -> anyhow::Result<()> {
-    lazy_static::lazy_static! {
-        static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
-    }
-    let _guard = INIT_MUTEX.lock().unwrap();
-
-    unsafe {
-        if G_DISPATCH.is_none() {
-            G_DISPATCH = Some(Dispatch::new(
-                log_buffer_size,
-                thread_buffer_size,
-                metrics_buffer_size,
-                sink,
-            ));
-            Ok(())
-        } else {
-            info!("event dispatch already initialized");
-            Err(anyhow::anyhow!("event dispatch already initialized"))
-        }
-    }
-}
-
-#[inline]
-pub fn process_id() -> Option<String> {
-    unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
-}
-
-#[inline]
-pub fn shutdown_event_dispatch() {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.shutdown();
-        }
-    }
-}
-
-#[inline]
-pub fn record_int_metric(metric_desc: &'static MetricDesc, value: u64) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.int_metric(metric_desc, value);
-        }
-    }
-}
-
-#[inline]
-pub fn record_float_metric(metric_desc: &'static MetricDesc, value: f64) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.float_metric(metric_desc, value);
-        }
-    }
-}
-
-#[inline]
-pub fn log(desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.log(desc, args);
-        }
-    }
-}
-
-#[inline]
-pub fn log_interop(desc: &LogDesc, args: &fmt::Arguments<'_>) {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.log_interop(desc, args);
-        }
-    }
-}
-
-#[inline]
-pub fn log_enabled(target: &str, level: Level) -> bool {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.log_enabled(level, target)
-        } else {
-            false
-        }
-    }
-}
-
-#[inline]
-pub fn flush_log_buffer() {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.flush_log_buffer();
-        }
-    }
-}
-
-#[inline]
-pub fn flush_metrics_buffer() {
-    unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.flush_metrics_buffer();
-        }
-    }
-}
-
-//todo: should be implicit by default but limit the maximum number of tracked
-// threads
-#[inline]
-pub fn init_thread_stream() {
-    LOCAL_THREAD_STREAM.with(|cell| unsafe {
-        if (*cell.as_ptr()).is_some() {
-            return;
-        }
-        if let Some(d) = &mut G_DISPATCH {
-            d.init_thread_stream(cell);
-        } else {
-            warn!("dispatch not initialized, cannot init thread stream, events will be lost for this thread");
-        }
-    });
-}
-
-#[inline]
-pub fn flush_thread_buffer() {
-    LOCAL_THREAD_STREAM.with(|cell| unsafe {
-        let opt_stream = &mut *cell.as_ptr();
-        if let Some(stream) = opt_stream {
-            match &mut G_DISPATCH {
-                Some(d) => {
-                    d.flush_thread_buffer(stream);
-                }
-                None => {
-                    panic!("threads are recording but there is no event dispatch");
-                }
-            }
-        }
-    });
-}
-
-#[inline]
-fn on_thread_event<T>(event: T)
-where
-    T: lgn_tracing_transit::InProcSerialize + ThreadEventQueueTypeIndex,
-{
-    LOCAL_THREAD_STREAM.with(|cell| unsafe {
-        let opt_stream = &mut *cell.as_ptr();
-        if let Some(stream) = opt_stream {
-            stream.get_events_mut().push(event);
-            if stream.is_full() {
-                flush_thread_buffer();
-            }
-        }
-    });
-}
-
-#[inline]
-pub fn on_begin_scope(scope: &'static ThreadSpanDesc) {
-    on_thread_event(BeginThreadSpanEvent {
-        time: now(),
-        thread_span_desc: scope,
-    });
-}
-
-#[inline]
-pub fn on_end_scope(scope: &'static ThreadSpanDesc) {
-    on_thread_event(EndThreadSpanEvent {
-        time: now(),
-        thread_span_desc: scope,
-    });
 }

@@ -57,7 +57,7 @@ macro_rules! metric_int {
             file: file!(),
             line: line!(),
         };
-        $crate::dispatch::record_int_metric(&METRIC_DESC, $value);
+        $crate::dispatch::int_metric(&METRIC_DESC, $value);
     }};
 }
 
@@ -85,7 +85,7 @@ macro_rules! metric_float {
             file: file!(),
             line: line!(),
         };
-        $crate::dispatch::record_float_metric(&METRIC_DESC, $value);
+        $crate::dispatch::float_metric(&METRIC_DESC, $value);
     }};
 }
 
