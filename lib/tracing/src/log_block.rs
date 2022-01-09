@@ -37,5 +37,4 @@ impl ExtractDeps for LogMsgQueue {
 }
 
 pub type LogBlock = EventBlock<LogMsgQueue>;
-
-pub type LogStream = EventStream<LogBlock, LogDepsQueue>;
+pub type LogStream = EventStream<LogBlock>;

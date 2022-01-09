@@ -1,21 +1,19 @@
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 use crate::event_block::TracingBlock;
 
 #[derive(Debug)]
-pub struct EventStream<Block, DepsQueue> {
+pub struct EventStream<Block> {
     stream_id: String,
     process_id: String,
     current_block: Arc<Block>,
     initial_size: usize,
     tags: Vec<String>,
     properties: HashMap<String, String>,
-    _bogus: PhantomData<DepsQueue>,
 }
 
-impl<Block, DepsQueue> EventStream<Block, DepsQueue>
+impl<Block> EventStream<Block>
 where
     Block: TracingBlock,
 {
@@ -33,7 +31,6 @@ where
             process_id,
             tags: tags.to_vec(),
             properties,
-            _bogus: PhantomData::default(),
         }
     }
 

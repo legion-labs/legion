@@ -58,5 +58,4 @@ impl ExtractDeps for ThreadEventQueue {
 }
 
 pub type ThreadBlock = EventBlock<ThreadEventQueue>;
-
-pub type ThreadStream = EventStream<ThreadBlock, ThreadDepsQueue>;
+pub type ThreadStream = EventStream<ThreadBlock>;
