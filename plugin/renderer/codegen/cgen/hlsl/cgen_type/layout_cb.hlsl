@@ -11,6 +11,7 @@
 		half3 d[1];
 		half e[1];
 		half f[2];
+		half g;
 	};
 	
 #endif

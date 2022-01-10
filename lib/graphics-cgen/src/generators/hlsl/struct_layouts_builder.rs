@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use petgraph::algo::toposort;
+use petgraph::{algo::toposort, EdgeDirection::Outgoing};
 use spirv_reflect::types::ReflectBlockVariable;
 
 use crate::{
@@ -25,7 +25,7 @@ impl StructLayout {
                 absolute_offset: spirv_member.absolute_offset,
                 size: spirv_member.size,
                 padded_size: spirv_member.padded_size,
-                array_stride: spirv_member.array.stride
+                array_stride: spirv_member.array.stride,
             });
         }
 
@@ -76,7 +76,14 @@ impl TypeUsage {
 }
 
 pub fn run(model: &Model) -> Result<StructLayouts> {
-    //
+    // Compute type dependency graph
+    let graph = build_type_graph(&model);
+
+    // Topo sort
+    // After this line, we are sure there is no cycles
+    let ordered = toposort(&graph, None).unwrap();
+
+    // Compute external requirements from DescriptorSet and PushConstants
     let mut ty_requirements = TypeUsage::new(model.size::<CGenType>());
 
     for ds in model.object_iter::<DescriptorSet>() {
@@ -114,10 +121,20 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         }
     }
 
-    //
-    let graph = build_type_graph(&model);
+    // Propagate requirements in topological order
+    for id in &ordered {
+        let id = *id;
+        for n in graph.neighbors_directed(id, Outgoing) {
+            if ty_requirements.used_as_cb(id) {
+                ty_requirements.set_used_as_cb(n)
+            }
+            if ty_requirements.used_as_sb(id) {
+                ty_requirements.set_used_as_sb(n)
+            }
+        }
+    }
 
-    let ordered = toposort(&graph, None).unwrap();
+    // Generate a stub shader to extract our struct layouts
 
     let mut text = String::new();
 
@@ -161,7 +178,13 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         &text,
         "main",
         "vs_6_2",
-        &["-Od", "-spirv", "-fspv-target-env=vulkan1.1", "-enable-16bit-types", "-HV 2021"],
+        &[
+            "-Od",
+            "-spirv",
+            "-fspv-target-env=vulkan1.1",
+            "-enable-16bit-types",
+            "-HV 2021",
+        ],
         &[],
     )?;
 
@@ -169,8 +192,8 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
     let mut layouts = StructLayouts::new();
 
     for binding in &shader_mod.enumerate_descriptor_bindings(None).unwrap() {
-        let dt = &binding.name[0..2];
-        let id = binding.name[3..].parse().unwrap();
+        let dt = &binding.name[0..2]; // sb_ | cb_
+        let id = binding.name[3..].parse().unwrap(); // type id
         let ty = model.get_from_id::<CGenType>(id).unwrap();
         let block_var = match dt {
             "cb" => &binding.block,

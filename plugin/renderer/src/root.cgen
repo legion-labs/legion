@@ -7,6 +7,7 @@ struct LayoutCB {
     d: [Half3; 1],
     e: [Half1; 1],
     f: [Half1; 2],
+    g: Half1,
 }
 
 struct LayoutSB {
@@ -16,12 +17,11 @@ struct LayoutSB {
     d: [Half3; 1],
     e: [Half1; 1],
     f: [Half1; 2],
+    g: Half2,
 }
 
-struct LayoutB {
-    a: Float3,
-    b: Float4,
-    c: LayoutSB,
+struct LayoutSB2 {
+    a: LayoutSB,
 }
 
 struct ViewData {
@@ -46,6 +46,7 @@ struct FrameDescriptorSet {
     #[Field(transient)]
     cb_tr: ConstantBuffer<LayoutCB>,
     sb: StructuredBuffer<LayoutSB>,
+    sb2: StructuredBuffer<LayoutSB2>,
     sb_arr: [StructuredBuffer<LayoutSB>; 10],
     rw_sb: RWStructuredBuffer<LayoutSB>,
     bab: ByteAddressBuffer,

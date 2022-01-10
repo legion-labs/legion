@@ -10,8 +10,8 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 /*
 StructLayout {
-    size: 54,
-    padded_size: 54,
+    size: 58,
+    padded_size: 58,
     members: [
         StructMemberLayout {
             offset: 0,
@@ -55,21 +55,28 @@ StructLayout {
             padded_size: 4,
             array_stride: 2,
         },
+        StructMemberLayout {
+            offset: 54,
+            absolute_offset: 0,
+            size: 4,
+            padded_size: 4,
+            array_stride: 0,
+        },
     ],
 }
 */
 static TYPE_DEF: CGenTypeDef = CGenTypeDef{ 
 	name: "LayoutSB",
 	id: 16,
-	size: 54,
+	size: 58,
 }; 
 
-static_assertions::const_assert_eq!(mem::size_of::<LayoutSB>(), 54);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutSB>(), 58);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct LayoutSB {
-	data: [u8;54]
+	data: [u8;58]
 }
 
 impl LayoutSB {
@@ -185,6 +192,14 @@ impl LayoutSB {
 		self.get::<Half1>(50 + index * 2)
 	}
 	
+	pub fn set_g(&mut self, value: Half2) { 
+		self.set(54, value);
+	}
+	
+	pub fn g(&self) -> Half2 { 
+		self.get(54)
+	}
+	
 	#[allow(unsafe_code)]
 	fn set<T: Copy>(&mut self, offset: usize, value: T) {
 		unsafe{
@@ -209,7 +224,7 @@ impl LayoutSB {
 impl Default for LayoutSB {
 	fn default() -> Self {
 		let mut ret = Self {
-		data: [0;54]
+		data: [0;58]
 		};
 		ret.set_a([Float1::default();3]);
 		ret.set_b(Float2::default());
@@ -217,6 +232,7 @@ impl Default for LayoutSB {
 		ret.set_d([Half3::default();1]);
 		ret.set_e([Half1::default();1]);
 		ret.set_f([Half1::default();2]);
+		ret.set_g(Half2::default());
 		ret
 	}
 }
