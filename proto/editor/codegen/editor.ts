@@ -71,7 +71,9 @@ export interface ResourcePropertyUpdate {
   value: Uint8Array;
 }
 
-const baseUndoTransactionRequest: object = { id: 0 };
+function createBaseUndoTransactionRequest(): UndoTransactionRequest {
+  return { id: 0 };
+}
 
 export const UndoTransactionRequest = {
   encode(
@@ -90,7 +92,7 @@ export const UndoTransactionRequest = {
   ): UndoTransactionRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseUndoTransactionRequest } as UndoTransactionRequest;
+    const message = createBaseUndoTransactionRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -106,10 +108,9 @@ export const UndoTransactionRequest = {
   },
 
   fromJSON(object: any): UndoTransactionRequest {
-    const message = { ...baseUndoTransactionRequest } as UndoTransactionRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? Number(object.id) : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? Number(object.id) : 0,
+    };
   },
 
   toJSON(message: UndoTransactionRequest): unknown {
@@ -121,13 +122,15 @@ export const UndoTransactionRequest = {
   fromPartial<I extends Exact<DeepPartial<UndoTransactionRequest>, I>>(
     object: I
   ): UndoTransactionRequest {
-    const message = { ...baseUndoTransactionRequest } as UndoTransactionRequest;
+    const message = createBaseUndoTransactionRequest();
     message.id = object.id ?? 0;
     return message;
   },
 };
 
-const baseUndoTransactionResponse: object = { id: 0 };
+function createBaseUndoTransactionResponse(): UndoTransactionResponse {
+  return { id: 0 };
+}
 
 export const UndoTransactionResponse = {
   encode(
@@ -146,9 +149,7 @@ export const UndoTransactionResponse = {
   ): UndoTransactionResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseUndoTransactionResponse,
-    } as UndoTransactionResponse;
+    const message = createBaseUndoTransactionResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -164,12 +165,9 @@ export const UndoTransactionResponse = {
   },
 
   fromJSON(object: any): UndoTransactionResponse {
-    const message = {
-      ...baseUndoTransactionResponse,
-    } as UndoTransactionResponse;
-    message.id =
-      object.id !== undefined && object.id !== null ? Number(object.id) : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? Number(object.id) : 0,
+    };
   },
 
   toJSON(message: UndoTransactionResponse): unknown {
@@ -181,15 +179,15 @@ export const UndoTransactionResponse = {
   fromPartial<I extends Exact<DeepPartial<UndoTransactionResponse>, I>>(
     object: I
   ): UndoTransactionResponse {
-    const message = {
-      ...baseUndoTransactionResponse,
-    } as UndoTransactionResponse;
+    const message = createBaseUndoTransactionResponse();
     message.id = object.id ?? 0;
     return message;
   },
 };
 
-const baseRedoTransactionRequest: object = { id: 0 };
+function createBaseRedoTransactionRequest(): RedoTransactionRequest {
+  return { id: 0 };
+}
 
 export const RedoTransactionRequest = {
   encode(
@@ -208,7 +206,7 @@ export const RedoTransactionRequest = {
   ): RedoTransactionRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseRedoTransactionRequest } as RedoTransactionRequest;
+    const message = createBaseRedoTransactionRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -224,10 +222,9 @@ export const RedoTransactionRequest = {
   },
 
   fromJSON(object: any): RedoTransactionRequest {
-    const message = { ...baseRedoTransactionRequest } as RedoTransactionRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? Number(object.id) : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? Number(object.id) : 0,
+    };
   },
 
   toJSON(message: RedoTransactionRequest): unknown {
@@ -239,13 +236,15 @@ export const RedoTransactionRequest = {
   fromPartial<I extends Exact<DeepPartial<RedoTransactionRequest>, I>>(
     object: I
   ): RedoTransactionRequest {
-    const message = { ...baseRedoTransactionRequest } as RedoTransactionRequest;
+    const message = createBaseRedoTransactionRequest();
     message.id = object.id ?? 0;
     return message;
   },
 };
 
-const baseRedoTransactionResponse: object = { id: 0 };
+function createBaseRedoTransactionResponse(): RedoTransactionResponse {
+  return { id: 0 };
+}
 
 export const RedoTransactionResponse = {
   encode(
@@ -264,9 +263,7 @@ export const RedoTransactionResponse = {
   ): RedoTransactionResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseRedoTransactionResponse,
-    } as RedoTransactionResponse;
+    const message = createBaseRedoTransactionResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -282,12 +279,9 @@ export const RedoTransactionResponse = {
   },
 
   fromJSON(object: any): RedoTransactionResponse {
-    const message = {
-      ...baseRedoTransactionResponse,
-    } as RedoTransactionResponse;
-    message.id =
-      object.id !== undefined && object.id !== null ? Number(object.id) : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? Number(object.id) : 0,
+    };
   },
 
   toJSON(message: RedoTransactionResponse): unknown {
@@ -299,15 +293,15 @@ export const RedoTransactionResponse = {
   fromPartial<I extends Exact<DeepPartial<RedoTransactionResponse>, I>>(
     object: I
   ): RedoTransactionResponse {
-    const message = {
-      ...baseRedoTransactionResponse,
-    } as RedoTransactionResponse;
+    const message = createBaseRedoTransactionResponse();
     message.id = object.id ?? 0;
     return message;
   },
 };
 
-const baseSearchResourcesRequest: object = { searchToken: "" };
+function createBaseSearchResourcesRequest(): SearchResourcesRequest {
+  return { searchToken: "" };
+}
 
 export const SearchResourcesRequest = {
   encode(
@@ -326,7 +320,7 @@ export const SearchResourcesRequest = {
   ): SearchResourcesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
+    const message = createBaseSearchResourcesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -342,12 +336,9 @@ export const SearchResourcesRequest = {
   },
 
   fromJSON(object: any): SearchResourcesRequest {
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
-    message.searchToken =
-      object.searchToken !== undefined && object.searchToken !== null
-        ? String(object.searchToken)
-        : "";
-    return message;
+    return {
+      searchToken: isSet(object.searchToken) ? String(object.searchToken) : "",
+    };
   },
 
   toJSON(message: SearchResourcesRequest): unknown {
@@ -360,13 +351,15 @@ export const SearchResourcesRequest = {
   fromPartial<I extends Exact<DeepPartial<SearchResourcesRequest>, I>>(
     object: I
   ): SearchResourcesRequest {
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
+    const message = createBaseSearchResourcesRequest();
     message.searchToken = object.searchToken ?? "";
     return message;
   },
 };
 
-const baseSearchResourcesResponse: object = { nextSearchToken: "", total: 0 };
+function createBaseSearchResourcesResponse(): SearchResourcesResponse {
+  return { nextSearchToken: "", total: 0, resourceDescriptions: [] };
+}
 
 export const SearchResourcesResponse = {
   encode(
@@ -391,10 +384,7 @@ export const SearchResourcesResponse = {
   ): SearchResourcesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
-    message.resourceDescriptions = [];
+    const message = createBaseSearchResourcesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -418,21 +408,17 @@ export const SearchResourcesResponse = {
   },
 
   fromJSON(object: any): SearchResourcesResponse {
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
-    message.nextSearchToken =
-      object.nextSearchToken !== undefined && object.nextSearchToken !== null
+    return {
+      nextSearchToken: isSet(object.nextSearchToken)
         ? String(object.nextSearchToken)
-        : "";
-    message.total =
-      object.total !== undefined && object.total !== null
-        ? Number(object.total)
-        : 0;
-    message.resourceDescriptions = (object.resourceDescriptions ?? []).map(
-      (e: any) => ResourceDescription.fromJSON(e)
-    );
-    return message;
+        : "",
+      total: isSet(object.total) ? Number(object.total) : 0,
+      resourceDescriptions: Array.isArray(object?.resourceDescriptions)
+        ? object.resourceDescriptions.map((e: any) =>
+            ResourceDescription.fromJSON(e)
+          )
+        : [],
+    };
   },
 
   toJSON(message: SearchResourcesResponse): unknown {
@@ -453,9 +439,7 @@ export const SearchResourcesResponse = {
   fromPartial<I extends Exact<DeepPartial<SearchResourcesResponse>, I>>(
     object: I
   ): SearchResourcesResponse {
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
+    const message = createBaseSearchResourcesResponse();
     message.nextSearchToken = object.nextSearchToken ?? "";
     message.total = object.total ?? 0;
     message.resourceDescriptions =
@@ -466,7 +450,9 @@ export const SearchResourcesResponse = {
   },
 };
 
-const baseResourceDescription: object = { id: "", path: "", version: 0 };
+function createBaseResourceDescription(): ResourceDescription {
+  return { id: "", path: "", version: 0 };
+}
 
 export const ResourceDescription = {
   encode(
@@ -488,7 +474,7 @@ export const ResourceDescription = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ResourceDescription {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -510,18 +496,11 @@ export const ResourceDescription = {
   },
 
   fromJSON(object: any): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.path =
-      object.path !== undefined && object.path !== null
-        ? String(object.path)
-        : "";
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      path: isSet(object.path) ? String(object.path) : "",
+      version: isSet(object.version) ? Number(object.version) : 0,
+    };
   },
 
   toJSON(message: ResourceDescription): unknown {
@@ -536,7 +515,7 @@ export const ResourceDescription = {
   fromPartial<I extends Exact<DeepPartial<ResourceDescription>, I>>(
     object: I
   ): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     message.id = object.id ?? "";
     message.path = object.path ?? "";
     message.version = object.version ?? 0;
@@ -544,7 +523,9 @@ export const ResourceDescription = {
   },
 };
 
-const baseGetResourcePropertiesRequest: object = { id: "" };
+function createBaseGetResourcePropertiesRequest(): GetResourcePropertiesRequest {
+  return { id: "" };
+}
 
 export const GetResourcePropertiesRequest = {
   encode(
@@ -563,9 +544,7 @@ export const GetResourcePropertiesRequest = {
   ): GetResourcePropertiesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
+    const message = createBaseGetResourcePropertiesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -581,12 +560,9 @@ export const GetResourcePropertiesRequest = {
   },
 
   fromJSON(object: any): GetResourcePropertiesRequest {
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+    };
   },
 
   toJSON(message: GetResourcePropertiesRequest): unknown {
@@ -598,15 +574,15 @@ export const GetResourcePropertiesRequest = {
   fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesRequest>, I>>(
     object: I
   ): GetResourcePropertiesRequest {
-    const message = {
-      ...baseGetResourcePropertiesRequest,
-    } as GetResourcePropertiesRequest;
+    const message = createBaseGetResourcePropertiesRequest();
     message.id = object.id ?? "";
     return message;
   },
 };
 
-const baseGetResourcePropertiesResponse: object = {};
+function createBaseGetResourcePropertiesResponse(): GetResourcePropertiesResponse {
+  return { description: undefined, properties: [] };
+}
 
 export const GetResourcePropertiesResponse = {
   encode(
@@ -631,10 +607,7 @@ export const GetResourcePropertiesResponse = {
   ): GetResourcePropertiesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
-    message.properties = [];
+    const message = createBaseGetResourcePropertiesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -658,17 +631,14 @@ export const GetResourcePropertiesResponse = {
   },
 
   fromJSON(object: any): GetResourcePropertiesResponse {
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
-    message.description =
-      object.description !== undefined && object.description !== null
+    return {
+      description: isSet(object.description)
         ? ResourceDescription.fromJSON(object.description)
-        : undefined;
-    message.properties = (object.properties ?? []).map((e: any) =>
-      ResourceProperty.fromJSON(e)
-    );
-    return message;
+        : undefined,
+      properties: Array.isArray(object?.properties)
+        ? object.properties.map((e: any) => ResourceProperty.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: GetResourcePropertiesResponse): unknown {
@@ -690,9 +660,7 @@ export const GetResourcePropertiesResponse = {
   fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesResponse>, I>>(
     object: I
   ): GetResourcePropertiesResponse {
-    const message = {
-      ...baseGetResourcePropertiesResponse,
-    } as GetResourcePropertiesResponse;
+    const message = createBaseGetResourcePropertiesResponse();
     message.description =
       object.description !== undefined && object.description !== null
         ? ResourceDescription.fromPartial(object.description)
@@ -703,7 +671,15 @@ export const GetResourcePropertiesResponse = {
   },
 };
 
-const baseResourceProperty: object = { name: "", ptype: "", group: "" };
+function createBaseResourceProperty(): ResourceProperty {
+  return {
+    name: "",
+    ptype: "",
+    defaultValue: new Uint8Array(),
+    value: new Uint8Array(),
+    group: "",
+  };
+}
 
 export const ResourceProperty = {
   encode(
@@ -731,9 +707,7 @@ export const ResourceProperty = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ResourceProperty {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourceProperty } as ResourceProperty;
-    message.defaultValue = new Uint8Array();
-    message.value = new Uint8Array();
+    const message = createBaseResourceProperty();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -761,28 +735,17 @@ export const ResourceProperty = {
   },
 
   fromJSON(object: any): ResourceProperty {
-    const message = { ...baseResourceProperty } as ResourceProperty;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.ptype =
-      object.ptype !== undefined && object.ptype !== null
-        ? String(object.ptype)
-        : "";
-    message.defaultValue =
-      object.defaultValue !== undefined && object.defaultValue !== null
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      ptype: isSet(object.ptype) ? String(object.ptype) : "",
+      defaultValue: isSet(object.defaultValue)
         ? bytesFromBase64(object.defaultValue)
-        : new Uint8Array();
-    message.value =
-      object.value !== undefined && object.value !== null
+        : new Uint8Array(),
+      value: isSet(object.value)
         ? bytesFromBase64(object.value)
-        : new Uint8Array();
-    message.group =
-      object.group !== undefined && object.group !== null
-        ? String(object.group)
-        : "";
-    return message;
+        : new Uint8Array(),
+      group: isSet(object.group) ? String(object.group) : "",
+    };
   },
 
   toJSON(message: ResourceProperty): unknown {
@@ -806,7 +769,7 @@ export const ResourceProperty = {
   fromPartial<I extends Exact<DeepPartial<ResourceProperty>, I>>(
     object: I
   ): ResourceProperty {
-    const message = { ...baseResourceProperty } as ResourceProperty;
+    const message = createBaseResourceProperty();
     message.name = object.name ?? "";
     message.ptype = object.ptype ?? "";
     message.defaultValue = object.defaultValue ?? new Uint8Array();
@@ -816,7 +779,9 @@ export const ResourceProperty = {
   },
 };
 
-const baseUpdateResourcePropertiesRequest: object = { id: "", version: 0 };
+function createBaseUpdateResourcePropertiesRequest(): UpdateResourcePropertiesRequest {
+  return { id: "", version: 0, propertyUpdates: [] };
+}
 
 export const UpdateResourcePropertiesRequest = {
   encode(
@@ -841,10 +806,7 @@ export const UpdateResourcePropertiesRequest = {
   ): UpdateResourcePropertiesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
-    message.propertyUpdates = [];
+    const message = createBaseUpdateResourcePropertiesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -868,19 +830,15 @@ export const UpdateResourcePropertiesRequest = {
   },
 
   fromJSON(object: any): UpdateResourcePropertiesRequest {
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    message.propertyUpdates = (object.propertyUpdates ?? []).map((e: any) =>
-      ResourcePropertyUpdate.fromJSON(e)
-    );
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      version: isSet(object.version) ? Number(object.version) : 0,
+      propertyUpdates: Array.isArray(object?.propertyUpdates)
+        ? object.propertyUpdates.map((e: any) =>
+            ResourcePropertyUpdate.fromJSON(e)
+          )
+        : [],
+    };
   },
 
   toJSON(message: UpdateResourcePropertiesRequest): unknown {
@@ -901,9 +859,7 @@ export const UpdateResourcePropertiesRequest = {
   fromPartial<I extends Exact<DeepPartial<UpdateResourcePropertiesRequest>, I>>(
     object: I
   ): UpdateResourcePropertiesRequest {
-    const message = {
-      ...baseUpdateResourcePropertiesRequest,
-    } as UpdateResourcePropertiesRequest;
+    const message = createBaseUpdateResourcePropertiesRequest();
     message.id = object.id ?? "";
     message.version = object.version ?? 0;
     message.propertyUpdates =
@@ -914,7 +870,9 @@ export const UpdateResourcePropertiesRequest = {
   },
 };
 
-const baseUpdateResourcePropertiesResponse: object = { version: 0 };
+function createBaseUpdateResourcePropertiesResponse(): UpdateResourcePropertiesResponse {
+  return { version: 0, updatedProperties: [] };
+}
 
 export const UpdateResourcePropertiesResponse = {
   encode(
@@ -936,10 +894,7 @@ export const UpdateResourcePropertiesResponse = {
   ): UpdateResourcePropertiesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
-    message.updatedProperties = [];
+    const message = createBaseUpdateResourcePropertiesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -960,17 +915,14 @@ export const UpdateResourcePropertiesResponse = {
   },
 
   fromJSON(object: any): UpdateResourcePropertiesResponse {
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    message.updatedProperties = (object.updatedProperties ?? []).map((e: any) =>
-      ResourcePropertyUpdate.fromJSON(e)
-    );
-    return message;
+    return {
+      version: isSet(object.version) ? Number(object.version) : 0,
+      updatedProperties: Array.isArray(object?.updatedProperties)
+        ? object.updatedProperties.map((e: any) =>
+            ResourcePropertyUpdate.fromJSON(e)
+          )
+        : [],
+    };
   },
 
   toJSON(message: UpdateResourcePropertiesResponse): unknown {
@@ -990,9 +942,7 @@ export const UpdateResourcePropertiesResponse = {
   fromPartial<
     I extends Exact<DeepPartial<UpdateResourcePropertiesResponse>, I>
   >(object: I): UpdateResourcePropertiesResponse {
-    const message = {
-      ...baseUpdateResourcePropertiesResponse,
-    } as UpdateResourcePropertiesResponse;
+    const message = createBaseUpdateResourcePropertiesResponse();
     message.version = object.version ?? 0;
     message.updatedProperties =
       object.updatedProperties?.map((e) =>
@@ -1002,7 +952,9 @@ export const UpdateResourcePropertiesResponse = {
   },
 };
 
-const baseResourcePropertyUpdate: object = { name: "" };
+function createBaseResourcePropertyUpdate(): ResourcePropertyUpdate {
+  return { name: "", value: new Uint8Array() };
+}
 
 export const ResourcePropertyUpdate = {
   encode(
@@ -1024,8 +976,7 @@ export const ResourcePropertyUpdate = {
   ): ResourcePropertyUpdate {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
-    message.value = new Uint8Array();
+    const message = createBaseResourcePropertyUpdate();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1044,16 +995,12 @@ export const ResourcePropertyUpdate = {
   },
 
   fromJSON(object: any): ResourcePropertyUpdate {
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.value =
-      object.value !== undefined && object.value !== null
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      value: isSet(object.value)
         ? bytesFromBase64(object.value)
-        : new Uint8Array();
-    return message;
+        : new Uint8Array(),
+    };
   },
 
   toJSON(message: ResourcePropertyUpdate): unknown {
@@ -1069,7 +1016,7 @@ export const ResourcePropertyUpdate = {
   fromPartial<I extends Exact<DeepPartial<ResourcePropertyUpdate>, I>>(
     object: I
   ): ResourcePropertyUpdate {
-    const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
+    const message = createBaseResourcePropertyUpdate();
     message.name = object.name ?? "";
     message.value = object.value ?? new Uint8Array();
     return message;
@@ -1425,4 +1372,8 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

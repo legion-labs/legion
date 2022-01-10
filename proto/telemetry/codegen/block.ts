@@ -24,7 +24,9 @@ export interface Block {
   nbObjects: number;
 }
 
-const baseBlockPayload: object = {};
+function createBaseBlockPayload(): BlockPayload {
+  return { dependencies: new Uint8Array(), objects: new Uint8Array() };
+}
 
 export const BlockPayload = {
   encode(
@@ -43,9 +45,7 @@ export const BlockPayload = {
   decode(input: _m0.Reader | Uint8Array, length?: number): BlockPayload {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlockPayload } as BlockPayload;
-    message.dependencies = new Uint8Array();
-    message.objects = new Uint8Array();
+    const message = createBaseBlockPayload();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -64,16 +64,14 @@ export const BlockPayload = {
   },
 
   fromJSON(object: any): BlockPayload {
-    const message = { ...baseBlockPayload } as BlockPayload;
-    message.dependencies =
-      object.dependencies !== undefined && object.dependencies !== null
+    return {
+      dependencies: isSet(object.dependencies)
         ? bytesFromBase64(object.dependencies)
-        : new Uint8Array();
-    message.objects =
-      object.objects !== undefined && object.objects !== null
+        : new Uint8Array(),
+      objects: isSet(object.objects)
         ? bytesFromBase64(object.objects)
-        : new Uint8Array();
-    return message;
+        : new Uint8Array(),
+    };
   },
 
   toJSON(message: BlockPayload): unknown {
@@ -94,22 +92,25 @@ export const BlockPayload = {
   fromPartial<I extends Exact<DeepPartial<BlockPayload>, I>>(
     object: I
   ): BlockPayload {
-    const message = { ...baseBlockPayload } as BlockPayload;
+    const message = createBaseBlockPayload();
     message.dependencies = object.dependencies ?? new Uint8Array();
     message.objects = object.objects ?? new Uint8Array();
     return message;
   },
 };
 
-const baseBlock: object = {
-  blockId: "",
-  streamId: "",
-  beginTime: "",
-  beginTicks: 0,
-  endTime: "",
-  endTicks: 0,
-  nbObjects: 0,
-};
+function createBaseBlock(): Block {
+  return {
+    blockId: "",
+    streamId: "",
+    beginTime: "",
+    beginTicks: 0,
+    endTime: "",
+    endTicks: 0,
+    payload: undefined,
+    nbObjects: 0,
+  };
+}
 
 export const Block = {
   encode(message: Block, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
@@ -143,7 +144,7 @@ export const Block = {
   decode(input: _m0.Reader | Uint8Array, length?: number): Block {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlock } as Block;
+    const message = createBaseBlock();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -180,40 +181,18 @@ export const Block = {
   },
 
   fromJSON(object: any): Block {
-    const message = { ...baseBlock } as Block;
-    message.blockId =
-      object.blockId !== undefined && object.blockId !== null
-        ? String(object.blockId)
-        : "";
-    message.streamId =
-      object.streamId !== undefined && object.streamId !== null
-        ? String(object.streamId)
-        : "";
-    message.beginTime =
-      object.beginTime !== undefined && object.beginTime !== null
-        ? String(object.beginTime)
-        : "";
-    message.beginTicks =
-      object.beginTicks !== undefined && object.beginTicks !== null
-        ? Number(object.beginTicks)
-        : 0;
-    message.endTime =
-      object.endTime !== undefined && object.endTime !== null
-        ? String(object.endTime)
-        : "";
-    message.endTicks =
-      object.endTicks !== undefined && object.endTicks !== null
-        ? Number(object.endTicks)
-        : 0;
-    message.payload =
-      object.payload !== undefined && object.payload !== null
+    return {
+      blockId: isSet(object.blockId) ? String(object.blockId) : "",
+      streamId: isSet(object.streamId) ? String(object.streamId) : "",
+      beginTime: isSet(object.beginTime) ? String(object.beginTime) : "",
+      beginTicks: isSet(object.beginTicks) ? Number(object.beginTicks) : 0,
+      endTime: isSet(object.endTime) ? String(object.endTime) : "",
+      endTicks: isSet(object.endTicks) ? Number(object.endTicks) : 0,
+      payload: isSet(object.payload)
         ? BlockPayload.fromJSON(object.payload)
-        : undefined;
-    message.nbObjects =
-      object.nbObjects !== undefined && object.nbObjects !== null
-        ? Number(object.nbObjects)
-        : 0;
-    return message;
+        : undefined,
+      nbObjects: isSet(object.nbObjects) ? Number(object.nbObjects) : 0,
+    };
   },
 
   toJSON(message: Block): unknown {
@@ -236,7 +215,7 @@ export const Block = {
   },
 
   fromPartial<I extends Exact<DeepPartial<Block>, I>>(object: I): Block {
-    const message = { ...baseBlock } as Block;
+    const message = createBaseBlock();
     message.blockId = object.blockId ?? "";
     message.streamId = object.streamId ?? "";
     message.beginTime = object.beginTime ?? "";
@@ -323,4 +302,8 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }
