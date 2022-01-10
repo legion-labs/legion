@@ -72,17 +72,6 @@ impl HlslCompiler {
         self.inner.filesystem.clone()
     }
 
-    // pub fn new(src_folders: Vec<&str>) -> Result<Self> {
-    //     let mut file_server = FileServer::new();
-    //     for src_folder in src_folders {
-    //         file_server.add_root_folder(&src_folder)?;
-    //     }
-    //     Ok(Self {
-    //         dxc: Dxc::new(None)?,
-    //         file_server: Arc::new(file_server),
-    //     })
-    // }
-
     /// Compile an HLSL shader.
     ///
     /// # Errors

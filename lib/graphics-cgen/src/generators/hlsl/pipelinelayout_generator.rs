@@ -34,8 +34,8 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line("// DescriptorSets");
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                let ds = ds_ref.get(ctx.model);
+            crate::model::PipelineLayoutContent::DescriptorSet(ds_handle) => {
+                let ds = ds_handle.get(ctx.model);
                 let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ds_path);
                 writer.add_line(format!("// - name: {}", name));

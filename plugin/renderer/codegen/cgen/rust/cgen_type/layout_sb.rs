@@ -10,41 +10,42 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 /*
 StructLayout {
-    size: 128,
-    padded_size: 128,
+    size: 24,
+    padded_size: 24,
     members: [
         StructMemberLayout {
             offset: 0,
             absolute_offset: 0,
-            size: 64,
-            padded_size: 64,
+            size: 12,
+            padded_size: 12,
         },
         StructMemberLayout {
-            offset: 64,
-            absolute_offset: 64,
-            size: 64,
-            padded_size: 64,
+            offset: 16,
+            absolute_offset: 0,
+            size: 8,
+            padded_size: 8,
         },
     ],
 }
 */
 static TYPE_DEF: CGenTypeDef = CGenTypeDef{ 
-	name: "ViewData",
-	id: 10,
-	size: 128,
+	name: "LayoutSB",
+	id: 8,
+	size: 24,
 }; 
 
-static_assertions::const_assert_eq!(mem::size_of::<ViewData>(), 128);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutSB>(), 24);
 
 #[derive(Default, Clone, Copy)]
 #[repr(C)]
-pub struct ViewData {
-	pub view: Float4x4,
-	pub projection: Float4x4,
+pub struct LayoutSB {
+	pub a: [Float1; 3],
+	pad_0: [u8;4],
+	pub b: Float2,
 }
 
-impl ViewData {
-	pub const fn id() -> u32 { 10  }
+impl LayoutSB {
+	pub const fn id() -> u32 { 8  }
 	
 	pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }
 	

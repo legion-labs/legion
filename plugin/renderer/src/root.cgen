@@ -1,6 +1,11 @@
 mod level_0;
 
-struct LayoutA {
+struct LayoutCB {
+    a: [Float1; 3],
+    b: Float2,
+}
+
+struct LayoutSB {
     a: [Float1; 3],
     b: Float2,
 }
@@ -8,7 +13,7 @@ struct LayoutA {
 struct LayoutB {
     a: Float3,
     b: Float4,
-    c: LayoutA,
+    c: LayoutSB,
 }
 
 struct ViewData {
@@ -29,12 +34,12 @@ struct ViewDescriptorSet {
 struct FrameDescriptorSet {
     smp: Sampler,
     smp_arr: [Sampler; 10],
-    cb: ConstantBuffer<LayoutA>,
+    cb: ConstantBuffer<LayoutCB>,
     #[Field(transient)]
-    cb_tr: ConstantBuffer<LayoutA>,
-    sb: StructuredBuffer<LayoutA>,
-    sb_arr: [StructuredBuffer<LayoutA>; 10],
-    rw_sb: RWStructuredBuffer<LayoutA>,
+    cb_tr: ConstantBuffer<LayoutCB>,
+    sb: StructuredBuffer<LayoutSB>,
+    sb_arr: [StructuredBuffer<LayoutSB>; 10],
+    rw_sb: RWStructuredBuffer<LayoutSB>,
     bab: ByteAddressBuffer,
     rw_bab: RWByteAddressBuffer,
     tex2d: Texture2D<Float4>,

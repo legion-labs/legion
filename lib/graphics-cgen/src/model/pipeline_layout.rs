@@ -1,15 +1,15 @@
-use super::{CGenTypeRef, DescriptorSetRef, Model, ModelHandle, ModelObject};
+use super::{CGenTypeHandle, DescriptorSetHandle, Model, ModelHandle, ModelObject};
 
 #[derive(Debug, Clone)]
 pub struct PushConstant {
     pub name: String,
-    pub ty_ref: CGenTypeRef,
+    pub ty_handle: CGenTypeHandle,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum PipelineLayoutContent {
-    DescriptorSet(DescriptorSetRef),
-    Pushconstant(CGenTypeRef),
+    DescriptorSet(DescriptorSetHandle),
+    Pushconstant(CGenTypeHandle),
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -18,7 +18,7 @@ pub struct PipelineLayout {
     pub members: Vec<(String, PipelineLayoutContent)>,
 }
 
-pub type PipelineLayoutRef = ModelHandle<PipelineLayout>;
+pub type PipelineLayoutHandle = ModelHandle<PipelineLayout>;
 
 impl PipelineLayout {
     pub fn new(name: &str) -> Self {
@@ -28,7 +28,7 @@ impl PipelineLayout {
         }
     }
 
-    pub fn descriptor_sets(&self) -> impl Iterator<Item = DescriptorSetRef> + '_ {
+    pub fn descriptor_sets(&self) -> impl Iterator<Item = DescriptorSetHandle> + '_ {
         let x = self.members.iter().filter_map(|m| match m.1 {
             PipelineLayoutContent::DescriptorSet(ds) => Some(ds),
             PipelineLayoutContent::Pushconstant(_) => None,
@@ -36,7 +36,7 @@ impl PipelineLayout {
         x
     }
 
-    pub fn push_constant(&self) -> Option<CGenTypeRef> {
+    pub fn push_constant(&self) -> Option<CGenTypeHandle> {
         let x = self
             .members
             .iter()
@@ -52,13 +52,13 @@ impl PipelineLayout {
         &self,
         model: &Model,
         frequency: usize,
-    ) -> Option<DescriptorSetRef> {
+    ) -> Option<DescriptorSetHandle> {
         for (_, content) in &self.members {
             match content {
-                PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                    let ds = ds_ref.get(model);
+                PipelineLayoutContent::DescriptorSet(ds_handle) => {
+                    let ds = ds_handle.get(model);
                     if ds.frequency as usize == frequency {
-                        return Some(*ds_ref);
+                        return Some(*ds_handle);
                     }
                 }
                 PipelineLayoutContent::Pushconstant(_) => (),

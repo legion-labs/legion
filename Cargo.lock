@@ -4467,12 +4467,15 @@ dependencies = [
  "anyhow",
  "clap 3.0.5",
  "fxhash",
+ "hassle-rs",
  "heck 0.4.0",
  "lgn-graphics-api",
  "lgn-telemetry-sink",
  "lgn-tracing",
+ "petgraph",
  "proc-macro2",
  "relative-path",
+ "spirv-reflect",
  "strum 0.23.0",
  "syn",
 ]
@@ -4755,6 +4758,7 @@ dependencies = [
  "parking_lot 0.11.2",
  "paste",
  "smallvec",
+ "static_assertions",
  "uuid",
 ]
 

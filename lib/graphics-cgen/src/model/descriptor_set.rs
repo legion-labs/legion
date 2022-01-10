@@ -1,11 +1,13 @@
+use std::collections::HashSet;
+
 use lgn_graphics_api::{ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 use strum::EnumString;
 
-use super::{CGenTypeRef, ModelHandle, ModelObject};
+use super::{CGenTypeHandle, ModelHandle, ModelObject};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TextureDef {
-    pub ty_ref: CGenTypeRef,
+    pub ty_ref: CGenTypeHandle,
 }
 
 #[derive(Debug)]
@@ -25,12 +27,12 @@ pub enum DescriptorType {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ConstantBufferDef {
-    pub ty_ref: CGenTypeRef,
+    pub ty_handle: CGenTypeHandle,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct StructuredBufferDef {
-    pub ty_ref: CGenTypeRef,
+    pub ty_handle: CGenTypeHandle,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -101,7 +103,7 @@ pub struct DescriptorSet {
     pub descriptors: Vec<Descriptor>,
 }
 
-pub type DescriptorSetRef = ModelHandle<DescriptorSet>;
+pub type DescriptorSetHandle = ModelHandle<DescriptorSet>;
 
 impl DescriptorSet {
     pub fn new(name: &str, frequency: u32) -> Self {
@@ -112,6 +114,34 @@ impl DescriptorSet {
             descriptors: Vec::new(),
             flat_descriptor_count: 0,
         }
+    }
+
+    pub fn get_type_dependencies(&self) -> HashSet<CGenTypeHandle> {
+        let mut set = HashSet::new();
+
+        for descriptor in &self.descriptors {
+            match &descriptor.def {
+                crate::model::DescriptorDef::ConstantBuffer(def) => {
+                    set.insert(def.ty_handle);
+                }
+                crate::model::DescriptorDef::StructuredBuffer(def)
+                | crate::model::DescriptorDef::RWStructuredBuffer(def) => {
+                    set.insert(def.ty_handle);
+                }
+                crate::model::DescriptorDef::Sampler
+                | crate::model::DescriptorDef::ByteAddressBuffer
+                | crate::model::DescriptorDef::RWByteAddressBuffer
+                | crate::model::DescriptorDef::Texture2D(_)
+                | crate::model::DescriptorDef::RWTexture2D(_)
+                | crate::model::DescriptorDef::Texture3D(_)
+                | crate::model::DescriptorDef::RWTexture3D(_)
+                | crate::model::DescriptorDef::Texture2DArray(_)
+                | crate::model::DescriptorDef::RWTexture2DArray(_)
+                | crate::model::DescriptorDef::TextureCube(_)
+                | crate::model::DescriptorDef::TextureCubeArray(_) => (),
+            }
+        }
+        set
     }
 }
 

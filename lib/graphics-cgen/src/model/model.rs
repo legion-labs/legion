@@ -161,8 +161,15 @@ where
         }
     }
 
+    pub fn get_ref<'model>(&self, model: &'model Model) -> ModelRef<'model, T> {
+        ModelRef {
+            id: self.id,
+            object: model.get_from_id(self.id).unwrap(),
+        }
+    }
+
     pub fn get<'model>(&self, model: &'model Model) -> &'model T {
-        model.get_from_objectid(self.id).unwrap()
+        self.get_ref(model).object()        
     }
 
     pub fn id(self) -> u32 {
@@ -321,7 +328,8 @@ impl Model {
         ModelVecIter::new(container)
     }
 
-    pub fn get_object_ref<T: ModelObject>(&self, key: &str) -> Option<ModelHandle<T>> {
+
+    pub fn get_object_handle<T: ModelObject>(&self, key: &str) -> Option<ModelHandle<T>> {
         let container_index = self.get_container_index::<T>()?;
         let key = ModelKey::new(key);
         let id = self.key_map.get(&key).copied()?;
@@ -329,7 +337,7 @@ impl Model {
         Some(ModelHandle::new(id.object_index))
     }
 
-    fn get_from_objectid<T: ModelObject>(&self, id: u32) -> Option<&T> {
+    pub fn get_from_id<T: ModelObject>(&self, id: u32) -> Option<&T> {
         let container = self.get_container::<T>()?;
         let ptr = container.get_object_ref(id as usize).cast::<T>();
         unsafe { ptr.as_ref() }

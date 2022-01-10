@@ -111,8 +111,8 @@ fn generate_rust_pipeline_layout(
             }
         }
         writer.add_line("],");
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant_type: Some({}::id())", ty.name()));
         } else {
             writer.add_line("push_constant_type: None,");
@@ -157,8 +157,8 @@ fn generate_rust_pipeline_layout(
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
         writer.indent();
         writer.add_line("unsafe { ");
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!(
                 "let push_constant_def = Some({}::def());",
                 ty.name()
@@ -280,9 +280,9 @@ fn generate_rust_pipeline_layout(
         // fn push_constant
         writer.add_line("fn push_constant(&self) -> Option<&[u8]> {");
         writer.indent();
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
             writer.add_line("#![allow(unsafe_code)]");
-            let ty = ty_ref.get(ctx.model);
+            let ty = ty_handle.get(ctx.model);
             writer.add_line("let data_slice = unsafe {");
             writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
             writer.add_line("};");

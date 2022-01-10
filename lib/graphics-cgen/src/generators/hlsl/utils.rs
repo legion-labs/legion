@@ -1,4 +1,4 @@
-use crate::model::{CGenType, NativeType};
+use crate::model::{CGenType, NativeType, StructMember, Model};
 
 pub(super) fn get_hlsl_typestring(ty: &CGenType) -> &str {
     let typestring = match ty {
@@ -12,4 +12,14 @@ pub(super) fn get_hlsl_typestring(ty: &CGenType) -> &str {
         CGenType::Struct(e) => e.name.as_str(),
     };
     typestring
+}
+
+pub(super) fn get_member_declaration(model: &Model, member: &StructMember) -> String {
+    let typestring = get_hlsl_typestring(member.ty_handle.get(model));
+
+    if let Some(array_len) =  member.array_len {
+        format!("{} {}[{}];", typestring, member.name, array_len)
+    } else {
+        format!("{} {};", typestring, member.name)
+    }
 }

@@ -16,7 +16,15 @@ use crate::{
 pub enum CGenVariant {
     Hlsl,
     Rust,
-    Blob,
+}
+
+impl CGenVariant {
+    pub fn get_file_ext(&self) -> &'static str {
+        match self {
+            CGenVariant::Hlsl => "hlsl",
+            CGenVariant::Rust => "rs",            
+        }
+    }
 }
 
 pub struct CGenContext {
@@ -39,7 +47,6 @@ impl CGenContext {
         match variant {
             CGenVariant::Hlsl => RelativePath::new("hlsl").to_path(&self.outdir),
             CGenVariant::Rust => RelativePath::new("rust").to_path(&self.outdir),
-            CGenVariant::Blob => RelativePath::new("blob").to_path(&self.outdir),
         }
     }
 }
@@ -123,12 +130,12 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
         "cgen" => from_syn(&context.root_file)?,
         _ => return Err(anyhow!("Unknown extension")),
     };
-    let model = &parsing_result.model;
 
     //
-    // generation step
+    // code generation step
     //
-    let gen_context = GeneratorContext::new(model);
+    let gen_context = GeneratorContext::new(&parsing_result.model);
+
     let generators = [
         generators::hlsl::type_generator::run,
         generators::hlsl::descriptorset_generator::run,

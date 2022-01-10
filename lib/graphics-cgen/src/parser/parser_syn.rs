@@ -293,8 +293,6 @@ impl Property {
             .ok_or(anyhow!("Invalid field definition"))?;
         let field_name = field_name.to_string();
 
-        trace!("Parsing field {}", field_name);
-
         //
         // Extract property type
         //

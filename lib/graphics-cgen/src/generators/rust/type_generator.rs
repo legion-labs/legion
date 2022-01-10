@@ -6,6 +6,7 @@ use crate::{
         GeneratorContext,
     },
     model::{CGenType, Model, StructMember},
+    struct_layout::{StructLayout, StructMemberLayout},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -14,7 +15,19 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     for ty_ref in model.object_iter::<CGenType>() {
         if let Some(content) = match ty_ref.object() {
             CGenType::Native(_) => None,
-            CGenType::Struct(_) => Some(generate_rust_struct(ctx, ty_ref.id(), ty_ref.object())),
+            CGenType::Struct(_) => {
+                let ty_layout = ctx.struct_layouts.get(ty_ref.id());
+                if ty_layout.is_some() {
+                    Some(generate_rust_struct(
+                        ctx,
+                        ty_ref.id(),
+                        ty_ref.object(),
+                        ty_layout.unwrap(),
+                    ))
+                } else {
+                    None
+                }
+            }
         } {
             products.push(Product::new(
                 CGenVariant::Rust,
@@ -45,14 +58,27 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-fn get_member_declaration(model: &Model, member: &StructMember) -> String {
-    let typestring = get_rust_typestring(member.ty_ref.get(model));
+fn get_member_declaration(
+    model: &Model,
+    member: &StructMember,
+    layout: &StructMemberLayout,
+) -> String {
+    let typestring = get_rust_typestring(member.ty_handle.get(model));
 
-    format!("pub {}: {},", member.name, typestring)
+    if let Some(array_len) = member.array_len {
+        format!("pub {}: [{}; {}],", member.name, typestring, array_len)
+    } else {
+        format!("pub {}: {},", member.name, typestring)
+    }
 }
 
-fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -> String {
-    let struct_def = ty.struct_type();
+fn generate_rust_struct(
+    ctx: &GeneratorContext<'_>,
+    ty_id: u32,
+    ty: &CGenType,
+    ty_layout: &StructLayout,
+) -> String {
+    let struct_ty = ty.struct_type();
     let mut writer = FileWriter::new();
 
     // global dependencies
@@ -67,12 +93,12 @@ fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -
     writer.new_line();
 
     // local dependencies
-    let deps = GeneratorContext::get_type_dependencies(ty);
+    let deps = ty.get_type_dependencies();
 
     if !deps.is_empty() {
         let mut has_native_types = false;
-        for ty_ref in &deps {
-            let ty = ty_ref.get(ctx.model);
+        for ty_handle in &deps {
+            let ty = ty_handle.get(ctx.model);
             match ty {
                 CGenType::Native(_) => {
                     has_native_types = true;
@@ -92,25 +118,55 @@ fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -
         writer.new_line();
     }
 
+    // write layout (debug purpose)
+    {
+        writer.add_line("/*");
+        writer.add_line(format!("{:#?}", ty_layout));
+        writer.add_line("*/");
+    }
+
     // write type def
     {
         writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
         writer.indent();
-        writer.add_line(format!("name: \"{}\",", struct_def.name));
+        writer.add_line(format!("name: \"{}\",", struct_ty.name));
         writer.add_line(format!("id: {},", ty_id));
-        writer.add_line(format!("size: mem::size_of::<{}>(),", struct_def.name));
+        writer.add_line(format!("size: {},", ty_layout.padded_size));
         writer.unindent();
         writer.add_line("}; ");
+        writer.new_line();
+        writer.add_line(format!(
+            "static_assertions::const_assert_eq!(mem::size_of::<{}>(), {});",
+            struct_ty.name, ty_layout.padded_size
+        ));
         writer.new_line();
     }
 
     // struct
     writer.add_line("#[derive(Default, Clone, Copy)]");
     writer.add_line("#[repr(C)]");
-    writer.add_line(format!("pub struct {} {{", struct_def.name));
+    writer.add_line(format!("pub struct {} {{", struct_ty.name));
     writer.indent();
-    for m in &struct_def.members {
-        writer.add_line(get_member_declaration(ctx.model, m));
+    let member_len = struct_ty.members.len();
+    let mut cur_offset = 0;
+    let mut padding_index = 0;
+    for i in 0..member_len {
+        let struct_m = &struct_ty.members[i];
+        let layout_m = &ty_layout.members[i];
+        if layout_m.offset != cur_offset {
+            let padding_size = layout_m.offset - cur_offset;
+
+            writer.add_line(format!("pad_{}: [u8;{}],", padding_index, padding_size));
+
+            padding_index += 1;
+            cur_offset += padding_size;
+        }
+        writer.add_line(get_member_declaration(ctx.model, struct_m, layout_m));
+        cur_offset += layout_m.padded_size;
+    }
+    if ty_layout.padded_size != cur_offset {
+        let padding_size = ty_layout.padded_size - cur_offset;
+        writer.add_line(format!("pad_{}: [u8;{}],", padding_index, padding_size));
     }
     writer.unindent();
     writer.add_line("}");
@@ -118,7 +174,7 @@ fn generate_rust_struct(ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -
 
     // impl
     {
-        writer.add_line(format!("impl {} {{", struct_def.name));
+        writer.add_line(format!("impl {} {{", struct_ty.name));
         writer.indent();
 
         // impl: id

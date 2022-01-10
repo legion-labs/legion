@@ -7,6 +7,6 @@
 	struct ViewData {
 		float4x4 view;
 		float4x4 projection;
-	}; // ViewData
+	};
 	
 #endif

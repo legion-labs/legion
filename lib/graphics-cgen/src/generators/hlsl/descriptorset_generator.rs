@@ -27,19 +27,19 @@ fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String 
         DescriptorDef::ConstantBuffer(def) => {
             format!(
                 "ConstantBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::StructuredBuffer(def) => {
             format!(
                 "StructuredBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::RWStructuredBuffer(def) => {
             format!(
                 "RWStructuredBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
@@ -106,7 +106,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     writer.indent();
 
     // include all type dependencies
-    let deps = GeneratorContext::get_descriptorset_dependencies(ds);
+    let deps = ds.get_type_dependencies();
 
     if !deps.is_empty() {
         let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
