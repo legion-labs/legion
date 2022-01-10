@@ -6,6 +6,7 @@ pub struct StructMemberLayout {
     pub absolute_offset: u32,
     pub size: u32,
     pub padded_size: u32,    
+    pub array_stride: u32,    
 }
 
 #[derive(Debug, PartialEq)]

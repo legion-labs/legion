@@ -5,8 +5,8 @@ use crate::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
         GeneratorContext,
     },
-    model::{CGenType, Model, StructMember},
-    struct_layout::{StructLayout, StructMemberLayout},
+    model::CGenType,
+    struct_layout::StructLayout,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -56,20 +56,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     }
 
     products
-}
-
-fn get_member_declaration(
-    model: &Model,
-    member: &StructMember,
-    layout: &StructMemberLayout,
-) -> String {
-    let typestring = get_rust_typestring(member.ty_handle.get(model));
-
-    if let Some(array_len) = member.array_len {
-        format!("pub {}: [{}; {}],", member.name, typestring, array_len)
-    } else {
-        format!("pub {}: {},", member.name, typestring)
-    }
 }
 
 fn generate_rust_struct(
@@ -143,31 +129,11 @@ fn generate_rust_struct(
     }
 
     // struct
-    writer.add_line("#[derive(Default, Clone, Copy)]");
+    writer.add_line("#[derive(Clone, Copy)]");
     writer.add_line("#[repr(C)]");
     writer.add_line(format!("pub struct {} {{", struct_ty.name));
     writer.indent();
-    let member_len = struct_ty.members.len();
-    let mut cur_offset = 0;
-    let mut padding_index = 0;
-    for i in 0..member_len {
-        let struct_m = &struct_ty.members[i];
-        let layout_m = &ty_layout.members[i];
-        if layout_m.offset != cur_offset {
-            let padding_size = layout_m.offset - cur_offset;
-
-            writer.add_line(format!("pad_{}: [u8;{}],", padding_index, padding_size));
-
-            padding_index += 1;
-            cur_offset += padding_size;
-        }
-        writer.add_line(get_member_declaration(ctx.model, struct_m, layout_m));
-        cur_offset += layout_m.padded_size;
-    }
-    if ty_layout.padded_size != cur_offset {
-        let padding_size = ty_layout.padded_size - cur_offset;
-        writer.add_line(format!("pad_{}: [u8;{}],", padding_index, padding_size));
-    }
+    writer.add_line(format!("data: [u8;{}]", ty_layout.padded_size));
     writer.unindent();
     writer.add_line("}");
     writer.new_line();
@@ -184,6 +150,160 @@ fn generate_rust_struct(
         // impl: def
         writer.add_line("pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }");
         writer.new_line();
+
+        // members
+        let member_len = struct_ty.members.len();
+        for i in 0..member_len {
+            let struct_m = &struct_ty.members[i];
+            let layout_m = &ty_layout.members[i];
+            let ty_m = struct_m.ty_handle.get(ctx.model);
+            let ty_string_m = get_rust_typestring(ty_m);
+
+            if let Some(array_len) = struct_m.array_len {
+                // set all elements
+                writer.add_line(format!(
+                    "pub fn set_{}(&mut self, values: [{};{}]) {{ ",
+                    struct_m.name, ty_string_m, array_len
+                ));
+                writer.indent();
+                writer.add_line(format!("for i in 0..{} {{", array_len));
+                writer.indent();
+                writer.add_line(format!("self.set_{}_element(i, values[i]);", struct_m.name,));
+                writer.unindent();
+                writer.add_line("}");
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+                // set element by index
+                writer.add_line(format!(
+                    "pub fn set_{}_element(&mut self, index: usize, value: {}) {{ ",
+                    struct_m.name, ty_string_m
+                ));
+                writer.indent();
+                writer.add_line(format!("assert!(index<{});", array_len));
+                writer.add_line(format!(
+                    "self.set::<{}>({} + index * {} , value);",
+                    ty_string_m, layout_m.offset, layout_m.array_stride
+                ));
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+                // get all elements
+                writer.add_line(format!(
+                    "pub fn {}(&self) ->  [{};{}] {{ ",
+                    struct_m.name, ty_string_m, array_len
+                ));
+                writer.indent();
+                writer.add_line(format!("self.get({})", layout_m.offset,));
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+                // get element by index
+                writer.add_line(format!(
+                    "pub fn {}_element(&self, index: usize) -> {} {{ ",
+                    struct_m.name, ty_string_m
+                ));
+                writer.indent();
+                writer.add_line(format!("assert!(index<{});", array_len));
+                writer.add_line(format!(
+                    "self.get::<{}>({} + index * {})",
+                    ty_string_m, layout_m.offset, layout_m.array_stride
+                ));
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+            } else {
+                // set
+                writer.add_line(format!(
+                    "pub fn set_{}(&mut self, value: {}) {{ ",
+                    struct_m.name, ty_string_m
+                ));
+                writer.indent();
+                writer.add_line(format!("self.set({}, value);", layout_m.offset,));
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+                // get
+                writer.add_line(format!(
+                    "pub fn {}(&self) -> {} {{ ",
+                    struct_m.name, ty_string_m
+                ));
+                writer.indent();
+                writer.add_line(format!("self.get({})", layout_m.offset,));
+                writer.unindent();
+                writer.add_line("}");
+                writer.new_line();
+            }
+        }
+
+        writer.add_line("#[allow(unsafe_code)]");
+        writer.add_line("fn set<T: Copy>(&mut self, offset: usize, value: T) {");
+        writer.indent();
+        writer.add_line("unsafe{");
+        writer.indent();
+        writer.add_line("let p = self.data.as_mut_ptr();");
+        writer.add_line("let p = p.add(offset as usize);");
+        writer.add_line("let p = p as *mut T;");
+        writer.add_line("p.write(value);");
+        writer.unindent();
+        writer.add_line("}");
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+
+        writer.add_line("#[allow(unsafe_code)]");
+        writer.add_line("fn get<T: Copy>(&self, offset: usize) -> T {");
+        writer.indent();
+        writer.add_line("unsafe{");
+        writer.indent();
+        writer.add_line("let p = self.data.as_ptr();");
+        writer.add_line("let p = p.add(offset as usize);");
+        writer.add_line("let p = p as *const T;");
+        writer.add_line("*p");
+        writer.unindent();
+        writer.add_line("}");
+        writer.unindent();
+        writer.add_line("}");
+
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+    }
+
+    // impl Default
+    {
+        writer.add_line(format!("impl Default for {} {{", struct_ty.name));
+        writer.indent();
+
+        writer.add_line("fn default() -> Self {");
+        writer.indent();
+        writer.add_line("let mut ret = Self {");
+        writer.add_line(format!("data: [0;{}]", ty_layout.padded_size));
+        writer.add_line("};");
+
+        let member_len = struct_ty.members.len();
+        for i in 0..member_len {
+            let struct_m = &struct_ty.members[i];
+            let ty_m = struct_m.ty_handle.get(ctx.model);
+            let ty_string_m = get_rust_typestring(ty_m);
+
+            if let Some(array_len) = struct_m.array_len {
+                writer.add_line(format!(
+                    "ret.set_{}([{}::default();{}]);",
+                    struct_m.name, ty_string_m, array_len
+                ));
+            } else {
+                writer.add_line(format!(
+                    "ret.set_{}({}::default());",
+                    struct_m.name, ty_string_m
+                ));
+            }
+        }
+
+        writer.add_line("ret");
+
+        writer.unindent();
+        writer.add_line("}");
 
         writer.unindent();
         writer.add_line("}");

@@ -25,6 +25,7 @@ impl StructLayout {
                 absolute_offset: spirv_member.absolute_offset,
                 size: spirv_member.size,
                 padded_size: spirv_member.padded_size,
+                array_stride: spirv_member.array.stride
             });
         }
 
