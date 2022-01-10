@@ -15,10 +15,12 @@ pub struct TestEntity {
     pub test_sub_type: TestSubType1,
     pub test_option_set: Option<TestSubType2>,
     pub test_option_none: Option<TestSubType2>,
+    pub test_resource_path_option: Option<ResourcePathId>,
+    pub test_resource_path_vec: Vec<ResourcePathId>,
 }
 impl TestEntity {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 13487959877062313387u64;
+    const SIGNATURE_HASH: u64 = 5553664362261540429u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTENTITY_DEFAULT
@@ -40,6 +42,8 @@ impl Default for TestEntity {
             test_sub_type: TestSubType1::default(),
             test_option_set: None,
             test_option_none: None,
+            test_resource_path_option: None,
+            test_resource_path_vec: Vec::new(),
         }
     }
 }
@@ -174,6 +178,28 @@ impl lgn_data_model::TypeReflection for TestEntity {
                         attr
                     }
                 },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "test_resource_path_option".into(),
+                    offset: memoffset::offset_of!(TestEntity, test_resource_path_option),
+                    field_type:
+                        <Option<ResourcePathId> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("resource_type"), String::from("TestEntity"));
+                        attr
+                    }
+                },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "test_resource_path_vec".into(),
+                    offset: memoffset::offset_of!(TestEntity, test_resource_path_vec),
+                    field_type:
+                        <Vec<ResourcePathId> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("resource_type"), String::from("TestEntity"));
+                        attr
+                    }
+                },
             ]
         );
         lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)
@@ -188,22 +214,23 @@ impl lgn_data_model::TypeReflection for TestEntity {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __TESTENTITY_DEFAULT : TestEntity = TestEntity :: default () ; }
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor};
-use lgn_data_runtime::{Asset, AssetLoader, Resource};
-use std::{any::Any, io};
-impl Resource for TestEntity {
+use lgn_data_offline::ResourcePathId;
+impl lgn_data_runtime::Resource for TestEntity {
     const TYPENAME: &'static str = "offline_testentity";
 }
-impl Asset for TestEntity {
+impl lgn_data_runtime::Asset for TestEntity {
     type Loader = TestEntityProcessor;
 }
-impl OfflineResource for TestEntity {
+impl lgn_data_offline::resource::OfflineResource for TestEntity {
     type Processor = TestEntityProcessor;
 }
 #[derive(Default)]
 pub struct TestEntityProcessor {}
-impl AssetLoader for TestEntityProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+impl lgn_data_runtime::AssetLoader for TestEntityProcessor {
+    fn load(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
         let mut instance = TestEntity::default();
         let values: serde_json::Value = serde_json::from_reader(reader)
             .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
@@ -214,24 +241,24 @@ impl AssetLoader for TestEntityProcessor {
         .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
         Ok(Box::new(instance))
     }
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }
-impl ResourceProcessor for TestEntityProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+impl lgn_data_offline::resource::ResourceProcessor for TestEntityProcessor {
+    fn new_resource(&mut self) -> Box<dyn std::any::Any + Send + Sync> {
         Box::new(TestEntity::default())
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Any,
+        _resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
         vec![]
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
-        Some(TestEntity::TYPENAME)
+        Some(<TestEntity as lgn_data_runtime::Resource>::TYPENAME)
     }
     fn write_resource(
         &mut self,
-        resource: &dyn Any,
+        resource: &dyn std::any::Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let instance = resource.downcast_ref::<TestEntity>().unwrap();
@@ -247,12 +274,13 @@ impl ResourceProcessor for TestEntityProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+        use lgn_data_runtime::AssetLoader;
         self.load(reader)
     }
     fn get_resource_reflection<'a>(
         &self,
-        resource: &'a dyn Any,
+        resource: &'a dyn std::any::Any,
     ) -> Option<&'a dyn lgn_data_model::TypeReflection> {
         if let Some(instance) = resource.downcast_ref::<TestEntity>() {
             return Some(instance);
@@ -261,7 +289,7 @@ impl ResourceProcessor for TestEntityProcessor {
     }
     fn get_resource_reflection_mut<'a>(
         &self,
-        resource: &'a mut dyn Any,
+        resource: &'a mut dyn std::any::Any,
     ) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
         if let Some(instance) = resource.downcast_mut::<TestEntity>() {
             return Some(instance);

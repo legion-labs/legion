@@ -43,6 +43,12 @@ pub struct TestEntity {
 
     test_option_set: Option<TestSubType2>,
     test_option_none: Option<TestSubType2>,
+
+    #[legion(resource_type = TestEntity)]
+    test_resource_path_option: Option<ResourcePathId>,
+
+    #[legion(resource_type = TestEntity)]
+    test_resource_path_vec: Vec<ResourcePathId>,
 }
 
 #[component]
