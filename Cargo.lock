@@ -4998,7 +4998,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lgn-derive-tracing-transit",
- "lgn-utils",
  "memoffset 0.6.5",
  "serde",
 ]

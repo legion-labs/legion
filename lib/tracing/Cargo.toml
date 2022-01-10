@@ -7,9 +7,11 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Dependencies to other legion crates must stay limited limited
 lgn-utils = { path = "../utils", version = "0.1.0" }
 lgn-tracing-transit = { path = "../tracing-transit", version = "0.1.0" }
 lgn-tracing-proc-macros = { path = "./proc-macros", version = "0.1.0" }
+################################################################################
 anyhow = "1.0"
 cfg-if = "1.0"
 raw-cpuid = "10.2.0"

@@ -1,9 +1,8 @@
 use std::{collections::HashMap, hash::BuildHasher};
 
 use anyhow::{bail, Result};
-use lgn_utils::memory::read_any;
 
-use crate::{DynString, InProcSerialize, UserDefinedType};
+use crate::{read_any, DynString, InProcSerialize, UserDefinedType};
 
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -244,7 +243,7 @@ where
             let value = if member_meta.is_reference {
                 assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                 let key =
-                    read_any::<u64>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
+                    unsafe { read_any::<u64>(buffer.as_ptr().add(offset + member_meta.offset)) };
                 if let Some(v) = dependencies.get(&key) {
                     v.clone()
                 } else {
@@ -255,33 +254,43 @@ where
                 match type_name.as_str() {
                     "u8" => {
                         assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
-                        Value::U8(read_any::<u8>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
+                        unsafe {
+                            Value::U8(read_any::<u8>(
+                                buffer.as_ptr().add(offset + member_meta.offset),
+                            ))
+                        }
                     }
                     "u32" => {
                         assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
-                        Value::U32(read_any::<u32>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
+                        unsafe {
+                            Value::U32(read_any::<u32>(
+                                buffer.as_ptr().add(offset + member_meta.offset),
+                            ))
+                        }
                     }
                     "u64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
-                        Value::U64(read_any::<u64>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
+                        unsafe {
+                            Value::U64(read_any::<u64>(
+                                buffer.as_ptr().add(offset + member_meta.offset),
+                            ))
+                        }
                     }
                     "i64" => {
                         assert_eq!(std::mem::size_of::<i64>(), member_meta.size);
-                        Value::I64(read_any::<i64>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
+                        unsafe {
+                            Value::I64(read_any::<i64>(
+                                buffer.as_ptr().add(offset + member_meta.offset),
+                            ))
+                        }
                     }
                     "f64" => {
                         assert_eq!(std::mem::size_of::<f64>(), member_meta.size);
-                        Value::F64(read_any::<f64>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
+                        unsafe {
+                            Value::F64(read_any::<f64>(
+                                buffer.as_ptr().add(offset + member_meta.offset),
+                            ))
+                        }
                     }
                     unknown_member_type => {
                         println!("unknown member type {}", unknown_member_type);
