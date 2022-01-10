@@ -3,9 +3,9 @@
 #ifndef DESCRIPTORSET_FRAMEDESCRIPTORSET
 #define DESCRIPTORSET_FRAMEDESCRIPTORSET
 
-	#include "../cgen_type/layout_cb.hlsl"
-	#include "../cgen_type/layout_sb2.hlsl"
 	#include "../cgen_type/layout_sb.hlsl"
+	#include "../cgen_type/layout_sb2.hlsl"
+	#include "../cgen_type/layout_cb.hlsl"
 	
 	[[vk::binding(0, 1)]]
 	SamplerState  smp;
