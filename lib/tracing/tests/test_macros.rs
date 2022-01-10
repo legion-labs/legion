@@ -58,7 +58,7 @@ fn get_tsc_frequency() -> Result<u64, String> {
     }
 }
 
-fn test_thread_spans(state: SharedState) {
+fn test_thread_spans(state: &SharedState) {
     println!("TSC frequency: {}", get_tsc_frequency().unwrap_or_default());
     let mut threads = Vec::new();
     for _ in 0..5 {
@@ -126,7 +126,7 @@ fn test_log() {
     assert!(process_id().is_some());
     test_log_str(&state);
     test_log_interop_str(&state);
-    test_thread_spans(state.clone());
+    test_thread_spans(&state);
     test_proc_macros(&state);
     test_metrics(&state);
 }

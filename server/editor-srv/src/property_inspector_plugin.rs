@@ -60,6 +60,7 @@ impl Plugin for PropertyInspectorPlugin {
 }
 
 impl PropertyInspectorPlugin {
+    #[allow(clippy::needless_pass_by_value)]
     fn setup(
         data_manager: Res<'_, Arc<Mutex<DataManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
@@ -103,7 +104,9 @@ impl PropertyCollector for ResourcePropertyCollector {
             sub_properties: Vec::new(),
             attributes: item_info
                 .field_descriptor
-                .map_or(Default::default(), |field| field.attributes.clone()),
+                .map_or(std::collections::HashMap::default(), |field| {
+                    field.attributes.clone()
+                }),
         })
     }
     fn add_child(parent: &mut Self::Item, child: Self::Item) {
@@ -123,7 +126,7 @@ impl PropertyCollector for ResourcePropertyCollector {
                 sub_properties.push(Self::Item {
                     name: group_name.into(),
                     ptype: "_group_".into(),
-                    ..Default::default()
+                    ..ResourceProperty::default()
                 });
                 sub_properties.last_mut().unwrap()
             };

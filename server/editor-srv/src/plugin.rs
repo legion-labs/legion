@@ -21,6 +21,7 @@ impl Plugin for EditorPlugin {
 }
 
 impl EditorPlugin {
+    #[allow(clippy::needless_pass_by_value)]
     fn setup(
         data_manager: Res<'_, Arc<Mutex<DataManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,

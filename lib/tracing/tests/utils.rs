@@ -59,13 +59,12 @@ impl EventSink for DebugEventSink {
     }
 
     fn on_process_log_block(&self, log_block: std::sync::Arc<LogBlock>) {
-        use LogMsgQueueAny::*;
         for event in log_block.events.iter() {
             match event {
-                LogStaticStrEvent(_evt) => {}
-                LogStringEvent(_evt) => {}
-                LogStaticStrInteropEvent(_evt) => {}
-                LogStringInteropEvent(_evt) => {}
+                LogMsgQueueAny::LogStaticStrEvent(_evt) => {}
+                LogMsgQueueAny::LogStringEvent(_evt) => {}
+                LogMsgQueueAny::LogStaticStrInteropEvent(_evt) => {}
+                LogMsgQueueAny::LogStringInteropEvent(_evt) => {}
             }
         }
         *self.0.lock().unwrap() = Some(State::ProcessLogBlock(log_block.events.nb_objects()));
@@ -76,11 +75,10 @@ impl EventSink for DebugEventSink {
     }
 
     fn on_process_metrics_block(&self, metrics_block: std::sync::Arc<MetricsBlock>) {
-        use MetricsMsgQueueAny::*;
         for event in metrics_block.events.iter() {
             match event {
-                IntegerMetricEvent(_evt) => {}
-                FloatMetricEvent(_evt) => {}
+                MetricsMsgQueueAny::IntegerMetricEvent(_evt) => {}
+                MetricsMsgQueueAny::FloatMetricEvent(_evt) => {}
             }
         }
         *self.0.lock().unwrap() = Some(State::ProcessMetricsBlock(
@@ -93,11 +91,10 @@ impl EventSink for DebugEventSink {
     }
 
     fn on_process_thread_block(&self, thread_block: std::sync::Arc<ThreadBlock>) {
-        use ThreadEventQueueAny::*;
         for event in thread_block.events.iter() {
             match event {
-                BeginThreadSpanEvent(_evt) => {}
-                EndThreadSpanEvent(_evt) => {}
+                ThreadEventQueueAny::BeginThreadSpanEvent(_evt) => {}
+                ThreadEventQueueAny::EndThreadSpanEvent(_evt) => {}
             }
         }
         *self.0.lock().unwrap() = Some(State::ProcessThreadBlock(thread_block.events.nb_objects()));
