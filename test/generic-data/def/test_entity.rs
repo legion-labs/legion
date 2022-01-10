@@ -49,6 +49,9 @@ pub struct TestEntity {
 
     #[legion(resource_type = TestEntity)]
     test_resource_path_vec: Vec<ResourcePathId>,
+
+    test_option_primitive_set: Option<Vec3>,
+    test_option_primitive_none: Option<Vec3>,
 }
 
 #[component]

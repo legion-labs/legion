@@ -122,6 +122,8 @@ fn test_write_field_by_name() {
         test_vec: (1.0, 2.0, 3.0).into(),
     });
 
+    entity.test_option_primitive_set = Some((1.0, 2.0, 3.0).into());
+
     set_property_from_json_string(&mut entity, "test_string", "\"New Value\"").unwrap();
     assert_eq!(entity.test_string, "New Value");
 
@@ -160,6 +162,9 @@ fn test_write_field_by_name() {
 
     let value = get_property_as_json_string(&entity, "test_option_set.test_vec").unwrap();
     assert_eq!(value, "[1.0,2.0,3.0]");
+
+    let value = get_property_as_json_string(&entity, "test_option_primitive_set").unwrap();
+    println!("value: {}", value);
 
     // Test trying to get an empty option (should fail)
     let result = get_property_as_json_string(&entity, "test_option_none.test_vec");
@@ -243,7 +248,7 @@ fn test_collector() {
     let entity = TestEntity::default();
     let output = collect_properties::<PropertyBag>(&entity).unwrap();
     assert_eq!(output.ptype, "TestEntity");
-    assert_eq!(output.sub_properties.len(), 10);
+    assert_eq!(output.sub_properties.len(), 12);
     assert_eq!(output.sub_properties[0].name, "test_string");
     assert_eq!(output.sub_properties[0].ptype, "String");
     assert_eq!(output.sub_properties[1].name, "GroupTest1");

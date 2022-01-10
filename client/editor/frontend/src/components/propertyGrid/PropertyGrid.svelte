@@ -1,12 +1,8 @@
 <script lang="ts">
-  import {
-    propertyIsGroup,
-    propertyIsVirtualGroup,
-    PropertyUpdate,
-    updateResourceProperties,
-  } from "@/api";
+  import { PropertyUpdate, updateResourceProperties } from "@/api";
+  import { propertyIsGroup } from "@/api/propertyGrid";
   import currentResource from "@/stores/currentResource";
-  import Property from "./Property.svelte";
+  import PropertyContainer from "./PropertyContainer.svelte";
 
   const propertyUpdateDebounceTimeout = 300;
 
@@ -15,6 +11,7 @@
   let propertyUpdates: PropertyUpdate[] = [];
 
   function onInput({ detail: propertyUpdate }: CustomEvent<PropertyUpdate>) {
+    console.log(propertyUpdate);
     if (updateTimeout) {
       clearTimeout(updateTimeout);
     }
@@ -62,8 +59,8 @@
     <div class="italic">Resource has no properties</div>
   {:else}
     {#each $currentResource.properties as property, index (property.name)}
-      <Property
-        pathParts={propertyIsVirtualGroup(property) ? [] : [property.name]}
+      <PropertyContainer
+        pathParts={propertyIsGroup(property) ? [] : [property.name]}
         {property}
         withBorder={$currentResource.properties[index + 1] &&
           !propertyIsGroup($currentResource.properties[index + 1])}

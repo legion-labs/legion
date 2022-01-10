@@ -239,6 +239,7 @@ fn build_test_entity(
                     .push(Box::new(TestComponent { test_i32: i }));
             });
             test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
+            test_entity.test_option_primitive_set = Some(lgn_math::Vec3::default());
 
             project
                 .add_resource_with_id(
