@@ -6,7 +6,9 @@ use lgn_graphics_api::{
     Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_tasks::TaskPool;
+use lgn_window::WindowId;
 use parking_lot::RwLock;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
@@ -55,6 +57,39 @@ impl RenderSurfaceExtents {
     pub fn height(self) -> u32 {
         self.extents.height
     }
+}
+
+pub struct RenderSurfaces {
+    window_id_mapper: HashMap<WindowId, RenderSurfaceId>,
+}
+
+impl RenderSurfaces {
+    pub fn new() -> Self {
+        Self {
+            window_id_mapper: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, window_id: WindowId, render_surface_id: RenderSurfaceId) {
+        let result = self.window_id_mapper.insert(window_id, render_surface_id);
+        assert!(result.is_none());
+    }
+
+    pub fn remove(&mut self, window_id: WindowId) {
+        let result = self.window_id_mapper.remove(&window_id);
+        assert!(result.is_some());
+    }
+
+    pub fn get_from_window_id(&self, window_id: WindowId) -> Option<&RenderSurfaceId> {
+        self.window_id_mapper.get(&window_id)
+    }
+}
+
+/// An event that is sent whenever a render surface is created for a window
+#[derive(Debug, Clone)]
+pub struct RenderSurfaceCreatedForWindow {
+    pub window_id: WindowId,
+    pub render_surface_id: RenderSurfaceId,
 }
 
 #[allow(dead_code)]

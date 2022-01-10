@@ -2300,6 +2300,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-transform",
+ "lgn-window",
  "sample-data-offline",
  "sample-data-runtime",
  "serde_json",
