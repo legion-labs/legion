@@ -409,7 +409,7 @@ fn render_update(
         DefaultMeshId::Sphere as usize,
         Color::default(),
     );
-    light_picking_mesh.world_offset = 0xffffffff;
+    light_picking_mesh.world_offset = 0xffffffff; // will force the shader to use custom made world matrix
 
     renderer.flush_update_jobs(&render_context);
 
