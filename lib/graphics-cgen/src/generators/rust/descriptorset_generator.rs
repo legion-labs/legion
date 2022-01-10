@@ -1,6 +1,6 @@
 use crate::{
-    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
     db::DescriptorSet,
+    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {

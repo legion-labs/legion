@@ -470,7 +470,7 @@ mod tests {
             glob_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
-                name: "main_vs".to_owned(),                
+                name: "main_vs".to_owned(),
                 target_profile: TargetProfile::Vertex,
             }],
         };
@@ -502,7 +502,7 @@ mod tests {
             glob_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
-                name: "main_ps".to_owned(),                
+                name: "main_ps".to_owned(),
                 target_profile: TargetProfile::Pixel,
             }],
         };

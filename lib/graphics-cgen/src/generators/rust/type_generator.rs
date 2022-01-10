@@ -1,11 +1,11 @@
 use heck::ToSnakeCase;
 
 use crate::{
+    db::CGenType,
     generators::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
         GeneratorContext,
     },
-    db::CGenType,
     struct_layout::StructLayout,
 };
 

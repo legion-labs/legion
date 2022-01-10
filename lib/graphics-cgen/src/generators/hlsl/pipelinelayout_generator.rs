@@ -1,6 +1,6 @@
 use crate::{
-    generators::{file_writer::FileWriter, product::Product, GeneratorContext},
     db::PipelineLayout,
+    generators::{file_writer::FileWriter, product::Product, GeneratorContext},
     run::CGenVariant,
 };
 

@@ -1,8 +1,8 @@
 use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
 
 use crate::{
-    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
     db::PipelineLayout,
+    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {

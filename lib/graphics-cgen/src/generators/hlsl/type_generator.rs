@@ -1,8 +1,8 @@
 use heck::ToSnakeCase;
 
 use crate::{
-    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
     db::CGenType,
+    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
 use super::utils::get_member_declaration;

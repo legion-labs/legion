@@ -1,9 +1,9 @@
 use crate::{
+    db::{Descriptor, DescriptorDef, DescriptorSet, Model},
     generators::{
         file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
-    db::{Descriptor, DescriptorDef, DescriptorSet, Model},
     run::CGenVariant,
 };
 

@@ -56,8 +56,8 @@
 // crate-specific exceptions:
 
 pub mod builder;
-pub mod generators;
 pub mod db;
+pub mod generators;
 pub mod parser;
 pub mod run;
 pub mod struct_layout;
