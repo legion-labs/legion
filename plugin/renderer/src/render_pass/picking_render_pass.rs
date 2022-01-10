@@ -447,7 +447,7 @@ impl PickingRenderPass {
 
             for (light, transform) in lights {
                 let picking_distance = 1.0;
-                let custom_world = transform.compute_matrix();
+                let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
                 self.render_mesh(
                     &custom_world,
                     Some(light.picking_id),

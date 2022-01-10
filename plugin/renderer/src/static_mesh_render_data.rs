@@ -439,14 +439,17 @@ impl StaticMeshRenderData {
         Self::from_vertex_data(&vertex_data)
     }
 
-    pub fn new_arrow(start: Vec3, end: Vec3) -> Self {
-        #[rustfmt::skip]
-        let vertex_data = [
-            start.x, start.y, start.z, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-            end.x, end.y, end.z, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-            start.x, start.y, start.z, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-        ];
-        Self::from_vertex_data(&vertex_data)
+    pub fn new_arrow() -> Self {
+        let mut cylinder = Self::new_cylinder(0.01, 0.3, 10);
+        let cone = Self::new_cone(0.025, 0.1, 10);
+        let mut cone_vertices = cone
+            .vertices
+            .into_iter()
+            .enumerate()
+            .map(|(idx, v)| if idx % 14 == 1 { -v } else { v })
+            .collect::<Vec<f32>>();
+        cone_vertices.append(&mut cylinder.vertices);
+        Self::from_vertex_data(&cone_vertices)
     }
 
     pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {

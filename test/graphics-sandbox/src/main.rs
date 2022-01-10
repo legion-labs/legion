@@ -200,9 +200,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .spawn()
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
         .insert(LightComponent {
-            light_type: LightType::Directional {
-                direction: Vec3::new(0.5, 1.0, 0.0).normalize(),
-            },
+            light_type: LightType::Directional,
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
@@ -239,7 +237,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
         .insert(LightComponent {
             light_type: LightType::Spotlight {
-                direction: Vec3::new(0.0, 1.0, 0.0),
                 cone_angle: std::f32::consts::PI / 4.0,
             },
             radiance: 40.0,

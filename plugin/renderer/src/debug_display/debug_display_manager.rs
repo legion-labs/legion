@@ -3,7 +3,8 @@
 use std::sync::Mutex;
 
 use bumpalo::Bump;
-use lgn_math::Vec3;
+use lgn_graphics_data::Color;
+use lgn_math::Mat4;
 
 struct DisplayListWrapper {
     ptr: *mut DisplayList,
@@ -40,13 +41,13 @@ impl DebugDisplay {
 }
 
 pub enum DebugPrimitiveType {
-    Cube,
-    Arrow { dir: Vec3 },
+    Mesh { mesh_id: u32 },
 }
 
 pub struct DebugPrimitive {
     pub primitive_type: DebugPrimitiveType,
-    pub pos: Vec3,
+    pub transform: Mat4,
+    pub color: (f32, f32, f32),
 }
 
 #[derive(Default)]
@@ -55,16 +56,11 @@ pub struct DisplayList {
 }
 
 impl DisplayList {
-    pub fn add_cube(&mut self, pos: Vec3, bump: &Bump) {
+    pub fn add_mesh(&mut self, transform: Mat4, mesh_id: u32, color: (f32, f32, f32), bump: &Bump) {
         self.primitives.push(bump.alloc(DebugPrimitive {
-            primitive_type: DebugPrimitiveType::Cube,
-            pos,
-        }));
-    }
-    pub fn add_arrow(&mut self, start: Vec3, end: Vec3, bump: &Bump) {
-        self.primitives.push(bump.alloc(DebugPrimitive {
-            primitive_type: DebugPrimitiveType::Arrow { dir: end - start },
-            pos: start,
+            primitive_type: DebugPrimitiveType::Mesh { mesh_id },
+            transform,
+            color,
         }));
     }
 }

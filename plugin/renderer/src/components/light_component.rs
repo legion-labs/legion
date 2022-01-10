@@ -3,8 +3,8 @@ use lgn_math::Vec3;
 
 pub enum LightType {
     Omnidirectional,
-    Directional { direction: Vec3 },
-    Spotlight { direction: Vec3, cone_angle: f32 },
+    Directional,
+    Spotlight { cone_angle: f32 },
 }
 
 #[derive(Component)]
