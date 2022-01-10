@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 use crate::{
+    cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight},
     components::{
         DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces, Spotlight,

@@ -66,3 +66,5 @@ struct TmpPipelineLayout {
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
     push_constant: PushConstant<PushConstantData>,
 }
+
+mod lighting;

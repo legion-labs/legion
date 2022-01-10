@@ -15,3 +15,12 @@ pub(crate) use view_data::*;
 pub(crate) mod push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use push_constant_data::*;
+pub(crate) mod omnidirectional_light;
+#[allow(unused_imports)]
+pub(crate) use omnidirectional_light::*;
+pub(crate) mod directional_light;
+#[allow(unused_imports)]
+pub(crate) use directional_light::*;
+pub(crate) mod spotlight;
+#[allow(unused_imports)]
+pub(crate) use spotlight::*;

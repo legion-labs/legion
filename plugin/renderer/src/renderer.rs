@@ -14,7 +14,7 @@ use lgn_pso_compiler::{
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::components::{DirectionalLight, OmnidirectionalLight, Spotlight};
+use crate::cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,

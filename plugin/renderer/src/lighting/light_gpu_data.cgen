@@ -1,0 +1,19 @@
+struct OmnidirectionalLight {
+    pos: Float3,
+    radiance: Float1,
+    color: Float3,
+}
+
+struct DirectionalLight {
+    dir: Float3,
+    radiance: Float1,
+    color: Float3,
+}
+
+pub struct Spotlight {
+    pos: Float3,
+    radiance: Float1,
+    dir: Float3,
+    cone_angle: Float1,
+    color: Float3,
+}
