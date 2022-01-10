@@ -9,7 +9,8 @@ use relative_path::{RelativePath, RelativePathBuf};
 use self::product::Product;
 use crate::{
     model::{Model, ModelObject},
-    run::CGenVariant, struct_layout::StructLayouts,
+    run::CGenVariant,
+    struct_layout::StructLayouts,
 };
 
 pub type GeneratorFunc = for<'r, 's> fn(&'r GeneratorContext<'s>) -> Vec<Product>;

@@ -46,7 +46,7 @@ impl Product {
 
         // write file footer
         writeln!(output, "// This is generated file. Do not edit manually")?;
-        writeln!(output)?;        
+        writeln!(output)?;
 
         // write file content
         output.write_all(&self.content)?;

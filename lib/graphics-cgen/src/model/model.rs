@@ -169,7 +169,7 @@ where
     }
 
     pub fn get<'model>(&self, model: &'model Model) -> &'model T {
-        self.get_ref(model).object()        
+        self.get_ref(model).object()
     }
 
     pub fn id(self) -> u32 {
@@ -327,7 +327,6 @@ impl Model {
         let container = self.get_container::<T>();
         ModelVecIter::new(container)
     }
-
 
     pub fn get_object_handle<T: ModelObject>(&self, key: &str) -> Option<ModelHandle<T>> {
         let container_index = self.get_container_index::<T>()?;

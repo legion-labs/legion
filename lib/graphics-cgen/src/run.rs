@@ -22,7 +22,7 @@ impl CGenVariant {
     pub fn get_file_ext(&self) -> &'static str {
         match self {
             CGenVariant::Hlsl => "hlsl",
-            CGenVariant::Rust => "rs",            
+            CGenVariant::Rust => "rs",
         }
     }
 }

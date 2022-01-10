@@ -30,7 +30,7 @@ impl NativeType {
             NativeType::Float(n) => {
                 assert!(*n >= 1 && *n <= 4);
                 FLOAT_TYPESTRINGS[n - 1]
-            }            
+            }
             NativeType::Uint(n) => {
                 assert!(*n >= 1 && *n <= 4);
                 UINT_TYPESTRINGS[n - 1]
