@@ -111,12 +111,18 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     if !deps.is_empty() {
         let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
         cur_folder.pop();
-        for ty_ref in &deps {
-            let ty = ty_ref.get(ctx.model);
-            let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
-            let rel_path = cur_folder.relative(ty_path);
-            writer.add_line(format!("#include \"{}\"", rel_path));
-        }
+        let mut includes = deps
+            .iter()
+            .map(|ty_ref| {
+                let ty = ty_ref.get(ctx.model);
+                let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
+                let rel_path = cur_folder.relative(ty_path);
+                format!("#include \"{}\"", rel_path)
+            })
+            .collect::<Vec<_>>();
+        includes.sort();
+        includes.into_iter().for_each(|i| writer.add_line(i));
+
         writer.new_line();
     }
 
