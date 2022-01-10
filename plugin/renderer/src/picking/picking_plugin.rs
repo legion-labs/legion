@@ -10,7 +10,8 @@ use lgn_window::WindowResized;
 
 use super::{ManipulatorManager, PickingManager};
 use crate::components::{
-    CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
+    CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+    StaticMesh,
 };
 
 pub struct PickingPlugin {
@@ -40,6 +41,7 @@ impl Plugin for PickingPlugin {
             app.add_system_to_stage(CoreStage::PreUpdate, gather_window_resize);
         }
         app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
+        app.add_system_to_stage(CoreStage::PreUpdate, lights_added);
 
         app.add_system_to_stage(
             CoreStage::PostUpdate,
@@ -113,6 +115,26 @@ fn static_meshes_added(
 
     for (entity, mut mesh) in query.iter_mut() {
         mesh.picking_id = picking_block.aquire_picking_id(entity).unwrap();
+    }
+
+    picking_manager.release_picking_id_block(picking_block);
+}
+
+#[allow(clippy::type_complexity)]
+#[allow(clippy::needless_pass_by_value)]
+fn lights_added(
+    picking_manager: Res<'_, PickingManager>,
+    mut query: Query<
+        '_,
+        '_,
+        (Entity, &mut LightComponent),
+        (Added<LightComponent>, Without<ManipulatorComponent>),
+    >,
+) {
+    let mut picking_block = picking_manager.aquire_picking_id_block();
+
+    for (entity, mut light) in query.iter_mut() {
+        light.picking_id = picking_block.aquire_picking_id(entity).unwrap();
     }
 
     picking_manager.release_picking_id_block(picking_block);

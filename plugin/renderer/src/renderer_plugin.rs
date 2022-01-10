@@ -6,11 +6,12 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::DefaultMeshes,
+    resources::{DefaultMeshId, DefaultMeshes},
 };
 use lgn_app::{App, CoreStage, Plugin};
 
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::Color;
 use lgn_transform::components::Transform;
 
 use crate::debug_display::DebugDisplay;
@@ -371,6 +372,7 @@ fn render_update(
     >,
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
+    q_lights: Query<'_, '_, (&LightComponent, &Transform)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
@@ -390,6 +392,9 @@ fn render_update(
         q_manipulator_drawables
             .iter()
             .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
+    let q_lights = q_lights
+        .iter()
+        .collect::<Vec<(&LightComponent, &Transform)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();
@@ -398,6 +403,13 @@ fn render_update(
     } else {
         &default_camera
     };
+
+    let mut light_picking_mesh = StaticMesh::from_default_meshes(
+        default_meshes.as_ref(),
+        DefaultMeshId::Sphere as usize,
+        Color::default(),
+    );
+    light_picking_mesh.world_offset = 0xffffffff; // will force the shader to use custom made world matrix
 
     renderer.flush_update_jobs(&render_context);
 
@@ -438,6 +450,8 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
+            q_lights.as_slice(),
+            &light_picking_mesh,
             camera_component,
         );
 
