@@ -72,8 +72,8 @@ pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
 use lgn_tracing::{
-    event_sink::EventSink,
-    guard::{TelemetrySystemGuard, TelemetryThreadGuard},
+    event::EventSink,
+    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
     set_max_level, LevelFilter,
 };
 

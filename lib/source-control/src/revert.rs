@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::{
     clear_local_change, clear_resolve_pending, connect_to_server, fetch_tree_subdir,
@@ -10,7 +10,7 @@ use crate::{
     read_workspace_spec, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
 };
 
-#[trace_function]
+#[span_fn]
 pub async fn revert_glob_command(pattern: &str) -> Result<()> {
     let mut nb_errors = 0;
 
@@ -100,7 +100,7 @@ pub async fn revert_file(
     }
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn revert_file_command(path: &Path) -> Result<()> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;

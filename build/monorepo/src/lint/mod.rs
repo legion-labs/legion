@@ -1,4 +1,4 @@
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::{context::Context, Result};
 
@@ -15,7 +15,7 @@ pub struct Args {
     dependencies: bool,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let all = !args.rules_coverage && !args.dependencies;
 

@@ -5,7 +5,7 @@ use crate::{
     context::Context,
     Result,
 };
-use lgn_tracing::{info, trace_function};
+use lgn_tracing::{info, span_fn};
 use std::ffi::OsString;
 
 #[derive(Debug, clap::Args)]
@@ -36,7 +36,7 @@ pub fn convert_args(args: &Args) -> Vec<OsString> {
     direct_args
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     info!("Build plan: {}", args.build_plan);
 

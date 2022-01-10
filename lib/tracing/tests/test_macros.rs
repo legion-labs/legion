@@ -6,8 +6,8 @@ use lgn_tracing::dispatch::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
     init_thread_stream, process_id,
 };
-use lgn_tracing::{info, metric_float, metric_int, set_max_level, trace_scope, LevelFilter};
-use lgn_tracing_proc_macros::{log_function, trace_function};
+use lgn_tracing::{fmetric, imetric, info, set_max_level, span_scope, LevelFilter};
+use lgn_tracing_proc_macros::{log_fn, span_fn};
 use utils::{DebugEventSink, LogDispatch, SharedState, State};
 
 fn test_log_str(state: &SharedState) {
@@ -65,7 +65,7 @@ fn test_thread_spans(state: SharedState) {
         threads.push(thread::spawn(move || {
             init_thread_stream();
             for _ in 0..1024 {
-                trace_scope!("test");
+                span_scope!("test");
             }
             flush_thread_buffer();
         }));
@@ -76,26 +76,26 @@ fn test_thread_spans(state: SharedState) {
 
     init_thread_stream();
     for _ in 0..1024 {
-        trace_scope!("test");
+        span_scope!("test");
     }
     flush_thread_buffer();
     expect_state!(state, Some(State::ProcessThreadBlock(2048)));
 }
 
 fn test_metrics(state: &SharedState) {
-    metric_int!("Frame Time", "ticks", 1000);
-    metric_float!("Frame Time", "ticks", 1.0);
+    imetric!("Frame Time", "ticks", 1000);
+    fmetric!("Frame Time", "ticks", 1.0);
     flush_metrics_buffer();
     expect_state!(state, Some(State::ProcessMetricsBlock(2)));
 }
 
-#[trace_function]
+#[span_fn]
 fn trace_func() {}
 
-#[trace_function("foo")]
+#[span_fn("foo")]
 fn trace_func_named() {}
 
-#[log_function]
+#[log_fn]
 fn log_func() {}
 
 fn test_proc_macros(state: &SharedState) {

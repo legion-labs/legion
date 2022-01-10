@@ -1,12 +1,12 @@
 use camino::Utf8PathBuf;
 use guppy::graph::cargo::CargoResolverVersion;
 use hakari::{HakariBuilder, HakariOutputOptions};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use toml_edit::Document;
 
 use crate::{action_step, context::Context, Error, Result};
 
-#[trace_function]
+#[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
     action_step!("Monorepo", "Running rules determination");
 

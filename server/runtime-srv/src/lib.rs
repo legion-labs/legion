@@ -203,7 +203,7 @@ pub fn build_runtime(
     app
 }
 
-#[trace_function]
+#[span_fn]
 pub fn start_runtime(app: &mut App) {
     app.run();
 }

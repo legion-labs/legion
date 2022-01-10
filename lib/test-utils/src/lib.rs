@@ -67,7 +67,7 @@ use std::{
 use lgn_tracing::prelude::*;
 
 //std::fs::remove_dir_all leaves read-only files and reports an error
-#[trace_function]
+#[span_fn]
 fn force_delete_all(dir: &Path) {
     fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
         if dir.is_dir() {
@@ -102,7 +102,7 @@ fn force_delete_all(dir: &Path) {
 
 // create_test_dir creates a directory (or cleans its contents) under the
 // `target` folder that will outlive the execution of the test.
-#[trace_function]
+#[span_fn]
 pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
     let path = parent_path.join(test_name);
 
@@ -115,7 +115,7 @@ pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
 
 // syscall will execute `command` from the `wd` directory and validate that the
 // error code matches `should_succeed`
-#[trace_function]
+#[span_fn]
 pub fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
     println!("{} {}", command, args.join(" "));
     let status = Command::new(command)

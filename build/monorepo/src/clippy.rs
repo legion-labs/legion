@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::cargo::{BuildArgs, CargoCommand, SelectedPackageArgs};
 use crate::context::Context;
@@ -16,7 +16,7 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let mut pass_through_args: Vec<OsString> = vec![];
     for lint in &ctx.config().clippy.deny {

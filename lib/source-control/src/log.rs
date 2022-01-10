@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::{
     connect_to_server, find_branch_commits, find_workspace_root, read_current_branch,
     read_workspace_spec, LocalWorkspaceConnection,
 };
 
-#[trace_function]
+#[span_fn]
 pub async fn log_command() -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

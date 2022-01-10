@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use sqlx::Row;
 
 use crate::{
@@ -130,7 +130,7 @@ async fn read_resolves_pending(
     .collect())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -160,7 +160,7 @@ pub async fn find_file_hash_at_commit(
     }
 }
 
-#[trace_function]
+#[span_fn]
 fn run_merge_program(
     relative_path: &Path,
     abs_path: &str,
@@ -221,7 +221,7 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<()> {
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;

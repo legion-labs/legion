@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
@@ -195,7 +195,7 @@ async fn find_commit_ancestors(
 }
 
 #[allow(clippy::too_many_lines)]
-#[trace_function]
+#[span_fn]
 pub async fn merge_branch_command(name: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

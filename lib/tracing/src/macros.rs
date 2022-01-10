@@ -3,33 +3,32 @@
 /// # Examples
 ///
 /// ```
-/// use lgn_tracing::trace_scope;
+/// use lgn_tracing::span_scope;
 ///
 /// # fn main() {
 /// #
-/// trace_scope!("scope");
+/// span_scope!("scope");
 /// # }
 /// ```
 #[macro_export]
-macro_rules! trace_scope {
-    ($scope_id:ident, $name:expr) => {
-        static $scope_id: $crate::thread_events::ThreadSpanDesc =
-            $crate::thread_events::ThreadSpanDesc {
-                lod: 0,
-                name: $name,
-                target: "",
-                module_path: module_path!(),
-                file: file!(),
-                line: line!(),
-            };
-        let guard_named = $crate::guard::ThreadSpanGuard {
-            thread_span_desc: &$scope_id,
+macro_rules! span_scope {
+    ($scope_name:ident, $name:expr) => {
+        static $scope_name: $crate::spans::ThreadSpanMetadata = $crate::spans::ThreadSpanMetadata {
+            lod: 0,
+            name: $name,
+            target: module_path!(),
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        let guard_named = $crate::guards::ThreadSpanGuard {
+            thread_span_desc: &$scope_name,
             _dummy_ptr: std::marker::PhantomData::default(),
         };
-        $crate::dispatch::on_begin_scope(&$scope_id);
+        $crate::dispatch::on_begin_scope(&$scope_name);
     };
     ($name:expr) => {
-        $crate::trace_scope!(_SCOPE_NAMED, $name);
+        $crate::span_scope!(_METADATA_NAMED, $name);
     };
 }
 
@@ -38,17 +37,17 @@ macro_rules! trace_scope {
 /// # Examples
 ///
 /// ```
-/// use lgn_tracing::metric_int;
+/// use lgn_tracing::imetric;
 ///
 /// # fn main() {
 /// #
-/// metric_int!("Frame Time", "ticks", 1000);
+/// imetric!("Frame Time", "ticks", 1000);
 /// # }
 /// ```
 #[macro_export]
-macro_rules! metric_int {
+macro_rules! imetric {
     ($name:literal, $unit:literal, $value:expr) => {{
-        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
+        static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
             lod: 0,
             name: $name,
             unit: $unit,
@@ -57,7 +56,7 @@ macro_rules! metric_int {
             file: file!(),
             line: line!(),
         };
-        $crate::dispatch::int_metric(&METRIC_DESC, $value);
+        $crate::dispatch::int_metric(&METRIC_METADATA, $value);
     }};
 }
 
@@ -66,17 +65,17 @@ macro_rules! metric_int {
 /// # Examples
 ///
 /// ```
-/// use lgn_tracing::metric_float;
+/// use lgn_tracing::fmetric;
 ///
 /// # fn main() {
 /// #
-/// metric_float!("Frame Time", "ticks", 1000.0);
+/// fmetric!("Frame Time", "ticks", 1000.0);
 /// # }
 /// ```
 #[macro_export]
-macro_rules! metric_float {
+macro_rules! fmetric {
     ($name:literal, $unit:literal, $value:expr) => {{
-        static METRIC_DESC: $crate::metric_events::MetricDesc = $crate::metric_events::MetricDesc {
+        static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
             lod: 0,
             name: $name,
             unit: $unit,
@@ -85,7 +84,7 @@ macro_rules! metric_float {
             file: file!(),
             line: line!(),
         };
-        $crate::dispatch::float_metric(&METRIC_DESC, $value);
+        $crate::dispatch::float_metric(&METRIC_METADATA, $value);
     }};
 }
 
@@ -111,7 +110,7 @@ macro_rules! metric_float {
 #[macro_export]
 macro_rules! log {
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
-        static LOG_DESC: $crate::log_events::LogDesc = $crate::log_events::LogDesc {
+        static LOG_DESC: $crate::logs::LogMetadata = $crate::logs::LogMetadata {
             level: $lvl as u32,
             fmt_str: $crate::__first_arg!($($arg)+),
             target: $target,

@@ -1,7 +1,7 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::{
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
@@ -20,7 +20,7 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     let mut pass_through_args = vec![];
     pass_through_args.extend(args.args.clone());

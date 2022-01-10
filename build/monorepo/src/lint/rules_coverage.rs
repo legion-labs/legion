@@ -1,11 +1,11 @@
 use determinator::rules::PathMatch;
 use determinator::Determinator;
-use lgn_tracing::{trace_function, trace_scope};
+use lgn_tracing::{span_fn, span_scope};
 
 use crate::context::Context;
 use crate::{action_step, Error, Result};
 
-#[trace_function]
+#[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
     action_step!("Monorepo", "Running rules determination");
     let git_cli = ctx.git_cli().map_err(|err| {
@@ -13,13 +13,13 @@ pub fn run(ctx: &Context) -> Result<()> {
     })?;
     let tracked_files = git_cli.tracked_files()?;
     let graph = ctx.package_graph().map(|new_graph| {
-        trace_scope!("rules_coverage::feature_graph");
+        span_scope!("rules_coverage::feature_graph");
         // Initialize the feature graph since it will be required later on.
         new_graph.feature_graph();
         new_graph
     })?;
 
-    trace_scope!("rules_coverage::match_paths");
+    span_scope!("rules_coverage::match_paths");
     // we can use the same graph since match path actually does not use the old graph
     let mut determinator = Determinator::new(graph, graph);
     determinator

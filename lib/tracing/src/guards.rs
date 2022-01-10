@@ -5,9 +5,9 @@ use crate::{
         flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
         init_thread_stream, on_end_scope, shutdown_dispatch,
     },
-    event_sink::EventSink,
+    event::EventSink,
     panic_hook::init_panic_hook,
-    thread_events::ThreadSpanDesc,
+    spans::ThreadSpanMetadata,
 };
 
 pub struct TelemetrySystemGuard {}
@@ -66,7 +66,7 @@ impl Default for TelemetryThreadGuard {
 pub struct ThreadSpanGuard {
     // the value of the function pointer will identity the scope uniquely within that process
     // instance
-    pub thread_span_desc: &'static ThreadSpanDesc,
+    pub thread_span_desc: &'static ThreadSpanMetadata,
     pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
 }
 

@@ -2,7 +2,7 @@ use lgn_graphics_api::{
     CommandBuffer, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult, Queue, Semaphore,
     Swapchain,
 };
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use parking_lot::RwLockReadGuard;
 
 use crate::resources::{CommandBufferHandle, CommandBufferPool};
@@ -23,7 +23,7 @@ impl<'rc> HLQueue<'rc> {
         }
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn submit(
         &self,
         command_buffer_handles: &mut [CommandBufferHandle],
@@ -64,7 +64,7 @@ impl<'rc> HLQueue<'rc> {
         self.queue.present(swapchain, wait_semaphores, image_index)
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
         self.queue.wait_for_queue_idle()
     }

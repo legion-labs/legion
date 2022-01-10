@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_tracing::{info, trace_scope};
+use lgn_tracing::{info, span_scope};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
@@ -105,7 +105,7 @@ impl Plugin for ScheduleRunnerPlugin {
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
-                        trace_scope!("ScheduleRunnerPlugin::tick");
+                        span_scope!("ScheduleRunnerPlugin::tick");
                         let start_time = Instant::now();
 
                         if let Some(mut app_exit_events) =
@@ -149,7 +149,7 @@ impl Plugin for ScheduleRunnerPlugin {
                     {
                         while let Ok(delay) = tick(&mut app, wait) {
                             if let Some(delay) = delay {
-                                trace_scope!("sleep");
+                                span_scope!("sleep");
                                 std::thread::sleep(delay);
                             }
                         }

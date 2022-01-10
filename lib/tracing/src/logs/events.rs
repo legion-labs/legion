@@ -4,7 +4,7 @@ use lgn_utils::memory::{read_any, write_any};
 use crate::Level;
 
 #[derive(Debug)]
-pub struct LogDesc {
+pub struct LogMetadata {
     pub level: u32,
     pub fmt_str: &'static str,
     pub target: &'static str,
@@ -13,7 +13,7 @@ pub struct LogDesc {
     pub line: u32,
 }
 
-impl LogDesc {
+impl LogMetadata {
     pub fn level(&self) -> Level {
         Level::from_u32(self.level).unwrap()
     }
@@ -21,7 +21,7 @@ impl LogDesc {
 
 #[derive(Debug, TransitReflect)]
 pub struct LogStaticStrEvent {
-    pub desc: &'static LogDesc,
+    pub desc: &'static LogMetadata,
     pub time: i64,
 }
 
@@ -29,7 +29,7 @@ impl InProcSerialize for LogStaticStrEvent {}
 
 #[derive(Debug)]
 pub struct LogStringEvent {
-    pub desc: &'static LogDesc,
+    pub desc: &'static LogMetadata,
     pub time: i64,
     pub dyn_str: DynString,
 }
@@ -55,7 +55,7 @@ impl InProcSerialize for LogStringEvent {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
         let desc_id = read_any::<usize>(ptr);
-        let desc = unsafe { &*(desc_id as *const LogDesc) };
+        let desc = unsafe { &*(desc_id as *const LogMetadata) };
         let time_offset = std::mem::size_of::<usize>();
         let time = unsafe { read_any::<i64>(ptr.add(time_offset)) };
         let buffer_size = value_size.unwrap();
@@ -163,7 +163,7 @@ impl Reflect for LogStringInteropEvent {
 }
 
 #[derive(Debug, TransitReflect)]
-pub struct ReferencedLogDesc {
+pub struct LogMetadataRecord {
     pub id: u64,
     pub fmt_str: *const u8,
     pub target: *const u8,
@@ -173,4 +173,4 @@ pub struct ReferencedLogDesc {
     pub level: u32,
 }
 
-impl InProcSerialize for ReferencedLogDesc {}
+impl InProcSerialize for LogMetadataRecord {}

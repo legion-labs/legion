@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     Error, Result,
 };
-use lgn_tracing::{info, trace_function};
+use lgn_tracing::{info, span_fn};
 use std::{
     ffi::OsString,
     fs::create_dir_all,
@@ -42,7 +42,7 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     let packages = args.package_args.to_selected_packages(ctx)?;
     //if args.unit {

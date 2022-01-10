@@ -138,7 +138,7 @@ impl TaskPool {
                 thread_builder
                     .spawn(move || {
                         let _telemetry_thread_guard =
-                            lgn_tracing::guard::TelemetryThreadGuard::new();
+                            lgn_tracing::guards::TelemetryThreadGuard::new();
 
                         let shutdown_future = ex.run(shutdown_rx.recv());
                         // Use unwrap_err because we expect a Closed error

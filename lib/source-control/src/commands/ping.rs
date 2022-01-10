@@ -3,9 +3,9 @@ use crate::{
     RepositoryUrl,
 };
 use anyhow::Result;
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
-#[trace_function]
+#[span_fn]
 pub async fn ping(repo_url: &RepositoryUrl) -> Result<()> {
     match repo_url {
         RepositoryUrl::Local(_) | RepositoryUrl::MySQL(_) => {}

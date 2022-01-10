@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::prelude::*;
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -33,7 +33,7 @@ pub struct Commit {
 }
 
 impl Commit {
-    #[trace_function]
+    #[span_fn]
     pub fn new(
         id: String,
         owner: String,
@@ -55,12 +55,12 @@ impl Commit {
         }
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn from_json(contents: &str) -> Result<Self> {
         serde_json::from_str(contents).context("parsing commit")
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn to_json(&self) -> Result<String> {
         serde_json::to_string(&self).context(format!("serializing commit {}", self.id))
     }
@@ -111,7 +111,7 @@ async fn upload_localy_edited_blobs(
     Ok(res)
 }
 
-#[trace_function]
+#[span_fn]
 fn make_local_files_read_only(workspace_root: &Path, changes: &[HashedChange]) -> Result<()> {
     for change in changes {
         if change.change_type != ChangeType::Delete {

@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use lgn_tracing::{info, trace_function};
+use lgn_tracing::{info, span_fn};
 use reqwest::Url;
 
 use crate::http_repository_query::HttpRepositoryQuery;
@@ -42,7 +42,7 @@ pub async fn create_repository(
     }
 }
 
-#[trace_function]
+#[span_fn]
 async fn create_local_repository(
     directory: impl AsRef<Path>,
     blob_storage_url: &Option<BlobStorageUrl>,
@@ -86,7 +86,7 @@ async fn create_local_repository(
     })
 }
 
-#[trace_function]
+#[span_fn]
 async fn create_mysql_repository(
     url: &Url,
     blob_storage_url: &Option<BlobStorageUrl>,
@@ -114,7 +114,7 @@ async fn create_mysql_repository(
     })
 }
 
-#[trace_function]
+#[span_fn]
 async fn create_lsc_repository(url: &Url) -> Result<RepositoryConnection> {
     let repo_name = url.path().trim_start_matches('/');
     let mut url = url.clone();

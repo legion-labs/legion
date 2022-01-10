@@ -5,12 +5,11 @@ use std::{
 
 use lgn_tracing::{
     dispatch::{flush_log_buffer, log_enabled, log_interop},
-    event_sink::{EventSink, ProcessInfo},
-    log_block::{LogBlock, LogMsgQueueAny, LogStream},
-    log_events::LogDesc,
-    metrics_block::{MetricsBlock, MetricsMsgQueueAny, MetricsStream},
-    thread_block::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
-    Level,
+    event::EventSink,
+    logs::{LogBlock, LogMetadata, LogMsgQueueAny, LogStream},
+    metrics::{MetricsBlock, MetricsMsgQueueAny, MetricsStream},
+    spans::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
+    Level, ProcessInfo,
 };
 use lgn_tracing_transit::HeterogeneousQueue;
 
@@ -51,7 +50,7 @@ impl EventSink for DebugEventSink {
         true
     }
 
-    fn on_log(&self, _desc: &LogDesc, _time: i64, args: &fmt::Arguments<'_>) {
+    fn on_log(&self, _desc: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
         *self.0.lock().unwrap() = Some(State::Log(args.to_string()));
     }
 
@@ -127,7 +126,7 @@ impl log::Log for LogDispatch {
             log::Level::Debug => Level::Debug,
             log::Level::Trace => Level::Trace,
         };
-        let log_desc = LogDesc {
+        let log_desc = LogMetadata {
             level: level as u32,
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),

@@ -1,4 +1,4 @@
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
@@ -62,7 +62,7 @@ impl Queue {
         CommandPool::new(self, command_pool_def)
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn submit(
         &self,
         command_buffers: &[&CommandBuffer],
@@ -82,7 +82,7 @@ impl Queue {
         )
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn present(
         &self,
         swapchain: &Swapchain,

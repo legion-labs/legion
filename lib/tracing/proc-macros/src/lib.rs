@@ -88,7 +88,7 @@ impl Parse for TraceArgs {
 }
 
 #[proc_macro_attribute]
-pub fn trace_function(
+pub fn span_fn(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
@@ -104,7 +104,7 @@ pub fn trace_function(
     function.block.stmts.insert(
         0,
         parse_quote! {
-            lgn_tracing::trace_scope!(_SCOPE_FUNC, concat!(module_path!(), "::", #function_name));
+            lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
         },
     );
     proc_macro::TokenStream::from(quote! {
@@ -127,7 +127,7 @@ impl Parse for LogArgs {
 }
 
 #[proc_macro_attribute]
-pub fn log_function(
+pub fn log_fn(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {

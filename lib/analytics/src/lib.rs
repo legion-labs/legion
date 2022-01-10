@@ -552,7 +552,7 @@ fn container_metadata_as_transit_udt_vec(
 }
 
 // parse_block calls fun for each object in the block until fun returns `false`
-#[trace_function]
+#[span_fn]
 pub fn parse_block<F>(
     stream: &StreamInfo,
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,

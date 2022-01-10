@@ -2,10 +2,10 @@ use anyhow::Result;
 use lgn_telemetry_proto::compress;
 use lgn_telemetry_proto::telemetry::Block as EncodedBlock;
 use lgn_tracing::{
-    event_block::{ExtractDeps, TracingBlock},
-    log_block::LogBlock,
-    metrics_block::MetricsBlock,
-    thread_block::ThreadBlock,
+    event::{ExtractDeps, TracingBlock},
+    logs::LogBlock,
+    metrics::MetricsBlock,
+    spans::ThreadBlock,
 };
 
 pub trait StreamBlock {

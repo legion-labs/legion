@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use clap::Args;
 use guppy::graph::{BuildTargetId, DependencyDirection};
-use lgn_tracing::{trace_function, warn};
+use lgn_tracing::{span_fn, warn};
 
 use crate::changed_since::changed_since_impl;
 use crate::context::Context;
@@ -35,7 +35,7 @@ pub struct SelectedPackageArgs {
 }
 
 impl SelectedPackageArgs {
-    #[trace_function]
+    #[span_fn]
     pub fn to_selected_packages<'a>(&'a self, ctx: &'a Context) -> Result<SelectedPackages<'a>> {
         // Mutually exclusive options -- only one of these can be provided.
         {

@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::cargo::{BuildArgs, CargoCommand, SelectedPackageArgs};
 use crate::context::Context;
@@ -25,7 +25,7 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     // Force no deps
     args.no_deps = true;

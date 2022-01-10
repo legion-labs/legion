@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::atoms::avc1::Avc1Atom;
 use crate::atoms::ftyp::FtypAtom;
@@ -117,7 +117,7 @@ impl Mp4Stream {
     }
 
     /// # Errors
-    #[trace_function]
+    #[span_fn]
     pub fn write_index<W: Write>(&mut self, config: &TrackConfig, writer: &mut W) -> Result<()> {
         let mut trak = TrakAtom::default();
         trak.tkhd.track_id = 1;
@@ -197,7 +197,7 @@ impl Mp4Stream {
     }
 
     /// # Errors
-    #[trace_function]
+    #[span_fn]
     pub fn write_sample<W: Write>(
         &mut self,
         key_frame: bool,

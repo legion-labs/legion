@@ -2,7 +2,7 @@ use std::io::Write;
 use std::panic::{take_hook, PanicInfo};
 
 use crate::error;
-use crate::guard::shutdown_telemetry;
+use crate::guards::shutdown_telemetry;
 
 pub fn init_panic_hook() {
     type BoxedHook = Box<dyn Fn(&PanicInfo<'_>) + Sync + Send + 'static>;

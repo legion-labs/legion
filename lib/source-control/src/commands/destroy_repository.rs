@@ -1,10 +1,10 @@
 use anyhow::Result;
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::{sql, RepositoryUrl};
 
-#[trace_function]
+#[span_fn]
 pub async fn destroy_repository(repo_url: &RepositoryUrl) -> Result<()> {
     match repo_url {
         RepositoryUrl::Local(_) => {

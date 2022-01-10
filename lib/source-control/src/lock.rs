@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -39,7 +39,7 @@ pub async fn verify_empty_lock_domain(
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -57,7 +57,7 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
     query.insert_lock(&lock).await
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -72,7 +72,7 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
         .await
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn list_locks_command() -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -97,7 +97,7 @@ pub async fn list_locks_command() -> Result<()> {
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn assert_not_locked(
     query: &dyn RepositoryQuery,
     workspace_root: &Path,

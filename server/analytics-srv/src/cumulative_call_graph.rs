@@ -18,7 +18,7 @@ struct NodeStatsAcc {
 }
 
 impl NodeStatsAcc {
-    #[trace_function]
+    #[span_fn]
     pub fn new() -> Self {
         Self {
             durations_ms: Vec::new(),
@@ -30,7 +30,7 @@ impl NodeStatsAcc {
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
-#[trace_function]
+#[span_fn]
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     let mut edges: Vec<CallGraphEdge> = edges_acc
         .iter()
@@ -44,12 +44,12 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     edges
 }
 
-#[trace_function]
+#[span_fn]
 fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 
-#[trace_function]
+#[span_fn]
 fn record_tree_stats(
     tree: &CallTreeNode,
     filter_begin_ms: f64,

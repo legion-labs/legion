@@ -7,17 +7,19 @@ use std::{
 
 use chrono::Utc;
 
-use crate::event_block::TracingBlock;
-use crate::event_sink::{EventSink, NullEventSink, ProcessInfo};
-use crate::log_block::{LogBlock, LogStream};
-use crate::log_events::{
-    LogDesc, LogStaticStrEvent, LogStaticStrInteropEvent, LogStringEvent, LogStringInteropEvent,
+use crate::event::{EventSink, NullEventSink, TracingBlock};
+use crate::logs::{
+    LogBlock, LogMetadata, LogStaticStrEvent, LogStaticStrInteropEvent, LogStream, LogStringEvent,
+    LogStringInteropEvent,
 };
-use crate::metric_events::{FloatMetricEvent, IntegerMetricEvent, MetricDesc};
-use crate::metrics_block::{MetricsBlock, MetricsStream};
-use crate::thread_block::{ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream};
-use crate::thread_events::{BeginThreadSpanEvent, EndThreadSpanEvent, ThreadSpanDesc};
-use crate::{info, now, warn, Level};
+use crate::metrics::{
+    FloatMetricEvent, IntegerMetricEvent, MetricMetadata, MetricsBlock, MetricsStream,
+};
+use crate::spans::{
+    BeginThreadSpanEvent, EndThreadSpanEvent, ThreadBlock, ThreadEventQueueTypeIndex,
+    ThreadSpanMetadata, ThreadStream,
+};
+use crate::{info, now, warn, Level, ProcessInfo};
 
 pub fn init_event_dispatch(
     log_buffer_size: usize,
@@ -61,7 +63,7 @@ pub fn shutdown_dispatch() {
 }
 
 #[inline]
-pub fn int_metric(metric_desc: &'static MetricDesc, value: u64) {
+pub fn int_metric(metric_desc: &'static MetricMetadata, value: u64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.int_metric(metric_desc, value);
@@ -70,7 +72,7 @@ pub fn int_metric(metric_desc: &'static MetricDesc, value: u64) {
 }
 
 #[inline]
-pub fn float_metric(metric_desc: &'static MetricDesc, value: f64) {
+pub fn float_metric(metric_desc: &'static MetricMetadata, value: f64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.float_metric(metric_desc, value);
@@ -79,7 +81,7 @@ pub fn float_metric(metric_desc: &'static MetricDesc, value: f64) {
 }
 
 #[inline]
-pub fn log(desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
+pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log(desc, args);
@@ -88,7 +90,7 @@ pub fn log(desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
 }
 
 #[inline]
-pub fn log_interop(desc: &LogDesc, args: &fmt::Arguments<'_>) {
+pub fn log_interop(desc: &LogMetadata, args: &fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log_interop(desc, args);
@@ -159,7 +161,7 @@ pub fn flush_thread_buffer() {
 }
 
 #[inline]
-pub fn on_begin_scope(scope: &'static ThreadSpanDesc) {
+pub fn on_begin_scope(scope: &'static ThreadSpanMetadata) {
     on_thread_event(BeginThreadSpanEvent {
         time: now(),
         thread_span_desc: scope,
@@ -167,7 +169,7 @@ pub fn on_begin_scope(scope: &'static ThreadSpanDesc) {
 }
 
 #[inline]
-pub fn on_end_scope(scope: &'static ThreadSpanDesc) {
+pub fn on_end_scope(scope: &'static ThreadSpanMetadata) {
     on_thread_event(EndThreadSpanEvent {
         time: now(),
         thread_span_desc: scope,
@@ -318,7 +320,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn int_metric(&mut self, desc: &'static MetricDesc, value: u64) {
+    fn int_metric(&mut self, desc: &'static MetricMetadata, value: u64) {
         let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
         metrics_stream
@@ -332,7 +334,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn float_metric(&mut self, desc: &'static MetricDesc, value: f64) {
+    fn float_metric(&mut self, desc: &'static MetricMetadata, value: f64) {
         let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
         metrics_stream
@@ -366,7 +368,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log(&mut self, desc: &'static LogDesc, args: &fmt::Arguments<'_>) {
+    fn log(&mut self, desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
@@ -389,7 +391,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log_interop(&mut self, desc: &LogDesc, args: &fmt::Arguments<'_>) {
+    fn log_interop(&mut self, desc: &LogMetadata, args: &fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();

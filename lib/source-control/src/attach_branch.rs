@@ -7,7 +7,7 @@ use crate::{
     verify_empty_lock_domain, LocalWorkspaceConnection,
 };
 
-#[lgn_tracing::trace_function]
+#[lgn_tracing::span_fn]
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

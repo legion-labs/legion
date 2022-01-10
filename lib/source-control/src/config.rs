@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
 use crate::read_text_file;
@@ -62,7 +62,7 @@ impl Config {
     }
 }
 
-#[trace_function]
+#[span_fn]
 pub fn print_config_command() -> Result<()> {
     let path = Config::config_file_path()?;
     println!("config file path is {}", path.display());

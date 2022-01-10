@@ -11,7 +11,7 @@ use lgn_ecs::{
     world::World,
 };
 use lgn_telemetry_sink::TelemetryGuard;
-use lgn_tracing::{debug, trace_function};
+use lgn_tracing::{debug, span_fn};
 use lgn_utils::HashMap;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
@@ -91,7 +91,7 @@ impl App {
     /// Advances the execution of the [`Schedule`] by one cycle.
     ///
     /// See [`Schedule::run_once`] for more details.
-    #[trace_function]
+    #[span_fn]
     pub fn update(&mut self) {
         self.schedule.run(&mut self.world);
         for sub_app in self.sub_apps.values_mut() {
@@ -104,7 +104,7 @@ impl App {
     ///
     /// Finalizes the [`App`] configuration. For general usage, see the example
     /// on the item level documentation.
-    #[trace_function]
+    #[span_fn]
     pub fn run(&mut self) {
         let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
@@ -767,7 +767,7 @@ impl App {
     /// App::new().add_plugin(lgn_transform::TransformPlugin::default());
     /// ```
     #[allow(clippy::needless_pass_by_value)]
-    #[trace_function]
+    #[span_fn]
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
     where
         T: Plugin,
@@ -834,7 +834,7 @@ impl App {
     ///             group.add_before::<lgn_transform::TransformPlugin, _>(MyOwnPlugin)
     ///         });
     /// ```
-    #[trace_function]
+    #[span_fn]
     pub fn add_plugins_with<T, F>(&mut self, mut group: T, func: F) -> &mut Self
     where
         T: PluginGroup,

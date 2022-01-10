@@ -7,7 +7,7 @@ use std::process::Command;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_test_utils::{create_test_dir, syscall};
 use lgn_tracing::dispatch::{flush_log_buffer, flush_metrics_buffer, flush_thread_buffer};
-use lgn_tracing::{trace_function, trace_scope};
+use lgn_tracing::{span_fn, span_scope};
 
 fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
     let path = path.as_ref();
@@ -28,7 +28,7 @@ Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacini
     write_file(p, contents.as_bytes()).expect("write failed");
 }
 
-#[trace_function]
+#[span_fn]
 fn append_text_to_file(p: &Path, contents: &str) {
     let mut f = fs::OpenOptions::new()
         .write(true)
@@ -39,17 +39,17 @@ fn append_text_to_file(p: &Path, contents: &str) {
 }
 
 static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc");
-#[trace_function]
+#[span_fn]
 fn lsc_cli_sys(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, true);
 }
 
-#[trace_function]
+#[span_fn]
 fn lsc_cli_sys_fail(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, false);
 }
 
-#[trace_function]
+#[span_fn]
 fn init_test_repo(test_dir: &Path, name: &str) -> String {
     if let Ok(test_host_uri) = std::env::var("lgn_source_control_TEST_HOST") {
         let repo_uri = format!("{}/{}", test_host_uri, name);
@@ -75,7 +75,7 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
     }
 }
 
-#[trace_function]
+#[span_fn]
 fn init_test_dir(test_name: &str) -> PathBuf {
     let parent = Path::new(LSC_CLI_EXE_VAR)
         .parent()
@@ -88,7 +88,7 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 fn local_repo_suite() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::local_repo_suite");
+    span_scope!("lsc::local_repo_suite");
     let test_dir = init_test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
@@ -199,7 +199,7 @@ fn local_repo_suite() {
 fn local_single_branch_merge_flow() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::local_single_branch_merge_flow");
+    span_scope!("lsc::local_single_branch_merge_flow");
     let test_dir = init_test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
@@ -251,7 +251,7 @@ fn local_single_branch_merge_flow() {
 fn test_print_config() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::test_print_config");
+    span_scope!("lsc::test_print_config");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(std::env::current_dir().unwrap().as_path(), &["config"]);
@@ -267,7 +267,7 @@ fn test_print_config() {
 fn test_branch() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::test_branch");
+    span_scope!("lsc::test_branch");
     let test_dir = init_test_dir("test_branch");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
@@ -364,7 +364,7 @@ fn test_branch() {
 fn test_locks() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::test_locks");
+    span_scope!("lsc::test_locks");
     let test_dir = init_test_dir("test_locks");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
@@ -475,7 +475,7 @@ fn test_locks() {
     flush_thread_buffer();
 }
 
-#[trace_function]
+#[span_fn]
 fn get_root_git_directory() -> PathBuf {
     let output = Command::new("git")
         .args(&["rev-parse", "--show-toplevel"])
@@ -489,7 +489,7 @@ fn get_root_git_directory() -> PathBuf {
 fn test_import_git() {
     let telemetry_guard = TelemetryGuard::new();
     std::mem::forget(telemetry_guard);
-    trace_scope!("lsc::test_import_git");
+    span_scope!("lsc::test_import_git");
     let test_dir = init_test_dir("test_import_git");
     let work1 = test_dir.join("work1");
     let repo_uri = init_test_repo(&test_dir, "test_import_git");

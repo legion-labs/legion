@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -242,7 +242,7 @@ pub async fn sync_workspace(
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn sync_to_command(commit_id: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -288,7 +288,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<()> {
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn sync_command() -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

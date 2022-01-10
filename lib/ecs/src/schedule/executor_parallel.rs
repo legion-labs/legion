@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_tracing::{trace_function, trace_scope};
+use lgn_tracing::{span_fn, span_scope};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -108,7 +108,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
-    #[trace_function]
+    #[span_fn]
     fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         #[cfg(test)]
         if self.events_sender.is_none() {
@@ -155,7 +155,7 @@ impl ParallelExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last
     /// call to [`update_archetypes`] and updates cached
     /// `archetype_component_access`.
-    #[trace_function]
+    #[span_fn]
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
@@ -176,7 +176,7 @@ impl ParallelExecutor {
     /// Populates `should_run` bitset, spawns tasks for systems that should run
     /// this iteration, queues systems with no dependencies to run (or skip)
     /// at next opportunity.
-    #[trace_function]
+    #[span_fn]
     fn prepare_systems<'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
@@ -202,11 +202,11 @@ impl ParallelExecutor {
                         .await
                         .unwrap_or_else(|error| unreachable!(error));
                     // TODO: add system name to async trace scope
-                    // trace_scope!();
+                    // span_scope!();
                     // #[cfg(feature = "trace")]
                     // let system_guard = system_span.enter();
                     {
-                        trace_scope!("prepare_systems::run_unsafe");
+                        span_scope!("prepare_systems::run_unsafe");
                         unsafe { system.run_unsafe((), world) };
                     }
                     // #[cfg(feature = "trace")]

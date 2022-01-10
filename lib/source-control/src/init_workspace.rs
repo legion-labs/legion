@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use url::Url;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     LocalWorkspaceConnection, RepositoryAddr, Workspace,
 };
 
-#[trace_function]
+#[span_fn]
 pub async fn init_workspace_command(
     specified_workspace_directory: &Path,
     repo_location: &str,

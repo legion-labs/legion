@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::event_block::TracingBlock;
+use crate::event::TracingBlock;
 
 #[derive(Debug)]
 pub struct EventStream<Block> {

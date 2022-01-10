@@ -2,14 +2,11 @@ use std::collections::HashSet;
 
 use lgn_tracing_transit::prelude::*;
 
-use crate::{
-    event_block::{EventBlock, ExtractDeps},
-    event_stream::EventStream,
-    log_events::{
-        LogDesc, LogStaticStrEvent, LogStaticStrInteropEvent, LogStringEvent,
-        LogStringInteropEvent, ReferencedLogDesc,
-    },
+use super::{
+    LogMetadata, LogMetadataRecord, LogStaticStrEvent, LogStaticStrInteropEvent, LogStringEvent,
+    LogStringInteropEvent,
 };
+use crate::event::{EventBlock, EventStream, ExtractDeps};
 
 declare_queue_struct!(
     struct LogMsgQueue<
@@ -21,11 +18,11 @@ declare_queue_struct!(
 );
 
 declare_queue_struct!(
-    struct LogDepsQueue<StaticString, ReferencedLogDesc> {}
+    struct LogDepsQueue<StaticString, LogMetadataRecord> {}
 );
 
 fn record_log_event_dependencies(
-    log_desc: &LogDesc,
+    log_desc: &LogMetadata,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut LogDepsQueue,
 ) {
@@ -47,7 +44,7 @@ fn record_log_event_dependencies(
         if recorded_deps.insert(file.ptr as u64) {
             deps.push(file);
         }
-        deps.push(ReferencedLogDesc {
+        deps.push(LogMetadataRecord {
             id: log_ptr,
             level: log_desc.level,
             fmt_str: log_desc.fmt_str.as_ptr(),

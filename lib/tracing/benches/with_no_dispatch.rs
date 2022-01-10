@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use lgn_tracing::{error, metric_int, trace_scope};
+use lgn_tracing::{error, imetric, span_scope};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("no_dispatch/log", |b| {
@@ -9,12 +9,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
     c.bench_function("no_dispatch/metric", |b| {
         b.iter(|| {
-            metric_int!("name", "unit", 0);
+            imetric!("name", "unit", 0);
         })
     });
-    c.bench_function("no_dispatch/trace_scope", |b| {
+    c.bench_function("no_dispatch/span_scope", |b| {
         b.iter(|| {
-            trace_scope!("test");
+            span_scope!("test");
         })
     });
 }

@@ -6,7 +6,7 @@ use crate::{context::Context, Error, Result};
 use determinator::{Determinator, DeterminatorSet};
 use guppy::graph::{cargo::CargoResolverVersion, DependencyDirection};
 use lgn_tracing::dispatch::{flush_thread_buffer, init_thread_stream};
-use lgn_tracing::{trace, trace_function, trace_scope};
+use lgn_tracing::{span_fn, span_scope, trace};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -14,14 +14,14 @@ pub struct Args {
     pub(crate) base: String,
 }
 
-#[trace_function]
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let git_cli = ctx.git_cli().map_err(|err| {
         err.with_explanation("changed-since` must be run within a project cloned from a git repo.")
     })?;
     let determinator_set = changed_since_impl(git_cli, ctx, &args.base)?;
     {
-        trace_scope!("print_packages");
+        span_scope!("print_packages");
         for package in determinator_set
             .affected_set
             .packages(DependencyDirection::Forward)
@@ -32,7 +32,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     Ok(())
 }
 
-#[trace_function]
+#[span_fn]
 pub(crate) fn changed_since_impl<'g>(
     git_cli: &GitCli,
     ctx: &'g Context,
@@ -48,7 +48,7 @@ pub(crate) fn changed_since_impl<'g>(
     let (old_graph, (new_graph, files_changed)) = thread_pool.install(|| {
         rayon::join(
             || {
-                trace_scope!("changed_since_impl::old_graph");
+                span_scope!("changed_since_impl::old_graph");
                 trace!("building old graph");
                 git_cli.package_graph_at(&merge_base).map(|old_graph| {
                     // Initialize the feature graph since it will be required later on.
@@ -59,7 +59,7 @@ pub(crate) fn changed_since_impl<'g>(
             || {
                 rayon::join(
                     || {
-                        trace_scope!("changed_since_impl::new_graph");
+                        span_scope!("changed_since_impl::new_graph");
                         trace!("building new graph");
                         ctx.package_graph().map(|new_graph| {
                             // Initialize the feature graph since it will be required later on.
@@ -68,7 +68,7 @@ pub(crate) fn changed_since_impl<'g>(
                         })
                     },
                     || {
-                        trace_scope!("changed_since_impl::files_changed");
+                        span_scope!("changed_since_impl::files_changed");
                         // Get the list of files changed between the merge base and the current dir.
                         trace!("getting files changed");
                         git_cli.files_changed_between(&merge_base, None, None)
@@ -81,7 +81,7 @@ pub(crate) fn changed_since_impl<'g>(
     let (old_graph, new_graph, files_changed) = (old_graph?, new_graph?, files_changed?);
 
     trace!("running determinator");
-    trace_scope!("running_determinator");
+    span_scope!("running_determinator");
     let mut determinator = Determinator::new(&old_graph, new_graph);
     let mut cargo_options = Determinator::default_cargo_options();
     determinator

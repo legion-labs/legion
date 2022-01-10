@@ -8,13 +8,10 @@ use lgn_telemetry_proto::{
 };
 use lgn_tracing::{
     error,
-    event_block::{ExtractDeps, TracingBlock},
-    event_sink::EventSink,
-    event_stream::EventStream,
-    log_block::{LogBlock, LogStream},
-    log_events::LogDesc,
-    metrics_block::{MetricsBlock, MetricsStream},
-    thread_block::{ThreadBlock, ThreadStream},
+    event::{EventSink, EventStream, ExtractDeps, TracingBlock},
+    logs::{LogBlock, LogMetadata, LogStream},
+    metrics::{MetricsBlock, MetricsStream},
+    spans::{ThreadBlock, ThreadStream},
     Level,
 };
 
@@ -132,7 +129,7 @@ impl GRPCEventSink {
 }
 
 impl EventSink for GRPCEventSink {
-    fn on_startup(&self, process_info: lgn_tracing::event_sink::ProcessInfo) {
+    fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
         if let Err(e) = self.sender.send(SinkEvent::Startup(ProcessInfo {
             process_id: process_info.process_id,
             exe: process_info.exe,
@@ -158,7 +155,7 @@ impl EventSink for GRPCEventSink {
         true
     }
 
-    fn on_log(&self, _desc: &LogDesc, _time: i64, _args: &fmt::Arguments<'_>) {}
+    fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: &fmt::Arguments<'_>) {}
 
     fn on_init_log_stream(&self, log_stream: &LogStream) {
         if let Err(e) = self

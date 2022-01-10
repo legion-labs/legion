@@ -3,9 +3,9 @@ use std::sync::Arc;
 use criterion::{criterion_group, criterion_main, Criterion};
 use lgn_tracing::{
     error,
-    event_sink::NullEventSink,
-    guard::{TelemetrySystemGuard, TelemetryThreadGuard},
-    metric_int, trace_scope,
+    event::NullEventSink,
+    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
+    imetric, span_scope,
 };
 
 pub fn criterion_benchmark(c: &mut Criterion) {
@@ -19,12 +19,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
     c.bench_function("dispatch/metric", |b| {
         b.iter(|| {
-            metric_int!("name", "unit", 0);
+            imetric!("name", "unit", 0);
         })
     });
-    c.bench_function("dispatch/trace_scope", |b| {
+    c.bench_function("dispatch/span_scope", |b| {
         b.iter(|| {
-            trace_scope!("test");
+            span_scope!("test");
         })
     });
 }

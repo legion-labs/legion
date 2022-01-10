@@ -7,7 +7,7 @@ use crate::{
     execute_request, init_repo_database, push_init_repo_data,
     sql::{create_database, SqlConnectionPool},
     sql_repository_query::Databases,
-    trace_scope, validate_connection_to_bucket, BlobStorageSpec, InitRepositoryRequest,
+    span_scope, validate_connection_to_bucket, BlobStorageSpec, InitRepositoryRequest,
     ServerRequest,
 };
 
@@ -41,7 +41,7 @@ pub async fn init_mysql_repo_db(
 }
 
 async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Result<()> {
-    trace_scope!();
+    span_scope!();
     let request = ServerRequest::InitRepo(InitRepositoryRequest {
         repo_name: String::from(name),
     });
@@ -53,7 +53,7 @@ async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Resu
 }
 
 pub async fn init_remote_repository_command(repo: &str, blob: Option<&str>) -> Result<()> {
-    trace_scope!();
+    span_scope!();
     let repo_uri = Url::parse(repo).unwrap();
     let mut uri_path = String::from(repo_uri.path());
     let path = uri_path.split_off(1); //remove leading /

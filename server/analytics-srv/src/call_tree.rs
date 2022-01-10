@@ -26,7 +26,7 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, data_path, block_id).await?;
     parse_block(stream, &payload, |val| {
-        trace_scope!("obj_in_block");
+        span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<i64>("time").unwrap();
             let scope = obj.get::<Object>("scope").unwrap();
@@ -68,7 +68,7 @@ impl CallTreeBuilder {
         }
     }
 
-    #[trace_function]
+    #[span_fn]
     pub fn finish(mut self) -> CallTree {
         if self.stack.is_empty() {
             return CallTree {
@@ -94,7 +94,7 @@ impl CallTreeBuilder {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
-    #[trace_function]
+    #[span_fn]
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
         if let Some(mut top) = self.stack.pop() {
             top.children.push(scope);
@@ -121,7 +121,7 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    #[trace_function]
+    #[span_fn]
     fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
@@ -135,7 +135,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
-    #[trace_function]
+    #[span_fn]
     fn on_end_scope(&mut self, scope_name: String, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
@@ -193,7 +193,7 @@ fn compute_scope_hash(name: &str) -> u32 {
     const_xxh32(name.as_bytes(), 0)
 }
 
-#[trace_function]
+#[span_fn]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {
         scope_hash: tree.hash,
@@ -211,7 +211,7 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
     }
 }
 
-#[trace_function]
+#[span_fn]
 pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
     if tree.root.is_none() {
         anyhow::bail!("no root in call tree of block {}", block_id);

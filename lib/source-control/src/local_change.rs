@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
@@ -94,7 +94,7 @@ pub async fn find_local_change(
     }))
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn read_local_changes(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
 ) -> Result<Vec<LocalChange>> {
@@ -120,7 +120,7 @@ pub async fn read_local_changes(
     Ok(res)
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn find_local_changes_command() -> Result<Vec<LocalChange>> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -202,7 +202,7 @@ pub async fn track_new_file(
     save_local_change(workspace_transaction, &local_change).await
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn track_new_file_command(path_specified: &Path) -> Result<()> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -254,7 +254,7 @@ pub async fn edit_file(
     make_file_read_only(&abs_path, false)
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn edit_file_command(path_specified: &Path) -> Result<()> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

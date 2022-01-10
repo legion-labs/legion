@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
-use lgn_tracing::{info, trace_scope};
+use lgn_tracing::{info, span_scope};
 use lgn_utils::{HashMap, HashSet};
 
 use super::IntoSystemDescriptor;
@@ -224,7 +224,7 @@ impl SystemStage {
         for container in &mut self.parallel {
             let system = container.system_mut();
             // TODO: add system name to async trace scope
-            trace_scope!("system_commands");
+            span_scope!("system_commands");
             // let span = info_span!("system_commands", name = &*system.name());
             // let _guard = span.enter();
             system.apply_buffers(world);
@@ -856,7 +856,7 @@ impl Stage for SystemStage {
                 for container in &mut self.exclusive_at_start {
                     if should_run(container, &self.run_criteria, default_should_run) {
                         // TODO add container name to trace scope
-                        trace_scope!("exclusive_system");
+                        span_scope!("exclusive_system");
                         // let system_span = info_span!(
                         //     "exclusive_system",
                         //     name = &*container.name()
@@ -879,7 +879,7 @@ impl Stage for SystemStage {
                 for container in &mut self.exclusive_before_commands {
                     if should_run(container, &self.run_criteria, default_should_run) {
                         // TODO add container name to trace scope
-                        trace_scope!("exclusive_system");
+                        span_scope!("exclusive_system");
                         // let system_span = info_span!(
                         //     "exclusive_system",
                         //     name = &*container.name()
@@ -894,7 +894,7 @@ impl Stage for SystemStage {
                     for container in &mut self.parallel {
                         if container.should_run {
                             // TODO add container name to trace scope
-                            trace_scope!("system_commands");
+                            span_scope!("system_commands");
                             // let span = info_span!(
                             //     "system_commands",
                             //     name = &*container.name()
@@ -909,7 +909,7 @@ impl Stage for SystemStage {
                 for container in &mut self.exclusive_at_end {
                     if should_run(container, &self.run_criteria, default_should_run) {
                         // TODO add container name to trace scope
-                        trace_scope!("exclusive_system");
+                        span_scope!("exclusive_system");
                         // let system_span = info_span!(
                         //     "exclusive_system",
                         //     name = &*container.name()

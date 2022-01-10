@@ -9,12 +9,11 @@ use std::{
 
 use lgn_tracing::{
     dispatch::{flush_log_buffer, log_enabled, log_interop},
-    event_sink::{EventSink, ProcessInfo},
-    log_block::{LogBlock, LogStream},
-    log_events::LogDesc,
-    metrics_block::{MetricsBlock, MetricsStream},
-    thread_block::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
-    Level,
+    event::EventSink,
+    logs::{LogBlock, LogMetadata, LogStream},
+    metrics::{MetricsBlock, MetricsStream},
+    spans::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
+    Level, ProcessInfo,
 };
 use lgn_tracing_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
@@ -41,7 +40,7 @@ impl log::Log for LogDispatch {
             log::Level::Debug => Level::Debug,
             log::Level::Trace => Level::Trace,
         };
-        let log_desc = LogDesc {
+        let log_desc = LogMetadata {
             level: level as u32,
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),
@@ -139,7 +138,7 @@ impl EventSink for ImmediateEventSink {
         true
     }
 
-    fn on_log(&self, desc: &LogDesc, _time: i64, args: &fmt::Arguments<'_>) {
+    fn on_log(&self, desc: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
         let lvl = match desc.level() {
             Level::Error => log::Level::Error,
             Level::Warn => log::Level::Warn,

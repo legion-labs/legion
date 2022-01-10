@@ -20,9 +20,9 @@ use lgn_utils::memory::write_any;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
-#[trace_function]
+#[span_fn]
 fn record_frame_time_metric(microseconds: u64) {
-    metric_int!("Video Stream Frame Time", "us", microseconds);
+    imetric!("Video Stream Frame Time", "us", microseconds);
 }
 
 #[derive(Component)]
@@ -35,7 +35,7 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
-    #[trace_function]
+    #[span_fn]
     pub fn new(
         renderer: &Renderer,
         resolution: Resolution,
@@ -57,7 +57,7 @@ impl VideoStream {
         })
     }
 
-    #[trace_function]
+    #[span_fn]
     pub(crate) fn resize(
         &mut self,
         renderer: &Renderer,
@@ -72,10 +72,10 @@ impl VideoStream {
     }
 
     fn record_frame_id_metric(&self) {
-        metric_int!("Frame ID begin present", "frame_id", self.frame_id as u64);
+        imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
     }
 
-    #[trace_function]
+    #[span_fn]
     pub(crate) fn present(
         &mut self,
         render_context: &RenderContext<'_>,
@@ -165,7 +165,7 @@ struct VideoStreamEncoder {
 }
 
 impl VideoStreamEncoder {
-    #[trace_function]
+    #[span_fn]
     fn new(resolution: Resolution) -> anyhow::Result<Self> {
         let config = encoder::EncoderConfig::new(resolution.width(), resolution.height())
             .constant_sps(true)
@@ -202,7 +202,7 @@ impl VideoStreamEncoder {
         })
     }
 
-    #[trace_function]
+    #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
         self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.converter).unwrap();

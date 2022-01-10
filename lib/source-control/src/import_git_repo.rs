@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
@@ -350,7 +350,7 @@ async fn import_branch(
     import_commit_sequence(repo_connection, workspace_connection, git_repo, &commit).await
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn import_git_branch_command(git_root_path: &Path, branch_name: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

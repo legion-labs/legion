@@ -3,9 +3,8 @@ use std::collections::HashSet;
 use lgn_tracing_transit::prelude::*;
 
 use crate::{
-    event_block::{EventBlock, ExtractDeps},
-    event_stream::EventStream,
-    metric_events::{FloatMetricEvent, IntegerMetricEvent, MetricDesc, ReferencedMetricDesc},
+    event::{EventBlock, EventStream, ExtractDeps},
+    metrics::{FloatMetricEvent, IntegerMetricEvent, MetricMetadata, MetricMetadataRecord},
 };
 
 declare_queue_struct!(
@@ -13,11 +12,11 @@ declare_queue_struct!(
 );
 
 declare_queue_struct!(
-    struct MetricsDepsQueue<StaticString, ReferencedMetricDesc> {}
+    struct MetricsDepsQueue<StaticString, MetricMetadataRecord> {}
 );
 
 fn record_metric_event_dependencies(
-    metric_desc: &MetricDesc,
+    metric_desc: &MetricMetadata,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut MetricsDepsQueue,
 ) {
@@ -43,7 +42,7 @@ fn record_metric_event_dependencies(
         if recorded_deps.insert(file.ptr as u64) {
             deps.push(file);
         }
-        deps.push(ReferencedMetricDesc {
+        deps.push(MetricMetadataRecord {
             id: metric_ptr,
             name: metric_desc.name.as_ptr(),
             unit: metric_desc.unit.as_ptr(),

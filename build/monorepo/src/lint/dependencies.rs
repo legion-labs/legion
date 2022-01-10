@@ -1,9 +1,9 @@
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use semver::VersionReq;
 
 use crate::{context::Context, Error, Result};
 
-#[trace_function]
+#[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();
     let bans: Vec<_> = ctx

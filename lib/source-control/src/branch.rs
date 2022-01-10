@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use lgn_tracing::trace_function;
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
@@ -106,7 +106,7 @@ pub async fn read_current_branch(connection: &mut sqlx::AnyConnection) -> Result
     Ok((name, commit_id))
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn create_branch_command(name: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -132,7 +132,7 @@ pub async fn create_branch_command(name: &str) -> Result<()> {
     .await
 }
 
-#[trace_function]
+#[span_fn]
 pub async fn list_branches_command() -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;

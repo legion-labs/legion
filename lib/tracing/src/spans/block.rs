@@ -2,24 +2,19 @@ use std::collections::HashSet;
 
 use lgn_tracing_transit::prelude::*;
 
-use crate::{
-    event_block::{EventBlock, ExtractDeps},
-    event_stream::EventStream,
-    thread_events::{
-        BeginThreadSpanEvent, EndThreadSpanEvent, ReferencedThreadSpanDesc, ThreadSpanDesc,
-    },
-};
+use super::{BeginThreadSpanEvent, EndThreadSpanEvent, ThreadSpanMetadata, ThreadSpanRecord};
+use crate::event::{EventBlock, EventStream, ExtractDeps};
 
 declare_queue_struct!(
     struct ThreadEventQueue<BeginThreadSpanEvent, EndThreadSpanEvent> {}
 );
 
 declare_queue_struct!(
-    struct ThreadDepsQueue<ReferencedThreadSpanDesc, StaticString> {}
+    struct ThreadDepsQueue<ThreadSpanRecord, StaticString> {}
 );
 
 fn record_scope_event_dependencies(
-    thread_span_desc: &'static ThreadSpanDesc,
+    thread_span_desc: &'static ThreadSpanMetadata,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut ThreadDepsQueue,
 ) {
@@ -41,7 +36,7 @@ fn record_scope_event_dependencies(
         if recorded_deps.insert(file.ptr as u64) {
             deps.push(file);
         }
-        deps.push(ReferencedThreadSpanDesc {
+        deps.push(ThreadSpanRecord {
             id: thread_span_ptr,
             name: thread_span_desc.name.as_ptr(),
             target: thread_span_desc.target.as_ptr(),
