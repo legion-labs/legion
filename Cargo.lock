@@ -4596,7 +4596,6 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "chrono",
  "clap 3.0.5",
  "determinator",
  "guppy",
