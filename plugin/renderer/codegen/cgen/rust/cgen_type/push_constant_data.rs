@@ -25,7 +25,7 @@ StructLayout {
 */
 static TYPE_DEF: CGenTypeDef = CGenTypeDef{ 
 	name: "PushConstantData",
-	id: 11,
+	id: 19,
 	size: 16,
 }; 
 
@@ -38,7 +38,7 @@ pub struct PushConstantData {
 }
 
 impl PushConstantData {
-	pub const fn id() -> u32 { 11  }
+	pub const fn id() -> u32 { 19  }
 	
 	pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }
 	

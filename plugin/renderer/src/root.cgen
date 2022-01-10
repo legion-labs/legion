@@ -3,11 +3,19 @@ mod level_0;
 struct LayoutCB {
     a: [Float1; 3],
     b: Float2,
+    c: [Uint2; 2],
+    d: [Half3; 1],
+    e: [Half1; 1],
+    f: [Half1; 2],
 }
 
 struct LayoutSB {
     a: [Float1; 3],
     b: Float2,
+    c: [Uint2; 2],
+    d: [Half3; 1],
+    e: [Half1; 1],
+    f: [Half1; 2],
 }
 
 struct LayoutB {

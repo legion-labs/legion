@@ -7,6 +7,10 @@
 	struct LayoutCB {
 		float a[3];
 		float2 b;
+		uint2 c[2];
+		half3 d[1];
+		half e[1];
+		half f[2];
 	};
 	
 #endif

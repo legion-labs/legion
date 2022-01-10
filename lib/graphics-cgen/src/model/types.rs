@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use petgraph::graphmap::DiGraphMap;
-use strum::{EnumIter, IntoStaticStr};
 
 use super::{Model, ModelHandle, ModelObject};
 
@@ -13,13 +12,36 @@ pub enum CGenType {
 
 pub type CGenTypeHandle = ModelHandle<CGenType>;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy, EnumIter, IntoStaticStr)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub enum NativeType {
-    Float1,
-    Float2,
-    Float3,
-    Float4,
+    Float(usize),
+    Uint(usize),
+    Float16(usize),
     Float4x4,
+}
+
+static FLOAT_TYPESTRINGS: [&str; 4] = ["Float1", "Float2", "Float3", "Float4"];
+static UINT_TYPESTRINGS: [&str; 4] = ["Uint1", "Uint2", "Uint3", "Uint4"];
+static FLOAT16_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
+
+impl NativeType {
+    pub fn name(&self) -> &str {
+        match self {
+            NativeType::Float(n) => {
+                assert!(*n >= 1 && *n <= 4);
+                FLOAT_TYPESTRINGS[n - 1]
+            }            
+            NativeType::Uint(n) => {
+                assert!(*n >= 1 && *n <= 4);
+                UINT_TYPESTRINGS[n - 1]
+            }
+            NativeType::Float16(n) => {
+                assert!(*n >= 1 && *n <= 4);
+                FLOAT16_TYPESTRINGS[n - 1]
+            }
+            NativeType::Float4x4 => "Float4x4",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -40,6 +62,13 @@ impl StructMember {
 }
 
 impl CGenType {
+    pub fn native_type(&self) -> &NativeType {
+        match self {
+            CGenType::Struct(_) => panic!("Invalid access"),
+            CGenType::Native(e) => e,
+        }
+    }
+
     pub fn struct_type(&self) -> &StructType {
         match self {
             CGenType::Struct(e) => e,
@@ -49,7 +78,7 @@ impl CGenType {
 
     pub fn name(&self) -> &str {
         match self {
-            CGenType::Native(e) => e.into(),
+            CGenType::Native(e) => e.name(),
             CGenType::Struct(e) => e.name.as_str(),
         }
     }
@@ -88,10 +117,7 @@ impl ModelObject for CGenType {
         "CgenType"
     }
     fn name(&self) -> &str {
-        match self {
-            CGenType::Native(e) => e.into(),
-            CGenType::Struct(e) => e.name.as_str(),
-        }
+        self.name()
     }
 }
 

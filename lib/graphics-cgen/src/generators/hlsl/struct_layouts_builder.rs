@@ -160,8 +160,8 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         "cgen_mem_layouts.mem",
         &text,
         "main",
-        "vs_6_0",
-        &["-Od", "-spirv", "-fspv-target-env=vulkan1.1"],
+        "vs_6_2",
+        &["-Od", "-spirv", "-fspv-target-env=vulkan1.1", "-enable-16bit-types", "-HV 2021"],
         &[],
     )?;
 

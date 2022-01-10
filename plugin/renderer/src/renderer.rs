@@ -8,7 +8,7 @@ use lgn_graphics_api::{
     RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
@@ -345,12 +345,12 @@ impl Renderer {
                     EntryPoint {
                         defines: Vec::new(),
                         name: "main_vs".to_owned(),
-                        target_profile: "vs_6_0".to_owned(),
+                        target_profile: TargetProfile::VertexShader,
                     },
                     EntryPoint {
                         defines: Vec::new(),
                         name: "main_ps".to_owned(),
-                        target_profile: "ps_6_0".to_owned(),
+                        target_profile: TargetProfile::PixelShader,
                     },
                 ],
             })
@@ -371,19 +371,19 @@ impl Renderer {
             .unwrap();
 
         let shader = device_context.create_shader(
-            vec![
-                ShaderStageDef {
-                    entry_point: "main_vs".to_owned(),
-                    shader_stage: ShaderStageFlags::VERTEX,
-                    shader_module: vert_shader_module,
-                },
-                ShaderStageDef {
-                    entry_point: "main_ps".to_owned(),
-                    shader_stage: ShaderStageFlags::FRAGMENT,
-                    shader_module: frag_shader_module,
-                },
-            ],
-            &shader_build_result.pipeline_reflection,
+                vec![
+                    ShaderStageDef {
+                        entry_point: "main_vs".to_owned(),
+                        shader_stage: ShaderStageFlags::VERTEX,
+                        shader_module: vert_shader_module,
+                    },
+                    ShaderStageDef {
+                        entry_point: "main_ps".to_owned(),
+                        shader_stage: ShaderStageFlags::FRAGMENT,
+                        shader_module: frag_shader_module,
+                    },
+                ],
+                &shader_build_result.pipeline_reflection,
         );
 
         //

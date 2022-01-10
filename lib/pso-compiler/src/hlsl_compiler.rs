@@ -22,10 +22,26 @@ pub enum ShaderSource {
     Path(String),
 }
 
+pub enum TargetProfile {
+    VertexShader,
+    PixelShader,
+    ComputeShader,
+}
+
+impl TargetProfile {
+    fn to_profile_string(&self) -> &str {
+        match self {
+            TargetProfile::VertexShader => "vs_6_2",
+            TargetProfile::PixelShader => "ps_6_2",
+            TargetProfile::ComputeShader => "cs_6_2",
+        }
+    }
+}
+
 pub struct EntryPoint {
     pub defines: Vec<CompileDefine>,
     pub name: String,
-    pub target_profile: String,
+    pub target_profile: TargetProfile,
 }
 
 pub struct CompileParams {
@@ -133,12 +149,13 @@ impl HlslCompiler {
             .compile_internal(
                 &params.shader_source,
                 &shader_product.name,
-                &shader_product.target_profile,
+                shader_product.target_profile.to_profile_string(),
                 &[
                     "-Od",
                     "-spirv",
                     "-fspv-target-env=vulkan1.1",
-                    // "-I d:\\temp\\",
+                    "-enable-16bit-types",
+                    "-HV 2021",
                 ],
                 &defines,
             )

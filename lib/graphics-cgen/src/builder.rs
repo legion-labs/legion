@@ -187,10 +187,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         let fmt_ty = ty_handle.get(self.mdl);
         let valid_type = match fmt_ty {
             CGenType::Struct(_) => false,
-            CGenType::Native(e) => matches!(
-                e,
-                NativeType::Float1 | NativeType::Float2 | NativeType::Float3 | NativeType::Float4
-            ),
+            CGenType::Native(e) => matches!(e, NativeType::Float(_)),
         };
         if !valid_type {
             return Err(anyhow!(

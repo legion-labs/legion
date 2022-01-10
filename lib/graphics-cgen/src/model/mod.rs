@@ -1,17 +1,15 @@
-use strum::IntoEnumIterator;
-
 mod model;
 pub use model::Model;
 pub use model::ModelHandle;
 pub use model::ModelObject;
 
 mod types;
+pub use types::build_type_graph;
 pub use types::CGenType;
 pub use types::CGenTypeHandle;
 pub use types::NativeType;
 pub use types::StructMember;
 pub use types::StructType;
-pub use types::build_type_graph;
 
 mod descriptor_set;
 pub use descriptor_set::ConstantBufferDef;
@@ -29,10 +27,28 @@ pub use pipeline_layout::PipelineLayoutHandle;
 
 pub fn create() -> Model {
     let mut model = Model::new();
-    for native_type in NativeType::iter() {
+
+    let native_types = [
+        NativeType::Float(1),
+        NativeType::Float(2),
+        NativeType::Float(3),
+        NativeType::Float(4),
+        NativeType::Uint(1),
+        NativeType::Uint(2),
+        NativeType::Uint(3),
+        NativeType::Uint(4),
+        NativeType::Float16(1),
+        NativeType::Float16(2),
+        NativeType::Float16(3),
+        NativeType::Float16(4),
+        NativeType::Float4x4,
+    ];
+
+    native_types.iter().for_each(|native_type| {
         model
-            .add(native_type.into(), CGenType::Native(native_type))
+            .add(native_type.name(), CGenType::Native(*native_type))
             .unwrap();
-    }
+    });
+
     model
 }
