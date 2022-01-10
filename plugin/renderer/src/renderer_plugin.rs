@@ -406,7 +406,7 @@ fn render_update(
 
     let mut light_picking_mesh = StaticMesh::from_default_meshes(
         default_meshes.as_ref(),
-        DefaultMeshId::Cube as usize,
+        DefaultMeshId::Sphere as usize,
         Color::default(),
     );
     light_picking_mesh.world_offset = 0xffffffff;
