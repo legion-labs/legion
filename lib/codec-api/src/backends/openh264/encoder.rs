@@ -4,7 +4,7 @@
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::ptr::{addr_of_mut, null};
 
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
     SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,
@@ -255,8 +255,8 @@ impl Encoder {
     /// # Panics
     ///
     /// Panics if the source image dimension don't match the configured format.
+    #[span_fn]
     pub fn encode<T: YUVSource>(&mut self, yuv_source: &T) -> Result<EncodedBitStream<'_>, Error> {
-        trace_scope!();
         assert_eq!(yuv_source.width(), self.params.iPicWidth);
         assert_eq!(yuv_source.height(), self.params.iPicHeight);
 
@@ -367,7 +367,7 @@ pub enum FrameType {
     /// Encoder not ready or parameters are invalidate.
     Invalid,
     /// IDR frame in H.264
-    IDR,
+    Idr,
     /// I frame type
     I,
     /// P frame type
@@ -387,7 +387,7 @@ impl FrameType {
 
         #[allow(non_upper_case_globals)]
         match native {
-            videoFrameTypeIDR => Self::IDR,
+            videoFrameTypeIDR => Self::Idr,
             videoFrameTypeI => Self::I,
             videoFrameTypeP => Self::P,
             videoFrameTypeSkip => Self::Skip,
@@ -426,7 +426,7 @@ mod test {
         converter.convert_rgb(src, (1.0, 1.0, 1.0));
 
         let stream = encoder.encode(&converter)?;
-        assert_eq!(stream.frame_type, FrameType::IDR);
+        assert_eq!(stream.frame_type, FrameType::Idr);
         assert_eq!(stream.layers.len(), 2);
         assert!(!stream.layers[0].is_video);
         assert_eq!(stream.layers[0].nal_units.len(), 2);

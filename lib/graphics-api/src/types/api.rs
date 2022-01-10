@@ -33,7 +33,7 @@ impl GfxApi {
     pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_api, device_context) = VulkanApi::new(api_def).map_err(|e| {
-            lgn_telemetry::error!("Error creating buffer {:?}", e);
+            lgn_tracing::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 

@@ -2,10 +2,10 @@ use std::io::Write;
 use std::{fs::OpenOptions, path::PathBuf};
 
 use anyhow::Result;
-use lgn_telemetry::{error, info};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
 use lgn_telemetry_proto::ingestion::InsertReply;
 use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
+use lgn_tracing::{error, info};
 use prost::Message;
 use tonic::{Request, Response, Status};
 

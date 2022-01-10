@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_telemetry::{info, trace_scope};
+use lgn_tracing::{info, span_scope};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
@@ -56,7 +56,7 @@ fn set_time_period() {
     #[cfg(windows)]
     #[allow(unsafe_code)]
     unsafe {
-        use lgn_telemetry::error;
+        use lgn_tracing::error;
         use windows::Win32::Media::timeBeginPeriod;
         use windows::Win32::Media::TIMERR_NOERROR;
 
@@ -105,7 +105,7 @@ impl Plugin for ScheduleRunnerPlugin {
                     let mut tick = move |app: &mut App,
                                          wait: Option<Duration>|
                           -> Result<Option<Duration>, AppExit> {
-                        trace_scope!();
+                        span_scope!("ScheduleRunnerPlugin::tick");
                         let start_time = Instant::now();
 
                         if let Some(mut app_exit_events) =
@@ -147,10 +147,9 @@ impl Plugin for ScheduleRunnerPlugin {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        trace_scope!();
                         while let Ok(delay) = tick(&mut app, wait) {
                             if let Some(delay) = delay {
-                                trace_scope!("sleep");
+                                span_scope!("sleep");
                                 std::thread::sleep(delay);
                             }
                         }

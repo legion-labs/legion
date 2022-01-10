@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
-    read_workspace_spec, sql::execute_sql, trace_scope, LocalWorkspaceConnection, RepositoryQuery,
+    read_workspace_spec, sql::execute_sql, LocalWorkspaceConnection, RepositoryQuery,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -38,8 +39,8 @@ pub async fn verify_empty_lock_domain(
     Ok(())
 }
 
+#[span_fn]
 pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
-    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -56,8 +57,8 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
     query.insert_lock(&lock).await
 }
 
+#[span_fn]
 pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
-    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -71,8 +72,8 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
         .await
 }
 
+#[span_fn]
 pub async fn list_locks_command() -> Result<()> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -96,13 +97,13 @@ pub async fn list_locks_command() -> Result<()> {
     Ok(())
 }
 
+#[span_fn]
 pub async fn assert_not_locked(
     query: &dyn RepositoryQuery,
     workspace_root: &Path,
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     path_specified: &Path,
 ) -> Result<()> {
-    trace_scope!();
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let (current_branch_name, _current_commit) = read_current_branch(transaction).await?;
     let repo_branch = query.read_branch(&current_branch_name).await?;

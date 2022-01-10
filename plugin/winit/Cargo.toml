@@ -20,7 +20,7 @@ lgn-input = { path = "../input", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-window = { path = "../window", version = "0.1.0" }
-lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 
 # other
 approx = { version = "0.5.0", default-features = false }

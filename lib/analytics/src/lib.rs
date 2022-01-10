@@ -59,12 +59,12 @@
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
     Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
-use lgn_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
+use lgn_tracing::prelude::*;
+use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;
 
@@ -529,7 +529,7 @@ pub async fn fetch_block_payload(
 
 fn container_metadata_as_transit_udt_vec(
     value: &ContainerMetadata,
-) -> Vec<lgn_transit::UserDefinedType> {
+) -> Vec<lgn_tracing_transit::UserDefinedType> {
     value
         .types
         .iter()
@@ -552,6 +552,7 @@ fn container_metadata_as_transit_udt_vec(
 }
 
 // parse_block calls fun for each object in the block until fun returns `false`
+#[span_fn]
 pub fn parse_block<F>(
     stream: &StreamInfo,
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
@@ -560,7 +561,6 @@ pub fn parse_block<F>(
 where
     F: FnMut(Value) -> bool,
 {
-    trace_scope!();
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
     let dependencies = read_dependencies(
@@ -673,7 +673,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     Ok(())
 }
 
-pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_transit::Object)>(
+pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_tracing_transit::Object)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,

@@ -48,11 +48,11 @@ impl RenderSurfaceExtents {
         }
     }
 
-    pub fn width(&self) -> u32 {
+    pub fn width(self) -> u32 {
         self.extents.width
     }
 
-    pub fn height(&self) -> u32 {
+    pub fn height(self) -> u32 {
         self.extents.height
     }
 }

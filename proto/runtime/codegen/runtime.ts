@@ -10,7 +10,9 @@ export interface PauseRequest {}
 
 export interface PauseResponse {}
 
-const basePauseRequest: object = {};
+function createBasePauseRequest(): PauseRequest {
+  return {};
+}
 
 export const PauseRequest = {
   encode(
@@ -23,7 +25,7 @@ export const PauseRequest = {
   decode(input: _m0.Reader | Uint8Array, length?: number): PauseRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...basePauseRequest } as PauseRequest;
+    const message = createBasePauseRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -36,8 +38,7 @@ export const PauseRequest = {
   },
 
   fromJSON(_: any): PauseRequest {
-    const message = { ...basePauseRequest } as PauseRequest;
-    return message;
+    return {};
   },
 
   toJSON(_: PauseRequest): unknown {
@@ -48,12 +49,14 @@ export const PauseRequest = {
   fromPartial<I extends Exact<DeepPartial<PauseRequest>, I>>(
     _: I
   ): PauseRequest {
-    const message = { ...basePauseRequest } as PauseRequest;
+    const message = createBasePauseRequest();
     return message;
   },
 };
 
-const basePauseResponse: object = {};
+function createBasePauseResponse(): PauseResponse {
+  return {};
+}
 
 export const PauseResponse = {
   encode(
@@ -66,7 +69,7 @@ export const PauseResponse = {
   decode(input: _m0.Reader | Uint8Array, length?: number): PauseResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...basePauseResponse } as PauseResponse;
+    const message = createBasePauseResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -79,8 +82,7 @@ export const PauseResponse = {
   },
 
   fromJSON(_: any): PauseResponse {
-    const message = { ...basePauseResponse } as PauseResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: PauseResponse): unknown {
@@ -91,7 +93,7 @@ export const PauseResponse = {
   fromPartial<I extends Exact<DeepPartial<PauseResponse>, I>>(
     _: I
   ): PauseResponse {
-    const message = { ...basePauseResponse } as PauseResponse;
+    const message = createBasePauseResponse();
     return message;
   },
 };

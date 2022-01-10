@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use determinator::Utf8Paths0;
 use guppy::{graph::PackageGraph, MetadataCommand};
 use indoc::formatdoc;
-use lgn_telemetry::{debug, info, trace_scope};
+use lgn_tracing::{debug, info, span_scope};
 use once_cell::sync::OnceCell;
 use std::{
     borrow::Cow,
@@ -44,7 +44,7 @@ impl GitCli {
     /// The return value can be iterated on to get a list of paths.
     pub fn tracked_files(&self) -> Result<&Utf8Paths0> {
         self.tracked_files.get_or_try_init(|| {
-            trace_scope!();
+            span_scope!("GitCli::tracked_files::init");
             // TODO: abstract out SCM and command-running functionality.
             let output = self
                 .git_command()

@@ -10,7 +10,7 @@ use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
     let service = StreamerServer::new(MyStreamer);
 

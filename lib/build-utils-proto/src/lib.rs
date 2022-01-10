@@ -109,6 +109,12 @@ pub fn build_protos(
 ) -> Result<()> {
     let out_dir = PathBuf::from(&context.codegen_out_dir());
 
+    // Make sure the generated files don't show-up by default in Github's pull-requests.
+    std::fs::write(
+        out_dir.join(".gitattributes"),
+        "** linguist-generated=true\n",
+    )?;
+
     if lang.contains(Language::RUST) {
         tonic_build::configure()
             .out_dir(&out_dir)

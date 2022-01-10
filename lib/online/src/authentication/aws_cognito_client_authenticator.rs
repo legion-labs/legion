@@ -8,7 +8,7 @@ use hyper::{
     Body, Client, Request, Response, Server, StatusCode,
 };
 use hyper_rustls::HttpsConnector;
-use lgn_telemetry::{debug, info, warn};
+use lgn_tracing::{debug, info, warn};
 use tokio::sync::{Mutex, MutexGuard};
 use url::Url;
 
@@ -367,7 +367,7 @@ impl AwsCognitoClientAuthenticator {
             });
 
         if let Err(e) = server.await {
-            Err(Error::InternalServerError(e))
+            Err(Error::InternalServer(e))
         } else {
             Ok(code)
         }
@@ -445,7 +445,7 @@ impl AwsCognitoClientAuthenticator {
             });
 
         if let Err(e) = server.await {
-            Err(Error::InternalServerError(e))
+            Err(Error::InternalServer(e))
         } else {
             Ok(())
         }
@@ -457,7 +457,7 @@ impl AwsCognitoClientAuthenticator {
 
         info!("Opening web-browser at: {}", authorization_url);
 
-        webbrowser::open(authorization_url.as_str()).map_err(Error::InteractiveProcessError)?;
+        webbrowser::open(authorization_url.as_str()).map_err(Error::InteractiveProcess)?;
 
         self.receive_authorization_code().await
     }
@@ -488,12 +488,12 @@ impl AwsCognitoClientAuthenticator {
         let resp = client
             .request(req)
             .await
-            .map_err(|e| Error::InternalError(format!("failed to execute HTTP request: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("failed to execute HTTP request: {}", e)))?;
         let bytes = hyper::body::to_bytes(resp.into_body())
             .await
-            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("failed to read HTTP response: {}", e)))?;
         serde_json::from_slice(&bytes)
-            .map_err(|e| Error::InternalError(format!("failed to parse JSON token set: {}", e)))
+            .map_err(|e| Error::Internal(format!("failed to parse JSON token set: {}", e)))
     }
 
     /// Get user information from an access token.
@@ -508,15 +508,18 @@ impl AwsCognitoClientAuthenticator {
             .body(Body::empty())
             .unwrap();
 
-        let resp =
-            self.client.lock().await.request(req).await.map_err(|e| {
-                Error::InternalError(format!("failed to execute HTTP request: {}", e))
-            })?;
+        let resp = self
+            .client
+            .lock()
+            .await
+            .request(req)
+            .await
+            .map_err(|e| Error::Internal(format!("failed to execute HTTP request: {}", e)))?;
         let bytes = hyper::body::to_bytes(resp.into_body())
             .await
-            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("failed to read HTTP response: {}", e)))?;
         serde_json::from_slice(&bytes)
-            .map_err(|e| Error::InternalError(format!("failed to parse JSON user info: {}", e)))
+            .map_err(|e| Error::Internal(format!("failed to parse JSON user info: {}", e)))
     }
 
     async fn client(&self) -> MutexGuard<'_, AuthClient> {
@@ -561,12 +564,12 @@ impl Authenticator for AwsCognitoClientAuthenticator {
         let resp = client
             .request(req)
             .await
-            .map_err(|e| Error::InternalError(format!("failed to execute HTTP request: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("failed to execute HTTP request: {}", e)))?;
         let bytes = hyper::body::to_bytes(resp.into_body())
             .await
-            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
+            .map_err(|e| Error::Internal(format!("failed to read HTTP response: {}", e)))?;
         serde_json::from_slice(&bytes)
-            .map_err(|e| Error::InternalError(format!("failed to parse JSON token set: {}", e)))
+            .map_err(|e| Error::Internal(format!("failed to parse JSON token set: {}", e)))
             .map(|mut token_set: ClientTokenSet| {
                 if token_set.refresh_token.is_none() {
                     token_set.refresh_token = Some(refresh_token.to_owned());
@@ -582,7 +585,7 @@ impl Authenticator for AwsCognitoClientAuthenticator {
 
         info!("Opening web-browser at: {}", logout_url);
 
-        webbrowser::open(logout_url.as_str()).map_err(Error::InteractiveProcessError)?;
+        webbrowser::open(logout_url.as_str()).map_err(Error::InteractiveProcess)?;
 
         self.receive_logout_confirmation().await
     }

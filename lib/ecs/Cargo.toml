@@ -12,7 +12,7 @@ categories = ["game-engines", "data-structures"]
 [dependencies]
 lgn-ecs-macros = { path = "macros", version = "0.1.0" }
 lgn-tasks = { path = "../tasks", version = "0.1.0" }
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 lgn-utils = { path = "../utils", version = "0.1.0" }
 
 async-channel = "1.6"

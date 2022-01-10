@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use directories::ProjectDirs;
-use lgn_telemetry::{debug, warn};
+use lgn_tracing::{debug, warn};
 use tokio::sync::{Mutex, MutexGuard};
 
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
@@ -43,7 +43,7 @@ where
         let path = self.get_tokens_file_path();
 
         let file = File::open(&path).map_err(|e| {
-            Error::InternalError(format!(
+            Error::Internal(format!(
                 "reading tokens files from {}: {}",
                 path.display(),
                 e
@@ -52,7 +52,7 @@ where
         let reader = BufReader::new(file);
 
         serde_json::from_reader(reader).map_err(|e| {
-            Error::InternalError(format!("failed to parse JSON token set from cache: {}", e))
+            Error::Internal(format!("failed to parse JSON token set from cache: {}", e))
         })
     }
 
@@ -62,19 +62,18 @@ where
         let parent_path = path.parent().unwrap();
 
         std::fs::create_dir_all(parent_path).map_err(|e| {
-            Error::InternalError(format!(
+            Error::Internal(format!(
                 "creating cache directory at {}: {}",
                 parent_path.display(),
                 e
             ))
         })?;
         let file = File::create(&path).map_err(|e| {
-            Error::InternalError(format!("creating tokens file at {}: {}", path.display(), e))
+            Error::Internal(format!("creating tokens file at {}: {}", path.display(), e))
         })?;
         let writer = BufWriter::new(file);
-        serde_json::to_writer(writer, &token_set).map_err(|e| {
-            Error::InternalError(format!("failed to write JSON token set to cache: {}", e))
-        })
+        serde_json::to_writer(writer, &token_set)
+            .map_err(|e| Error::Internal(format!("failed to write JSON token set to cache: {}", e)))
     }
 
     // Delete the cache.
@@ -86,7 +85,7 @@ where
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Ok(())
                 } else {
-                    Err(Error::InternalError(format!(
+                    Err(Error::Internal(format!(
                         "deleting cache file at {}: {}",
                         path.display(),
                         e,

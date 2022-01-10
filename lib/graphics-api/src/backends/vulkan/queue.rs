@@ -1,5 +1,5 @@
 use ash::vk;
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use super::VulkanSwapchain;
 use super::{internal::VkQueue, SparseBindingInfo};

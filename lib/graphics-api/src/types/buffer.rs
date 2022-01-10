@@ -1,8 +1,7 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanBuffer;
 use crate::{
-    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, GfxResult, ResourceCreation,
-    ResourceUsage,
+    deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext, ResourceCreation, ResourceUsage,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -128,7 +127,7 @@ impl Buffer {
         self.required_alignment_platform()
     }
 
-    pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferView> {
+    pub fn create_view(&self, view_def: &BufferViewDef) -> BufferView {
         BufferView::from_buffer(self, view_def)
     }
 }

@@ -1,4 +1,4 @@
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use super::VulkanQueue;
 use crate::{CommandPool, CommandPoolDef, DeviceContext, GfxResult};

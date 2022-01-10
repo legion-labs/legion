@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::Utc;
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 use crate::{
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
@@ -25,8 +25,8 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    trace_scope!();
     let mut pass_through_args = vec![];
     pass_through_args.extend(args.args.clone());
 

@@ -5,10 +5,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
 lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
-lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
+lgn-tracing-transit = { path = "../../lib/tracing-transit", version = "0.1.0" }
 clap = { version = "3.0", features = ["derive"] }
 tokio = { version = "1.13", features = ["full"] }
 sqlx = { version = "0.5", features = [

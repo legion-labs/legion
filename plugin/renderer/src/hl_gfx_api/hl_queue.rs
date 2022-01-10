@@ -2,7 +2,7 @@ use lgn_graphics_api::{
     CommandBuffer, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult, Queue, Semaphore,
     Swapchain,
 };
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 use parking_lot::RwLockReadGuard;
 
 use crate::resources::{CommandBufferHandle, CommandBufferPool};
@@ -23,6 +23,7 @@ impl<'rc> HLQueue<'rc> {
         }
     }
 
+    #[span_fn]
     pub fn submit(
         &self,
         command_buffer_handles: &mut [CommandBufferHandle],
@@ -30,7 +31,6 @@ impl<'rc> HLQueue<'rc> {
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) {
-        trace_scope!();
         {
             let mut command_buffers = smallvec::SmallVec::<[&CommandBuffer; 16]>::with_capacity(
                 command_buffer_handles.len(),
@@ -64,9 +64,9 @@ impl<'rc> HLQueue<'rc> {
         self.queue.present(swapchain, wait_semaphores, image_index)
     }
 
-    pub fn wait_for_queue_idle(&self) {
-        trace_scope!("present");
-        self.queue.wait_for_queue_idle().unwrap();
+    #[span_fn]
+    pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
+        self.queue.wait_for_queue_idle()
     }
 
     pub fn commmit_sparse_bindings<'a>(

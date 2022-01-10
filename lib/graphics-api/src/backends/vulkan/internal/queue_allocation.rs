@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
-use lgn_telemetry::{debug, warn};
+use lgn_tracing::{debug, warn};
 
 use crate::{backends::vulkan::VkQueueFamilyIndices, DeviceContext};
 

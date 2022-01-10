@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 };
 use lgn_renderer::hl_gfx_api::HLQueue;
 use lgn_renderer::RenderHandle;
-use lgn_telemetry::{debug, error, info, trace};
+use lgn_tracing::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being
 /// created/destroyed. This is optional.
@@ -179,7 +179,7 @@ impl PresentableFrame {
 impl Drop for PresentableFrame {
     fn drop(&mut self) {
         if self.shared_state.is_some() {
-            self.shared_state.take().unwrap().result_tx.send(Err(GfxError::StringError("SwapchainHelperPresentableFrame was dropped without calling present or present_with_error".to_string()))).unwrap();
+            self.shared_state.take().unwrap().result_tx.send(Err(GfxError::String("SwapchainHelperPresentableFrame was dropped without calling present or present_with_error".to_string()))).unwrap();
         }
     }
 }
@@ -421,9 +421,7 @@ impl SwapchainHelper {
         if let TryAcquireNextImageResult::Success(presentable_frame) = result {
             Ok(presentable_frame)
         } else {
-            Err(GfxError::StringError(
-                "Failed to recreate swapchain".to_string(),
-            ))
+            Err(GfxError::String("Failed to recreate swapchain".to_string()))
         }
     }
 
@@ -435,7 +433,7 @@ impl SwapchainHelper {
     ) -> GfxResult<TryAcquireNextImageResult> {
         match self.do_try_acquire_next_image(window_width, window_height) {
             #[cfg(feature = "vulkan")]
-            Err(GfxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
+            Err(GfxError::Vk(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
                 Ok(TryAcquireNextImageResult::DeviceReset)
             }
             result => result,

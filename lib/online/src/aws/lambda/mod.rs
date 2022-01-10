@@ -1,4 +1,4 @@
-use lgn_telemetry::{error, info};
+use lgn_tracing::{error, info};
 
 pub mod api_gateway;
 

@@ -1,14 +1,18 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
-use lgn_telemetry::{
-    error, event_block::TelemetryBlock, log, EventSink, EventStream, LogBlock, MetricsBlock,
-    ThreadBlock,
-};
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
     telemetry::{
         ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo, UdtMember, UserDefinedType,
     },
+};
+use lgn_tracing::{
+    error,
+    event::{EventSink, EventStream, ExtractDeps, TracingBlock},
+    logs::{LogBlock, LogMetadata, LogStream},
+    metrics::{MetricsBlock, MetricsStream},
+    spans::{ThreadBlock, ThreadStream},
+    Level,
 };
 
 use crate::stream::StreamBlock;
@@ -125,7 +129,7 @@ impl GRPCEventSink {
 }
 
 impl EventSink for GRPCEventSink {
-    fn on_startup(&self, process_info: lgn_telemetry::ProcessInfo) {
+    fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
         if let Err(e) = self.sender.send(SinkEvent::Startup(ProcessInfo {
             process_id: process_info.process_id,
             exe: process_info.exe,
@@ -147,13 +151,13 @@ impl EventSink for GRPCEventSink {
         // nothing to do
     }
 
-    fn on_log_enabled(&self, _: &log::Metadata<'_>) -> bool {
+    fn on_log_enabled(&self, _: Level, _: &str) -> bool {
         true
     }
 
-    fn on_log(&self, _: &log::Record<'_>) {}
+    fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: &fmt::Arguments<'_>) {}
 
-    fn on_init_log_stream(&self, log_stream: &lgn_telemetry::LogStream) {
+    fn on_init_log_stream(&self, log_stream: &LogStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(log_stream)))
@@ -168,7 +172,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_metrics_stream(&self, metrics_stream: &lgn_telemetry::MetricsStream) {
+    fn on_init_metrics_stream(&self, metrics_stream: &MetricsStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(metrics_stream)))
@@ -186,7 +190,7 @@ impl EventSink for GRPCEventSink {
         }
     }
 
-    fn on_init_thread_stream(&self, thread_stream: &lgn_telemetry::ThreadStream) {
+    fn on_init_thread_stream(&self, thread_stream: &ThreadStream) {
         if let Err(e) = self
             .sender
             .send(SinkEvent::InitStream(get_stream_info(thread_stream)))
@@ -205,25 +209,27 @@ impl EventSink for GRPCEventSink {
     }
 }
 
-fn get_stream_info<Block, DepsQueue>(stream: &EventStream<Block, DepsQueue>) -> StreamInfo
+fn get_stream_info<Block>(stream: &EventStream<Block>) -> StreamInfo
 where
-    Block: TelemetryBlock,
-    DepsQueue: lgn_transit::HeterogeneousQueue,
-    <Block as TelemetryBlock>::Queue: lgn_transit::HeterogeneousQueue,
+    Block: TracingBlock,
+    <Block as TracingBlock>::Queue: lgn_tracing_transit::HeterogeneousQueue,
+    <<Block as TracingBlock>::Queue as ExtractDeps>::DepsQueue:
+        lgn_tracing_transit::HeterogeneousQueue,
 {
-    let dependencies_meta = make_queue_metedata::<DepsQueue>();
+    let dependencies_meta =
+        make_queue_metedata::<<<Block as TracingBlock>::Queue as ExtractDeps>::DepsQueue>();
     let obj_meta = make_queue_metedata::<Block::Queue>();
     StreamInfo {
-        process_id: stream.get_process_id(),
-        stream_id: stream.stream_id().to_string(),
+        process_id: stream.process_id().to_owned(),
+        stream_id: stream.stream_id().to_owned(),
         dependencies_metadata: Some(dependencies_meta),
         objects_metadata: Some(obj_meta),
-        tags: stream.get_tags(),
-        properties: stream.get_properties(),
+        tags: stream.tags().to_owned(),
+        properties: stream.properties().clone(),
     }
 }
 
-fn make_queue_metedata<Queue: lgn_transit::HeterogeneousQueue>() -> ContainerMetadata {
+fn make_queue_metedata<Queue: lgn_tracing_transit::HeterogeneousQueue>() -> ContainerMetadata {
     let udts = Queue::reflect_contained();
     ContainerMetadata {
         types: udts

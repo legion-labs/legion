@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 use crate::{context::Context, Result};
 
@@ -15,8 +15,8 @@ pub struct Args {
     dependencies: bool,
 }
 
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    trace_scope!();
     let all = !args.rules_coverage && !args.dependencies;
 
     if all || args.rules_coverage {

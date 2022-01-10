@@ -3,7 +3,7 @@ mod command_queue;
 use std::marker::PhantomData;
 
 pub use command_queue::CommandQueue;
-use lgn_telemetry::{error, warn};
+use lgn_tracing::{error, warn};
 
 use super::Resource;
 use crate::{

@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     Error, Result,
 };
-use lgn_telemetry::{info, trace_scope};
+use lgn_tracing::{info, span_fn};
 use std::{
     ffi::OsString,
     fs::create_dir_all,
@@ -42,8 +42,8 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
+#[span_fn]
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
-    trace_scope!();
     let packages = args.package_args.to_selected_packages(ctx)?;
     //if args.unit {
     //    packages.add_excludes(ctx.config().system_tests().iter().map(|(p, _)| p.as_str()));

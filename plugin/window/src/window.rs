@@ -1,5 +1,5 @@
 use lgn_math::{DVec2, IVec2, Vec2};
-use lgn_telemetry::warn;
+use lgn_tracing::warn;
 use raw_window_handle::RawWindowHandle;
 use uuid::Uuid;
 
@@ -137,6 +137,8 @@ pub struct Window {
 }
 
 #[derive(Debug)]
+// All commands happen to start with set but we can introduce new variants that do not
+#[allow(clippy::enum_variant_names)]
 pub enum WindowCommand {
     SetWindowMode {
         mode: WindowMode,

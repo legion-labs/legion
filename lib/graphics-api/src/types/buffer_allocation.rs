@@ -32,13 +32,13 @@ impl<AllocType> BufferSubAllocation<AllocType> {
         let buffer_view_def =
             BufferViewDef::as_const_buffer_with_offset(self.size(), self.range.first);
 
-        BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
+        BufferView::from_buffer(&self.buffer, &buffer_view_def)
     }
 
     pub fn byte_address_buffer_view(&self, read_only: bool) -> BufferView {
         let buffer_view_def =
             BufferViewDef::as_byte_address_buffer(self.buffer.definition(), read_only);
-        BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
+        BufferView::from_buffer(&self.buffer, &buffer_view_def)
     }
 
     pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
@@ -48,6 +48,6 @@ impl<AllocType> BufferSubAllocation<AllocType> {
             read_only,
             self.range.first,
         );
-        BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
+        BufferView::from_buffer(&self.buffer, &buffer_view_def)
     }
 }

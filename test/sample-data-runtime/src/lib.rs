@@ -67,7 +67,7 @@ use lgn_data_runtime::{
 };
 use lgn_graphics_runtime::Material;
 use lgn_math::prelude::*;
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn add_loaders(registry: &mut AssetRegistryOptions) {

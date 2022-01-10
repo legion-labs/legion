@@ -2,7 +2,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
@@ -10,7 +9,8 @@ use lgn_telemetry_proto::analytics::ScopeDesc;
 use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
 use lgn_telemetry_proto::analytics::SpanTrack;
-use lgn_transit::prelude::*;
+use lgn_tracing::prelude::*;
+use lgn_tracing_transit::prelude::*;
 
 trait ThreadBlockProcessor {
     fn on_begin_scope(&mut self, scope_name: String, ts: i64);
@@ -26,7 +26,7 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, data_path, block_id).await?;
     parse_block(stream, &payload, |val| {
-        trace_scope!("obj_in_block");
+        span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<i64>("time").unwrap();
             let scope = obj.get::<Object>("scope").unwrap();
@@ -68,8 +68,8 @@ impl CallTreeBuilder {
         }
     }
 
+    #[span_fn]
     pub fn finish(mut self) -> CallTree {
-        trace_scope!();
         if self.stack.is_empty() {
             return CallTree {
                 scopes: ScopeHashMap::new(),
@@ -94,8 +94,8 @@ impl CallTreeBuilder {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
+    #[span_fn]
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
-        trace_scope!();
         if let Some(mut top) = self.stack.pop() {
             top.children.push(scope);
             self.stack.push(top);
@@ -121,8 +121,8 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
+    #[span_fn]
     fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
-        trace_scope!();
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
         self.record_scope_desc(hash, scope_name);
@@ -135,8 +135,8 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
+    #[span_fn]
     fn on_end_scope(&mut self, scope_name: String, ts: i64) {
-        trace_scope!();
         let time = self.get_time(ts);
         let hash = compute_scope_hash(&scope_name);
         if let Some(mut old_top) = self.stack.pop() {
@@ -186,15 +186,15 @@ pub(crate) async fn compute_block_call_tree(
 }
 
 pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
-const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
 fn compute_scope_hash(name: &str) -> u32 {
     //todo: add filename
-    CRC32.checksum(name.as_bytes())
+    const_xxh32(name.as_bytes(), 0)
 }
 
+#[span_fn]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
-    trace_scope!();
     let span = Span {
         scope_hash: tree.hash,
         begin_ms: tree.begin_ms,
@@ -211,8 +211,8 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
     }
 }
 
+#[span_fn]
 pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
-    trace_scope!();
     if tree.root.is_none() {
         anyhow::bail!("no root in call tree of block {}", block_id);
     }

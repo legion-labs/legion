@@ -9,7 +9,7 @@ use lgn_graphics_api::{
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_pso_compiler::{CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource};
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::components::{DirectionalLight, OmnidirectionalLight, Spotlight};
@@ -263,9 +263,8 @@ impl Renderer {
         let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
-
+    #[span_fn]
     pub(crate) fn begin_frame(&mut self) {
-        trace_scope!();
         //
         // Update frame indices
         //
@@ -284,7 +283,7 @@ impl Renderer {
         // Now, it is safe to free memory
         //
         let device_context = self.api.device_context();
-        device_context.free_gpu_memory().unwrap();
+        device_context.free_gpu_memory();
 
         //
         // Broadcast begin frame event
@@ -306,8 +305,8 @@ impl Renderer {
         self.transient_buffer.begin_frame();
     }
 
+    #[span_fn]
     pub(crate) fn end_frame(&mut self) {
-        trace_scope!();
         let graphics_queue = self.graphics_queue.write();
         let frame_fence = &self.frame_fences[self.render_frame_idx];
 
@@ -333,8 +332,8 @@ impl Renderer {
         }
     }
 
+    #[span_fn]
     pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> (Shader, RootSignature) {
-        trace_scope!();
         let device_context = self.device_context();
 
         let shader_compiler = self.shader_compiler();
@@ -371,23 +370,21 @@ impl Renderer {
             )
             .unwrap();
 
-        let shader = device_context
-            .create_shader(
-                vec![
-                    ShaderStageDef {
-                        entry_point: "main_vs".to_owned(),
-                        shader_stage: ShaderStageFlags::VERTEX,
-                        shader_module: vert_shader_module,
-                    },
-                    ShaderStageDef {
-                        entry_point: "main_ps".to_owned(),
-                        shader_stage: ShaderStageFlags::FRAGMENT,
-                        shader_module: frag_shader_module,
-                    },
-                ],
-                &shader_build_result.pipeline_reflection,
-            )
-            .unwrap();
+        let shader = device_context.create_shader(
+            vec![
+                ShaderStageDef {
+                    entry_point: "main_vs".to_owned(),
+                    shader_stage: ShaderStageFlags::VERTEX,
+                    shader_module: vert_shader_module,
+                },
+                ShaderStageDef {
+                    entry_point: "main_ps".to_owned(),
+                    shader_stage: ShaderStageFlags::FRAGMENT,
+                    shader_module: frag_shader_module,
+                },
+            ],
+            &shader_build_result.pipeline_reflection,
+        );
 
         //
         // Root signature

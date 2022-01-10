@@ -3,11 +3,11 @@ use std::{cmp::min, path::Path};
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
+use lgn_tracing::prelude::*;
 
 use crate::call_tree::{compute_block_call_tree, ScopeHashMap}; //todo: move to analytics lib
 
@@ -18,8 +18,8 @@ struct NodeStatsAcc {
 }
 
 impl NodeStatsAcc {
+    #[span_fn]
     pub fn new() -> Self {
-        trace_scope!();
         Self {
             durations_ms: Vec::new(),
             parents: HashMap::new(),
@@ -30,8 +30,8 @@ impl NodeStatsAcc {
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
+#[span_fn]
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
-    trace_scope!();
     let mut edges: Vec<CallGraphEdge> = edges_acc
         .iter()
         .filter(|(hash, _weight)| **hash != 0)
@@ -44,11 +44,12 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     edges
 }
 
+#[span_fn]
 fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
-    trace_scope!();
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 
+#[span_fn]
 fn record_tree_stats(
     tree: &CallTreeNode,
     filter_begin_ms: f64,
@@ -56,7 +57,6 @@ fn record_tree_stats(
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
-    trace_scope!();
     if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
         return;
     }

@@ -39,17 +39,16 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn end_render_pass(&self) {
-        self.cmd_buffer.cmd_end_render_pass().unwrap();
+        self.cmd_buffer.cmd_end_render_pass();
     }
 
     pub fn bind_pipeline(&self, pipeline: &Pipeline) {
-        self.cmd_buffer.cmd_bind_pipeline(pipeline).unwrap();
+        self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
     pub fn bind_vertex_buffers(&self, first_binding: u32, bindings: &[VertexBufferBinding<'_>]) {
         self.cmd_buffer
-            .cmd_bind_vertex_buffers(first_binding, bindings)
-            .unwrap();
+            .cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
     pub fn bind_buffer_suballocation_as_vertex_buffer<AllocType>(
@@ -67,7 +66,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
-        self.cmd_buffer.cmd_bind_index_buffer(binding).unwrap();
+        self.cmd_buffer.cmd_bind_index_buffer(binding);
     }
 
     pub fn bind_buffer_suballocation_as_index_buffer<AllocType>(
@@ -89,14 +88,12 @@ impl<'rc> HLCommandBuffer<'rc> {
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) {
-        self.cmd_buffer
-            .cmd_bind_descriptor_set_handle(
-                pipeline_type,
-                root_signature,
-                set_index,
-                descriptor_set_handle,
-            )
-            .unwrap();
+        self.cmd_buffer.cmd_bind_descriptor_set_handle(
+            pipeline_type,
+            root_signature,
+            set_index,
+            descriptor_set_handle,
+        );
     }
 
     pub fn push_constants<T: Sized>(&self, root_signature: &RootSignature, constants: &T) {
@@ -104,15 +101,11 @@ impl<'rc> HLCommandBuffer<'rc> {
         let constants_ptr = (constants as *const T).cast::<u8>();
         #[allow(unsafe_code)]
         let data = unsafe { &*ptr::slice_from_raw_parts(constants_ptr, constants_size) };
-        self.cmd_buffer
-            .cmd_push_constant(root_signature, data)
-            .unwrap();
+        self.cmd_buffer.cmd_push_constant(root_signature, data);
     }
 
     pub fn draw(&self, vertex_count: u32, first_vertex: u32) {
-        self.cmd_buffer
-            .cmd_draw(vertex_count, first_vertex)
-            .unwrap();
+        self.cmd_buffer.cmd_draw(vertex_count, first_vertex);
     }
 
     pub fn draw_with_data(
@@ -122,9 +115,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         first_vertex: u32,
     ) {
         self.set_pipeline_data(pipeline_data);
-        self.cmd_buffer
-            .cmd_draw(vertex_count, first_vertex)
-            .unwrap();
+        self.cmd_buffer.cmd_draw(vertex_count, first_vertex);
     }
 
     pub fn draw_instanced(
@@ -134,15 +125,17 @@ impl<'rc> HLCommandBuffer<'rc> {
         instance_count: u32,
         first_instance: u32,
     ) {
-        self.cmd_buffer
-            .cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance)
-            .unwrap();
+        self.cmd_buffer.cmd_draw_instanced(
+            vertex_count,
+            first_vertex,
+            instance_count,
+            first_instance,
+        );
     }
 
     pub fn draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) {
         self.cmd_buffer
-            .cmd_draw_indexed(index_count, first_index, vertex_offset)
-            .unwrap();
+            .cmd_draw_indexed(index_count, first_index, vertex_offset);
     }
 
     pub fn draw_indexed_instanced(
@@ -153,21 +146,18 @@ impl<'rc> HLCommandBuffer<'rc> {
         first_instance: u32,
         vertex_offset: i32,
     ) {
-        self.cmd_buffer
-            .cmd_draw_indexed_instanced(
-                index_count,
-                first_index,
-                instance_count,
-                first_instance,
-                vertex_offset,
-            )
-            .unwrap();
+        self.cmd_buffer.cmd_draw_indexed_instanced(
+            index_count,
+            first_index,
+            instance_count,
+            first_instance,
+            vertex_offset,
+        );
     }
 
     pub fn dispatch(&self, group_count_x: u32, group_count_y: u32, group_count_z: u32) {
         self.cmd_buffer
-            .cmd_dispatch(group_count_x, group_count_y, group_count_z)
-            .unwrap();
+            .cmd_dispatch(group_count_x, group_count_y, group_count_z);
     }
 
     pub fn resource_barrier(
@@ -176,8 +166,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         texture_barriers: &[TextureBarrier<'_>],
     ) {
         self.cmd_buffer
-            .cmd_resource_barrier(buffer_barriers, texture_barriers)
-            .unwrap();
+            .cmd_resource_barrier(buffer_barriers, texture_barriers);
     }
 
     pub fn copy_buffer_to_buffer(
@@ -197,8 +186,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         params: &CmdCopyBufferToTextureParams,
     ) {
         self.cmd_buffer
-            .cmd_copy_buffer_to_texture(src_buffer, dst_texture, params)
-            .unwrap();
+            .cmd_copy_buffer_to_texture(src_buffer, dst_texture, params);
     }
 
     pub fn blit_texture(
@@ -208,8 +196,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         params: &CmdBlitParams,
     ) {
         self.cmd_buffer
-            .cmd_blit_texture(src_texture, dst_texture, params)
-            .unwrap();
+            .cmd_blit_texture(src_texture, dst_texture, params);
     }
 
     pub fn copy_image(
@@ -219,8 +206,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         params: &CmdCopyTextureParams,
     ) {
         self.cmd_buffer
-            .cmd_copy_image(src_texture, dst_texture, params)
-            .unwrap();
+            .cmd_copy_image(src_texture, dst_texture, params);
     }
 
     pub fn fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
@@ -238,26 +224,23 @@ impl<'rc> HLCommandBuffer<'rc> {
         let pipeline_type = pipeline.pipeline_type();
         let root_signature = pipeline.root_signature();
 
-        self.cmd_buffer.cmd_bind_pipeline(pipeline).unwrap();
+        self.cmd_buffer.cmd_bind_pipeline(pipeline);
 
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
             let descriptor_set = pipeline_data.descriptor_set(i);
             if let Some(descriptor_set) = descriptor_set {
-                self.cmd_buffer
-                    .cmd_bind_descriptor_set_handle(
-                        pipeline_type,
-                        root_signature,
-                        i,
-                        descriptor_set,
-                    )
-                    .unwrap();
+                self.cmd_buffer.cmd_bind_descriptor_set_handle(
+                    pipeline_type,
+                    root_signature,
+                    i,
+                    descriptor_set,
+                );
             }
         }
 
         if let Some(push_constant_data) = pipeline_data.push_constant() {
             self.cmd_buffer
-                .cmd_push_constant(root_signature, push_constant_data)
-                .unwrap();
+                .cmd_push_constant(root_signature, push_constant_data);
         }
     }
 }

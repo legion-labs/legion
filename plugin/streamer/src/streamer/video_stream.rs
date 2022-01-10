@@ -14,19 +14,15 @@ use lgn_renderer::{
     RenderContext, Renderer,
 };
 use lgn_tasks::TaskPool;
-use lgn_telemetry::prelude::*;
-use lgn_telemetry::{debug, warn};
+use lgn_tracing::prelude::*;
+use lgn_tracing::{debug, warn};
 use lgn_utils::memory::write_any;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
+#[span_fn]
 fn record_frame_time_metric(microseconds: u64) {
-    trace_scope!();
-    static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
-        name: "Video Stream Frame Time",
-        unit: "us",
-    };
-    record_int_metric(&FRAME_TIME_METRIC, microseconds);
+    imetric!("Video Stream Frame Time", "us", microseconds);
 }
 
 #[derive(Component)]
@@ -39,13 +35,12 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
+    #[span_fn]
     pub fn new(
         renderer: &Renderer,
         resolution: Resolution,
         video_data_channel: Arc<RTCDataChannel>,
     ) -> anyhow::Result<Self> {
-        trace_scope!();
-
         let device_context = renderer.device_context();
         let encoder = VideoStreamEncoder::new(resolution)?;
         let offscreen_helper = offscreen_helper::OffscreenHelper::new(
@@ -62,12 +57,12 @@ impl VideoStream {
         })
     }
 
+    #[span_fn]
     pub(crate) fn resize(
         &mut self,
         renderer: &Renderer,
         extents: RenderSurfaceExtents,
     ) -> anyhow::Result<()> {
-        trace_scope!();
         let device_context = renderer.device_context();
         let resolution = Resolution::new(extents.width(), extents.height());
         if self.offscreen_helper.resize(device_context, resolution)? {
@@ -77,19 +72,15 @@ impl VideoStream {
     }
 
     fn record_frame_id_metric(&self) {
-        static FRAME_ID_RENDERED: MetricDesc = MetricDesc {
-            name: "Frame ID begin present",
-            unit: "",
-        };
-        record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
+        imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
     }
 
+    #[span_fn]
     pub(crate) fn present(
         &mut self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
-        trace_scope!();
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
@@ -174,8 +165,8 @@ struct VideoStreamEncoder {
 }
 
 impl VideoStreamEncoder {
+    #[span_fn]
     fn new(resolution: Resolution) -> anyhow::Result<Self> {
-        trace_scope!();
         let config = encoder::EncoderConfig::new(resolution.width(), resolution.height())
             .constant_sps(true)
             .max_fps(60.0)
@@ -211,8 +202,8 @@ impl VideoStreamEncoder {
         })
     }
 
+    #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
-        trace_scope!();
         self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.converter).unwrap();
 
@@ -230,7 +221,7 @@ impl VideoStreamEncoder {
                 if self.write_index {
                     self.mp4
                         .write_index(
-                            &MediaConfig::AvcConfig(AvcConfig {
+                            &MediaConfig::Avc(AvcConfig {
                                 width: self.resolution.width().try_into().unwrap(),
                                 height: self.resolution.height().try_into().unwrap(),
                                 seq_param_set: sps.into(),
@@ -256,7 +247,7 @@ impl VideoStreamEncoder {
 
                 self.mp4
                     .write_sample(
-                        stream.frame_type == encoder::FrameType::IDR,
+                        stream.frame_type == encoder::FrameType::Idr,
                         &vec,
                         &mut self.writer,
                     )

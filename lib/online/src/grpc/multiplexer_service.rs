@@ -5,7 +5,7 @@ use std::{
 
 use dyn_clone::DynClone;
 use http::{Request, Response, StatusCode};
-use lgn_telemetry::{debug, info};
+use lgn_tracing::{debug, info};
 use tonic::{
     body::BoxBody,
     codegen::{BoxFuture, StdError},

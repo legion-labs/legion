@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use lgn_ecs::prelude::*;
-use lgn_telemetry::error;
-use lgn_telemetry::prelude::*;
+use lgn_tracing::{dispatch::process_id, error};
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
@@ -29,7 +28,7 @@ impl ControlStream {
     }
 
     pub(crate) fn say_hello(&mut self) -> Result<impl std::future::Future<Output = ()> + 'static> {
-        if let Some(process_id) = get_process_id() {
+        if let Some(process_id) = process_id() {
             let message = serde_json::to_string(&ControlStreamMessage::Hello { process_id })
                 .with_context(|| "Error formatting hello message")?;
             let buffer = bytes::Bytes::copy_from_slice(message.as_bytes());

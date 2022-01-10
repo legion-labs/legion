@@ -66,8 +66,8 @@ use std::process::Stdio;
 use anyhow::Context;
 use config::{CommandConfig, Config};
 use lgn_cli::termination_handler::AsyncTerminationHandler;
-use lgn_telemetry::{debug, info};
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::{debug, info};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -77,7 +77,7 @@ use tokio::{
 async fn main() -> anyhow::Result<()> {
     let config = Config::new().context("failed to read configuration")?;
 
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
     debug!("Setting log level to {}.", config.log_level);
     info!("Root is set to: {}", config.root.to_string_lossy());

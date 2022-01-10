@@ -3,7 +3,7 @@
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_renderer::{components::RenderSurface, RenderContext};
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Resolution {
@@ -169,7 +169,7 @@ impl OffscreenHelper {
                 },
             ],
             &shader_build_result.pipeline_reflection,
-        )?;
+        );
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
@@ -269,13 +269,13 @@ impl OffscreenHelper {
         }
     }
 
+    #[span_fn]
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        trace_scope!();
         //
         // Render
         //
@@ -406,9 +406,9 @@ impl OffscreenHelper {
 
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
 
-        graphics_queue.wait_for_queue_idle();
+        graphics_queue.wait_for_queue_idle()?;
 
-        let sub_resource = copy_texture.map_texture().unwrap();
+        let sub_resource = copy_texture.map_texture()?;
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);
         copy_texture.unmap_texture();
         Ok(())

@@ -1,7 +1,7 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 use crate::{context::Context, Error, Result};
 
@@ -12,8 +12,8 @@ pub struct Args {
     check: bool,
 }
 
+#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    trace_scope!();
     let success = if args.check {
         ctx.installer().check_all()
     } else {

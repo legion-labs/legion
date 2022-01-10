@@ -68,7 +68,9 @@ export interface CloneResourceResponse {
   newId: string;
 }
 
-const baseSearchResourcesRequest: object = { searchToken: "" };
+function createBaseSearchResourcesRequest(): SearchResourcesRequest {
+  return { searchToken: "" };
+}
 
 export const SearchResourcesRequest = {
   encode(
@@ -87,7 +89,7 @@ export const SearchResourcesRequest = {
   ): SearchResourcesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
+    const message = createBaseSearchResourcesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -103,12 +105,9 @@ export const SearchResourcesRequest = {
   },
 
   fromJSON(object: any): SearchResourcesRequest {
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
-    message.searchToken =
-      object.searchToken !== undefined && object.searchToken !== null
-        ? String(object.searchToken)
-        : "";
-    return message;
+    return {
+      searchToken: isSet(object.searchToken) ? String(object.searchToken) : "",
+    };
   },
 
   toJSON(message: SearchResourcesRequest): unknown {
@@ -121,13 +120,15 @@ export const SearchResourcesRequest = {
   fromPartial<I extends Exact<DeepPartial<SearchResourcesRequest>, I>>(
     object: I
   ): SearchResourcesRequest {
-    const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
+    const message = createBaseSearchResourcesRequest();
     message.searchToken = object.searchToken ?? "";
     return message;
   },
 };
 
-const baseSearchResourcesResponse: object = { nextSearchToken: "", total: 0 };
+function createBaseSearchResourcesResponse(): SearchResourcesResponse {
+  return { nextSearchToken: "", total: 0, resourceDescriptions: [] };
+}
 
 export const SearchResourcesResponse = {
   encode(
@@ -152,10 +153,7 @@ export const SearchResourcesResponse = {
   ): SearchResourcesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
-    message.resourceDescriptions = [];
+    const message = createBaseSearchResourcesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -179,21 +177,17 @@ export const SearchResourcesResponse = {
   },
 
   fromJSON(object: any): SearchResourcesResponse {
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
-    message.nextSearchToken =
-      object.nextSearchToken !== undefined && object.nextSearchToken !== null
+    return {
+      nextSearchToken: isSet(object.nextSearchToken)
         ? String(object.nextSearchToken)
-        : "";
-    message.total =
-      object.total !== undefined && object.total !== null
-        ? Number(object.total)
-        : 0;
-    message.resourceDescriptions = (object.resourceDescriptions ?? []).map(
-      (e: any) => ResourceDescription.fromJSON(e)
-    );
-    return message;
+        : "",
+      total: isSet(object.total) ? Number(object.total) : 0,
+      resourceDescriptions: Array.isArray(object?.resourceDescriptions)
+        ? object.resourceDescriptions.map((e: any) =>
+            ResourceDescription.fromJSON(e)
+          )
+        : [],
+    };
   },
 
   toJSON(message: SearchResourcesResponse): unknown {
@@ -214,9 +208,7 @@ export const SearchResourcesResponse = {
   fromPartial<I extends Exact<DeepPartial<SearchResourcesResponse>, I>>(
     object: I
   ): SearchResourcesResponse {
-    const message = {
-      ...baseSearchResourcesResponse,
-    } as SearchResourcesResponse;
+    const message = createBaseSearchResourcesResponse();
     message.nextSearchToken = object.nextSearchToken ?? "";
     message.total = object.total ?? 0;
     message.resourceDescriptions =
@@ -227,7 +219,9 @@ export const SearchResourcesResponse = {
   },
 };
 
-const baseResourceDescription: object = { id: "", path: "", version: 0 };
+function createBaseResourceDescription(): ResourceDescription {
+  return { id: "", path: "", version: 0 };
+}
 
 export const ResourceDescription = {
   encode(
@@ -249,7 +243,7 @@ export const ResourceDescription = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ResourceDescription {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -271,18 +265,11 @@ export const ResourceDescription = {
   },
 
   fromJSON(object: any): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.path =
-      object.path !== undefined && object.path !== null
-        ? String(object.path)
-        : "";
-    message.version =
-      object.version !== undefined && object.version !== null
-        ? Number(object.version)
-        : 0;
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      path: isSet(object.path) ? String(object.path) : "",
+      version: isSet(object.version) ? Number(object.version) : 0,
+    };
   },
 
   toJSON(message: ResourceDescription): unknown {
@@ -297,7 +284,7 @@ export const ResourceDescription = {
   fromPartial<I extends Exact<DeepPartial<ResourceDescription>, I>>(
     object: I
   ): ResourceDescription {
-    const message = { ...baseResourceDescription } as ResourceDescription;
+    const message = createBaseResourceDescription();
     message.id = object.id ?? "";
     message.path = object.path ?? "";
     message.version = object.version ?? 0;
@@ -305,7 +292,9 @@ export const ResourceDescription = {
   },
 };
 
-const baseGetResourceTypeNamesRequest: object = {};
+function createBaseGetResourceTypeNamesRequest(): GetResourceTypeNamesRequest {
+  return {};
+}
 
 export const GetResourceTypeNamesRequest = {
   encode(
@@ -321,9 +310,7 @@ export const GetResourceTypeNamesRequest = {
   ): GetResourceTypeNamesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourceTypeNamesRequest,
-    } as GetResourceTypeNamesRequest;
+    const message = createBaseGetResourceTypeNamesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -336,10 +323,7 @@ export const GetResourceTypeNamesRequest = {
   },
 
   fromJSON(_: any): GetResourceTypeNamesRequest {
-    const message = {
-      ...baseGetResourceTypeNamesRequest,
-    } as GetResourceTypeNamesRequest;
-    return message;
+    return {};
   },
 
   toJSON(_: GetResourceTypeNamesRequest): unknown {
@@ -350,14 +334,14 @@ export const GetResourceTypeNamesRequest = {
   fromPartial<I extends Exact<DeepPartial<GetResourceTypeNamesRequest>, I>>(
     _: I
   ): GetResourceTypeNamesRequest {
-    const message = {
-      ...baseGetResourceTypeNamesRequest,
-    } as GetResourceTypeNamesRequest;
+    const message = createBaseGetResourceTypeNamesRequest();
     return message;
   },
 };
 
-const baseGetResourceTypeNamesResponse: object = { resourceTypes: "" };
+function createBaseGetResourceTypeNamesResponse(): GetResourceTypeNamesResponse {
+  return { resourceTypes: [] };
+}
 
 export const GetResourceTypeNamesResponse = {
   encode(
@@ -376,10 +360,7 @@ export const GetResourceTypeNamesResponse = {
   ): GetResourceTypeNamesResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseGetResourceTypeNamesResponse,
-    } as GetResourceTypeNamesResponse;
-    message.resourceTypes = [];
+    const message = createBaseGetResourceTypeNamesResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -395,13 +376,11 @@ export const GetResourceTypeNamesResponse = {
   },
 
   fromJSON(object: any): GetResourceTypeNamesResponse {
-    const message = {
-      ...baseGetResourceTypeNamesResponse,
-    } as GetResourceTypeNamesResponse;
-    message.resourceTypes = (object.resourceTypes ?? []).map((e: any) =>
-      String(e)
-    );
-    return message;
+    return {
+      resourceTypes: Array.isArray(object?.resourceTypes)
+        ? object.resourceTypes.map((e: any) => String(e))
+        : [],
+    };
   },
 
   toJSON(message: GetResourceTypeNamesResponse): unknown {
@@ -417,18 +396,15 @@ export const GetResourceTypeNamesResponse = {
   fromPartial<I extends Exact<DeepPartial<GetResourceTypeNamesResponse>, I>>(
     object: I
   ): GetResourceTypeNamesResponse {
-    const message = {
-      ...baseGetResourceTypeNamesResponse,
-    } as GetResourceTypeNamesResponse;
+    const message = createBaseGetResourceTypeNamesResponse();
     message.resourceTypes = object.resourceTypes?.map((e) => e) || [];
     return message;
   },
 };
 
-const baseCreateResourceRequest: object = {
-  resourceType: "",
-  resourcePath: "",
-};
+function createBaseCreateResourceRequest(): CreateResourceRequest {
+  return { resourceType: "", resourcePath: "" };
+}
 
 export const CreateResourceRequest = {
   encode(
@@ -450,7 +426,7 @@ export const CreateResourceRequest = {
   ): CreateResourceRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCreateResourceRequest } as CreateResourceRequest;
+    const message = createBaseCreateResourceRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -469,16 +445,14 @@ export const CreateResourceRequest = {
   },
 
   fromJSON(object: any): CreateResourceRequest {
-    const message = { ...baseCreateResourceRequest } as CreateResourceRequest;
-    message.resourceType =
-      object.resourceType !== undefined && object.resourceType !== null
+    return {
+      resourceType: isSet(object.resourceType)
         ? String(object.resourceType)
-        : "";
-    message.resourcePath =
-      object.resourcePath !== undefined && object.resourcePath !== null
+        : "",
+      resourcePath: isSet(object.resourcePath)
         ? String(object.resourcePath)
-        : "";
-    return message;
+        : "",
+    };
   },
 
   toJSON(message: CreateResourceRequest): unknown {
@@ -493,14 +467,16 @@ export const CreateResourceRequest = {
   fromPartial<I extends Exact<DeepPartial<CreateResourceRequest>, I>>(
     object: I
   ): CreateResourceRequest {
-    const message = { ...baseCreateResourceRequest } as CreateResourceRequest;
+    const message = createBaseCreateResourceRequest();
     message.resourceType = object.resourceType ?? "";
     message.resourcePath = object.resourcePath ?? "";
     return message;
   },
 };
 
-const baseCreateResourceResponse: object = { newId: "" };
+function createBaseCreateResourceResponse(): CreateResourceResponse {
+  return { newId: "" };
+}
 
 export const CreateResourceResponse = {
   encode(
@@ -519,7 +495,7 @@ export const CreateResourceResponse = {
   ): CreateResourceResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCreateResourceResponse } as CreateResourceResponse;
+    const message = createBaseCreateResourceResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -535,12 +511,9 @@ export const CreateResourceResponse = {
   },
 
   fromJSON(object: any): CreateResourceResponse {
-    const message = { ...baseCreateResourceResponse } as CreateResourceResponse;
-    message.newId =
-      object.newId !== undefined && object.newId !== null
-        ? String(object.newId)
-        : "";
-    return message;
+    return {
+      newId: isSet(object.newId) ? String(object.newId) : "",
+    };
   },
 
   toJSON(message: CreateResourceResponse): unknown {
@@ -552,16 +525,15 @@ export const CreateResourceResponse = {
   fromPartial<I extends Exact<DeepPartial<CreateResourceResponse>, I>>(
     object: I
   ): CreateResourceResponse {
-    const message = { ...baseCreateResourceResponse } as CreateResourceResponse;
+    const message = createBaseCreateResourceResponse();
     message.newId = object.newId ?? "";
     return message;
   },
 };
 
-const baseImportResourceRequest: object = {
-  resourceName: "",
-  sharedFilePath: "",
-};
+function createBaseImportResourceRequest(): ImportResourceRequest {
+  return { resourceName: "", sharedFilePath: "" };
+}
 
 export const ImportResourceRequest = {
   encode(
@@ -583,7 +555,7 @@ export const ImportResourceRequest = {
   ): ImportResourceRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseImportResourceRequest } as ImportResourceRequest;
+    const message = createBaseImportResourceRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -602,16 +574,14 @@ export const ImportResourceRequest = {
   },
 
   fromJSON(object: any): ImportResourceRequest {
-    const message = { ...baseImportResourceRequest } as ImportResourceRequest;
-    message.resourceName =
-      object.resourceName !== undefined && object.resourceName !== null
+    return {
+      resourceName: isSet(object.resourceName)
         ? String(object.resourceName)
-        : "";
-    message.sharedFilePath =
-      object.sharedFilePath !== undefined && object.sharedFilePath !== null
+        : "",
+      sharedFilePath: isSet(object.sharedFilePath)
         ? String(object.sharedFilePath)
-        : "";
-    return message;
+        : "",
+    };
   },
 
   toJSON(message: ImportResourceRequest): unknown {
@@ -626,14 +596,16 @@ export const ImportResourceRequest = {
   fromPartial<I extends Exact<DeepPartial<ImportResourceRequest>, I>>(
     object: I
   ): ImportResourceRequest {
-    const message = { ...baseImportResourceRequest } as ImportResourceRequest;
+    const message = createBaseImportResourceRequest();
     message.resourceName = object.resourceName ?? "";
     message.sharedFilePath = object.sharedFilePath ?? "";
     return message;
   },
 };
 
-const baseImportResourceResponse: object = { newId: "" };
+function createBaseImportResourceResponse(): ImportResourceResponse {
+  return { newId: "" };
+}
 
 export const ImportResourceResponse = {
   encode(
@@ -652,7 +624,7 @@ export const ImportResourceResponse = {
   ): ImportResourceResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseImportResourceResponse } as ImportResourceResponse;
+    const message = createBaseImportResourceResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -668,12 +640,9 @@ export const ImportResourceResponse = {
   },
 
   fromJSON(object: any): ImportResourceResponse {
-    const message = { ...baseImportResourceResponse } as ImportResourceResponse;
-    message.newId =
-      object.newId !== undefined && object.newId !== null
-        ? String(object.newId)
-        : "";
-    return message;
+    return {
+      newId: isSet(object.newId) ? String(object.newId) : "",
+    };
   },
 
   toJSON(message: ImportResourceResponse): unknown {
@@ -685,13 +654,15 @@ export const ImportResourceResponse = {
   fromPartial<I extends Exact<DeepPartial<ImportResourceResponse>, I>>(
     object: I
   ): ImportResourceResponse {
-    const message = { ...baseImportResourceResponse } as ImportResourceResponse;
+    const message = createBaseImportResourceResponse();
     message.newId = object.newId ?? "";
     return message;
   },
 };
 
-const baseDeleteResourceRequest: object = { id: "" };
+function createBaseDeleteResourceRequest(): DeleteResourceRequest {
+  return { id: "" };
+}
 
 export const DeleteResourceRequest = {
   encode(
@@ -710,7 +681,7 @@ export const DeleteResourceRequest = {
   ): DeleteResourceRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseDeleteResourceRequest } as DeleteResourceRequest;
+    const message = createBaseDeleteResourceRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -726,10 +697,9 @@ export const DeleteResourceRequest = {
   },
 
   fromJSON(object: any): DeleteResourceRequest {
-    const message = { ...baseDeleteResourceRequest } as DeleteResourceRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+    };
   },
 
   toJSON(message: DeleteResourceRequest): unknown {
@@ -741,13 +711,15 @@ export const DeleteResourceRequest = {
   fromPartial<I extends Exact<DeepPartial<DeleteResourceRequest>, I>>(
     object: I
   ): DeleteResourceRequest {
-    const message = { ...baseDeleteResourceRequest } as DeleteResourceRequest;
+    const message = createBaseDeleteResourceRequest();
     message.id = object.id ?? "";
     return message;
   },
 };
 
-const baseDeleteResourceResponse: object = {};
+function createBaseDeleteResourceResponse(): DeleteResourceResponse {
+  return {};
+}
 
 export const DeleteResourceResponse = {
   encode(
@@ -763,7 +735,7 @@ export const DeleteResourceResponse = {
   ): DeleteResourceResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseDeleteResourceResponse } as DeleteResourceResponse;
+    const message = createBaseDeleteResourceResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -776,8 +748,7 @@ export const DeleteResourceResponse = {
   },
 
   fromJSON(_: any): DeleteResourceResponse {
-    const message = { ...baseDeleteResourceResponse } as DeleteResourceResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: DeleteResourceResponse): unknown {
@@ -788,12 +759,14 @@ export const DeleteResourceResponse = {
   fromPartial<I extends Exact<DeepPartial<DeleteResourceResponse>, I>>(
     _: I
   ): DeleteResourceResponse {
-    const message = { ...baseDeleteResourceResponse } as DeleteResourceResponse;
+    const message = createBaseDeleteResourceResponse();
     return message;
   },
 };
 
-const baseRenameResourceRequest: object = { id: "", newPath: "" };
+function createBaseRenameResourceRequest(): RenameResourceRequest {
+  return { id: "", newPath: "" };
+}
 
 export const RenameResourceRequest = {
   encode(
@@ -815,7 +788,7 @@ export const RenameResourceRequest = {
   ): RenameResourceRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseRenameResourceRequest } as RenameResourceRequest;
+    const message = createBaseRenameResourceRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -834,14 +807,10 @@ export const RenameResourceRequest = {
   },
 
   fromJSON(object: any): RenameResourceRequest {
-    const message = { ...baseRenameResourceRequest } as RenameResourceRequest;
-    message.id =
-      object.id !== undefined && object.id !== null ? String(object.id) : "";
-    message.newPath =
-      object.newPath !== undefined && object.newPath !== null
-        ? String(object.newPath)
-        : "";
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      newPath: isSet(object.newPath) ? String(object.newPath) : "",
+    };
   },
 
   toJSON(message: RenameResourceRequest): unknown {
@@ -854,14 +823,16 @@ export const RenameResourceRequest = {
   fromPartial<I extends Exact<DeepPartial<RenameResourceRequest>, I>>(
     object: I
   ): RenameResourceRequest {
-    const message = { ...baseRenameResourceRequest } as RenameResourceRequest;
+    const message = createBaseRenameResourceRequest();
     message.id = object.id ?? "";
     message.newPath = object.newPath ?? "";
     return message;
   },
 };
 
-const baseRenameResourceResponse: object = {};
+function createBaseRenameResourceResponse(): RenameResourceResponse {
+  return {};
+}
 
 export const RenameResourceResponse = {
   encode(
@@ -877,7 +848,7 @@ export const RenameResourceResponse = {
   ): RenameResourceResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseRenameResourceResponse } as RenameResourceResponse;
+    const message = createBaseRenameResourceResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -890,8 +861,7 @@ export const RenameResourceResponse = {
   },
 
   fromJSON(_: any): RenameResourceResponse {
-    const message = { ...baseRenameResourceResponse } as RenameResourceResponse;
-    return message;
+    return {};
   },
 
   toJSON(_: RenameResourceResponse): unknown {
@@ -902,12 +872,14 @@ export const RenameResourceResponse = {
   fromPartial<I extends Exact<DeepPartial<RenameResourceResponse>, I>>(
     _: I
   ): RenameResourceResponse {
-    const message = { ...baseRenameResourceResponse } as RenameResourceResponse;
+    const message = createBaseRenameResourceResponse();
     return message;
   },
 };
 
-const baseCloneResourceRequest: object = { sourceId: "", clonePath: "" };
+function createBaseCloneResourceRequest(): CloneResourceRequest {
+  return { sourceId: "", clonePath: "" };
+}
 
 export const CloneResourceRequest = {
   encode(
@@ -929,7 +901,7 @@ export const CloneResourceRequest = {
   ): CloneResourceRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCloneResourceRequest } as CloneResourceRequest;
+    const message = createBaseCloneResourceRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -948,16 +920,10 @@ export const CloneResourceRequest = {
   },
 
   fromJSON(object: any): CloneResourceRequest {
-    const message = { ...baseCloneResourceRequest } as CloneResourceRequest;
-    message.sourceId =
-      object.sourceId !== undefined && object.sourceId !== null
-        ? String(object.sourceId)
-        : "";
-    message.clonePath =
-      object.clonePath !== undefined && object.clonePath !== null
-        ? String(object.clonePath)
-        : "";
-    return message;
+    return {
+      sourceId: isSet(object.sourceId) ? String(object.sourceId) : "",
+      clonePath: isSet(object.clonePath) ? String(object.clonePath) : "",
+    };
   },
 
   toJSON(message: CloneResourceRequest): unknown {
@@ -970,14 +936,16 @@ export const CloneResourceRequest = {
   fromPartial<I extends Exact<DeepPartial<CloneResourceRequest>, I>>(
     object: I
   ): CloneResourceRequest {
-    const message = { ...baseCloneResourceRequest } as CloneResourceRequest;
+    const message = createBaseCloneResourceRequest();
     message.sourceId = object.sourceId ?? "";
     message.clonePath = object.clonePath ?? "";
     return message;
   },
 };
 
-const baseCloneResourceResponse: object = { newId: "" };
+function createBaseCloneResourceResponse(): CloneResourceResponse {
+  return { newId: "" };
+}
 
 export const CloneResourceResponse = {
   encode(
@@ -996,7 +964,7 @@ export const CloneResourceResponse = {
   ): CloneResourceResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCloneResourceResponse } as CloneResourceResponse;
+    const message = createBaseCloneResourceResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1012,12 +980,9 @@ export const CloneResourceResponse = {
   },
 
   fromJSON(object: any): CloneResourceResponse {
-    const message = { ...baseCloneResourceResponse } as CloneResourceResponse;
-    message.newId =
-      object.newId !== undefined && object.newId !== null
-        ? String(object.newId)
-        : "";
-    return message;
+    return {
+      newId: isSet(object.newId) ? String(object.newId) : "",
+    };
   },
 
   toJSON(message: CloneResourceResponse): unknown {
@@ -1029,7 +994,7 @@ export const CloneResourceResponse = {
   fromPartial<I extends Exact<DeepPartial<CloneResourceResponse>, I>>(
     object: I
   ): CloneResourceResponse {
-    const message = { ...baseCloneResourceResponse } as CloneResourceResponse;
+    const message = createBaseCloneResourceResponse();
     message.newId = object.newId ?? "";
     return message;
   },
@@ -1438,4 +1403,8 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

@@ -46,7 +46,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
         &mut self,
         descriptor_index: usize,
         update_datas: &[DescriptorRef<'_>],
-    ) -> GfxResult<()> {
+    ) {
         let descriptor = self.descriptor_set_layout.descriptor(descriptor_index);
         let descriptor_binding = descriptor.binding;
         assert!((descriptor.element_count_normalized() as usize) == update_datas.len());
@@ -146,8 +146,6 @@ impl<'frame> DescriptorSetWriter<'frame> {
                 todo!();
             }
         }
-
-        Ok(())
     }
 
     pub fn flush_platform(&self, device_context: &DeviceContext) {

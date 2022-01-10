@@ -51,7 +51,7 @@ impl DescriptorHeap {
         #[cfg(feature = "vulkan")]
         let platform_descriptor_heap = VulkanDescriptorHeap::new(device_context, definition)
             .map_err(|e| {
-                lgn_telemetry::error!("Error creating descriptor heap {:?}", e);
+                lgn_tracing::error!("Error creating descriptor heap {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
@@ -120,7 +120,7 @@ impl DescriptorHeapPartition {
         let platform_descriptor_heap_partition =
             VulkanDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)
                 .map_err(|e| {
-                lgn_telemetry::error!("Error creating descriptor heap {:?}", e);
+                lgn_tracing::error!("Error creating descriptor heap {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 

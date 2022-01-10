@@ -1,4 +1,4 @@
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
@@ -23,7 +23,7 @@ impl Queue {
     pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_queue = VulkanQueue::new(device_context, queue_type).map_err(|e| {
-            lgn_telemetry::error!("Error creating buffer {:?}", e);
+            lgn_tracing::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;
 
@@ -62,6 +62,7 @@ impl Queue {
         CommandPool::new(self, command_pool_def)
     }
 
+    #[span_fn]
     pub fn submit(
         &self,
         command_buffers: &[&CommandBuffer],
@@ -69,7 +70,6 @@ impl Queue {
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
-        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
@@ -82,13 +82,13 @@ impl Queue {
         )
     }
 
+    #[span_fn]
     pub fn present(
         &self,
         swapchain: &Swapchain,
         wait_semaphores: &[&Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
-        trace_scope!();
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 

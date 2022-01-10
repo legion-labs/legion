@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
-use lgn_telemetry::error;
+use lgn_tracing::error;
 use tokio::sync::MutexGuard;
 
 use crate::{BuildManager, DataManager};

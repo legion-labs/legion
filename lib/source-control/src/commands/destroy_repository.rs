@@ -1,11 +1,11 @@
 use anyhow::Result;
+use lgn_tracing::span_fn;
 
 use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::{sql, RepositoryUrl};
 
+#[span_fn]
 pub async fn destroy_repository(repo_url: &RepositoryUrl) -> Result<()> {
-    lgn_telemetry::trace_scope!();
-
     match repo_url {
         RepositoryUrl::Local(_) => {
             anyhow::bail!("file:// scheme not implemented, remove the directory manually");

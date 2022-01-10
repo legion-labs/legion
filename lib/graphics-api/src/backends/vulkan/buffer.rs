@@ -1,4 +1,4 @@
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use crate::{Buffer, BufferDef, DeviceContext, ResourceUsage};
 

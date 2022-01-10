@@ -114,14 +114,13 @@ impl ValueWrapper for BufferView {
     fn validate(&self, def: &CGenDescriptorDef) -> bool {
         match def.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
-                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBufferView
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
             }
             ShaderResourceType::ByteAdressBuffer | ShaderResourceType::StructuredBuffer => {
-                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResourceView
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
             }
             ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
-                self.definition().gpu_view_type
-                    == lgn_graphics_api::GPUViewType::UnorderedAccessView
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::UnorderedAccess
             }
             ShaderResourceType::Sampler
             | ShaderResourceType::Texture2D

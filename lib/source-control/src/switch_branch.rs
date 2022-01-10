@@ -4,10 +4,11 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
+use lgn_tracing::span_fn;
 
 use crate::{
     connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
-    remove_dir_rec, sync_file, trace_scope, update_current_branch, LocalWorkspaceConnection,
+    remove_dir_rec, sync_file, update_current_branch, LocalWorkspaceConnection,
     RepositoryConnection,
 };
 
@@ -131,8 +132,8 @@ pub async fn sync_tree_diff(
 }
 
 // not yet async because of sync_tree_diff
+#[span_fn]
 pub async fn switch_branch_command(name: &str) -> Result<()> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

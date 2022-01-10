@@ -60,8 +60,8 @@ use std::path::Path;
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
-use lgn_telemetry::*;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::*;
 
 /// Legion Source Control
 #[derive(Parser, Debug)]
@@ -234,9 +234,9 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
-    trace_scope!();
+    span_scope!("lsc::main");
 
     //let repository_url = command_match
     //    .value_of(ARG_REPOSITORY_URL)

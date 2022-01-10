@@ -1,5 +1,5 @@
 #![allow(clippy::too_many_lines)]
-use lgn_telemetry::trace;
+use lgn_tracing::trace;
 
 use super::internal;
 use crate::{
@@ -186,8 +186,8 @@ impl CommandBuffer {
             framebuffer.height() as f32,
             0.0,
             1.0,
-        )?;
-        self.cmd_set_scissor(0, 0, framebuffer.width(), framebuffer.height())?;
+        );
+        self.cmd_set_scissor(0, 0, framebuffer.width(), framebuffer.height());
 
         Ok(())
     }

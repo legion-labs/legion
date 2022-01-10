@@ -1,7 +1,7 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 
 use crate::{cargo::Cargo, context::Context, Result};
 use std::ffi::OsString;
@@ -23,8 +23,8 @@ pub struct Args {
     args: Vec<OsString>,
 }
 
+#[span_fn]
 pub fn run(args: Args, ctx: &Context) -> Result<()> {
-    trace_scope!();
     // Hardcode that we want imports merged
     let mut pass_through_args = vec!["--config".into(), "imports_granularity=crate".into()];
 

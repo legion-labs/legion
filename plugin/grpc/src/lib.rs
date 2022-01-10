@@ -67,7 +67,7 @@ use lgn_online::grpc::{
     multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
     Server,
 };
-use lgn_telemetry::warn;
+use lgn_tracing::warn;
 use tonic::transport::NamedService;
 
 /// Label to use for scheduling systems for GRPC Service registration

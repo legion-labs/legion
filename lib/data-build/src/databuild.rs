@@ -114,7 +114,7 @@ impl DataBuild {
             &Project::root_to_index_path(project_dir),
             Self::version(),
         )
-        .map_err(|_e| Error::IOError)?;
+        .map_err(|_e| Error::Io)?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -356,7 +356,7 @@ impl DataBuild {
                         &self.project.resource_dir(),
                         env,
                     )
-                    .map_err(Error::CompilerError)?;
+                    .map_err(Error::Compiler)?;
 
                 self.build_index.insert_compiled(
                     compile_node,

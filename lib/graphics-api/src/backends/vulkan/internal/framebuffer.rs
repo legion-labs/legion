@@ -66,7 +66,7 @@ impl FramebufferVulkan {
                 let extents = texture_def.extents;
                 (extents, view_def.array_size)
             } else {
-                return Err(GfxError::StringError(
+                return Err(GfxError::String(
                     "No render target in framebuffer def".to_string(),
                 ));
             };

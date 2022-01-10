@@ -1,0 +1,22 @@
+[package]
+name = "lgn-source-control-proto"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tonic = "0.6"
+prost = "0.9"
+prost-types = "0.9"
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+base64 = "0.13.0"
+
+[build-dependencies]
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0" }
+lgn-build-utils-proto = { path = "../../lib/build-utils-proto", version = "0.1.0" }
+
+[features]
+run-codegen = []
+run-codegen-validation = ["run-codegen"]

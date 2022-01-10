@@ -214,7 +214,7 @@ impl PickingRenderPass {
 
         let count_rw_view_def =
             BufferViewDef::as_structured_buffer(count_buffer.definition(), 4, false);
-        let count_rw_view = BufferView::from_buffer(&count_buffer, &count_rw_view_def).unwrap();
+        let count_rw_view = BufferView::from_buffer(&count_buffer, &count_rw_view_def);
 
         let picked_buffer_def = BufferDef {
             size: 16 * 1024,
@@ -235,7 +235,7 @@ impl PickingRenderPass {
 
         let picked_rw_view_def =
             BufferViewDef::as_structured_buffer(picked_buffer.definition(), 16, false);
-        let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def).unwrap();
+        let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
             root_signature,

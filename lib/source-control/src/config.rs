@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
-use crate::{read_text_file, trace_scope};
+use crate::read_text_file;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -61,8 +62,8 @@ impl Config {
     }
 }
 
+#[span_fn]
 pub fn print_config_command() -> Result<()> {
-    trace_scope!();
     let path = Config::config_file_path()?;
     println!("config file path is {}", path.display());
     let config = Config::read_config()?;

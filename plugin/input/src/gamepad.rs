@@ -1,6 +1,6 @@
 use lgn_app::{EventReader, EventWriter};
 use lgn_ecs::system::{Res, ResMut};
-use lgn_telemetry::info;
+use lgn_tracing::info;
 use lgn_utils::{HashMap, HashSet};
 
 use crate::{Axis, Input};
@@ -19,8 +19,8 @@ pub struct Gamepads {
 
 impl Gamepads {
     /// Returns true if the [Gamepads] contains a [Gamepad].
-    pub fn contains(&self, gamepad: &Gamepad) -> bool {
-        self.gamepads.contains(gamepad)
+    pub fn contains(&self, gamepad: Gamepad) -> bool {
+        self.gamepads.contains(&gamepad)
     }
 
     /// Iterates over registered [Gamepad]s

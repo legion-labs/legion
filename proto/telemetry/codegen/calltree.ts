@@ -28,7 +28,9 @@ export interface CallTree_ScopesEntry {
   value: ScopeDesc | undefined;
 }
 
-const baseCallTreeNode: object = { hash: 0, beginMs: 0, endMs: 0 };
+function createBaseCallTreeNode(): CallTreeNode {
+  return { hash: 0, beginMs: 0, endMs: 0, children: [] };
+}
 
 export const CallTreeNode = {
   encode(
@@ -53,8 +55,7 @@ export const CallTreeNode = {
   decode(input: _m0.Reader | Uint8Array, length?: number): CallTreeNode {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCallTreeNode } as CallTreeNode;
-    message.children = [];
+    const message = createBaseCallTreeNode();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -79,23 +80,14 @@ export const CallTreeNode = {
   },
 
   fromJSON(object: any): CallTreeNode {
-    const message = { ...baseCallTreeNode } as CallTreeNode;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    message.children = (object.children ?? []).map((e: any) =>
-      CallTreeNode.fromJSON(e)
-    );
-    return message;
+    return {
+      hash: isSet(object.hash) ? Number(object.hash) : 0,
+      beginMs: isSet(object.beginMs) ? Number(object.beginMs) : 0,
+      endMs: isSet(object.endMs) ? Number(object.endMs) : 0,
+      children: Array.isArray(object?.children)
+        ? object.children.map((e: any) => CallTreeNode.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: CallTreeNode): unknown {
@@ -116,7 +108,7 @@ export const CallTreeNode = {
   fromPartial<I extends Exact<DeepPartial<CallTreeNode>, I>>(
     object: I
   ): CallTreeNode {
-    const message = { ...baseCallTreeNode } as CallTreeNode;
+    const message = createBaseCallTreeNode();
     message.hash = object.hash ?? 0;
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
@@ -126,7 +118,9 @@ export const CallTreeNode = {
   },
 };
 
-const baseScopeDesc: object = { name: "", filename: "", line: 0, hash: 0 };
+function createBaseScopeDesc(): ScopeDesc {
+  return { name: "", filename: "", line: 0, hash: 0 };
+}
 
 export const ScopeDesc = {
   encode(
@@ -151,7 +145,7 @@ export const ScopeDesc = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ScopeDesc {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseScopeDesc } as ScopeDesc;
+    const message = createBaseScopeDesc();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -176,24 +170,12 @@ export const ScopeDesc = {
   },
 
   fromJSON(object: any): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.filename =
-      object.filename !== undefined && object.filename !== null
-        ? String(object.filename)
-        : "";
-    message.line =
-      object.line !== undefined && object.line !== null
-        ? Number(object.line)
-        : 0;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    return message;
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      filename: isSet(object.filename) ? String(object.filename) : "",
+      line: isSet(object.line) ? Number(object.line) : 0,
+      hash: isSet(object.hash) ? Number(object.hash) : 0,
+    };
   },
 
   toJSON(message: ScopeDesc): unknown {
@@ -208,7 +190,7 @@ export const ScopeDesc = {
   fromPartial<I extends Exact<DeepPartial<ScopeDesc>, I>>(
     object: I
   ): ScopeDesc {
-    const message = { ...baseScopeDesc } as ScopeDesc;
+    const message = createBaseScopeDesc();
     message.name = object.name ?? "";
     message.filename = object.filename ?? "";
     message.line = object.line ?? 0;
@@ -217,7 +199,9 @@ export const ScopeDesc = {
   },
 };
 
-const baseCallTree: object = {};
+function createBaseCallTree(): CallTree {
+  return { scopes: {}, root: undefined };
+}
 
 export const CallTree = {
   encode(
@@ -239,8 +223,7 @@ export const CallTree = {
   decode(input: _m0.Reader | Uint8Array, length?: number): CallTree {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCallTree } as CallTree;
-    message.scopes = {};
+    const message = createBaseCallTree();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -262,18 +245,18 @@ export const CallTree = {
   },
 
   fromJSON(object: any): CallTree {
-    const message = { ...baseCallTree } as CallTree;
-    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
-      [key: number]: ScopeDesc;
-    }>((acc, [key, value]) => {
-      acc[Number(key)] = ScopeDesc.fromJSON(value);
-      return acc;
-    }, {});
-    message.root =
-      object.root !== undefined && object.root !== null
-        ? CallTreeNode.fromJSON(object.root)
-        : undefined;
-    return message;
+    return {
+      scopes: isObject(object.scopes)
+        ? Object.entries(object.scopes).reduce<{ [key: number]: ScopeDesc }>(
+            (acc, [key, value]) => {
+              acc[Number(key)] = ScopeDesc.fromJSON(value);
+              return acc;
+            },
+            {}
+          )
+        : {},
+      root: isSet(object.root) ? CallTreeNode.fromJSON(object.root) : undefined,
+    };
   },
 
   toJSON(message: CallTree): unknown {
@@ -290,7 +273,7 @@ export const CallTree = {
   },
 
   fromPartial<I extends Exact<DeepPartial<CallTree>, I>>(object: I): CallTree {
-    const message = { ...baseCallTree } as CallTree;
+    const message = createBaseCallTree();
     message.scopes = Object.entries(object.scopes ?? {}).reduce<{
       [key: number]: ScopeDesc;
     }>((acc, [key, value]) => {
@@ -307,7 +290,9 @@ export const CallTree = {
   },
 };
 
-const baseCallTree_ScopesEntry: object = { key: 0 };
+function createBaseCallTree_ScopesEntry(): CallTree_ScopesEntry {
+  return { key: 0, value: undefined };
+}
 
 export const CallTree_ScopesEntry = {
   encode(
@@ -329,7 +314,7 @@ export const CallTree_ScopesEntry = {
   ): CallTree_ScopesEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCallTree_ScopesEntry } as CallTree_ScopesEntry;
+    const message = createBaseCallTree_ScopesEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -348,14 +333,10 @@ export const CallTree_ScopesEntry = {
   },
 
   fromJSON(object: any): CallTree_ScopesEntry {
-    const message = { ...baseCallTree_ScopesEntry } as CallTree_ScopesEntry;
-    message.key =
-      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? ScopeDesc.fromJSON(object.value)
-        : undefined;
-    return message;
+    return {
+      key: isSet(object.key) ? Number(object.key) : 0,
+      value: isSet(object.value) ? ScopeDesc.fromJSON(object.value) : undefined,
+    };
   },
 
   toJSON(message: CallTree_ScopesEntry): unknown {
@@ -369,7 +350,7 @@ export const CallTree_ScopesEntry = {
   fromPartial<I extends Exact<DeepPartial<CallTree_ScopesEntry>, I>>(
     object: I
   ): CallTree_ScopesEntry {
-    const message = { ...baseCallTree_ScopesEntry } as CallTree_ScopesEntry;
+    const message = createBaseCallTree_ScopesEntry();
     message.key = object.key ?? 0;
     message.value =
       object.value !== undefined && object.value !== null
@@ -409,4 +390,12 @@ export type Exact<P, I extends P> = P extends Builtin
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

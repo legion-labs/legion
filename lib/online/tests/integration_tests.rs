@@ -1,7 +1,23 @@
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::doc_markdown,
+    clippy::too_many_lines,
+    clippy::wildcard_imports,
+    clippy::similar_names,
+    clippy::use_self
+)]
 pub mod echo {
     tonic::include_proto!("echo");
 }
 
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::doc_markdown,
+    clippy::too_many_lines,
+    clippy::wildcard_imports,
+    clippy::similar_names,
+    clippy::use_self
+)]
 pub mod sum {
     tonic::include_proto!("sum");
 }
@@ -17,7 +33,7 @@ use lgn_online::{
     authentication::{self, Authenticator, ClientTokenSet},
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
-use lgn_telemetry::{error, info};
+use lgn_tracing::{error, info};
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
@@ -57,7 +73,7 @@ static INIT: std::sync::Once = std::sync::Once::new();
 #[cfg(test)]
 fn setup_test_logger() {
     INIT.call_once(|| {
-        let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::new();
+        let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default();
         std::mem::forget(telemetry_guard);
     });
 }

@@ -56,6 +56,7 @@ impl<'mdl> StructBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
+    #[allow(clippy::unnecessary_wraps)]
     pub fn build(self) -> Result<StructType> {
         Ok(self.product)
     }
@@ -282,6 +283,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
+    #[allow(clippy::unnecessary_wraps)]
     pub fn build(mut self) -> Result<DescriptorSet> {
         self.product.flat_descriptor_count = self.flat_index;
         Ok(self.product)
@@ -388,6 +390,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
+    #[allow(clippy::unnecessary_wraps)]
     pub fn build(self) -> Result<PipelineLayout> {
         Ok(self.product)
     }

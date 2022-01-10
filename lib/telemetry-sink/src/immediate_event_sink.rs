@@ -1,19 +1,52 @@
 use std::{
     collections::HashMap,
+    fmt,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
     },
 };
 
-use lgn_telemetry::{
-    log, log::Log, EventSink, LogBlock, LogStream, MetricsBlock, MetricsStream, ProcessInfo,
-    ScopeEvent, ThreadBlock, ThreadEventQueueAny, ThreadStream,
+use lgn_tracing::{
+    dispatch::{flush_log_buffer, log_enabled, log_interop},
+    event::EventSink,
+    logs::{LogBlock, LogMetadata, LogStream},
+    max_level,
+    metrics::{MetricsBlock, MetricsStream},
+    spans::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
+    Level, LevelFilter, ProcessInfo,
 };
-use lgn_transit::HeterogeneousQueue;
+use lgn_tracing_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
 
+struct LogDispatch;
+
+impl log::Log for LogDispatch {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        let level = log_level_to_tracing_level(metadata.level());
+        log_enabled(metadata.target(), level)
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        let level = log_level_to_tracing_level(record.level());
+        let log_desc = LogMetadata {
+            level,
+            level_filter: AtomicU32::new(0),
+            fmt_str: record.args().as_str().unwrap_or(""),
+            target: record.module_path_static().unwrap_or("unknown"),
+            module_path: record.module_path_static().unwrap_or("unknown"),
+            file: record.file_static().unwrap_or("unknown"),
+            line: record.line().unwrap_or(0),
+        };
+        log_interop(&log_desc, record.args());
+    }
+    fn flush(&self) {
+        flush_log_buffer();
+    }
+}
+
 pub struct ImmediateEventSink {
+    level_filters: Vec<(String, LevelFilter)>,
     simple_logger: SimpleLogger,
     chrome_trace_file: Option<String>,
     process_data: RwLock<Option<ProcessData>>,
@@ -27,14 +60,40 @@ struct ProcessData {
 }
 
 impl ImmediateEventSink {
-    pub fn new(chrome_trace_file: Option<String>) -> Self {
-        Self {
+    pub fn new(
+        level_filters: HashMap<String, String>,
+        chrome_trace_file: Option<String>,
+    ) -> anyhow::Result<Self> {
+        static LOG_DISPATCHER: LogDispatch = LogDispatch;
+        log::set_logger(&LOG_DISPATCHER)
+            .map_err(|_err| anyhow::anyhow!("Error creating immediate event sink"))?;
+
+        log::set_max_level(tracing_level_filter_to_log_level_filter(max_level()));
+
+        let level_filters: Vec<_> = level_filters
+            .into_iter()
+            .filter(|(key, _val)| key != "MAX_LEVEL")
+            .map(|(key, val)| {
+                use std::str::FromStr;
+                (
+                    key,
+                    LevelFilter::from_str(val.as_str()).unwrap_or(LevelFilter::Off),
+                )
+            })
+            .collect();
+
+        Ok(Self {
+            level_filters,
             simple_logger: SimpleLogger::new().with_utc_timestamps(),
             chrome_trace_file,
             process_data: RwLock::new(None),
             thread_ids: RwLock::new(HashMap::new()),
             chrome_events: Mutex::new(json::Array::new()),
-        }
+        })
+    }
+
+    fn level_filter(&self, target: &str) -> LevelFilter {
+        find_level_filter_match(target, &self.level_filters).unwrap_or_else(max_level)
     }
 }
 
@@ -89,12 +148,34 @@ impl EventSink for ImmediateEventSink {
         }
     }
 
-    fn on_log_enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.simple_logger.enabled(metadata)
+    fn on_log_enabled(&self, _level: Level, _target: &str) -> bool {
+        true
     }
-    fn on_log(&self, record: &log::Record<'_>) {
-        self.simple_logger.log(record);
+
+    fn on_log(&self, metadata: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
+        const GENERATION: u16 = 1;
+        // At this point we would have already tested the max level on the macro
+        let level_filter = metadata.level_filter(GENERATION).unwrap_or_else(|| {
+            let level_filter = self.level_filter(metadata.target);
+            metadata.set_level_filter(level_filter, GENERATION);
+            level_filter
+        });
+        if metadata.level <= level_filter {
+            let lvl = tracing_level_to_log_level(metadata.level);
+            let record = log::RecordBuilder::new()
+                .args(*args)
+                .target(metadata.target)
+                .level(lvl)
+                .file_static(Some(metadata.file))
+                .line(Some(metadata.line))
+                .module_path_static(Some(metadata.module_path))
+                .build();
+
+            use log::Log;
+            self.simple_logger.log(&record);
+        }
     }
+
     fn on_init_log_stream(&self, _: &LogStream) {}
     fn on_process_log_block(&self, _: Arc<LogBlock>) {}
 
@@ -152,19 +233,19 @@ impl EventSink for ImmediateEventSink {
             if let Some((thread_id, _)) = self.thread_ids.read().unwrap().get(&block.stream_id) {
                 for x in block.events.iter() {
                     let (phase, tick, name, file, line) = match x {
-                        ThreadEventQueueAny::BeginScopeEvent(evt) => (
+                        ThreadEventQueueAny::BeginThreadSpanEvent(evt) => (
                             "B",
                             evt.time,
-                            evt.get_scope()().name,
-                            evt.get_scope()().filename,
-                            evt.get_scope()().line,
+                            evt.thread_span_desc.name,
+                            evt.thread_span_desc.file,
+                            evt.thread_span_desc.line,
                         ),
-                        ThreadEventQueueAny::EndScopeEvent(evt) => (
+                        ThreadEventQueueAny::EndThreadSpanEvent(evt) => (
                             "E",
                             evt.time,
-                            evt.get_scope()().name,
-                            evt.get_scope()().filename,
-                            evt.get_scope()().line,
+                            evt.thread_span_desc.name,
+                            evt.thread_span_desc.file,
+                            evt.thread_span_desc.line,
                         ),
                     };
                     let time = 1000.0 * 1000.0 * (tick - process_data.start_ticks) as f64
@@ -187,4 +268,48 @@ impl EventSink for ImmediateEventSink {
             }
         }
     }
+}
+
+fn tracing_level_to_log_level(level: Level) -> log::Level {
+    match level {
+        Level::Error => log::Level::Error,
+        Level::Warn => log::Level::Warn,
+        Level::Info => log::Level::Info,
+        Level::Debug => log::Level::Debug,
+        Level::Trace => log::Level::Trace,
+    }
+}
+
+fn log_level_to_tracing_level(level: log::Level) -> Level {
+    match level {
+        log::Level::Error => Level::Error,
+        log::Level::Warn => Level::Warn,
+        log::Level::Info => Level::Info,
+        log::Level::Debug => Level::Debug,
+        log::Level::Trace => Level::Trace,
+    }
+}
+
+fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
+    match level {
+        LevelFilter::Off => log::LevelFilter::Off,
+        LevelFilter::Error => log::LevelFilter::Error,
+        LevelFilter::Warn => log::LevelFilter::Warn,
+        LevelFilter::Info => log::LevelFilter::Info,
+        LevelFilter::Debug => log::LevelFilter::Debug,
+        LevelFilter::Trace => log::LevelFilter::Trace,
+    }
+}
+
+/// This needs to be optimized
+fn find_level_filter_match(
+    target: &str,
+    level_filters: &[(String, LevelFilter)],
+) -> Option<LevelFilter> {
+    for &(ref t, ref l) in level_filters.iter() {
+        if target.starts_with(t) {
+            return Some(*l);
+        }
+    }
+    None
 }

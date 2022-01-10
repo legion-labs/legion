@@ -58,9 +58,7 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
-use std::sync::Arc;
-
-use lgn_telemetry::{prelude::*, EventSink};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 mod grpc_event_sink;
 mod immediate_event_sink;
@@ -73,6 +71,49 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+use lgn_tracing::{
+    event::EventSink,
+    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
+    set_max_level, LevelFilter,
+};
+
+pub struct Config {
+    logs_buffer_size: usize,
+    metrics_buffer_size: usize,
+    threads_buffer_size: usize,
+    max_level: LevelFilter,
+    level_filters: HashMap<String, String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            logs_buffer_size: lgn_config::config_get_or!(
+                "logging.logs_buffer_size",
+                10 * 1024 * 1024
+            ),
+            metrics_buffer_size: lgn_config::config_get_or!(
+                "logging.metrics_buffer_size",
+                1024 * 1024
+            ),
+            threads_buffer_size: lgn_config::config_get_or!(
+                "threads_buffer_size",
+                10 * 1024 * 1024
+            ),
+            max_level: LevelFilter::from_str(
+                &(lgn_config::config_get!("logging.max_level_filter").unwrap_or_else(|| {
+                    if cfg!(debug_assertions) {
+                        "INFO".to_owned()
+                    } else {
+                        "WARN".to_owned()
+                    }
+                }) as String),
+            )
+            .unwrap_or(LevelFilter::Off),
+            level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+        }
+    }
+}
 
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
@@ -81,27 +122,33 @@ pub struct TelemetryGuard {
 }
 
 impl TelemetryGuard {
-    pub fn new() -> anyhow::Result<Self, String> {
+    pub fn default() -> anyhow::Result<Self> {
+        Self::new(Config::default())
+    }
+
+    pub fn new(config: Config) -> anyhow::Result<Self> {
+        set_max_level(config.max_level);
         let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
             Ok(url) => Arc::new(GRPCEventSink::new(&url)),
             Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
+                config.level_filters,
                 std::env::var("LGN_TRACE_FILE").ok(),
-            )),
+            )?),
         };
-        #[cfg(debug_assertions)]
-        set_max_log_level(LevelFilter::Info);
-
-        #[cfg(not(debug_assertions))]
-        set_max_log_level(LevelFilter::Warn);
 
         // order here is important
         Ok(Self {
-            _guard: TelemetrySystemGuard::new(sink)?,
+            _guard: TelemetrySystemGuard::new(
+                config.logs_buffer_size,
+                config.metrics_buffer_size,
+                config.threads_buffer_size,
+                sink,
+            )?,
             _thread_guard: TelemetryThreadGuard::new(),
         })
     }
-    pub fn with_log_level(self, leve_filter: LevelFilter) -> Self {
-        set_max_log_level(leve_filter);
+    pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
+        set_max_level(level_filter);
         self
     }
 }

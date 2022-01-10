@@ -15,7 +15,9 @@ export interface InitializeStreamResponse {
   error: string;
 }
 
-const baseInitializeStreamRequest: object = {};
+function createBaseInitializeStreamRequest(): InitializeStreamRequest {
+  return { rtcSessionDescription: new Uint8Array() };
+}
 
 export const InitializeStreamRequest = {
   encode(
@@ -34,10 +36,7 @@ export const InitializeStreamRequest = {
   ): InitializeStreamRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseInitializeStreamRequest,
-    } as InitializeStreamRequest;
-    message.rtcSessionDescription = new Uint8Array();
+    const message = createBaseInitializeStreamRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -53,15 +52,11 @@ export const InitializeStreamRequest = {
   },
 
   fromJSON(object: any): InitializeStreamRequest {
-    const message = {
-      ...baseInitializeStreamRequest,
-    } as InitializeStreamRequest;
-    message.rtcSessionDescription =
-      object.rtcSessionDescription !== undefined &&
-      object.rtcSessionDescription !== null
+    return {
+      rtcSessionDescription: isSet(object.rtcSessionDescription)
         ? bytesFromBase64(object.rtcSessionDescription)
-        : new Uint8Array();
-    return message;
+        : new Uint8Array(),
+    };
   },
 
   toJSON(message: InitializeStreamRequest): unknown {
@@ -78,16 +73,16 @@ export const InitializeStreamRequest = {
   fromPartial<I extends Exact<DeepPartial<InitializeStreamRequest>, I>>(
     object: I
   ): InitializeStreamRequest {
-    const message = {
-      ...baseInitializeStreamRequest,
-    } as InitializeStreamRequest;
+    const message = createBaseInitializeStreamRequest();
     message.rtcSessionDescription =
       object.rtcSessionDescription ?? new Uint8Array();
     return message;
   },
 };
 
-const baseInitializeStreamResponse: object = { error: "" };
+function createBaseInitializeStreamResponse(): InitializeStreamResponse {
+  return { rtcSessionDescription: new Uint8Array(), error: "" };
+}
 
 export const InitializeStreamResponse = {
   encode(
@@ -109,10 +104,7 @@ export const InitializeStreamResponse = {
   ): InitializeStreamResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseInitializeStreamResponse,
-    } as InitializeStreamResponse;
-    message.rtcSessionDescription = new Uint8Array();
+    const message = createBaseInitializeStreamResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -131,19 +123,12 @@ export const InitializeStreamResponse = {
   },
 
   fromJSON(object: any): InitializeStreamResponse {
-    const message = {
-      ...baseInitializeStreamResponse,
-    } as InitializeStreamResponse;
-    message.rtcSessionDescription =
-      object.rtcSessionDescription !== undefined &&
-      object.rtcSessionDescription !== null
+    return {
+      rtcSessionDescription: isSet(object.rtcSessionDescription)
         ? bytesFromBase64(object.rtcSessionDescription)
-        : new Uint8Array();
-    message.error =
-      object.error !== undefined && object.error !== null
-        ? String(object.error)
-        : "";
-    return message;
+        : new Uint8Array(),
+      error: isSet(object.error) ? String(object.error) : "",
+    };
   },
 
   toJSON(message: InitializeStreamResponse): unknown {
@@ -161,9 +146,7 @@ export const InitializeStreamResponse = {
   fromPartial<I extends Exact<DeepPartial<InitializeStreamResponse>, I>>(
     object: I
   ): InitializeStreamResponse {
-    const message = {
-      ...baseInitializeStreamResponse,
-    } as InitializeStreamResponse;
+    const message = createBaseInitializeStreamResponse();
     message.rtcSessionDescription =
       object.rtcSessionDescription ?? new Uint8Array();
     message.error = object.error ?? "";
@@ -361,4 +344,8 @@ export type Exact<P, I extends P> = P extends Builtin
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-tracing = { path = "../tracing", version = "0.1.0" }
 ctrlc = { version = "3.2.1", features = ["termination"] }
 lazy_static = "1.4.0"
 anyhow = "1.0"

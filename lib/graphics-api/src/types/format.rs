@@ -9,6 +9,7 @@ use ash::vk;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Format {
     UNDEFINED,
     R4G4_UNORM_PACK8,

@@ -7,12 +7,13 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
+use lgn_tracing::span_fn;
 use sha2::{Digest, Sha256};
 
 use crate::{
     connect_to_server, find_file_hash_in_tree, find_workspace_root, make_file_read_only,
     read_bin_file, read_current_branch, read_local_changes, read_workspace_spec,
-    save_resolve_pending, trace_scope, update_current_branch, Commit, LocalWorkspaceConnection,
+    save_resolve_pending, update_current_branch, Commit, LocalWorkspaceConnection,
     RepositoryConnection, ResolvePending,
 };
 
@@ -241,9 +242,8 @@ pub async fn sync_workspace(
     Ok(())
 }
 
+#[span_fn]
 pub async fn sync_to_command(commit_id: &str) -> Result<()> {
-    trace_scope!();
-
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -288,9 +288,8 @@ pub async fn sync_to_command(commit_id: &str) -> Result<()> {
     Ok(())
 }
 
+#[span_fn]
 pub async fn sync_command() -> Result<()> {
-    trace_scope!();
-
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

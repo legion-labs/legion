@@ -2,7 +2,7 @@ use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
-use lgn_telemetry::{error, trace};
+use lgn_tracing::{error, trace};
 
 use crate::{
     DeviceContext, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,

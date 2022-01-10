@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
-use lgn_telemetry::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
@@ -31,6 +30,8 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use lgn_tracing::dispatch::init_thread_stream;
+use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
 
 use crate::cache::DiskCache;
@@ -50,26 +51,18 @@ impl RequestGuard {
     fn new() -> Self {
         init_thread_stream();
         let previous_count = REQUEST_COUNT.fetch_add(1, Ordering::SeqCst);
-        static REQUEST_ID_METRIC: MetricDesc = MetricDesc {
-            name: "Request ID",
-            unit: "count",
-        };
-        record_int_metric(&REQUEST_ID_METRIC, previous_count);
+        imetric!("Request Count", "count", previous_count);
 
-        let begin_ticks = lgn_telemetry::now();
+        let begin_ticks = lgn_tracing::now();
         Self { begin_ticks }
     }
 }
 
 impl Drop for RequestGuard {
     fn drop(&mut self) {
-        let end_ticks = lgn_telemetry::now();
+        let end_ticks = lgn_tracing::now();
         let duration = end_ticks - self.begin_ticks;
-        static REQUEST_TIME_METRIC: MetricDesc = MetricDesc {
-            name: "Request Time",
-            unit: "ticks",
-        };
-        record_int_metric(&REQUEST_TIME_METRIC, duration as u64);
+        imetric!("Request Duration", "ticks", duration as u64);
     }
 }
 

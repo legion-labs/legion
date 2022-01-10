@@ -1,13 +1,13 @@
 use camino::Utf8PathBuf;
 use guppy::graph::cargo::CargoResolverVersion;
 use hakari::{HakariBuilder, HakariOutputOptions};
-use lgn_telemetry::trace_scope;
+use lgn_tracing::span_fn;
 use toml_edit::Document;
 
 use crate::{action_step, context::Context, Error, Result};
 
+#[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
-    trace_scope!();
     action_step!("Monorepo", "Running rules determination");
 
     // Use this workspace's PackageGraph for these tests.

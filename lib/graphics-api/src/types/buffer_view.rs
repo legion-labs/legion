@@ -2,7 +2,6 @@ use super::{
     deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, Descriptor, GPUViewType, ResourceUsage,
     ShaderResourceType,
 };
-use crate::GfxResult;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BufferViewDef {
@@ -16,7 +15,7 @@ pub struct BufferViewDef {
 impl BufferViewDef {
     pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::ConstantBufferView,
+            gpu_view_type: GPUViewType::ConstantBuffer,
             byte_offset: 0,
             element_count: 1,
             element_size: buffer_def.size,
@@ -26,7 +25,7 @@ impl BufferViewDef {
 
     pub fn as_const_buffer_with_offset(buffer_size: u64, byte_offset: u64) -> Self {
         Self {
-            gpu_view_type: GPUViewType::ConstantBufferView,
+            gpu_view_type: GPUViewType::ConstantBuffer,
             byte_offset,
             element_count: 1,
             element_size: buffer_size,
@@ -38,9 +37,9 @@ impl BufferViewDef {
         assert!(buffer_def.size % struct_size == 0);
         Self {
             gpu_view_type: if read_only {
-                GPUViewType::ShaderResourceView
+                GPUViewType::ShaderResource
             } else {
-                GPUViewType::UnorderedAccessView
+                GPUViewType::UnorderedAccess
             },
             byte_offset: 0,
             element_count: buffer_def.size / struct_size,
@@ -58,9 +57,9 @@ impl BufferViewDef {
         assert!(buffer_size % struct_size == 0);
         Self {
             gpu_view_type: if read_only {
-                GPUViewType::ShaderResourceView
+                GPUViewType::ShaderResource
             } else {
-                GPUViewType::UnorderedAccessView
+                GPUViewType::UnorderedAccess
             },
             byte_offset,
             element_count: buffer_size / struct_size,
@@ -73,9 +72,9 @@ impl BufferViewDef {
         assert!(buffer_def.size % 4 == 0);
         Self {
             gpu_view_type: if read_only {
-                GPUViewType::ShaderResourceView
+                GPUViewType::ShaderResource
             } else {
-                GPUViewType::UnorderedAccessView
+                GPUViewType::UnorderedAccess
             },
             byte_offset: 0,
             element_count: buffer_def.size / 4,
@@ -86,7 +85,7 @@ impl BufferViewDef {
 
     pub fn verify(&self, buffer_def: &BufferDef) {
         match self.gpu_view_type {
-            GPUViewType::ConstantBufferView => {
+            GPUViewType::ConstantBuffer => {
                 assert!(buffer_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_CONST_BUFFER));
@@ -94,7 +93,7 @@ impl BufferViewDef {
                 assert!(self.element_count == 1);
                 assert!(self.buffer_view_flags.is_empty());
             }
-            GPUViewType::ShaderResourceView | GPUViewType::UnorderedAccessView => {
+            GPUViewType::ShaderResource | GPUViewType::UnorderedAccess => {
                 assert!(buffer_def
                     .usage_flags
                     .intersects(ResourceUsage::AS_SHADER_RESOURCE));
@@ -109,7 +108,7 @@ impl BufferViewDef {
                 assert!(self.byte_offset % self.element_size == 0);
                 assert!(self.element_count >= 1);
             }
-            GPUViewType::RenderTargetView | GPUViewType::DepthStencilView => {
+            GPUViewType::RenderTarget | GPUViewType::DepthStencil => {
                 panic!();
             }
         }
@@ -132,21 +131,21 @@ pub struct BufferView {
 }
 
 impl BufferView {
-    pub fn from_buffer(buffer: &Buffer, view_def: &BufferViewDef) -> GfxResult<Self> {
+    pub fn from_buffer(buffer: &Buffer, view_def: &BufferViewDef) -> Self {
         view_def.verify(buffer.definition());
 
         let device_context = buffer.device_context();
         let offset = view_def.byte_offset;
         let size = view_def.element_size * view_def.element_count;
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(BufferViewInner {
                 definition: *view_def,
                 buffer: buffer.clone(),
                 offset,
                 size,
             }),
-        })
+        }
     }
 
     pub fn definition(&self) -> &BufferViewDef {
@@ -168,13 +167,13 @@ impl BufferView {
     pub(crate) fn is_compatible_with_descriptor(&self, descriptor: &Descriptor) -> bool {
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
-                self.inner.definition.gpu_view_type == GPUViewType::ConstantBufferView
+                self.inner.definition.gpu_view_type == GPUViewType::ConstantBuffer
             }
             ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAdressBuffer => {
-                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView
+                self.inner.definition.gpu_view_type == GPUViewType::ShaderResource
             }
             ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
-                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView
+                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccess
             }
             ShaderResourceType::Sampler
             | ShaderResourceType::Texture2D

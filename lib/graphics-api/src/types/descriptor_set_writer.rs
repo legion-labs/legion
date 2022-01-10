@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use lgn_telemetry::error;
+use lgn_tracing::error;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetWriter;
@@ -55,15 +55,14 @@ impl<'frame> DescriptorSetWriter<'frame> {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index(descriptor_index, update_datas)
+        {
+            self.set_descriptors_by_index(descriptor_index, update_datas);
+            Ok(())
+        }
     }
 
     #[allow(clippy::todo)]
-    pub fn set_descriptors_by_index(
-        &mut self,
-        index: usize,
-        update_datas: &[DescriptorRef<'_>],
-    ) -> GfxResult<()> {
+    pub fn set_descriptors_by_index(&mut self, index: usize, update_datas: &[DescriptorRef<'_>]) {
         let descriptor = self.descriptor_set_layout.descriptor(index);
         self.write_mask &= !(1u64 << descriptor.binding);
 
@@ -71,13 +70,10 @@ impl<'frame> DescriptorSetWriter<'frame> {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index_platform(index, update_datas)
+        self.set_descriptors_by_index_platform(index, update_datas);
     }
 
-    pub fn set_descriptors(
-        &mut self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-    ) -> GfxResult<()> {
+    pub fn set_descriptors(&mut self, descriptor_set: &impl DescriptorSetDataProvider) {
         let descriptor_count = self
             .descriptor_set_layout
             .definition()
@@ -86,10 +82,8 @@ impl<'frame> DescriptorSetWriter<'frame> {
 
         for index in 0..descriptor_count {
             let descriptor_refs = descriptor_set.descriptor_refs(index);
-            self.set_descriptors_by_index(index, descriptor_refs)?;
+            self.set_descriptors_by_index(index, descriptor_refs);
         }
-
-        Ok(())
     }
 
     pub fn flush(self, device_context: &DeviceContext) -> DescriptorSetHandle {

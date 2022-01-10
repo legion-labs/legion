@@ -85,8 +85,8 @@ mod tools;
 //mod package;
 
 use clap::{Parser, Subcommand};
-use lgn_telemetry::trace_scope;
 use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::span_scope;
 
 use error::Error;
 
@@ -155,9 +155,9 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
-    trace_scope!();
+    span_scope!("monorepo::main");
 
     let args = Cli::parse();
     let ctx = context::Context::new()?;

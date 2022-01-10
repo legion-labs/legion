@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_telemetry::trace_scope;
+use lgn_tracing::{span_fn, span_scope};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -108,8 +108,8 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
+    #[span_fn]
     fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
-        trace_scope!();
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
@@ -155,8 +155,8 @@ impl ParallelExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last
     /// call to [`update_archetypes`] and updates cached
     /// `archetype_component_access`.
+    #[span_fn]
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
-        trace_scope!("update_archetypes");
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
         let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
@@ -176,13 +176,13 @@ impl ParallelExecutor {
     /// Populates `should_run` bitset, spawns tasks for systems that should run
     /// this iteration, queues systems with no dependencies to run (or skip)
     /// at next opportunity.
+    #[span_fn]
     fn prepare_systems<'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
         systems: &'scope mut [ParallelSystemContainer],
         world: &'scope World,
     ) {
-        trace_scope!();
         self.should_run.clear();
         for (index, (system_data, system)) in
             self.system_metadata.iter_mut().zip(systems).enumerate()
@@ -202,11 +202,11 @@ impl ParallelExecutor {
                         .await
                         .unwrap_or_else(|error| unreachable!(error));
                     // TODO: add system name to async trace scope
-                    // trace_scope!();
+                    // span_scope!();
                     // #[cfg(feature = "trace")]
                     // let system_guard = system_span.enter();
                     {
-                        trace_scope!();
+                        span_scope!("prepare_systems::run_unsafe");
                         unsafe { system.run_unsafe((), world) };
                     }
                     // #[cfg(feature = "trace")]

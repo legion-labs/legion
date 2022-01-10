@@ -61,7 +61,7 @@ use std::mem::discriminant;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-use lgn_telemetry::warn;
+use lgn_tracing::warn;
 use toml::value::{Table, Value};
 
 const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";

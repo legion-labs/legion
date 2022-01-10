@@ -210,7 +210,9 @@ export interface ProcessMetricReply {
   points: MetricDataPoint[];
 }
 
-const baseFindProcessRequest: object = { processId: "" };
+function createBaseFindProcessRequest(): FindProcessRequest {
+  return { processId: "" };
+}
 
 export const FindProcessRequest = {
   encode(
@@ -226,7 +228,7 @@ export const FindProcessRequest = {
   decode(input: _m0.Reader | Uint8Array, length?: number): FindProcessRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseFindProcessRequest } as FindProcessRequest;
+    const message = createBaseFindProcessRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -242,12 +244,9 @@ export const FindProcessRequest = {
   },
 
   fromJSON(object: any): FindProcessRequest {
-    const message = { ...baseFindProcessRequest } as FindProcessRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+    };
   },
 
   toJSON(message: FindProcessRequest): unknown {
@@ -259,13 +258,15 @@ export const FindProcessRequest = {
   fromPartial<I extends Exact<DeepPartial<FindProcessRequest>, I>>(
     object: I
   ): FindProcessRequest {
-    const message = { ...baseFindProcessRequest } as FindProcessRequest;
+    const message = createBaseFindProcessRequest();
     message.processId = object.processId ?? "";
     return message;
   },
 };
 
-const baseFindProcessReply: object = {};
+function createBaseFindProcessReply(): FindProcessReply {
+  return { process: undefined };
+}
 
 export const FindProcessReply = {
   encode(
@@ -281,7 +282,7 @@ export const FindProcessReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): FindProcessReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseFindProcessReply } as FindProcessReply;
+    const message = createBaseFindProcessReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -297,12 +298,11 @@ export const FindProcessReply = {
   },
 
   fromJSON(object: any): FindProcessReply {
-    const message = { ...baseFindProcessReply } as FindProcessReply;
-    message.process =
-      object.process !== undefined && object.process !== null
+    return {
+      process: isSet(object.process)
         ? Process.fromJSON(object.process)
-        : undefined;
-    return message;
+        : undefined,
+    };
   },
 
   toJSON(message: FindProcessReply): unknown {
@@ -317,7 +317,7 @@ export const FindProcessReply = {
   fromPartial<I extends Exact<DeepPartial<FindProcessReply>, I>>(
     object: I
   ): FindProcessReply {
-    const message = { ...baseFindProcessReply } as FindProcessReply;
+    const message = createBaseFindProcessReply();
     message.process =
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
@@ -326,7 +326,9 @@ export const FindProcessReply = {
   },
 };
 
-const baseRecentProcessesRequest: object = {};
+function createBaseRecentProcessesRequest(): RecentProcessesRequest {
+  return {};
+}
 
 export const RecentProcessesRequest = {
   encode(
@@ -342,7 +344,7 @@ export const RecentProcessesRequest = {
   ): RecentProcessesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseRecentProcessesRequest } as RecentProcessesRequest;
+    const message = createBaseRecentProcessesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -355,8 +357,7 @@ export const RecentProcessesRequest = {
   },
 
   fromJSON(_: any): RecentProcessesRequest {
-    const message = { ...baseRecentProcessesRequest } as RecentProcessesRequest;
-    return message;
+    return {};
   },
 
   toJSON(_: RecentProcessesRequest): unknown {
@@ -367,16 +368,19 @@ export const RecentProcessesRequest = {
   fromPartial<I extends Exact<DeepPartial<RecentProcessesRequest>, I>>(
     _: I
   ): RecentProcessesRequest {
-    const message = { ...baseRecentProcessesRequest } as RecentProcessesRequest;
+    const message = createBaseRecentProcessesRequest();
     return message;
   },
 };
 
-const baseProcessInstance: object = {
-  nbCpuBlocks: 0,
-  nbLogBlocks: 0,
-  nbMetricBlocks: 0,
-};
+function createBaseProcessInstance(): ProcessInstance {
+  return {
+    processInfo: undefined,
+    nbCpuBlocks: 0,
+    nbLogBlocks: 0,
+    nbMetricBlocks: 0,
+  };
+}
 
 export const ProcessInstance = {
   encode(
@@ -401,7 +405,7 @@ export const ProcessInstance = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessInstance {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessInstance } as ProcessInstance;
+    const message = createBaseProcessInstance();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -426,24 +430,16 @@ export const ProcessInstance = {
   },
 
   fromJSON(object: any): ProcessInstance {
-    const message = { ...baseProcessInstance } as ProcessInstance;
-    message.processInfo =
-      object.processInfo !== undefined && object.processInfo !== null
+    return {
+      processInfo: isSet(object.processInfo)
         ? Process.fromJSON(object.processInfo)
-        : undefined;
-    message.nbCpuBlocks =
-      object.nbCpuBlocks !== undefined && object.nbCpuBlocks !== null
-        ? Number(object.nbCpuBlocks)
-        : 0;
-    message.nbLogBlocks =
-      object.nbLogBlocks !== undefined && object.nbLogBlocks !== null
-        ? Number(object.nbLogBlocks)
-        : 0;
-    message.nbMetricBlocks =
-      object.nbMetricBlocks !== undefined && object.nbMetricBlocks !== null
+        : undefined,
+      nbCpuBlocks: isSet(object.nbCpuBlocks) ? Number(object.nbCpuBlocks) : 0,
+      nbLogBlocks: isSet(object.nbLogBlocks) ? Number(object.nbLogBlocks) : 0,
+      nbMetricBlocks: isSet(object.nbMetricBlocks)
         ? Number(object.nbMetricBlocks)
-        : 0;
-    return message;
+        : 0,
+    };
   },
 
   toJSON(message: ProcessInstance): unknown {
@@ -464,7 +460,7 @@ export const ProcessInstance = {
   fromPartial<I extends Exact<DeepPartial<ProcessInstance>, I>>(
     object: I
   ): ProcessInstance {
-    const message = { ...baseProcessInstance } as ProcessInstance;
+    const message = createBaseProcessInstance();
     message.processInfo =
       object.processInfo !== undefined && object.processInfo !== null
         ? Process.fromPartial(object.processInfo)
@@ -476,7 +472,9 @@ export const ProcessInstance = {
   },
 };
 
-const baseProcessListReply: object = {};
+function createBaseProcessListReply(): ProcessListReply {
+  return { processes: [] };
+}
 
 export const ProcessListReply = {
   encode(
@@ -492,8 +490,7 @@ export const ProcessListReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessListReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessListReply } as ProcessListReply;
-    message.processes = [];
+    const message = createBaseProcessListReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -511,11 +508,11 @@ export const ProcessListReply = {
   },
 
   fromJSON(object: any): ProcessListReply {
-    const message = { ...baseProcessListReply } as ProcessListReply;
-    message.processes = (object.processes ?? []).map((e: any) =>
-      ProcessInstance.fromJSON(e)
-    );
-    return message;
+    return {
+      processes: Array.isArray(object?.processes)
+        ? object.processes.map((e: any) => ProcessInstance.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ProcessListReply): unknown {
@@ -533,14 +530,16 @@ export const ProcessListReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessListReply>, I>>(
     object: I
   ): ProcessListReply {
-    const message = { ...baseProcessListReply } as ProcessListReply;
+    const message = createBaseProcessListReply();
     message.processes =
       object.processes?.map((e) => ProcessInstance.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseSearchProcessRequest: object = { search: "" };
+function createBaseSearchProcessRequest(): SearchProcessRequest {
+  return { search: "" };
+}
 
 export const SearchProcessRequest = {
   encode(
@@ -559,7 +558,7 @@ export const SearchProcessRequest = {
   ): SearchProcessRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
+    const message = createBaseSearchProcessRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -575,12 +574,9 @@ export const SearchProcessRequest = {
   },
 
   fromJSON(object: any): SearchProcessRequest {
-    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
-    message.search =
-      object.search !== undefined && object.search !== null
-        ? String(object.search)
-        : "";
-    return message;
+    return {
+      search: isSet(object.search) ? String(object.search) : "",
+    };
   },
 
   toJSON(message: SearchProcessRequest): unknown {
@@ -592,13 +588,15 @@ export const SearchProcessRequest = {
   fromPartial<I extends Exact<DeepPartial<SearchProcessRequest>, I>>(
     object: I
   ): SearchProcessRequest {
-    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
+    const message = createBaseSearchProcessRequest();
     message.search = object.search ?? "";
     return message;
   },
 };
 
-const baseListProcessStreamsRequest: object = { processId: "" };
+function createBaseListProcessStreamsRequest(): ListProcessStreamsRequest {
+  return { processId: "" };
+}
 
 export const ListProcessStreamsRequest = {
   encode(
@@ -617,9 +615,7 @@ export const ListProcessStreamsRequest = {
   ): ListProcessStreamsRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseListProcessStreamsRequest,
-    } as ListProcessStreamsRequest;
+    const message = createBaseListProcessStreamsRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -635,14 +631,9 @@ export const ListProcessStreamsRequest = {
   },
 
   fromJSON(object: any): ListProcessStreamsRequest {
-    const message = {
-      ...baseListProcessStreamsRequest,
-    } as ListProcessStreamsRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+    };
   },
 
   toJSON(message: ListProcessStreamsRequest): unknown {
@@ -654,15 +645,15 @@ export const ListProcessStreamsRequest = {
   fromPartial<I extends Exact<DeepPartial<ListProcessStreamsRequest>, I>>(
     object: I
   ): ListProcessStreamsRequest {
-    const message = {
-      ...baseListProcessStreamsRequest,
-    } as ListProcessStreamsRequest;
+    const message = createBaseListProcessStreamsRequest();
     message.processId = object.processId ?? "";
     return message;
   },
 };
 
-const baseListStreamsReply: object = {};
+function createBaseListStreamsReply(): ListStreamsReply {
+  return { streams: [] };
+}
 
 export const ListStreamsReply = {
   encode(
@@ -678,8 +669,7 @@ export const ListStreamsReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ListStreamsReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseListStreamsReply } as ListStreamsReply;
-    message.streams = [];
+    const message = createBaseListStreamsReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -695,11 +685,11 @@ export const ListStreamsReply = {
   },
 
   fromJSON(object: any): ListStreamsReply {
-    const message = { ...baseListStreamsReply } as ListStreamsReply;
-    message.streams = (object.streams ?? []).map((e: any) =>
-      Stream.fromJSON(e)
-    );
-    return message;
+    return {
+      streams: Array.isArray(object?.streams)
+        ? object.streams.map((e: any) => Stream.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ListStreamsReply): unknown {
@@ -717,13 +707,15 @@ export const ListStreamsReply = {
   fromPartial<I extends Exact<DeepPartial<ListStreamsReply>, I>>(
     object: I
   ): ListStreamsReply {
-    const message = { ...baseListStreamsReply } as ListStreamsReply;
+    const message = createBaseListStreamsReply();
     message.streams = object.streams?.map((e) => Stream.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseListStreamBlocksRequest: object = { streamId: "" };
+function createBaseListStreamBlocksRequest(): ListStreamBlocksRequest {
+  return { streamId: "" };
+}
 
 export const ListStreamBlocksRequest = {
   encode(
@@ -742,9 +734,7 @@ export const ListStreamBlocksRequest = {
   ): ListStreamBlocksRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseListStreamBlocksRequest,
-    } as ListStreamBlocksRequest;
+    const message = createBaseListStreamBlocksRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -760,14 +750,9 @@ export const ListStreamBlocksRequest = {
   },
 
   fromJSON(object: any): ListStreamBlocksRequest {
-    const message = {
-      ...baseListStreamBlocksRequest,
-    } as ListStreamBlocksRequest;
-    message.streamId =
-      object.streamId !== undefined && object.streamId !== null
-        ? String(object.streamId)
-        : "";
-    return message;
+    return {
+      streamId: isSet(object.streamId) ? String(object.streamId) : "",
+    };
   },
 
   toJSON(message: ListStreamBlocksRequest): unknown {
@@ -779,15 +764,15 @@ export const ListStreamBlocksRequest = {
   fromPartial<I extends Exact<DeepPartial<ListStreamBlocksRequest>, I>>(
     object: I
   ): ListStreamBlocksRequest {
-    const message = {
-      ...baseListStreamBlocksRequest,
-    } as ListStreamBlocksRequest;
+    const message = createBaseListStreamBlocksRequest();
     message.streamId = object.streamId ?? "";
     return message;
   },
 };
 
-const baseListStreamBlocksReply: object = {};
+function createBaseListStreamBlocksReply(): ListStreamBlocksReply {
+  return { blocks: [] };
+}
 
 export const ListStreamBlocksReply = {
   encode(
@@ -806,8 +791,7 @@ export const ListStreamBlocksReply = {
   ): ListStreamBlocksReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseListStreamBlocksReply } as ListStreamBlocksReply;
-    message.blocks = [];
+    const message = createBaseListStreamBlocksReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -823,9 +807,11 @@ export const ListStreamBlocksReply = {
   },
 
   fromJSON(object: any): ListStreamBlocksReply {
-    const message = { ...baseListStreamBlocksReply } as ListStreamBlocksReply;
-    message.blocks = (object.blocks ?? []).map((e: any) => Block.fromJSON(e));
-    return message;
+    return {
+      blocks: Array.isArray(object?.blocks)
+        ? object.blocks.map((e: any) => Block.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ListStreamBlocksReply): unknown {
@@ -841,13 +827,15 @@ export const ListStreamBlocksReply = {
   fromPartial<I extends Exact<DeepPartial<ListStreamBlocksReply>, I>>(
     object: I
   ): ListStreamBlocksReply {
-    const message = { ...baseListStreamBlocksReply } as ListStreamBlocksReply;
+    const message = createBaseListStreamBlocksReply();
     message.blocks = object.blocks?.map((e) => Block.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseSpan: object = { scopeHash: 0, beginMs: 0, endMs: 0, alpha: 0 };
+function createBaseSpan(): Span {
+  return { scopeHash: 0, beginMs: 0, endMs: 0, alpha: 0 };
+}
 
 export const Span = {
   encode(message: Span, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
@@ -869,7 +857,7 @@ export const Span = {
   decode(input: _m0.Reader | Uint8Array, length?: number): Span {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSpan } as Span;
+    const message = createBaseSpan();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -894,24 +882,12 @@ export const Span = {
   },
 
   fromJSON(object: any): Span {
-    const message = { ...baseSpan } as Span;
-    message.scopeHash =
-      object.scopeHash !== undefined && object.scopeHash !== null
-        ? Number(object.scopeHash)
-        : 0;
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    message.alpha =
-      object.alpha !== undefined && object.alpha !== null
-        ? Number(object.alpha)
-        : 0;
-    return message;
+    return {
+      scopeHash: isSet(object.scopeHash) ? Number(object.scopeHash) : 0,
+      beginMs: isSet(object.beginMs) ? Number(object.beginMs) : 0,
+      endMs: isSet(object.endMs) ? Number(object.endMs) : 0,
+      alpha: isSet(object.alpha) ? Number(object.alpha) : 0,
+    };
   },
 
   toJSON(message: Span): unknown {
@@ -925,7 +901,7 @@ export const Span = {
   },
 
   fromPartial<I extends Exact<DeepPartial<Span>, I>>(object: I): Span {
-    const message = { ...baseSpan } as Span;
+    const message = createBaseSpan();
     message.scopeHash = object.scopeHash ?? 0;
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
@@ -934,7 +910,9 @@ export const Span = {
   },
 };
 
-const baseBlockSpansRequest: object = { blockId: "", lodId: 0 };
+function createBaseBlockSpansRequest(): BlockSpansRequest {
+  return { process: undefined, stream: undefined, blockId: "", lodId: 0 };
+}
 
 export const BlockSpansRequest = {
   encode(
@@ -959,7 +937,7 @@ export const BlockSpansRequest = {
   decode(input: _m0.Reader | Uint8Array, length?: number): BlockSpansRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlockSpansRequest } as BlockSpansRequest;
+    const message = createBaseBlockSpansRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -984,24 +962,14 @@ export const BlockSpansRequest = {
   },
 
   fromJSON(object: any): BlockSpansRequest {
-    const message = { ...baseBlockSpansRequest } as BlockSpansRequest;
-    message.process =
-      object.process !== undefined && object.process !== null
+    return {
+      process: isSet(object.process)
         ? Process.fromJSON(object.process)
-        : undefined;
-    message.stream =
-      object.stream !== undefined && object.stream !== null
-        ? Stream.fromJSON(object.stream)
-        : undefined;
-    message.blockId =
-      object.blockId !== undefined && object.blockId !== null
-        ? String(object.blockId)
-        : "";
-    message.lodId =
-      object.lodId !== undefined && object.lodId !== null
-        ? Number(object.lodId)
-        : 0;
-    return message;
+        : undefined,
+      stream: isSet(object.stream) ? Stream.fromJSON(object.stream) : undefined,
+      blockId: isSet(object.blockId) ? String(object.blockId) : "",
+      lodId: isSet(object.lodId) ? Number(object.lodId) : 0,
+    };
   },
 
   toJSON(message: BlockSpansRequest): unknown {
@@ -1020,7 +988,7 @@ export const BlockSpansRequest = {
   fromPartial<I extends Exact<DeepPartial<BlockSpansRequest>, I>>(
     object: I
   ): BlockSpansRequest {
-    const message = { ...baseBlockSpansRequest } as BlockSpansRequest;
+    const message = createBaseBlockSpansRequest();
     message.process =
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
@@ -1035,7 +1003,9 @@ export const BlockSpansRequest = {
   },
 };
 
-const baseSpanTrack: object = {};
+function createBaseSpanTrack(): SpanTrack {
+  return { spans: [] };
+}
 
 export const SpanTrack = {
   encode(
@@ -1051,8 +1021,7 @@ export const SpanTrack = {
   decode(input: _m0.Reader | Uint8Array, length?: number): SpanTrack {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSpanTrack } as SpanTrack;
-    message.spans = [];
+    const message = createBaseSpanTrack();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1068,9 +1037,11 @@ export const SpanTrack = {
   },
 
   fromJSON(object: any): SpanTrack {
-    const message = { ...baseSpanTrack } as SpanTrack;
-    message.spans = (object.spans ?? []).map((e: any) => Span.fromJSON(e));
-    return message;
+    return {
+      spans: Array.isArray(object?.spans)
+        ? object.spans.map((e: any) => Span.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: SpanTrack): unknown {
@@ -1086,13 +1057,15 @@ export const SpanTrack = {
   fromPartial<I extends Exact<DeepPartial<SpanTrack>, I>>(
     object: I
   ): SpanTrack {
-    const message = { ...baseSpanTrack } as SpanTrack;
+    const message = createBaseSpanTrack();
     message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseSpanBlockLOD: object = { lodId: 0 };
+function createBaseSpanBlockLOD(): SpanBlockLOD {
+  return { lodId: 0, tracks: [] };
+}
 
 export const SpanBlockLOD = {
   encode(
@@ -1111,8 +1084,7 @@ export const SpanBlockLOD = {
   decode(input: _m0.Reader | Uint8Array, length?: number): SpanBlockLOD {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
-    message.tracks = [];
+    const message = createBaseSpanBlockLOD();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1131,15 +1103,12 @@ export const SpanBlockLOD = {
   },
 
   fromJSON(object: any): SpanBlockLOD {
-    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
-    message.lodId =
-      object.lodId !== undefined && object.lodId !== null
-        ? Number(object.lodId)
-        : 0;
-    message.tracks = (object.tracks ?? []).map((e: any) =>
-      SpanTrack.fromJSON(e)
-    );
-    return message;
+    return {
+      lodId: isSet(object.lodId) ? Number(object.lodId) : 0,
+      tracks: Array.isArray(object?.tracks)
+        ? object.tracks.map((e: any) => SpanTrack.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: SpanBlockLOD): unknown {
@@ -1158,14 +1127,16 @@ export const SpanBlockLOD = {
   fromPartial<I extends Exact<DeepPartial<SpanBlockLOD>, I>>(
     object: I
   ): SpanBlockLOD {
-    const message = { ...baseSpanBlockLOD } as SpanBlockLOD;
+    const message = createBaseSpanBlockLOD();
     message.lodId = object.lodId ?? 0;
     message.tracks = object.tracks?.map((e) => SpanTrack.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseBlockSpansReply: object = { blockId: "", beginMs: 0, endMs: 0 };
+function createBaseBlockSpansReply(): BlockSpansReply {
+  return { scopes: {}, lod: undefined, blockId: "", beginMs: 0, endMs: 0 };
+}
 
 export const BlockSpansReply = {
   encode(
@@ -1196,8 +1167,7 @@ export const BlockSpansReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): BlockSpansReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = {};
+    const message = createBaseBlockSpansReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1231,30 +1201,21 @@ export const BlockSpansReply = {
   },
 
   fromJSON(object: any): BlockSpansReply {
-    const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
-      [key: number]: ScopeDesc;
-    }>((acc, [key, value]) => {
-      acc[Number(key)] = ScopeDesc.fromJSON(value);
-      return acc;
-    }, {});
-    message.lod =
-      object.lod !== undefined && object.lod !== null
-        ? SpanBlockLOD.fromJSON(object.lod)
-        : undefined;
-    message.blockId =
-      object.blockId !== undefined && object.blockId !== null
-        ? String(object.blockId)
-        : "";
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    return message;
+    return {
+      scopes: isObject(object.scopes)
+        ? Object.entries(object.scopes).reduce<{ [key: number]: ScopeDesc }>(
+            (acc, [key, value]) => {
+              acc[Number(key)] = ScopeDesc.fromJSON(value);
+              return acc;
+            },
+            {}
+          )
+        : {},
+      lod: isSet(object.lod) ? SpanBlockLOD.fromJSON(object.lod) : undefined,
+      blockId: isSet(object.blockId) ? String(object.blockId) : "",
+      beginMs: isSet(object.beginMs) ? Number(object.beginMs) : 0,
+      endMs: isSet(object.endMs) ? Number(object.endMs) : 0,
+    };
   },
 
   toJSON(message: BlockSpansReply): unknown {
@@ -1276,7 +1237,7 @@ export const BlockSpansReply = {
   fromPartial<I extends Exact<DeepPartial<BlockSpansReply>, I>>(
     object: I
   ): BlockSpansReply {
-    const message = { ...baseBlockSpansReply } as BlockSpansReply;
+    const message = createBaseBlockSpansReply();
     message.scopes = Object.entries(object.scopes ?? {}).reduce<{
       [key: number]: ScopeDesc;
     }>((acc, [key, value]) => {
@@ -1296,7 +1257,9 @@ export const BlockSpansReply = {
   },
 };
 
-const baseBlockSpansReply_ScopesEntry: object = { key: 0 };
+function createBaseBlockSpansReply_ScopesEntry(): BlockSpansReply_ScopesEntry {
+  return { key: 0, value: undefined };
+}
 
 export const BlockSpansReply_ScopesEntry = {
   encode(
@@ -1318,9 +1281,7 @@ export const BlockSpansReply_ScopesEntry = {
   ): BlockSpansReply_ScopesEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseBlockSpansReply_ScopesEntry,
-    } as BlockSpansReply_ScopesEntry;
+    const message = createBaseBlockSpansReply_ScopesEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1339,16 +1300,10 @@ export const BlockSpansReply_ScopesEntry = {
   },
 
   fromJSON(object: any): BlockSpansReply_ScopesEntry {
-    const message = {
-      ...baseBlockSpansReply_ScopesEntry,
-    } as BlockSpansReply_ScopesEntry;
-    message.key =
-      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? ScopeDesc.fromJSON(object.value)
-        : undefined;
-    return message;
+    return {
+      key: isSet(object.key) ? Number(object.key) : 0,
+      value: isSet(object.value) ? ScopeDesc.fromJSON(object.value) : undefined,
+    };
   },
 
   toJSON(message: BlockSpansReply_ScopesEntry): unknown {
@@ -1362,9 +1317,7 @@ export const BlockSpansReply_ScopesEntry = {
   fromPartial<I extends Exact<DeepPartial<BlockSpansReply_ScopesEntry>, I>>(
     object: I
   ): BlockSpansReply_ScopesEntry {
-    const message = {
-      ...baseBlockSpansReply_ScopesEntry,
-    } as BlockSpansReply_ScopesEntry;
+    const message = createBaseBlockSpansReply_ScopesEntry();
     message.key = object.key ?? 0;
     message.value =
       object.value !== undefined && object.value !== null
@@ -1374,7 +1327,9 @@ export const BlockSpansReply_ScopesEntry = {
   },
 };
 
-const baseProcessCumulativeCallGraphRequest: object = { beginMs: 0, endMs: 0 };
+function createBaseProcessCumulativeCallGraphRequest(): ProcessCumulativeCallGraphRequest {
+  return { process: undefined, beginMs: 0, endMs: 0 };
+}
 
 export const ProcessCumulativeCallGraphRequest = {
   encode(
@@ -1399,9 +1354,7 @@ export const ProcessCumulativeCallGraphRequest = {
   ): ProcessCumulativeCallGraphRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseProcessCumulativeCallGraphRequest,
-    } as ProcessCumulativeCallGraphRequest;
+    const message = createBaseProcessCumulativeCallGraphRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1423,22 +1376,13 @@ export const ProcessCumulativeCallGraphRequest = {
   },
 
   fromJSON(object: any): ProcessCumulativeCallGraphRequest {
-    const message = {
-      ...baseProcessCumulativeCallGraphRequest,
-    } as ProcessCumulativeCallGraphRequest;
-    message.process =
-      object.process !== undefined && object.process !== null
+    return {
+      process: isSet(object.process)
         ? Process.fromJSON(object.process)
-        : undefined;
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    return message;
+        : undefined,
+      beginMs: isSet(object.beginMs) ? Number(object.beginMs) : 0,
+      endMs: isSet(object.endMs) ? Number(object.endMs) : 0,
+    };
   },
 
   toJSON(message: ProcessCumulativeCallGraphRequest): unknown {
@@ -1455,9 +1399,7 @@ export const ProcessCumulativeCallGraphRequest = {
   fromPartial<
     I extends Exact<DeepPartial<ProcessCumulativeCallGraphRequest>, I>
   >(object: I): ProcessCumulativeCallGraphRequest {
-    const message = {
-      ...baseProcessCumulativeCallGraphRequest,
-    } as ProcessCumulativeCallGraphRequest;
+    const message = createBaseProcessCumulativeCallGraphRequest();
     message.process =
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
@@ -1468,14 +1410,9 @@ export const ProcessCumulativeCallGraphRequest = {
   },
 };
 
-const baseNodeStats: object = {
-  sum: 0,
-  min: 0,
-  max: 0,
-  avg: 0,
-  median: 0,
-  count: 0,
-};
+function createBaseNodeStats(): NodeStats {
+  return { sum: 0, min: 0, max: 0, avg: 0, median: 0, count: 0 };
+}
 
 export const NodeStats = {
   encode(
@@ -1506,7 +1443,7 @@ export const NodeStats = {
   decode(input: _m0.Reader | Uint8Array, length?: number): NodeStats {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseNodeStats } as NodeStats;
+    const message = createBaseNodeStats();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1537,24 +1474,14 @@ export const NodeStats = {
   },
 
   fromJSON(object: any): NodeStats {
-    const message = { ...baseNodeStats } as NodeStats;
-    message.sum =
-      object.sum !== undefined && object.sum !== null ? Number(object.sum) : 0;
-    message.min =
-      object.min !== undefined && object.min !== null ? Number(object.min) : 0;
-    message.max =
-      object.max !== undefined && object.max !== null ? Number(object.max) : 0;
-    message.avg =
-      object.avg !== undefined && object.avg !== null ? Number(object.avg) : 0;
-    message.median =
-      object.median !== undefined && object.median !== null
-        ? Number(object.median)
-        : 0;
-    message.count =
-      object.count !== undefined && object.count !== null
-        ? Number(object.count)
-        : 0;
-    return message;
+    return {
+      sum: isSet(object.sum) ? Number(object.sum) : 0,
+      min: isSet(object.min) ? Number(object.min) : 0,
+      max: isSet(object.max) ? Number(object.max) : 0,
+      avg: isSet(object.avg) ? Number(object.avg) : 0,
+      median: isSet(object.median) ? Number(object.median) : 0,
+      count: isSet(object.count) ? Number(object.count) : 0,
+    };
   },
 
   toJSON(message: NodeStats): unknown {
@@ -1571,7 +1498,7 @@ export const NodeStats = {
   fromPartial<I extends Exact<DeepPartial<NodeStats>, I>>(
     object: I
   ): NodeStats {
-    const message = { ...baseNodeStats } as NodeStats;
+    const message = createBaseNodeStats();
     message.sum = object.sum ?? 0;
     message.min = object.min ?? 0;
     message.max = object.max ?? 0;
@@ -1582,7 +1509,9 @@ export const NodeStats = {
   },
 };
 
-const baseCallGraphEdge: object = { hash: 0, weight: 0 };
+function createBaseCallGraphEdge(): CallGraphEdge {
+  return { hash: 0, weight: 0 };
+}
 
 export const CallGraphEdge = {
   encode(
@@ -1601,7 +1530,7 @@ export const CallGraphEdge = {
   decode(input: _m0.Reader | Uint8Array, length?: number): CallGraphEdge {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCallGraphEdge } as CallGraphEdge;
+    const message = createBaseCallGraphEdge();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1620,16 +1549,10 @@ export const CallGraphEdge = {
   },
 
   fromJSON(object: any): CallGraphEdge {
-    const message = { ...baseCallGraphEdge } as CallGraphEdge;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    message.weight =
-      object.weight !== undefined && object.weight !== null
-        ? Number(object.weight)
-        : 0;
-    return message;
+    return {
+      hash: isSet(object.hash) ? Number(object.hash) : 0,
+      weight: isSet(object.weight) ? Number(object.weight) : 0,
+    };
   },
 
   toJSON(message: CallGraphEdge): unknown {
@@ -1642,14 +1565,16 @@ export const CallGraphEdge = {
   fromPartial<I extends Exact<DeepPartial<CallGraphEdge>, I>>(
     object: I
   ): CallGraphEdge {
-    const message = { ...baseCallGraphEdge } as CallGraphEdge;
+    const message = createBaseCallGraphEdge();
     message.hash = object.hash ?? 0;
     message.weight = object.weight ?? 0;
     return message;
   },
 };
 
-const baseCumulativeCallGraphNode: object = { hash: 0 };
+function createBaseCumulativeCallGraphNode(): CumulativeCallGraphNode {
+  return { hash: 0, stats: undefined, callers: [], callees: [] };
+}
 
 export const CumulativeCallGraphNode = {
   encode(
@@ -1677,11 +1602,7 @@ export const CumulativeCallGraphNode = {
   ): CumulativeCallGraphNode {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseCumulativeCallGraphNode,
-    } as CumulativeCallGraphNode;
-    message.callers = [];
-    message.callees = [];
+    const message = createBaseCumulativeCallGraphNode();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1706,24 +1627,16 @@ export const CumulativeCallGraphNode = {
   },
 
   fromJSON(object: any): CumulativeCallGraphNode {
-    const message = {
-      ...baseCumulativeCallGraphNode,
-    } as CumulativeCallGraphNode;
-    message.hash =
-      object.hash !== undefined && object.hash !== null
-        ? Number(object.hash)
-        : 0;
-    message.stats =
-      object.stats !== undefined && object.stats !== null
-        ? NodeStats.fromJSON(object.stats)
-        : undefined;
-    message.callers = (object.callers ?? []).map((e: any) =>
-      CallGraphEdge.fromJSON(e)
-    );
-    message.callees = (object.callees ?? []).map((e: any) =>
-      CallGraphEdge.fromJSON(e)
-    );
-    return message;
+    return {
+      hash: isSet(object.hash) ? Number(object.hash) : 0,
+      stats: isSet(object.stats) ? NodeStats.fromJSON(object.stats) : undefined,
+      callers: Array.isArray(object?.callers)
+        ? object.callers.map((e: any) => CallGraphEdge.fromJSON(e))
+        : [],
+      callees: Array.isArray(object?.callees)
+        ? object.callees.map((e: any) => CallGraphEdge.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: CumulativeCallGraphNode): unknown {
@@ -1751,9 +1664,7 @@ export const CumulativeCallGraphNode = {
   fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphNode>, I>>(
     object: I
   ): CumulativeCallGraphNode {
-    const message = {
-      ...baseCumulativeCallGraphNode,
-    } as CumulativeCallGraphNode;
+    const message = createBaseCumulativeCallGraphNode();
     message.hash = object.hash ?? 0;
     message.stats =
       object.stats !== undefined && object.stats !== null
@@ -1767,7 +1678,9 @@ export const CumulativeCallGraphNode = {
   },
 };
 
-const baseCumulativeCallGraphReply: object = {};
+function createBaseCumulativeCallGraphReply(): CumulativeCallGraphReply {
+  return { scopes: {}, nodes: [] };
+}
 
 export const CumulativeCallGraphReply = {
   encode(
@@ -1792,11 +1705,7 @@ export const CumulativeCallGraphReply = {
   ): CumulativeCallGraphReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseCumulativeCallGraphReply,
-    } as CumulativeCallGraphReply;
-    message.scopes = {};
-    message.nodes = [];
+    const message = createBaseCumulativeCallGraphReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1823,19 +1732,20 @@ export const CumulativeCallGraphReply = {
   },
 
   fromJSON(object: any): CumulativeCallGraphReply {
-    const message = {
-      ...baseCumulativeCallGraphReply,
-    } as CumulativeCallGraphReply;
-    message.scopes = Object.entries(object.scopes ?? {}).reduce<{
-      [key: number]: ScopeDesc;
-    }>((acc, [key, value]) => {
-      acc[Number(key)] = ScopeDesc.fromJSON(value);
-      return acc;
-    }, {});
-    message.nodes = (object.nodes ?? []).map((e: any) =>
-      CumulativeCallGraphNode.fromJSON(e)
-    );
-    return message;
+    return {
+      scopes: isObject(object.scopes)
+        ? Object.entries(object.scopes).reduce<{ [key: number]: ScopeDesc }>(
+            (acc, [key, value]) => {
+              acc[Number(key)] = ScopeDesc.fromJSON(value);
+              return acc;
+            },
+            {}
+          )
+        : {},
+      nodes: Array.isArray(object?.nodes)
+        ? object.nodes.map((e: any) => CumulativeCallGraphNode.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: CumulativeCallGraphReply): unknown {
@@ -1859,9 +1769,7 @@ export const CumulativeCallGraphReply = {
   fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphReply>, I>>(
     object: I
   ): CumulativeCallGraphReply {
-    const message = {
-      ...baseCumulativeCallGraphReply,
-    } as CumulativeCallGraphReply;
+    const message = createBaseCumulativeCallGraphReply();
     message.scopes = Object.entries(object.scopes ?? {}).reduce<{
       [key: number]: ScopeDesc;
     }>((acc, [key, value]) => {
@@ -1876,7 +1784,9 @@ export const CumulativeCallGraphReply = {
   },
 };
 
-const baseCumulativeCallGraphReply_ScopesEntry: object = { key: 0 };
+function createBaseCumulativeCallGraphReply_ScopesEntry(): CumulativeCallGraphReply_ScopesEntry {
+  return { key: 0, value: undefined };
+}
 
 export const CumulativeCallGraphReply_ScopesEntry = {
   encode(
@@ -1898,9 +1808,7 @@ export const CumulativeCallGraphReply_ScopesEntry = {
   ): CumulativeCallGraphReply_ScopesEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseCumulativeCallGraphReply_ScopesEntry,
-    } as CumulativeCallGraphReply_ScopesEntry;
+    const message = createBaseCumulativeCallGraphReply_ScopesEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1919,16 +1827,10 @@ export const CumulativeCallGraphReply_ScopesEntry = {
   },
 
   fromJSON(object: any): CumulativeCallGraphReply_ScopesEntry {
-    const message = {
-      ...baseCumulativeCallGraphReply_ScopesEntry,
-    } as CumulativeCallGraphReply_ScopesEntry;
-    message.key =
-      object.key !== undefined && object.key !== null ? Number(object.key) : 0;
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? ScopeDesc.fromJSON(object.value)
-        : undefined;
-    return message;
+    return {
+      key: isSet(object.key) ? Number(object.key) : 0,
+      value: isSet(object.value) ? ScopeDesc.fromJSON(object.value) : undefined,
+    };
   },
 
   toJSON(message: CumulativeCallGraphReply_ScopesEntry): unknown {
@@ -1942,9 +1844,7 @@ export const CumulativeCallGraphReply_ScopesEntry = {
   fromPartial<
     I extends Exact<DeepPartial<CumulativeCallGraphReply_ScopesEntry>, I>
   >(object: I): CumulativeCallGraphReply_ScopesEntry {
-    const message = {
-      ...baseCumulativeCallGraphReply_ScopesEntry,
-    } as CumulativeCallGraphReply_ScopesEntry;
+    const message = createBaseCumulativeCallGraphReply_ScopesEntry();
     message.key = object.key ?? 0;
     message.value =
       object.value !== undefined && object.value !== null
@@ -1954,7 +1854,9 @@ export const CumulativeCallGraphReply_ScopesEntry = {
   },
 };
 
-const baseProcessLogRequest: object = { begin: 0, end: 0 };
+function createBaseProcessLogRequest(): ProcessLogRequest {
+  return { process: undefined, begin: 0, end: 0 };
+}
 
 export const ProcessLogRequest = {
   encode(
@@ -1976,7 +1878,7 @@ export const ProcessLogRequest = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessLogRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessLogRequest } as ProcessLogRequest;
+    const message = createBaseProcessLogRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1998,18 +1900,13 @@ export const ProcessLogRequest = {
   },
 
   fromJSON(object: any): ProcessLogRequest {
-    const message = { ...baseProcessLogRequest } as ProcessLogRequest;
-    message.process =
-      object.process !== undefined && object.process !== null
+    return {
+      process: isSet(object.process)
         ? Process.fromJSON(object.process)
-        : undefined;
-    message.begin =
-      object.begin !== undefined && object.begin !== null
-        ? Number(object.begin)
-        : 0;
-    message.end =
-      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
-    return message;
+        : undefined,
+      begin: isSet(object.begin) ? Number(object.begin) : 0,
+      end: isSet(object.end) ? Number(object.end) : 0,
+    };
   },
 
   toJSON(message: ProcessLogRequest): unknown {
@@ -2026,7 +1923,7 @@ export const ProcessLogRequest = {
   fromPartial<I extends Exact<DeepPartial<ProcessLogRequest>, I>>(
     object: I
   ): ProcessLogRequest {
-    const message = { ...baseProcessLogRequest } as ProcessLogRequest;
+    const message = createBaseProcessLogRequest();
     message.process =
       object.process !== undefined && object.process !== null
         ? Process.fromPartial(object.process)
@@ -2037,7 +1934,9 @@ export const ProcessLogRequest = {
   },
 };
 
-const baseLogEntry: object = { timeMs: 0, msg: "" };
+function createBaseLogEntry(): LogEntry {
+  return { timeMs: 0, msg: "" };
+}
 
 export const LogEntry = {
   encode(
@@ -2056,7 +1955,7 @@ export const LogEntry = {
   decode(input: _m0.Reader | Uint8Array, length?: number): LogEntry {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseLogEntry } as LogEntry;
+    const message = createBaseLogEntry();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2075,14 +1974,10 @@ export const LogEntry = {
   },
 
   fromJSON(object: any): LogEntry {
-    const message = { ...baseLogEntry } as LogEntry;
-    message.timeMs =
-      object.timeMs !== undefined && object.timeMs !== null
-        ? Number(object.timeMs)
-        : 0;
-    message.msg =
-      object.msg !== undefined && object.msg !== null ? String(object.msg) : "";
-    return message;
+    return {
+      timeMs: isSet(object.timeMs) ? Number(object.timeMs) : 0,
+      msg: isSet(object.msg) ? String(object.msg) : "",
+    };
   },
 
   toJSON(message: LogEntry): unknown {
@@ -2093,14 +1988,16 @@ export const LogEntry = {
   },
 
   fromPartial<I extends Exact<DeepPartial<LogEntry>, I>>(object: I): LogEntry {
-    const message = { ...baseLogEntry } as LogEntry;
+    const message = createBaseLogEntry();
     message.timeMs = object.timeMs ?? 0;
     message.msg = object.msg ?? "";
     return message;
   },
 };
 
-const baseProcessLogReply: object = { begin: 0, end: 0 };
+function createBaseProcessLogReply(): ProcessLogReply {
+  return { entries: [], begin: 0, end: 0 };
+}
 
 export const ProcessLogReply = {
   encode(
@@ -2122,8 +2019,7 @@ export const ProcessLogReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessLogReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessLogReply } as ProcessLogReply;
-    message.entries = [];
+    const message = createBaseProcessLogReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2145,17 +2041,13 @@ export const ProcessLogReply = {
   },
 
   fromJSON(object: any): ProcessLogReply {
-    const message = { ...baseProcessLogReply } as ProcessLogReply;
-    message.entries = (object.entries ?? []).map((e: any) =>
-      LogEntry.fromJSON(e)
-    );
-    message.begin =
-      object.begin !== undefined && object.begin !== null
-        ? Number(object.begin)
-        : 0;
-    message.end =
-      object.end !== undefined && object.end !== null ? Number(object.end) : 0;
-    return message;
+    return {
+      entries: Array.isArray(object?.entries)
+        ? object.entries.map((e: any) => LogEntry.fromJSON(e))
+        : [],
+      begin: isSet(object.begin) ? Number(object.begin) : 0,
+      end: isSet(object.end) ? Number(object.end) : 0,
+    };
   },
 
   toJSON(message: ProcessLogReply): unknown {
@@ -2175,7 +2067,7 @@ export const ProcessLogReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessLogReply>, I>>(
     object: I
   ): ProcessLogReply {
-    const message = { ...baseProcessLogReply } as ProcessLogReply;
+    const message = createBaseProcessLogReply();
     message.entries = object.entries?.map((e) => LogEntry.fromPartial(e)) || [];
     message.begin = object.begin ?? 0;
     message.end = object.end ?? 0;
@@ -2183,7 +2075,9 @@ export const ProcessLogReply = {
   },
 };
 
-const baseProcessNbLogEntriesRequest: object = { processId: "" };
+function createBaseProcessNbLogEntriesRequest(): ProcessNbLogEntriesRequest {
+  return { processId: "" };
+}
 
 export const ProcessNbLogEntriesRequest = {
   encode(
@@ -2202,9 +2096,7 @@ export const ProcessNbLogEntriesRequest = {
   ): ProcessNbLogEntriesRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseProcessNbLogEntriesRequest,
-    } as ProcessNbLogEntriesRequest;
+    const message = createBaseProcessNbLogEntriesRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2220,14 +2112,9 @@ export const ProcessNbLogEntriesRequest = {
   },
 
   fromJSON(object: any): ProcessNbLogEntriesRequest {
-    const message = {
-      ...baseProcessNbLogEntriesRequest,
-    } as ProcessNbLogEntriesRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+    };
   },
 
   toJSON(message: ProcessNbLogEntriesRequest): unknown {
@@ -2239,15 +2126,15 @@ export const ProcessNbLogEntriesRequest = {
   fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesRequest>, I>>(
     object: I
   ): ProcessNbLogEntriesRequest {
-    const message = {
-      ...baseProcessNbLogEntriesRequest,
-    } as ProcessNbLogEntriesRequest;
+    const message = createBaseProcessNbLogEntriesRequest();
     message.processId = object.processId ?? "";
     return message;
   },
 };
 
-const baseProcessNbLogEntriesReply: object = { count: 0 };
+function createBaseProcessNbLogEntriesReply(): ProcessNbLogEntriesReply {
+  return { count: 0 };
+}
 
 export const ProcessNbLogEntriesReply = {
   encode(
@@ -2266,9 +2153,7 @@ export const ProcessNbLogEntriesReply = {
   ): ProcessNbLogEntriesReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseProcessNbLogEntriesReply,
-    } as ProcessNbLogEntriesReply;
+    const message = createBaseProcessNbLogEntriesReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2284,14 +2169,9 @@ export const ProcessNbLogEntriesReply = {
   },
 
   fromJSON(object: any): ProcessNbLogEntriesReply {
-    const message = {
-      ...baseProcessNbLogEntriesReply,
-    } as ProcessNbLogEntriesReply;
-    message.count =
-      object.count !== undefined && object.count !== null
-        ? Number(object.count)
-        : 0;
-    return message;
+    return {
+      count: isSet(object.count) ? Number(object.count) : 0,
+    };
   },
 
   toJSON(message: ProcessNbLogEntriesReply): unknown {
@@ -2303,15 +2183,15 @@ export const ProcessNbLogEntriesReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessNbLogEntriesReply>, I>>(
     object: I
   ): ProcessNbLogEntriesReply {
-    const message = {
-      ...baseProcessNbLogEntriesReply,
-    } as ProcessNbLogEntriesReply;
+    const message = createBaseProcessNbLogEntriesReply();
     message.count = object.count ?? 0;
     return message;
   },
 };
 
-const baseListProcessChildrenRequest: object = { processId: "" };
+function createBaseListProcessChildrenRequest(): ListProcessChildrenRequest {
+  return { processId: "" };
+}
 
 export const ListProcessChildrenRequest = {
   encode(
@@ -2330,9 +2210,7 @@ export const ListProcessChildrenRequest = {
   ): ListProcessChildrenRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseListProcessChildrenRequest,
-    } as ListProcessChildrenRequest;
+    const message = createBaseListProcessChildrenRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2348,14 +2226,9 @@ export const ListProcessChildrenRequest = {
   },
 
   fromJSON(object: any): ListProcessChildrenRequest {
-    const message = {
-      ...baseListProcessChildrenRequest,
-    } as ListProcessChildrenRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+    };
   },
 
   toJSON(message: ListProcessChildrenRequest): unknown {
@@ -2367,15 +2240,15 @@ export const ListProcessChildrenRequest = {
   fromPartial<I extends Exact<DeepPartial<ListProcessChildrenRequest>, I>>(
     object: I
   ): ListProcessChildrenRequest {
-    const message = {
-      ...baseListProcessChildrenRequest,
-    } as ListProcessChildrenRequest;
+    const message = createBaseListProcessChildrenRequest();
     message.processId = object.processId ?? "";
     return message;
   },
 };
 
-const baseProcessChildrenReply: object = {};
+function createBaseProcessChildrenReply(): ProcessChildrenReply {
+  return { processes: [] };
+}
 
 export const ProcessChildrenReply = {
   encode(
@@ -2394,8 +2267,7 @@ export const ProcessChildrenReply = {
   ): ProcessChildrenReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessChildrenReply } as ProcessChildrenReply;
-    message.processes = [];
+    const message = createBaseProcessChildrenReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2411,11 +2283,11 @@ export const ProcessChildrenReply = {
   },
 
   fromJSON(object: any): ProcessChildrenReply {
-    const message = { ...baseProcessChildrenReply } as ProcessChildrenReply;
-    message.processes = (object.processes ?? []).map((e: any) =>
-      Process.fromJSON(e)
-    );
-    return message;
+    return {
+      processes: Array.isArray(object?.processes)
+        ? object.processes.map((e: any) => Process.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ProcessChildrenReply): unknown {
@@ -2433,14 +2305,16 @@ export const ProcessChildrenReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessChildrenReply>, I>>(
     object: I
   ): ProcessChildrenReply {
-    const message = { ...baseProcessChildrenReply } as ProcessChildrenReply;
+    const message = createBaseProcessChildrenReply();
     message.processes =
       object.processes?.map((e) => Process.fromPartial(e)) || [];
     return message;
   },
 };
 
-const baseListProcessMetricsRequest: object = { processId: "" };
+function createBaseListProcessMetricsRequest(): ListProcessMetricsRequest {
+  return { processId: "" };
+}
 
 export const ListProcessMetricsRequest = {
   encode(
@@ -2459,9 +2333,7 @@ export const ListProcessMetricsRequest = {
   ): ListProcessMetricsRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseListProcessMetricsRequest,
-    } as ListProcessMetricsRequest;
+    const message = createBaseListProcessMetricsRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2477,14 +2349,9 @@ export const ListProcessMetricsRequest = {
   },
 
   fromJSON(object: any): ListProcessMetricsRequest {
-    const message = {
-      ...baseListProcessMetricsRequest,
-    } as ListProcessMetricsRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+    };
   },
 
   toJSON(message: ListProcessMetricsRequest): unknown {
@@ -2496,15 +2363,15 @@ export const ListProcessMetricsRequest = {
   fromPartial<I extends Exact<DeepPartial<ListProcessMetricsRequest>, I>>(
     object: I
   ): ListProcessMetricsRequest {
-    const message = {
-      ...baseListProcessMetricsRequest,
-    } as ListProcessMetricsRequest;
+    const message = createBaseListProcessMetricsRequest();
     message.processId = object.processId ?? "";
     return message;
   },
 };
 
-const baseMetricDesc: object = { name: "", unit: "" };
+function createBaseMetricDesc(): MetricDesc {
+  return { name: "", unit: "" };
+}
 
 export const MetricDesc = {
   encode(
@@ -2523,7 +2390,7 @@ export const MetricDesc = {
   decode(input: _m0.Reader | Uint8Array, length?: number): MetricDesc {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseMetricDesc } as MetricDesc;
+    const message = createBaseMetricDesc();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2542,16 +2409,10 @@ export const MetricDesc = {
   },
 
   fromJSON(object: any): MetricDesc {
-    const message = { ...baseMetricDesc } as MetricDesc;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.unit =
-      object.unit !== undefined && object.unit !== null
-        ? String(object.unit)
-        : "";
-    return message;
+    return {
+      name: isSet(object.name) ? String(object.name) : "",
+      unit: isSet(object.unit) ? String(object.unit) : "",
+    };
   },
 
   toJSON(message: MetricDesc): unknown {
@@ -2564,14 +2425,16 @@ export const MetricDesc = {
   fromPartial<I extends Exact<DeepPartial<MetricDesc>, I>>(
     object: I
   ): MetricDesc {
-    const message = { ...baseMetricDesc } as MetricDesc;
+    const message = createBaseMetricDesc();
     message.name = object.name ?? "";
     message.unit = object.unit ?? "";
     return message;
   },
 };
 
-const baseProcessMetricsReply: object = { minTimeMs: 0, maxTimeMs: 0 };
+function createBaseProcessMetricsReply(): ProcessMetricsReply {
+  return { metrics: [], minTimeMs: 0, maxTimeMs: 0 };
+}
 
 export const ProcessMetricsReply = {
   encode(
@@ -2593,8 +2456,7 @@ export const ProcessMetricsReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricsReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
-    message.metrics = [];
+    const message = createBaseProcessMetricsReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2616,19 +2478,13 @@ export const ProcessMetricsReply = {
   },
 
   fromJSON(object: any): ProcessMetricsReply {
-    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
-    message.metrics = (object.metrics ?? []).map((e: any) =>
-      MetricDesc.fromJSON(e)
-    );
-    message.minTimeMs =
-      object.minTimeMs !== undefined && object.minTimeMs !== null
-        ? Number(object.minTimeMs)
-        : 0;
-    message.maxTimeMs =
-      object.maxTimeMs !== undefined && object.maxTimeMs !== null
-        ? Number(object.maxTimeMs)
-        : 0;
-    return message;
+    return {
+      metrics: Array.isArray(object?.metrics)
+        ? object.metrics.map((e: any) => MetricDesc.fromJSON(e))
+        : [],
+      minTimeMs: isSet(object.minTimeMs) ? Number(object.minTimeMs) : 0,
+      maxTimeMs: isSet(object.maxTimeMs) ? Number(object.maxTimeMs) : 0,
+    };
   },
 
   toJSON(message: ProcessMetricsReply): unknown {
@@ -2648,7 +2504,7 @@ export const ProcessMetricsReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessMetricsReply>, I>>(
     object: I
   ): ProcessMetricsReply {
-    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    const message = createBaseProcessMetricsReply();
     message.metrics =
       object.metrics?.map((e) => MetricDesc.fromPartial(e)) || [];
     message.minTimeMs = object.minTimeMs ?? 0;
@@ -2657,13 +2513,9 @@ export const ProcessMetricsReply = {
   },
 };
 
-const baseFetchProcessMetricRequest: object = {
-  processId: "",
-  metricName: "",
-  unit: "",
-  beginMs: 0,
-  endMs: 0,
-};
+function createBaseFetchProcessMetricRequest(): FetchProcessMetricRequest {
+  return { processId: "", metricName: "", unit: "", beginMs: 0, endMs: 0 };
+}
 
 export const FetchProcessMetricRequest = {
   encode(
@@ -2694,9 +2546,7 @@ export const FetchProcessMetricRequest = {
   ): FetchProcessMetricRequest {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseFetchProcessMetricRequest,
-    } as FetchProcessMetricRequest;
+    const message = createBaseFetchProcessMetricRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2724,30 +2574,13 @@ export const FetchProcessMetricRequest = {
   },
 
   fromJSON(object: any): FetchProcessMetricRequest {
-    const message = {
-      ...baseFetchProcessMetricRequest,
-    } as FetchProcessMetricRequest;
-    message.processId =
-      object.processId !== undefined && object.processId !== null
-        ? String(object.processId)
-        : "";
-    message.metricName =
-      object.metricName !== undefined && object.metricName !== null
-        ? String(object.metricName)
-        : "";
-    message.unit =
-      object.unit !== undefined && object.unit !== null
-        ? String(object.unit)
-        : "";
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    return message;
+    return {
+      processId: isSet(object.processId) ? String(object.processId) : "",
+      metricName: isSet(object.metricName) ? String(object.metricName) : "",
+      unit: isSet(object.unit) ? String(object.unit) : "",
+      beginMs: isSet(object.beginMs) ? Number(object.beginMs) : 0,
+      endMs: isSet(object.endMs) ? Number(object.endMs) : 0,
+    };
   },
 
   toJSON(message: FetchProcessMetricRequest): unknown {
@@ -2763,9 +2596,7 @@ export const FetchProcessMetricRequest = {
   fromPartial<I extends Exact<DeepPartial<FetchProcessMetricRequest>, I>>(
     object: I
   ): FetchProcessMetricRequest {
-    const message = {
-      ...baseFetchProcessMetricRequest,
-    } as FetchProcessMetricRequest;
+    const message = createBaseFetchProcessMetricRequest();
     message.processId = object.processId ?? "";
     message.metricName = object.metricName ?? "";
     message.unit = object.unit ?? "";
@@ -2775,7 +2606,9 @@ export const FetchProcessMetricRequest = {
   },
 };
 
-const baseMetricDataPoint: object = { timeMs: 0, value: 0 };
+function createBaseMetricDataPoint(): MetricDataPoint {
+  return { timeMs: 0, value: 0 };
+}
 
 export const MetricDataPoint = {
   encode(
@@ -2794,7 +2627,7 @@ export const MetricDataPoint = {
   decode(input: _m0.Reader | Uint8Array, length?: number): MetricDataPoint {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    const message = createBaseMetricDataPoint();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2813,16 +2646,10 @@ export const MetricDataPoint = {
   },
 
   fromJSON(object: any): MetricDataPoint {
-    const message = { ...baseMetricDataPoint } as MetricDataPoint;
-    message.timeMs =
-      object.timeMs !== undefined && object.timeMs !== null
-        ? Number(object.timeMs)
-        : 0;
-    message.value =
-      object.value !== undefined && object.value !== null
-        ? Number(object.value)
-        : 0;
-    return message;
+    return {
+      timeMs: isSet(object.timeMs) ? Number(object.timeMs) : 0,
+      value: isSet(object.value) ? Number(object.value) : 0,
+    };
   },
 
   toJSON(message: MetricDataPoint): unknown {
@@ -2835,14 +2662,16 @@ export const MetricDataPoint = {
   fromPartial<I extends Exact<DeepPartial<MetricDataPoint>, I>>(
     object: I
   ): MetricDataPoint {
-    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    const message = createBaseMetricDataPoint();
     message.timeMs = object.timeMs ?? 0;
     message.value = object.value ?? 0;
     return message;
   },
 };
 
-const baseProcessMetricReply: object = {};
+function createBaseProcessMetricReply(): ProcessMetricReply {
+  return { points: [] };
+}
 
 export const ProcessMetricReply = {
   encode(
@@ -2858,8 +2687,7 @@ export const ProcessMetricReply = {
   decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricReply {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
-    message.points = [];
+    const message = createBaseProcessMetricReply();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2875,11 +2703,11 @@ export const ProcessMetricReply = {
   },
 
   fromJSON(object: any): ProcessMetricReply {
-    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
-    message.points = (object.points ?? []).map((e: any) =>
-      MetricDataPoint.fromJSON(e)
-    );
-    return message;
+    return {
+      points: Array.isArray(object?.points)
+        ? object.points.map((e: any) => MetricDataPoint.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: ProcessMetricReply): unknown {
@@ -2897,7 +2725,7 @@ export const ProcessMetricReply = {
   fromPartial<I extends Exact<DeepPartial<ProcessMetricReply>, I>>(
     object: I
   ): ProcessMetricReply {
-    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    const message = createBaseProcessMetricReply();
     message.points =
       object.points?.map((e) => MetricDataPoint.fromPartial(e)) || [];
     return message;
@@ -3507,4 +3335,12 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

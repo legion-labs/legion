@@ -74,6 +74,7 @@ impl StreamingBlobStorage for LocalBlobStorage {
             return Ok(None);
         }
 
+        // Nothing prevents a reader from accessing a partially written blob.
         let file = fs::OpenOptions::new()
             .create(true)
             .write(true)

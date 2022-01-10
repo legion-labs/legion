@@ -295,7 +295,7 @@ impl DescriptorHeapPartition {
             bump,
         )?;
 
-        writer.set_descriptors(descriptor_set)?;
+        writer.set_descriptors(descriptor_set);
 
         Ok(writer.flush(device_context))
     }

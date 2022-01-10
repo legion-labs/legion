@@ -50,6 +50,7 @@ ignore = [
   "RUSTSEC-2021-0096",
   "RUSTSEC-2020-0070",
   "RUSTSEC-2020-0016",
+  "RUSTSEC-2021-0127", # serde_cbor is unmaintained
 ] #"RUSTSEC-0000-0000",
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -174,6 +175,9 @@ skip = [
   { name = "hyper-rustls", version = "=0.22.1" },
   { name = "rustls-native-certs", version = "=0.5.0" },
   { name = "tokio-rustls", version = "=0.22.0" },
+  # clap 2 stuff introduced by criterion
+  { name = "clap", version = "=2.34.0" },
+  { name = "textwrap", version = "=0.11.0" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
