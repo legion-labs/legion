@@ -127,7 +127,7 @@ impl log::Log for LogDispatch {
             log::Level::Trace => Level::Trace,
         };
         let log_desc = LogMetadata {
-            level: level as u32,
+            level,
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),
             module_path: record.module_path_static().unwrap_or("unknown"),

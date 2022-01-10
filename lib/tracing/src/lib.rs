@@ -3,7 +3,7 @@
 //! Provides logging, metrics, memory and performance profiling
 //!
 //! Have the lowest impact on the critical path of execution while providing great
-//! visibility, lgn_tracing focusses on providing predictable performance for hight
+//! visibility, `lgn_tracing` focusses on providing predictable performance for hight
 //! performance applications. It's primary client is Legion Engine, which runs a
 //! distributed, highly compute demanding workloads.
 //!
@@ -18,27 +18,27 @@
 //!    span_scope, info, warn, error, debug, imetric, fmetric, guards, event,
 //! };
 //!
-//! fn main() {
-//!     // Initialize tracing, here with a null event sink, see `lgn-telemetry-sink` crate for a proper implementation
-//!     // libraries don't need (and should not) setup any TelemetrySystemGuard
-//!     let _telemetry_guard = guards::TelemetrySystemGuard::new(std::sync::Arc::new(event::NullEventSink {}));
-//!     let _thread_guard = guards::TelemetryThreadGuard::new();
+//! // Initialize tracing, here with a null event sink, see `lgn-telemetry-sink` crate for a proper implementation
+//! // libraries don't need (and should not) setup any TelemetrySystemGuard
+//! let _telemetry_guard = guards::TelemetrySystemGuard::new(std::sync::Arc::new(event::NullEventSink {}));
+//! let _thread_guard = guards::TelemetryThreadGuard::new();
 //!
-//!     // Create a span scope, this will complete when the scope is dropped, and provide the time spent in the scope
-//!     // Behind the scene this uses a thread local storage
-//!     // on an i9-11950H this takes around 40ns
-//!     span_scope!("main");
+//! // Create a span scope, this will complete when the scope is dropped, and provide the time spent in the scope
+//! // Behind the scene this uses a thread local storage
+//! // on an i9-11950H this takes around 40ns
+//! span_scope!("main");
 //!
-//!     // Logging
-//!     info!("Hello world");
-//!     warn!("Hello world");
-//!     error!("Hello world");
-//!     debug!("Hello world");
-//!     
-//!     // Metrics
-//!     imetric!("name", "unit", 0);
-//!     fmetric!("name", "unit", 0.0);
-//! }
+//! // Logging
+//! info!("Hello world");
+//! warn!("Hello world");
+//! error!("Hello world");
+//! debug!("Hello world");
+//!
+//! // Metrics
+//! imetric!("name", "unit", 0);
+//! fmetric!("name", "unit", 0.0);
+//! ```
+//!
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section

@@ -13,8 +13,18 @@ use crate::{
 pub struct TelemetrySystemGuard {}
 
 impl TelemetrySystemGuard {
-    pub fn new(sink: Arc<dyn EventSink>) -> anyhow::Result<Self> {
-        init_telemetry(sink)?;
+    pub fn new(
+        logs_buffer_size: usize,
+        metrics_buffer_size: usize,
+        threads_buffer_size: usize,
+        sink: Arc<dyn EventSink>,
+    ) -> anyhow::Result<Self> {
+        init_telemetry(
+            logs_buffer_size,
+            metrics_buffer_size,
+            threads_buffer_size,
+            sink,
+        )?;
         Ok(Self {})
     }
 }
@@ -25,8 +35,18 @@ impl std::ops::Drop for TelemetrySystemGuard {
     }
 }
 
-pub fn init_telemetry(sink: Arc<dyn EventSink>) -> anyhow::Result<()> {
-    init_event_dispatch(10 * 1024 * 1024, 10 * 1024 * 1024, 1024 * 1024, sink)?;
+pub fn init_telemetry(
+    logs_buffer_size: usize,
+    metrics_buffer_size: usize,
+    threads_buffer_size: usize,
+    sink: Arc<dyn EventSink>,
+) -> anyhow::Result<()> {
+    init_event_dispatch(
+        logs_buffer_size,
+        metrics_buffer_size,
+        threads_buffer_size,
+        sink,
+    )?;
     init_panic_hook();
     Ok(())
 }

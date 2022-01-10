@@ -22,9 +22,9 @@ use crate::spans::{
 use crate::{info, now, warn, Level, ProcessInfo};
 
 pub fn init_event_dispatch(
-    log_buffer_size: usize,
-    thread_buffer_size: usize,
+    logs_buffer_size: usize,
     metrics_buffer_size: usize,
+    threads_buffer_size: usize,
     sink: Arc<dyn EventSink>,
 ) -> anyhow::Result<()> {
     lazy_static::lazy_static! {
@@ -35,9 +35,9 @@ pub fn init_event_dispatch(
     unsafe {
         if G_DISPATCH.is_none() {
             G_DISPATCH = Some(Dispatch::new(
-                log_buffer_size,
-                thread_buffer_size,
+                logs_buffer_size,
                 metrics_buffer_size,
+                threads_buffer_size,
                 sink,
             ));
             Ok(())
@@ -200,9 +200,9 @@ where
 
 struct Dispatch {
     process_id: String,
-    log_buffer_size: usize,
-    thread_buffer_size: usize,
+    logs_buffer_size: usize,
     metrics_buffer_size: usize,
+    threads_buffer_size: usize,
     log_stream: Mutex<LogStream>,
     metrics_stream: Mutex<MetricsStream>,
     sink: Arc<dyn EventSink>,
@@ -210,19 +210,19 @@ struct Dispatch {
 
 impl Dispatch {
     pub fn new(
-        log_buffer_size: usize,
-        thread_buffer_size: usize,
+        logs_buffer_size: usize,
         metrics_buffer_size: usize,
+        threads_buffer_size: usize,
         sink: Arc<dyn EventSink>,
     ) -> Self {
         let process_id = uuid::Uuid::new_v4().to_string();
         let mut obj = Self {
             process_id: process_id.clone(),
-            log_buffer_size,
-            thread_buffer_size,
+            logs_buffer_size,
             metrics_buffer_size,
+            threads_buffer_size,
             log_stream: Mutex::new(LogStream::new(
-                log_buffer_size,
+                logs_buffer_size,
                 process_id.clone(),
                 &[String::from("log")],
                 HashMap::new(),
@@ -307,7 +307,7 @@ impl Dispatch {
             properties.insert("thread-name".to_owned(), name.to_owned());
         }
         let thread_stream = ThreadStream::new(
-            self.thread_buffer_size,
+            self.threads_buffer_size,
             self.process_id.clone(),
             &["cpu".to_owned()],
             properties,
@@ -398,7 +398,7 @@ impl Dispatch {
         if let Some(msg) = args.as_str() {
             log_stream.get_events_mut().push(LogStaticStrInteropEvent {
                 time,
-                level: desc.level,
+                level: desc.level as u32,
                 target_len: desc.target.len() as u32,
                 target: desc.target.as_ptr(),
                 msg_len: msg.len() as u32,
@@ -407,7 +407,7 @@ impl Dispatch {
         } else {
             log_stream.get_events_mut().push(LogStringInteropEvent {
                 time,
-                level: desc.level,
+                level: desc.level as u32,
                 target_len: desc.target.len() as u32,
                 target: desc.target.as_ptr(),
                 msg: lgn_tracing_transit::DynString(args.to_string()),
@@ -428,7 +428,7 @@ impl Dispatch {
         }
         let stream_id = log_stream.stream_id().to_string();
         let mut old_event_block =
-            log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
+            log_stream.replace_block(Arc::new(LogBlock::new(self.logs_buffer_size, stream_id)));
         assert!(!log_stream.is_full());
         Arc::get_mut(&mut old_event_block).unwrap().close();
         self.sink.on_process_log_block(old_event_block);
@@ -440,7 +440,7 @@ impl Dispatch {
             return;
         }
         let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
-            self.thread_buffer_size,
+            self.threads_buffer_size,
             stream.stream_id().to_string(),
         )));
         assert!(!stream.is_full());

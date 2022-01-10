@@ -77,6 +77,8 @@ use lgn_tracing::{
     set_max_level, LevelFilter,
 };
 
+pub struct Config {}
+
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
     _thread_guard: TelemetryThreadGuard,
@@ -92,33 +94,24 @@ impl TelemetryGuard {
             )?),
         };
         #[cfg(debug_assertions)]
-        {
-            log::set_max_level(log::LevelFilter::Info);
-            set_max_level(LevelFilter::Info);
-        }
+        set_max_level(LevelFilter::Info);
 
         #[cfg(not(debug_assertions))]
-        {
-            log::set_max_level(log::LevelFilter::Warn);
-            set_max_level(LevelFilter::Warn);
-        }
+        set_max_level(LevelFilter::Warn);
 
         // order here is important
         Ok(Self {
-            _guard: TelemetrySystemGuard::new(sink)?,
+            _guard: TelemetrySystemGuard::new(
+                10 * 1024 * 1024,
+                1024 * 1024,
+                10 * 1024 * 1024,
+                sink,
+            )?,
             _thread_guard: TelemetryThreadGuard::new(),
         })
     }
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
-        let level_filter = match level_filter {
-            LevelFilter::Off => log::LevelFilter::Off,
-            LevelFilter::Error => log::LevelFilter::Error,
-            LevelFilter::Warn => log::LevelFilter::Warn,
-            LevelFilter::Info => log::LevelFilter::Info,
-            LevelFilter::Debug => log::LevelFilter::Debug,
-            LevelFilter::Trace => log::LevelFilter::Trace,
-        };
-        log::set_max_level(level_filter);
+        set_max_level(level_filter);
         self
     }
 }

@@ -9,7 +9,12 @@ use lgn_tracing::{
 };
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let _telemetry_guard = TelemetrySystemGuard::new(Arc::new(NullEventSink {}));
+    let _telemetry_guard = TelemetrySystemGuard::new(
+        10 * 1024 * 1024,
+        1024 * 1024,
+        10 * 1024 * 1024,
+        Arc::new(NullEventSink {}),
+    );
     let _thread_guard = TelemetryThreadGuard::new();
 
     c.bench_function("dispatch/log", |b| {

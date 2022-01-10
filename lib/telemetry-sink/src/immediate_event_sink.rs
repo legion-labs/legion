@@ -11,9 +11,10 @@ use lgn_tracing::{
     dispatch::{flush_log_buffer, log_enabled, log_interop},
     event::EventSink,
     logs::{LogBlock, LogMetadata, LogStream},
+    max_level,
     metrics::{MetricsBlock, MetricsStream},
     spans::{ThreadBlock, ThreadEventQueueAny, ThreadStream},
-    Level, ProcessInfo,
+    Level, LevelFilter, ProcessInfo,
 };
 use lgn_tracing_transit::HeterogeneousQueue;
 use simple_logger::SimpleLogger;
@@ -22,26 +23,14 @@ struct LogDispatch;
 
 impl log::Log for LogDispatch {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        let level = match metadata.level() {
-            log::Level::Error => Level::Error,
-            log::Level::Warn => Level::Warn,
-            log::Level::Info => Level::Info,
-            log::Level::Debug => Level::Debug,
-            log::Level::Trace => Level::Trace,
-        };
+        let level = log_level_to_tracing_level(metadata.level());
         log_enabled(metadata.target(), level)
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => Level::Error,
-            log::Level::Warn => Level::Warn,
-            log::Level::Info => Level::Info,
-            log::Level::Debug => Level::Debug,
-            log::Level::Trace => Level::Trace,
-        };
+        let level = log_level_to_tracing_level(record.level());
         let log_desc = LogMetadata {
-            level: level as u32,
+            level,
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),
             module_path: record.module_path_static().unwrap_or("unknown"),
@@ -68,11 +57,45 @@ struct ProcessData {
     start_ticks: i64,
 }
 
+fn tracing_level_to_log_level(level: Level) -> log::Level {
+    match level {
+        Level::Error => log::Level::Error,
+        Level::Warn => log::Level::Warn,
+        Level::Info => log::Level::Info,
+        Level::Debug => log::Level::Debug,
+        Level::Trace => log::Level::Trace,
+    }
+}
+
+fn log_level_to_tracing_level(level: log::Level) -> Level {
+    match level {
+        log::Level::Error => Level::Error,
+        log::Level::Warn => Level::Warn,
+        log::Level::Info => Level::Info,
+        log::Level::Debug => Level::Debug,
+        log::Level::Trace => Level::Trace,
+    }
+}
+
+fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
+    match level {
+        LevelFilter::Off => log::LevelFilter::Off,
+        LevelFilter::Error => log::LevelFilter::Error,
+        LevelFilter::Warn => log::LevelFilter::Warn,
+        LevelFilter::Info => log::LevelFilter::Info,
+        LevelFilter::Debug => log::LevelFilter::Debug,
+        LevelFilter::Trace => log::LevelFilter::Trace,
+    }
+}
+
 impl ImmediateEventSink {
     pub fn new(chrome_trace_file: Option<String>) -> anyhow::Result<Self> {
         static LOG_DISPATCHER: LogDispatch = LogDispatch;
         log::set_logger(&LOG_DISPATCHER)
             .map_err(|_err| anyhow::anyhow!("Error creating immediate event sink"))?;
+
+        log::set_max_level(tracing_level_filter_to_log_level_filter(max_level()));
+
         Ok(Self {
             simple_logger: SimpleLogger::new().with_utc_timestamps(),
             chrome_trace_file,
@@ -139,13 +162,7 @@ impl EventSink for ImmediateEventSink {
     }
 
     fn on_log(&self, desc: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
-        let lvl = match desc.level() {
-            Level::Error => log::Level::Error,
-            Level::Warn => log::Level::Warn,
-            Level::Info => log::Level::Info,
-            Level::Debug => log::Level::Debug,
-            Level::Trace => log::Level::Trace,
-        };
+        let lvl = tracing_level_to_log_level(desc.level);
         let record = log::RecordBuilder::new()
             .args(*args)
             .target(desc.target)

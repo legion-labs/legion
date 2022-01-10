@@ -46,7 +46,7 @@ fn record_log_event_dependencies(
         }
         deps.push(LogMetadataRecord {
             id: log_ptr,
-            level: log_desc.level,
+            level: log_desc.level as u32,
             fmt_str: log_desc.fmt_str.as_ptr(),
             target: log_desc.target.as_ptr(),
             module_path: log_desc.module_path.as_ptr(),

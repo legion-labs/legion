@@ -5,18 +5,12 @@ use crate::Level;
 
 #[derive(Debug)]
 pub struct LogMetadata {
-    pub level: u32,
+    pub level: Level,
     pub fmt_str: &'static str,
     pub target: &'static str,
     pub module_path: &'static str,
     pub file: &'static str,
     pub line: u32,
-}
-
-impl LogMetadata {
-    pub fn level(&self) -> Level {
-        Level::from_u32(self.level).unwrap()
-    }
 }
 
 #[derive(Debug, TransitReflect)]

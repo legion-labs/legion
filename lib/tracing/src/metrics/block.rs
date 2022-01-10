@@ -50,7 +50,7 @@ fn record_metric_event_dependencies(
             module_path: metric_desc.module_path.as_ptr(),
             file: metric_desc.file.as_ptr(),
             line: metric_desc.line,
-            lod: metric_desc.lod,
+            lod: metric_desc.lod as u32,
         });
     }
 }

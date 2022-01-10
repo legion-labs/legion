@@ -1,8 +1,10 @@
 use lgn_tracing_transit::prelude::*;
 
+use crate::Lod;
+
 #[derive(Debug)]
 pub struct ThreadSpanMetadata {
-    pub lod: u32,
+    pub lod: Lod,
     pub name: &'static str,
     pub target: &'static str,
     pub module_path: &'static str,

@@ -14,7 +14,7 @@
 macro_rules! span_scope {
     ($scope_name:ident, $name:expr) => {
         static $scope_name: $crate::spans::ThreadSpanMetadata = $crate::spans::ThreadSpanMetadata {
-            lod: 0,
+            lod: $crate::Lod::Max,
             name: $name,
             target: module_path!(),
             module_path: module_path!(),
@@ -48,7 +48,7 @@ macro_rules! span_scope {
 macro_rules! imetric {
     ($name:literal, $unit:literal, $value:expr) => {{
         static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
-            lod: 0,
+            lod: $crate::Lod::Max,
             name: $name,
             unit: $unit,
             target: "",
@@ -76,7 +76,7 @@ macro_rules! imetric {
 macro_rules! fmetric {
     ($name:literal, $unit:literal, $value:expr) => {{
         static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
-            lod: 0,
+            lod: $crate::Lod::Max,
             name: $name,
             unit: $unit,
             target: "",
@@ -111,7 +111,7 @@ macro_rules! fmetric {
 macro_rules! log {
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
         static LOG_DESC: $crate::logs::LogMetadata = $crate::logs::LogMetadata {
-            level: $lvl as u32,
+            level: $lvl,
             fmt_str: $crate::__first_arg!($($arg)+),
             target: $target,
             module_path: $crate::__log_module_path!(),

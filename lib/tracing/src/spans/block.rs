@@ -43,7 +43,7 @@ fn record_scope_event_dependencies(
             module_path: thread_span_desc.module_path.as_ptr(),
             file: thread_span_desc.file.as_ptr(),
             line: thread_span_desc.line,
-            lod: thread_span_desc.lod,
+            lod: thread_span_desc.lod as u32,
         });
     }
 }
