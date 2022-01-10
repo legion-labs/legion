@@ -1,8 +1,8 @@
-use crate::model::{CGenType, Model, NativeType, StructMember};
+use crate::db::{CGenType, Model, NativeType, StructMember};
 
 static FLOAT_TYPESTRINGS: [&str; 4] = ["float", "float2", "float3", "float4"];
 static UINT_TYPESTRINGS: [&str; 4] = ["uint", "uint2", "uint3", "uint4"];
-static FLOAT16_TYPESTRINGS: [&str; 4] = ["half", "half2", "half3", "half4"];
+static HALF_TYPESTRINGS: [&str; 4] = ["half", "half2", "half3", "half4"];
 
 pub(super) fn get_hlsl_typestring(ty: &CGenType) -> &str {
     let typestring = match ty {
@@ -15,9 +15,9 @@ pub(super) fn get_hlsl_typestring(ty: &CGenType) -> &str {
                 assert!(*n >= 1 && *n <= 4);
                 UINT_TYPESTRINGS[n - 1]
             }
-            NativeType::Float16(n) => {
+            NativeType::Half(n) => {
                 assert!(*n >= 1 && *n <= 4);
-                FLOAT16_TYPESTRINGS[n - 1]
+                HALF_TYPESTRINGS[n - 1]
             }
             NativeType::Float4x4 => "float4x4",
         },

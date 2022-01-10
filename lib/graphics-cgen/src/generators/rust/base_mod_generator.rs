@@ -2,7 +2,7 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
+    db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {

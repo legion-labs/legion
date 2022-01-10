@@ -19,7 +19,7 @@ pub enum CGenVariant {
 }
 
 impl CGenVariant {
-    pub fn get_file_ext(&self) -> &'static str {
+    pub fn get_file_ext(self) -> &'static str {
         match self {
             CGenVariant::Hlsl => "hlsl",
             CGenVariant::Rust => "rs",

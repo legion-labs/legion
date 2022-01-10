@@ -347,12 +347,12 @@ impl Renderer {
                     EntryPoint {
                         defines: Vec::new(),
                         name: "main_vs".to_owned(),
-                        target_profile: TargetProfile::VertexShader,
+                        target_profile: TargetProfile::Vertex,
                     },
                     EntryPoint {
                         defines: Vec::new(),
                         name: "main_ps".to_owned(),
-                        target_profile: TargetProfile::PixelShader,
+                        target_profile: TargetProfile::Pixel,
                     },
                 ],
             })

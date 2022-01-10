@@ -23,17 +23,17 @@ pub enum ShaderSource {
 }
 
 pub enum TargetProfile {
-    VertexShader,
-    PixelShader,
-    ComputeShader,
+    Vertex,
+    Pixel,
+    Compute,
 }
 
 impl TargetProfile {
     fn to_profile_string(&self) -> &str {
         match self {
-            TargetProfile::VertexShader => "vs_6_2",
-            TargetProfile::PixelShader => "ps_6_2",
-            TargetProfile::ComputeShader => "cs_6_2",
+            TargetProfile::Vertex => "vs_6_2",
+            TargetProfile::Pixel => "ps_6_2",
+            TargetProfile::Compute => "cs_6_2",
         }
     }
 }
@@ -382,8 +382,6 @@ impl spirv_tools::error::MessageCallback for OptimizerCallback {
 
 #[cfg(test)]
 mod tests {
-    // use graphics_api::ShaderStageFlags;
-
     use super::*;
 
     const SHADER: &str = "
@@ -472,8 +470,8 @@ mod tests {
             glob_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
-                name: "main_vs".to_owned(),
-                target_profile: "vs_6_1".to_owned(),
+                name: "main_vs".to_owned(),                
+                target_profile: TargetProfile::Vertex,
             }],
         };
 
@@ -504,8 +502,8 @@ mod tests {
             glob_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
-                name: "main_ps".to_owned(),
-                target_profile: "ps_6_1".to_owned(),
+                name: "main_ps".to_owned(),                
+                target_profile: TargetProfile::Pixel,
             }],
         };
 

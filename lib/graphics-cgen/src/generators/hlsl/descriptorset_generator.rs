@@ -3,7 +3,7 @@ use crate::{
         file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
-    model::{Descriptor, DescriptorDef, DescriptorSet, Model},
+    db::{Descriptor, DescriptorDef, DescriptorSet, Model},
     run::CGenVariant,
 };
 

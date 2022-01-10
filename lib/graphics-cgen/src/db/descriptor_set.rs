@@ -57,30 +57,30 @@ pub enum DescriptorDef {
 }
 
 impl DescriptorDef {
-    pub fn into_shader_resource_type(&self) -> ShaderResourceType {
+    pub fn shader_resource_type(&self) -> ShaderResourceType {
         match self {
-            crate::model::DescriptorDef::Sampler => ShaderResourceType::Sampler,
-            crate::model::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
-            crate::model::DescriptorDef::StructuredBuffer(_) => {
+            crate::db::DescriptorDef::Sampler => ShaderResourceType::Sampler,
+            crate::db::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
+            crate::db::DescriptorDef::StructuredBuffer(_) => {
                 ShaderResourceType::StructuredBuffer
             }
-            crate::model::DescriptorDef::RWStructuredBuffer(_) => {
+            crate::db::DescriptorDef::RWStructuredBuffer(_) => {
                 ShaderResourceType::RWStructuredBuffer
             }
-            crate::model::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAdressBuffer,
-            crate::model::DescriptorDef::RWByteAddressBuffer => {
+            crate::db::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAdressBuffer,
+            crate::db::DescriptorDef::RWByteAddressBuffer => {
                 ShaderResourceType::RWByteAdressBuffer
             }
-            crate::model::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
-            crate::model::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
-            crate::model::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,
-            crate::model::DescriptorDef::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
-            crate::model::DescriptorDef::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
-            crate::model::DescriptorDef::RWTexture2DArray(_) => {
+            crate::db::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
+            crate::db::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
+            crate::db::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,
+            crate::db::DescriptorDef::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
+            crate::db::DescriptorDef::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
+            crate::db::DescriptorDef::RWTexture2DArray(_) => {
                 ShaderResourceType::RWTexture2DArray
             }
-            crate::model::DescriptorDef::TextureCube(_) => ShaderResourceType::TextureCube,
-            crate::model::DescriptorDef::TextureCubeArray(_) => {
+            crate::db::DescriptorDef::TextureCube(_) => ShaderResourceType::TextureCube,
+            crate::db::DescriptorDef::TextureCubeArray(_) => {
                 ShaderResourceType::TextureCubeArray
             }
         }
@@ -121,24 +121,24 @@ impl DescriptorSet {
 
         for descriptor in &self.descriptors {
             match &descriptor.def {
-                crate::model::DescriptorDef::ConstantBuffer(def) => {
+                crate::db::DescriptorDef::ConstantBuffer(def) => {
                     set.insert(def.ty_handle);
                 }
-                crate::model::DescriptorDef::StructuredBuffer(def)
-                | crate::model::DescriptorDef::RWStructuredBuffer(def) => {
+                crate::db::DescriptorDef::StructuredBuffer(def)
+                | crate::db::DescriptorDef::RWStructuredBuffer(def) => {
                     set.insert(def.ty_handle);
                 }
-                crate::model::DescriptorDef::Sampler
-                | crate::model::DescriptorDef::ByteAddressBuffer
-                | crate::model::DescriptorDef::RWByteAddressBuffer
-                | crate::model::DescriptorDef::Texture2D(_)
-                | crate::model::DescriptorDef::RWTexture2D(_)
-                | crate::model::DescriptorDef::Texture3D(_)
-                | crate::model::DescriptorDef::RWTexture3D(_)
-                | crate::model::DescriptorDef::Texture2DArray(_)
-                | crate::model::DescriptorDef::RWTexture2DArray(_)
-                | crate::model::DescriptorDef::TextureCube(_)
-                | crate::model::DescriptorDef::TextureCubeArray(_) => (),
+                crate::db::DescriptorDef::Sampler
+                | crate::db::DescriptorDef::ByteAddressBuffer
+                | crate::db::DescriptorDef::RWByteAddressBuffer
+                | crate::db::DescriptorDef::Texture2D(_)
+                | crate::db::DescriptorDef::RWTexture2D(_)
+                | crate::db::DescriptorDef::Texture3D(_)
+                | crate::db::DescriptorDef::RWTexture3D(_)
+                | crate::db::DescriptorDef::Texture2DArray(_)
+                | crate::db::DescriptorDef::RWTexture2DArray(_)
+                | crate::db::DescriptorDef::TextureCube(_)
+                | crate::db::DescriptorDef::TextureCubeArray(_) => (),
             }
         }
         set

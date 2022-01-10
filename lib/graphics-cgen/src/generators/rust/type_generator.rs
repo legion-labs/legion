@@ -5,7 +5,7 @@ use crate::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
         GeneratorContext,
     },
-    model::CGenType,
+    db::CGenType,
     struct_layout::StructLayout,
 };
 
@@ -17,16 +17,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => {
                 let ty_layout = ctx.struct_layouts.get(ty_ref.id());
-                if ty_layout.is_some() {
-                    Some(generate_rust_struct(
-                        ctx,
-                        ty_ref.id(),
-                        ty_ref.object(),
-                        ty_layout.unwrap(),
-                    ))
-                } else {
-                    None
-                }
+                ty_layout.map(|ty_layout| {
+                    generate_rust_struct(ctx, ty_ref.id(), ty_ref.object(), ty_layout)
+                })
             }
         } {
             products.push(Product::new(
@@ -58,6 +51,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
+#[allow(clippy::too_many_lines)]
 fn generate_rust_struct(
     ctx: &GeneratorContext<'_>,
     ty_id: u32,
@@ -243,7 +237,7 @@ fn generate_rust_struct(
         writer.indent();
         writer.add_line("let p = self.data.as_mut_ptr();");
         writer.add_line("let p = p.add(offset as usize);");
-        writer.add_line("let p = p as *mut T;");
+        writer.add_line("let p = p.cast::<T>();");
         writer.add_line("p.write(value);");
         writer.unindent();
         writer.add_line("}");
@@ -258,7 +252,7 @@ fn generate_rust_struct(
         writer.indent();
         writer.add_line("let p = self.data.as_ptr();");
         writer.add_line("let p = p.add(offset as usize);");
-        writer.add_line("let p = p as *const T;");
+        writer.add_line("let p = p.cast::<T>();");
         writer.add_line("*p");
         writer.unindent();
         writer.add_line("}");

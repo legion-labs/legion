@@ -2,7 +2,7 @@ use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::PipelineLayout,
+    db::PipelineLayout,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -78,11 +78,11 @@ fn generate_rust_pipeline_layout(
     {
         for (_, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                crate::db::PipelineLayoutContent::Pushconstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
                 }
@@ -216,7 +216,7 @@ fn generate_rust_pipeline_layout(
         // fn setters
         for (name, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
@@ -230,7 +230,7 @@ fn generate_rust_pipeline_layout(
                     writer.unindent();
                     writer.add_line("}");
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                crate::db::PipelineLayoutContent::Pushconstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, data: &{}) {{",

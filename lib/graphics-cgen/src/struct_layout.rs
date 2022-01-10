@@ -16,17 +16,15 @@ pub struct StructLayout {
     pub members: Vec<StructMemberLayout>,
 }
 
+#[derive(Default)]
 pub struct StructLayouts {
     layout_map: HashMap<u32, StructLayout>,
 }
 
 impl StructLayouts {
     pub fn new() -> Self {
-        Self {
-            layout_map: HashMap::new(),
-        }
+        Self::default()
     }
-
     pub fn insert(&mut self, id: u32, layout: StructLayout) {
         self.layout_map.insert(id, layout);
     }

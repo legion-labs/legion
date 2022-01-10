@@ -3,7 +3,7 @@ use petgraph::{algo::toposort, EdgeDirection::Outgoing};
 use spirv_reflect::types::ReflectBlockVariable;
 
 use crate::{
-    model::{build_type_graph, CGenType, DescriptorSet, Model, PipelineLayout, StructType},
+    db::{build_type_graph, CGenType, DescriptorSet, Model, PipelineLayout, StructType},
     struct_layout::{StructLayout, StructLayouts, StructMemberLayout},
 };
 
@@ -75,9 +75,16 @@ impl TypeUsage {
     }
 }
 
+//
+/// # Errors
+///
+/// Will return `Err` if there is a cyclic dependency or if there are some type
+/// used with different incompatible layouts.
+///
+#[allow(clippy::too_many_lines)]
 pub fn run(model: &Model) -> Result<StructLayouts> {
     // Compute type dependency graph
-    let graph = build_type_graph(&model);
+    let graph = build_type_graph(model);
 
     // Topo sort
     // After this line, we are sure there is no cycles
@@ -90,25 +97,25 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         let ds = ds.object();
         for d in &ds.descriptors {
             match &d.def {
-                crate::model::DescriptorDef::ConstantBuffer(ty) => {
+                crate::db::DescriptorDef::ConstantBuffer(ty) => {
                     ty_requirements.set_used_as_cb(ty.ty_handle.id());
                 }
-                crate::model::DescriptorDef::StructuredBuffer(ty)
-                | crate::model::DescriptorDef::RWStructuredBuffer(ty) => {
+                crate::db::DescriptorDef::StructuredBuffer(ty)
+                | crate::db::DescriptorDef::RWStructuredBuffer(ty) => {
                     ty_requirements.set_used_as_sb(ty.ty_handle.id());
                 }
 
-                crate::model::DescriptorDef::Sampler
-                | crate::model::DescriptorDef::ByteAddressBuffer
-                | crate::model::DescriptorDef::RWByteAddressBuffer
-                | crate::model::DescriptorDef::Texture2D(_)
-                | crate::model::DescriptorDef::RWTexture2D(_)
-                | crate::model::DescriptorDef::Texture3D(_)
-                | crate::model::DescriptorDef::RWTexture3D(_)
-                | crate::model::DescriptorDef::Texture2DArray(_)
-                | crate::model::DescriptorDef::RWTexture2DArray(_)
-                | crate::model::DescriptorDef::TextureCube(_)
-                | crate::model::DescriptorDef::TextureCubeArray(_) => (),
+                crate::db::DescriptorDef::Sampler
+                | crate::db::DescriptorDef::ByteAddressBuffer
+                | crate::db::DescriptorDef::RWByteAddressBuffer
+                | crate::db::DescriptorDef::Texture2D(_)
+                | crate::db::DescriptorDef::RWTexture2D(_)
+                | crate::db::DescriptorDef::Texture3D(_)
+                | crate::db::DescriptorDef::RWTexture3D(_)
+                | crate::db::DescriptorDef::Texture2DArray(_)
+                | crate::db::DescriptorDef::RWTexture2DArray(_)
+                | crate::db::DescriptorDef::TextureCube(_)
+                | crate::db::DescriptorDef::TextureCubeArray(_) => (),
             }
         }
     }
@@ -126,10 +133,10 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         let id = *id;
         for n in graph.neighbors_directed(id, Outgoing) {
             if ty_requirements.used_as_cb(id) {
-                ty_requirements.set_used_as_cb(n)
+                ty_requirements.set_used_as_cb(n);
             }
             if ty_requirements.used_as_sb(id) {
-                ty_requirements.set_used_as_sb(n)
+                ty_requirements.set_used_as_sb(n);
             }
         }
     }
@@ -147,7 +154,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                 text.push_str(&format!("struct {} {{\n", struct_ty.name));
                 for m in &struct_ty.members {
                     text.push_str(&get_member_declaration(model, m));
-                    text.push_str("\n");
+                    text.push('\n');
                 }
                 text.push_str("};\n");
             }
@@ -200,7 +207,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
             "sb" => &binding.block.members[0],
             _ => unreachable!(),
         };
-        let new_layout = StructLayout::from_spirv_reflect(ty.struct_type(), &block_var);
+        let new_layout = StructLayout::from_spirv_reflect(ty.struct_type(), block_var);
         if let Some(existing_layout) = layouts.get(id) {
             if existing_layout != &new_layout && ty_requirements.used_as_cb_and_sb(id) {
                 println!("{:?}", existing_layout);

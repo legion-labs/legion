@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::model::{
+use crate::db::{
     CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType,
     PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef,
     TextureDef,

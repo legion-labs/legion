@@ -224,9 +224,8 @@ where
 }
 
 /**
- * ModelVec iter. Return a ModelRef.
- */
-
+ * Iterator
+ **/
 pub struct ModelVecIter<'a, T: ModelObject> {
     index: u32,
     size: u32,

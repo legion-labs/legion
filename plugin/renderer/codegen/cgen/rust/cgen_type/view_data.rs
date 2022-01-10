@@ -70,7 +70,7 @@ impl ViewData {
 		unsafe{
 			let p = self.data.as_mut_ptr();
 			let p = p.add(offset as usize);
-			let p = p as *mut T;
+			let p = p.cast::<T>();
 			p.write(value);
 		}
 	}
@@ -80,7 +80,7 @@ impl ViewData {
 		unsafe{
 			let p = self.data.as_ptr();
 			let p = p.add(offset as usize);
-			let p = p as *const T;
+			let p = p.cast::<T>();
 			*p
 		}
 	}

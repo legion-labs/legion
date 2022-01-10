@@ -1,8 +1,8 @@
-use crate::model::{CGenType, NativeType};
+use crate::db::{CGenType, NativeType};
 
 static FLOAT_TYPESTRINGS: [&str; 4] = ["Float1", "Float2", "Float3", "Float4"];
 static UINT_TYPESTRINGS: [&str; 4] = ["Uint1", "Uint2", "Uint3", "Uint4"];
-static FLOAT16_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
+static HALF_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
 
 pub(super) fn get_rust_typestring(ty: &CGenType) -> &str {
     let typestring = match ty {
@@ -15,9 +15,9 @@ pub(super) fn get_rust_typestring(ty: &CGenType) -> &str {
                 assert!(*n >= 1 && *n <= 4);
                 UINT_TYPESTRINGS[n - 1]
             }
-            NativeType::Float16(n) => {
+            NativeType::Half(n) => {
                 assert!(*n >= 1 && *n <= 4);
-                FLOAT16_TYPESTRINGS[n - 1]
+                HALF_TYPESTRINGS[n - 1]
             }
             NativeType::Float4x4 => "Float4x4",
         },

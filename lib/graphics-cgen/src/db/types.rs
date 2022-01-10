@@ -16,13 +16,13 @@ pub type CGenTypeHandle = ModelHandle<CGenType>;
 pub enum NativeType {
     Float(usize),
     Uint(usize),
-    Float16(usize),
+    Half(usize),
     Float4x4,
 }
 
 static FLOAT_TYPESTRINGS: [&str; 4] = ["Float1", "Float2", "Float3", "Float4"];
 static UINT_TYPESTRINGS: [&str; 4] = ["Uint1", "Uint2", "Uint3", "Uint4"];
-static FLOAT16_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
+static HALF_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
 
 impl NativeType {
     pub fn name(&self) -> &str {
@@ -35,9 +35,9 @@ impl NativeType {
                 assert!(*n >= 1 && *n <= 4);
                 UINT_TYPESTRINGS[n - 1]
             }
-            NativeType::Float16(n) => {
+            NativeType::Half(n) => {
                 assert!(*n >= 1 && *n <= 4);
-                FLOAT16_TYPESTRINGS[n - 1]
+                HALF_TYPESTRINGS[n - 1]
             }
             NativeType::Float4x4 => "Float4x4",
         }

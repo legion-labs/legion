@@ -2,7 +2,7 @@ use heck::ToSnakeCase;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::CGenType,
+    db::CGenType,
 };
 
 use super::utils::get_member_declaration;
