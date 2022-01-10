@@ -116,8 +116,8 @@ fn test_log() {
     let state = Arc::new(Mutex::new(None));
     init_event_dispatch(
         10 * 1024,
+        1024,
         64 * 1024,
-        12 * 1024,
         Arc::new(DebugEventSink::new(state.clone())),
     )
     .unwrap();
