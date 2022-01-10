@@ -4758,6 +4758,7 @@ dependencies = [
  "lgn-tasks",
  "lgn-telemetry",
  "lgn-utils",
+ "lgn-window",
  "serde",
  "serde_json",
  "tokio",

@@ -17,6 +17,7 @@ use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,
 };
+use lgn_window::Windows;
 
 mod control_stream;
 mod events;
@@ -79,6 +80,7 @@ pub(crate) fn handle_stream_events(
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
+    mut world: ResMut<'_, World>,
 ) {
     for event in streamer.stream_events_receiver.try_iter() {
         match event {
@@ -105,6 +107,8 @@ pub(crate) fn handle_stream_events(
             }
             StreamEvent::VideoChannelOpened(stream_id, data_channel) => {
                 let resolution = Resolution::new(1024, 768);
+                let mut windows = world.get_resource_mut::<Windows>().unwrap();
+                
                 let mut render_surface = RenderSurface::new(
                     &renderer,
                     RenderSurfaceExtents::new(resolution.width(), resolution.height()),
