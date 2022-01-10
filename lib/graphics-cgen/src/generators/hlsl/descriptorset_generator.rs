@@ -1,20 +1,20 @@
 use crate::{
+    db::{Descriptor, DescriptorDef, DescriptorSet, Model},
     generators::{
         file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
-    model::{Descriptor, DescriptorDef, DescriptorSet, Model},
     run::CGenVariant,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for descriptorset in model.object_iter::<DescriptorSet>() {
-        let content = generate_hlsl_descritporset(ctx, descriptorset);
+    for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+        let content = generate_hlsl_descritporset(ctx, descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(descriptorset, CGenVariant::Hlsl),
+            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }
@@ -27,19 +27,19 @@ fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String 
         DescriptorDef::ConstantBuffer(def) => {
             format!(
                 "ConstantBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::StructuredBuffer(def) => {
             format!(
                 "StructuredBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::RWStructuredBuffer(def) => {
             format!(
                 "RWStructuredBuffer<{}>",
-                get_hlsl_typestring(def.ty_ref.get(model))
+                get_hlsl_typestring(def.ty_handle.get(model))
             )
         }
         DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
@@ -106,7 +106,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
     writer.indent();
 
     // include all type dependencies
-    let deps = GeneratorContext::get_descriptorset_dependencies(ds);
+    let deps = ds.get_type_dependencies();
 
     if !deps.is_empty() {
         let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);

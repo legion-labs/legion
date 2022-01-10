@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::model::{
+use crate::db::{
     CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType,
     PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef,
     TextureDef,
@@ -39,12 +39,15 @@ impl<'mdl> StructBuilder<'mdl> {
         self.names.insert(name.to_string());
 
         // get cgen type and check its existence if necessary
-        let ty_ref = self.mdl.get_object_ref::<CGenType>(typ).context(anyhow!(
-            "Member '{}' in struct '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            typ
-        ))?;
+        let ty_ref = self
+            .mdl
+            .get_object_handle::<CGenType>(typ)
+            .context(anyhow!(
+                "Member '{}' in struct '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                typ
+            ))?;
         // done
         self.product
             .members
@@ -95,7 +98,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl
-            .get_object_ref::<CGenType>(inner_type)
+            .get_object_handle::<CGenType>(inner_type)
             .context(anyhow!(
                 "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
@@ -105,7 +108,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(
             name,
             None,
-            DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_ref }),
+            DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_handle: ty_ref }),
         )
     }
 
@@ -123,14 +126,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl
-            .get_object_ref::<CGenType>(inner_ty)
+            .get_object_handle::<CGenType>(inner_ty)
             .context(anyhow!(
                 "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
                 name,
                 self.product.name,
                 inner_ty
             ))?;
-        let def = StructuredBufferDef { ty_ref };
+        let def = StructuredBufferDef { ty_handle: ty_ref };
         let def = if read_write {
             DescriptorDef::RWStructuredBuffer(def)
         } else {
@@ -172,20 +175,19 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         //
         // Texture format
         //
-        let ty_ref = self.mdl.get_object_ref::<CGenType>(fmt).context(anyhow!(
-            "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name,
-            self.product.name,
-            fmt
-        ))?;
-        let fmt_ty = ty_ref.get(self.mdl);
-        // let fmt_ty = self.mdl.get_from_objectid::<CGenType>(ty_ref).unwrap();
+        let ty_handle = self
+            .mdl
+            .get_object_handle::<CGenType>(fmt)
+            .context(anyhow!(
+                "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
+                name,
+                self.product.name,
+                fmt
+            ))?;
+        let fmt_ty = ty_handle.get(self.mdl);
         let valid_type = match fmt_ty {
             CGenType::Struct(_) => false,
-            CGenType::Native(e) => matches!(
-                e,
-                NativeType::Float1 | NativeType::Float2 | NativeType::Float3 | NativeType::Float4
-            ),
+            CGenType::Native(e) => matches!(e, NativeType::Float(_)),
         };
         if !valid_type {
             return Err(anyhow!(
@@ -195,7 +197,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                 self.product.name
             ));
         }
-        let def = TextureDef { ty_ref };
+        let def = TextureDef { ty_ref: ty_handle };
         let ds = match tex_type {
             "2D" => {
                 if read_write {
@@ -315,16 +317,16 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     /// todo
     pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
         // check descriptorset exists
-        let ds_ref = self.mdl.get_object_ref::<DescriptorSet>(ty);
-        if ds_ref.is_none() {
+        let ds_handle = self.mdl.get_object_handle::<DescriptorSet>(ty);
+        if ds_handle.is_none() {
             return Err(anyhow!(
                 "Unknown DescriptorSet '{}' added to PipelineLayout '{}'",
                 ty,
                 self.product.name
             ));
         }
-        let ds_ref = ds_ref.unwrap();
-        let ds = ds_ref.get(self.mdl);
+        let ds_handle = ds_handle.unwrap();
+        let ds = ds_handle.get(self.mdl);
 
         // check for frequency conflict
         if self.freqs.contains(&ds.frequency) {
@@ -336,7 +338,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         }
         self.freqs.insert(ds.frequency);
 
-        self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_ref))
+        self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_handle))
     }
 
     /// Add pushconstant
@@ -355,7 +357,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl
-            .get_object_ref::<CGenType>(typename)
+            .get_object_handle::<CGenType>(typename)
             .context(anyhow!(
                 "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
                 typename,

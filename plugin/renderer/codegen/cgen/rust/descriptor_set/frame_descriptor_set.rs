@@ -19,7 +19,7 @@
 	CGenDescriptorSetDef,
 };
 
-static DESCRIPTOR_DEFS: [CGenDescriptorDef; 17] = [
+static DESCRIPTOR_DEFS: [CGenDescriptorDef; 18] = [
 	CGenDescriptorDef {
 		name: "smp",
 		shader_resource_type: ShaderResourceType::Sampler,
@@ -56,87 +56,94 @@ static DESCRIPTOR_DEFS: [CGenDescriptorDef; 17] = [
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "sb_arr",
+		name: "sb2",
 		shader_resource_type: ShaderResourceType::StructuredBuffer,
 		flat_index_start: 14,
-		flat_index_end: 24,
+		flat_index_end: 15,
+		array_size: 0,
+	}, 
+	CGenDescriptorDef {
+		name: "sb_arr",
+		shader_resource_type: ShaderResourceType::StructuredBuffer,
+		flat_index_start: 15,
+		flat_index_end: 25,
 		array_size: 10,
 	}, 
 	CGenDescriptorDef {
 		name: "rw_sb",
 		shader_resource_type: ShaderResourceType::RWStructuredBuffer,
-		flat_index_start: 24,
-		flat_index_end: 25,
-		array_size: 0,
-	}, 
-	CGenDescriptorDef {
-		name: "bab",
-		shader_resource_type: ShaderResourceType::ByteAdressBuffer,
 		flat_index_start: 25,
 		flat_index_end: 26,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_bab",
-		shader_resource_type: ShaderResourceType::RWByteAdressBuffer,
+		name: "bab",
+		shader_resource_type: ShaderResourceType::ByteAdressBuffer,
 		flat_index_start: 26,
 		flat_index_end: 27,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "tex2d",
-		shader_resource_type: ShaderResourceType::Texture2D,
+		name: "rw_bab",
+		shader_resource_type: ShaderResourceType::RWByteAdressBuffer,
 		flat_index_start: 27,
 		flat_index_end: 28,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_tex2d",
-		shader_resource_type: ShaderResourceType::RWTexture2D,
+		name: "tex2d",
+		shader_resource_type: ShaderResourceType::Texture2D,
 		flat_index_start: 28,
 		flat_index_end: 29,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "tex3d",
-		shader_resource_type: ShaderResourceType::Texture3D,
+		name: "rw_tex2d",
+		shader_resource_type: ShaderResourceType::RWTexture2D,
 		flat_index_start: 29,
 		flat_index_end: 30,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_tex3d",
-		shader_resource_type: ShaderResourceType::RWTexture3D,
+		name: "tex3d",
+		shader_resource_type: ShaderResourceType::Texture3D,
 		flat_index_start: 30,
 		flat_index_end: 31,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "tex2darr",
-		shader_resource_type: ShaderResourceType::Texture2DArray,
+		name: "rw_tex3d",
+		shader_resource_type: ShaderResourceType::RWTexture3D,
 		flat_index_start: 31,
 		flat_index_end: 32,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_tex2darr",
-		shader_resource_type: ShaderResourceType::RWTexture2DArray,
+		name: "tex2darr",
+		shader_resource_type: ShaderResourceType::Texture2DArray,
 		flat_index_start: 32,
 		flat_index_end: 33,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_texcube",
-		shader_resource_type: ShaderResourceType::TextureCube,
+		name: "rw_tex2darr",
+		shader_resource_type: ShaderResourceType::RWTexture2DArray,
 		flat_index_start: 33,
 		flat_index_end: 34,
 		array_size: 0,
 	}, 
 	CGenDescriptorDef {
-		name: "rw_texcubearr",
-		shader_resource_type: ShaderResourceType::TextureCubeArray,
+		name: "rw_texcube",
+		shader_resource_type: ShaderResourceType::TextureCube,
 		flat_index_start: 34,
 		flat_index_end: 35,
+		array_size: 0,
+	}, 
+	CGenDescriptorDef {
+		name: "rw_texcubearr",
+		shader_resource_type: ShaderResourceType::TextureCubeArray,
+		flat_index_start: 35,
+		flat_index_end: 36,
 		array_size: 0,
 	}, 
 ];
@@ -145,14 +152,14 @@ static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{
 	name: "FrameDescriptorSet",
 	id: 1,
 	frequency: 1,
-	descriptor_flat_count: 35,
+	descriptor_flat_count: 36,
 	descriptor_defs: &DESCRIPTOR_DEFS,
 }; 
 
 static mut DESCRIPTOR_SET_LAYOUT: Option<DescriptorSetLayout> = None;
 
 pub struct FrameDescriptorSet<'a> {
-	descriptor_refs: [DescriptorRef<'a>; 35],
+	descriptor_refs: [DescriptorRef<'a>; 36],
 }
 
 impl<'a> FrameDescriptorSet<'a> {
@@ -210,73 +217,78 @@ impl<'a> FrameDescriptorSet<'a> {
 		self.descriptor_refs[13] = DescriptorRef::BufferView(value);
 	}
 	
+	pub fn set_sb2(&mut self, value:  &'a BufferView) {
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[5].validate(value));
+		self.descriptor_refs[14] = DescriptorRef::BufferView(value);
+	}
+	
 	pub fn set_sb_arr(&mut self, value:  &[&'a BufferView; 10]) {
-		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[5].validate(&value.as_slice()));
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[6].validate(&value.as_slice()));
 		for i in 0..10 {
-			self.descriptor_refs[14+i] = DescriptorRef::BufferView(value[i]);
+			self.descriptor_refs[15+i] = DescriptorRef::BufferView(value[i]);
 		}
 	}
 	
 	pub fn set_rw_sb(&mut self, value:  &'a BufferView) {
-		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[6].validate(value));
-		self.descriptor_refs[24] = DescriptorRef::BufferView(value);
-	}
-	
-	pub fn set_bab(&mut self, value:  &'a BufferView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[7].validate(value));
 		self.descriptor_refs[25] = DescriptorRef::BufferView(value);
 	}
 	
-	pub fn set_rw_bab(&mut self, value:  &'a BufferView) {
+	pub fn set_bab(&mut self, value:  &'a BufferView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[8].validate(value));
 		self.descriptor_refs[26] = DescriptorRef::BufferView(value);
 	}
 	
-	pub fn set_tex2d(&mut self, value:  &'a TextureView) {
+	pub fn set_rw_bab(&mut self, value:  &'a BufferView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[9].validate(value));
-		self.descriptor_refs[27] = DescriptorRef::TextureView(value);
+		self.descriptor_refs[27] = DescriptorRef::BufferView(value);
 	}
 	
-	pub fn set_rw_tex2d(&mut self, value:  &'a TextureView) {
+	pub fn set_tex2d(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[10].validate(value));
 		self.descriptor_refs[28] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_tex3d(&mut self, value:  &'a TextureView) {
+	pub fn set_rw_tex2d(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[11].validate(value));
 		self.descriptor_refs[29] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_rw_tex3d(&mut self, value:  &'a TextureView) {
+	pub fn set_tex3d(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[12].validate(value));
 		self.descriptor_refs[30] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_tex2darr(&mut self, value:  &'a TextureView) {
+	pub fn set_rw_tex3d(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[13].validate(value));
 		self.descriptor_refs[31] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_rw_tex2darr(&mut self, value:  &'a TextureView) {
+	pub fn set_tex2darr(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[14].validate(value));
 		self.descriptor_refs[32] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_rw_texcube(&mut self, value:  &'a TextureView) {
+	pub fn set_rw_tex2darr(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[15].validate(value));
 		self.descriptor_refs[33] = DescriptorRef::TextureView(value);
 	}
 	
-	pub fn set_rw_texcubearr(&mut self, value:  &'a TextureView) {
+	pub fn set_rw_texcube(&mut self, value:  &'a TextureView) {
 		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[16].validate(value));
 		self.descriptor_refs[34] = DescriptorRef::TextureView(value);
+	}
+	
+	pub fn set_rw_texcubearr(&mut self, value:  &'a TextureView) {
+		assert!(DESCRIPTOR_SET_DEF.descriptor_defs[17].validate(value));
+		self.descriptor_refs[35] = DescriptorRef::TextureView(value);
 	}
 	
 }
 
 impl<'a> Default for FrameDescriptorSet<'a> {
 	fn default() -> Self {
-		Self {descriptor_refs: [DescriptorRef::<'a>::default(); 35], }
+		Self {descriptor_refs: [DescriptorRef::<'a>::default(); 36], }
 	}
 }
 

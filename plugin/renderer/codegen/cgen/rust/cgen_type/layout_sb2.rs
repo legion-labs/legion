@@ -6,47 +6,47 @@ use lgn_graphics_cgen_runtime::{
 	CGenTypeDef,
 };
 
-use lgn_graphics_cgen_runtime::prelude::*;
+use super::layout_sb::LayoutSB;
 
 /*
 StructLayout {
-    size: 16,
-    padded_size: 16,
+    size: 58,
+    padded_size: 58,
     members: [
         StructMemberLayout {
             offset: 0,
             absolute_offset: 0,
-            size: 16,
-            padded_size: 16,
+            size: 58,
+            padded_size: 58,
             array_stride: 0,
         },
     ],
 }
 */
 static TYPE_DEF: CGenTypeDef = CGenTypeDef{ 
-	name: "PushConstantData",
-	id: 19,
-	size: 16,
+	name: "LayoutSB2",
+	id: 17,
+	size: 58,
 }; 
 
-static_assertions::const_assert_eq!(mem::size_of::<PushConstantData>(), 16);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutSB2>(), 58);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct PushConstantData {
-	data: [u8;16]
+pub struct LayoutSB2 {
+	data: [u8;58]
 }
 
-impl PushConstantData {
-	pub const fn id() -> u32 { 19  }
+impl LayoutSB2 {
+	pub const fn id() -> u32 { 17  }
 	
 	pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }
 	
-	pub fn set_color(&mut self, value: Float4) { 
+	pub fn set_a(&mut self, value: LayoutSB) { 
 		self.set(0, value);
 	}
 	
-	pub fn color(&self) -> Float4 { 
+	pub fn a(&self) -> LayoutSB { 
 		self.get(0)
 	}
 	
@@ -71,12 +71,12 @@ impl PushConstantData {
 	}
 }
 
-impl Default for PushConstantData {
+impl Default for LayoutSB2 {
 	fn default() -> Self {
 		let mut ret = Self {
-		data: [0;16]
+		data: [0;58]
 		};
-		ret.set_color(Float4::default());
+		ret.set_a(LayoutSB::default());
 		ret
 	}
 }

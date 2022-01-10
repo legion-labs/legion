@@ -1,17 +1,17 @@
 use crate::{
+    db::DescriptorSet,
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{DescriptorSet, DescriptorSetRef},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for descriptor_set_ref in model.ref_iter::<DescriptorSet>() {
-        let descriptor_set = descriptor_set_ref.get(model);
-        let content = generate_rust_descriptorset(ctx, descriptor_set_ref);
+    for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+        let content =
+            generate_rust_descriptorset(ctx, descriptor_set_ref.id(), descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(descriptor_set, CGenVariant::Rust),
+            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
@@ -39,11 +39,10 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
 #[allow(clippy::too_many_lines)]
 fn generate_rust_descriptorset(
-    ctx: &GeneratorContext<'_>,
-    descriptor_set_ref: DescriptorSetRef,
+    _ctx: &GeneratorContext<'_>,
+    descriptor_set_id: u32,
+    descriptor_set: &DescriptorSet,
 ) -> String {
-    let descriptor_set = descriptor_set_ref.get(ctx.model);
-
     let mut writer = FileWriter::new();
 
     // global dependencies
@@ -85,7 +84,7 @@ fn generate_rust_descriptorset(
             writer.add_line(format!("name: \"{}\",", descriptor.name));
             writer.add_line(format!(
                 "shader_resource_type: ShaderResourceType::{},",
-                descriptor.def.to_shader_resource_type()
+                descriptor.def.shader_resource_type()
             ));
             writer.add_line(format!("flat_index_start: {},", descriptor.flat_index));
             writer.add_line(format!(
@@ -109,7 +108,7 @@ fn generate_rust_descriptorset(
         writer.add_line("static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", descriptor_set.name));
-        writer.add_line(format!("id: {},", descriptor_set_ref.id()));
+        writer.add_line(format!("id: {},", descriptor_set_id));
         writer.add_line(format!("frequency: {},", descriptor_set.frequency));
         writer.add_line(format!(
             "descriptor_flat_count: {},",
@@ -179,7 +178,7 @@ fn generate_rust_descriptorset(
         // impl: id
         writer.add_line(format!(
             "pub const fn id() -> u32 {{ {}  }}",
-            descriptor_set_ref.id()
+            descriptor_set_id
         ));
         writer.new_line();
 
@@ -202,49 +201,49 @@ fn generate_rust_descriptorset(
         for (descriptor_index, descriptor) in descriptor_set.descriptors.iter().enumerate() {
             let (descriptor_ref_type, descriptor_input_decl) =
                 match (descriptor.array_len.unwrap_or(0u32), &descriptor.def) {
-                    (0, crate::model::DescriptorDef::Sampler) => {
+                    (0, crate::db::DescriptorDef::Sampler) => {
                         ("Sampler", "&'a Sampler".to_string())
                     }
-                    (n, crate::model::DescriptorDef::Sampler) => {
+                    (n, crate::db::DescriptorDef::Sampler) => {
                         ("Sampler", format!("&[&'a Sampler; {}]", n))
                     }
                     (
                         0,
-                        crate::model::DescriptorDef::ConstantBuffer(_)
-                        | crate::model::DescriptorDef::StructuredBuffer(_)
-                        | crate::model::DescriptorDef::RWStructuredBuffer(_)
-                        | crate::model::DescriptorDef::ByteAddressBuffer
-                        | crate::model::DescriptorDef::RWByteAddressBuffer,
+                        crate::db::DescriptorDef::ConstantBuffer(_)
+                        | crate::db::DescriptorDef::StructuredBuffer(_)
+                        | crate::db::DescriptorDef::RWStructuredBuffer(_)
+                        | crate::db::DescriptorDef::ByteAddressBuffer
+                        | crate::db::DescriptorDef::RWByteAddressBuffer,
                     ) => ("BufferView", "&'a BufferView".to_string()),
                     (
                         n,
-                        crate::model::DescriptorDef::ConstantBuffer(_)
-                        | crate::model::DescriptorDef::StructuredBuffer(_)
-                        | crate::model::DescriptorDef::RWStructuredBuffer(_)
-                        | crate::model::DescriptorDef::ByteAddressBuffer
-                        | crate::model::DescriptorDef::RWByteAddressBuffer,
+                        crate::db::DescriptorDef::ConstantBuffer(_)
+                        | crate::db::DescriptorDef::StructuredBuffer(_)
+                        | crate::db::DescriptorDef::RWStructuredBuffer(_)
+                        | crate::db::DescriptorDef::ByteAddressBuffer
+                        | crate::db::DescriptorDef::RWByteAddressBuffer,
                     ) => ("BufferView", format!("&[&'a BufferView; {}]", n)),
                     (
                         0,
-                        crate::model::DescriptorDef::Texture2D(_)
-                        | crate::model::DescriptorDef::RWTexture2D(_)
-                        | crate::model::DescriptorDef::Texture3D(_)
-                        | crate::model::DescriptorDef::RWTexture3D(_)
-                        | crate::model::DescriptorDef::Texture2DArray(_)
-                        | crate::model::DescriptorDef::RWTexture2DArray(_)
-                        | crate::model::DescriptorDef::TextureCube(_)
-                        | crate::model::DescriptorDef::TextureCubeArray(_),
+                        crate::db::DescriptorDef::Texture2D(_)
+                        | crate::db::DescriptorDef::RWTexture2D(_)
+                        | crate::db::DescriptorDef::Texture3D(_)
+                        | crate::db::DescriptorDef::RWTexture3D(_)
+                        | crate::db::DescriptorDef::Texture2DArray(_)
+                        | crate::db::DescriptorDef::RWTexture2DArray(_)
+                        | crate::db::DescriptorDef::TextureCube(_)
+                        | crate::db::DescriptorDef::TextureCubeArray(_),
                     ) => ("TextureView", "&'a TextureView".to_string()),
                     (
                         n,
-                        crate::model::DescriptorDef::Texture2D(_)
-                        | crate::model::DescriptorDef::RWTexture2D(_)
-                        | crate::model::DescriptorDef::Texture3D(_)
-                        | crate::model::DescriptorDef::RWTexture3D(_)
-                        | crate::model::DescriptorDef::Texture2DArray(_)
-                        | crate::model::DescriptorDef::RWTexture2DArray(_)
-                        | crate::model::DescriptorDef::TextureCube(_)
-                        | crate::model::DescriptorDef::TextureCubeArray(_),
+                        crate::db::DescriptorDef::Texture2D(_)
+                        | crate::db::DescriptorDef::RWTexture2D(_)
+                        | crate::db::DescriptorDef::Texture3D(_)
+                        | crate::db::DescriptorDef::RWTexture3D(_)
+                        | crate::db::DescriptorDef::Texture2DArray(_)
+                        | crate::db::DescriptorDef::RWTexture2DArray(_)
+                        | crate::db::DescriptorDef::TextureCube(_)
+                        | crate::db::DescriptorDef::TextureCubeArray(_),
                     ) => ("TextureView", format!("&[&'a TextureView; {}]", n)),
                 };
 

@@ -1,19 +1,22 @@
 use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
 
 use crate::{
+    db::PipelineLayout,
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{PipelineLayout, PipelineLayoutRef},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for pipeline_layout_ref in model.ref_iter::<PipelineLayout>() {
-        let pipeline_layout = pipeline_layout_ref.get(model);
-        let content = generate_rust_pipeline_layout(ctx, pipeline_layout_ref);
+    for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+        let content = generate_rust_pipeline_layout(
+            ctx,
+            pipeline_layout_ref.id(),
+            pipeline_layout_ref.object(),
+        );
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Rust),
+            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
@@ -42,10 +45,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 #[allow(clippy::too_many_lines)]
 fn generate_rust_pipeline_layout(
     ctx: &GeneratorContext<'_>,
-    pipeline_layout_ref: PipelineLayoutRef,
+    pipeline_layout_id: u32,
+    pipeline_layout: &PipelineLayout,
 ) -> String {
-    let pipeline_layout = pipeline_layout_ref.get(ctx.model);
-
     let mut writer = FileWriter::new();
 
     // global dependencies
@@ -76,11 +78,11 @@ fn generate_rust_pipeline_layout(
     {
         for (_, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                crate::db::PipelineLayoutContent::Pushconstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
                     writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
                 }
@@ -96,7 +98,7 @@ fn generate_rust_pipeline_layout(
         );
         writer.indent();
         writer.add_line(format!("name: \"{}\",", pipeline_layout.name));
-        writer.add_line(format!("id: {},", pipeline_layout_ref.id()));
+        writer.add_line(format!("id: {},", pipeline_layout_id));
         writer.add_line("descriptor_set_layout_ids: [");
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
             let opt_ds_ref = pipeline_layout.find_descriptor_set_by_frequency(ctx.model, i);
@@ -109,8 +111,8 @@ fn generate_rust_pipeline_layout(
             }
         }
         writer.add_line("],");
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant_type: Some({}::id())", ty.name()));
         } else {
             writer.add_line("push_constant_type: None,");
@@ -155,8 +157,8 @@ fn generate_rust_pipeline_layout(
         writer.add_line("pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {");
         writer.indent();
         writer.add_line("unsafe { ");
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!(
                 "let push_constant_def = Some({}::def());",
                 ty.name()
@@ -214,7 +216,7 @@ fn generate_rust_pipeline_layout(
         // fn setters
         for (name, content) in &pipeline_layout.members {
             match content {
-                crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
@@ -228,7 +230,7 @@ fn generate_rust_pipeline_layout(
                     writer.unindent();
                     writer.add_line("}");
                 }
-                crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+                crate::db::PipelineLayoutContent::Pushconstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
                     writer.add_line(format!(
                         "pub fn set_{}(&mut self, data: &{}) {{",
@@ -278,9 +280,9 @@ fn generate_rust_pipeline_layout(
         // fn push_constant
         writer.add_line("fn push_constant(&self) -> Option<&[u8]> {");
         writer.indent();
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
+        if let Some(ty_handle) = pipeline_layout.push_constant() {
             writer.add_line("#![allow(unsafe_code)]");
-            let ty = ty_ref.get(ctx.model);
+            let ty = ty_handle.get(ctx.model);
             writer.add_line("let data_slice = unsafe {");
             writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
             writer.add_line("};");

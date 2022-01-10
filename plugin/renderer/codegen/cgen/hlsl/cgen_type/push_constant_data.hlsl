@@ -6,6 +6,6 @@
 	
 	struct PushConstantData {
 		float4 color;
-	}; // PushConstantData
+	};
 	
 #endif

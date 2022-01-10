@@ -3,41 +3,45 @@
 #ifndef DESCRIPTORSET_FRAMEDESCRIPTORSET
 #define DESCRIPTORSET_FRAMEDESCRIPTORSET
 
-	#include "../cgen_type/layout_a.hlsl"
+	#include "../cgen_type/layout_sb.hlsl"
+	#include "../cgen_type/layout_sb2.hlsl"
+	#include "../cgen_type/layout_cb.hlsl"
 	
 	[[vk::binding(0, 1)]]
 	SamplerState  smp;
 	[[vk::binding(1, 1)]]
 	SamplerState  smp_arr[10];
 	[[vk::binding(2, 1)]]
-	ConstantBuffer<LayoutA> cb;
+	ConstantBuffer<LayoutCB> cb;
 	[[vk::binding(3, 1)]]
-	ConstantBuffer<LayoutA> cb_tr;
+	ConstantBuffer<LayoutCB> cb_tr;
 	[[vk::binding(4, 1)]]
-	StructuredBuffer<LayoutA> sb;
+	StructuredBuffer<LayoutSB> sb;
 	[[vk::binding(5, 1)]]
-	StructuredBuffer<LayoutA> sb_arr[10];
+	StructuredBuffer<LayoutSB2> sb2;
 	[[vk::binding(6, 1)]]
-	RWStructuredBuffer<LayoutA> rw_sb;
+	StructuredBuffer<LayoutSB> sb_arr[10];
 	[[vk::binding(7, 1)]]
-	ByteAddressBuffer bab;
+	RWStructuredBuffer<LayoutSB> rw_sb;
 	[[vk::binding(8, 1)]]
-	RWByteAddressBuffer rw_bab;
+	ByteAddressBuffer bab;
 	[[vk::binding(9, 1)]]
-	Texture2D<float4> tex2d;
+	RWByteAddressBuffer rw_bab;
 	[[vk::binding(10, 1)]]
-	RWTexture2D<float4> rw_tex2d;
+	Texture2D<float4> tex2d;
 	[[vk::binding(11, 1)]]
-	Texture3D<float4> tex3d;
+	RWTexture2D<float4> rw_tex2d;
 	[[vk::binding(12, 1)]]
-	RWTexture3D<float4> rw_tex3d;
+	Texture3D<float4> tex3d;
 	[[vk::binding(13, 1)]]
-	Texture2DArray<float4> tex2darr;
+	RWTexture3D<float4> rw_tex3d;
 	[[vk::binding(14, 1)]]
-	RWTexture2DArray<float4> rw_tex2darr;
+	Texture2DArray<float4> tex2darr;
 	[[vk::binding(15, 1)]]
-	TextureCube<float4> rw_texcube;
+	RWTexture2DArray<float4> rw_tex2darr;
 	[[vk::binding(16, 1)]]
+	TextureCube<float4> rw_texcube;
+	[[vk::binding(17, 1)]]
 	TextureCubeArray<float4> rw_texcubearr;
 	
 #endif
