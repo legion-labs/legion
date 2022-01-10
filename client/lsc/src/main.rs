@@ -234,7 +234,7 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
     span_scope!("lsc::main");
 

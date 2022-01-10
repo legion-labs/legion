@@ -59,7 +59,7 @@ impl Default for App {
     fn default() -> Self {
         let mut app = Self::empty();
         app.telemetry_guard =
-            Some(TelemetryGuard::new().expect("telemetry guard should be initialized once"));
+            Some(TelemetryGuard::default().expect("telemetry guard should be initialized once"));
         app.add_default_stages()
             .add_event::<AppExit>()
             .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());

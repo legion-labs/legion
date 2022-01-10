@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    sync::{Arc, Mutex},
+    sync::{atomic::AtomicU32, Arc, Mutex},
 };
 
 use lgn_tracing::{
@@ -128,6 +128,7 @@ impl log::Log for LogDispatch {
         };
         let log_desc = LogMetadata {
             level,
+            level_filter: AtomicU32::new(0),
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),
             module_path: record.module_path_static().unwrap_or("unknown"),

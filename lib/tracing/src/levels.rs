@@ -296,7 +296,7 @@ impl fmt::Display for LevelFilter {
 }
 
 impl LevelFilter {
-    fn from_usize(u: usize) -> Option<Self> {
+    pub(crate) fn from_usize(u: usize) -> Option<Self> {
         match u {
             0 => Some(Self::Off),
             1 => Some(Self::Error),
@@ -308,7 +308,7 @@ impl LevelFilter {
         }
     }
 
-    fn from_u32(u: u32) -> Option<Self> {
+    pub(crate) fn from_u32(u: u32) -> Option<Self> {
         match u {
             0 => Some(Self::Off),
             1 => Some(Self::Error),

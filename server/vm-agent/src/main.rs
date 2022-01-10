@@ -77,7 +77,7 @@ use tokio::{
 async fn main() -> anyhow::Result<()> {
     let config = Config::new().context("failed to read configuration")?;
 
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
     debug!("Setting log level to {}.", config.log_level);
     info!("Root is set to: {}", config.root.to_string_lossy());

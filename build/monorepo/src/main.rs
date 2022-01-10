@@ -155,7 +155,7 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
 
     span_scope!("monorepo::main");
 

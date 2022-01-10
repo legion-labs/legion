@@ -1,16 +1,76 @@
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use lgn_tracing_transit::prelude::*;
 use lgn_utils::memory::{read_any, write_any};
 
-use crate::Level;
+use crate::{Level, LevelFilter};
 
 #[derive(Debug)]
 pub struct LogMetadata {
     pub level: Level,
+    pub level_filter: AtomicU32,
     pub fmt_str: &'static str,
     pub target: &'static str,
     pub module_path: &'static str,
     pub file: &'static str,
     pub line: u32,
+}
+
+impl LogMetadata {
+    /// This is a way to efficiency implement finer grade filtering by amortizing its
+    /// cost. An atomic is used to store a level filter and a 16 bit generation.
+    /// Allowing a config update to be applied to the level filter multiple times during
+    /// the lifetime of the process.
+    ///
+    /// ```ignore
+    /// const GENERATION: u16 = 1;
+    /// let level_filter = metadata.level_filter(GENERATION).unwrap_or_else(|| {
+    ///     let level_filter = self.level_filter(metadata.target);
+    ///     metadata.set_level_filter(level_filter, GENERATION);
+    ///     level_filter
+    /// });
+    /// if metadata.level <= level_filter {
+    ///     ...
+    /// }
+    /// ```
+    ///
+    pub fn level_filter(&self, generation: u16) -> Option<LevelFilter> {
+        let level_filter = self.level_filter.load(Ordering::Relaxed);
+        if generation > ((level_filter >> 16) as u16) {
+            None
+        } else {
+            Some(LevelFilter::from_u32(level_filter & 0xF).unwrap_or(LevelFilter::Off))
+        }
+    }
+
+    /// Sets the level filter if the generation is greater than the current generation.
+    ///
+    pub fn set_level_filter(&self, level_filter: LevelFilter, generation: u16) {
+        let new = level_filter as u32 | u32::from(generation) << 16;
+        let mut current = self.level_filter.load(Ordering::Relaxed);
+        if generation <= (current >> 16) as u16 {
+            // value was updated form another thread with a newer generation
+            return;
+        }
+        loop {
+            match self.level_filter.compare_exchange(
+                current,
+                new,
+                Ordering::SeqCst,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => {
+                    return;
+                }
+                Err(x) => {
+                    if generation <= (x >> 16) as u16 {
+                        return;
+                    }
+                    current = x;
+                }
+            };
+        }
+    }
 }
 
 #[derive(Debug, TransitReflect)]
@@ -168,3 +228,56 @@ pub struct LogMetadataRecord {
 }
 
 impl InProcSerialize for LogMetadataRecord {}
+
+#[cfg(test)]
+mod test {
+    use std::thread;
+
+    use crate::{logs::LogMetadata, Level, LevelFilter};
+
+    #[test]
+    fn test_filter_levels() {
+        static METADATA: LogMetadata = LogMetadata {
+            level: Level::Trace,
+            level_filter: std::sync::atomic::AtomicU32::new(0),
+            fmt_str: "$crate::__first_arg!($($arg)+)",
+            target: module_path!(),
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        assert_eq!(METADATA.level_filter(1), None);
+        METADATA.set_level_filter(LevelFilter::Trace, 1);
+        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Trace));
+        METADATA.set_level_filter(LevelFilter::Debug, 1);
+        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Trace));
+        METADATA.set_level_filter(LevelFilter::Debug, 2);
+        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Debug));
+        assert_eq!(METADATA.level_filter(2), Some(LevelFilter::Debug));
+        METADATA.set_level_filter(LevelFilter::Info, 1);
+        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Debug));
+        let mut threads = Vec::new();
+        for _ in 0..1 {
+            threads.push(thread::spawn(move || {
+                for i in 0..1024 {
+                    let filter = match i % 6 {
+                        0 => LevelFilter::Off,
+                        1 => LevelFilter::Error,
+                        2 => LevelFilter::Warn,
+                        3 => LevelFilter::Info,
+                        4 => LevelFilter::Debug,
+                        5 => LevelFilter::Trace,
+                        _ => unreachable!(),
+                    };
+
+                    METADATA.set_level_filter(filter, i);
+                }
+            }));
+        }
+        for t in threads {
+            t.join().unwrap();
+        }
+        assert_eq!(METADATA.level_filter(1023), Some(LevelFilter::Info));
+        assert_eq!(METADATA.level_filter(1024), None);
+    }
+}

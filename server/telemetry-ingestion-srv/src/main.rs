@@ -76,7 +76,7 @@ use tonic::transport::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuard::new().unwrap();
+    let _telemetry_guard = TelemetryGuard::default().unwrap();
     let addr = "127.0.0.1:8080".parse()?;
 
     let blocks_folder = get_blocks_directory()?;

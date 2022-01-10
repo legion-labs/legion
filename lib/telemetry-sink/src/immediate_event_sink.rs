@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fmt,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
     },
 };
@@ -31,6 +31,7 @@ impl log::Log for LogDispatch {
         let level = log_level_to_tracing_level(record.level());
         let log_desc = LogMetadata {
             level,
+            level_filter: AtomicU32::new(0),
             fmt_str: record.args().as_str().unwrap_or(""),
             target: record.module_path_static().unwrap_or("unknown"),
             module_path: record.module_path_static().unwrap_or("unknown"),
@@ -45,6 +46,7 @@ impl log::Log for LogDispatch {
 }
 
 pub struct ImmediateEventSink {
+    level_filters: Vec<(String, LevelFilter)>,
     simple_logger: SimpleLogger,
     chrome_trace_file: Option<String>,
     process_data: RwLock<Option<ProcessData>>,
@@ -57,52 +59,41 @@ struct ProcessData {
     start_ticks: i64,
 }
 
-fn tracing_level_to_log_level(level: Level) -> log::Level {
-    match level {
-        Level::Error => log::Level::Error,
-        Level::Warn => log::Level::Warn,
-        Level::Info => log::Level::Info,
-        Level::Debug => log::Level::Debug,
-        Level::Trace => log::Level::Trace,
-    }
-}
-
-fn log_level_to_tracing_level(level: log::Level) -> Level {
-    match level {
-        log::Level::Error => Level::Error,
-        log::Level::Warn => Level::Warn,
-        log::Level::Info => Level::Info,
-        log::Level::Debug => Level::Debug,
-        log::Level::Trace => Level::Trace,
-    }
-}
-
-fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
-    match level {
-        LevelFilter::Off => log::LevelFilter::Off,
-        LevelFilter::Error => log::LevelFilter::Error,
-        LevelFilter::Warn => log::LevelFilter::Warn,
-        LevelFilter::Info => log::LevelFilter::Info,
-        LevelFilter::Debug => log::LevelFilter::Debug,
-        LevelFilter::Trace => log::LevelFilter::Trace,
-    }
-}
-
 impl ImmediateEventSink {
-    pub fn new(chrome_trace_file: Option<String>) -> anyhow::Result<Self> {
+    pub fn new(
+        level_filters: HashMap<String, String>,
+        chrome_trace_file: Option<String>,
+    ) -> anyhow::Result<Self> {
         static LOG_DISPATCHER: LogDispatch = LogDispatch;
         log::set_logger(&LOG_DISPATCHER)
             .map_err(|_err| anyhow::anyhow!("Error creating immediate event sink"))?;
 
         log::set_max_level(tracing_level_filter_to_log_level_filter(max_level()));
 
+        let level_filters: Vec<_> = level_filters
+            .into_iter()
+            .filter(|(key, _val)| key != "MAX_LEVEL")
+            .map(|(key, val)| {
+                use std::str::FromStr;
+                (
+                    key,
+                    LevelFilter::from_str(val.as_str()).unwrap_or(LevelFilter::Off),
+                )
+            })
+            .collect();
+
         Ok(Self {
+            level_filters,
             simple_logger: SimpleLogger::new().with_utc_timestamps(),
             chrome_trace_file,
             process_data: RwLock::new(None),
             thread_ids: RwLock::new(HashMap::new()),
             chrome_events: Mutex::new(json::Array::new()),
         })
+    }
+
+    fn level_filter(&self, target: &str) -> LevelFilter {
+        find_level_filter_match(target, &self.level_filters).unwrap_or_else(max_level)
     }
 }
 
@@ -161,19 +152,28 @@ impl EventSink for ImmediateEventSink {
         true
     }
 
-    fn on_log(&self, desc: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
-        let lvl = tracing_level_to_log_level(desc.level);
-        let record = log::RecordBuilder::new()
-            .args(*args)
-            .target(desc.target)
-            .level(lvl)
-            .file_static(Some(desc.file))
-            .line(Some(desc.line))
-            .module_path_static(Some(desc.module_path))
-            .build();
+    fn on_log(&self, metadata: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
+        const GENERATION: u16 = 1;
+        // At this point we would have already tested the max level on the macro
+        let level_filter = metadata.level_filter(GENERATION).unwrap_or_else(|| {
+            let level_filter = self.level_filter(metadata.target);
+            metadata.set_level_filter(level_filter, GENERATION);
+            level_filter
+        });
+        if metadata.level <= level_filter {
+            let lvl = tracing_level_to_log_level(metadata.level);
+            let record = log::RecordBuilder::new()
+                .args(*args)
+                .target(metadata.target)
+                .level(lvl)
+                .file_static(Some(metadata.file))
+                .line(Some(metadata.line))
+                .module_path_static(Some(metadata.module_path))
+                .build();
 
-        use log::Log;
-        self.simple_logger.log(&record);
+            use log::Log;
+            self.simple_logger.log(&record);
+        }
     }
 
     fn on_init_log_stream(&self, _: &LogStream) {}
@@ -268,4 +268,48 @@ impl EventSink for ImmediateEventSink {
             }
         }
     }
+}
+
+fn tracing_level_to_log_level(level: Level) -> log::Level {
+    match level {
+        Level::Error => log::Level::Error,
+        Level::Warn => log::Level::Warn,
+        Level::Info => log::Level::Info,
+        Level::Debug => log::Level::Debug,
+        Level::Trace => log::Level::Trace,
+    }
+}
+
+fn log_level_to_tracing_level(level: log::Level) -> Level {
+    match level {
+        log::Level::Error => Level::Error,
+        log::Level::Warn => Level::Warn,
+        log::Level::Info => Level::Info,
+        log::Level::Debug => Level::Debug,
+        log::Level::Trace => Level::Trace,
+    }
+}
+
+fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
+    match level {
+        LevelFilter::Off => log::LevelFilter::Off,
+        LevelFilter::Error => log::LevelFilter::Error,
+        LevelFilter::Warn => log::LevelFilter::Warn,
+        LevelFilter::Info => log::LevelFilter::Info,
+        LevelFilter::Debug => log::LevelFilter::Debug,
+        LevelFilter::Trace => log::LevelFilter::Trace,
+    }
+}
+
+/// This needs to be optimized
+fn find_level_filter_match(
+    target: &str,
+    level_filters: &[(String, LevelFilter)],
+) -> Option<LevelFilter> {
+    for &(ref t, ref l) in level_filters.iter() {
+        if target.starts_with(t) {
+            return Some(*l);
+        }
+    }
+    None
 }

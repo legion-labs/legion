@@ -108,7 +108,7 @@ fn main_internal() -> Result<CGenBuildResult> {
         LevelFilter::Warn
     };
 
-    let _telemety_guard = TelemetryGuard::new().unwrap().with_log_level(log_level);
+    let _telemety_guard = TelemetryGuard::default().unwrap().with_log_level(log_level);
 
     // initialize context
     let mut ctx_builder = CGenContextBuilder::new();

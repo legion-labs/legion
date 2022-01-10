@@ -112,6 +112,7 @@ macro_rules! log {
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
         static LOG_DESC: $crate::logs::LogMetadata = $crate::logs::LogMetadata {
             level: $lvl,
+            level_filter: std::sync::atomic::AtomicU32::new(0),
             fmt_str: $crate::__first_arg!($($arg)+),
             target: $target,
             module_path: $crate::__log_module_path!(),

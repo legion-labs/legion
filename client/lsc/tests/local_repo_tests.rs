@@ -86,7 +86,7 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 
 #[test]
 fn local_repo_suite() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::local_repo_suite");
     let test_dir = init_test_dir("local_repo_suite");
@@ -197,7 +197,7 @@ fn local_repo_suite() {
 
 #[test]
 fn local_single_branch_merge_flow() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::local_single_branch_merge_flow");
     let test_dir = init_test_dir("local_single_branch_merge_flow");
@@ -249,7 +249,7 @@ fn local_single_branch_merge_flow() {
 
 #[test]
 fn test_print_config() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::test_print_config");
     let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
@@ -265,7 +265,7 @@ fn test_print_config() {
 
 #[test]
 fn test_branch() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::test_branch");
     let test_dir = init_test_dir("test_branch");
@@ -362,7 +362,7 @@ fn test_branch() {
 
 #[test]
 fn test_locks() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::test_locks");
     let test_dir = init_test_dir("test_locks");
@@ -487,7 +487,7 @@ fn get_root_git_directory() -> PathBuf {
 #[test]
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
-    let telemetry_guard = TelemetryGuard::new();
+    let telemetry_guard = TelemetryGuard::default();
     std::mem::forget(telemetry_guard);
     span_scope!("lsc::test_import_git");
     let test_dir = init_test_dir("test_import_git");

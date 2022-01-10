@@ -58,7 +58,7 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
-use std::sync::Arc;
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 mod grpc_event_sink;
 mod immediate_event_sink;
@@ -77,7 +77,43 @@ use lgn_tracing::{
     set_max_level, LevelFilter,
 };
 
-pub struct Config {}
+pub struct Config {
+    logs_buffer_size: usize,
+    metrics_buffer_size: usize,
+    threads_buffer_size: usize,
+    max_level: LevelFilter,
+    level_filters: HashMap<String, String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            logs_buffer_size: lgn_config::config_get_or!(
+                "logging.logs_buffer_size",
+                10 * 1024 * 1024
+            ),
+            metrics_buffer_size: lgn_config::config_get_or!(
+                "logging.metrics_buffer_size",
+                1024 * 1024
+            ),
+            threads_buffer_size: lgn_config::config_get_or!(
+                "threads_buffer_size",
+                10 * 1024 * 1024
+            ),
+            max_level: LevelFilter::from_str(
+                &(lgn_config::config_get!("logging.max_level_filter").unwrap_or_else(|| {
+                    if cfg!(debug_assertions) {
+                        "INFO".to_owned()
+                    } else {
+                        "WARN".to_owned()
+                    }
+                }) as String),
+            )
+            .unwrap_or(LevelFilter::Off),
+            level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+        }
+    }
+}
 
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
@@ -86,25 +122,26 @@ pub struct TelemetryGuard {
 }
 
 impl TelemetryGuard {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn default() -> anyhow::Result<Self> {
+        Self::new(Config::default())
+    }
+
+    pub fn new(config: Config) -> anyhow::Result<Self> {
+        set_max_level(config.max_level);
         let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
             Ok(url) => Arc::new(GRPCEventSink::new(&url)),
             Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
+                config.level_filters,
                 std::env::var("LGN_TRACE_FILE").ok(),
             )?),
         };
-        #[cfg(debug_assertions)]
-        set_max_level(LevelFilter::Info);
-
-        #[cfg(not(debug_assertions))]
-        set_max_level(LevelFilter::Warn);
 
         // order here is important
         Ok(Self {
             _guard: TelemetrySystemGuard::new(
-                10 * 1024 * 1024,
-                1024 * 1024,
-                10 * 1024 * 1024,
+                config.logs_buffer_size,
+                config.metrics_buffer_size,
+                config.threads_buffer_size,
                 sink,
             )?,
             _thread_guard: TelemetryThreadGuard::new(),

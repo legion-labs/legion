@@ -14,3 +14,13 @@ test_bool = false
 test_int = 1337
 test_float = 1337.1337
 test_string = "TestString"
+
+[logging]
+#logs_buffer_size = 10485760
+#metrics_buffer_size = 1048576
+#threads_buffer_size = 10485760
+#max_level_filter = "ERROR"
+
+
+[logging.level_filters]
+#webrtc = "WARN"

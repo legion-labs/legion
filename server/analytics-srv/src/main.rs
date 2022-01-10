@@ -90,7 +90,7 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuard::new()
+    let _telemetry_guard = TelemetryGuard::default()
         .unwrap()
         .with_log_level(LevelFilter::Info);
     span_scope!("analytics-srv::main");
