@@ -46,12 +46,12 @@ impl FileWriter {
         let mut result = String::new();
 
         for line in &self.lines {
-            for _ in 0..line.indent {
-                result.push('\t');
-            }
-            match &line.content {
-                Some(line_content) => result.push_str(line_content),
-                None => (),
+            if let Some(line_content) = &line.content {
+                for _ in 0..line.indent {
+                    // indentation is 4 spaces
+                    result.push_str("    ");
+                }
+                result.push_str(line_content);
             }
             result.push('\n');
         }

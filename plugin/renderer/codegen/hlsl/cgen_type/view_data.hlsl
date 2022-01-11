@@ -3,10 +3,10 @@
 #ifndef TYPE_VIEW_DATA
 #define TYPE_VIEW_DATA
 
-	
-	struct ViewData {
-		float4x4 view;
-		float4x4 projection;
-	};
-	
+
+    struct ViewData {
+        float4x4 view;
+        float4x4 projection;
+    };
+
 #endif
