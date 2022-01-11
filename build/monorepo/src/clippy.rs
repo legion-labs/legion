@@ -15,6 +15,12 @@ pub struct Args {
     /// Automatically apply lint suggestions. This flag implies `--no-deps`
     #[clap(long)]
     fix: bool,
+    /// Used along `--fix` to allow running fixes on dirty workspace
+    #[clap(long)]
+    allow_dirty: bool,
+    /// Used along `--fix` to allow running fixes on dirty workspace
+    #[clap(long)]
+    allow_staged: bool,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
     args: Vec<OsString>,
 }
@@ -41,6 +47,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     if args.fix {
         direct_args.push("--fix".into());
+        if args.allow_dirty {
+            direct_args.push("--allow-dirty".into());
+        }
+        if args.allow_staged {
+            direct_args.push("--allow-staged".into());
+        }
     }
 
     let cmd = CargoCommand::Clippy {
