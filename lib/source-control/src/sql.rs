@@ -29,14 +29,12 @@ pub async fn execute_sql(connection: &mut sqlx::AnyConnection, sql: &str) -> Res
 #[derive(Debug)]
 pub struct SqlConnectionPool {
     pub pool: sqlx::AnyPool,
-    pub database_uri: String,
 }
 
 impl SqlConnectionPool {
-    pub async fn new(database_uri: String) -> Result<Self> {
+    pub async fn new(database_uri: &str) -> Result<Self> {
         Ok(Self {
-            pool: alloc_sql_pool(&database_uri).await?,
-            database_uri,
+            pool: alloc_sql_pool(database_uri).await?,
         })
     }
 

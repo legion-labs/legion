@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Local};
 use lgn_tracing::span_fn;
 
 use crate::{
@@ -27,19 +26,16 @@ pub async fn log_command() -> Result<()> {
         .context("error fetching commits")?;
 
     for c in commits {
-        let utc =
-            DateTime::parse_from_rfc3339(&c.date_time_utc).expect("Error reading commit date");
-        let local_time: DateTime<Local> = DateTime::from(utc);
-        let branch_id;
-        if c.id == current_commit {
-            branch_id = format!("*{}", &c.id);
+        let branch_id = if c.id == current_commit {
+            format!("*{}", &c.id)
         } else {
-            branch_id = format!(" {}", &c.id);
-        }
+            format!(" {}", &c.id)
+        };
+
         println!(
             "{} {} {} {}",
             branch_id,
-            local_time.format("%Y-%m-%d %H:%M:%S").to_string(),
+            c.timestamp.format("%Y-%m-%d %H:%M:%S").to_string(),
             c.owner,
             c.message
         );

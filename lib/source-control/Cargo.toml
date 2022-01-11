@@ -19,6 +19,8 @@ git2 = { version = "0.13", features = ["vendored-openssl"] }
 glob = "0.3"
 http = "0.2"
 lgn-tracing = { path = "../tracing", version = "0.1.0" }
+lgn-source-control-proto = { path = "../../proto/source-control", version = "0.1.0" }
+lgn-online = { path = "../online", version = "0.1.0" }
 lz4 = "1.23"
 path-clean = "0.1"
 pin-project = "1"
@@ -32,6 +34,7 @@ sqlx = { version = "0.5", features = [
     "mysql",
     "runtime-tokio-native-tls",
 ] }
+tempfile = "3.2"
 thiserror = "1"
 tokio = { version = "1.13", features = ["full"] }
 tokio-util = { version = "0.6.9", features = ["full"] }
