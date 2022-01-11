@@ -17,10 +17,12 @@ pub struct TestEntity {
     pub test_option_none: Option<TestSubType2>,
     pub test_resource_path_option: Option<ResourcePathId>,
     pub test_resource_path_vec: Vec<ResourcePathId>,
+    pub test_option_primitive_set: Option<Vec3>,
+    pub test_option_primitive_none: Option<Vec3>,
 }
 impl TestEntity {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 5553664362261540429u64;
+    const SIGNATURE_HASH: u64 = 5475925308667564622u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__TESTENTITY_DEFAULT
@@ -44,6 +46,8 @@ impl Default for TestEntity {
             test_option_none: None,
             test_resource_path_option: None,
             test_resource_path_vec: Vec::new(),
+            test_option_primitive_set: None,
+            test_option_primitive_none: None,
         }
     }
 }
@@ -197,6 +201,24 @@ impl lgn_data_model::TypeReflection for TestEntity {
                     attributes: {
                         let mut attr = std::collections::HashMap::new();
                         attr.insert(String::from("resource_type"), String::from("TestEntity"));
+                        attr
+                    }
+                },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "test_option_primitive_set".into(),
+                    offset: memoffset::offset_of!(TestEntity, test_option_primitive_set),
+                    field_type: <Option<Vec3> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
+                },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "test_option_primitive_none".into(),
+                    offset: memoffset::offset_of!(TestEntity, test_option_primitive_none),
+                    field_type: <Option<Vec3> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
                         attr
                     }
                 },

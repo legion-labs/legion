@@ -14,5 +14,5 @@ What the data currently contains:
 * A Cube which depends on an exported geometry (from an obj file)
 
 To update:
-1. cargo build at root folder
-2. cargo run --bin sample-data-compiler --clean
+1. `cargo build` at root folder
+2. `cargo run --bin sample-data-compiler -- --clean`
