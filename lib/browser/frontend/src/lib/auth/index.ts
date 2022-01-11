@@ -1,4 +1,3 @@
-import { AsyncStore } from "../../stores/asyncStore";
 import { startUserAuth as browserStartUserAuth } from "./browser";
 import { startUserAuth as tauriStartUserAuth } from "./tauri";
 
@@ -38,9 +37,9 @@ export type UserInfo = {
  * You can use the specialized `tauriStartUserAuth` and `browserStartUserAuth`
  * if needed, but be aware authentication might break if not used properly.
  */
-export function startUserAuth(asyncStore: AsyncStore<UserInfo>) {
+export function startUserAuth() {
   if (window.__TAURI__) {
-    return tauriStartUserAuth(asyncStore);
+    return tauriStartUserAuth();
   } else {
     return browserStartUserAuth();
   }

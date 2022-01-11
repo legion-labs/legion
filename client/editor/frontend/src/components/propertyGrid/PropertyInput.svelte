@@ -29,8 +29,6 @@
   export let pathParts: string[];
 
   function onInput({ value }: Pick<PropertyUpdate, "value">) {
-    console.log(pathParts);
-
     dispatch("input", {
       name: pathParts.filter(Boolean).join("."),
       value,

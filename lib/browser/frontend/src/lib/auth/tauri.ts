@@ -1,19 +1,22 @@
 import { invoke } from "@tauri-apps/api";
 
-import { UserInfo } from ".";
-import { AsyncStore } from "../../stores/asyncStore";
+import userInfoStore, {
+  getUserInfo as _getUserInfo,
+} from "../../stores/userInfo";
 import log from "../log";
 
 /**
  * Start authentication on Tauri.
  */
-export async function startUserAuth(asyncStore: AsyncStore<UserInfo>) {
+export async function startUserAuth() {
   try {
-    const userInfo = await invoke("plugin:browser|authenticate");
+    await userInfoStore.run(async () => {
+      const userInfo = await invoke("plugin:browser|authenticate");
 
-    log.debug("auth", userInfo);
+      log.debug("auth", userInfo);
 
-    asyncStore.data.set(userInfo);
+      return userInfo;
+    });
   } catch {
     // Nothing we can do about this but warn the user
     log.error("Couldn't authenticate the user");
@@ -26,15 +29,12 @@ export async function startUserAuth(asyncStore: AsyncStore<UserInfo>) {
  * If the `forceAuth` option is `true` the unauthenticated users
  * will be redirected to Cognito.
  */
-export async function getUserInfo(
-  asyncStore: AsyncStore<UserInfo>,
-  { forceAuth }: { forceAuth: boolean }
-) {
+export async function getUserInfo({ forceAuth }: { forceAuth: boolean }) {
   try {
-    return await asyncStore.run();
+    return await _getUserInfo();
   } catch {
     if (forceAuth) {
-      startUserAuth(asyncStore);
+      startUserAuth();
     }
 
     return null;
