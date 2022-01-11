@@ -78,13 +78,23 @@ fn main() {
         "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
     );
 
-    app.add_startup_system_to_stage(StartupStage::PostStartup, game_setup);
-    app.add_system(game_logic);
+    app.insert_resource(GameState::default())
+        .add_startup_system_to_stage(StartupStage::PostStartup, game_setup)
+        .add_system(game_logic);
 
     start_runtime(&mut app);
 }
 
-fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>) {
+#[derive(Default)]
+struct GameState {
+    left_paddle_id: Option<u32>,
+    right_paddle_id: Option<u32>,
+    ball_id: Option<u32>,
+    velocity: Vec3,
+    direction: Vec3,
+}
+
+fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMut<'_, GameState>) {
     for mut camera in cameras.iter_mut() {
         let eye = Vec3::new(0.0, 0.0, 7.0);
 
@@ -96,23 +106,68 @@ fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>) {
         camera.speed = 0_f32;
         camera.rotation_speed = 0_f32;
     }
+
+    state.direction.x = rand::random::<f32>() - 0.5_f32;
+    state.direction.y = rand::random::<f32>() - 0.5_f32;
+    state.direction = state.direction.normalize() * 0.1_f32;
 }
 
 fn game_logic(
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut entities: Query<'_, '_, (Entity, &mut Transform)>,
+    mut state: ResMut<'_, GameState>,
 ) {
+    // Ball
+    if state.ball_id.is_none() {
+        // TODO lookup with name
+        state.ball_id = Some(24);
+    }
+    let ball_id = state.ball_id.unwrap();
+
+    // Left paddle
+    if state.left_paddle_id.is_none() {
+        // TODO lookup with name
+        state.left_paddle_id = Some(25);
+    }
+    let left_paddle_id = state.left_paddle_id.unwrap();
+
+    // Right paddle
+    if state.right_paddle_id.is_none() {
+        // TODO lookup with name
+        state.right_paddle_id = Some(26);
+    }
+    let right_paddle_id = state.right_paddle_id.unwrap();
+
     // aggregate mouse movement
     let mut mouse_delta_x = 0_f32;
     for motion_event in mouse_motion_events.iter() {
         mouse_delta_x += motion_event.delta.x;
     }
 
+    // update direction
+
+    //
     for (entity, mut transform) in entities.iter_mut() {
-        if entity.id() == 26 {
+        if entity.id() == left_paddle_id {
+            // Left paddle
             transform.translation.y += mouse_delta_x / 100_f32;
-        } else if entity.id() == 25 {
+        } else if entity.id() == right_paddle_id {
+            // Right paddle
             transform.translation.y -= mouse_delta_x / 100_f32;
+        } else if entity.id() == ball_id {
+            // Ball
+            if transform.translation.x < -3.0 || transform.translation.x > 3.0 {
+                state.direction.x = -state.direction.x;
+            }
+            if transform.translation.y < -2.0 || transform.translation.y > 2.0 {
+                state.direction.y = -state.direction.y;
+            }
+
+            transform.translation.x = transform.translation.x.clamp(-3.0, 3.0);
+            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+
+            state.velocity = state.direction * 5.0_f32 / 30.0_f32;
+            transform.translation += state.velocity;
         }
     }
 }
