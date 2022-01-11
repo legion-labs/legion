@@ -48,6 +48,7 @@
     "typescript": "^4.5.4",
     "vite": "^2.7.10",
     "vite-plugin-ts-proto": "workspace:^0.1.0",
+    "vite-plugin-wasm": "workspace:^0.1.0",
     "vite-tsconfig-paths": "^3.3.17"
   },
   "dependencies": {
@@ -55,6 +56,7 @@
     "@lgn/frontend": "^0.1.0",
     "@lgn/proto-editor": "^0.1.0",
     "@lgn/proto-streaming": "^0.1.0",
+    "@lgn/simple-wasm-logger": "workspace:^0.1.0",
     "@tauri-apps/api": "^1.0.0-beta.8",
     "browser-headers": "^0.4.1",
     "color-convert": "^2.0.1",
