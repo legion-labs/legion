@@ -105,7 +105,7 @@ pub fn build_web_app() -> Result<()> {
         {
             let lock = named_lock::NamedLock::create("pnpm_install").unwrap();
             let _guard = lock.lock().unwrap();
-            run_cmd(&pnpm_path, &["install"], frontend_dir)?;
+            run_cmd(&pnpm_path, &["install", "--unsafe-perm"], frontend_dir)?;
         }
         run_cmd(&pnpm_path, &["build"], frontend_dir)?;
 

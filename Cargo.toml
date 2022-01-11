@@ -11,4 +11,4 @@ members = [
     "build/monorepo",
     "build/workspace-hack",
 ]
-exclude = []
+exclude = ["lib/vite-plugins"]

@@ -4,8 +4,8 @@
     GrpcWebImpl,
     LogEntry,
     PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/codegen/analytics";
-  import { Process } from "@lgn/proto-telemetry/codegen/process";
+  } from "@lgn/proto-telemetry/dist/analytics";
+  import { Process } from "@lgn/proto-telemetry/dist/process";
   import { onMount } from "svelte";
 
   const client = new PerformanceAnalyticsClientImpl(
