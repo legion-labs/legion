@@ -6,7 +6,7 @@ use crate::cargo::{BuildArgs, CargoCommand, SelectedPackageArgs};
 use crate::context::Context;
 use crate::Result;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default)]
 pub struct Args {
     #[clap(flatten)]
     pub(crate) package_args: SelectedPackageArgs,
@@ -14,15 +14,15 @@ pub struct Args {
     pub(crate) build_args: BuildArgs,
     /// Automatically apply lint suggestions. This flag implies `--no-deps`
     #[clap(long)]
-    fix: bool,
+    pub(crate) fix: bool,
     /// Used along `--fix` to allow running fixes on dirty workspace
     #[clap(long)]
-    allow_dirty: bool,
+    pub(crate) allow_dirty: bool,
     /// Used along `--fix` to allow running fixes on dirty workspace
     #[clap(long)]
-    allow_staged: bool,
+    pub(crate) allow_staged: bool,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
 }
 
 #[span_fn]

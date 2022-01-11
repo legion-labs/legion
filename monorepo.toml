@@ -15,7 +15,8 @@ bans = [
     { name = "winapi", version = "*", suggestion = "use `windows` or above" },
     #{ name = "lazy_static", version = "*", suggestion = "use once_cell instead" },
     { name = "log", version = "*", suggestion = "use `lgn-telemetry` instead", exceptions = [
-        "lgn-telemetry",
+        "lgn-tracing",
+        "lgn-telemetry-sink",
     ] },
 ]
 
@@ -99,5 +100,6 @@ globs = [
     "Makefile",
     "legion.toml",
     "package.json",
+    "CREDITS.md",
 ]
 mark-changed = []

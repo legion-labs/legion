@@ -28,12 +28,12 @@ pub fn run(ctx: &Context) -> Result<()> {
     let mut file_not_matched = false;
     for tracked_file in tracked_files {
         if determinator.match_path(tracked_file, |_| ()) == PathMatch::NoMatches {
-            println!("    ---> {}", tracked_file);
+            println!("    ---> unmatched file:  {}", tracked_file);
             file_not_matched = true;
         }
     }
     if file_not_matched {
-        Err(Error::new("Found not macthed files"))
+        Err(Error::new("found not matched files"))
     } else {
         Ok(())
     }

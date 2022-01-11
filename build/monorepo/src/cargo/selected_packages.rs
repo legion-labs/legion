@@ -12,7 +12,7 @@ use crate::context::Context;
 use crate::{Error, Result};
 
 /// Arguments for the Cargo package selector.
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Default, Clone)]
 pub struct SelectedPackageArgs {
     #[clap(long, short, number_of_values = 1)]
     /// Run on the provided packages
@@ -25,10 +25,10 @@ pub struct SelectedPackageArgs {
     pub(crate) exclude: Vec<String>,
     #[clap(long, short)]
     /// Run on packages changed since the merge base of this commit
-    changed_since: Option<String>,
+    pub(crate) changed_since: Option<String>,
     #[clap(long)]
     /// Valid only with `--changed-since <BASE>`
-    direct_only: bool,
+    pub(crate) direct_only: bool,
     #[clap(long)]
     /// Run on all packages in the workspace
     pub(crate) workspace: bool,

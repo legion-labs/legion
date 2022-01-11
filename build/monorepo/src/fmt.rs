@@ -6,27 +6,26 @@ use lgn_tracing::span_fn;
 use crate::{cargo::Cargo, context::Context, Result};
 use std::ffi::OsString;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default)]
 pub struct Args {
     #[clap(long)]
     /// Run in 'check' mode. Exits with 0 if input is
     /// formatted correctly. Exits with 1 and prints a diff if
     /// formatting is required.
-    check: bool,
+    pub(crate) check: bool,
 
     #[clap(long)]
     /// Run check on all packages in the workspace
-    workspace: bool,
+    pub(crate) workspace: bool,
 
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
     /// Pass through args to rustfmt
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
 }
 
 #[span_fn]
 pub fn run(args: Args, ctx: &Context) -> Result<()> {
-    // Hardcode that we want imports merged
-    let mut pass_through_args = vec!["--config".into(), "imports_granularity=crate".into()];
+    let mut pass_through_args = vec![];
 
     if args.check {
         pass_through_args.push("--check".into());

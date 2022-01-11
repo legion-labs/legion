@@ -64,6 +64,7 @@ mod build;
 mod cargo;
 mod changed_since;
 mod check;
+mod ci;
 mod clippy;
 mod config;
 mod context;
@@ -151,31 +152,36 @@ enum Commands {
     /// Run tools installation
     #[clap(name = "lint")]
     Lint(lint::Args),
+    /// Run CI check, defaults to running all checks
+    #[clap(name = "ci")]
+    Ci(ci::Args),
 }
 
-fn main() -> Result<()> {
+fn main() {
     let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default().unwrap();
 
     span_scope!("monorepo::main");
 
     let args = Cli::parse();
-    let ctx = context::Context::new()?;
+    if let Err(err) = context::Context::new().and_then(|ctx| match args.command {
+        Commands::Build(args) => build::run(&args, &ctx),
+        Commands::Bench(args) => bench::run(args, &ctx),
+        Commands::Check(args) => check::run(&args, &ctx),
+        Commands::Clippy(args) => clippy::run(&args, &ctx),
+        Commands::Doc(args) => doc::run(args, &ctx),
+        Commands::Fix(args) => fix::run(args, &ctx),
+        Commands::Fmt(args) => fmt::run(args, &ctx),
+        Commands::Run(args) => run::run(&args, &ctx),
+        Commands::Test(args) => test::run(args, &ctx),
 
-    match args.command {
-        Commands::Build(args) => build::run(&args, &ctx)?,
-        Commands::Bench(args) => bench::run(args, &ctx)?,
-        Commands::Check(args) => check::run(&args, &ctx)?,
-        Commands::Clippy(args) => clippy::run(&args, &ctx)?,
-        Commands::Doc(args) => doc::run(args, &ctx)?,
-        Commands::Fix(args) => fix::run(args, &ctx)?,
-        Commands::Fmt(args) => fmt::run(args, &ctx)?,
-        Commands::Run(args) => run::run(&args, &ctx)?,
-        Commands::Test(args) => test::run(args, &ctx)?,
-
-        Commands::ChangedSince(args) => changed_since::run(&args, &ctx)?,
-        Commands::Hakari => hakari::run(&ctx)?,
-        Commands::Lint(args) => lint::run(&args, &ctx)?,
-        Commands::Tools(args) => tools::run(&args, &ctx)?,
-    };
-    Ok(())
+        Commands::ChangedSince(args) => changed_since::run(&args, &ctx),
+        Commands::Hakari => hakari::run(&ctx),
+        Commands::Lint(args) => lint::run(&args, &ctx),
+        Commands::Tools(args) => tools::run(&args, &ctx),
+        Commands::Ci(args) => ci::run(args, &ctx),
+    }) {
+        err.display();
+        #[allow(clippy::exit)]
+        std::process::exit(err.exit_code().unwrap_or(1));
+    }
 }

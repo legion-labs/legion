@@ -8,7 +8,7 @@ use crate::{
     context::Context,
     Result,
 };
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default)]
 pub struct Args {
     #[clap(flatten)]
     pub(crate) package_args: SelectedPackageArgs,

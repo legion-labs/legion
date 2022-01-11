@@ -16,6 +16,7 @@
         "fmetric",
         "Graphviz",
         "imetric",
+        "mlint",
         "openh264",
         "perfetto",
         "proto",
