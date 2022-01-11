@@ -15,31 +15,31 @@ use std::{
     process::{Command, Stdio},
 };
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default, Clone)]
 pub struct Args {
     #[clap(flatten)]
     pub(crate) package_args: SelectedPackageArgs,
     #[clap(long, short)]
     /// Skip running expensive diem testsuite integration tests
-    unit: bool,
+    pub(crate) unit: bool,
     #[clap(long)]
     /// Only run doctests
-    doc: bool,
+    pub(crate) doc: bool,
     #[clap(flatten)]
     pub(crate) build_args: BuildArgs,
     #[clap(long)]
     /// Do not fast fail the run if tests (or test executables) fail
-    no_fail_fast: bool,
+    pub(crate) no_fail_fast: bool,
     #[clap(long)]
     /// Do not run tests, only compile the test executables
-    no_run: bool,
+    pub(crate) no_run: bool,
     #[clap(long, parse(from_os_str))]
     /// Directory to output HTML coverage report (using grcov)
-    html_cov_dir: Option<PathBuf>,
+    pub(crate) html_cov_dir: Option<PathBuf>,
     #[clap(name = "TESTNAME", parse(from_os_str))]
-    testname: Option<OsString>,
+    pub(crate) testname: Option<OsString>,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
 }
 
 #[span_fn]

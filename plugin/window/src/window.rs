@@ -1,6 +1,5 @@
 use lgn_math::{DVec2, IVec2, Vec2};
 use lgn_tracing::warn;
-use raw_window_handle::RawWindowHandle;
 use uuid::Uuid;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -21,8 +20,6 @@ impl WindowId {
 }
 
 use std::fmt;
-
-use crate::raw_window_handle::RawWindowHandleWrapper;
 
 impl fmt::Display for WindowId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -128,7 +125,6 @@ pub struct Window {
     cursor_visible: bool,
     cursor_locked: bool,
     physical_cursor_position: Option<DVec2>,
-    raw_window_handle: RawWindowHandleWrapper,
     focused: bool,
     mode: WindowMode,
     #[cfg(target_arch = "wasm32")]
@@ -209,7 +205,6 @@ impl Window {
         physical_height: u32,
         scale_factor: f64,
         position: Option<IVec2>,
-        raw_window_handle: RawWindowHandle,
     ) -> Self {
         Self {
             id,
@@ -228,7 +223,6 @@ impl Window {
             cursor_visible: window_descriptor.cursor_visible,
             cursor_locked: window_descriptor.cursor_locked,
             physical_cursor_position: None,
-            raw_window_handle: RawWindowHandleWrapper::new(raw_window_handle),
             focused: true,
             mode: window_descriptor.mode,
             #[cfg(target_arch = "wasm32")]
@@ -534,10 +528,6 @@ impl Window {
     #[inline]
     pub fn is_focused(&self) -> bool {
         self.focused
-    }
-
-    pub fn raw_window_handle(&self) -> RawWindowHandleWrapper {
-        self.raw_window_handle.clone()
     }
 }
 

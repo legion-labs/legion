@@ -1,17 +1,17 @@
 use crate::{
+    db::PipelineLayout,
     generators::{file_writer::FileWriter, product::Product, GeneratorContext},
-    model::PipelineLayout,
     run::CGenVariant,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    for pipeline_layout in model.object_iter::<PipelineLayout>() {
-        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
+    for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
+        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Hlsl),
+            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }
@@ -34,8 +34,8 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.add_line("// DescriptorSets");
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                let ds = ds_ref.get(ctx.model);
+            crate::db::PipelineLayoutContent::DescriptorSet(ds_handle) => {
+                let ds = ds_handle.get(ctx.model);
                 let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ds_path);
                 writer.add_line(format!("// - name: {}", name));
@@ -43,13 +43,13 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
                 writer.add_line(format!("#include \"{}\"", rel_path));
                 writer.new_line();
             }
-            crate::model::PipelineLayoutContent::Pushconstant(_) => (),
+            crate::db::PipelineLayoutContent::Pushconstant(_) => (),
         }
     }
     writer.add_line("// PushConstant".to_string());
     for (name, ty) in &pl.members {
         match ty {
-            crate::model::PipelineLayoutContent::Pushconstant(ty_ref) => {
+            crate::db::PipelineLayoutContent::Pushconstant(ty_ref) => {
                 let ty = ty_ref.get(ctx.model);
                 let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
                 let rel_path = pl_folder.relative(ty_path);
@@ -60,7 +60,7 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
                 writer.add_line(format!("ConstantBuffer<{}> {}; ", ty.name(), name));
                 writer.new_line();
             }
-            crate::model::PipelineLayoutContent::DescriptorSet(_) => (),
+            crate::db::PipelineLayoutContent::DescriptorSet(_) => (),
         }
     }
 

@@ -1,7 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use bytes::Bytes;
-use lgn_app::AppExit;
+use lgn_app::{AppExit, Events};
 use lgn_ecs::prelude::*;
 use lgn_input::{
     keyboard::KeyboardInput,
@@ -10,21 +10,26 @@ use lgn_input::{
 };
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
-    components::{RenderSurface, RenderSurfaceExtents},
+    components::{RenderSurface, RenderSurfaceCreatedForWindow},
     RenderTaskPool, Renderer,
 };
 use lgn_tracing::{error, info, warn};
+use lgn_window::{WindowCreated, WindowResized, Windows};
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,
 };
 
 mod control_stream;
-mod events;
-mod video_stream;
-
 use control_stream::ControlStream;
+
+mod events;
 pub(crate) use events::*;
+
+pub(crate) mod streamer_windows;
+use streamer_windows::StreamerWindows;
+
+mod video_stream;
 use video_stream::VideoStream;
 
 // Streamer provides interaction with the async network components (gRPC &
@@ -96,7 +101,7 @@ pub(crate) fn handle_stream_events(
                 }
             }
             StreamEvent::ConnectionClosed(stream_id, _) => {
-                commands.entity(stream_id.entity).despawn();
+                //commands.entity(stream_id.entity).despawn();
 
                 info!(
                     "Connection was closed for stream {}: despawning entity",
@@ -165,8 +170,6 @@ pub(crate) fn handle_stream_events(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn update_streams(
-    renderer: Res<'_, Renderer>,
-    mut commands: Commands<'_, '_>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
     mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
@@ -174,6 +177,10 @@ pub(crate) fn update_streams(
     mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
     mut input_touch_input: EventWriter<'_, '_, TouchInput>,
     mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
+    mut streamer_windows: ResMut<'_, StreamerWindows>,
+    mut window_list: ResMut<'_, Windows>,
+    mut created_events: ResMut<'_, Events<WindowCreated>>,
+    mut resize_events: ResMut<'_, Events<WindowResized>>,
 ) {
     for event in video_stream_events.iter() {
         match &event.info {
@@ -184,48 +191,26 @@ pub(crate) fn update_streams(
             } => {
                 info!("received initialize command");
 
-                let resolution = Resolution::new(*width, *height);
-
-                let video_data_channel = Arc::clone(&event.video_data_channel);
-
-                let video_stream =
-                    VideoStream::new(&renderer, resolution, video_data_channel).unwrap();
-
-                let mut render_surface = RenderSurface::new(
-                    &renderer,
-                    RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                );
-
-                render_surface.register_presenter(|| video_stream);
-
-                let render_pass = render_surface.test_renderpass();
-
-                commands
-                    .entity(event.stream_id.entity)
-                    .insert(render_surface);
-
-                render_pass.write().set_color(color.0);
-
-                let video_data_channel = Arc::clone(&event.video_data_channel);
-
-                let _ = video_data_channel.send(&Bytes::from(r#"{"type": "initialized"}"#));
+                let _unused = color;
+                window_list.add(streamer_windows.create_window(
+                    event.stream_id,
+                    Resolution::new(*width, *height),
+                    Arc::clone(&event.video_data_channel),
+                    &mut created_events,
+                ));
             }
             VideoStreamEventInfo::Resize { width, height } => {
-                match query.get_mut(event.stream_id.entity) {
-                    Ok(mut render_surface) => {
-                        let resolution = Resolution::new(*width, *height);
+                if let Some(window_id) = streamer_windows.get_window_id(event.stream_id) {
+                    let window = window_list.get_mut(window_id).unwrap();
 
-                        render_surface.resize(
-                            &renderer,
-                            RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                        );
-                    }
-                    Err(query_err) => {
-                        // TODO
-                        // Most likely: "The given entity does not have the requested component"
-                        // i.e. the entity associated with the stream-id does not have a RenderSurface
-                        error!("{}", query_err);
-                    }
+                    window.update_actual_size_from_backend(*width, *height);
+
+                    #[allow(clippy::cast_precision_loss)]
+                    resize_events.send(WindowResized {
+                        id: window_id,
+                        width: *width as f32,
+                        height: *height as f32,
+                    });
                 }
             }
             VideoStreamEventInfo::Speed { speed } => {
@@ -282,6 +267,37 @@ pub(crate) fn on_app_exit(
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub(crate) fn on_render_surface_created_for_window(
+    mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
+    wnd_list: Res<'_, Windows>,
+    streamer_windows: Res<'_, StreamerWindows>,
+    renderer: Res<'_, Renderer>,
+    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+) {
+    for event in event_render_surface_created.iter() {
+        let render_surface = render_surfaces
+            .iter_mut()
+            .find(|x| x.id() == event.render_surface_id);
+        if let Some(mut render_surface) = render_surface {
+            let wnd = wnd_list.get(event.window_id).unwrap();
+
+            let video_data_channel = streamer_windows
+                .get_video_data_channel(event.window_id)
+                .unwrap();
+
+            let video_stream = VideoStream::new(
+                &renderer,
+                Resolution::new(wnd.physical_width(), wnd.physical_height()),
+                video_data_channel.clone(),
+            )
+            .unwrap();
+            render_surface.register_presenter(|| video_stream);
+
+            let _ = video_data_channel.send(&Bytes::from(r#"{"type": "initialized"}"#));
         }
     }
 }

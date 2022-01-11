@@ -5,14 +5,14 @@ use crate::{context::Context, Result};
 mod dependencies;
 mod rules_coverage;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default)]
 pub struct Args {
     /// Determinator rules coverage
     #[clap(long)]
-    rules_coverage: bool,
+    pub(crate) rules_coverage: bool,
     /// Run dependencies lints
     #[clap(long)]
-    dependencies: bool,
+    pub(crate) dependencies: bool,
 }
 
 #[span_fn]

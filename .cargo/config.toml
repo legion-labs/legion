@@ -8,12 +8,17 @@ vcs = "none"
 [alias]
 md = "run --package lgn-monorepo --bin lgn-monorepo --"
 m = "run -q --release --package lgn-monorepo --bin lgn-monorepo --"
+
 # for cases when settings only accept a single word and m clippy, m build wouldn't work
 mclippy = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
 mbuild = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- build"
 mtest = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- test"
 mdoc = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- doc"
 mrun = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- run"
+ci = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- ci"
+
+# command used in vs code, to get errors on the initial build of lgn-monorepo
+vsclippy = "run -q --message-format=json --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
 
 ################################################################################
 

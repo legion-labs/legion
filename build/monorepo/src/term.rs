@@ -2,7 +2,7 @@ use std::{fmt::Display, io::Write};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub(crate) const ACTION_STEP_COLOR: Color = Color::Green;
-pub(crate) const IGNORE_STEP_COLOR: Color = Color::Yellow;
+pub(crate) const SKIP_STEP_COLOR: Color = Color::Yellow;
 
 pub fn print_step(color: Color, action: &str, description: impl Display) {
     if atty::is(atty::Stream::Stdout) {
@@ -47,11 +47,11 @@ macro_rules! action_step {
 
 /// Prints an ignore step, with a yellow action verb followed by the subject.
 #[macro_export]
-macro_rules! ignore_step {
+macro_rules! skip_step {
     ($action:expr, $description:expr $(,)?) => {
-        $crate::term::print_step($crate::term::IGNORE_STEP_COLOR, $action, $description)
+        $crate::term::print_step($crate::term::SKIP_STEP_COLOR, $action, $description)
     };
     ($action:expr, $fmt:expr, $($arg:tt)*) => {
-        ignore_step!($action, format!($fmt, $($arg)*))
+        skip_step!($action, format!($fmt, $($arg)*))
     };
 }

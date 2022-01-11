@@ -45,16 +45,16 @@ impl Product {
         let mut output = std::fs::File::create(&final_path)?;
 
         // write file footer
-        match self.variant {
-            CGenVariant::Rust | CGenVariant::Hlsl => {
-                writeln!(output, "// This is generated file. Do not edit manually")?;
-                writeln!(output)?;
-            }
-            CGenVariant::Blob => (),
-        };
+        writeln!(output, "// This is generated file. Do not edit manually")?;
+        writeln!(output)?;
 
         // write file content
         output.write_all(&self.content)?;
+        output.flush()?;
+
+        std::process::Command::new("rustfmt")
+            .args(&[final_path])
+            .status()?;
 
         Ok(())
     }

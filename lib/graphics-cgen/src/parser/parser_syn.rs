@@ -12,7 +12,7 @@ use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
 use super::ParsingResult;
 use crate::{
     builder::{DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder},
-    model::{CGenType, Model},
+    db::{self, CGenType, Model},
 };
 
 pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {
@@ -21,7 +21,7 @@ pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {
     proc_macro2::fallback::force();
 
     let mut input_dependencies = Vec::new();
-    let mut model = Model::new();
+    let mut model = db::create();
 
     process_syn_model(&mut model, &mut input_dependencies, file_path, true)?;
 
@@ -292,8 +292,6 @@ impl Property {
             .as_ref()
             .ok_or(anyhow!("Invalid field definition"))?;
         let field_name = field_name.to_string();
-
-        trace!("Parsing field {}", field_name);
 
         //
         // Extract property type

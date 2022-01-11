@@ -8,8 +8,8 @@ use std::{
 use itertools::Itertools;
 
 use crate::{
-    action_step, hash::HashSource, ignore_step, metadata::Metadata, sources::Sources, Context,
-    Error, Result,
+    action_step, hash::HashSource, metadata::Metadata, skip_step, sources::Sources, Context, Error,
+    Result,
 };
 
 /// A package in the workspace.
@@ -111,7 +111,7 @@ impl<'g> Package<'g> {
 
     pub fn publish_dist_targets(&self) -> Result<()> {
         if !self.tag_matches()? {
-            ignore_step!(
+            skip_step!(
                 "Skipping",
                 "publication as current hash does not match the registered one for this version"
             );
@@ -187,7 +187,7 @@ impl<'g> Package<'g> {
 
         if let Some(current_hash) = self.get_tag(version) {
             if current_hash == &hash {
-                ignore_step!(
+                skip_step!(
                     "Skipping",
                     "tagging {} as a tag with an identical hash `{}` exists already",
                     self.id(),

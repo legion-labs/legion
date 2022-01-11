@@ -15,6 +15,7 @@ pub struct Error {
     #[source]
     source: Option<anyhow::Error>,
     output: Option<String>,
+    exit_code: Option<i32>,
 }
 
 impl Error {
@@ -24,6 +25,7 @@ impl Error {
             explanation: None,
             source: None,
             output: None,
+            exit_code: None,
         }
     }
 
@@ -49,6 +51,22 @@ impl Error {
         self
     }
 
+    pub fn with_exit_code(mut self, exit_code: Option<i32>) -> Self {
+        self.exit_code = exit_code;
+
+        self
+    }
+
+    pub fn with_context(mut self, description: impl Into<String>) -> Self {
+        if self.description.is_empty() {
+            self.description = description.into();
+
+            self
+        } else {
+            Self::new(description).with_source(self)
+        }
+    }
+
     pub fn description(&self) -> &str {
         &self.description
     }
@@ -65,13 +83,68 @@ impl Error {
         self.output.as_deref()
     }
 
-    pub fn with_context(mut self, description: impl Into<String>) -> Self {
-        if self.description.is_empty() {
-            self.description = description.into();
+    pub fn exit_code(&self) -> Option<i32> {
+        self.exit_code
+    }
 
-            self
+    pub fn display(&self) {
+        if atty::is(atty::Stream::Stdout) {
+            let mut stderr = StandardStream::stderr(ColorChoice::Always);
+            stderr
+                .set_color(
+                    ColorSpec::new()
+                        .set_fg(Some(Color::Red))
+                        .set_intense(true)
+                        .set_bold(true),
+                )
+                .unwrap();
+            write!(&mut stderr, "error").unwrap();
+            stderr.reset().unwrap();
+            writeln!(&mut stderr, ": {}", self.description()).unwrap();
+            stderr.reset().unwrap();
+
+            if let Some(source) = self.source() {
+                stderr
+                    .set_color(
+                        ColorSpec::new()
+                            .set_fg(Some(Color::White))
+                            .set_intense(true)
+                            .set_bold(true),
+                    )
+                    .unwrap();
+                write!(&mut stderr, "Caused by").unwrap();
+                stderr.reset().unwrap();
+                write!(&mut stderr, ": {}", source).unwrap();
+            }
+
+            if let Some(explanation) = self.explanation() {
+                stderr
+                    .set_color(
+                        ColorSpec::new()
+                            .set_fg(Some(Color::Yellow))
+                            .set_bold(true)
+                            .set_intense(true),
+                    )
+                    .unwrap();
+                write!(&mut stderr, "\n{}", explanation).unwrap();
+                stderr.reset().unwrap();
+            }
+
+            if let Some(output) = self.output() {
+                stderr
+                    .set_color(
+                        ColorSpec::new()
+                            .set_fg(Some(Color::Blue))
+                            .set_bold(true)
+                            .set_intense(true),
+                    )
+                    .unwrap();
+                writeln!(&mut stderr, "\nOutput follows:").unwrap();
+                stderr.reset().unwrap();
+                write!(&mut stderr, "{}", output).unwrap();
+            }
         } else {
-            Self::new(description).with_source(self)
+            eprintln!("{}", self);
         }
     }
 }
@@ -117,50 +190,7 @@ impl Display for Error {
 
 impl Debug for Error {
     fn fmt(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut stderr = StandardStream::stderr(ColorChoice::Always);
-        writeln!(&mut stderr, "{}", self.description()).unwrap();
-
-        if let Some(source) = self.source() {
-            stderr
-                .set_color(
-                    ColorSpec::new()
-                        .set_fg(Some(Color::White))
-                        .set_intense(true)
-                        .set_bold(true),
-                )
-                .unwrap();
-            write!(&mut stderr, "Caused by").unwrap();
-            stderr.reset().unwrap();
-            write!(&mut stderr, ": {}", source).unwrap();
-        }
-
-        if let Some(explanation) = self.explanation() {
-            stderr
-                .set_color(
-                    ColorSpec::new()
-                        .set_fg(Some(Color::Yellow))
-                        .set_bold(true)
-                        .set_intense(true),
-                )
-                .unwrap();
-            write!(&mut stderr, "\n{}", explanation).unwrap();
-            stderr.reset().unwrap();
-        }
-
-        if let Some(output) = self.output() {
-            stderr
-                .set_color(
-                    ColorSpec::new()
-                        .set_fg(Some(Color::Blue))
-                        .set_bold(true)
-                        .set_intense(true),
-                )
-                .unwrap();
-            writeln!(&mut stderr, "\nOutput follows:").unwrap();
-            stderr.reset().unwrap();
-            write!(&mut stderr, "{}", output).unwrap();
-        }
-
+        self.display();
         Ok(())
     }
 }

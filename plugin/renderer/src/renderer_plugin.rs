@@ -1,18 +1,20 @@
 #![allow(unsafe_code)]
 use crate::{
     components::{
-        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent, Spotlight,
+        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent,
+        RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces, Spotlight,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::{DefaultMeshId, DefaultMeshes},
 };
-use lgn_app::{App, CoreStage, Plugin};
+use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_transform::components::Transform;
+use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
@@ -28,15 +30,13 @@ use crate::{
 
 #[derive(Default)]
 pub struct RendererPlugin {
-    has_window: bool,
     enable_egui: bool,
     runs_dynamic_systems: bool,
 }
 
 impl RendererPlugin {
-    pub fn new(has_window: bool, enable_egui: bool, runs_dynamic_systems: bool) -> Self {
+    pub fn new(enable_egui: bool, runs_dynamic_systems: bool) -> Self {
         Self {
-            has_window,
             enable_egui,
             runs_dynamic_systems,
         }
@@ -48,12 +48,13 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
 
-        app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
-        app.add_plugin(PickingPlugin::new(self.has_window));
+        app.add_plugin(EguiPlugin::new(self.enable_egui));
+        app.add_plugin(PickingPlugin {});
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_manipulation_manager);
 
+        app.insert_resource(RenderSurfaces::new());
         app.insert_resource(default_meshes);
         app.insert_resource(renderer);
         app.init_resource::<DebugDisplay>();
@@ -71,6 +72,9 @@ impl Plugin for RendererPlugin {
         app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
         app.add_system(update_lights.before(RendererSystemLabel::FrameUpdate));
         app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
+        app.add_system(on_window_created.exclusive_system());
+        app.add_system(on_window_resized.exclusive_system());
+        app.add_system(on_window_close_requested.exclusive_system());
 
         app.add_system_set(
             SystemSet::new()
@@ -83,7 +87,86 @@ impl Plugin for RendererPlugin {
             CoreStage::PostUpdate,
             render_post_update, // .label(RendererSystemLabel::FrameDone),
         );
+
+        app.add_event::<RenderSurfaceCreatedForWindow>();
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn on_window_created(
+    mut commands: Commands<'_, '_>,
+    mut event_window_created: EventReader<'_, '_, WindowCreated>,
+    window_list: Res<'_, Windows>,
+    renderer: Res<'_, Renderer>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
+    mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
+) {
+    for ev in event_window_created.iter() {
+        let wnd = window_list.get(ev.id).unwrap();
+        let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
+        let render_surface = RenderSurface::new(&renderer, extents);
+
+        render_surfaces.insert(ev.id, render_surface.id());
+
+        event_render_surface_created.send(RenderSurfaceCreatedForWindow {
+            window_id: ev.id,
+            render_surface_id: render_surface.id(),
+        });
+
+        commands.spawn().insert(render_surface);
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn on_window_resized(
+    mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
+    wnd_list: Res<'_, Windows>,
+    renderer: Res<'_, Renderer>,
+    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    render_surfaces: Res<'_, RenderSurfaces>,
+) {
+    for ev in ev_wnd_resized.iter() {
+        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
+        if let Some(render_surface_id) = render_surface_id {
+            let render_surface = q_render_surfaces
+                .iter_mut()
+                .find(|x| x.id() == *render_surface_id);
+            if let Some(mut render_surface) = render_surface {
+                let wnd = wnd_list.get(ev.id).unwrap();
+                render_surface.resize(
+                    &renderer,
+                    RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                );
+            }
+        }
+    }
+
+    drop(wnd_list);
+    drop(renderer);
+    drop(render_surfaces);
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn on_window_close_requested(
+    mut commands: Commands<'_, '_>,
+    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
+    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
+) {
+    for ev in ev_wnd_destroyed.iter() {
+        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
+        if let Some(render_surface_id) = render_surface_id {
+            let query_result = query_render_surface
+                .iter()
+                .find(|x| x.1.id() == *render_surface_id);
+            if let Some(query_result) = query_result {
+                commands.entity(query_result.0).despawn();
+            }
+        }
+        render_surfaces.remove(ev.id);
+    }
+
+    drop(query_render_surface);
 }
 
 fn init_manipulation_manager(

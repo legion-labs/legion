@@ -1,4 +1,23 @@
-use lgn_utils::memory::{read_any, write_any};
+#[allow(unsafe_code)]
+#[inline]
+pub fn write_any<T>(buffer: &mut Vec<u8>, value: &T) {
+    let ptr = std::ptr::addr_of!(*value).cast::<u8>();
+    let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<T>());
+    unsafe {
+        buffer.extend_from_slice(&*slice);
+    }
+}
+
+#[allow(unsafe_code)]
+/// Helper function to read a u* pointer to a value of type T.
+///
+/// # Safety
+/// ptr must be valid it's size and it's memory size must be the size
+/// of T or higher.
+#[inline]
+pub unsafe fn read_any<T>(ptr: *const u8) -> T {
+    std::ptr::read_unaligned(ptr.cast::<T>())
+}
 
 // InProcSerialize is used by the heterogeneous queue to write objects in its
 // buffer serialized objects can have references with static lifetimes
@@ -23,7 +42,11 @@ pub trait InProcSerialize {
 
     // read_value allows to read objects from the same process they were stored in
     // i.e. iterating in the heterogenous queue
-    fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
+    /// # Safety
+    /// This is called from the serializer context that that uses `value_size`
+    /// call to make sure that the proper size is used
+    #[allow(unsafe_code)]
+    unsafe fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
     where
         Self: Sized,
     {

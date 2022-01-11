@@ -1,7 +1,7 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{cargo::Cargo, config::CargoInstallation, context::Context, ignore_step};
+use crate::{action_step, cargo::Cargo, config::CargoInstallation, context::Context, skip_step};
 use lgn_tracing::{error, info, span_fn};
 use std::{collections::HashMap, process::Command};
 
@@ -22,7 +22,7 @@ impl Installer {
                 install_cargo_component_if_needed(ctx, name, cargo_installation)
             }
             None => {
-                ignore_step!("Installer", "No installation for {}", name);
+                skip_step!("Installer", "No installation for {}", name);
                 false
             }
         }
@@ -35,7 +35,7 @@ impl Installer {
                 check_installed_cargo_component(name, &cargo_installation.version)
             }
             None => {
-                ignore_step!("Installer", "No installation for {}", name);
+                skip_step!("Installer", "No installation for {}", name);
                 false
             }
         }
@@ -66,7 +66,7 @@ fn install_cargo_component_if_needed(
     installation: &CargoInstallation,
 ) -> bool {
     if !check_installed_cargo_component(name, &installation.version) {
-        info!("Installing {} {}", name, installation.version);
+        action_step!("-- CI --", "Installing {} {}", name, installation.version);
         //prevent recursive install attempts of sccache.
         let mut cmd = Cargo::new(ctx, "install", true);
         cmd.arg("--force");
@@ -98,6 +98,7 @@ fn install_cargo_component_if_needed(
         }
         result.is_ok()
     } else {
+        skip_step!("Installer", "Already installed {}", name);
         true
     }
 }

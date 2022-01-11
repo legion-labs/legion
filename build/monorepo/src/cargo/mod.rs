@@ -8,7 +8,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::Instant;
 
 use indexmap::IndexMap;
-use lgn_tracing::{info, span_fn, warn};
+use lgn_tracing::{error, info, span_fn, warn};
 
 use crate::context::Context;
 use crate::{Error, Result};
@@ -167,7 +167,7 @@ impl Cargo {
 
     pub fn run(&mut self) -> Result<()> {
         self.inner.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-        self.do_run(true).map(|_| ())
+        self.do_run(cfg!(debug_assertions)).map(|_| ())
     }
 
     /// Runs this command, capturing the standard output into a `Vec<u8>`.
@@ -175,7 +175,7 @@ impl Cargo {
     #[allow(dead_code)]
     pub fn run_with_output(&mut self) -> Result<Vec<u8>> {
         self.inner.stderr(Stdio::inherit());
-        self.do_run(true).map(|o| o.stdout)
+        self.do_run(cfg!(debug_assertions)).map(|o| o.stdout)
     }
 
     /// Internal run command, where the magic happens.
@@ -224,7 +224,7 @@ impl Cargo {
                     &self.inner
                 );
             } else {
-                warn!(
+                error!(
                     "Failed in {}ms: {:?}",
                     now.elapsed().as_millis(),
                     &self.inner
@@ -232,7 +232,9 @@ impl Cargo {
             }
         }
         if !output.status.success() {
-            return Err(Error::new("failed to run cargo command"));
+            return Err(
+                Error::new("failed to run cargo command").with_exit_code(output.status.code())
+            );
         }
         Ok(output)
     }

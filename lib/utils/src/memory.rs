@@ -35,7 +35,3 @@ pub fn write_any<T>(buffer: &mut Vec<u8>, value: &T) {
         buffer.extend_from_slice(&*slice);
     }
 }
-#[allow(unsafe_code)]
-pub fn read_any<T>(ptr: *const u8) -> T {
-    unsafe { std::ptr::read_unaligned(ptr.cast::<T>()) }
-}

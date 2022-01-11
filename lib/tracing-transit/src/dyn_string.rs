@@ -15,9 +15,9 @@ impl InProcSerialize for DynString {
     }
 
     #[allow(unsafe_code)]
-    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
+    unsafe fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
         let buffer_size = value_size.unwrap();
         let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
-        unsafe { Self(String::from_utf8((*slice).to_vec()).unwrap()) }
+        Self(String::from_utf8((*slice).to_vec()).unwrap())
     }
 }

@@ -58,10 +58,7 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::missing_errors_doc)]
 
-#[path = "../codegen/cgen/rust/mod.rs"]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[rustfmt::skip]
+#[path = "../codegen/rust/mod.rs"]
 mod cgen;
 #[allow(unused_imports)]
 use cgen::*;

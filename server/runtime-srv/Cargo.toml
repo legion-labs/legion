@@ -13,6 +13,7 @@ lgn-async = { path = "../../plugin/async", version = "0.1.0" }
 lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
 lgn-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
 lgn-input = { path = "../../plugin/input" }
 lgn-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
@@ -24,6 +25,11 @@ lgn-config = { path = "../../lib/config", version = "0.1.0" }
 lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
+
+generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+    "runtime",
+] }
+sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }
 
 # other
 clap = { version = "3.0", features = ["derive"] }

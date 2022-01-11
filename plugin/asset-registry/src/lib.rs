@@ -84,59 +84,66 @@ pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut App) {
-        if let Some(mut config) = app.world.get_resource_mut::<AssetRegistrySettings>() {
-            let content_store_addr = ContentStoreAddr::from(config.content_store_addr.clone());
-            if let Some(content_store) = HddContentStore::open(content_store_addr) {
-                let manifest = Self::read_or_default(&config.game_manifest);
-
-                if config.assets_to_load.is_empty() {
-                    config.assets_to_load = manifest.resources();
-                }
-
-                let mut registry_options = AssetRegistryOptions::new();
-
-                if let Some(databuild_config) = &config.databuild_config {
-                    registry_options = registry_options.add_device_build(
-                        Box::new(content_store),
-                        ContentStoreAddr::from(config.content_store_addr.clone()),
-                        manifest.clone(),
-                        &databuild_config.build_bin,
-                        &databuild_config.buildindex,
-                        false,
-                    );
-                } else {
-                    registry_options =
-                        registry_options.add_device_cas(Box::new(content_store), manifest.clone());
-                }
-
-                app.insert_non_send_resource(registry_options)
-                    .insert_resource(AssetLoadingStates::default())
-                    .insert_resource(AssetHandles::default())
-                    .insert_resource(AssetToEntityMap::default())
-                    .insert_resource(manifest)
-                    .add_startup_system_to_stage(
-                        StartupStage::PostStartup,
-                        Self::post_setup
-                            .exclusive_system()
-                            .label(AssetRegistryScheduling::AssetRegistryCreated),
-                    )
-                    .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
-                    .add_system(Self::update_registry)
-                    .add_system(Self::update_assets)
-                    .add_system(Self::handle_load_events);
-            } else {
-                eprintln!(
-                    "Unable to open content storage in {:?}",
-                    config.content_store_addr
-                );
-            }
-        } else {
-            eprintln!("Missing AssetRegistrySettings resource, must add to app");
-        }
+        app.insert_resource(AssetLoadingStates::default())
+            .insert_resource(AssetHandles::default())
+            .insert_resource(AssetToEntityMap::default())
+            .add_startup_system_to_stage(
+                StartupStage::PreStartup,
+                Self::pre_setup.exclusive_system(),
+            )
+            .add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                Self::post_setup
+                    .exclusive_system()
+                    .label(AssetRegistryScheduling::AssetRegistryCreated),
+            )
+            .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
+            .add_system(Self::update_registry)
+            .add_system(Self::update_assets)
+            .add_system(Self::handle_load_events);
     }
 }
 
 impl AssetRegistryPlugin {
+    fn pre_setup(world: &mut World) {
+        let mut config = world
+            .get_resource_mut::<AssetRegistrySettings>()
+            .expect("Missing AssetRegistrySettings resource, must add to app");
+
+        let content_store_addr = ContentStoreAddr::from(config.content_store_addr.clone());
+        let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {
+            panic!(
+                "Unable to open content storage in {:?}",
+                config.content_store_addr
+            )
+        });
+
+        let manifest = Self::read_or_default(&config.game_manifest);
+
+        if config.assets_to_load.is_empty() {
+            config.assets_to_load = manifest.resources();
+        }
+
+        let mut registry_options = AssetRegistryOptions::new();
+
+        if let Some(databuild_config) = &config.databuild_config {
+            registry_options = registry_options.add_device_build(
+                Box::new(content_store),
+                ContentStoreAddr::from(config.content_store_addr.clone()),
+                manifest.clone(),
+                &databuild_config.build_bin,
+                &databuild_config.buildindex,
+                false,
+            );
+        } else {
+            registry_options =
+                registry_options.add_device_cas(Box::new(content_store), manifest.clone());
+        }
+
+        world.insert_resource(manifest);
+        world.insert_non_send(registry_options);
+    }
+
     fn post_setup(world: &mut World) {
         let registry_options = world.remove_non_send::<AssetRegistryOptions>().unwrap();
         let registry = registry_options.create();

@@ -11,8 +11,14 @@ pub enum Coloring {
     Never,
 }
 
+impl Default for Coloring {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 /// Arguments for controlling cargo build and other similar commands (like check).
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Default, Clone)]
 pub struct BuildArgs {
     #[clap(long, short)]
     /// No output printed to stdout

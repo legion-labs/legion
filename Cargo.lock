@@ -2300,6 +2300,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-transform",
+ "lgn-window",
  "sample-data-offline",
  "sample-data-runtime",
  "serde_json",
@@ -2876,7 +2877,6 @@ dependencies = [
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
- "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4467,12 +4467,15 @@ dependencies = [
  "anyhow",
  "clap 3.0.5",
  "fxhash",
+ "hassle-rs",
  "heck 0.4.0",
  "lgn-graphics-api",
  "lgn-telemetry-sink",
  "lgn-tracing",
+ "petgraph",
  "proc-macro2",
  "relative-path",
+ "spirv-reflect",
  "strum 0.23.0",
  "syn",
 ]
@@ -4483,6 +4486,7 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "glam",
+ "half",
  "lgn-graphics-api",
  "serde",
 ]
@@ -4592,7 +4596,6 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "chrono",
  "clap 3.0.5",
  "determinator",
  "guppy",
@@ -4735,15 +4738,11 @@ dependencies = [
  "epaint",
  "lgn-app",
  "lgn-build-utils",
- "lgn-data-offline",
- "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
  "lgn-input",
  "lgn-math",
  "lgn-pso-compiler",
@@ -4755,6 +4754,7 @@ dependencies = [
  "parking_lot 0.11.2",
  "paste",
  "smallvec",
+ "static_assertions",
  "uuid",
 ]
 
@@ -4865,6 +4865,7 @@ dependencies = [
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
+ "lgn-window",
  "serde",
  "serde_json",
  "tokio",
@@ -4970,7 +4971,6 @@ dependencies = [
  "lazy_static",
  "lgn-tracing-proc-macros",
  "lgn-tracing-transit",
- "lgn-utils",
  "log",
  "memoffset 0.6.5",
  "raw-cpuid",
@@ -4994,7 +4994,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lgn-derive-tracing-transit",
- "lgn-utils",
  "memoffset 0.6.5",
  "serde",
 ]
@@ -7151,6 +7150,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap 3.0.5",
+ "generic-data",
  "instant",
  "lgn-app",
  "lgn-asset-registry",
@@ -7159,6 +7159,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-graphics-runtime",
  "lgn-grpc",
  "lgn-input",
  "lgn-presenter-window",
@@ -7169,6 +7170,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
+ "sample-data-runtime",
 ]
 
 [[package]]
@@ -7814,7 +7816,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "futures",
  "http",
  "hyper",
  "lazy_static",
