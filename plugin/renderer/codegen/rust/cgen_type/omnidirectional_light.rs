@@ -6,35 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-/*
-StructLayout {
-    size: 28,
-    padded_size: 28,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 12,
-            padded_size: 12,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 12,
-            absolute_offset: 0,
-            size: 4,
-            padded_size: 4,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 16,
-            absolute_offset: 0,
-            size: 12,
-            padded_size: 12,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "OmnidirectionalLight",
     id: 15,
@@ -58,6 +29,11 @@ impl OmnidirectionalLight {
         &TYPE_DEF
     }
 
+    //
+    // member : pos
+    // offset : 0
+    // size : 12
+    //
     pub fn set_pos(&mut self, value: Float3) {
         self.set(0, value);
     }
@@ -66,6 +42,11 @@ impl OmnidirectionalLight {
         self.get(0)
     }
 
+    //
+    // member : radiance
+    // offset : 12
+    // size : 4
+    //
     pub fn set_radiance(&mut self, value: Float1) {
         self.set(12, value);
     }
@@ -74,6 +55,11 @@ impl OmnidirectionalLight {
         self.get(12)
     }
 
+    //
+    // member : color
+    // offset : 16
+    // size : 12
+    //
     pub fn set_color(&mut self, value: Float3) {
         self.set(16, value);
     }

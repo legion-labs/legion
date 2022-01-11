@@ -6,21 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-/*
-StructLayout {
-    size: 16,
-    padded_size: 16,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 16,
-            padded_size: 16,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "PushConstantData",
     id: 22,
@@ -35,6 +20,7 @@ pub struct PushConstantData {
     data: [u8; 16],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl PushConstantData {
     pub const fn id() -> u32 {
         22
@@ -44,6 +30,11 @@ impl PushConstantData {
         &TYPE_DEF
     }
 
+    //
+    // member : color
+    // offset : 0
+    // size : 16
+    //
     pub fn set_color(&mut self, value: Float4) {
         self.set(0, value);
     }

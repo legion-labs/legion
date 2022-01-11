@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "ViewData",
-    id: 21,
-    size: 128,
+    name: "LayoutD",
+    id: 13,
+    size: 16,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<ViewData>(), 128);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutD>(), 16);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct ViewData {
-    data: [u8; 128],
+pub struct LayoutD {
+    data: [u8; 16],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl ViewData {
+impl LayoutD {
     pub const fn id() -> u32 {
-        21
+        13
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,29 +31,16 @@ impl ViewData {
     }
 
     //
-    // member : view
+    // member : a
     // offset : 0
-    // size : 64
+    // size : 16
     //
-    pub fn set_view(&mut self, value: Float4x4) {
+    pub fn set_a(&mut self, value: Float4) {
         self.set(0, value);
     }
 
-    pub fn view(&self) -> Float4x4 {
+    pub fn a(&self) -> Float4 {
         self.get(0)
-    }
-
-    //
-    // member : projection
-    // offset : 64
-    // size : 64
-    //
-    pub fn set_projection(&mut self, value: Float4x4) {
-        self.set(64, value);
-    }
-
-    pub fn projection(&self) -> Float4x4 {
-        self.get(64)
     }
 
     #[allow(unsafe_code)]
@@ -77,11 +64,10 @@ impl ViewData {
     }
 }
 
-impl Default for ViewData {
+impl Default for LayoutD {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 128] };
-        ret.set_view(Float4x4::default());
-        ret.set_projection(Float4x4::default());
+        let mut ret = Self { data: [0; 16] };
+        ret.set_a(Float4::default());
         ret
     }
 }

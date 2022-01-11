@@ -6,21 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use super::layout_sb::LayoutSB;
 
-/*
-StructLayout {
-    size: 58,
-    padded_size: 58,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 58,
-            padded_size: 58,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "LayoutSB2",
     id: 20,
@@ -35,6 +20,7 @@ pub struct LayoutSB2 {
     data: [u8; 58],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl LayoutSB2 {
     pub const fn id() -> u32 {
         20
@@ -44,6 +30,11 @@ impl LayoutSB2 {
         &TYPE_DEF
     }
 
+    //
+    // member : a
+    // offset : 0
+    // size : 58
+    //
     pub fn set_a(&mut self, value: LayoutSB) {
         self.set(0, value);
     }

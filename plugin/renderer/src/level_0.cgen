@@ -1,5 +1,5 @@
 mod internal;
 
 struct LayoutC {
-    a: Float1,
+    a: Half1,
 }

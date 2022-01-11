@@ -98,13 +98,6 @@ fn generate_rust_struct(
         writer.new_line();
     }
 
-    // write layout (debug purpose)
-    {
-        writer.add_line("/*");
-        writer.add_line(format!("{:#?}", ty_layout));
-        writer.add_line("*/");
-    }
-
     // write type def
     {
         writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
@@ -134,6 +127,7 @@ fn generate_rust_struct(
 
     // impl
     {
+        writer.add_line("#[allow(clippy::trivially_copy_pass_by_ref)]");
         writer.add_line(format!("impl {} {{", struct_ty.name));
         writer.indent();
 
@@ -152,6 +146,12 @@ fn generate_rust_struct(
             let layout_m = &ty_layout.members[i];
             let ty_m = struct_m.ty_handle.get(ctx.model);
             let ty_string_m = get_rust_typestring(ty_m);
+
+            writer.add_line("//");
+            writer.add_line(format!("// member : {}", struct_m.name));
+            writer.add_line(format!("// offset : {}", layout_m.offset));
+            writer.add_line(format!("// size : {}", layout_m.padded_size));
+            writer.add_line("//");
 
             if let Some(array_len) = struct_m.array_len {
                 // set all elements
