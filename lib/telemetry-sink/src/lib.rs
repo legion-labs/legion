@@ -58,7 +58,8 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::sync::{Arc, Mutex, Weak};
+use std::{collections::HashMap, str::FromStr};
 
 mod grpc_event_sink;
 mod immediate_event_sink;
@@ -115,10 +116,38 @@ impl Default for Config {
     }
 }
 
+fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TelemetrySystemGuard>> {
+    lazy_static::lazy_static! {
+        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TelemetrySystemGuard>> = Mutex::new(Weak::new());
+    }
+    let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
+    let weak = &mut *weak_guard;
+    if let Some(arc) = weak.upgrade() {
+        return Ok(arc);
+    }
+    let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
+        Ok(url) => Arc::new(GRPCEventSink::new(&url)),
+        Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
+            config.level_filters,
+            std::env::var("LGN_TRACE_FILE").ok(),
+        )?),
+    };
+
+    let arc = Arc::<TelemetrySystemGuard>::new(TelemetrySystemGuard::new(
+        config.logs_buffer_size,
+        config.metrics_buffer_size,
+        config.threads_buffer_size,
+        sink,
+    )?);
+    set_max_level(config.max_level);
+    *weak = Arc::<TelemetrySystemGuard>::downgrade(&arc);
+    Ok(arc)
+}
+
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
     _thread_guard: TelemetryThreadGuard,
-    _guard: TelemetrySystemGuard,
+    _guard: Arc<TelemetrySystemGuard>,
 }
 
 impl TelemetryGuard {
@@ -127,23 +156,9 @@ impl TelemetryGuard {
     }
 
     pub fn new(config: Config) -> anyhow::Result<Self> {
-        set_max_level(config.max_level);
-        let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
-            Ok(url) => Arc::new(GRPCEventSink::new(&url)),
-            Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
-                config.level_filters,
-                std::env::var("LGN_TRACE_FILE").ok(),
-            )?),
-        };
-
         // order here is important
         Ok(Self {
-            _guard: TelemetrySystemGuard::new(
-                config.logs_buffer_size,
-                config.metrics_buffer_size,
-                config.threads_buffer_size,
-                sink,
-            )?,
+            _guard: alloc_telemetry_system(config)?,
             _thread_guard: TelemetryThreadGuard::new(),
         })
     }
