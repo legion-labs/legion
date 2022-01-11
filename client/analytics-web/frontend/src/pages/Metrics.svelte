@@ -4,7 +4,7 @@
     MetricDataPoint,
     MetricDesc,
     PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/codegen/analytics";
+  } from "@lgn/proto-telemetry/dist/analytics";
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";

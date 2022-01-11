@@ -13,12 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "./stream.proto",
         ];
 
-        lgn_build_utils_proto::build_protos(
-            &context,
-            proto_filepaths,
-            &["."],
-            lgn_build_utils::Language::RUST | lgn_build_utils::Language::TYPESCRIPT,
-        )?;
+        lgn_build_utils_proto::build_protos(&context, proto_filepaths, &["."])?;
 
         lgn_build_utils::post_codegen(&context)?;
     }

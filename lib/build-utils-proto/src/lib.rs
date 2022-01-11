@@ -95,7 +95,7 @@
 
 use std::path::{Path, PathBuf};
 
-use lgn_build_utils::{run_cmd, Context, Error, Language, Result};
+use lgn_build_utils::{Context, Result};
 
 /// Build proto files
 ///
@@ -105,7 +105,6 @@ pub fn build_protos(
     context: &Context,
     protos: &[impl AsRef<Path>],
     includes: &[impl AsRef<Path>],
-    lang: Language,
 ) -> Result<()> {
     let out_dir = PathBuf::from(&context.codegen_out_dir());
 
@@ -115,57 +114,9 @@ pub fn build_protos(
         "** linguist-generated=true\n",
     )?;
 
-    if lang.contains(Language::RUST) {
-        tonic_build::configure()
-            .out_dir(&out_dir)
-            .compile(protos, includes)?;
-    }
-    if lang.contains(Language::TYPESCRIPT) {
-        if Path::new("./package.json").exists() {
-            {
-                let lock = named_lock::NamedLock::create("pnpm_install").unwrap();
-                let _guard = lock.lock().unwrap();
-                run_cmd("pnpm", &["install"], ".")?;
-            }
-            let mut proto_plugin = PathBuf::from("./node_modules/.bin/protoc-gen-ts_proto");
-            if cfg!(windows) {
-                proto_plugin = PathBuf::from(".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd");
-            }
-            if !proto_plugin.exists() {
-                return Err(Error::Build(
-                    "missing `ts-proto` in your package dependency".to_string(),
-                ));
-            }
-            let plugin_arg = format!("--plugin=protoc-gen-ts_proto={}", proto_plugin.display());
-            let proto_out_arg = format!("--ts_proto_out={}", out_dir.display());
-            let mut args = vec![
-                plugin_arg.as_str(),
-                proto_out_arg.as_str(),
-                "--ts_proto_opt=esModuleInterop=true",
-                "--ts_proto_opt=outputClientImpl=grpc-web",
-                "--ts_proto_opt=env=browser",
-                "--ts_proto_opt=lowerCaseServiceMethods=true",
-            ];
-            let includes: Vec<_> = includes
-                .iter()
-                .map(|path| format!("--proto_path={}", path.as_ref().to_str().unwrap()))
-                .collect();
-            let mut include_args: Vec<_> =
-                includes.iter().map(std::string::String::as_str).collect();
-            args.append(&mut include_args);
-
-            let mut protos_args: Vec<_> = protos
-                .iter()
-                .map(|path| path.as_ref().to_str().unwrap())
-                .collect();
-            args.append(&mut protos_args);
-            run_cmd("protoc", &args, ".")?;
-        } else {
-            return Err(Error::Build(
-                "a package.json file needs to be next to the build.rs".to_string(),
-            ));
-        }
-    }
+    tonic_build::configure()
+        .out_dir(&out_dir)
+        .compile(protos, includes)?;
 
     for proto in protos {
         println!("cargo:rerun-if-changed={}", proto.as_ref().display());

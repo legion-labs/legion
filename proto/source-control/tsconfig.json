@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noEmit": true,
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
@@ -9,19 +10,11 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "composite": true,
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "outDir": "dist"
+      "@/*": ["src/*"]
+    }
   },
-  "include": [
-    "codegen/**/*.ts"
-  ]
+  "include": ["dist/**/*.ts"]
 }

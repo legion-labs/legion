@@ -8,9 +8,8 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "build": "tsc -b",
     "check:all": "echo No checks yet",
-    "clean": "rimraf node_modules",
+    "clean": "rimraf node_modules dist",
     "test": "pnpm check:all"
   },
   "devDependencies": {

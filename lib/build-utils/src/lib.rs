@@ -100,7 +100,6 @@ use std::{
     process::Command,
 };
 
-use bitflags::bitflags;
 use thiserror::Error;
 use walkdir::WalkDir;
 
@@ -117,13 +116,6 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-
-bitflags! {
-    pub struct Language : u32 {
-        const RUST = 0;
-        const TYPESCRIPT = 1;
-    }
-}
 
 pub struct Context {
     codegen_out_dir: PathBuf,
