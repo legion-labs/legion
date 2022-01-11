@@ -1,7 +1,6 @@
 import { getUserInfo as tauriGetUserInfo } from "./lib/auth/tauri";
 import { userAuth as browserUserAuth } from "./lib/auth/browser";
 import log, { Level as LogLevel } from "./lib/log";
-import userInfo from "./stores/userInfo";
 import { UserInfo } from "./lib/auth";
 
 export type AuthUserConfig = {
@@ -105,11 +104,11 @@ export async function run<SvelteComponent>({
 
   if (authConfig) {
     if (window.__TAURI__) {
-      userInfoSet = await tauriGetUserInfo(userInfo, {
+      userInfoSet = await tauriGetUserInfo({
         forceAuth: authConfig.forceAuth,
       });
     } else {
-      userInfoSet = await browserUserAuth(userInfo, {
+      userInfoSet = await browserUserAuth({
         forceAuth: authConfig.forceAuth,
       });
     }

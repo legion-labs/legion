@@ -4,14 +4,19 @@
   import currentResource from "@/stores/currentResource";
   import PropertyContainer from "./PropertyContainer.svelte";
 
-  const propertyUpdateDebounceTimeout = 300;
+  const {
+    data: currentResourceData,
+    error: currentResourceError,
+    loading: currentResourceLoading,
+  } = currentResource;
+
+  const propertyUpdateDebounceTimeout = 100;
 
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
   let propertyUpdates: PropertyUpdate[] = [];
 
   function onInput({ detail: propertyUpdate }: CustomEvent<PropertyUpdate>) {
-    console.log(propertyUpdate);
     if (updateTimeout) {
       clearTimeout(updateTimeout);
     }
@@ -37,13 +42,13 @@
     updateTimeout = setTimeout(() => {
       updateTimeout = null;
 
-      if (!$currentResource) {
+      if (!$currentResourceData) {
         return;
       }
 
       updateResourceProperties(
-        $currentResource.id,
-        $currentResource.version,
+        $currentResourceData.id,
+        $currentResourceData.version,
         propertyUpdates
       );
 
@@ -53,17 +58,19 @@
 </script>
 
 <div class="root">
-  {#if !$currentResource}
+  {#if $currentResourceError}
+    <div class="italic">An error occured</div>
+  {:else if !$currentResourceData}
     <div class="italic">No resource selected</div>
-  {:else if !$currentResource.properties.length}
+  {:else if !$currentResourceData.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    {#each $currentResource.properties as property, index (property.name)}
+    {#each $currentResourceData.properties as property, index (property.name)}
       <PropertyContainer
         pathParts={propertyIsGroup(property) ? [] : [property.name]}
         {property}
-        withBorder={$currentResource.properties[index + 1] &&
-          !propertyIsGroup($currentResource.properties[index + 1])}
+        withBorder={$currentResourceData.properties[index + 1] &&
+          !propertyIsGroup($currentResourceData.properties[index + 1])}
         on:input={onInput}
       />
     {/each}
