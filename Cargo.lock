@@ -7149,6 +7149,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap 3.0.5",
+ "generic-data",
  "instant",
  "lgn-app",
  "lgn-asset-registry",
@@ -7157,6 +7158,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-graphics-runtime",
  "lgn-grpc",
  "lgn-input",
  "lgn-presenter-window",
@@ -7167,6 +7169,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
+ "sample-data-runtime",
 ]
 
 [[package]]
