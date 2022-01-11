@@ -29,11 +29,11 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
         span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<i64>("time").unwrap();
-            let scope = obj.get::<Object>("scope").unwrap();
+            let scope = obj.get::<Object>("thread_span_desc").unwrap();
             let name = scope.get::<String>("name").unwrap();
             match obj.type_name.as_str() {
-                "BeginScopeEvent" => processor.on_begin_scope(name, tick),
-                "EndScopeEvent" => processor.on_end_scope(name, tick),
+                "BeginThreadSpanEvent" => processor.on_begin_scope(name, tick),
+                "EndThreadSpanEvent" => processor.on_end_scope(name, tick),
                 _ => panic!("unknown event type {}", obj.type_name),
             };
         }
