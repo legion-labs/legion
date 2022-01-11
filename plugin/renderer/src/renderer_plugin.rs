@@ -2,8 +2,8 @@
 use crate::{
     cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight},
     components::{
-        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent,
-        RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces, Spotlight,
+        ManipulatorComponent, PickedComponent, RenderSurfaceCreatedForWindow, RenderSurfaceExtents,
+        RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
