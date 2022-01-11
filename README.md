@@ -1,36 +1,87 @@
-[![CI - Test](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml)
-[![CI - Release](https://github.com/legion-labs/legion/actions/workflows/release.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/release.yml)
-[![Coverage](https://cov.legionengine.com/badges/flat.svg)](https://cov.legionengine.com/index.html)
-![MSRV](https://img.shields.io/badge/msrv-1.57-green)
+# The **Legion** Interactive Content Creation Platform
 
-# Legion Monorepo
+Legion is ... . Visit [here](https://legionengine.com) for more information.
 
-This is the mono repository of legion, it contains all the application code of the engine itself, the tools and the pipeline.
+Legion Labs welcomes [contributions] from everyone, please read [this]{./CONTRIBUTING.md} for more information.
+
+---
+
+<p align="center">
+   <img alt="Legion Labs" src="https://legionlabs.com/images/logo.png" width="340" >
+</p>
+
+---
+
+<p align="center">
+   <img alt="Legion Engine" src="https://github.com/legion-labs/legion/build/snapshot.png" style="max-width: 100%;">
+</p>
+
+---
+
+<p align="center">
+    <a href="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg" alt="CI - Test" style="max-width: 100%;"></a>
+    <a href="https://github.com/legion-labs/legion/actions/workflows/release.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/release.yml/badge.svg" alt="CI - Release" style="max-width: 100%;"></a>
+    <a href="https://cov.legionengine.com/index.html" rel="nofollow"><img src="https://github.com/legion-labs/legion/build/coverage.svg" alt="Coverage"  style="max-width: 100%;"></a>
+    <a href="https://www.rust-lang.org/tools/install"><img src="https://img.shields.io/badge/msrv-1.57-green" alt="MSRV" style="max-width: 100%;"></a></p>
+</p>
+
+---
+
+## Getting Started
+
+The repo contains all the application code of the engine itself, the tools and the pipeline.
 
 - Visit https://book.legionengine.com for the legion engine book.
 - Visit https://api.legionengine.com for the legion api reference book.
-- Visit https://cov.legionengine.com for the legion code coverage statistics.
-- Visit https://build-timings.legionengine.com for build time statistic.
 
-## Setting up your environment:
+We currently don't support pre-built packages, but you can build and run locally all the components necessary to build the engine and it's tools.
 
-### Build time dependencies:
+### Dev Environment Setup
 
-Legion depends on the following for building:
+#### Windows setup
 
-- cmake
-- ninja
-- python3
-- Vulkan SDK
+First you need to have a valid Visual Studio 2019 or above toolchain installed, if you don't you can install the [Visual Studio build tools instead](https://aka.ms/vs/17/release/vs_BuildTools.exe) with C++ based development packages. For the remaining dependencies we recommend using [scoop](https://scoop.sh/) to install the following:
 
-On windows we recommand using scoop using `scoop`:
+- Rust dependencies by running the following commands on a powershell prompt:
 
 ```powershell
-scoop install cmake ninja python
-scoop install legion-labs/vulkan
+scoop install rustup-msvc
+scoop install cmake
+scoop install ninja
+scoop install nasm
 ```
 
-### License
+- Front end dependencies by running the following commands on a powershell prompt:
+
+```powershell
+scoop install nvm
+scoop install protobuf
+nvm install 16.10.0
+nvm use 16.10.0
+npm -g i pnpm
+```
+
+On two instances of a powershell prompt and at the root of this repo run the following:
+
+```powershell
+cargo mrun --p editor-srv
+```
+
+On the second terminal:
+
+```powershell
+cargo mrun --p editor-client
+```
+
+#### Linux setup
+
+Linux steps here.
+
+## Community
+
+Info here ... .
+
+## License
 
 Licensed under either of
 

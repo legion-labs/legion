@@ -17,6 +17,7 @@
         "Graphviz",
         "imetric",
         "mlint",
+        "MSRV",
         "openh264",
         "perfetto",
         "proto",
