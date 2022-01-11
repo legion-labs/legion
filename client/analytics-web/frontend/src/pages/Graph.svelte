@@ -13,9 +13,9 @@
     CumulativeCallGraphNode,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/codegen/analytics";
-  import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
-  import { Process } from "@lgn/proto-telemetry/codegen/process";
+  } from "@lgn/proto-telemetry/dist/analytics";
+  import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+  import { Process } from "@lgn/proto-telemetry/dist/process";
   import { formatExecutionTime } from "@/lib/format";
 
   const locationStore = useLocation();

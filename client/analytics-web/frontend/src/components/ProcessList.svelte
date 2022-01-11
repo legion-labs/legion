@@ -3,7 +3,7 @@
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
-  } from "@lgn/proto-telemetry/codegen/analytics";
+  } from "@lgn/proto-telemetry/dist/analytics";
   import { onMount } from "svelte";
   import { link } from "svelte-navigator";
 

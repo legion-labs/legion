@@ -25,7 +25,7 @@
     Loaded,
   }
 
-  import { SpanTrack } from "@lgn/proto-telemetry/codegen/analytics";
+  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 
   type ThreadBlockLOD = {
     state: LODState;
@@ -33,7 +33,7 @@
     lodId: number;
   };
 
-  import { Block } from "@lgn/proto-telemetry/codegen/block";
+  import { Block } from "@lgn/proto-telemetry/dist/block";
   type ThreadBlock = {
     blockDefinition: Block; // block metadata stored in data lake
     beginMs: number; // relative to main process
@@ -48,10 +48,10 @@
     BlockSpansReply,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/codegen/analytics";
-  import { ScopeDesc } from "@lgn/proto-telemetry/codegen/calltree";
-  import { Process } from "@lgn/proto-telemetry/codegen/process";
-  import { Stream } from "@lgn/proto-telemetry/codegen/stream";
+  } from "@lgn/proto-telemetry/dist/analytics";
+  import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import { Stream } from "@lgn/proto-telemetry/dist/stream";
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
