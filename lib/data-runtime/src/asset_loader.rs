@@ -585,7 +585,9 @@ impl AssetLoaderIO {
         content.resize(nbytes as usize, 0);
         reader.read_exact(&mut content).expect("valid data");
 
-        let loader = loaders.get_mut(&asset_type).unwrap();
+        let loader = loaders
+            .get_mut(&asset_type)
+            .unwrap_or_else(|| panic!("missing asset loader for type {}", asset_type));
         let boxed_asset = loader.load(&mut &content[..])?;
 
         // todo: Do not load what was loaded in another primary-asset.
