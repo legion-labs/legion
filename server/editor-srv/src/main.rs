@@ -24,6 +24,7 @@ use lgn_transform::TransformPlugin;
 mod grpc;
 mod plugin;
 mod property_inspector_plugin;
+use lgn_window::WindowPlugin;
 use property_inspector_plugin::PropertyInspectorPlugin;
 
 mod resource_browser_plugin;
@@ -103,7 +104,7 @@ fn main() {
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(false, args.egui, false))
+        .add_plugin(RendererPlugin::new(args.egui, false))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(ResourceBrowserPlugin::default())
@@ -112,6 +113,10 @@ fn main() {
         .add_plugin(GenericDataPlugin::default())
         .add_startup_system(register_asset_loaders)
         .add_startup_system(register_resource_types)
+        .add_plugin(WindowPlugin {
+            add_primary_window: false,
+            exit_on_close: false,
+        })
         .run();
 }
 

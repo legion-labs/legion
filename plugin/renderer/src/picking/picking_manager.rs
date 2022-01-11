@@ -5,7 +5,7 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion},
     ElementState,
 };
-use lgn_math::{Vec2, Vec3};
+use lgn_math::Vec2;
 use lgn_transform::prelude::Transform;
 
 use crate::{
@@ -90,7 +90,6 @@ pub struct PickingManagerInner {
     mouse_input: MouseButtonInput,
     screen_rect: Vec2,
     manip_entity_base_transform: Transform,
-    picking_pos_world_space: Vec3,
     picking_state: PickingState,
     current_cpu_frame_no: u64,
     picked_cpu_frame_no: u64,
@@ -117,7 +116,6 @@ impl PickingManager {
                     pos: Vec2::NAN,
                 },
                 manip_entity_base_transform: Transform::default(),
-                picking_pos_world_space: Vec3::NAN,
                 screen_rect: Vec2::default(),
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
@@ -330,7 +328,6 @@ impl PickingManager {
 
                     if manipulator_component.is_none() && !picked_component.is_empty() {
                         inner.manip_entity_base_transform = *transform;
-                        inner.picking_pos_world_space = picked_component.get_closest_point();
                         inner.manipulated_entity = entity;
                     }
                 }
@@ -384,18 +381,9 @@ impl PickingManager {
         inner.manipulated_entity = entity;
     }
 
-    pub fn set_picking_start_pos(&self, picking_world_space: Vec3) {
-        let mut inner = self.inner.lock().unwrap();
-
-        inner.picking_pos_world_space = picking_world_space;
-    }
-
-    pub fn base_picking_data(&self) -> (Transform, Vec3) {
+    pub fn base_picking_transform(&self) -> Transform {
         let inner = self.inner.lock().unwrap();
 
-        (
-            inner.manip_entity_base_transform,
-            inner.picking_pos_world_space,
-        )
+        inner.manip_entity_base_transform
     }
 }
