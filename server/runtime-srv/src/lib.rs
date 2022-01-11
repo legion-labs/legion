@@ -191,10 +191,6 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::new(args.egui, true))
-        .add_plugin(WindowPlugin {
-            add_primary_window: false,
-            exit_on_close: false,
-        })
         .add_startup_system(register_asset_loaders);
 
     #[cfg(feature = "standalone")]
@@ -203,10 +199,14 @@ pub fn build_runtime(
     }
 
     if !standalone {
-        app.add_plugin(AsyncPlugin::default())
-            .insert_resource(GRPCPluginSettings::new(server_addr))
-            .add_plugin(GRPCPlugin::default())
-            .add_plugin(StreamerPlugin::default());
+        app.add_plugin(WindowPlugin {
+            add_primary_window: false,
+            exit_on_close: false,
+        })
+        .add_plugin(AsyncPlugin::default())
+        .insert_resource(GRPCPluginSettings::new(server_addr))
+        .add_plugin(GRPCPlugin::default())
+        .add_plugin(StreamerPlugin::default());
     }
 
     app
