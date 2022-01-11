@@ -7750,6 +7750,8 @@ dependencies = [
  "hyper",
  "lgn-source-control",
  "lgn-source-control-proto",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
  "serde_json",
  "tokio",
  "tonic",

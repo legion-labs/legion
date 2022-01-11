@@ -3,6 +3,7 @@ use std::task::Poll;
 
 use bytes::{Buf, BufMut, BytesMut};
 use http::{header::HeaderName, HeaderMap, HeaderValue};
+use lgn_tracing::debug;
 
 use super::super::buf::BoxBuf;
 use super::{Error, Result};
@@ -26,6 +27,12 @@ impl Default for GrpcWebBodyParser {
 impl GrpcWebBodyParser {
     /// Append some data the parser.
     pub fn put(&mut self, b: impl Buf) {
+        debug!(
+            "GrpcWebBodyParser::put received {} byte(s): {:x?}",
+            b.remaining(),
+            b.chunk()
+        );
+
         self.buf.put(b);
     }
 
@@ -38,6 +45,8 @@ impl GrpcWebBodyParser {
             None => {
                 // We still don't have enough. Let's wait for more.
                 if self.buf.remaining() < 5 {
+                    debug!("GrpcWebBodyParser::poll_data does not have enough header bytes yet to know the body length ({} byte(s) out of 5)", self.buf.remaining());
+
                     return Poll::Pending;
                 }
 
@@ -52,11 +61,15 @@ impl GrpcWebBodyParser {
                     // the body.
                     self.body_bytes_remaining = Some(0);
 
+                    debug!("GrpcWebBodyParser::poll_data can return the complete header and body ({} byte(s) with {} extra trailers byte(s))", body_length, self.buf.remaining() - body_length);
+
                     Some(Ok(BoxBuf::new(
                         body_header.chain(self.buf.copy_to_bytes(body_length)),
                     )))
                 } else if self.buf.remaining() > 0 {
                     self.body_bytes_remaining = Some(body_length - self.buf.remaining());
+
+                    debug!("GrpcWebBodyParser::poll_data can return the complete header and part of the body ({} byte(s) out of {} body byte(s))", self.buf.remaining(), body_length);
 
                     Some(Ok(BoxBuf::new(
                         body_header.chain(self.buf.copy_to_bytes(self.buf.remaining())),
@@ -64,10 +77,18 @@ impl GrpcWebBodyParser {
                 } else {
                     self.body_bytes_remaining = Some(body_length);
 
+                    debug!("GrpcWebBodyParser::poll_data can return the complete header but not body bytes");
+
                     Some(Ok(BoxBuf::new(body_header)))
                 })
             }
-            Some(0) => Poll::Ready(None),
+            Some(0) => {
+                debug!(
+                    "GrpcWebBodyParser::poll_data does not have any body bytes to return anymore"
+                );
+
+                Poll::Ready(None)
+            }
             Some(body_bytes_remaining) => {
                 Poll::Ready(if self.buf.remaining() >= body_bytes_remaining {
                     // We have enough bytes to return the body completely.
@@ -76,11 +97,22 @@ impl GrpcWebBodyParser {
                     // the body.
                     self.body_bytes_remaining = Some(0);
 
+                    debug!(
+                        "GrpcWebBodyParser::poll_data can return the complete remaining body ({} byte(s) with {} extra trailers byte(s))",
+                        body_bytes_remaining,
+                        self.buf.remaining() - body_bytes_remaining
+                    );
+
                     Some(Ok(BoxBuf::new(
                         self.buf.copy_to_bytes(body_bytes_remaining),
                     )))
                 } else {
                     self.body_bytes_remaining = Some(body_bytes_remaining - self.buf.remaining());
+
+                    debug!(
+                        "GrpcWebBodyParser::poll_data can return part of the remaining body ({} byte(s))",
+                        body_bytes_remaining,
+                    );
 
                     Some(Ok(BoxBuf::new(
                         self.buf.copy_to_bytes(self.buf.remaining()),
@@ -144,12 +176,55 @@ impl GrpcWebBodyParser {
                         }
                     }
 
+                    debug!(
+                        "GrpcWebBodyParser::poll_trailers does not have enough trailer bytes yet to know the trailers length ({} byte(s) out of 5)",
+                        self.buf.remaining()
+                    );
+
                     Poll::Pending
                 }
                 Some(0) => Poll::Ready(Ok(None)),
                 Some(trailers_bytes_required) => self.poll_trailers_impl(trailers_bytes_required),
             },
             None | Some(_) => Poll::Pending,
+        }
+    }
+
+    pub fn set_poll_complete(&mut self) -> Poll<Result<Option<HeaderMap>>> {
+        match self.body_bytes_remaining {
+            None => {
+                if self.buf.remaining() > 0 {
+                    Poll::Ready(Err(Error::InvalidGrpcWebBody(format!(
+                        "incomplete body: {} byte(s) remaining in buffer",
+                        self.buf.remaining()
+                    ))))
+                } else {
+                    debug!("GrpcWebBodyParser::set_poll_complete has completed successfullly with no body");
+                    Poll::Ready(Ok(None))
+                }
+            }
+            Some(0) => match self.trailers_bytes_remaining {
+                None => {
+                    if self.buf.remaining() > 0 {
+                        Poll::Ready(Err(Error::InvalidGrpcWebBody(format!(
+                            "incomplete trailers: {} byte(s) remaining in buffer",
+                            self.buf.remaining()
+                        ))))
+                    } else {
+                        debug!("GrpcWebBodyParser::set_poll_complete has completed successfullly with no trailers");
+                        Poll::Ready(Ok(None))
+                    }
+                }
+                Some(0) => Poll::Ready(Ok(None)),
+                Some(missing_bytes_len) => Poll::Ready(Err(Error::InvalidGrpcWebBody(format!(
+                    "missing {} trailer byte(s)",
+                    missing_bytes_len
+                )))),
+            },
+            Some(missing_bytes_len) => Poll::Ready(Err(Error::InvalidGrpcWebBody(format!(
+                "missing {} body byte(s)",
+                missing_bytes_len
+            )))),
         }
     }
 }
@@ -233,6 +308,10 @@ mod tests {
             Poll::Ready(Ok(None)) => {}
             _ => panic!("expected no more reads for trailers"),
         }
+        match parser.set_poll_complete() {
+            Poll::Ready(Ok(None)) => {}
+            _ => panic!("expected poll to be complete successfully"),
+        }
     }
 
     #[test]
@@ -284,6 +363,10 @@ mod tests {
         match parser.poll_trailers() {
             Poll::Ready(Ok(None)) => {}
             _ => panic!("expected no more reads for trailers"),
+        }
+        match parser.set_poll_complete() {
+            Poll::Ready(Ok(None)) => {}
+            _ => panic!("expected poll to be complete successfully"),
         }
     }
 
@@ -360,6 +443,48 @@ mod tests {
         match parser.poll_trailers() {
             Poll::Ready(Ok(None)) => {}
             _ => panic!("expected no more reads for trailers"),
+        }
+    }
+
+    #[test]
+    fn test_grpc_web_body_parser_body_cut_off() {
+        let body = Bytes::from(vec![0, 0, 0, 0, 2, 10]);
+
+        let mut parser = GrpcWebBodyParser::default();
+
+        parser.put(body.clone());
+
+        match parser.poll_data() {
+            Poll::Ready(Some(Ok(mut data))) => {
+                assert_eq!(data.remaining(), 6);
+                assert_eq!(data.copy_to_bytes(data.remaining())[..], body[..6]);
+            }
+            _ => panic!("expected a complete buffer"),
+        }
+
+        if let Poll::Ready(Ok(_)) = parser.set_poll_complete() {
+            panic!("expected poll to be incomplete")
+        }
+    }
+
+    #[test]
+    fn test_grpc_web_body_parser_trailers_cut_off() {
+        let body = Bytes::from(vec![0, 0, 0, 0, 1, 10, 0]);
+
+        let mut parser = GrpcWebBodyParser::default();
+
+        parser.put(body.clone());
+
+        match parser.poll_data() {
+            Poll::Ready(Some(Ok(mut data))) => {
+                assert_eq!(data.remaining(), 6);
+                assert_eq!(data.copy_to_bytes(data.remaining())[..], body[..6]);
+            }
+            _ => panic!("expected a complete buffer"),
+        }
+
+        if let Poll::Ready(Ok(_)) = parser.set_poll_complete() {
+            panic!("expected poll to be incomplete")
         }
     }
 
