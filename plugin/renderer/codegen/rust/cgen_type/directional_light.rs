@@ -20,6 +20,7 @@ pub struct DirectionalLight {
     data: [u8; 28],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl DirectionalLight {
     pub const fn id() -> u32 {
         16

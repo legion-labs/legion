@@ -20,6 +20,7 @@ pub struct Spotlight {
     data: [u8; 44],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl Spotlight {
     pub const fn id() -> u32 {
         17

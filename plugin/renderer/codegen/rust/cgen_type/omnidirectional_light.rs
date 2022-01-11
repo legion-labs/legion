@@ -20,6 +20,7 @@ pub struct OmnidirectionalLight {
     data: [u8; 28],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl OmnidirectionalLight {
     pub const fn id() -> u32 {
         15
