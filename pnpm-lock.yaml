@@ -99,6 +99,7 @@ importers:
       '@lgn/frontend': ^0.1.0
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-streaming': ^0.1.0
+      '@lgn/simple-wasm-logger': workspace:^0.1.0
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.34
       '@swc/core': ^1.2.127
       '@swc/jest': ^0.2.15
@@ -136,12 +137,14 @@ importers:
       uuid-random: ^1.3.2
       vite: ^2.7.10
       vite-plugin-ts-proto: workspace:^0.1.0
+      vite-plugin-wasm: workspace:^0.1.0
       vite-tsconfig-paths: ^3.3.17
     dependencies:
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.3
       '@lgn/frontend': link:../../../lib/browser/frontend
       '@lgn/proto-editor': link:../../../proto/editor
       '@lgn/proto-streaming': link:../../../proto/streaming
+      '@lgn/simple-wasm-logger': link:../../../lib/simple-wasm-logger/frontend
       '@tauri-apps/api': 1.0.0-beta.8
       browser-headers: 0.4.1
       color-convert: 2.0.1
@@ -180,6 +183,7 @@ importers:
       typescript: 4.5.4
       vite: 2.7.10
       vite-plugin-ts-proto: link:../../../lib/vite-plugins/vite-plugin-ts-proto
+      vite-plugin-wasm: link:../../../lib/vite-plugins/vite-plugin-wasm
       vite-tsconfig-paths: 3.3.17_vite@2.7.10
 
   client/runtime/frontend:
@@ -339,6 +343,9 @@ importers:
       svelte-preprocess: 4.10.1_40ecaac6f16e6e5f9977a7e9a22cb1e7
       tailwindcss: 3.0.13_ef48b3b8837f8a23677bffe8f9cd866d
       typescript: 4.5.4
+
+  lib/simple-wasm-logger/frontend:
+    specifiers: {}
 
   lib/vite-plugins/vite-plugin-ts-proto:
     specifiers:
