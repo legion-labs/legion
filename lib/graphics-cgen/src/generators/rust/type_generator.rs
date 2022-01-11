@@ -115,7 +115,7 @@ fn generate_rust_struct(
         writer.new_line();
     }
 
-    // struct    
+    // struct
     writer.add_line("#[derive(Clone, Copy)]");
     writer.add_line("#[repr(C)]");
     writer.add_line(format!("pub struct {} {{", struct_ty.name));
