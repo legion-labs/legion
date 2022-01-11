@@ -3,7 +3,7 @@ use std::process::{Command, Stdio};
 use lgn_tracing::{span_fn, span_scope};
 
 use crate::cargo::{BuildArgs, SelectedPackageArgs};
-use crate::{action_step, check, clippy, fmt, lint, skip_step, test, Error};
+use crate::{action_step, build, check, clippy, fmt, lint, skip_step, test, Error};
 use crate::{context::Context, Result};
 
 #[derive(Debug, clap::Args)]
@@ -13,7 +13,7 @@ pub struct Args {
         long,
         multiple_values = true,
         use_delimiter = true,
-        possible_values = &["all", "fmt", "gfx_no_api", "clippy", "mlint", "cargo-deny"],
+        possible_values = &["all", "fmt", "gfx-no-api", "clippy", "mlint", "cargo-deny"],
     )]
     checks: Vec<String>,
     /// Run CI tests
@@ -38,7 +38,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         action_step!("-- CI --", "Running checks");
         for (check_name, check_fn) in &[
             ("fmt", check_fmt as CheckFn),
-            ("gfx_no_api", check_graphic_crate as CheckFn),
+            ("gfx-no-api", check_graphic_crate as CheckFn),
             ("clippy", check_clippy as CheckFn),
             ("mlint", check_monorepo_lints as CheckFn),
             ("cargo-deny", check_cargo_deny as CheckFn),
@@ -170,36 +170,39 @@ fn check_cargo_deny(ctx: &Context) -> Result<()> {
     Ok(())
 }
 
+#[span_fn]
 fn test_build(ctx: &Context) -> Result<()> {
     action_step!("-- CI --", "Running tests build");
+    {
+        let args = build::Args {
+            package_args: SelectedPackageArgs {
+                package: vec!["lgn-compiler-*".into()],
+                ..SelectedPackageArgs::default()
+            },
+            build_args: BuildArgs::default(),
+            ..build::Args::default()
+        };
+        build::run(&args, ctx)?;
+    }
     let args = test::Args {
         package_args: SelectedPackageArgs {
             ..SelectedPackageArgs::default()
         },
-        build_args: BuildArgs {
-            all_targets: true,
-            all_features: true,
-            locked: true,
-            ..BuildArgs::default()
-        },
+        build_args: BuildArgs::default(),
         no_run: true,
         ..test::Args::default()
     };
     test::run(args, ctx)
 }
 
+#[span_fn]
 fn test_run(ctx: &Context) -> Result<()> {
     action_step!("-- CI --", "Running tests");
     let args = test::Args {
         package_args: SelectedPackageArgs {
             ..SelectedPackageArgs::default()
         },
-        build_args: BuildArgs {
-            all_targets: true,
-            all_features: true,
-            locked: true,
-            ..BuildArgs::default()
-        },
+        build_args: BuildArgs::default(),
         args: if machine_has_discreet_gpu()? {
             vec![]
         } else {

@@ -8,18 +8,18 @@ use crate::{
 use lgn_tracing::{info, span_fn};
 use std::ffi::OsString;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, clap::Args, Default)]
 pub struct Args {
     #[clap(flatten)]
-    package_args: SelectedPackageArgs,
+    pub(crate) package_args: SelectedPackageArgs,
     #[clap(flatten)]
-    build_args: BuildArgs,
+    pub(crate) build_args: BuildArgs,
     /// Copy final artifacts to this directory (unstable)
     #[clap(long, parse(from_os_str))]
-    out_dir: Option<OsString>,
+    pub(crate) out_dir: Option<OsString>,
     /// Output the build plan in JSON (unstable)
     #[clap(long)]
-    build_plan: bool,
+    pub(crate) build_plan: bool,
 }
 
 pub fn convert_args(args: &Args) -> Vec<OsString> {
