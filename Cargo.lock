@@ -4939,6 +4939,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "json",
+ "lazy_static",
  "lgn-config",
  "lgn-telemetry-proto",
  "lgn-tracing",

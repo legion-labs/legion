@@ -14,6 +14,7 @@ lgn-config = { path = "../config", version = "0.1.0" }
 anyhow = "1.0"
 chrono = "0.4"
 json = "0.12"
+lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }
 prost = "0.9"
 simple_logger = "1.16"
