@@ -1,5 +1,4 @@
 use lgn_graphics_api::PagedBufferAllocation;
-use lgn_math::Vec3;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{static_mesh_render_data::StaticMeshRenderData, Renderer};
@@ -45,7 +44,7 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
             StaticMeshRenderData::new_sphere(0.25, 20, 20),
-            StaticMeshRenderData::new_arrow(Vec3::ZERO, Vec3::X),
+            StaticMeshRenderData::new_arrow(),
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];
 

@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_math::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::Transform;
 
@@ -312,27 +312,17 @@ impl DebugRenderPass {
         default_meshes: &DefaultMeshes,
     ) {
         debug_display.render_primitives(|primitive| {
-            let mut rotation = Quat::IDENTITY;
             let mesh_id = match primitive.primitive_type {
-                DebugPrimitiveType::Cube => DefaultMeshId::WireframeCube,
-                DebugPrimitiveType::Arrow { dir } => {
-                    rotation = Quat::from_rotation_arc(Vec3::X, dir);
-                    DefaultMeshId::Arrow
-                }
+                DebugPrimitiveType::Mesh { mesh_id } => mesh_id,
             };
 
-            let color: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
-
-            let world = Transform::identity()
-                .with_translation(primitive.pos)
-                .with_scale(Vec3::new(0.1, 0.1, 0.1))
-                .with_rotation(rotation)
-                .compute_matrix();
-            world.write_cols_to_slice(&mut constant_data[0..]);
-            constant_data[48] = color.0;
-            constant_data[49] = color.1;
-            constant_data[50] = color.2;
-            constant_data[51] = color.3;
+            primitive
+                .transform
+                .write_cols_to_slice(&mut constant_data[0..]);
+            constant_data[48] = primitive.color.0;
+            constant_data[49] = primitive.color.1;
+            constant_data[50] = primitive.color.2;
+            constant_data[51] = 1.0;
 
             self.bind_pipeline_and_desc_set(
                 &self.wire_pso_depth,

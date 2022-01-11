@@ -65,7 +65,7 @@ StructLayout {
 */
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "LayoutCB",
-    id: 15,
+    id: 18,
     size: 176,
 };
 
@@ -79,7 +79,7 @@ pub struct LayoutCB {
 
 impl LayoutCB {
     pub const fn id() -> u32 {
-        15
+        18
     }
 
     pub fn def() -> &'static CGenTypeDef {

@@ -1,4 +1,6 @@
-// #include "crate://renderer/codegen/cgen/hlsl/pipeline_layout/tmp_pipeline_layout.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/omnidirectional_light.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/spotlight.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -64,26 +66,6 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 
 #define PI 3.141592
 
-struct OmnidirectionalLight {
-    float3 pos;
-    float radiance;
-    float3 color;
-};
-
-struct DirectionalLight {
-    float3 dir;
-    float radiance;
-    float3 color;
-};
-
-struct SpotLight {
-    float3 pos;
-    float radiance;
-    float3 dir;
-    float cone_angle;
-    float3 color;
-};
-
 struct Lighting {
     float3 specular;
     float3 diffuse;
@@ -91,7 +73,7 @@ struct Lighting {
 
 StructuredBuffer<DirectionalLight> directional_lights;
 StructuredBuffer<OmnidirectionalLight> omnidirectional_lights;
-StructuredBuffer<SpotLight> spotlights;
+StructuredBuffer<Spotlight> spotlights;
 
 // Position, normal, and light direction are in view space
 float GetSpecular(float3 pos, float3 light_dir, float3 normal) {
@@ -139,7 +121,7 @@ Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float
     return lighting;
 }
 
-Lighting CalculateIncidentSpotLight(SpotLight light, float3 normal, float3 pos) {
+Lighting CalculateIncidentSpotlight(Spotlight light, float3 normal, float3 pos) {
     float3 light_dir = mul(camera.view, float4(light.pos, 1.0)).xyz - pos;
     float distance = length(light_dir);
     distance = distance * distance;
@@ -204,8 +186,8 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
 
     for (i = 0; i < lighting_manager.num_spotlights; i++)
     {
-        SpotLight light = spotlights[i];
-        Lighting lighting = CalculateIncidentSpotLight(light, vertex_out.normal, vertex_out.pos);
+        Spotlight light = spotlights[i];
+        Lighting lighting = CalculateIncidentSpotlight(light, vertex_out.normal, vertex_out.pos);
         if (lighting_manager.diffuse)
         {
             color += diffuse_color * lighting.diffuse;

@@ -1,8 +1,9 @@
 #![allow(unsafe_code)]
 use crate::{
+    cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight},
     components::{
-        DirectionalLight, ManipulatorComponent, OmnidirectionalLight, PickedComponent,
-        RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces, Spotlight,
+        ManipulatorComponent, PickedComponent, RenderSurfaceCreatedForWindow, RenderSurfaceExtents,
+        RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
@@ -13,6 +14,7 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
+use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
@@ -181,7 +183,7 @@ fn init_manipulation_manager(
 #[allow(clippy::needless_pass_by_value)]
 fn update_lighting_ui(
     egui_ctx: Res<'_, Egui>,
-    mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
+    mut lights: Query<'_, '_, &mut LightComponent>,
     mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
     egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
@@ -201,52 +203,30 @@ fn update_lighting_ui(
         );
         ui.add(egui::Slider::new(&mut lighting_manager.shininess, 1.0..=32.0).text("shininess"));
         ui.label("Lights");
-        for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
+        for (i, mut light) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.add(egui::Checkbox::new(&mut light.enabled, "Enabled"));
                 match light.light_type {
-                    LightType::Directional { ref mut direction } => {
+                    LightType::Directional => {
                         ui.label(format!("Light {} (dir): ", i));
-                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
-                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
-                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
-                    }
-                    LightType::Omnidirectional { .. } => {
-                        ui.label(format!("Light {} (omni): ", i));
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
-                        );
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
-                        );
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
-                        );
                         ui.add(
                             egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
                         );
                     }
-                    LightType::Spotlight {
-                        ref mut direction,
-                        ref mut cone_angle,
-                        ..
-                    } => {
+                    LightType::Omnidirectional { .. } => {
+                        ui.label(format!("Light {} (omni): ", i));
+                        ui.add(
+                            egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
+                        );
+                    }
+                    LightType::Spotlight { ref mut cone_angle } => {
                         ui.label(format!("Light {} (spot): ", i));
-                        ui.add(egui::Slider::new(&mut direction.x, -1.0..=1.0).text("x"));
-                        ui.add(egui::Slider::new(&mut direction.y, -1.0..=1.0).text("y"));
-                        ui.add(egui::Slider::new(&mut direction.z, -1.0..=1.0).text("z"));
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"),
-                        );
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"),
-                        );
-                        ui.add(
-                            egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"),
-                        );
                         ui.add(
                             egui::Slider::new(cone_angle, -0.0..=std::f32::consts::PI)
                                 .text("angle"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"),
                         );
                     }
                 }
@@ -271,18 +251,48 @@ fn update_debug(
     let bump = renderer.acquire_bump_allocator();
     debug_display.create_display_list(bump.bump(), |display_list| {
         for (light, transform) in lights.iter() {
-            display_list.add_cube(transform.translation, bump.bump());
+            display_list.add_mesh(
+                Transform::identity()
+                    .with_translation(transform.translation)
+                    .with_scale(transform.scale * 0.2)
+                    .with_rotation(transform.rotation)
+                    .compute_matrix(),
+                DefaultMeshId::Sphere as u32,
+                light.color,
+                bump.bump(),
+            );
             match light.light_type {
-                LightType::Directional { direction } => display_list.add_arrow(
-                    transform.translation,
-                    transform.translation - direction.normalize(),
-                    bump.bump(),
-                ),
-                LightType::Spotlight { direction, .. } => display_list.add_arrow(
-                    transform.translation,
-                    transform.translation - direction.normalize(),
-                    bump.bump(),
-                ),
+                LightType::Directional => {
+                    display_list.add_mesh(
+                        Transform::identity()
+                            .with_translation(
+                                transform.translation
+                                    - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)),
+                            )
+                            .with_scale(transform.scale)
+                            .with_rotation(transform.rotation)
+                            .compute_matrix(),
+                        DefaultMeshId::Arrow as u32,
+                        light.color,
+                        bump.bump(),
+                    );
+                }
+                LightType::Spotlight { cone_angle, .. } => {
+                    let factor = 4.0 * (cone_angle / 2.0).tan();
+                    display_list.add_mesh(
+                        Transform::identity()
+                            .with_translation(
+                                transform.translation
+                                    - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)),
+                            )
+                            .with_scale(transform.scale * Vec3::new(factor, 1.0, factor))
+                            .with_rotation(transform.rotation)
+                            .compute_matrix(),
+                        DefaultMeshId::Cone as u32,
+                        light.color,
+                        bump.bump(),
+                    );
+                }
                 LightType::Omnidirectional { .. } => (),
             }
         }
@@ -356,7 +366,8 @@ fn update_lights(
             continue;
         }
         match light.light_type {
-            LightType::Directional { direction } => {
+            LightType::Directional => {
+                let direction = transform.rotation.mul_vec3(Vec3::Y);
                 directional_lights_data.push(direction.x);
                 directional_lights_data.push(direction.y);
                 directional_lights_data.push(direction.z);
@@ -385,10 +396,9 @@ fn update_lights(
                     );
                 }
             }
-            LightType::Spotlight {
-                direction,
-                cone_angle,
-            } => {
+            LightType::Spotlight { cone_angle } => {
+                let direction = transform.rotation.mul_vec3(Vec3::Y);
+
                 spotlights_data.push(transform.translation.x);
                 spotlights_data.push(transform.translation.y);
                 spotlights_data.push(transform.translation.z);

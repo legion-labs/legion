@@ -3,9 +3,12 @@
 #ifndef DESCRIPTORSET_FRAMEDESCRIPTORSET
 #define DESCRIPTORSET_FRAMEDESCRIPTORSET
 
+    #include "../cgen_type/directional_light.hlsl"
     #include "../cgen_type/layout_cb.hlsl"
     #include "../cgen_type/layout_sb.hlsl"
     #include "../cgen_type/layout_sb2.hlsl"
+    #include "../cgen_type/omnidirectional_light.hlsl"
+    #include "../cgen_type/spotlight.hlsl"
 
     [[vk::binding(0, 1)]]
     SamplerState  smp;
@@ -43,5 +46,11 @@
     TextureCube<float4> rw_texcube;
     [[vk::binding(17, 1)]]
     TextureCubeArray<float4> rw_texcubearr;
+    [[vk::binding(18, 1)]]
+    StructuredBuffer<OmnidirectionalLight> sb_omni_lights;
+    [[vk::binding(19, 1)]]
+    StructuredBuffer<DirectionalLight> sb_dir_lights;
+    [[vk::binding(20, 1)]]
+    StructuredBuffer<Spotlight> sb_spotlights;
 
 #endif
