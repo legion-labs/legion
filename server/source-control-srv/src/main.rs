@@ -79,6 +79,8 @@ use lgn_source_control_proto::{
     ReadTreeRequest, ReadTreeResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
     SaveTreeRequest, SaveTreeResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
+use lgn_telemetry_sink::TelemetryGuard;
+use lgn_tracing::{debug, info, LevelFilter};
 
 struct Service {
     repository_queries: RwLock<HashMap<String, Arc<Box<dyn RepositoryQuery>>>>,
@@ -95,9 +97,9 @@ impl Service {
     ) -> Self {
         let sql_url = format!(
             "mysql://{}:{}@{}/",
-            database_host,
             database_username.unwrap_or_default(),
-            database_password.unwrap_or_default()
+            database_password.unwrap_or_default(),
+            database_host,
         );
 
         Self {
@@ -123,6 +125,12 @@ impl Service {
             .map(Arc::clone)
             .map_err(|e| tonic::Status::unknown(e.to_string()))
     }
+
+    fn get_request_origin<T>(request: &tonic::Request<T>) -> String {
+        request
+            .remote_addr()
+            .map_or_else(|| "unknown".to_string(), |addr| addr.to_string())
+    }
 }
 
 #[tonic::async_trait]
@@ -138,7 +146,11 @@ impl SourceControl for Service {
         &self,
         request: tonic::Request<CreateRepositoryRequest>,
     ) -> Result<tonic::Response<CreateRepositoryResponse>, tonic::Status> {
+        let origin = Self::get_request_origin(&request);
         let name = request.into_inner().repository_name;
+
+        debug!("{}: Creating repository `{}`...", origin, &name);
+
         let repository_url = self.get_repository_url(&name);
         let repository_query = repository_url.into_query();
 
@@ -146,6 +158,11 @@ impl SourceControl for Service {
             .create_repository(Some(self.blob_storage_url.clone()))
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        info!(
+            "{}: Created repository `{}` with blob storage URL: {}",
+            origin, &name, &blob_storage_url
+        );
 
         self.repository_queries
             .write()
@@ -479,6 +496,9 @@ impl SourceControl for Service {
 #[clap(name = "Legion Labs source-control server")]
 #[clap(about = "Source-control server.", version, author)]
 struct Args {
+    #[clap(name = "debug", short, long, help = "Enable debug logging")]
+    debug: bool,
+
     /// The address to listen on.
     #[clap(long, default_value = "[::1]:50051")]
     listen_endpoint: SocketAddr,
@@ -503,14 +523,25 @@ struct Args {
 #[allow(clippy::semicolon_if_nothing_returned)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let telemetry_guard = TelemetryGuard::default().unwrap();
+
     let args = Args::parse();
+
+    let _telemetry_guard = if args.debug {
+        telemetry_guard.with_log_level(LevelFilter::Debug)
+    } else {
+        telemetry_guard
+    };
+
     let service = SourceControlServer::new(Service::new(
         &args.database_host,
         args.database_username.as_deref(),
         args.database_password.as_deref(),
         args.blob_storage_url,
     ));
-    let server = tonic::transport::Server::builder().add_service(service);
+    let server = tonic::transport::Server::builder()
+        .accept_http1(true)
+        .add_service(service);
 
     server.serve(args.listen_endpoint).await.map_err(Into::into)
 }

@@ -5,7 +5,7 @@ use sqlx::Executor;
 pub async fn create_database(uri: &str) -> Result<()> {
     sqlx::Any::create_database(uri)
         .await
-        .context("error creating database")
+        .context(format!("error creating database: {}", uri))
 }
 
 pub async fn database_exists(uri: &str) -> Result<bool> {

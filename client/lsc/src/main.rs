@@ -71,6 +71,9 @@ use lgn_tracing::*;
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
+
+    #[clap(name = "debug", short, long, help = "Enable debug logging")]
+    debug: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -234,32 +237,24 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _telemetry_guard = TelemetryGuard::default().unwrap();
+    let telemetry_guard = TelemetryGuard::default().unwrap();
 
     span_scope!("lsc::main");
 
-    //let repository_url = command_match
-    //    .value_of(ARG_REPOSITORY_URL)
-    //    .map(RepositoryUrl::from_str)
-    //    .transpose()?
-    //    .unwrap_or_else(RepositoryUrl::from_current_dir)
-    //    .make_absolute(std::env::current_dir()?);
-
-    //let blob_storage_url = command_match
-    //    .value_of(ARG_BLOB_STORAGE_URL)
-    //    .map(BlobStorageUrl::from_str)
-    //    .transpose()?
-    //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
-    //    .transpose()?;
-
     let args = Cli::parse();
+
+    let _telemetry_guard = if args.debug {
+        telemetry_guard.with_log_level(LevelFilter::Debug)
+    } else {
+        telemetry_guard
+    };
 
     match args.command {
         Commands::CreateRepository {
             repository_url,
             blob_storage_url,
         } => {
-            info!("create-repository");
+            println!("Creating repository at: {}", repository_url);
 
             let repository_query = repository_url.into_query();
             repository_query.create_repository(blob_storage_url).await?;

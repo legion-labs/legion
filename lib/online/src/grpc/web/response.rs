@@ -65,9 +65,7 @@ where
                     this.body_parser.poll_trailers()
                 }
                 Poll::Ready(Some(Err(e))) => Poll::Ready(Err(Error::Other(e.into()))),
-                Poll::Ready(None) => Poll::Ready(Err(Error::InvalidGrpcWebBody(
-                    "incomplete response".to_string(),
-                ))),
+                Poll::Ready(None) => this.body_parser.set_poll_complete(),
                 Poll::Pending => Poll::Pending,
             },
         }

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use lgn_online::grpc::GrpcWebClient;
+use lgn_tracing::debug;
 use tokio::sync::Mutex;
 use url::Url;
 
@@ -25,6 +26,11 @@ impl LscRepositoryQuery {
     pub fn new(mut url: Url) -> Self {
         let repository_name = url.path().trim_start_matches('/').to_string();
         url.set_path("");
+
+        debug!(
+            "Instance targets repository `{}` at: {}",
+            repository_name, url
+        );
 
         // TODO: To `to_string` hereafter is hardly optimal but this should not
         // live in a critical path anyway so it probably does not matter.
