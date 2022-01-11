@@ -96,7 +96,7 @@ fn generate_rust_struct(
             writer.add_line("use lgn_graphics_cgen_runtime::prelude::*;".to_string());
         }
         writer.new_line();
-    }   
+    }
 
     // write type def
     {
@@ -146,11 +146,11 @@ fn generate_rust_struct(
             let ty_m = struct_m.ty_handle.get(ctx.model);
             let ty_string_m = get_rust_typestring(ty_m);
 
-            writer.add_line( "//" );
-            writer.add_line( format!("// member : {}", struct_m.name  ) );
-            writer.add_line( format!("// offset : {}", layout_m.offset  ) );
-            writer.add_line( format!("// size : {}", layout_m.padded_size  ) );
-            writer.add_line( "//" );
+            writer.add_line("//");
+            writer.add_line(format!("// member : {}", struct_m.name));
+            writer.add_line(format!("// offset : {}", layout_m.offset));
+            writer.add_line(format!("// size : {}", layout_m.padded_size));
+            writer.add_line("//");
 
             if let Some(array_len) = struct_m.array_len {
                 // set all elements

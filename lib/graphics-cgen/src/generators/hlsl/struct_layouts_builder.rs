@@ -10,7 +10,7 @@ use crate::{
 use super::utils::get_member_declaration;
 
 impl StructLayout {
-    pub fn from_spirv_reflect(ty: &StructType, block_var: &ReflectBlockVariable) -> Self {        
+    pub fn from_spirv_reflect(ty: &StructType, block_var: &ReflectBlockVariable) -> Self {
         let padded_size = block_var.padded_size;
 
         assert_eq!(ty.members.len(), block_var.members.len());
@@ -20,13 +20,13 @@ impl StructLayout {
         for i in 0..ty.members.len() {
             let spirv_member = &block_var.members[i];
             members.push(StructMemberLayout {
-                offset: spirv_member.offset,                                
+                offset: spirv_member.offset,
                 padded_size: spirv_member.padded_size,
                 array_stride: spirv_member.array.stride,
             });
         }
 
-        Self {            
+        Self {
             padded_size,
             members,
         }
