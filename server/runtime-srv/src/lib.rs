@@ -186,7 +186,7 @@ pub fn build_runtime(
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(standalone, args.egui, true));
+        .add_plugin(RendererPlugin::new(args.egui, true));
 
     #[cfg(feature = "standalone")]
     if standalone {

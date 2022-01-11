@@ -13,15 +13,9 @@ use crate::components::{
     CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
 };
 
-pub struct PickingPlugin {
-    has_window: bool,
-}
+pub struct PickingPlugin {}
 
-impl PickingPlugin {
-    pub fn new(has_window: bool) -> Self {
-        Self { has_window }
-    }
-}
+impl PickingPlugin {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum PickingSystemLabel {
@@ -36,9 +30,8 @@ impl Plugin for PickingPlugin {
         app.insert_resource(picking_manager);
 
         app.add_system_to_stage(CoreStage::PreUpdate, gather_input);
-        if self.has_window {
-            app.add_system_to_stage(CoreStage::PreUpdate, gather_window_resize);
-        }
+        app.add_system_to_stage(CoreStage::PreUpdate, gather_window_resize);
+
         app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
 
         app.add_system_to_stage(
@@ -144,21 +137,12 @@ fn update_picked_entity(
     mut newly_picked_query: Query<
         '_,
         '_,
-        (
-            Entity,
-            &mut Transform,
-            &PickedComponent,
-            Option<&ManipulatorComponent>,
-        ),
-        Added<PickedComponent>,
+        (Entity, &mut Transform),
+        (Added<PickedComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    for (entity, transform, picked, manipulator) in newly_picked_query.iter_mut() {
-        if manipulator.is_some() {
-            picking_manager.set_picking_start_pos(picked.get_closest_point());
-        } else {
-            picking_manager.set_manip_entity(entity, &transform);
-        }
+    for (entity, transform) in newly_picked_query.iter_mut() {
+        picking_manager.set_manip_entity(entity, &transform);
     }
 }
 
@@ -222,7 +206,7 @@ fn update_manipulator_component(
     for (entity, mut transform, picked) in picked_query.iter_mut() {
         if entity == picking_manager.manipulated_entity() {
             if active_manipulator_part {
-                let (base_transform, _picking_pos) = picking_manager.base_picking_data();
+                let base_transform = picking_manager.base_picking_transform();
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
                 if !q_cameras.is_empty() {

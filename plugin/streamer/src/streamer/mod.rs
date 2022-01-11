@@ -179,8 +179,8 @@ pub(crate) fn update_streams(
     mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
     mut streamer_windows: ResMut<'_, StreamerWindows>,
     mut window_list: ResMut<'_, Windows>,
-    mut window_created: ResMut<'_, Events<WindowCreated>>,
-    mut window_resized: ResMut<'_, Events<WindowResized>>,
+    mut created_events: ResMut<'_, Events<WindowCreated>>,
+    mut resize_events: ResMut<'_, Events<WindowResized>>,
 ) {
     for event in video_stream_events.iter() {
         match &event.info {
@@ -196,13 +196,17 @@ pub(crate) fn update_streams(
                     event.stream_id,
                     Resolution::new(*width, *height),
                     Arc::clone(&event.video_data_channel),
-                    &mut window_created,
+                    &mut created_events,
                 ));
             }
             VideoStreamEventInfo::Resize { width, height } => {
                 if let Some(window_id) = streamer_windows.get_window_id(event.stream_id) {
+                    let window = window_list.get_mut(window_id).unwrap();
+
+                    window.update_actual_size_from_backend(*width, *height);
+
                     #[allow(clippy::cast_precision_loss)]
-                    window_resized.send(WindowResized {
+                    resize_events.send(WindowResized {
                         id: window_id,
                         width: *width as f32,
                         height: *height as f32,

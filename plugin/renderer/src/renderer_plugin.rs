@@ -29,15 +29,13 @@ use crate::{
 
 #[derive(Default)]
 pub struct RendererPlugin {
-    has_window: bool,
     enable_egui: bool,
     runs_dynamic_systems: bool,
 }
 
 impl RendererPlugin {
-    pub fn new(has_window: bool, enable_egui: bool, runs_dynamic_systems: bool) -> Self {
+    pub fn new(enable_egui: bool, runs_dynamic_systems: bool) -> Self {
         Self {
-            has_window,
             enable_egui,
             runs_dynamic_systems,
         }
@@ -49,8 +47,8 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
 
-        app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
-        app.add_plugin(PickingPlugin::new(self.has_window));
+        app.add_plugin(EguiPlugin::new(self.enable_egui));
+        app.add_plugin(PickingPlugin {});
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_manipulation_manager);

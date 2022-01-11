@@ -4567,6 +4567,7 @@ dependencies = [
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
+ "lgn-window",
  "serde",
 ]
 
