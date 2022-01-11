@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_lines)]
 
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_renderer::{components::RenderSurface, RenderContext};
 use lgn_tracing::span_fn;
 
@@ -133,12 +133,12 @@ impl OffscreenHelper {
                 EntryPoint {
                     defines: Vec::new(),
                     name: "main_vs".to_owned(),
-                    target_profile: "vs_6_0".to_owned(),
+                    target_profile: TargetProfile::Vertex,
                 },
                 EntryPoint {
                     defines: Vec::new(),
                     name: "main_ps".to_owned(),
-                    target_profile: "ps_6_0".to_owned(),
+                    target_profile: TargetProfile::Pixel,
                 },
             ],
         })?;

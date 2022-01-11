@@ -9,4 +9,5 @@ lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 
 bumpalo = "3.8"
 glam = "0.20"
+half = "1.8.2"
 serde = { version = "1.0", features = ["derive"] }

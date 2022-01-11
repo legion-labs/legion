@@ -12,6 +12,9 @@ pub struct Args {
     pub(crate) package_args: SelectedPackageArgs,
     #[clap(flatten)]
     pub(crate) build_args: BuildArgs,
+    /// Automatically apply lint suggestions. This flag implies `--no-deps`
+    #[clap(long)]
+    fix: bool,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
     args: Vec<OsString>,
 }
@@ -35,6 +38,10 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     let mut direct_args = vec![];
     args.build_args.add_args(&mut direct_args);
+
+    if args.fix {
+        direct_args.push("--fix".into());
+    }
 
     let cmd = CargoCommand::Clippy {
         direct_args: &direct_args,

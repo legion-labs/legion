@@ -35,21 +35,26 @@ impl lgn_data_model::TypeReflection for InstanceDc {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __INSTANCEDC_DEFAULT : InstanceDc = InstanceDc :: default () ; }
-use lgn_data_runtime::{Asset, AssetLoader, Resource};
-use std::{any::Any, io};
-impl Resource for InstanceDc {
+impl lgn_data_runtime::Resource for InstanceDc {
     const TYPENAME: &'static str = "runtime_instancedc";
 }
-impl Asset for InstanceDc {
+impl lgn_data_runtime::Asset for InstanceDc {
     type Loader = InstanceDcLoader;
 }
+#[derive(serde :: Serialize, serde :: Deserialize)]
+pub struct InstanceDcReferenceType(lgn_data_runtime::Reference<InstanceDc>);
+lgn_data_model::implement_primitive_type_def!(InstanceDcReferenceType);
 #[derive(Default)]
 pub struct InstanceDcLoader {}
-impl AssetLoader for InstanceDcLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let output: InstanceDc = bincode::deserialize_from(reader)
-            .map_err(|_err| io::Error::new(io::ErrorKind::InvalidData, "Failed to parse"))?;
+impl lgn_data_runtime::AssetLoader for InstanceDcLoader {
+    fn load(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+        let output: InstanceDc = bincode::deserialize_from(reader).map_err(|_err| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse")
+        })?;
         Ok(Box::new(output))
     }
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }

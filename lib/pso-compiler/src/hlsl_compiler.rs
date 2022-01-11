@@ -22,10 +22,26 @@ pub enum ShaderSource {
     Path(String),
 }
 
+pub enum TargetProfile {
+    Vertex,
+    Pixel,
+    Compute,
+}
+
+impl TargetProfile {
+    fn to_profile_string(&self) -> &str {
+        match self {
+            TargetProfile::Vertex => "vs_6_2",
+            TargetProfile::Pixel => "ps_6_2",
+            TargetProfile::Compute => "cs_6_2",
+        }
+    }
+}
+
 pub struct EntryPoint {
     pub defines: Vec<CompileDefine>,
     pub name: String,
-    pub target_profile: String,
+    pub target_profile: TargetProfile,
 }
 
 pub struct CompileParams {
@@ -71,17 +87,6 @@ impl HlslCompiler {
     pub fn filesystem(&self) -> FileSystem {
         self.inner.filesystem.clone()
     }
-
-    // pub fn new(src_folders: Vec<&str>) -> Result<Self> {
-    //     let mut file_server = FileServer::new();
-    //     for src_folder in src_folders {
-    //         file_server.add_root_folder(&src_folder)?;
-    //     }
-    //     Ok(Self {
-    //         dxc: Dxc::new(None)?,
-    //         file_server: Arc::new(file_server),
-    //     })
-    // }
 
     /// Compile an HLSL shader.
     ///
@@ -144,12 +149,13 @@ impl HlslCompiler {
             .compile_internal(
                 &params.shader_source,
                 &shader_product.name,
-                &shader_product.target_profile,
+                shader_product.target_profile.to_profile_string(),
                 &[
                     "-Od",
                     "-spirv",
                     "-fspv-target-env=vulkan1.1",
-                    // "-I d:\\temp\\",
+                    "-enable-16bit-types",
+                    "-HV 2021",
                 ],
                 &defines,
             )
@@ -376,8 +382,6 @@ impl spirv_tools::error::MessageCallback for OptimizerCallback {
 
 #[cfg(test)]
 mod tests {
-    // use graphics_api::ShaderStageFlags;
-
     use super::*;
 
     const SHADER: &str = "
@@ -467,7 +471,7 @@ mod tests {
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
                 name: "main_vs".to_owned(),
-                target_profile: "vs_6_1".to_owned(),
+                target_profile: TargetProfile::Vertex,
             }],
         };
 
@@ -499,7 +503,7 @@ mod tests {
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
                 name: "main_ps".to_owned(),
-                target_profile: "ps_6_1".to_owned(),
+                target_profile: TargetProfile::Pixel,
             }],
         };
 

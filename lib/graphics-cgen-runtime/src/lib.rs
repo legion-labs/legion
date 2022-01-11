@@ -62,24 +62,179 @@ use lgn_graphics_api::{
     ShaderResourceType, ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
+use half::prelude::*;
+
+///
+/// Float1
+///
 #[derive(Default, Clone, Copy)]
 pub struct Float1(f32);
 
-#[derive(Default, Clone, Copy)]
-pub struct Float2(glam::Vec2);
+impl From<f32> for Float1 {
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
 
+///
+/// Float2
+///
 #[derive(Default, Clone, Copy)]
-pub struct Float3(glam::Vec3);
+pub struct Float2([f32; 2]);
 
-#[derive(Default, Clone, Copy)]
-pub struct Float4(glam::Vec4);
+impl From<glam::Vec2> for Float2 {
+    fn from(value: glam::Vec2) -> Self {
+        Self(value.to_array())
+    }
+}
 
+///
+/// Float3
+///
 #[derive(Default, Clone, Copy)]
-pub struct Float4x4(glam::Mat4);
+pub struct Float3([f32; 3]);
+
+impl From<glam::Vec3> for Float3 {
+    fn from(value: glam::Vec3) -> Self {
+        Self(value.to_array())
+    }
+}
+
+///
+/// Float4
+///
+#[derive(Default, Clone, Copy)]
+pub struct Float4([f32; 4]);
+
+impl From<glam::Vec4> for Float4 {
+    fn from(value: glam::Vec4) -> Self {
+        Self(value.to_array())
+    }
+}
+
+///
+/// Uint1
+///
+#[derive(Default, Clone, Copy)]
+pub struct Uint1(u32);
+
+impl From<u32> for Uint1 {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+///
+/// Uint2
+///
+#[derive(Default, Clone, Copy)]
+pub struct Uint2([u32; 2]);
+
+impl From<glam::UVec2> for Uint2 {
+    fn from(value: glam::UVec2) -> Self {
+        Self(value.to_array())
+    }
+}
+
+///
+/// Uint3
+///
+#[derive(Default, Clone, Copy)]
+pub struct Uint3([u32; 3]);
+
+impl From<glam::UVec3> for Uint3 {
+    fn from(value: glam::UVec3) -> Self {
+        Self(value.to_array())
+    }
+}
+
+///
+/// Uint4
+///
+#[derive(Default, Clone, Copy)]
+pub struct Uint4([u32; 4]);
+
+impl From<glam::UVec4> for Uint4 {
+    fn from(value: glam::UVec4) -> Self {
+        Self(value.to_array())
+    }
+}
+
+///
+/// Half1
+///
+#[derive(Default, Clone, Copy)]
+pub struct Half1(u16);
+
+impl From<f32> for Half1 {
+    fn from(value: f32) -> Self {
+        Self(half::f16::from_f32(value).to_bits())
+    }
+}
+
+impl From<f16> for Half1 {
+    fn from(value: f16) -> Self {
+        Self(value.to_bits())
+    }
+}
+
+///
+/// Half2
+///
+#[derive(Default, Clone, Copy)]
+pub struct Half2([u16; 2]);
+
+impl From<glam::Vec2> for Half2 {
+    fn from(value: glam::Vec2) -> Self {
+        Self([
+            half::f16::from_f32(value.x).to_bits(),
+            half::f16::from_f32(value.y).to_bits(),
+        ])
+    }
+}
+
+///
+/// Half3
+///
+#[derive(Default, Clone, Copy)]
+pub struct Half3([u16; 3]);
+
+impl From<glam::Vec3> for Half3 {
+    fn from(value: glam::Vec3) -> Self {
+        Self([
+            half::f16::from_f32(value.x).to_bits(),
+            half::f16::from_f32(value.y).to_bits(),
+            half::f16::from_f32(value.z).to_bits(),
+        ])
+    }
+}
+
+///
+/// Half4
+///
+#[derive(Default, Clone, Copy)]
+pub struct Half4([u16; 4]);
+
+impl From<glam::Vec4> for Half4 {
+    fn from(value: glam::Vec4) -> Self {
+        Self([
+            half::f16::from_f32(value.x).to_bits(),
+            half::f16::from_f32(value.y).to_bits(),
+            half::f16::from_f32(value.z).to_bits(),
+            half::f16::from_f32(value.w).to_bits(),
+        ])
+    }
+}
+
+///
+/// Float4x4
+///
+#[derive(Default, Clone, Copy)]
+pub struct Float4x4([f32; 16]);
 
 impl From<glam::Mat4> for Float4x4 {
     fn from(value: glam::Mat4) -> Self {
-        Self(value)
+        Self(value.to_cols_array())
     }
 }
 
@@ -89,6 +244,14 @@ pub mod prelude {
     pub use crate::Float3;
     pub use crate::Float4;
     pub use crate::Float4x4;
+    pub use crate::Half1;
+    pub use crate::Half2;
+    pub use crate::Half3;
+    pub use crate::Half4;
+    pub use crate::Uint1;
+    pub use crate::Uint2;
+    pub use crate::Uint3;
+    pub use crate::Uint4;
 }
 
 pub struct CGenTypeDef {

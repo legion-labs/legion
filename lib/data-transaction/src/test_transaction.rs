@@ -5,6 +5,7 @@ use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
 };
@@ -167,9 +168,23 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             id: ResourceId::new(),
         };
 
+        let ref_resource_path: ResourcePathName = "/entity/create_reference.dc".into();
+        let ref_new_id = ResourceTypeAndId {
+            kind: TestEntity::TYPE,
+            id: ResourceId::new(),
+        };
+
+        let ref_path_id =
+            ResourcePathId::from(ref_new_id).push(generic_data::runtime::TestEntity::TYPE);
+        let ref_path_id = serde_json::to_value(ref_path_id)?;
+
         // Create a new Resource, Edit some properties and Commit it
         let transaction = Transaction::new()
             .add_operation(CreateResourceOperation::new(new_id, resource_path.clone()))
+            .add_operation(CreateResourceOperation::new(
+                ref_new_id,
+                ref_resource_path.clone(),
+            ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
                 "test_string",
@@ -180,6 +195,23 @@ async fn test_transaction_system() -> anyhow::Result<()> {
                 new_id,
                 "test_position",
                 "[1,2,3]",
+            ))
+            .add_operation(UpdatePropertyOperation::new(
+                new_id,
+                "test_resource_path_option",
+                ref_path_id.to_string().as_str(),
+            ))
+            .add_operation(ArrayOperation::insert_element(
+                new_id,
+                "test_resource_path_vec",
+                0,
+                ref_path_id.to_string().as_str(),
+            ))
+            .add_operation(ArrayOperation::insert_element(
+                new_id,
+                "test_resource_path_vec",
+                1,
+                ref_path_id.to_string().as_str(),
             ));
         data_manager.commit_transaction(transaction).await?;
 

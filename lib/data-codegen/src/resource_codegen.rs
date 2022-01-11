@@ -43,13 +43,8 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
 
     let use_quotes = if add_uses {
-        let imports = data_container_info.imports();
+        let imports = data_container_info.offline_imports();
         quote! {
-            use std::{any::Any, io};
-            use lgn_data_offline::{
-                resource::{OfflineResource, ResourceProcessor},
-            };
-            use lgn_data_runtime::{Asset, AssetLoader, Resource};
             #(use #imports;)*
         }
     } else {
@@ -60,23 +55,23 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         #use_quotes
 
-        impl Resource for #offline_identifier {
+        impl lgn_data_runtime::Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;
         }
 
-        impl Asset for #offline_identifier {
+        impl lgn_data_runtime::Asset for #offline_identifier {
             type Loader = #offline_identifier_processor;
         }
 
-        impl OfflineResource for #offline_identifier {
+        impl lgn_data_offline::resource::OfflineResource for #offline_identifier {
             type Processor = #offline_identifier_processor;
         }
 
         #[derive(Default)]
         pub struct #offline_identifier_processor {}
 
-        impl AssetLoader for #offline_identifier_processor {
-            fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        impl lgn_data_runtime::AssetLoader for #offline_identifier_processor {
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
                 let mut instance = #offline_identifier::default();
                 let values : serde_json::Value = serde_json::from_reader(reader)
                     .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
@@ -85,24 +80,24 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 Ok(Box::new(instance))
             }
 
-            fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+            fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
         }
 
 
-        impl ResourceProcessor for #offline_identifier_processor {
-            fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+        impl lgn_data_offline::resource::ResourceProcessor for #offline_identifier_processor {
+            fn new_resource(&mut self) -> Box<dyn std::any::Any + Send + Sync> {
                 Box::new(#offline_identifier::default())
             }
 
-            fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<lgn_data_offline::ResourcePathId> {
+            fn extract_build_dependencies(&mut self, _resource: &dyn std::any::Any) -> Vec<lgn_data_offline::ResourcePathId> {
                 vec![]
             }
 
             fn get_resource_type_name(&self) -> Option<&'static str> {
-                Some(#offline_identifier::TYPENAME)
+                Some(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME)
             }
 
-            fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
+            fn write_resource(&mut self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).
                     map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
@@ -113,18 +108,19 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
             }
 
 
-            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+                use lgn_data_runtime::AssetLoader;
                 self.load(reader)
             }
 
-            fn get_resource_reflection<'a>(&self, resource: &'a dyn Any) -> Option<&'a dyn lgn_data_model::TypeReflection> {
+            fn get_resource_reflection<'a>(&self, resource: &'a dyn std::any::Any) -> Option<&'a dyn lgn_data_model::TypeReflection> {
                 if let Some(instance) = resource.downcast_ref::<#offline_identifier>() {
                     return Some(instance);
                 }
                 None
             }
 
-            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn Any) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
+            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn std::any::Any) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
                 if let Some(instance) = resource.downcast_mut::<#offline_identifier>() {
                     return Some(instance);
                 }

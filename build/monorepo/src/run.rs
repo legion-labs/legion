@@ -1,7 +1,6 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use chrono::Utc;
 use lgn_tracing::span_fn;
 
 use crate::{
@@ -48,9 +47,17 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         packages.select_package_from_bin(bin.as_str(), ctx)?;
     }
     trace_name = format!(
-        "trace-{}-{}.json",
+        "trace-{}-{}-{}.json",
         trace_name,
-        Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
+        std::time::SystemTime::UNIX_EPOCH
+            .elapsed()
+            .unwrap()
+            .as_secs(),
+        if args.build_args.release {
+            "release"
+        } else {
+            "debug"
+        }
     )
     .replace(":", "-"); // Windows doesn't like colons in the filename
     let env = if let Some(trace_file) = &args.ctrace {

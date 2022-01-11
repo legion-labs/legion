@@ -170,6 +170,7 @@ pub(crate) fn handle_stream_events(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn update_streams(
+    mut commands: Commands<'_, '_>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
     mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
@@ -198,6 +199,16 @@ pub(crate) fn update_streams(
                     Arc::clone(&event.video_data_channel),
                     &mut created_events,
                 ));
+
+                commands
+                    .entity(event.stream_id.entity)
+                    .insert(render_surface);
+
+                render_pass.write().set_color(color.0);
+
+                let video_data_channel = Arc::clone(&event.video_data_channel);
+
+                let _ = video_data_channel.send(&Bytes::from(r#"{"type": "initialized"}"#));
             }
             VideoStreamEventInfo::Resize { width, height } => {
                 if let Some(window_id) = streamer_windows.get_window_id(event.stream_id) {
@@ -211,6 +222,35 @@ pub(crate) fn update_streams(
                         width: *width as f32,
                         height: *height as f32,
                     });
+                }
+            }
+            VideoStreamEventInfo::Speed { speed } => {
+                info!("received speed command {}", speed);
+
+                match query.get_mut(event.stream_id.entity) {
+                    Ok(render_surface) => {
+                        let render_pass = render_surface.test_renderpass();
+
+                        render_pass.write().set_speed(*speed);
+                    }
+                    Err(query_err) => {
+                        // TODO
+                        // Most likely: "The given entity does not have the requested component"
+                        // i.e. the entity associated with the stream-id does not have a RenderSurface
+                        error!("{}", query_err);
+                    }
+                }
+            }
+            VideoStreamEventInfo::Input { input } => {
+                info!("received input: {:?}", input);
+
+                    }
+                    Err(query_err) => {
+                        // TODO
+                        // Most likely: "The given entity does not have the requested component"
+                        // i.e. the entity associated with the stream-id does not have a RenderSurface
+                        error!("{}", query_err);
+                    }
                 }
             }
             VideoStreamEventInfo::Speed { speed } => {

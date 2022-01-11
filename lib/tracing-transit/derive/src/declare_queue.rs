@@ -12,14 +12,14 @@ fn gen_read_method(
         value_tupe_counter += 1;
         quote! {
             #index => {
-                unsafe{
+                unsafe {
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
                     let value_size = if <#value_type_id as lgn_tracing_transit::InProcSerialize>::IS_CONST_SIZE {
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
-                    }else{
-                        let size_instance = lgn_utils::memory::read_any::<u32>(begin_obj);
+                    } else {
+                        let size_instance = lgn_tracing_transit::read_any::<u32>(begin_obj);
                         begin_obj = begin_obj.add( std::mem::size_of::<u32>() );
                         next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
                         Some(size_instance)
@@ -173,7 +173,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                     // we force the dynamically sized object to first serialize their size as unsigned 32 bits
                     // this will allow unparsable objects to be skipped by the reader
                     let value_size = T::get_value_size(&value).unwrap();
-                    lgn_utils::memory::write_any(&mut self.buffer, &value_size);
+                    lgn_tracing_transit::write_any(&mut self.buffer, &value_size);
                     value.write_value(&mut self.buffer);
                     assert!(
                         self.buffer.len()

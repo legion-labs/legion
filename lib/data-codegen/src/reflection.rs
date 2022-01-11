@@ -28,7 +28,8 @@ pub struct DataContainerMetaInfo {
 pub struct MemberMetaInfo {
     pub name: String,
     pub type_path: syn::Path,
-    pub imports: Vec<syn::Path>,
+    pub offline_imports: Vec<syn::Path>,
+    pub runtime_imports: Vec<syn::Path>,
     pub default_literal: Option<TokenStream>,
     pub attributes: BTreeMap<String, String>,
 }
@@ -41,10 +42,22 @@ impl DataContainerMetaInfo {
         //self.members.iter().any(|a| a.type_name == "String")
     }
 
-    pub fn imports(&self) -> Vec<syn::Path> {
+    pub fn offline_imports(&self) -> Vec<syn::Path> {
         let mut output = vec![];
         for member in &self.members {
-            for import in &member.imports {
+            for import in &member.offline_imports {
+                if !output.contains(import) {
+                    output.push(import.clone());
+                }
+            }
+        }
+        output
+    }
+
+    pub fn runtime_imports(&self) -> Vec<syn::Path> {
+        let mut output = vec![];
+        for member in &self.members {
+            for import in &member.runtime_imports {
                 if !output.contains(import) {
                     output.push(import.clone());
                 }
@@ -130,23 +143,17 @@ impl MemberMetaInfo {
         match self.get_type_name().as_str() {
             "Option < ResourcePathId >" => {
                 let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
-                    format!(
-                        "Option<lgn_data_runtime::Reference<{}>>",
-                        resource_type.to_token_stream().to_string()
-                    )
+                    format!("Option<{}ReferenceType>", resource_type)
                 } else {
-                    "Option<lgn_data_runtime::Reference<lgn_data_runtime::Resource>>".into()
+                    panic!("Option<ResourcePathId> must specify ResourceType in 'resource_type' attribute");
                 };
                 syn::parse_str(ty.as_str()).ok()
             }
             "Vec < ResourcePathId >" => {
                 let ty = if let Some(resource_type) = self.attributes.get(RESOURCE_TYPE_ATTR) {
-                    format!(
-                        "Vec<lgn_data_runtime::Reference<{}>>",
-                        resource_type.to_token_stream().to_string()
-                    )
+                    format!("Vec<{}ReferenceType>", resource_type)
                 } else {
-                    "Vec<lgn_data_runtime::Reference<lgn_data_runtime::Resource>>".into()
+                    panic!("Vec<ResourcePathId> must specify ResourceType in 'resource_type' attribute");
                 };
                 syn::parse_str(ty.as_str()).ok()
             }
@@ -268,7 +275,8 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
     let mut member_info = MemberMetaInfo {
         name: field.ident.as_ref().unwrap().to_string(),
         type_path,
-        imports: vec![],
+        offline_imports: vec![],
+        runtime_imports: vec![],
         attributes: BTreeMap::new(),
         default_literal: None,
     };
@@ -303,8 +311,11 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
                                 .attributes
                                 .insert(ident, get_resource_type(&mut group_iter));
                             member_info
-                                .imports
+                                .offline_imports
                                 .push(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
+                            member_info
+                                .runtime_imports
+                                .push(syn::parse_str("lgn_data_runtime::Reference").unwrap());
                         }
                         // Literal Attributes
                         GROUP_ATTR | TOOLTIP_ATTR => {

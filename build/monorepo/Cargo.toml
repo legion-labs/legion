@@ -8,12 +8,13 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Dependencies to other legion crates must stay limited
 lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../lib/telemetry-sink", version = "0.1.0" }
+################################################################################
 anyhow = "1.0.0"
 atty = "0.2.14"
 camino = "1.0.5"
-chrono = "0.4.19"
 clap = { version = "3.0", features = ["derive"] }
 determinator = "0.7.0"
 guppy = "0.12.4"
@@ -30,6 +31,7 @@ termcolor = "1.1.2"
 thiserror = "1.0.30"
 toml = "0.5.8"
 toml_edit = "0.10"
+
 
 # WIP for files in the repo but not yet included in the tree.
 # globset = "0.4.8"

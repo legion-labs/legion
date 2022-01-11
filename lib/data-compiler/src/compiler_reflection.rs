@@ -7,13 +7,14 @@ use lgn_data_offline::ResourcePathId;
 use bincode::{DefaultOptions, Options};
 use lgn_data_model::collector::{ItemInfo, PropertyCollector};
 use lgn_data_model::{TypeDefinition, TypeReflection};
+use std::collections::HashSet;
 use std::str::FromStr;
 
 /// Convert a reflected `OfflineType` to a `RuntimeType` using reflection.
 pub fn reflection_compile(
     offline_resource: &dyn TypeReflection,
     runtime_resource: &mut dyn TypeReflection,
-) -> Result<(Vec<u8>, Option<Vec<ResourcePathId>>), CompilerError> {
+) -> Result<(Vec<u8>, Option<HashSet<ResourcePathId>>), CompilerError> {
     // Read the Offline as a Serde_Json Value
 
     let mut buffer = Vec::new();
@@ -56,9 +57,9 @@ pub fn reflection_compile(
     Ok((compiled_asset, resource_references))
 }
 
-fn extract_resource_dependencies(object: &dyn TypeReflection) -> Option<Vec<ResourcePathId>> {
+fn extract_resource_dependencies(object: &dyn TypeReflection) -> Option<HashSet<ResourcePathId>> {
     struct ExtractResourcePathId {
-        output: Vec<ResourcePathId>,
+        output: HashSet<ResourcePathId>,
     }
 
     impl PropertyCollector for ExtractResourcePathId {
@@ -77,10 +78,14 @@ fn extract_resource_dependencies(object: &dyn TypeReflection) -> Option<Vec<Reso
                     }
 
                     let path = String::from_utf8(output)?;
-                    if let Ok(res_id) = ResourcePathId::from_str(path.as_str()) {
-                        return Ok(Some(Self {
-                            output: vec![res_id],
-                        }));
+                    if let Ok(res_id) =
+                        ResourcePathId::from_str(path.trim_start_matches('"').trim_end_matches('"'))
+                    {
+                        let mut result = Self {
+                            output: HashSet::with_capacity(1),
+                        };
+                        result.output.insert(res_id);
+                        return Ok(Some(result));
                     }
                 }
             }
@@ -89,7 +94,9 @@ fn extract_resource_dependencies(object: &dyn TypeReflection) -> Option<Vec<Reso
         fn add_child(parent: &mut Self::Item, child: Self::Item) {
             if let Some(child) = child {
                 parent
-                    .get_or_insert(Self { output: Vec::new() })
+                    .get_or_insert(Self {
+                        output: HashSet::new(),
+                    })
                     .output
                     .extend(child.output);
             }
@@ -139,8 +146,25 @@ fn convert_json_value_to_runtime(
             }
         }
 
-        TypeDefinition::Primitive(_primitive_descriptor) => {}
-        TypeDefinition::Option(_offline_option_descriptor) => {}
+        TypeDefinition::Primitive(primitive_descriptor) => {
+            // Convert ResourcePathId to Runtime ReferenceType
+            if primitive_descriptor
+                .base_descriptor
+                .type_name
+                .ends_with("ReferenceType")
+            {
+                if let serde_json::Value::String(value_string) = value {
+                    let res_path = ResourcePathId::from_str(value_string.as_str())
+                        .map_err(|_e| anyhow::anyhow!("Invalid resourcePathId"))?;
+                    *value = serde_json::to_value(res_path.resource_id())?;
+                }
+            }
+        }
+        TypeDefinition::Option(offline_option_descriptor) => {
+            if !value.is_null() {
+                convert_json_value_to_runtime(offline_option_descriptor.inner_type, value)?;
+            }
+        }
         TypeDefinition::Struct(struct_descriptor) => {
             if let serde_json::Value::Object(object) = value {
                 struct_descriptor.fields.iter().try_for_each(

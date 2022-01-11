@@ -173,10 +173,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
             (255, 0, 0).into(),
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.1, 0.0, 0.0),
-        });
+        ));
 
     // sphere 2
     commands
@@ -186,10 +183,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
             (0, 255, 0).into(),
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.1, 0.0),
-        });
+        ));
 
     // sphere 3
     commands
@@ -199,10 +193,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
             (0, 0, 255).into(),
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.0, 0.1),
-        });
+        ));
 
     // directional light
     commands
@@ -215,6 +206,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
+            ..LightComponent::default()
         });
 
     // omnidirectional light 1
@@ -226,6 +218,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
+            ..LightComponent::default()
         });
 
     // omnidirectional light 2
@@ -237,6 +230,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: false,
+            ..LightComponent::default()
         });
 
     // spotlight
@@ -251,6 +245,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: true,
+            ..LightComponent::default()
         });
 }
 
@@ -276,10 +271,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             default_meshes.as_ref(),
             DefaultMeshId::Cube as usize,
             (0, 255, 0).into(),
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.4, 0.0),
-        });
+        ));
 
     // pyramid
     commands
@@ -289,10 +281,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             default_meshes.as_ref(),
             DefaultMeshId::Pyramid as usize,
             (0, 0, 255).into(),
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.0, 0.0, 0.4),
-        });
+        ));
 
     // omnidirectional light
     commands
@@ -303,6 +292,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             radiance: 40.0,
             color: (1.0, 1.0, 1.0),
             enabled: true,
+            ..LightComponent::default()
         });
 }
 

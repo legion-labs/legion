@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use lgn_tracing_transit::prelude::*;
-use lgn_utils::memory::{read_any, write_any};
 
 use crate::{Level, LevelFilter};
 
@@ -106,15 +105,14 @@ impl InProcSerialize for LogStringEvent {
         self.dyn_str.write_value(buffer);
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
+    unsafe fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
         let desc_id = read_any::<usize>(ptr);
-        let desc = unsafe { &*(desc_id as *const LogMetadata) };
+        let desc = &*(desc_id as *const LogMetadata);
         let time_offset = std::mem::size_of::<usize>();
-        let time = unsafe { read_any::<i64>(ptr.add(time_offset)) };
+        let time = read_any::<i64>(ptr.add(time_offset));
         let buffer_size = value_size.unwrap();
         let string_offset = std::mem::size_of::<i64>() + time_offset;
-        let string_ptr = unsafe { ptr.add(string_offset) };
+        let string_ptr = ptr.add(string_offset);
         let msg = <DynString as InProcSerialize>::read_value(
             string_ptr,
             Some(buffer_size - string_offset as u32),
@@ -178,18 +176,17 @@ impl InProcSerialize for LogStringInteropEvent {
         self.msg.write_value(buffer);
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
+    unsafe fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
         let time = read_any::<i64>(ptr);
         let level_offset = std::mem::size_of::<i64>();
-        let level = unsafe { read_any::<u32>(ptr.add(level_offset)) };
+        let level = read_any::<u32>(ptr.add(level_offset));
         let target_len_offset = level_offset + std::mem::size_of::<u32>();
-        let target_len = unsafe { read_any::<u32>(ptr.add(target_len_offset)) };
+        let target_len = read_any::<u32>(ptr.add(target_len_offset));
         let target_offset = target_len_offset + std::mem::size_of::<u32>();
-        let target = unsafe { read_any::<*const u8>(ptr.add(target_offset)) };
+        let target = read_any::<*const u8>(ptr.add(target_offset));
         let buffer_size = value_size.unwrap();
         let string_offset = std::mem::size_of::<*const u8>() + target_offset;
-        let string_ptr = unsafe { ptr.add(string_offset) };
+        let string_ptr = ptr.add(string_offset);
         let msg = <DynString as InProcSerialize>::read_value(
             string_ptr,
             Some(buffer_size - string_offset as u32),

@@ -7,11 +7,12 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::DefaultMeshes,
+    resources::{DefaultMeshId, DefaultMeshes},
 };
-use lgn_app::{App, CoreStage, Events, Plugin};
+use lgn_app::{App, CoreStage, Plugin};
 
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::Color;
 use lgn_transform::components::Transform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
@@ -113,52 +114,6 @@ fn on_window_created(
         });
 
         commands.spawn().insert(render_surface);
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn on_window_resized(
-    mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
-    wnd_list: Res<'_, Windows>,
-    renderer: Res<'_, Renderer>,
-    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    render_surfaces: Res<'_, RenderSurfaces>,
-) {
-    for ev in ev_wnd_resized.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let render_surface = q_render_surfaces
-                .iter_mut()
-                .find(|x| x.id() == *render_surface_id);
-            if let Some(mut render_surface) = render_surface {
-                let wnd = wnd_list.get(ev.id).unwrap();
-                render_surface.resize(
-                    &renderer,
-                    RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
-                );
-            }
-        }
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn on_window_close_requested(
-    mut commands: Commands<'_, '_>,
-    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
-    mut render_surfaces: ResMut<'_, RenderSurfaces>,
-) {
-    for ev in ev_wnd_destroyed.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let query_result = query_render_surface
-                .iter()
-                .find(|x| x.1.id() == *render_surface_id);
-            if let Some(query_result) = query_result {
-                commands.entity(query_result.0).despawn();
-            }
-        }
-        render_surfaces.remove(ev.id);
     }
 }
 
@@ -448,6 +403,7 @@ fn render_update(
     >,
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
+    q_lights: Query<'_, '_, (&LightComponent, &Transform)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
@@ -467,6 +423,9 @@ fn render_update(
         q_manipulator_drawables
             .iter()
             .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
+    let q_lights = q_lights
+        .iter()
+        .collect::<Vec<(&LightComponent, &Transform)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();
@@ -475,6 +434,13 @@ fn render_update(
     } else {
         &default_camera
     };
+
+    let mut light_picking_mesh = StaticMesh::from_default_meshes(
+        default_meshes.as_ref(),
+        DefaultMeshId::Sphere as usize,
+        Color::default(),
+    );
+    light_picking_mesh.world_offset = 0xffffffff; // will force the shader to use custom made world matrix
 
     renderer.flush_update_jobs(&render_context);
 
@@ -515,6 +481,8 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
+            q_lights.as_slice(),
+            &light_picking_mesh,
             camera_component,
         );
 

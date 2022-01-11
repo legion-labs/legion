@@ -109,21 +109,26 @@ impl lgn_data_model::TypeReflection for DebugCube {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __DEBUGCUBE_DEFAULT : DebugCube = DebugCube :: default () ; }
-use lgn_data_runtime::{Asset, AssetLoader, Resource};
-use std::{any::Any, io};
-impl Resource for DebugCube {
+impl lgn_data_runtime::Resource for DebugCube {
     const TYPENAME: &'static str = "runtime_debugcube";
 }
-impl Asset for DebugCube {
+impl lgn_data_runtime::Asset for DebugCube {
     type Loader = DebugCubeLoader;
 }
+#[derive(serde :: Serialize, serde :: Deserialize)]
+pub struct DebugCubeReferenceType(lgn_data_runtime::Reference<DebugCube>);
+lgn_data_model::implement_primitive_type_def!(DebugCubeReferenceType);
 #[derive(Default)]
 pub struct DebugCubeLoader {}
-impl AssetLoader for DebugCubeLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let output: DebugCube = bincode::deserialize_from(reader)
-            .map_err(|_err| io::Error::new(io::ErrorKind::InvalidData, "Failed to parse"))?;
+impl lgn_data_runtime::AssetLoader for DebugCubeLoader {
+    fn load(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+        let output: DebugCube = bincode::deserialize_from(reader).map_err(|_err| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse")
+        })?;
         Ok(Box::new(output))
     }
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }

@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 #[path = "../offline/debug_cube.rs"]
 mod debug_cube;
 pub use debug_cube::*;

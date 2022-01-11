@@ -8,8 +8,7 @@ fn build_graphics_cgen(
     root_file: &impl AsRef<Path>,
 ) -> lgn_build_utils::Result<()> {
     // build context
-    let mut out_dir = PathBuf::from(&context.codegen_out_dir());
-    out_dir.push("cgen");
+    let out_dir = PathBuf::from(&context.codegen_out_dir());
     let mut ctx_builder = lgn_graphics_cgen::run::CGenContextBuilder::new();
     ctx_builder.set_root_file(root_file).unwrap();
     ctx_builder.set_outdir(&out_dir).unwrap();

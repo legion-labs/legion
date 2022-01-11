@@ -1,6 +1,4 @@
-use lgn_utils::memory::{read_any, write_any};
-
-use crate::{InProcSerialize, Reflect, UserDefinedType};
+use crate::{read_any, write_any, InProcSerialize, Reflect, UserDefinedType};
 
 // StaticString serializes the value of the pointer and the contents of the
 // string
@@ -47,7 +45,8 @@ impl InProcSerialize for StaticString {
         }
     }
 
-    fn read_value(ptr: *const u8, value_size_opt: Option<u32>) -> Self {
+    #[allow(unsafe_code)]
+    unsafe fn read_value(ptr: *const u8, value_size_opt: Option<u32>) -> Self {
         let id_size = std::mem::size_of::<usize>() as u32;
         let value_size = value_size_opt.unwrap();
         assert!(id_size <= value_size);
