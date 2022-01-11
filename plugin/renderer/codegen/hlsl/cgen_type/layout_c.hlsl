@@ -5,7 +5,7 @@
 
 
     struct LayoutC {
-        float a;
+        half a;
     };
 
 #endif

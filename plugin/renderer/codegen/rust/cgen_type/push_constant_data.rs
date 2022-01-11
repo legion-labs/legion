@@ -20,6 +20,7 @@ pub struct PushConstantData {
     data: [u8; 16],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl PushConstantData {
     pub const fn id() -> u32 {
         22

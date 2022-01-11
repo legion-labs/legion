@@ -20,6 +20,7 @@ pub struct LayoutSB2 {
     data: [u8; 58],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl LayoutSB2 {
     pub const fn id() -> u32 {
         20

@@ -9,17 +9,18 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "LayoutC",
     id: 14,
-    size: 4,
+    size: 2,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<LayoutC>(), 4);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutC>(), 2);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct LayoutC {
-    data: [u8; 4],
+    data: [u8; 2],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl LayoutC {
     pub const fn id() -> u32 {
         14
@@ -32,13 +33,13 @@ impl LayoutC {
     //
     // member : a
     // offset : 0
-    // size : 4
+    // size : 2
     //
-    pub fn set_a(&mut self, value: Float1) {
+    pub fn set_a(&mut self, value: Half1) {
         self.set(0, value);
     }
 
-    pub fn a(&self) -> Float1 {
+    pub fn a(&self) -> Half1 {
         self.get(0)
     }
 
@@ -65,8 +66,8 @@ impl LayoutC {
 
 impl Default for LayoutC {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 4] };
-        ret.set_a(Float1::default());
+        let mut ret = Self { data: [0; 2] };
+        ret.set_a(Half1::default());
         ret
     }
 }

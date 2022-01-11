@@ -20,6 +20,7 @@ pub struct ViewData {
     data: [u8; 128],
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 impl ViewData {
     pub const fn id() -> u32 {
         21
