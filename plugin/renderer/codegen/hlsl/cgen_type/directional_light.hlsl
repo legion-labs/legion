@@ -3,11 +3,11 @@
 #ifndef TYPE_DIRECTIONAL_LIGHT
 #define TYPE_DIRECTIONAL_LIGHT
 
-	
-	struct DirectionalLight {
-		float3 dir;
-		float radiance;
-		float3 color;
-	}; // DirectionalLight
-	
+
+    struct DirectionalLight {
+        float3 dir;
+        float radiance;
+        float3 color;
+    };
+
 #endif

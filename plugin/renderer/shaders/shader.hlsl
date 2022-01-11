@@ -1,6 +1,6 @@
-#include "crate://renderer/codegen/cgen/hlsl/cgen_type/omnidirectional_light.hlsl"
-#include "crate://renderer/codegen/cgen/hlsl/cgen_type/directional_light.hlsl"
-#include "crate://renderer/codegen/cgen/hlsl/cgen_type/spotlight.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/omnidirectional_light.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/spotlight.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;

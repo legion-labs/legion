@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_math::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::Transform;
 

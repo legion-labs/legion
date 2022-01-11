@@ -9,7 +9,6 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
-use lgn_math::Vec3;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;

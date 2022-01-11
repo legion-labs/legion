@@ -14,7 +14,7 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
-use lgn_math::{Mat4, Vec3};
+use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
@@ -183,7 +183,7 @@ fn init_manipulation_manager(
 #[allow(clippy::needless_pass_by_value)]
 fn update_lighting_ui(
     egui_ctx: Res<'_, Egui>,
-    mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
+    mut lights: Query<'_, '_, &mut LightComponent>,
     mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
     egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
@@ -203,7 +203,7 @@ fn update_lighting_ui(
         );
         ui.add(egui::Slider::new(&mut lighting_manager.shininess, 1.0..=32.0).text("shininess"));
         ui.label("Lights");
-        for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
+        for (i, mut light) in lights.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.add(egui::Checkbox::new(&mut light.enabled, "Enabled"));
                 match light.light_type {

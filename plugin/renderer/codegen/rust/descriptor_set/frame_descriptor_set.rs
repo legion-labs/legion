@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 #[allow(unused_imports)]
 use lgn_graphics_cgen_runtime::{CGenDescriptorDef, CGenDescriptorSetDef, CGenDescriptorSetInfo};
 
-static DESCRIPTOR_DEFS: [CGenDescriptorDef; 18] = [
+static DESCRIPTOR_DEFS: [CGenDescriptorDef; 21] = [
     CGenDescriptorDef {
         name: "smp",
         shader_resource_type: ShaderResourceType::Sampler,
@@ -136,20 +136,41 @@ static DESCRIPTOR_DEFS: [CGenDescriptorDef; 18] = [
         flat_index_end: 36,
         array_size: 0,
     },
+    CGenDescriptorDef {
+        name: "sb_omni_lights",
+        shader_resource_type: ShaderResourceType::StructuredBuffer,
+        flat_index_start: 36,
+        flat_index_end: 37,
+        array_size: 0,
+    },
+    CGenDescriptorDef {
+        name: "sb_dir_lights",
+        shader_resource_type: ShaderResourceType::StructuredBuffer,
+        flat_index_start: 37,
+        flat_index_end: 38,
+        array_size: 0,
+    },
+    CGenDescriptorDef {
+        name: "sb_spotlights",
+        shader_resource_type: ShaderResourceType::StructuredBuffer,
+        flat_index_start: 38,
+        flat_index_end: 39,
+        array_size: 0,
+    },
 ];
 
 static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef {
     name: "FrameDescriptorSet",
     id: 1,
     frequency: 1,
-    descriptor_flat_count: 36,
+    descriptor_flat_count: 39,
     descriptor_defs: &DESCRIPTOR_DEFS,
 };
 
 static mut DESCRIPTOR_SET_LAYOUT: Option<DescriptorSetLayout> = None;
 
 pub struct FrameDescriptorSet<'a> {
-    descriptor_refs: [DescriptorRef<'a>; 36],
+    descriptor_refs: [DescriptorRef<'a>; 39],
 }
 
 impl<'a> FrameDescriptorSet<'a> {
@@ -287,12 +308,27 @@ impl<'a> FrameDescriptorSet<'a> {
         assert!(DESCRIPTOR_SET_DEF.descriptor_defs[17].validate(value));
         self.descriptor_refs[35] = DescriptorRef::TextureView(value);
     }
+
+    pub fn set_sb_omni_lights(&mut self, value: &'a BufferView) {
+        assert!(DESCRIPTOR_SET_DEF.descriptor_defs[18].validate(value));
+        self.descriptor_refs[36] = DescriptorRef::BufferView(value);
+    }
+
+    pub fn set_sb_dir_lights(&mut self, value: &'a BufferView) {
+        assert!(DESCRIPTOR_SET_DEF.descriptor_defs[19].validate(value));
+        self.descriptor_refs[37] = DescriptorRef::BufferView(value);
+    }
+
+    pub fn set_sb_spotlights(&mut self, value: &'a BufferView) {
+        assert!(DESCRIPTOR_SET_DEF.descriptor_defs[20].validate(value));
+        self.descriptor_refs[38] = DescriptorRef::BufferView(value);
+    }
 }
 
 impl<'a> Default for FrameDescriptorSet<'a> {
     fn default() -> Self {
         Self {
-            descriptor_refs: [DescriptorRef::<'a>::default(); 36],
+            descriptor_refs: [DescriptorRef::<'a>::default(); 39],
         }
     }
 }

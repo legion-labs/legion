@@ -10,7 +10,7 @@ struct DirectionalLight {
     color: Float3,
 }
 
-pub struct Spotlight {
+struct Spotlight {
     pos: Float3,
     radiance: Float1,
     dir: Float3,

@@ -1,5 +1,4 @@
 use lgn_ecs::prelude::*;
-use lgn_math::Vec3;
 
 pub enum LightType {
     Omnidirectional,

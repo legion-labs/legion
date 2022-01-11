@@ -1,5 +1,4 @@
 use lgn_graphics_api::PagedBufferAllocation;
-use lgn_math::Vec3;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{static_mesh_render_data::StaticMeshRenderData, Renderer};

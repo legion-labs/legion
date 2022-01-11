@@ -3,7 +3,6 @@
 use std::sync::Mutex;
 
 use bumpalo::Bump;
-use lgn_graphics_data::Color;
 use lgn_math::Mat4;
 
 struct DisplayListWrapper {

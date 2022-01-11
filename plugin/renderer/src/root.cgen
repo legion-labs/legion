@@ -1,5 +1,7 @@
 mod level_0;
 
+mod lighting;
+
 struct LayoutCB {
     a: [Float1; 3],
     b: Float2,
@@ -59,6 +61,9 @@ struct FrameDescriptorSet {
     rw_tex2darr: RWTexture2DArray<Float4>,
     rw_texcube: TextureCube<Float4>,
     rw_texcubearr: TextureCubeArray<Float4>,
+    sb_omni_lights: StructuredBuffer<OmnidirectionalLight>,
+    sb_dir_lights: StructuredBuffer<DirectionalLight>,
+    sb_spotlights: StructuredBuffer<Spotlight>,
 }
 
 #[PipelineLayout]
@@ -66,5 +71,3 @@ struct TmpPipelineLayout {
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
     push_constant: PushConstant<PushConstantData>,
 }
-
-mod lighting;
