@@ -23,12 +23,12 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
     })
     .add_plugin(WindowPlugin::default())
     .add_plugin(WinitPlugin::default())
-    .add_system(on_render_surface_craeted_for_window.exclusive_system())
+    .add_system(on_render_surface_created_for_window.exclusive_system())
     .insert_resource(RenderSurfaces::new())
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn on_render_surface_craeted_for_window(
+fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     winit_wnd_list: Res<'_, WinitWindows>,

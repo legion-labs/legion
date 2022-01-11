@@ -91,7 +91,7 @@ fn main() {
             return_from_run: true,
         })
         .add_plugin(WinitPlugin::default())
-        .add_system(on_render_surface_craeted_for_window.exclusive_system());
+        .add_system(on_render_surface_created_for_window.exclusive_system());
     }
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
@@ -104,7 +104,7 @@ fn main() {
     app.run();
 }
 
-fn on_render_surface_craeted_for_window(
+fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     winit_wnd_list: Res<'_, WinitWindows>,

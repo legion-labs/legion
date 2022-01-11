@@ -271,7 +271,7 @@ pub(crate) fn on_app_exit(
     }
 }
 
-pub(crate) fn on_render_surface_craeted_for_window(
+pub(crate) fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     streamer_windows: Res<'_, StreamerWindows>,
