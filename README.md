@@ -1,4 +1,4 @@
-# The **Legion** Interactive Content Creation Platform
+# **Legion** Pipeline
 
 Legion is ... . Visit [here](https://legionengine.com) for more information.
 
@@ -13,16 +13,14 @@ Legion Labs welcomes [contributions] from everyone, please read [this](./CONTRIB
 ---
 
 <p align="center">
-   <img alt="Legion Engine" src="https://github.com/legion-labs/legion/raw/main/build/snapshot.png" style="max-width: 100%;">
-</p>
-
----
-
-<p align="center">
     <a href="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg" alt="CI - Test" style="max-width: 100%;"></a>
     <a href="https://github.com/legion-labs/legion/actions/workflows/release.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/release.yml/badge.svg" alt="CI - Release" style="max-width: 100%;"></a>
     <a href="https://cov.legionengine.com/index.html" rel="nofollow"><img src="https://github.com/legion-labs/legion/raw/main/build/coverage.svg" alt="Coverage"  style="max-width: 100%;"></a>
     <a href="https://www.rust-lang.org/tools/install"><img src="https://img.shields.io/badge/msrv-1.57-green" alt="MSRV" style="max-width: 100%;"></a></p>
+</p>
+
+<p align="center">
+   <img alt="Legion Engine" src="https://github.com/legion-labs/legion/raw/main/build/snapshot.png" style="max-width: 100%;">
 </p>
 
 ---
