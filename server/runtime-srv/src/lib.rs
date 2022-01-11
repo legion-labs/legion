@@ -80,6 +80,7 @@ use lgn_transform::prelude::*;
 
 #[cfg(feature = "standalone")]
 mod standalone;
+use lgn_window::WindowPlugin;
 #[cfg(feature = "standalone")]
 use standalone::build_standalone;
 
@@ -186,7 +187,11 @@ pub fn build_runtime(
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(standalone, args.egui, true));
+        .add_plugin(RendererPlugin::new(args.egui, true))
+        .add_plugin(WindowPlugin {
+            add_primary_window: false,
+            exit_on_close: false,
+        });
 
     #[cfg(feature = "standalone")]
     if standalone {

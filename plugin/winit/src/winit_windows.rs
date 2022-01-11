@@ -1,7 +1,6 @@
 use lgn_math::IVec2;
 use lgn_utils::HashMap;
 use lgn_window::{Window, WindowDescriptor, WindowId, WindowMode};
-use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 
 #[derive(Debug, Default)]
@@ -159,8 +158,8 @@ impl WinitWindows {
             .map(|position| IVec2::new(position.x, position.y));
         let inner_size = winit_window.inner_size();
         let scale_factor = winit_window.scale_factor();
-        let raw_window_handle = winit_window.raw_window_handle();
         self.windows.insert(winit_window.id(), winit_window);
+
         Window::new(
             window_id,
             window_descriptor,
@@ -168,7 +167,6 @@ impl WinitWindows {
             inner_size.height,
             scale_factor,
             position,
-            raw_window_handle,
         )
     }
 

@@ -23,24 +23,18 @@ enum EguiLabels {
 
 #[derive(Default)]
 pub struct EguiPlugin {
-    has_window: bool,
     enable: bool,
 }
 
 impl EguiPlugin {
-    pub fn new(has_window: bool, enable: bool) -> Self {
-        Self { has_window, enable }
+    pub fn new(enable: bool) -> Self {
+        Self { enable }
     }
 }
 
 impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
-        // TODO: remove dependency on window
-        if self.has_window {
-            app.add_startup_system(on_window_created);
-        } else {
-            app.add_startup_system(on_windowless_created);
-        }
+        app.add_startup_system(on_window_created);
 
         let egui = Egui {
             enable: self.enable,
@@ -53,14 +47,13 @@ impl Plugin for EguiPlugin {
             CoreStage::PreUpdate,
             gather_input.label(EguiLabels::GatherInput),
         );
-        if self.has_window {
-            app.add_system_to_stage(
-                CoreStage::PreUpdate,
-                gather_input_window
-                    .after(EguiLabels::GatherInput)
-                    .before(EguiLabels::BeginFrame),
-            );
-        }
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            gather_input_window
+                .after(EguiLabels::GatherInput)
+                .before(EguiLabels::BeginFrame),
+        );
+
         app.add_system_to_stage(
             CoreStage::PreUpdate,
             begin_frame
@@ -90,22 +83,6 @@ fn on_window_created(
     egui.ctx.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
-        ..RawInput::default()
-    });
-    #[allow(unused_must_use)]
-    {
-        egui.ctx.end_frame();
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn on_windowless_created(mut egui: ResMut<'_, Egui>) {
-    egui.ctx.begin_frame(RawInput {
-        screen_rect: Some(egui::Rect::from_min_size(
-            egui::pos2(0.0, 0.0),
-            egui::vec2(1280.0, 720.0),
-        )),
-        pixels_per_point: Some(1.0),
         ..RawInput::default()
     });
     #[allow(unused_must_use)]
