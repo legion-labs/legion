@@ -14,7 +14,6 @@ lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 lgn-data-model = { path = "../../lib/data-model", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
