@@ -1,4 +1,7 @@
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
@@ -28,12 +31,13 @@ enum SinkEvent {
 
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
-    sender: Option<std::sync::mpsc::Sender<SinkEvent>>,
+    sender: Mutex<Option<std::sync::mpsc::Sender<SinkEvent>>>,
 }
 
 impl Drop for GRPCEventSink {
     fn drop(&mut self) {
-        self.sender = None;
+        let mut sender_guard = self.sender.lock().unwrap();
+        *sender_guard = None;
         if let Some(handle) = self.thread.take() {
             handle.join().expect("Error joining telemetry thread");
         }
@@ -48,7 +52,16 @@ impl GRPCEventSink {
             thread: Some(std::thread::spawn(move || {
                 Self::thread_proc(addr, receiver);
             })),
-            sender: Some(sender),
+            sender: Mutex::new(Some(sender)),
+        }
+    }
+
+    fn send(&self, event: SinkEvent) {
+        let guard = self.sender.lock().unwrap();
+        if let Some(sender) = guard.as_ref() {
+            if let Err(e) = sender.send(event) {
+                error!("{}", e);
+            }
         }
     }
 
@@ -132,26 +145,19 @@ impl GRPCEventSink {
 
 impl EventSink for GRPCEventSink {
     fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::Startup(ProcessInfo {
-                process_id: process_info.process_id,
-                exe: process_info.exe,
-                username: process_info.username,
-                realname: process_info.realname,
-                computer: process_info.computer,
-                distro: process_info.distro,
-                cpu_brand: process_info.cpu_brand,
-                tsc_frequency: process_info.tsc_frequency,
-                start_time: process_info.start_time,
-                start_ticks: process_info.start_ticks,
-                parent_process_id: process_info.parent_process_id,
-            }))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::Startup(ProcessInfo {
+            process_id: process_info.process_id,
+            exe: process_info.exe,
+            username: process_info.username,
+            realname: process_info.realname,
+            computer: process_info.computer,
+            distro: process_info.distro,
+            cpu_brand: process_info.cpu_brand,
+            tsc_frequency: process_info.tsc_frequency,
+            start_time: process_info.start_time,
+            start_ticks: process_info.start_ticks,
+            parent_process_id: process_info.parent_process_id,
+        }));
     }
 
     fn on_shutdown(&self) {
@@ -165,69 +171,27 @@ impl EventSink for GRPCEventSink {
     fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: &fmt::Arguments<'_>) {}
 
     fn on_init_log_stream(&self, log_stream: &LogStream) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::InitStream(get_stream_info(log_stream)))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::InitStream(get_stream_info(log_stream)));
     }
 
     fn on_process_log_block(&self, log_block: Arc<LogBlock>) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::ProcessLogBlock(log_block))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::ProcessLogBlock(log_block));
     }
 
     fn on_init_metrics_stream(&self, metrics_stream: &MetricsStream) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::InitStream(get_stream_info(metrics_stream)))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::InitStream(get_stream_info(metrics_stream)));
     }
 
     fn on_process_metrics_block(&self, metrics_block: Arc<MetricsBlock>) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::ProcessMetricsBlock(metrics_block))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::ProcessMetricsBlock(metrics_block));
     }
 
     fn on_init_thread_stream(&self, thread_stream: &ThreadStream) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::InitStream(get_stream_info(thread_stream)))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::InitStream(get_stream_info(thread_stream)));
     }
 
     fn on_process_thread_block(&self, thread_block: Arc<ThreadBlock>) {
-        if let Err(e) = self
-            .sender
-            .as_ref()
-            .unwrap()
-            .send(SinkEvent::ProcessThreadBlock(thread_block))
-        {
-            error!("{}", e);
-        }
+        self.send(SinkEvent::ProcessThreadBlock(thread_block));
     }
 }
 
