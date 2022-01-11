@@ -20,7 +20,7 @@ impl Object {
                 return T::get(&m.1);
             }
         }
-        bail!("member {} not found", member_name);
+        bail!("member {} not found in {:?}", member_name, self);
     }
 
     pub fn get_ref(&self, member_name: &str) -> Result<&Value> {
@@ -186,7 +186,7 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
 
 fn parse_custom_instance<S>(
     udt: &UserDefinedType,
-    _dependencies: &HashMap<u64, Value, S>,
+    dependencies: &HashMap<u64, Value, S>,
     offset: usize,
     object_size: usize,
     buffer: &[u8],
@@ -196,22 +196,28 @@ where
 {
     let members = match udt.name.as_str() {
         // todo: move out of transit lib.
-        // LogDynMsgEvent belongs to the legion-telemetry lib
-        // we need a way to inject the serialization logic of custom objects
-        "LogDynMsgEvent" => unsafe {
-            let time_ptr = buffer.as_ptr().add(offset);
-            let time = read_any::<u64>(time_ptr);
-            let level_ptr = buffer.as_ptr().add(offset + 8);
-            let level = read_any::<u8>(level_ptr);
-            let msg_offset = 8 + 1;
+        // LogStringEvent belongs to the tracing lib
+        // we need to inject the serialization logic of custom objects
+        "LogStringEvent" => unsafe {
+            let begin_obj_ptr = buffer.as_ptr().add(offset);
+            let desc_id = read_any::<u64>(begin_obj_ptr);
+            let time_ptr = buffer.as_ptr().add(offset + 8);
+            let time = read_any::<i64>(time_ptr);
+            let msg_offset = 8 * 2;
             let msg = <DynString as InProcSerialize>::read_value(
                 buffer.as_ptr().add(offset + msg_offset),
                 Some((object_size - msg_offset) as u32),
             );
+            let mut desc: Value = Value::None;
+            if let Some(found_desc) = dependencies.get(&desc_id) {
+                desc = found_desc.clone();
+            } else {
+                println!("desc member {} of LogStringEvent not found", desc_id);
+            }
             vec![
-                (String::from("time"), Value::U64(time)),
-                (String::from("level"), Value::U8(level)),
+                (String::from("time"), Value::I64(time)),
                 (String::from("msg"), Value::String(msg.0)),
+                (String::from("desc"), desc),
             ]
         },
         other => {

@@ -577,12 +577,46 @@ where
     Ok(())
 }
 
-fn format_log_level(level: u8) -> &'static str {
+fn format_log_level(level: u32) -> &'static str {
     match level {
-        1 => "Info",
-        2 => "Warning",
-        3 => "Error",
+        1 => "Error",
+        2 => "Warn",
+        3 => "Info",
+        4 => "Debug",
+        5 => "Trace",
         _ => "Unknown",
+    }
+}
+
+fn log_entry_from_value(val: &Value) -> Option<(i64, String)> {
+    if let Value::Object(obj) = val {
+        match obj.type_name.as_str() {
+            "LogStaticStrEvent" => {
+                let time = obj.get::<i64>("time").unwrap();
+                let desc = obj.get::<lgn_tracing_transit::Object>("desc").unwrap();
+                let level = desc.get::<u32>("level").unwrap();
+                let entry = format!(
+                    "[{}] {}",
+                    format_log_level(level),
+                    desc.get::<String>("fmt_str").unwrap()
+                );
+                Some((time, entry))
+            }
+            "LogStringEvent" => {
+                let time = obj.get::<i64>("time").unwrap();
+                let desc = obj.get::<lgn_tracing_transit::Object>("desc").unwrap();
+                let level = desc.get::<u32>("level").unwrap();
+                let entry = format!(
+                    "[{}] {}",
+                    format_log_level(level),
+                    obj.get::<String>("msg").unwrap()
+                );
+                Some((time, entry))
+            }
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 
@@ -599,21 +633,10 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
         for b in find_stream_blocks(connection, &stream.stream_id).await? {
             let payload = fetch_block_payload(connection, data_path, &b.block_id).await?;
             parse_block(&stream, &payload, |val| {
-                if let Value::Object(obj) = val {
-                    match obj.type_name.as_str() {
-                        "LogMsgEvent" | "LogDynMsgEvent" => {
-                            let time = obj.get::<i64>("time").unwrap();
-                            let entry = format!(
-                                "[{}] {}",
-                                format_log_level(obj.get::<u8>("level").unwrap()),
-                                obj.get::<String>("msg").unwrap()
-                            );
-                            if let Some(x) = pred(time, entry) {
-                                found_entry = Some(x);
-                                return false; //do not continue
-                            }
-                        }
-                        _ => {}
+                if let Some((time, msg)) = log_entry_from_value(&val) {
+                    if let Some(x) = pred(time, msg) {
+                        found_entry = Some(x);
+                        return false; //do not continue
                     }
                 }
                 true //continue
@@ -637,20 +660,9 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
     parse_block(stream, &payload, |val| {
-        if let Value::Object(obj) = val {
-            match obj.type_name.as_str() {
-                "LogMsgEvent" | "LogDynMsgEvent" => {
-                    let time = obj.get::<i64>("time").unwrap();
-                    let entry = format!(
-                        "[{}] {}",
-                        format_log_level(obj.get::<u8>("level").unwrap()),
-                        obj.get::<String>("msg").unwrap()
-                    );
-                    if !fun(time, entry) {
-                        return false; //do not continue
-                    }
-                }
-                _ => {}
+        if let Some((time, msg)) = log_entry_from_value(&val) {
+            if !fun(time, msg) {
+                return false; //do not continue
             }
         }
         true //continue

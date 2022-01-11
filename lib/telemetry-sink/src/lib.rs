@@ -72,6 +72,7 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+use lgn_tracing::info;
 use lgn_tracing::{
     event::EventSink,
     guards::{TelemetrySystemGuard, TelemetryThreadGuard},
@@ -164,6 +165,15 @@ impl TelemetryGuard {
     }
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
         set_max_level(level_filter);
+        self
+    }
+    pub fn with_ctrlc_handling(self) -> Self {
+        ctrlc::set_handler(move || {
+            info!("Ctrl+C was hit!");
+            lgn_tracing::guards::shutdown_telemetry();
+            std::process::exit(1);
+        })
+        .expect("Error setting Ctrl+C handler");
         self
     }
 }

@@ -17,9 +17,9 @@ pub async fn print_process_thread_events(
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
                     let time = obj.get::<u64>("time").unwrap();
-                    let scope = obj.get::<Object>("scope").unwrap();
+                    let scope = obj.get::<Object>("thread_span_desc").unwrap();
                     let name = scope.get::<String>("name").unwrap();
-                    let filename = scope.get::<String>("filename").unwrap();
+                    let filename = scope.get::<String>("file").unwrap();
                     let line = scope.get::<u32>("line").unwrap();
                     println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
                 }
