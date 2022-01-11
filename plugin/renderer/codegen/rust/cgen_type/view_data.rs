@@ -6,28 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-/*
-StructLayout {
-    size: 128,
-    padded_size: 128,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 64,
-            padded_size: 64,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 64,
-            absolute_offset: 64,
-            size: 64,
-            padded_size: 64,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "ViewData",
     id: 21,
@@ -51,6 +29,11 @@ impl ViewData {
         &TYPE_DEF
     }
 
+    //
+    // member : view
+    // offset : 0
+    // size : 64
+    //
     pub fn set_view(&mut self, value: Float4x4) {
         self.set(0, value);
     }
@@ -59,6 +42,11 @@ impl ViewData {
         self.get(0)
     }
 
+    //
+    // member : projection
+    // offset : 64
+    // size : 64
+    //
     pub fn set_projection(&mut self, value: Float4x4) {
         self.set(64, value);
     }

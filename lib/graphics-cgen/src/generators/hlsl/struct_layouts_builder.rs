@@ -10,27 +10,23 @@ use crate::{
 use super::utils::get_member_declaration;
 
 impl StructLayout {
-    pub fn from_spirv_reflect(ty: &StructType, block_var: &ReflectBlockVariable) -> Self {
-        let size = block_var.size;
+    pub fn from_spirv_reflect(ty: &StructType, block_var: &ReflectBlockVariable) -> Self {        
         let padded_size = block_var.padded_size;
 
         assert_eq!(ty.members.len(), block_var.members.len());
 
-        let mut members = Vec::new();
+        let mut members = Vec::with_capacity(ty.members.len());
 
         for i in 0..ty.members.len() {
             let spirv_member = &block_var.members[i];
             members.push(StructMemberLayout {
-                offset: spirv_member.offset,
-                absolute_offset: spirv_member.absolute_offset,
-                size: spirv_member.size,
+                offset: spirv_member.offset,                                
                 padded_size: spirv_member.padded_size,
                 array_stride: spirv_member.array.stride,
             });
         }
 
-        Self {
-            size,
+        Self {            
             padded_size,
             members,
         }
@@ -88,7 +84,12 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
 
     // Topo sort
     // After this line, we are sure there is no cycles
-    let ordered = toposort(&graph, None).unwrap();
+    let ordered = toposort(&graph, None).map_err(|err| {
+        anyhow!(
+            "Cycle detected during type resolution pass (type: {}).",
+            model.get_from_id::<CGenType>(err.node_id()).unwrap().name()
+        )
+    })?;
 
     // Compute external requirements from DescriptorSet and PushConstants
     let mut ty_requirements = TypeUsage::new(model.size::<CGenType>());
@@ -128,6 +129,19 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         }
     }
 
+    // All the types not referenced by a ConstBuffer or a [RW]StructuredBuffer are potentially
+    // used by a [RW]ByteAdressBuffer. Mark them as 'sb'.
+    for ty in model.object_iter::<CGenType>() {
+        match ty.object() {
+            CGenType::Native(_) => (),
+            CGenType::Struct(_) => {
+                if !ty_requirements.used_as_cb_or_sb(ty.id()) {
+                    ty_requirements.set_used_as_sb(ty.id());
+                }
+            }
+        }
+    }
+
     // Propagate requirements in topological order
     for id in &ordered {
         let id = *id;
@@ -142,7 +156,6 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
     }
 
     // Generate a stub shader to extract our struct layouts
-
     let mut text = String::new();
 
     for id in &ordered {

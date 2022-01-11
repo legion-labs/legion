@@ -6,49 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-/*
-StructLayout {
-    size: 44,
-    padded_size: 44,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 12,
-            padded_size: 12,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 12,
-            absolute_offset: 0,
-            size: 4,
-            padded_size: 4,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 16,
-            absolute_offset: 0,
-            size: 12,
-            padded_size: 12,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 28,
-            absolute_offset: 0,
-            size: 4,
-            padded_size: 4,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 32,
-            absolute_offset: 0,
-            size: 12,
-            padded_size: 12,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "Spotlight",
     id: 17,
@@ -72,6 +29,11 @@ impl Spotlight {
         &TYPE_DEF
     }
 
+    //
+    // member : pos
+    // offset : 0
+    // size : 12
+    //
     pub fn set_pos(&mut self, value: Float3) {
         self.set(0, value);
     }
@@ -80,6 +42,11 @@ impl Spotlight {
         self.get(0)
     }
 
+    //
+    // member : radiance
+    // offset : 12
+    // size : 4
+    //
     pub fn set_radiance(&mut self, value: Float1) {
         self.set(12, value);
     }
@@ -88,6 +55,11 @@ impl Spotlight {
         self.get(12)
     }
 
+    //
+    // member : dir
+    // offset : 16
+    // size : 12
+    //
     pub fn set_dir(&mut self, value: Float3) {
         self.set(16, value);
     }
@@ -96,6 +68,11 @@ impl Spotlight {
         self.get(16)
     }
 
+    //
+    // member : cone_angle
+    // offset : 28
+    // size : 4
+    //
     pub fn set_cone_angle(&mut self, value: Float1) {
         self.set(28, value);
     }
@@ -104,6 +81,11 @@ impl Spotlight {
         self.get(28)
     }
 
+    //
+    // member : color
+    // offset : 32
+    // size : 12
+    //
     pub fn set_color(&mut self, value: Float3) {
         self.set(32, value);
     }

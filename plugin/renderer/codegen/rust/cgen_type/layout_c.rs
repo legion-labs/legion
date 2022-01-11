@@ -7,22 +7,22 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "DirectionalLight",
-    id: 16,
-    size: 28,
+    name: "LayoutC",
+    id: 14,
+    size: 4,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<DirectionalLight>(), 28);
+static_assertions::const_assert_eq!(mem::size_of::<LayoutC>(), 4);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct DirectionalLight {
-    data: [u8; 28],
+pub struct LayoutC {
+    data: [u8; 4],
 }
 
-impl DirectionalLight {
+impl LayoutC {
     pub const fn id() -> u32 {
-        16
+        14
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -30,42 +30,16 @@ impl DirectionalLight {
     }
 
     //
-    // member : dir
+    // member : a
     // offset : 0
-    // size : 12
+    // size : 4
     //
-    pub fn set_dir(&mut self, value: Float3) {
+    pub fn set_a(&mut self, value: Float1) {
         self.set(0, value);
     }
 
-    pub fn dir(&self) -> Float3 {
+    pub fn a(&self) -> Float1 {
         self.get(0)
-    }
-
-    //
-    // member : radiance
-    // offset : 12
-    // size : 4
-    //
-    pub fn set_radiance(&mut self, value: Float1) {
-        self.set(12, value);
-    }
-
-    pub fn radiance(&self) -> Float1 {
-        self.get(12)
-    }
-
-    //
-    // member : color
-    // offset : 16
-    // size : 12
-    //
-    pub fn set_color(&mut self, value: Float3) {
-        self.set(16, value);
-    }
-
-    pub fn color(&self) -> Float3 {
-        self.get(16)
     }
 
     #[allow(unsafe_code)]
@@ -89,12 +63,10 @@ impl DirectionalLight {
     }
 }
 
-impl Default for DirectionalLight {
+impl Default for LayoutC {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 28] };
-        ret.set_dir(Float3::default());
-        ret.set_radiance(Float1::default());
-        ret.set_color(Float3::default());
+        let mut ret = Self { data: [0; 4] };
+        ret.set_a(Float1::default());
         ret
     }
 }

@@ -6,63 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-/*
-StructLayout {
-    size: 176,
-    padded_size: 176,
-    members: [
-        StructMemberLayout {
-            offset: 0,
-            absolute_offset: 0,
-            size: 48,
-            padded_size: 48,
-            array_stride: 16,
-        },
-        StructMemberLayout {
-            offset: 48,
-            absolute_offset: 48,
-            size: 8,
-            padded_size: 16,
-            array_stride: 0,
-        },
-        StructMemberLayout {
-            offset: 64,
-            absolute_offset: 64,
-            size: 32,
-            padded_size: 32,
-            array_stride: 16,
-        },
-        StructMemberLayout {
-            offset: 96,
-            absolute_offset: 96,
-            size: 16,
-            padded_size: 16,
-            array_stride: 16,
-        },
-        StructMemberLayout {
-            offset: 112,
-            absolute_offset: 112,
-            size: 16,
-            padded_size: 16,
-            array_stride: 16,
-        },
-        StructMemberLayout {
-            offset: 128,
-            absolute_offset: 128,
-            size: 32,
-            padded_size: 32,
-            array_stride: 16,
-        },
-        StructMemberLayout {
-            offset: 160,
-            absolute_offset: 160,
-            size: 2,
-            padded_size: 16,
-            array_stride: 0,
-        },
-    ],
-}
-*/
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "LayoutCB",
     id: 18,
@@ -86,6 +29,11 @@ impl LayoutCB {
         &TYPE_DEF
     }
 
+    //
+    // member : a
+    // offset : 0
+    // size : 48
+    //
     pub fn set_a(&mut self, values: [Float1; 3]) {
         for i in 0..3 {
             self.set_a_element(i, values[i]);
@@ -106,6 +54,11 @@ impl LayoutCB {
         self.get::<Float1>(0 + index * 16)
     }
 
+    //
+    // member : b
+    // offset : 48
+    // size : 16
+    //
     pub fn set_b(&mut self, value: Float2) {
         self.set(48, value);
     }
@@ -114,6 +67,11 @@ impl LayoutCB {
         self.get(48)
     }
 
+    //
+    // member : c
+    // offset : 64
+    // size : 32
+    //
     pub fn set_c(&mut self, values: [Uint2; 2]) {
         for i in 0..2 {
             self.set_c_element(i, values[i]);
@@ -134,6 +92,11 @@ impl LayoutCB {
         self.get::<Uint2>(64 + index * 16)
     }
 
+    //
+    // member : d
+    // offset : 96
+    // size : 16
+    //
     pub fn set_d(&mut self, values: [Half3; 1]) {
         for i in 0..1 {
             self.set_d_element(i, values[i]);
@@ -154,6 +117,11 @@ impl LayoutCB {
         self.get::<Half3>(96 + index * 16)
     }
 
+    //
+    // member : e
+    // offset : 112
+    // size : 16
+    //
     pub fn set_e(&mut self, values: [Half1; 1]) {
         for i in 0..1 {
             self.set_e_element(i, values[i]);
@@ -174,6 +142,11 @@ impl LayoutCB {
         self.get::<Half1>(112 + index * 16)
     }
 
+    //
+    // member : f
+    // offset : 128
+    // size : 32
+    //
     pub fn set_f(&mut self, values: [Half1; 2]) {
         for i in 0..2 {
             self.set_f_element(i, values[i]);
@@ -194,6 +167,11 @@ impl LayoutCB {
         self.get::<Half1>(128 + index * 16)
     }
 
+    //
+    // member : g
+    // offset : 160
+    // size : 16
+    //
     pub fn set_g(&mut self, value: Half1) {
         self.set(160, value);
     }
