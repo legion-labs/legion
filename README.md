@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-   <img alt="Legion Engine" src="https://github.com/legion-labs/legion/raw/main/build/snapshot.png" style="max-width: 100%;">
+   <img alt="Legion Engine" src="https://github.com/legion-labs/legion/raw/main/.github/images/snapshot.png" style="max-width: 100%;">
 </p>
 
 ---
