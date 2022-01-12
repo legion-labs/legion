@@ -52,6 +52,7 @@ lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 lgn-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
 lgn-compiler-testentity = { path = "../../compiler/testentity" }
+lgn-compiler-entitydc = { path = "../../compiler/entitydc" }
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0", features = [

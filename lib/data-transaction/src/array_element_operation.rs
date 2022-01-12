@@ -9,8 +9,9 @@ use crate::{Error, LockContext, TransactionOperation};
 
 #[allow(clippy::enum_variant_names)]
 enum ArrayOpType {
-    InsertElement(usize, String),
+    InsertElement(Option<usize>, String),
     DeleteElement(usize, Option<Vec<u8>>),
+    DeleteValue(String, Option<(Vec<u8>, usize)>),
     ReorderElement(usize, usize),
 }
 
@@ -26,7 +27,7 @@ impl ArrayOperation {
     pub fn insert_element(
         resource_id: ResourceTypeAndId,
         array_path: &str,
-        index: usize,
+        index: Option<usize>,
         value_json: &str,
     ) -> Box<Self> {
         Box::new(Self {
@@ -46,6 +47,19 @@ impl ArrayOperation {
             resource_id,
             array_path: array_path.into(),
             operation_type: ArrayOpType::DeleteElement(index, None),
+        })
+    }
+
+    /// Return a new operation to delete a value within an array (using linear search)
+    pub fn delete_value(
+        resource_id: ResourceTypeAndId,
+        array_path: &str,
+        value_json: &str,
+    ) -> Box<Self> {
+        Box::new(Self {
+            resource_id,
+            array_path: array_path.into(),
+            operation_type: ArrayOpType::DeleteValue(value_json.into(), None),
         })
     }
 
@@ -84,8 +98,14 @@ impl TransactionOperation for ArrayOperation {
                 ArrayOpType::InsertElement(index, json_value) => {
                     let mut json = serde_json::Deserializer::from_str(json_value);
                     let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(&mut json);
+                    index.get_or_insert(unsafe { (array_desc.len)(array_value.base) });
+
                     unsafe {
-                        (array_desc.insert_element)(array_value.base, *index, &mut deserializer)?;
+                        (array_desc.insert_element)(
+                            array_value.base,
+                            index.unwrap(),
+                            &mut deserializer,
+                        )?;
                     }
                 }
                 ArrayOpType::DeleteElement(index, old_value) => {
@@ -101,6 +121,28 @@ impl TransactionOperation for ArrayOperation {
                     }
                     *old_value = Some(buffer);
                 }
+
+                ArrayOpType::DeleteValue(json_value, old_value) => {
+                    let mut value_to_delete = serde_json::Deserializer::from_str(json_value);
+                    let mut value_to_delete_de =
+                        <dyn erased_serde::Deserializer<'_>>::erase(&mut value_to_delete);
+
+                    let mut old_value_buffer = Vec::<u8>::new();
+                    let mut old_value_ser = serde_json::Serializer::new(&mut old_value_buffer);
+                    let mut old_value_ser =
+                        <dyn erased_serde::Serializer>::erase(&mut old_value_ser);
+
+                    if let Ok(old_index) = unsafe {
+                        (array_desc.delete_value)(
+                            array_value.base,
+                            &mut value_to_delete_de,
+                            Some(&mut old_value_ser),
+                        )
+                    } {
+                        *old_value = Some((old_value_buffer, old_index));
+                    }
+                }
+
                 ArrayOpType::ReorderElement(old_index, new_index) => unsafe {
                     (array_desc.reorder_element)(array_value.base, *old_index, *new_index)?;
                 },
@@ -127,7 +169,7 @@ impl TransactionOperation for ArrayOperation {
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
             match &self.operation_type {
                 ArrayOpType::InsertElement(index, _json_value) => unsafe {
-                    (array_desc.delete_element)(array_value.base, *index, None)?;
+                    (array_desc.delete_element)(array_value.base, index.unwrap(), None)?;
                 },
                 ArrayOpType::DeleteElement(index, saved_value) => {
                     if let Some(saved_value) = saved_value {
@@ -143,6 +185,22 @@ impl TransactionOperation for ArrayOperation {
                         };
                     }
                 }
+
+                ArrayOpType::DeleteValue(_json_value, saved_value) => {
+                    if let Some((saved_value, saved_index)) = saved_value {
+                        let mut json = serde_json::Deserializer::from_slice(saved_value);
+                        let mut deserializer =
+                            <dyn erased_serde::Deserializer<'_>>::erase(&mut json);
+                        unsafe {
+                            (array_desc.insert_element)(
+                                array_value.base,
+                                *saved_index,
+                                &mut deserializer,
+                            )?;
+                        };
+                    }
+                }
+
                 ArrayOpType::ReorderElement(old_index, new_index) => unsafe {
                     (array_desc.reorder_element)(array_value.base, *new_index, *old_index)?;
                 },

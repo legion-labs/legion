@@ -1,4 +1,4 @@
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct InstanceDc {}
 impl InstanceDc {
     #[allow(dead_code)]
@@ -41,7 +41,7 @@ impl lgn_data_runtime::Resource for InstanceDc {
 impl lgn_data_runtime::Asset for InstanceDc {
     type Loader = InstanceDcLoader;
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct InstanceDcReferenceType(lgn_data_runtime::Reference<InstanceDc>);
 lgn_data_model::implement_primitive_type_def!(InstanceDcReferenceType);
 #[derive(Default)]

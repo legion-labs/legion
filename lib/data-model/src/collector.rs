@@ -79,7 +79,7 @@ where
                     type_def: array_descriptor.inner_type,
                     suffix: Some(format!("[{}]", index).as_str()),
                     depth: item_info.depth + 1,
-                    field_descriptor: None,
+                    field_descriptor: item_info.field_descriptor,
                 })?;
                 T::add_child(&mut array_parent, child);
             }
@@ -96,7 +96,7 @@ where
                     type_def: option_descriptor.inner_type,
                     suffix: None,
                     depth: item_info.depth + 1,
-                    field_descriptor: None,
+                    field_descriptor: item_info.field_descriptor,
                 })?;
                 T::add_child(&mut option_parent, child);
             }

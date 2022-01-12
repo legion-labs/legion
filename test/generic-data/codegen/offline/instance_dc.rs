@@ -1,4 +1,4 @@
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct InstanceDc {}
 impl InstanceDc {
     #[allow(dead_code)]
@@ -69,9 +69,13 @@ impl lgn_data_offline::resource::ResourceProcessor for InstanceDcProcessor {
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn std::any::Any,
+        resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
-        vec![]
+        let instance = resource.downcast_ref::<InstanceDc>().unwrap();
+        lgn_data_offline::extract_resource_dependencies(instance)
+            .unwrap_or_default()
+            .into_iter()
+            .collect()
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
         Some(<InstanceDc as lgn_data_runtime::Resource>::TYPENAME)

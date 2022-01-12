@@ -18,3 +18,6 @@ pub mod resource_browser;
 
 #[path = "../codegen/property_inspector.rs"]
 pub mod property_inspector;
+
+#[path = "../codegen/scene_explorer.rs"]
+pub mod scene_explorer;

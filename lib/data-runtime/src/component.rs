@@ -5,7 +5,10 @@ use lgn_data_model::{implement_box_dyn_reflection, TypeReflection};
 
 /// Component Interface
 #[typetag::serde]
-pub trait Component: Any + Sync + Send + TypeReflection {}
+pub trait Component: Any + Sync + Send + TypeReflection {
+    /// Compare to dynamic Component instance is they are the same
+    fn eq(&self, other: &dyn Component) -> bool;
+}
 
 /// Note: Based on impl of dyn Any
 impl dyn Component {
@@ -29,6 +32,12 @@ impl dyn Component {
         } else {
             None
         }
+    }
+}
+
+impl PartialEq for dyn Component {
+    fn eq(&self, other: &dyn Component) -> bool {
+        self.eq(other)
     }
 }
 

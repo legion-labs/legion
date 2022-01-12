@@ -2267,6 +2267,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-codec-api",
+ "lgn-compiler-entitydc",
  "lgn-compiler-testentity",
  "lgn-config",
  "lgn-content-store",

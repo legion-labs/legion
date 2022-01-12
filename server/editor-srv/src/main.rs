@@ -30,6 +30,9 @@ use property_inspector_plugin::PropertyInspectorPlugin;
 mod resource_browser_plugin;
 use resource_browser_plugin::ResourceBrowserPlugin;
 
+mod scene_explorer_plugin;
+use scene_explorer_plugin::SceneExplorerPlugin;
+
 use plugin::EditorPlugin;
 
 #[derive(Parser, Debug)]
@@ -109,6 +112,7 @@ fn main() {
         .add_plugin(EditorPlugin::default())
         .add_plugin(ResourceBrowserPlugin::default())
         .add_plugin(PropertyInspectorPlugin::default())
+        .add_plugin(SceneExplorerPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(GenericDataPlugin::default())
         .add_startup_system(register_asset_loaders)

@@ -44,6 +44,8 @@ impl BuildManager {
             ResourceType::new(b"runtime_debugcube")
         } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
             ResourceType::new(b"runtime_testentity")
+        } else if resource_id.kind == ResourceType::new(b"offline_entitydc") {
+            ResourceType::new(b"runtime_entitydc")
         } else {
             resource_id.kind
         };

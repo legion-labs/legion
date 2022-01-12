@@ -244,7 +244,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             Transaction::new().add_operation(ArrayOperation::insert_element(
                 resource_id,
                 request.array_path.as_str(),
-                request.index as usize,
+                Some(request.index as usize),
                 request.json_value.as_str(),
             ))
         };

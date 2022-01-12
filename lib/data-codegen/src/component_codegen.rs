@@ -17,6 +17,12 @@ pub(crate) fn generate_component(
     };
     quote! {
         #[typetag::serde(name = #tag_type)]
-        impl lgn_data_runtime::Component for #type_identifier {}
+        impl lgn_data_runtime::Component for #type_identifier {
+            fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+                other
+                .downcast_ref::<Self>()
+                .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+            }
+        }
     }
 }
