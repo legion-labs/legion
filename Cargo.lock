@@ -3882,6 +3882,7 @@ dependencies = [
  "lgn-app",
  "lgn-config",
  "lgn-content-store",
+ "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-runtime",

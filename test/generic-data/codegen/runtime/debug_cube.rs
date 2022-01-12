@@ -2,6 +2,7 @@ use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
 #[derive(serde :: Serialize, serde :: Deserialize)]
 pub struct DebugCube {
+    pub name: String,
     pub position: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
@@ -11,7 +12,7 @@ pub struct DebugCube {
 }
 impl DebugCube {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 3131965765607460829u64;
+    const SIGNATURE_HASH: u64 = 18377296082067299488u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__DEBUGCUBE_DEFAULT
@@ -21,6 +22,7 @@ impl DebugCube {
 impl Default for DebugCube {
     fn default() -> Self {
         Self {
+            name: String::default(),
             position: (0.0, 0.0, 0.0).into(),
             rotation: Quat::IDENTITY,
             scale: (1.0, 1.0, 1.0).into(),
@@ -41,6 +43,15 @@ impl lgn_data_model::TypeReflection for DebugCube {
         lgn_data_model::implement_struct_descriptor!(
             DebugCube,
             vec![
+                lgn_data_model::FieldDescriptor {
+                    field_name: "name".into(),
+                    offset: memoffset::offset_of!(DebugCube, name),
+                    field_type: <String as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
+                },
                 lgn_data_model::FieldDescriptor {
                     field_name: "position".into(),
                     offset: memoffset::offset_of!(DebugCube, position),
