@@ -172,7 +172,6 @@ impl GraphNode for RunCriteriaContainer {
     }
 
     fn labels(&self) -> &[BoxedRunCriteriaLabel] {
-        #[allow(clippy::option_if_let_else)]
         if let Some(ref label) = self.label {
             std::slice::from_ref(label)
         } else {

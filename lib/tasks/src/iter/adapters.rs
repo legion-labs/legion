@@ -142,7 +142,6 @@ where
     type Item = P::Item;
 
     fn next_batch(&mut self) -> Option<B> {
-        #[allow(clippy::option_if_let_else)]
         if let Some(iter) = &mut self.iter {
             if let b @ Some(_) = iter.next_batch() {
                 b
