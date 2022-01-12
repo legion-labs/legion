@@ -6,13 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-        StructMemberLayout {
-            offset: 28,
-            absolute_offset: 0,
-            size: 4,
-            padded_size: 4,
-            array_stride: 0,
-        },
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "OmnidirectionalLight",
     id: 15,
@@ -76,6 +69,11 @@ impl OmnidirectionalLight {
         self.get(16)
     }
 
+    //
+    // member : pad
+    // offset : 28
+    // size : 4
+    //
     pub fn set_pad(&mut self, value: Uint1) {
         self.set(28, value);
     }

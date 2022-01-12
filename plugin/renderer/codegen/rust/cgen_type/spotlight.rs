@@ -6,13 +6,6 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
-        StructMemberLayout {
-            offset: 44,
-            absolute_offset: 0,
-            size: 20,
-            padded_size: 20,
-            array_stride: 4,
-        },
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "Spotlight",
     id: 17,
@@ -102,6 +95,11 @@ impl Spotlight {
         self.get(32)
     }
 
+    //
+    // member : pad
+    // offset : 44
+    // size : 20
+    //
     pub fn set_pad(&mut self, values: [Uint1; 5]) {
         for i in 0..5 {
             self.set_pad_element(i, values[i]);
