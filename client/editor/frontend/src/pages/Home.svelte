@@ -26,7 +26,13 @@
 
   $: if (currentResourceDescription) {
     currentResource
-      .run(() => getResourceProperties(currentResourceDescription!))
+      .run(() => {
+        if (currentResourceDescription) {
+          return getResourceProperties(currentResourceDescription);
+        } else {
+          throw new Error("Current resource description not found");
+        }
+      })
       .catch((error) =>
         log.error(
           log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`

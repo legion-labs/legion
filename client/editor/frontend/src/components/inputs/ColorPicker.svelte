@@ -43,10 +43,18 @@ It also supports manual RGBA edition with 4 different inputs.
    * issues are to be expected any time soon but it's something we might need to change at one point.
    */
   export let colors: ColorSet;
+
   /** Position of the `ColorPicker` drowdown */
   export let position: "left" | "right" = "right";
+
   /** Show the `ColorPicker` or not */
   export let visible = false;
+
+  /**
+   * When disabled the color picker dropdown doesn't open.
+   * If the component gets disabled while the dropdown is open, it'll get closed.
+   */
+  export let disabled = false;
 
   /** A word on semantic:
    * `hPicker` refers to the Hue range input
@@ -78,6 +86,11 @@ It also supports manual RGBA edition with 4 different inputs.
     const [r, g, b] = colorConvert.hsv.rgb([colors.hsv.h, 100, 100]);
 
     hColor = { r, g, b, a: 255 };
+  }
+
+  // Closes the dropdown if the color picker gets disabled
+  $: if (disabled) {
+    visible = false;
   }
 
   /** Called when the user changes the Saturation and Value */
@@ -158,7 +171,8 @@ It also supports manual RGBA edition with 4 different inputs.
 <div class="root">
   <div
     class="dropdown-toggle"
-    on:click={toggle}
+    class:disabled
+    on:click={disabled ? null : toggle}
     style="--current-rgba-color: {hsvToColorString(colors.hsv)}"
   />
   <div
@@ -278,6 +292,10 @@ It also supports manual RGBA edition with 4 different inputs.
   .dropdown-toggle {
     @apply h-full w-full border border-white cursor-pointer;
     background-color: var(--current-rgba-color);
+  }
+
+  .dropdown-toggle.disabled {
+    @apply cursor-not-allowed;
   }
 
   .dropdown {

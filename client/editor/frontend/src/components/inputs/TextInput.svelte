@@ -19,6 +19,8 @@
 
   export let autoSelect = false;
 
+  export let disabled = false;
+
   let input: HTMLInputElement | undefined;
 
   onMount(() => {
@@ -27,23 +29,24 @@
     }
   });
 
-  const onFocus = (_event: FocusEvent) => {
+  function onFocus() {
     if (autoSelect && input) {
       input.select();
     }
-  };
+  }
 
-  const onInput = (
+  function onInput(
     event: Event & {
       currentTarget: EventTarget & HTMLInputElement;
     }
-  ) => {
+  ) {
     dispatch("input", event.currentTarget.value);
-  };
+  }
 </script>
 
 <div
   class:w-full={fullWidth}
+  class:disabled
   class:default={size === "default"}
   class:root-with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
@@ -57,13 +60,15 @@
   {/if}
   <input
     class="input"
-    class:input-with-right-extension={$$slots.rightExtension}
-    class:input-with-left-extension={$$slots.leftExtension}
+    class:disabled
+    class:with-right-extension={$$slots.rightExtension}
+    class:with-left-extension={$$slots.leftExtension}
     type="text"
-    on:input={onInput}
-    on:focus={onFocus}
+    on:input={disabled ? null : onInput}
+    on:focus={disabled ? null : onFocus}
     bind:value
     bind:this={input}
+    {disabled}
   />
   {#if $$slots.rightExtension}
     <div
@@ -80,15 +85,23 @@
     @apply flex flex-row;
   }
 
+  .disabled {
+    @apply text-gray-400 cursor-not-allowed;
+  }
+
   .input {
     @apply bg-gray-800 border-gray-400 px-2 py-1 rounded-sm outline-none w-full;
   }
 
-  .input-with-right-extension {
+  .input.disabled {
+    @apply cursor-not-allowed;
+  }
+
+  .input.with-right-extension {
     @apply rounded-r-none;
   }
 
-  .input-with-left-extension {
+  .input.with-left-extension {
     @apply rounded-l-none;
   }
 

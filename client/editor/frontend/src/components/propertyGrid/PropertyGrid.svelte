@@ -1,14 +1,11 @@
 <script lang="ts">
   import { PropertyUpdate, updateResourceProperties } from "@/api";
-  import { propertyIsGroup } from "@/api/propertyGrid";
+  import { propertyIsGroup } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
   import PropertyContainer from "./PropertyContainer.svelte";
 
-  const {
-    data: currentResourceData,
-    error: currentResourceError,
-    loading: currentResourceLoading,
-  } = currentResource;
+  const { data: currentResourceData, error: currentResourceError } =
+    currentResource;
 
   const propertyUpdateDebounceTimeout = 100;
 
@@ -69,8 +66,7 @@
       <PropertyContainer
         pathParts={propertyIsGroup(property) ? [] : [property.name]}
         {property}
-        withBorder={$currentResourceData.properties[index + 1] &&
-          !propertyIsGroup($currentResourceData.properties[index + 1])}
+        nextProperty={$currentResourceData.properties[index + 1]}
         on:input={onInput}
       />
     {/each}

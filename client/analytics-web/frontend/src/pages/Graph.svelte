@@ -149,7 +149,7 @@
         <div
           class="fundiv"
           style={formatFunDivWidth(node)}
-          on:click={function (_event) {
+          on:click={function () {
             onFunClick(node);
           }}
         >
@@ -199,7 +199,7 @@
       <div
         class="fundiv"
         style={formatEdgeDivWidth(selectedNode, edge.weight)}
-        on:click={function (_event) {
+        on:click={function () {
           onEdgeClick(edge.hash);
         }}
       >
@@ -215,7 +215,7 @@
       <div
         class="fundiv"
         style={formatEdgeDivWidth(selectedNode, edge.weight)}
-        on:click={function (_event) {
+        on:click={function () {
           onEdgeClick(edge.hash);
         }}
       >

@@ -12,7 +12,7 @@ import {
   formatProperties,
   ResourcePropertyWithValue,
   ResourceWithProperties,
-} from "./propertyGrid";
+} from "../lib/propertyGrid";
 
 const editorServerURL = "http://[::1]:50051";
 
@@ -77,7 +77,7 @@ export async function getResourceProperties({
 export type PropertyUpdate = {
   name: string;
   // Can be any JSON serializable value
-  value: ResourcePropertyWithValue["value"];
+  value: ResourcePropertyWithValue["value"] | null;
 };
 
 /**

@@ -1,5 +1,5 @@
 import { UserInfo } from ".";
-import { getUserInfo } from "../../stores/userInfo";
+import userInfo, { getUserInfo } from "../../stores/userInfo";
 import { getCookie, setCookie } from "../cookie";
 
 const authorizationUrl = new URL(
@@ -313,6 +313,8 @@ export async function userAuth({ forceAuth }: { forceAuth: boolean }) {
 
   try {
     const userInfoSet = await getUserInfo();
+
+    userInfo.data.set(userInfoSet);
 
     // TODO: The returned timeout id can and should be freed.
     // Schedule refresh token.

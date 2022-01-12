@@ -15,6 +15,8 @@
 
   export let max = 10;
 
+  export let disabled = false;
+
   function onRangeInput(
     event: Event & { currentTarget: EventTarget & HTMLInputElement }
   ) {
@@ -28,7 +30,7 @@
   }
 </script>
 
-<div class="root" class:w-full={fullWidth}>
+<div class="root" class:disabled class:w-full={fullWidth}>
   <div class="slider-container group">
     <div>{min}</div>
     <input
@@ -36,8 +38,9 @@
       type="range"
       {min}
       {max}
-      on:input={onRangeInput}
+      on:input={disabled ? null : onRangeInput}
       bind:value
+      {disabled}
     />
     <div>{max}</div>
   </div>
@@ -50,6 +53,7 @@
         on:input={onNumberInput}
         noArrow
         fullWidth
+        {disabled}
       />
     </div>
   {/if}
@@ -58,6 +62,10 @@
 <style lang="postcss">
   .root {
     @apply flex h-7 space-x-4 items-center;
+  }
+
+  .root.disabled {
+    @apply text-gray-400 cursor-not-allowed;
   }
 
   .slider-container {
