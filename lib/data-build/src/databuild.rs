@@ -3,17 +3,18 @@ use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::Seek;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerStub};
+use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerNode, CompilerStub};
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -98,10 +99,28 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     content_store: HddContentStore,
-    compilers: CompilerRegistry,
+    compilers: CompilerNode,
 }
 
 impl DataBuild {
+    fn default_asset_registry(
+        resource_dir: &Path,
+        cas_addr: ContentStoreAddr,
+        compilers: &CompilerRegistry,
+    ) -> Result<Arc<AssetRegistry>, Error> {
+        let source_store = HddContentStore::open(cas_addr).ok_or(Error::InvalidContentStore)?;
+
+        let mut options = AssetRegistryOptions::new()
+            .add_device_cas(
+                Box::new(source_store),
+                lgn_data_runtime::manifest::Manifest::default(),
+            )
+            .add_device_dir(resource_dir);
+
+        options = compilers.init_all(options);
+
+        Ok(options.create())
+    }
     pub(crate) fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
@@ -119,25 +138,50 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
         Ok(Self {
             build_index,
             project,
             content_store,
-            compilers: config.compiler_options.create(),
+            compilers: CompilerNode::new(compilers, registry),
         })
     }
 
     pub(crate) fn open(config: DataBuildOptions) -> Result<Self, Error> {
+        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
+        let project = build_index.open_project()?;
+
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        let project = build_index.open_project()?;
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
         Ok(Self {
             build_index,
             project,
             content_store,
-            compilers: config.compiler_options.create(),
+            compilers: CompilerNode::new(compilers, registry),
         })
     }
 
@@ -154,11 +198,24 @@ impl DataBuild {
         match BuildIndex::open(&config.buildindex_dir, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
+
+                let compilers = config.compiler_options.create();
+                let registry = config.registry.map_or_else(
+                    || {
+                        Self::default_asset_registry(
+                            &project.resource_dir(),
+                            config.contentstore_path.clone(),
+                            &compilers,
+                        )
+                    },
+                    Ok,
+                )?;
+
                 Ok(Self {
                     build_index,
                     project,
                     content_store,
-                    compilers: config.compiler_options.create(),
+                    compilers: CompilerNode::new(compilers, registry),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
@@ -314,6 +371,7 @@ impl DataBuild {
         derived_deps: &[CompiledResource],
         env: &CompilationEnv,
         compiler: &dyn CompilerStub,
+        resources: Arc<AssetRegistry>,
     ) -> Result<
         (
             Vec<CompiledResourceInfo>,
@@ -351,6 +409,7 @@ impl DataBuild {
                         compile_node.clone(),
                         dependencies,
                         derived_deps,
+                        resources,
                         cas_addr,
                         project_dir,
                         env,
@@ -473,11 +532,12 @@ impl DataBuild {
                 .map(|transform| {
                     let (compiler, transform) = self
                         .compilers
+                        .compilers()
                         .find_compiler(transform)
                         .ok_or(Error::CompilerNotFound)?;
                     let compiler_hash = compiler
                         .compiler_hash(transform, env)
-                        .map_err(|_e| Error::IOError)?;
+                        .map_err(|_e| Error::Io)?;
                     Ok((transform, (compiler, compiler_hash)))
                 })
                 .collect::<Result<HashMap<_, _>, Error>>()?
@@ -600,6 +660,7 @@ impl DataBuild {
                     &accumulated_dependencies,
                     env,
                     compiler,
+                    self.compilers.registry(),
                 )?;
 
                 // we check if the expected named output was produced.

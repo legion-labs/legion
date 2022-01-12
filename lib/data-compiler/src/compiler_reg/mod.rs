@@ -2,10 +2,11 @@
 //! (executable, in-process, etc).
 
 use core::fmt;
-use std::{io, path::Path};
+use std::{io, path::Path, sync::Arc};
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
 use crate::{
     compiler_api::{
@@ -26,6 +27,8 @@ pub trait CompilerStub: Send + Sync {
     fn compiler_hash(&self, transform: Transform, env: &CompilationEnv)
         -> io::Result<CompilerHash>;
 
+    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions;
+
     /// Triggers compilation of provided `compile_path` and returns the
     /// information about compilation output.
     #[allow(clippy::too_many_arguments)]
@@ -34,6 +37,7 @@ pub trait CompilerStub: Send + Sync {
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
+        registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
         project_dir: &Path,
         env: &CompilationEnv,
@@ -111,7 +115,6 @@ impl CompilerRegistryOptions {
 }
 
 /// A registry of data compilers.
-#[derive(Default)]
 pub struct CompilerRegistry {
     compilers: Vec<Box<dyn CompilerStub>>,
     infos: Vec<CompilerInfo>,
@@ -144,6 +147,43 @@ impl CompilerRegistry {
     pub fn infos(&self) -> &Vec<CompilerInfo> {
         &self.infos
     }
+
+    pub fn init_all(&self, mut registry_options: AssetRegistryOptions) -> AssetRegistryOptions {
+        for compiler in &self.compilers {
+            registry_options = compiler.init(registry_options);
+        }
+        registry_options
+    }
+}
+
+pub struct CompilerNode {
+    compilers: CompilerRegistry,
+    registry: Arc<AssetRegistry>,
+}
+
+impl CompilerNode {
+    pub fn new(compilers: CompilerRegistry, registry: Arc<AssetRegistry>) -> Self {
+        Self {
+            compilers,
+            registry,
+        }
+    }
+
+    pub fn compilers(&self) -> &CompilerRegistry {
+        &self.compilers
+    }
+
+    pub fn registry(&self) -> Arc<AssetRegistry> {
+        self.registry.clone()
+    }
+}
+
+impl fmt::Debug for CompilerNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompilerNode")
+            .field("compilers", &self.compilers)
+            .finish()
+    }
 }
 
 #[cfg(test)]
@@ -152,7 +192,9 @@ mod tests {
 
     use lgn_content_store::{Checksum, ContentStoreAddr};
     use lgn_data_offline::{ResourcePathId, Transform};
-    use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
+    use lgn_data_runtime::{
+        AssetRegistryOptions, Resource, ResourceId, ResourceType, ResourceTypeAndId,
+    };
 
     use super::CompilerRegistryOptions;
     use crate::{
@@ -241,8 +283,17 @@ mod tests {
 
         // testing successful compilation
         {
+            let registry = AssetRegistryOptions::new().create();
             let output = compiler
-                .compile(compile_path.clone(), &[], &[], cas, &proj_dir, &env)
+                .compile(
+                    compile_path.clone(),
+                    &[],
+                    &[],
+                    registry,
+                    cas,
+                    &proj_dir,
+                    &env,
+                )
                 .expect("valid output");
 
             assert_eq!(output.compiled_resources.len(), 1);

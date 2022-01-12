@@ -116,14 +116,16 @@ impl ResourceRegistryPlugin {
 
         let compilers = lgn_ubercompiler::create();
 
+        let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
+
         let build_options = DataBuildOptions::new(&build_dir, compilers)
-            .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+            .content_store(&ContentStoreAddr::from(build_dir.as_path()))
+            .asset_registry(asset_registry.clone());
 
         let manifest = world.get_resource::<Manifest>().unwrap();
         let build_manager = BuildManager::new(build_options, &project_dir, manifest.clone())
             .expect("the editor requires valid build manager");
 
-        let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
         let data_manager = Arc::new(Mutex::new(DataManager::new(
             project,
             registry,

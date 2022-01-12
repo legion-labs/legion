@@ -72,7 +72,7 @@
 use std::{
     env,
     io::{self, stdout},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
     sync::Arc,
 };
@@ -90,7 +90,7 @@ use crate::{
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
         COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
-    compiler_reg::{CompilerRegistry, CompilerRegistryOptions},
+    compiler_reg::{CompilerRegistry, CompilerRegistryOptions, CompilerNode},
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
 
@@ -277,9 +277,9 @@ impl CompilerDescriptor {
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
-        derived_deps: &[CompiledResource],
+        _derived_deps: &[CompiledResource],
+        registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
-        resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -289,49 +289,8 @@ impl CompilerDescriptor {
             return Err(CompilerError::InvalidTransform);
         }
 
-        let source_store =
-            HddContentStore::open(cas_addr.clone()).ok_or(CompilerError::AssetStoreError)?;
         let mut output_store =
             HddContentStore::open(cas_addr).ok_or(CompilerError::AssetStoreError)?;
-        let manifest = Manifest {
-            compiled_resources: derived_deps.to_owned(),
-        };
-
-        /*
-        eprintln!("# Target: {}({})", derived, derived.resource_id());
-        if let Some(source) = derived.direct_dependency() {
-            eprintln!("# Source: {}({})", source, source.resource_id());
-        }
-        for derived_input in &manifest.compiled_resources {
-            eprintln!(
-                "# Derived Input: {}({}) chk: {} size: {}",
-                derived_input.path,
-                derived_input.path.resource_id(),
-                derived_input.checksum,
-                derived_input.size
-            );
-        }
-
-        eprintln!("# Resource Dir: {:?}", &resource_dir);
-        let paths = std::fs::read_dir(&resource_dir).unwrap();
-        for path in paths {
-            eprintln!("## File: {}", path.unwrap().path().display());
-        }
-
-        eprintln!("# CAS Dir: {:?}", &cas_dir);
-        let paths = std::fs::read_dir(&cas_dir).unwrap();
-        for path in paths {
-            eprintln!("## File: {}", path.unwrap().path().display());
-        }
-        */
-
-        let manifest = manifest.into_rt_manifest(|_rpid| true);
-
-        let registry = AssetRegistryOptions::new()
-            .add_device_cas(Box::new(source_store), manifest)
-            .add_device_dir(resource_dir); // todo: filter dependencies only
-
-        let registry = (self.init_func)(registry).create();
 
         assert!(!compile_path.is_named());
         let context = CompilerContext {
@@ -348,12 +307,12 @@ impl CompilerDescriptor {
 }
 
 #[allow(clippy::too_many_lines)]
-fn run(command: Commands, compilers: &CompilerRegistry) -> Result<(), CompilerError> {
+fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerError> {
     match command {
         Commands::Info => {
             serde_json::to_writer_pretty(
                 stdout(),
-                &CompilerInfoCmdOutput::from_registry(compilers),
+                &CompilerInfoCmdOutput::from_registry(&compilers),
             )
             .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
@@ -447,7 +406,31 @@ fn run(command: Commands, compilers: &CompilerRegistry) -> Result<(), CompilerEr
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
 
-            let (compiler, _) = compilers
+            let registry = {
+                let (compiler, _) = compilers
+                    .find_compiler(transform)
+                    .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+                let source_store = HddContentStore::open(cas_addr.clone())
+                    .ok_or(CompilerError::AssetStoreError)?;
+
+                let manifest = Manifest {
+                    compiled_resources: derived_deps.clone(),
+                };
+
+                let manifest = manifest.into_rt_manifest(|_rpid| true);
+
+                let registry = AssetRegistryOptions::new()
+                    .add_device_cas(Box::new(source_store), manifest)
+                    .add_device_dir(&resource_dir); // todo: filter dependencies only
+
+                compiler.init(registry).create()
+            };
+
+            let shell = CompilerNode::new(compilers, registry);
+
+            let (compiler, _) = shell
+                .compilers()
                 .find_compiler(transform)
                 .ok_or(CompilerError::CompilerNotFound(transform))?;
 
@@ -455,6 +438,7 @@ fn run(command: Commands, compilers: &CompilerRegistry) -> Result<(), CompilerEr
                 derived,
                 &dependencies,
                 &derived_deps,
+                shell.registry(),
                 cas_addr,
                 &resource_dir,
                 &env,
@@ -559,7 +543,7 @@ pub fn multi_compiler_main(
 
     let compilers = compilers.create();
 
-    let result = run(args.command, &compilers);
+    let result = run(args.command, compilers);
     if let Err(error) = &result {
         eprintln!("Compiler Failed With: '{:?}'", error);
     }

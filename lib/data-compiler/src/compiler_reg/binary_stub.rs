@@ -1,10 +1,12 @@
 use std::{
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
 use super::CompilerStub;
 use crate::{
@@ -38,11 +40,17 @@ impl CompilerStub for BinCompilerStub {
         ))
     }
 
+    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        // does nothing as the compiler process is responsible for initialization.
+        registry
+    }
+
     fn compile(
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
+        _registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
         resource_dir: &Path,
         env: &CompilationEnv,

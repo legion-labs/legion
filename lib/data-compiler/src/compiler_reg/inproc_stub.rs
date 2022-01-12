@@ -1,7 +1,8 @@
-use std::{io, path::Path};
+use std::{io, path::Path, sync::Arc};
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
 use super::CompilerStub;
 use crate::{
@@ -28,21 +29,26 @@ impl CompilerStub for InProcessCompilerStub {
         Ok(hash)
     }
 
+    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        (self.descriptor.init_func)(registry)
+    }
+
     fn compile(
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
+        registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
-        project_dir: &Path,
+        _project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         self.descriptor.compile(
             compile_path,
             dependencies,
             derived_deps,
+            registry,
             cas_addr,
-            project_dir,
             env,
         )
     }

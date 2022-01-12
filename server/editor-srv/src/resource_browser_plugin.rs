@@ -278,7 +278,8 @@ mod test {
             .add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
 
         let options = DataBuildOptions::new(&build_dir, compilers)
-            .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+            .content_store(&ContentStoreAddr::from(build_dir.as_path()))
+            .asset_registry(asset_registry.clone());
 
         let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).unwrap();
 
