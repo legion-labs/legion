@@ -247,20 +247,40 @@ Could support the interface to get visibility into crates that are already instr
 - **Roadmap**
 
 ---
-# Roadmap
+# Progress 2021
 
 ![bg right](figures/skellington.png)
 <!--- (https://www.pngegg.com/en/png-zocmk)-->
 
-## Halloween
+## Halloween 2021
 
 - Initial version of client telemetry library
 - Local ingestion server (sqlite & files)
 - CLI analytics (csv output)
 
-## Christmas
+## Christmas 2021
 - Web Analytics client (svelte & Canvas)
 - Visualization of call tree timeline
+
+
+---
+# Progress 2022
+
+## January 2022
+- Timeline levels of details
+
+---
+# Roadmap
+
+## February 2022
+- Ingestion service in the cloud (MAD)
+- Analytics service in the cloud (MAD)
+- Time series improvements (Tim)
+
+## March 2022
+- Unreal telemetry module (MAD)
+- Process list improvements (Tim)
+- Timeline improvements (Tim)
 
 ---
 ![bg](figures/question_mark.jpg)
