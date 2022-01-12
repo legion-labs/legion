@@ -103,7 +103,7 @@ pub(crate) fn debug_display_lights(
             display_list.add_mesh(
                 Transform::identity()
                     .with_translation(transform.translation)
-                    .with_scale(transform.scale * 0.2) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
+                    .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                     .with_rotation(transform.rotation)
                     .compute_matrix(),
                 DefaultMeshId::Sphere as u32,
@@ -118,7 +118,6 @@ pub(crate) fn debug_display_lights(
                                 transform.translation
                                     - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
                             )
-                            .with_scale(transform.scale)
                             .with_rotation(transform.rotation)
                             .compute_matrix(),
                         DefaultMeshId::Arrow as u32,
@@ -134,7 +133,7 @@ pub(crate) fn debug_display_lights(
                                 transform.translation
                                     - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)), // assumes cone height to be 1.0
                             )
-                            .with_scale(transform.scale * Vec3::new(factor, 1.0, factor))
+                            .with_scale(Vec3::new(factor, 1.0, factor))
                             .with_rotation(transform.rotation)
                             .compute_matrix(),
                         DefaultMeshId::Cone as u32,
