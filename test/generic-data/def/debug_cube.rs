@@ -3,6 +3,9 @@ use lgn_math::prelude::*;
 
 #[resource]
 struct DebugCube {
+    #[legion]
+    pub name: String,
+
     #[legion(default=(0.0,0.0,0.0))]
     pub position: Vec3,
 

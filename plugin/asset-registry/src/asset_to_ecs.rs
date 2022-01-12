@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
@@ -152,6 +153,9 @@ impl AssetToECS for generic_data::runtime::DebugCube {
     ) -> Option<Entity> {
         let mut entity = commands.spawn();
 
+        if !instance.name.is_empty() {
+            entity.insert(Name::new(instance.name.clone()));
+        }
         entity.insert(Transform {
             translation: instance.position,
             rotation: instance.rotation,
