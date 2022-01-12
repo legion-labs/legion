@@ -174,7 +174,7 @@ fn main() {
 
     let args = Cli::parse();
     if let Err(err) = context::Context::new().and_then(|ctx| match args.command {
-        Commands::Build(args) => build::run(&args, &ctx),
+        Commands::Build(args) => build::run(args, &ctx),
         Commands::Bench(args) => bench::run(args, &ctx),
         Commands::Check(args) => check::run(&args, &ctx),
         Commands::Clippy(args) => clippy::run(&args, &ctx),

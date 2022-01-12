@@ -22,8 +22,12 @@ pub struct Args {
     pub(crate) build_plan: bool,
 }
 
-pub fn convert_args(args: &Args) -> Vec<OsString> {
+#[span_fn]
+pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
+    info!("Build plan: {}", args.build_plan);
+
     let mut direct_args = Vec::new();
+
     args.build_args.add_args(&mut direct_args);
     if let Some(out_dir) = &args.out_dir {
         direct_args.push(OsString::from("--out-dir"));
@@ -33,21 +37,17 @@ pub fn convert_args(args: &Args) -> Vec<OsString> {
         direct_args.push(OsString::from("--build-plan"));
     };
 
-    direct_args
-}
-
-#[span_fn]
-pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    info!("Build plan: {}", args.build_plan);
-
-    let direct_args = convert_args(args);
-
     let cmd = CargoCommand::Build {
         direct_args: direct_args.as_slice(),
         args: &[],
         env: &[],
         skip_sccache: false,
     };
+
+    // exclude the package itself
+    args.package_args
+        .exclude
+        .push(env!("CARGO_PKG_NAME").into());
 
     let packages = args.package_args.to_selected_packages(ctx)?;
     cmd.run_on_packages(ctx, &packages)
