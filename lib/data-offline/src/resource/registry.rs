@@ -112,7 +112,6 @@ impl ResourceRegistry {
     /// The default state of the resource is defined by the registered
     /// `ResourceProcessor`.
     pub fn new_resource(&mut self, kind: ResourceType) -> Option<ResourceHandleUntyped> {
-        #[allow(clippy::option_if_let_else)]
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = processor.new_resource();
             Some(self.insert(resource))

@@ -302,7 +302,6 @@ impl Entities {
     pub fn alloc(&mut self) -> Entity {
         self.verify_flushed();
         self.len += 1;
-        #[allow(clippy::option_if_let_else)]
         if let Some(id) = self.pending.pop() {
             let new_free_cursor = self.pending.len() as i64;
             *self.free_cursor.get_mut() = new_free_cursor;

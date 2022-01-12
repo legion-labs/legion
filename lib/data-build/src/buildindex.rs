@@ -290,7 +290,6 @@ impl BuildIndex {
         }
 
         let mut get_or_create_index = |res, dep_graph: &mut Graph<_, _>| {
-            #[allow(clippy::option_if_let_else)]
             if let Some(own_index) = indices.get(&res) {
                 *own_index
             } else {
@@ -405,7 +404,6 @@ impl BuildIndex {
             self.record_pathid(id);
         }
 
-        #[allow(clippy::option_if_let_else)]
         if let Some(existing_res) = self
             .source_content
             .resources
