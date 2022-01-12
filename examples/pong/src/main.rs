@@ -90,7 +90,7 @@ struct GameState {
     left_paddle_id: Option<u32>,
     right_paddle_id: Option<u32>,
     ball_id: Option<u32>,
-    velocity: Vec3,
+    velocity: f32,
     direction: Vec3,
 }
 
@@ -107,6 +107,7 @@ fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMu
         camera.rotation_speed = 0_f32;
     }
 
+    state.velocity = 0.4;
     state.direction.x = rand::random::<f32>() - 0.5_f32;
     state.direction.y = rand::random::<f32>() - 0.5_f32;
     state.direction = state.direction.normalize() * 0.1_f32;
@@ -144,30 +145,63 @@ fn game_logic(
         mouse_delta_x += motion_event.delta.x;
     }
 
-    // update direction
-
-    //
+    // update paddles
+    let mut left_paddle = 0.0;
+    let mut right_paddle = 0.0;
     for (entity, mut transform) in entities.iter_mut() {
         if entity.id() == left_paddle_id {
             // Left paddle
-            transform.translation.y += mouse_delta_x / 100_f32;
+            transform.translation.y -= mouse_delta_x / 100_f32;
+            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+            left_paddle = transform.translation.y;
         } else if entity.id() == right_paddle_id {
             // Right paddle
-            transform.translation.y -= mouse_delta_x / 100_f32;
-        } else if entity.id() == ball_id {
+            transform.translation.y += mouse_delta_x / 100_f32;
+            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+            right_paddle = transform.translation.y;
+        }
+    }
+
+    // update ball
+    for (entity, mut transform) in entities.iter_mut() {
+        if entity.id() == ball_id {
             // Ball
-            if transform.translation.x < -3.0 || transform.translation.x > 3.0 {
+            let mut position = transform.translation;
+            if position.x < -3.0 || position.x > 3.0 {
                 state.direction.x = -state.direction.x;
             }
-            if transform.translation.y < -2.0 || transform.translation.y > 2.0 {
+            if position.y < -2.0 || position.y > 2.0 {
                 state.direction.y = -state.direction.y;
             }
 
-            transform.translation.x = transform.translation.x.clamp(-3.0, 3.0);
-            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+            position.x = position.x.clamp(-3.0, 3.0);
+            position.y = position.y.clamp(-2.0, 2.0);
 
-            state.velocity = state.direction * 5.0_f32 / 30.0_f32;
-            transform.translation += state.velocity;
+            // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
+            // Note: x-axis is inverted so values decrease towards the right
+            let new_position = position + state.velocity * state.direction;
+            if state.direction.x > 0.0 {
+                // moving left
+                if position.x < 2.3
+                    && new_position.x >= 2.3
+                    && position.y > left_paddle - 0.5
+                    && position.y < left_paddle + 0.5
+                {
+                    state.direction.x = -state.direction.x;
+                }
+            } else {
+                // moving right
+                if position.x > -2.3
+                    && new_position.x <= -2.3
+                    && position.y > right_paddle - 0.5
+                    && position.y < right_paddle + 0.5
+                {
+                    state.direction.x = -state.direction.x;
+                }
+            }
+
+            transform.translation = position;
+            transform.translation += state.velocity * state.direction;
         }
     }
 }
