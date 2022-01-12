@@ -6,18 +6,25 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 
 use lgn_graphics_cgen_runtime::prelude::*;
 
+        StructMemberLayout {
+            offset: 44,
+            absolute_offset: 0,
+            size: 20,
+            padded_size: 20,
+            array_stride: 4,
+        },
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "Spotlight",
     id: 17,
-    size: 44,
+    size: 64,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<Spotlight>(), 44);
+static_assertions::const_assert_eq!(mem::size_of::<Spotlight>(), 64);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct Spotlight {
-    data: [u8; 44],
+    data: [u8; 64],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -95,6 +102,26 @@ impl Spotlight {
         self.get(32)
     }
 
+    pub fn set_pad(&mut self, values: [Uint1; 5]) {
+        for i in 0..5 {
+            self.set_pad_element(i, values[i]);
+        }
+    }
+
+    pub fn set_pad_element(&mut self, index: usize, value: Uint1) {
+        assert!(index < 5);
+        self.set::<Uint1>(44 + index * 4, value);
+    }
+
+    pub fn pad(&self) -> [Uint1; 5] {
+        self.get(44)
+    }
+
+    pub fn pad_element(&self, index: usize) -> Uint1 {
+        assert!(index < 5);
+        self.get::<Uint1>(44 + index * 4)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -118,12 +145,13 @@ impl Spotlight {
 
 impl Default for Spotlight {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 44] };
+        let mut ret = Self { data: [0; 64] };
         ret.set_pos(Float3::default());
         ret.set_radiance(Float1::default());
         ret.set_dir(Float3::default());
         ret.set_cone_angle(Float1::default());
         ret.set_color(Float3::default());
+        ret.set_pad([Uint1::default(); 5]);
         ret
     }
 }
