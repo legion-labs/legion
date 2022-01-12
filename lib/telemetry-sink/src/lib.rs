@@ -72,6 +72,7 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+use lgn_tracing::event::NullEventSink;
 use lgn_tracing::info;
 use lgn_tracing::{
     event::EventSink,
@@ -117,7 +118,10 @@ impl Default for Config {
     }
 }
 
-fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TelemetrySystemGuard>> {
+fn alloc_telemetry_system(
+    config: Config,
+    enable_console_printer: bool,
+) -> anyhow::Result<Arc<TelemetrySystemGuard>> {
     lazy_static::lazy_static! {
         static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TelemetrySystemGuard>> = Mutex::new(Weak::new());
     }
@@ -128,10 +132,16 @@ fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TelemetrySystemG
     }
     let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
         Ok(url) => Arc::new(GRPCEventSink::new(&url)),
-        Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
-            config.level_filters,
-            std::env::var("LGN_TRACE_FILE").ok(),
-        )?),
+        Err(_no_url_in_env) => {
+            if enable_console_printer {
+                Arc::new(ImmediateEventSink::new(
+                    config.level_filters,
+                    std::env::var("LGN_TRACE_FILE").ok(),
+                )?)
+            } else {
+                Arc::new(NullEventSink {})
+            }
+        }
     };
 
     let arc = Arc::<TelemetrySystemGuard>::new(TelemetrySystemGuard::new(
@@ -153,13 +163,14 @@ pub struct TelemetryGuard {
 
 impl TelemetryGuard {
     pub fn default() -> anyhow::Result<Self> {
-        Self::new(Config::default())
+        Self::new(Config::default(), true)
     }
 
-    pub fn new(config: Config) -> anyhow::Result<Self> {
+    //todo: refac enable_console_printer, put in config?
+    pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
         // order here is important
         Ok(Self {
-            _guard: alloc_telemetry_system(config)?,
+            _guard: alloc_telemetry_system(config, enable_console_printer)?,
             _thread_guard: TelemetryThreadGuard::new(),
         })
     }

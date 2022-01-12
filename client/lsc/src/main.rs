@@ -60,7 +60,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
 
 /// Legion Source Control
@@ -237,17 +237,18 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let telemetry_guard = TelemetryGuard::default().unwrap();
+    let args = Cli::parse();
+    let _telemetry_guard = if args.debug {
+        TelemetryGuard::default()
+            .unwrap()
+            .with_log_level(LevelFilter::Debug)
+    } else {
+        TelemetryGuard::new(Config::default(), false)
+            .unwrap()
+            .with_log_level(LevelFilter::Info)
+    };
 
     span_scope!("lsc::main");
-
-    let args = Cli::parse();
-
-    let _telemetry_guard = if args.debug {
-        telemetry_guard.with_log_level(LevelFilter::Debug)
-    } else {
-        telemetry_guard
-    };
 
     match args.command {
         Commands::CreateRepository {
