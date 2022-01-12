@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use lgn_ecs::prelude::*;
 use lgn_math::Vec3;
 use lgn_transform::components::Transform;
