@@ -165,6 +165,9 @@ impl TelemetryGuard {
     }
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
         set_max_level(level_filter);
+        log::set_max_level(
+            immediate_event_sink::tracing_level_filter_to_log_level_filter(level_filter),
+        );
         self
     }
     pub fn with_ctrlc_handling(self) -> Self {
