@@ -182,21 +182,61 @@ fn game_logic(
             let new_position = position + state.velocity * state.direction;
             if state.direction.x > 0.0 {
                 // moving left
-                if position.x < 2.3
+                if (position.x < 2.3
                     && new_position.x >= 2.3
                     && position.y > left_paddle - 0.5
-                    && position.y < left_paddle + 0.5
+                    && position.y < left_paddle + 0.5)
+                    || (position.x < -2.5
+                        && new_position.x >= -2.5
+                        && position.y > right_paddle - 0.5
+                        && position.y < right_paddle + 0.5)
                 {
                     state.direction.x = -state.direction.x;
                 }
             } else {
                 // moving right
-                if position.x > -2.3
+                if (position.x > -2.3
                     && new_position.x <= -2.3
                     && position.y > right_paddle - 0.5
-                    && position.y < right_paddle + 0.5
+                    && position.y < right_paddle + 0.5)
+                    || (position.x > 2.5
+                        && new_position.x <= 2.5
+                        && position.y > left_paddle - 0.5
+                        && position.y < left_paddle + 0.5)
                 {
                     state.direction.x = -state.direction.x;
+                }
+            }
+
+            if state.direction.y > 0.0 {
+                // moving up
+                let left_bottom = left_paddle - 0.5;
+                let right_bottom = right_paddle - 0.5;
+                if (position.y < left_bottom
+                    && new_position.y >= left_bottom
+                    && position.x > 2.3
+                    && position.x < 2.5)
+                    || (position.y < right_bottom
+                        && new_position.y >= right_bottom
+                        && position.x < -2.3
+                        && position.x > -2.5)
+                {
+                    state.direction.y = -state.direction.y;
+                }
+            } else {
+                // moving down
+                let left_top = left_paddle + 0.5;
+                let right_top = right_paddle + 0.5;
+                if (position.y > left_top
+                    && new_position.y <= left_top
+                    && position.x > 2.3
+                    && position.x < 2.5)
+                    || (position.y > right_top
+                        && new_position.y <= right_top
+                        && position.x < -2.3
+                        && position.x > -2.5)
+                {
+                    state.direction.y = -state.direction.y;
                 }
             }
 
