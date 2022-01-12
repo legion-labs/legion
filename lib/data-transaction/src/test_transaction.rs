@@ -3,7 +3,7 @@ use std::sync::Arc;
 use generic_data::offline::TestEntity;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::{

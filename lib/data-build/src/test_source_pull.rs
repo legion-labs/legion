@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,

@@ -90,7 +90,7 @@ use crate::{
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
         COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
-    compiler_reg::{CompilerRegistry, CompilerRegistryOptions, CompilerNode},
+    compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
 

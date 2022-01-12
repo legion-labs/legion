@@ -1,7 +1,7 @@
-use lgn_data_compiler::compiler_reg;
+use lgn_data_compiler::compiler_node;
 
-pub fn create() -> compiler_reg::CompilerRegistryOptions {
-    let registry = compiler_reg::CompilerRegistryOptions::default();
+pub fn create() -> compiler_node::CompilerRegistryOptions {
+    let registry = compiler_node::CompilerRegistryOptions::default();
     registry
         .add_compiler(&lgn_compiler_material::COMPILER_INFO)
         .add_compiler(&lgn_compiler_debugcube::COMPILER_INFO)

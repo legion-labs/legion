@@ -4,7 +4,7 @@ use std::{
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
@@ -21,7 +21,7 @@ use crate::{DataBuild, Error};
 /// ```
 /// # use lgn_data_build::DataBuildOptions;
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+/// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create(".");

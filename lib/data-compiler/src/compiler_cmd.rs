@@ -64,7 +64,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     compiler_api::{CompilationEnv, CompilerInfo},
-    compiler_reg::CompilerRegistry,
+    compiler_node::CompilerRegistry,
     CompiledResource, CompilerHash,
 };
 

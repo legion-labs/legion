@@ -9,7 +9,7 @@ use std::{env, io};
 
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerNode, CompilerStub};
+use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -68,7 +68,7 @@ fn compute_context_hash(
 /// ```no_run
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target};
+/// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 /// # use std::str::FromStr;

@@ -7,7 +7,7 @@ use std::{
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
-    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+    compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::Resource;
