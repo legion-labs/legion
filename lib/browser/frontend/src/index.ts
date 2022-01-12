@@ -74,6 +74,8 @@ export type Config<SvelteComponent> = {
   rootQuerySelector: string;
   /** Log level, if set to `null` logs are entirely disabled  */
   logLevel: LogLevel | null;
+  /** Hook called before the application start */
+  onPreInit?(): Promise<void> | void;
 };
 
 /**
@@ -88,7 +90,10 @@ export async function run<SvelteComponent>({
   auth: authConfig,
   rootQuerySelector,
   logLevel,
+  onPreInit,
 }: Config<SvelteComponent>): Promise<void> {
+  onPreInit && (await onPreInit());
+
   const target = getTarget(rootQuerySelector);
 
   if (logLevel) {
