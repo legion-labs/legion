@@ -84,7 +84,7 @@ impl ManipulatorPart {
             })
             .id();
 
-        let picking_id = picking_block.aquire_picking_id(entity).unwrap();
+        let picking_id = picking_block.acquire_picking_id(entity).unwrap();
         static_mesh.picking_id = picking_id;
 
         entity_commands.insert(static_mesh);
@@ -231,7 +231,7 @@ impl ManipulatorManager {
             .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
     }
 
-    pub fn curremt_manipulator_type(&self) -> ManipulatorType {
+    pub fn current_manipulator_type(&self) -> ManipulatorType {
         let inner = self.inner.lock().unwrap();
 
         inner.current_type
