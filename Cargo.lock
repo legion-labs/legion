@@ -6526,6 +6526,7 @@ dependencies = [
  "lgn-math",
  "lgn-renderer",
  "lgn-transform",
+ "lgn-window",
  "rand 0.8.4",
  "runtime-srv",
 ]
