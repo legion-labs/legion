@@ -42,7 +42,7 @@
   }
 
   function authenticate() {
-    startUserAuth(userInfo);
+    startUserAuth();
   }
 </script>
 

@@ -1,5 +1,5 @@
 import { UserInfo } from ".";
-import { AsyncStore } from "../../stores/asyncStore";
+import { getUserInfo } from "../../stores/userInfo";
 import { getCookie, setCookie } from "../cookie";
 
 const authorizationUrl = new URL(
@@ -298,10 +298,7 @@ export async function startUserAuth() {
  * If the `forceAuth` option is `true` the unauthenticated users
  * will be redirected to Cognito.
  */
-export async function userAuth(
-  asyncStore: AsyncStore<UserInfo>,
-  { forceAuth }: { forceAuth: boolean }
-) {
+export async function userAuth({ forceAuth }: { forceAuth: boolean }) {
   const awsCognitoTokenCache = createAwsCognitoTokenCache();
 
   const code =
@@ -315,7 +312,7 @@ export async function userAuth(
   }
 
   try {
-    const userInfoSet = await asyncStore.run();
+    const userInfoSet = await getUserInfo();
 
     // TODO: The returned timeout id can and should be freed.
     // Schedule refresh token.

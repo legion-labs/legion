@@ -1,5 +1,5 @@
-import { ResourceDescription } from "@lgn/proto-editor/codegen/resource_browser";
-import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/codegen/property_inspector";
+import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
 import log from "@lgn/frontend/src/lib/log";
 import { filterMap } from "../lib/array";
 
