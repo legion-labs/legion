@@ -24,35 +24,59 @@
 
 ---
 
-A bit more on legion engine...
+Legion Engine is made of multiple components:
+
+- Cloud native data processing pipeline, where the size and management artifact is a thing of the past.
+- Source control solution capable of handling large binary files while providing merge guarantees through locking, even across branches.
+- Fully integrated and scalable telemetry solution, allowing to have detailed visibility on all aspects of your builds, from the production floor to the live environment.
+- Vulkan based streaming solution, allowing the editor to operate in hybrid mode and keeping the heavy lifting on the backend.
+- Web technologies powered editor, providing an accessible but yet powerful experience to everyone, maybe even players.
+- Scripting and hot reloading capable engine runtime, bridging a fast iteration loop to everyone on the production.
+
+Legion Engine is an open source engine to the limit of what Legion Labs has control over. We firmly believe that the next game development technology stack is going to be an open source one, and as such Legion Labs has a commitment to nurture and grow a community of developers that are able to contribute to the engine and make it theirs as well!
 
 ## ⚡️ Quick Start
 
-The repo contains all the application code of the engine itself, the tools and the pipeline.
+The repo contains all the application code of the engine itself, the tools and the pipeline. A complete guide to getting setup and getting to work on the engine is described [here](https://book.legionengine.com), for an overview of all the libraries used can be found [here](https://api.legionengine.com).
 
-- Visit https://book.legionengine.com for the legion pipeline book.
-- Visit https://api.legionengine.com for the legion api reference book.
+We currently don't support pre-built packages, but you can build and run locally all the components necessary to build the engine and it's tools. For a quick setup follow the guides below, We support Windows and Linux as our main development platforms and targets. The plan is to support MacOs as well.
 
-We currently don't support pre-built packages, but you can build and run locally all the components necessary to build the engine and it's tools.
-
-### Dev Environment Setup
-
-We currently support Windows and Linux as our main development platforms and targets. The plan is to support MacOs as well.
+> This being a monorepo, it relies on some extra tooling to work around some Cargo limitations around monorepo and package selection. You will need to use the cargo command you are accustomed to like `cargo clippy`, `cargo run`, but you need to prefix them with `cargo mclippy`, `cargo mrun`. More information surrounding this is available [here]((https://book.legionengine.com/link_to_monorepo_tooling).
 
 <details><summary><b>Windows setup instructions</b></summary>
 
-First you need to have a valid Visual Studio 2019 or above toolchain installed, if you don't you can install the [Visual Studio build tools instead](https://aka.ms/vs/17/release/vs_BuildTools.exe) with C++ based development packages. For the remaining dependencies we recommend using [scoop](https://scoop.sh/) to install the following:
+First you need to have a valid Visual Studio 2019 or above toolchain installed, if you don't you can install the [Visual Studio build tools instead](https://aka.ms/vs/17/release/vs_BuildTools.exe) with `Desktop Development with C++` packages. For the remaining dependencies we recommend using [scoop](https://scoop.sh/) to install the necessary dependencies:
 
-- Rust dependencies by running the following commands on a powershell prompt:
+- on a powershell prompt (locate and select powershell on the Start menu)
+
+```powershell
+Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+```
+
+- if you get an error you might need to change the execution policy with, the repeat the previous step:
+
+```
+Set-ExecutionPolicy RemoteSigned -scope CurrentUser
+```
+
+- Add Legion Labs bucket and the extras bucket
+
+```powershell
+scoop bucket add legion-labs https://github.com/legion-labs/scoop-bucket
+scoop bucket add extras
+```
+
+- install Rust dependencies by running the following commands on a powershell prompt:
 
 ```powershell
 scoop install rustup-msvc
+scoop install legion-labs/vulkan
 scoop install cmake
 scoop install ninja
 scoop install nasm
 ```
 
-- Front end dependencies by running the following commands on a powershell prompt:
+- Install the front end dependencies by running the following commands on a powershell prompt:
 
 ```powershell
 scoop install nvm
@@ -62,7 +86,7 @@ nvm use 16.10.0
 npm -g i pnpm
 ```
 
-On two instances of a powershell prompt and at the root of this repo run the following:
+On two instances of powershell prompts and at the root of this repo run the following:
 
 ```powershell
 cargo mrun --p editor-srv
