@@ -60,6 +60,7 @@
 
 use dolly::{prelude::*, rig::CameraRig};
 use lgn_app::prelude::*;
+use lgn_core::Name;
 use lgn_ecs::prelude::*;
 use lgn_input::mouse::MouseMotion;
 use lgn_math::Vec3;
@@ -115,28 +116,21 @@ fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMu
 
 fn game_logic(
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
-    mut entities: Query<'_, '_, (Entity, &mut Transform)>,
+    mut entities: Query<'_, '_, (Entity, &Name, &mut Transform)>,
     mut state: ResMut<'_, GameState>,
 ) {
-    // Ball
-    if state.ball_id.is_none() {
-        // TODO lookup with name
-        state.ball_id = Some(24);
+    if state.ball_id.is_none() || state.left_paddle_id.is_none() || state.right_paddle_id.is_none()
+    {
+        lookup_entities_by_name(&entities, &mut state);
+        if state.ball_id.is_none()
+            || state.left_paddle_id.is_none()
+            || state.right_paddle_id.is_none()
+        {
+            return;
+        }
     }
     let ball_id = state.ball_id.unwrap();
-
-    // Left paddle
-    if state.left_paddle_id.is_none() {
-        // TODO lookup with name
-        state.left_paddle_id = Some(25);
-    }
     let left_paddle_id = state.left_paddle_id.unwrap();
-
-    // Right paddle
-    if state.right_paddle_id.is_none() {
-        // TODO lookup with name
-        state.right_paddle_id = Some(26);
-    }
     let right_paddle_id = state.right_paddle_id.unwrap();
 
     // aggregate mouse movement
@@ -148,7 +142,7 @@ fn game_logic(
     // update paddles
     let mut left_paddle = 0.0;
     let mut right_paddle = 0.0;
-    for (entity, mut transform) in entities.iter_mut() {
+    for (entity, _name, mut transform) in entities.iter_mut() {
         if entity.id() == left_paddle_id {
             // Left paddle
             transform.translation.y -= mouse_delta_x / 100_f32;
@@ -163,7 +157,7 @@ fn game_logic(
     }
 
     // update ball
-    for (entity, mut transform) in entities.iter_mut() {
+    for (entity, _name, mut transform) in entities.iter_mut() {
         if entity.id() == ball_id {
             // Ball
             let mut position = transform.translation;
@@ -244,4 +238,31 @@ fn game_logic(
             transform.translation += state.velocity * state.direction;
         }
     }
+}
+
+fn lookup_entities_by_name(
+    entities: &Query<'_, '_, (Entity, &Name, &mut Transform)>,
+    state: &mut ResMut<'_, GameState>,
+) {
+    if state.ball_id.is_none() {
+        state.ball_id = lookup_entity_by_name("Ball", entities);
+    }
+
+    if state.left_paddle_id.is_none() {
+        state.left_paddle_id = lookup_entity_by_name("Pad Left", entities);
+    }
+
+    if state.right_paddle_id.is_none() {
+        state.right_paddle_id = lookup_entity_by_name("Pad Right", entities);
+    }
+}
+
+fn lookup_entity_by_name(
+    name: &'static str,
+    entities: &Query<'_, '_, (Entity, &Name, &mut Transform)>,
+) -> Option<u32> {
+    entities
+        .iter()
+        .find(|(_entity, entity_name, _transform)| entity_name.as_str() == name)
+        .map(|(entity, _entity_name, _transform)| entity.id())
 }

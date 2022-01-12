@@ -6520,6 +6520,7 @@ dependencies = [
  "dolly",
  "generic-data",
  "lgn-app",
+ "lgn-core",
  "lgn-ecs",
  "lgn-input",
  "lgn-math",
