@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use lgn_tracing::imetric;
 use std::cell::RefCell;
 use std::fs;
 use std::io::prelude::*;
@@ -80,11 +81,16 @@ pub(crate) fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
 }
 
 pub(crate) fn read_text_file(path: &Path) -> Result<String> {
-    fs::read_to_string(path).context(format!("error reading file: {}", path.display()))
+    let contents =
+        fs::read_to_string(path).context(format!("error reading file: {}", path.display()))?;
+    imetric!("read file size", "bytes", contents.len() as u64);
+    Ok(contents)
 }
 
 pub(crate) fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
-    fs::read(path).context(format!("error reading file {}", path.display()))
+    let contents = fs::read(path).context(format!("error reading file {}", path.display()))?;
+    imetric!("read file size", "bytes", contents.len() as u64);
+    Ok(contents)
 }
 
 pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> PathBuf {
