@@ -6,7 +6,6 @@ use std::process::Command;
 
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_test_utils::{create_test_dir, syscall};
-use lgn_tracing::dispatch::{flush_log_buffer, flush_metrics_buffer, flush_thread_buffer};
 use lgn_tracing::{span_fn, span_scope};
 
 fn write_file(path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> Result<()> {
@@ -189,9 +188,6 @@ fn local_repo_suite() {
 
     //sync forwards
     lsc_cli_sys(&work1, &["sync"]);
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
 
 #[test]
@@ -240,9 +236,6 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&work1, &["resolves-pending"]);
     lsc_cli_sys(&work1, &["revert", "file1.txt"]);
     lsc_cli_sys(&work1, &["resolves-pending"]);
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
 
 #[test]
@@ -255,9 +248,6 @@ fn test_print_config() {
     } else {
         println!("no config file, skipping test");
     }
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
 
 #[test]
@@ -351,9 +341,6 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["merge-branch", "task"]); //fast-forward
 
     //lsc_cli_sys(&work1, &["log"]);
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
 
 #[test]
@@ -465,9 +452,6 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
     lsc_cli_sys(&work1, &["lock", "some_other_file.txt"]);
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
 
 #[span_fn]
@@ -499,7 +483,4 @@ fn test_import_git() {
         &work1,
         &["import-git-branch", root_dir.to_str().unwrap(), "main"],
     );
-    flush_log_buffer();
-    flush_metrics_buffer();
-    flush_thread_buffer();
 }
