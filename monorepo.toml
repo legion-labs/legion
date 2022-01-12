@@ -93,13 +93,15 @@ mark-changed = "all"
 [[determinator.path-rule]]
 globs = [
     ".vscode/*",
+    "CREDITS.md",
     "doc/**/*",
     "build/env/**/*",
     "pnpm-*",
     "deny.toml",
     "Makefile",
     "legion.toml",
+    "lib/vite-plugins/**/*",
     "package.json",
-    "CREDITS.md",
+    "trace-*",
 ]
 mark-changed = []

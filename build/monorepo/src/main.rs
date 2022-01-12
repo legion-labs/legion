@@ -62,6 +62,7 @@
 mod bench;
 mod build;
 mod cargo;
+mod cd;
 mod changed_since;
 mod check;
 mod ci;
@@ -80,13 +81,14 @@ mod run;
 mod term;
 mod test;
 mod tools;
+mod vscode;
 
 //mod sources;
 //mod hash;
 //mod package;
 
 use clap::{Parser, Subcommand};
-use lgn_tracing::span_scope;
+use lgn_tracing::{span_scope, LevelFilter};
 
 use error::Error;
 
@@ -136,6 +138,12 @@ enum Commands {
     Test(test::Args),
 
     // Non Cargo commands:
+    /// Run CD on the monorepo
+    #[clap(name = "cd")]
+    Cd(cd::Args),
+    /// Run CI check, defaults to running all checks
+    #[clap(name = "ci")]
+    Ci(ci::Args),
     /// List packages changed since merge base with the given commit
     ///
     /// Note that this compares against the merge base (common ancestor) of the specified commit.
@@ -147,18 +155,20 @@ enum Commands {
     #[clap(name = "hakari")]
     Hakari,
     /// Run tools installation
-    #[clap(name = "tools")]
-    Tools(tools::Args),
-    /// Run tools installation
     #[clap(name = "lint")]
     Lint(lint::Args),
-    /// Run CI check, defaults to running all checks
-    #[clap(name = "ci")]
-    Ci(ci::Args),
+    /// Run tools installation
+    #[clap(name = "tools")]
+    Tools(tools::Args),
+    /// Generates VSCode configuration files and performs checks
+    #[clap(name = "vscode")]
+    VsCode(vscode::Args),
 }
 
 fn main() {
-    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default().unwrap();
+    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
+        .unwrap()
+        .with_log_level(LevelFilter::Warn);
 
     span_scope!("monorepo::main");
 
@@ -174,11 +184,13 @@ fn main() {
         Commands::Run(args) => run::run(&args, &ctx),
         Commands::Test(args) => test::run(args, &ctx),
 
+        Commands::Cd(args) => cd::run(&args, &ctx),
+        Commands::Ci(args) => ci::run(args, &ctx),
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx),
         Commands::Hakari => hakari::run(&ctx),
         Commands::Lint(args) => lint::run(&args, &ctx),
         Commands::Tools(args) => tools::run(&args, &ctx),
-        Commands::Ci(args) => ci::run(args, &ctx),
+        Commands::VsCode(args) => vscode::run(&args, &ctx),
     }) {
         err.display();
         #[allow(clippy::exit)]
