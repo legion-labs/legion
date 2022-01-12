@@ -36,7 +36,7 @@ impl PickingIdBlock {
         }
     }
 
-    pub fn aquire_picking_id(&mut self, entity: Entity) -> Option<u32> {
+    pub fn acquire_picking_id(&mut self, entity: Entity) -> Option<u32> {
         let picking_id = self.picking_ids.pop();
         if let Some(picking_id) = picking_id {
             let index = (picking_id & 0x00FFFFFF) - self.base_picking_id;
@@ -128,7 +128,7 @@ impl PickingManager {
         }
     }
 
-    pub fn aquire_picking_id_block(&self) -> PickingIdBlock {
+    pub fn acquire_picking_id_block(&self) -> PickingIdBlock {
         let mut inner = self.inner.lock().unwrap();
 
         let mut most_free = 0;
@@ -238,7 +238,7 @@ impl PickingManager {
         }
     }
 
-    pub fn set_mouse_moition_event(&self, input: &MouseMotion) {
+    pub fn set_mouse_motion_event(&self, input: &MouseMotion) {
         let inner = &mut *self.inner.lock().unwrap();
 
         if inner.mouse_input.state.is_pressed() && inner.mouse_input.button == MouseButton::Left {
