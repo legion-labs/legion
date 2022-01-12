@@ -267,7 +267,8 @@ Could support the interface to get visibility into crates that are already instr
 # Progress 2022
 
 ## January 2022
-- Timeline levels of details
+- Logging improvements (Jalal)
+- Timeline levels of details (MAD)
 
 ---
 # Roadmap
