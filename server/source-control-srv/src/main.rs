@@ -64,7 +64,7 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use clap::Parser;
-use lgn_source_control::{BlobStorageUrl, Commit, RepositoryQuery, RepositoryUrl};
+use lgn_source_control::{blob_storage::BlobStorageUrl, Commit, RepositoryQuery, RepositoryUrl};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,

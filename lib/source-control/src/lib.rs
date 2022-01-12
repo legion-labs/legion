@@ -57,14 +57,14 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub mod attach_branch;
-mod blob_storage;
+pub mod blob_storage;
 pub mod branch;
 pub mod commit;
 pub mod config;
 pub mod delete;
 pub mod detach_branch;
 pub mod diff;
-pub mod forest;
+mod error;
 pub mod import_git_repo;
 pub mod init_workspace;
 pub mod local_change;
@@ -75,7 +75,6 @@ pub mod log;
 pub mod lsc_repository_query;
 pub mod merge_branch;
 pub mod repository_addr;
-pub mod repository_config;
 pub mod repository_connection;
 pub mod repository_query;
 pub mod repository_url;
@@ -92,14 +91,13 @@ pub mod workspace_registration;
 
 pub use crate::log::*;
 pub use attach_branch::*;
-pub use blob_storage::*;
 pub use branch::*;
 pub use commit::*;
 pub use config::*;
 pub use delete::*;
 pub use detach_branch::*;
 pub use diff::*;
-pub use forest::*;
+pub use error::*;
 pub use import_git_repo::*;
 pub use init_workspace::*;
 pub use local_change::*;
@@ -108,7 +106,6 @@ pub use local_workspace_connection::*;
 pub use lock::*;
 pub use merge_branch::*;
 pub use repository_addr::*;
-pub use repository_config::*;
 pub use repository_connection::*;
 pub use repository_query::*;
 pub use repository_url::*;

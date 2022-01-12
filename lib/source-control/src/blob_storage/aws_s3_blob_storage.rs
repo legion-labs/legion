@@ -13,9 +13,7 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
-use crate::{BlobStats, BoxedAsyncRead, BoxedAsyncWrite};
-
-use super::{Error, Result, StreamingBlobStorage};
+use super::{BlobStats, BoxedAsyncRead, BoxedAsyncWrite, Error, Result, StreamingBlobStorage};
 
 pub struct AwsS3BlobStorage {
     url: AwsS3Url,

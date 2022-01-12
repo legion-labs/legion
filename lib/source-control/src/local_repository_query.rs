@@ -1,12 +1,13 @@
-use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_tracing::info;
 use std::path::PathBuf;
 
 use crate::{
+    blob_storage::BlobStorageUrl,
     sql_repository_query::{DatabaseUri, SqlRepositoryQuery},
-    utils::{check_directory_does_not_exist_or_is_empty, make_path_absolute},
-    BlobStorageUrl, Branch, Commit, Lock, RepositoryQuery, Tree, WorkspaceRegistration,
+    utils::make_path_absolute,
+    Branch, Commit, Error, Lock, MapOtherError, RepositoryQuery, Result, Tree,
+    WorkspaceRegistration,
 };
 
 pub struct LocalRepositoryQuery {
@@ -37,13 +38,33 @@ impl RepositoryQuery for LocalRepositoryQuery {
         &self,
         blob_storage_url: Option<BlobStorageUrl>,
     ) -> Result<BlobStorageUrl> {
-        check_directory_does_not_exist_or_is_empty(&self.directory)?;
+        match self.directory.read_dir() {
+            Ok(mut entries) => {
+                if entries.next().is_some() {
+                    return Err(Error::directory_already_exists(self.directory.clone()));
+                }
+            }
+            Err(err) => {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    return Err(Error::Other {
+                        source: err.into(),
+                        context: format!(
+                            "failed to read directory `{}`",
+                            &self.directory.display()
+                        ),
+                    });
+                }
+            }
+        };
 
         info!("Creating repository root at {}", self.directory.display());
 
         tokio::fs::create_dir_all(&self.directory)
             .await
-            .context("could not create repository directory")?;
+            .map_other_err(format!(
+                "failed to create repository root at `{}`",
+                &self.directory.display()
+            ))?;
 
         info!("Creating SQLite database");
 
@@ -62,7 +83,10 @@ impl RepositoryQuery for LocalRepositoryQuery {
 
         tokio::fs::remove_dir_all(&self.directory)
             .await
-            .map_err(Into::into)
+            .map_other_err(format!(
+                "failed to destroy repository root at `{}`",
+                &self.directory.display()
+            ))
     }
 
     async fn register_workspace(

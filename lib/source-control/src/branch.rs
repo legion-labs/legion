@@ -48,16 +48,6 @@ impl Branch {
     }
 }
 
-pub async fn create_branches_table(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
-    let sql = "CREATE TABLE branches(name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64));
-         CREATE UNIQUE INDEX branch_name on branches(name);
-        ";
-
-    execute_sql(sql_connection, sql)
-        .await
-        .context("error creating branch table and index")
-}
-
 pub async fn create_workspace_branch_table(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql = "CREATE TABLE current_branch(name VARCHAR(255), commit_id VARCHAR(255));
         ";

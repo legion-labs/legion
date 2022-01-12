@@ -50,25 +50,6 @@ pub(crate) fn parse_url_or_path(s: &str) -> Result<UrlOrPath> {
     }
 }
 
-pub(crate) fn check_directory_does_not_exist_or_is_empty(path: impl AsRef<Path>) -> Result<()> {
-    match path.as_ref().read_dir() {
-        Ok(mut entries) => {
-            if entries.next().is_none() {
-                Ok(())
-            } else {
-                anyhow::bail!("directory is not empty")
-            }
-        }
-        Err(err) => {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                Ok(())
-            } else {
-                Err(err.into())
-            }
-        }
-    }
-}
-
 pub(crate) fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
     fs::create_dir_all(path.parent().unwrap())
         .context(format!("error creating directory: {}", path.display()))?;

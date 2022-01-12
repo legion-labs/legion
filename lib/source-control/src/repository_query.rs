@@ -1,7 +1,8 @@
-use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::{BlobStorageUrl, Branch, Commit, Lock, Tree, WorkspaceRegistration};
+use crate::{
+    blob_storage::BlobStorageUrl, Branch, Commit, Error, Lock, Result, Tree, WorkspaceRegistration,
+};
 
 #[async_trait]
 pub trait RepositoryQuery: Send + Sync {
@@ -18,7 +19,9 @@ pub trait RepositoryQuery: Send + Sync {
     async fn read_branch(&self, branch_name: &str) -> Result<Branch> {
         self.find_branch(branch_name)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("branch `{}` not found", branch_name))
+            .ok_or_else(|| Error::BranchNotFound {
+                branch_name: branch_name.to_string(),
+            })
     }
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;
     async fn update_branch(&self, branch: &Branch) -> Result<()>;
@@ -32,13 +35,9 @@ pub trait RepositoryQuery: Send + Sync {
     async fn read_tree(&self, tree_hash: &str) -> Result<Tree>;
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()>;
     async fn insert_lock(&self, lock: &Lock) -> Result<()>;
-    async fn find_lock(
-        &self,
-        lock_domain_id: &str,
-        canonical_relative_path: &str,
-    ) -> Result<Option<Lock>>;
+    async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>>;
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>>;
-    async fn clear_lock(&self, lock_domain_id: &str, canonical_relative_path: &str) -> Result<()>;
+    async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()>;
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32>;
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl>;
 }
