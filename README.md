@@ -86,18 +86,6 @@ nvm use 16.10.0
 npm -g i pnpm
 ```
 
-On two instances of powershell prompts and at the root of this repo run the following:
-
-```powershell
-cargo mrun --p editor-srv
-```
-
-On the second terminal:
-
-```powershell
-cargo mrun --p editor-client
-```
-
 </details>
 
 <details><summary><b>Linux setup instructions</b></summary>
@@ -105,6 +93,18 @@ cargo mrun --p editor-client
 Linux steps here.
 
 </details>
+
+After finishing the setup, on two instances of your prompt, run the following commands at the root of the repo:
+
+```
+cargo mrun -p editor-srv
+```
+
+On the second terminal:
+
+```
+cargo mrun -p editor-client
+```
 
 ## Community
 
