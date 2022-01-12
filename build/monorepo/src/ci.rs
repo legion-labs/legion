@@ -182,7 +182,7 @@ fn test_build(ctx: &Context) -> Result<()> {
             build_args: BuildArgs::default(),
             ..build::Args::default()
         };
-        build::run(&args, ctx)?;
+        build::run(args, ctx)?;
     }
     let args = test::Args {
         package_args: SelectedPackageArgs {
