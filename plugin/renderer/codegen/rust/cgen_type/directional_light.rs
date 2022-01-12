@@ -9,15 +9,15 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "DirectionalLight",
     id: 16,
-    size: 28,
+    size: 32,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<DirectionalLight>(), 28);
+static_assertions::const_assert_eq!(mem::size_of::<DirectionalLight>(), 32);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct DirectionalLight {
-    data: [u8; 28],
+    data: [u8; 32],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -69,6 +69,19 @@ impl DirectionalLight {
         self.get(16)
     }
 
+    //
+    // member : pad
+    // offset : 28
+    // size : 4
+    //
+    pub fn set_pad(&mut self, value: Uint1) {
+        self.set(28, value);
+    }
+
+    pub fn pad(&self) -> Uint1 {
+        self.get(28)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -92,10 +105,11 @@ impl DirectionalLight {
 
 impl Default for DirectionalLight {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 28] };
+        let mut ret = Self { data: [0; 32] };
         ret.set_dir(Float3::default());
         ret.set_radiance(Float1::default());
         ret.set_color(Float3::default());
+        ret.set_pad(Uint1::default());
         ret
     }
 }

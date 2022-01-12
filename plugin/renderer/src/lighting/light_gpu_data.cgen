@@ -2,12 +2,14 @@ struct OmnidirectionalLight {
     pos: Float3,
     radiance: Float1,
     color: Float3,
+    pad: Uint1,
 }
 
 struct DirectionalLight {
     dir: Float3,
     radiance: Float1,
     color: Float3,
+    pad: Uint1,
 }
 
 struct Spotlight {
@@ -16,4 +18,5 @@ struct Spotlight {
     dir: Float3,
     cone_angle: Float1,
     color: Float3,
+    pad: [Uint1; 5],
 }

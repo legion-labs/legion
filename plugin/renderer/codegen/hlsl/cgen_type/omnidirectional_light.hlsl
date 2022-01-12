@@ -8,6 +8,7 @@
         float3 pos;
         float radiance;
         float3 color;
+        uint pad;
     };
 
 #endif
