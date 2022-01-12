@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-input = { path = "../../plugin/input", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
