@@ -257,27 +257,16 @@ impl PickingRenderPass {
         &self,
         view_data: &cgen::cgen_type::ViewData,
         custom_world: &Mat4,
-        custom_picking_id: Option<u32>,
-        view_proj_matrix: &Mat4,
-        screen_rect: Vec2,
-        cursor_pos: Vec2,
+        custom_picking_id: Option<u32>,        
         picking_distance: f32,
         static_mesh: &StaticMesh,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
-        let mut constant_data = [0.0; 23];
+        let mut constant_data = [0.0; 17];
         custom_world.write_cols_to_slice(&mut constant_data[0..]);
-        
-        constant_data[48-32] = screen_rect.x;
-        constant_data[49-32] = screen_rect.y;
-        constant_data[50-32] = 1.0 / screen_rect.x;
-        constant_data[51-32] = 1.0 / screen_rect.y;
 
-        constant_data[52-32] = cursor_pos.x;
-        constant_data[53-32] = cursor_pos.y;
-
-        constant_data[54-32] = picking_distance;
+        constant_data[16] = picking_distance;
 
         let transient_allocator = render_context.transient_buffer_allocator();
 
@@ -405,7 +394,6 @@ impl PickingRenderPass {
                 render_surface.extents().width() as f32,
                 render_surface.extents().height() as f32,
             );
-            let view_proj_matrix = projection_matrix * view_matrix;
 
             let mut screen_rect = picking_manager.screen_rect();
             if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
@@ -442,9 +430,6 @@ impl PickingRenderPass {
                         &view_data,
                         &custom_world,
                         None,
-                        &view_proj_matrix,
-                        screen_rect,
-                        cursor_pos,
                         picking_distance,
                         static_mesh,
                         &cmd_buffer,
@@ -461,9 +446,6 @@ impl PickingRenderPass {
                     &view_data,
                     &custom_world,
                     None,
-                    &view_proj_matrix,
-                    screen_rect,
-                    cursor_pos,
                     picking_distance,
                     static_mesh,
                     &cmd_buffer,
@@ -478,9 +460,6 @@ impl PickingRenderPass {
                     &view_data,
                     &custom_world,
                     Some(light.picking_id),
-                    &view_proj_matrix,
-                    screen_rect,
-                    cursor_pos,
                     picking_distance,
                     light_picking_mesh,
                     &cmd_buffer,
