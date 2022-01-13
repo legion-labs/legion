@@ -3,6 +3,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/spotlight.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/instance_push_constant_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -28,11 +29,6 @@ struct LightingManager {
     float ambient_reflection;
     float shininess;
 };
-
-struct EntityTransforms {
-    float4x4 world;
-};
-
 
 ConstantBuffer<ViewData> view_data;
 ConstantBuffer<LightingManager> lighting_manager;

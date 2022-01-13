@@ -18,8 +18,8 @@ use crate::cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
-    EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
-    UniformGPUData, UniformGPUDataUploadJobBlock,
+    GpuSafePool, TransformStaticsBuffer, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
+    UniformGPUDataUploadJobBlock,
 };
 use crate::{cgen, RenderContext, RenderHandle};
 
@@ -36,9 +36,8 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-    static_buffer: UnifiedStaticBuffer,
-    // Temp for testing
-    test_transform_data: TestStaticBuffer,
+    static_buffer: UnifiedStaticBuffer,    
+    transforms_data: TransformStaticsBuffer,
     omnidirectional_lights_data: OmnidirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotlightsStaticBuffer,
@@ -86,10 +85,9 @@ impl Renderer {
         cgen::initialize(device_context);
 
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
-        let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
-            &static_buffer,
-            64 * 1024,
-        ));
+        let test_transform_data = TransformStaticsBuffer::new(UniformGPUData::<
+            cgen::cgen_type::EntityTransforms,
+        >::new(&static_buffer, 64 * 1024));
 
         let omnidirectional_lights_data =
             OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(
@@ -142,7 +140,7 @@ impl Renderer {
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
             static_buffer,
-            test_transform_data,
+            transforms_data: test_transform_data,
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
@@ -180,12 +178,12 @@ impl Renderer {
         self.transient_buffer.clone()
     }
 
-    pub fn acquire_transform_data(&mut self) -> TestStaticBuffer {
-        self.test_transform_data.transfer()
+    pub fn acquire_transform_data(&mut self) -> TransformStaticsBuffer {
+        self.transforms_data.transfer()
     }
 
-    pub fn release_transform_data(&mut self, test: TestStaticBuffer) {
-        self.test_transform_data = test;
+    pub fn release_transform_data(&mut self, test: TransformStaticsBuffer) {
+        self.transforms_data = test;
     }
 
     impl_static_buffer_accessor!(
@@ -450,7 +448,7 @@ impl Drop for Renderer {
         std::mem::drop(self.spotlights_data.take());
         std::mem::drop(self.directional_lights_data.take());
         std::mem::drop(self.omnidirectional_lights_data.take());
-        std::mem::drop(self.test_transform_data.take());
+        std::mem::drop(self.transforms_data.take());
 
         cgen::shutdown();
     }

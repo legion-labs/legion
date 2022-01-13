@@ -2,6 +2,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -14,10 +15,6 @@ struct VertexOut {
     float4 hpos : SV_POSITION;
     float3 picking_pos : POSITION;
     float3 picked_world_pos : COLOR;
-};
-
-struct EntityTransforms {
-    float4x4 world;
 };
 
 ConstantBuffer<ViewData> view_data;
