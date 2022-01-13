@@ -1,3 +1,5 @@
+#include "crate://renderer/codegen/hlsl/cgen_type/egui_push_constant_data.hlsl"
+
 struct VertexIn {
     float2 pos : POSITION;
     float2 uv : TEXCOORD;
@@ -10,15 +12,9 @@ struct VertexOut {
     float4 color : COLOR;
 };
 
-struct PushConstData {
-    float2 scale;
-    float2 translation;
-    float width;
-    float height;
-};
 
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<EguiPushConstantData> push_constant;
 
 // See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.
 float3 linear_from_srgb(float3 srgb) {
