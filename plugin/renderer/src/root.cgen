@@ -1,10 +1,14 @@
 mod lighting;
 
-
 struct CameraProps {
     view: Float4x4,
     projection: Float4x4,
     projection_view: Float4x4,
+}
+
+struct ConstData {
+    world: Float4x4,
+    color: Float4,
 }
 
 #[DescriptorSet(frequency = 0, transient)]
@@ -13,7 +17,6 @@ struct FrameDescriptorSet {
     sb_dir_lights: StructuredBuffer<DirectionalLight>,
     sb_spotlights: StructuredBuffer<Spotlight>,
 }
-
 
 #[DescriptorSet(frequency = 1)]
 struct ViewDescriptorSet {

@@ -1,4 +1,5 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/camera_props.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -13,10 +14,6 @@ struct VertexOut {
     float2 uv_coord : TEXCOORD0;
 };
 
-struct ConstData {
-    float4x4 world;    
-    float4 color;
-};
 
 ConstantBuffer<CameraProps> camera;
 ConstantBuffer<ConstData> const_data;
