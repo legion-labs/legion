@@ -1,3 +1,5 @@
+use crate::cgen::cgen_type::LightingData;
+
 pub struct LightingManager {
     pub num_directional_lights: u32,
     pub num_omnidirectional_lights: u32,
@@ -12,18 +14,20 @@ pub struct LightingManager {
 }
 
 impl LightingManager {
-    pub fn gpu_data(&self) -> Vec<f32> {
-        vec![
-            f32::from_bits(self.num_directional_lights),
-            f32::from_bits(self.num_omnidirectional_lights),
-            f32::from_bits(self.num_spotlights),
-            f32::from_bits(self.diffuse as u32),
-            f32::from_bits(self.specular as u32),
-            self.specular_reflection,
-            self.diffuse_reflection,
-            self.ambient_reflection,
-            self.shininess,
-        ]
+    pub fn gpu_data(&self) -> LightingData {
+        let mut lighting_data = LightingData::default();
+        
+        lighting_data.set_num_directional_lights(self.num_directional_lights.into());
+        lighting_data.set_num_omnidirectional_lights(self.num_omnidirectional_lights.into());
+        lighting_data.set_num_spotlights(self.num_spotlights.into());
+        lighting_data.set_diffuse(if self.diffuse { 1 } else { 0 }.into());
+        lighting_data.set_specular(if self.specular { 1 } else { 0 }.into());
+        lighting_data.set_specular_reflection(self.specular_reflection.into());
+        lighting_data.set_diffuse_reflection(self.diffuse_reflection.into());
+        lighting_data.set_ambient_reflection(self.ambient_reflection.into());
+        lighting_data.set_shininess(self.shininess.into());
+        
+        lighting_data
     }
 }
 

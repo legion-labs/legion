@@ -37,7 +37,7 @@ struct ViewDescriptorSet {
 struct InstancePushConstantData {
     vertex_offset: Uint1,
     world_offset: Uint1,
-    is_picked: Uint1,    
+    is_picked: Uint1,
     color: Float4,
 }
 
@@ -65,8 +65,19 @@ struct PickingPushConstantData {
     picking_id: Uint1,
 }
 
-struct PickingData
-{
-    picking_pos : Float3,
-    picking_id : Uint1
+struct PickingData {
+    picking_pos: Float3,
+    picking_id: Uint1,
+}
+
+struct LightingData {
+    num_directional_lights: Uint1,
+    num_omnidirectional_lights: Uint1,
+    num_spotlights: Uint1,
+    diffuse: Uint1,
+    specular: Uint1,
+    specular_reflection: Float1,
+    diffuse_reflection: Float1,
+    ambient_reflection: Float1,
+    shininess: Float1,
 }

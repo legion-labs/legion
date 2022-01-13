@@ -141,7 +141,7 @@ impl TmpRenderPass {
             .const_buffer_view();
 
         let lighting_manager_view = transient_allocator
-            .copy_data_slice(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+            .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
         for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
@@ -157,7 +157,7 @@ impl TmpRenderPass {
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "lighting_manager",
+                    "lighting_data",
                     &[DescriptorRef::BufferView(&lighting_manager_view)],
                 )
                 .unwrap();

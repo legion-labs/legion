@@ -33,3 +33,6 @@ pub(crate) use picking_push_constant_data::*;
 pub(crate) mod picking_data;
 #[allow(unused_imports)]
 pub(crate) use picking_data::*;
+pub(crate) mod lighting_data;
+#[allow(unused_imports)]
+pub(crate) use lighting_data::*;
