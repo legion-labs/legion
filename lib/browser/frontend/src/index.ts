@@ -1,3 +1,4 @@
+import initBrowserAuth from "@lgn/browser-auth";
 import { getUserInfo as tauriGetUserInfo } from "./lib/auth/tauri";
 import { userAuth as browserUserAuth } from "./lib/auth/browser";
 import log, { Level as LogLevel } from "./lib/log";
@@ -93,7 +94,13 @@ export async function run<SvelteComponent>({
   logLevel,
   onPreInit,
 }: Config<SvelteComponent>): Promise<void> {
-  onPreInit && (await onPreInit());
+  const initPromises: (Promise<unknown> | void)[] = [initBrowserAuth()];
+
+  if (onPreInit) {
+    initPromises.push(onPreInit());
+  }
+
+  await Promise.all(initPromises);
 
   const target = getTarget(rootQuerySelector);
 

@@ -1,22 +1,21 @@
 import { invoke } from "@tauri-apps/api";
-import { UserInfo } from "../lib/auth";
-
-import { createAwsCognito } from "../lib/auth/browser";
-import { getCookie } from "../lib/cookie";
+import {
+  getAccessToken,
+  getUserInfo as authGetUserInfo,
+  UserInfo,
+} from "@lgn/browser-auth";
 import asyncStore from "./asyncStore";
 
 export async function getUserInfo() {
-  const awsCognitoAuthenticator = createAwsCognito();
-
   const accessToken = window.__TAURI__
     ? await invoke("plugin:browser|get_access_token")
-    : getCookie("access_token");
+    : getAccessToken();
 
   if (!accessToken) {
     throw new Error("Couldn't find access token in cookies");
   }
 
-  return awsCognitoAuthenticator.getUserInfo(accessToken);
+  return authGetUserInfo(accessToken);
 }
 
 export default asyncStore<UserInfo>();

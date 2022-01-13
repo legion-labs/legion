@@ -25,6 +25,7 @@ export default defineConfig({
           path: "../../../lib/simple-wasm-logger",
           packageName: "@lgn/simple-wasm-logger",
         },
+        { path: "../../../lib/browser-auth", packageName: "@lgn/browser-auth" },
       ],
       outDir: "frontend",
       quiet: true,

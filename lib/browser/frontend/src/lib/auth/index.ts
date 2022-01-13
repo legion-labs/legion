@@ -1,35 +1,10 @@
 import { startUserAuth as browserStartUserAuth } from "./browser";
 import { startUserAuth as tauriStartUserAuth } from "./tauri";
+import { UserInfo as BrowserAuthUserInfo } from "@lgn/browser-auth";
 
-export type UserInfo = {
-  sub: string;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  middle_name?: string;
-  nickname?: string;
-  preferred_username?: string;
-  profile?: string;
-  picture?: string;
-  website?: string;
-  email?: string;
-  email_verified?: "true" | "false";
-  gender?: string;
-  birthdate?: string;
-  zoneinfo?: string;
-  locale?: string;
-  phone_number?: string;
-  phone_number_verified?: "true" | "false";
-  updated_at?: string;
-  // Azure-specific fields.
-  //
-  // This is a merely a convention, but we need one.
-  //
-  // These fields contains the Azure-specific information about the user, which allow us to query
-  // the Azure API for extended user information (like the user's photo).
-  "custom:azure_oid"?: string;
-  "custom:azure_tid"?: string;
-};
+// @lgn/browser-auth is used as the source of truth but it's basically
+// the same code as in lgn-online copy pasted.
+export type UserInfo = BrowserAuthUserInfo;
 
 /**
  * Start user authentication on Tauri or Browser.
