@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+Cargo.lock
+bin/
+!frontend/package.json
+frontend/*
+wasm-pack.log

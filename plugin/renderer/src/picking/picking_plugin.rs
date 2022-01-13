@@ -75,7 +75,7 @@ fn gather_input(
     }
 
     for motion_event in mouse_motion_events.iter() {
-        picking_manager.set_mouse_moition_event(motion_event);
+        picking_manager.set_mouse_motion_event(motion_event);
     }
 
     for keyboard_input_event in keyboard_input_events.iter() {
@@ -109,10 +109,10 @@ fn static_meshes_added(
         (Added<StaticMesh>, Without<ManipulatorComponent>),
     >,
 ) {
-    let mut picking_block = picking_manager.aquire_picking_id_block();
+    let mut picking_block = picking_manager.acquire_picking_id_block();
 
     for (entity, mut mesh) in query.iter_mut() {
-        mesh.picking_id = picking_block.aquire_picking_id(entity).unwrap();
+        mesh.picking_id = picking_block.acquire_picking_id(entity).unwrap();
     }
 
     picking_manager.release_picking_id_block(picking_block);
@@ -129,10 +129,10 @@ fn lights_added(
         (Added<LightComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    let mut picking_block = picking_manager.aquire_picking_id_block();
+    let mut picking_block = picking_manager.acquire_picking_id_block();
 
     for (entity, mut light) in query.iter_mut() {
-        light.picking_id = picking_block.aquire_picking_id(entity).unwrap();
+        light.picking_id = picking_block.acquire_picking_id(entity).unwrap();
     }
 
     picking_manager.release_picking_id_block(picking_block);
@@ -270,7 +270,7 @@ fn update_manipulator_component(
         manipulator.active = false;
 
         if let Some(entity_transform) = select_entity_transform {
-            if manipulator.part_type == manipulator_manager.curremt_manipulator_type() {
+            if manipulator.part_type == manipulator_manager.current_manipulator_type() {
                 manipulator_manager
                     .manipulator_transform_from_entity_transform(&entity_transform, &mut transform);
                 manipulator.active = true;

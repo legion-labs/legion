@@ -30,7 +30,7 @@ impl Atom for MdiaAtom {
     }
 
     fn summary(&self) -> Result<String> {
-        let s = format!("");
+        let s = String::new();
         Ok(s)
     }
 }

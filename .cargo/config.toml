@@ -6,19 +6,19 @@ vcs = "none"
 ################################################################################
 
 [alias]
-md = "run --package lgn-monorepo --bin lgn-monorepo --"
-m = "run -q --release --package lgn-monorepo --bin lgn-monorepo --"
+md = "run -p lgn-monorepo --"
+m = "run -q -p lgn-monorepo --"
 
 # for cases when settings only accept a single word and m clippy, m build wouldn't work
-mclippy = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
-mbuild = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- build"
-mtest = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- test"
-mdoc = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- doc"
-mrun = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- run"
-ci = "run -q --release --package lgn-monorepo --bin lgn-monorepo -- ci"
+mclippy = "run -q -p lgn-monorepo -- clippy"
+mbuild = "run -q -p lgn-monorepo -- build"
+mtest = "run -q -p lgn-monorepo -- test"
+mdoc = "run -q -p lgn-monorepo -- doc"
+mrun = "run -q -p lgn-monorepo -- run"
+ci = "run -q -p lgn-monorepo -- ci"
 
 # command used in vs code, to get errors on the initial build of lgn-monorepo
-vsclippy = "run -q --message-format=json --release --package lgn-monorepo --bin lgn-monorepo -- clippy"
+vsclippy = "run -q --message-format=json -p lgn-monorepo -- clippy"
 
 ################################################################################
 
@@ -46,6 +46,11 @@ debug-assertions = false
 # this is one of the real time-critical sections of the code
 # We want it optimal even even in dev mode
 [profile.dev.package.openh264-sys2]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.guppy]
 opt-level = 3
 debug = true
 debug-assertions = false

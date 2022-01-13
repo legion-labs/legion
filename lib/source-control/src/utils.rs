@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use lgn_tracing::imetric;
 use std::cell::RefCell;
 use std::fs;
 use std::io::prelude::*;
@@ -49,25 +50,6 @@ pub(crate) fn parse_url_or_path(s: &str) -> Result<UrlOrPath> {
     }
 }
 
-pub(crate) fn check_directory_does_not_exist_or_is_empty(path: impl AsRef<Path>) -> Result<()> {
-    match path.as_ref().read_dir() {
-        Ok(mut entries) => {
-            if entries.next().is_none() {
-                Ok(())
-            } else {
-                anyhow::bail!("directory is not empty")
-            }
-        }
-        Err(err) => {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                Ok(())
-            } else {
-                Err(err.into())
-            }
-        }
-    }
-}
-
 pub(crate) fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
     fs::create_dir_all(path.parent().unwrap())
         .context(format!("error creating directory: {}", path.display()))?;
@@ -80,11 +62,16 @@ pub(crate) fn write_file(path: &Path, contents: &[u8]) -> Result<()> {
 }
 
 pub(crate) fn read_text_file(path: &Path) -> Result<String> {
-    fs::read_to_string(path).context(format!("error reading file: {}", path.display()))
+    let contents =
+        fs::read_to_string(path).context(format!("error reading file: {}", path.display()))?;
+    imetric!("read file size", "bytes", contents.len() as u64);
+    Ok(contents)
 }
 
 pub(crate) fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
-    fs::read(path).context(format!("error reading file {}", path.display()))
+    let contents = fs::read(path).context(format!("error reading file {}", path.display()))?;
+    imetric!("read file size", "bytes", contents.len() as u64);
+    Ok(contents)
 }
 
 pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> PathBuf {

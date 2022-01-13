@@ -363,7 +363,7 @@ impl<T> TrustCell<T> {
         unsafe { &mut *self.inner.get() }
     }
 
-    /// Make sure we are allowed to aquire a read lock, and increment the read
+    /// Make sure we are allowed to acquire a read lock, and increment the read
     /// count by 1
     fn check_flag_read(&self) -> Result<(), InvalidBorrow> {
         // Check that no write reference is out, then try to increment the read count
@@ -385,7 +385,7 @@ impl<T> TrustCell<T> {
         }
     }
 
-    /// Make sure we are allowed to aquire a write lock, and then set the write
+    /// Make sure we are allowed to acquire a write lock, and then set the write
     /// lock flag.
     fn check_flag_write(&self) -> Result<(), InvalidBorrow> {
         // Check we have 0 references out, and then set the ref count to usize::MAX to

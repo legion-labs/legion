@@ -297,7 +297,6 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
     }
 
     pub fn get_or_insert_with(&mut self, index: I, func: impl FnOnce() -> V) -> &mut V {
-        #[allow(clippy::option_if_let_else)]
         if let Some(dense_index) = self.sparse.get(index.clone()).copied() {
             // SAFE: dense indices stored in self.sparse always exist
             unsafe { self.dense.get_unchecked_mut(dense_index) }

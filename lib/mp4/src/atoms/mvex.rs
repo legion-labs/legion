@@ -28,7 +28,7 @@ impl Atom for MvexAtom {
     }
 
     fn summary(&self) -> Result<String> {
-        let s = format!("");
+        let s = String::new();
         Ok(s)
     }
 }

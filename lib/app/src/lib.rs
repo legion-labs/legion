@@ -57,7 +57,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 mod app;
 mod plugin;
@@ -111,6 +111,7 @@ pub enum CoreStage {
 }
 /// The names of the default App startup stages
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
+#[allow(clippy::enum_variant_names)]
 pub enum StartupStage {
     /// Name of app stage that runs once before the startup stage
     PreStartup,

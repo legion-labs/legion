@@ -1,11 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Quat } from "@/api/propertyGrid";
-  import NumberInput from "../../NumberInput.svelte";
+  import { Quat } from "@/lib/propertyGrid";
+  import NumberInput from "../../inputs/NumberInput.svelte";
 
   const dispatch = createEventDispatcher<{ input: Quat }>();
 
   export let value: Quat;
+
+  export let disabled = false;
 
   function updateVectorAt(
     index: 0 | 1 | 2 | 3,
@@ -23,6 +25,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
   <div>
@@ -32,6 +35,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
   <div>
@@ -41,6 +45,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
   <div>
@@ -50,6 +55,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
 </div>

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use lgn_source_control::{BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
+use lgn_source_control::blob_storage::{BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_tracing::prelude::*;
 
 pub struct DiskCache {

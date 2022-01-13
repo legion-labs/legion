@@ -185,13 +185,12 @@ pub(crate) fn update_streams(
     for event in video_stream_events.iter() {
         match &event.info {
             VideoStreamEventInfo::Initialize {
-                color,
+                _color: _,
                 width,
                 height,
             } => {
                 info!("received initialize command");
 
-                let _unused = color;
                 window_list.add(streamer_windows.create_window(
                     event.stream_id,
                     Resolution::new(*width, *height),

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use crate::{BlobStorage, RepositoryQuery, RepositoryUrl, Workspace};
+use crate::{blob_storage::BlobStorage, RepositoryQuery, RepositoryUrl, Workspace};
 
 pub struct RepositoryConnection {
     pub repo_query: Box<dyn RepositoryQuery>,

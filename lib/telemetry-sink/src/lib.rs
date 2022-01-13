@@ -72,9 +72,11 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
+use lgn_tracing::event::NullEventSink;
+use lgn_tracing::info;
 use lgn_tracing::{
     event::EventSink,
-    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
+    guards::{TracingSystemGuard, TracingThreadGuard},
     set_max_level, LevelFilter,
 };
 
@@ -84,6 +86,7 @@ pub struct Config {
     threads_buffer_size: usize,
     max_level: LevelFilter,
     level_filters: HashMap<String, String>,
+    max_queue_size: isize,
 }
 
 impl Default for Config {
@@ -112,13 +115,17 @@ impl Default for Config {
             )
             .unwrap_or(LevelFilter::Off),
             level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+            max_queue_size: 16, //todo: change to nb_threads * 2
         }
     }
 }
 
-fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TelemetrySystemGuard>> {
+fn alloc_telemetry_system(
+    config: Config,
+    enable_console_printer: bool,
+) -> anyhow::Result<Arc<TracingSystemGuard>> {
     lazy_static::lazy_static! {
-        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TelemetrySystemGuard>> = Mutex::new(Weak::new());
+        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TracingSystemGuard>> = Mutex::new(Weak::new());
     }
     let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
     let weak = &mut *weak_guard;
@@ -126,44 +133,63 @@ fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TelemetrySystemG
         return Ok(arc);
     }
     let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
-        Ok(url) => Arc::new(GRPCEventSink::new(&url)),
-        Err(_no_url_in_env) => Arc::new(ImmediateEventSink::new(
-            config.level_filters,
-            std::env::var("LGN_TRACE_FILE").ok(),
-        )?),
+        Ok(url) => Arc::new(GRPCEventSink::new(&url, config.max_queue_size)),
+        Err(_no_url_in_env) => {
+            if enable_console_printer {
+                Arc::new(ImmediateEventSink::new(
+                    config.level_filters,
+                    std::env::var("LGN_TRACE_FILE").ok(),
+                )?)
+            } else {
+                Arc::new(NullEventSink {})
+            }
+        }
     };
 
-    let arc = Arc::<TelemetrySystemGuard>::new(TelemetrySystemGuard::new(
+    let arc = Arc::<TracingSystemGuard>::new(TracingSystemGuard::new(
         config.logs_buffer_size,
         config.metrics_buffer_size,
         config.threads_buffer_size,
         sink,
     )?);
     set_max_level(config.max_level);
-    *weak = Arc::<TelemetrySystemGuard>::downgrade(&arc);
+    *weak = Arc::<TracingSystemGuard>::downgrade(&arc);
     Ok(arc)
 }
 
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
-    _thread_guard: TelemetryThreadGuard,
-    _guard: Arc<TelemetrySystemGuard>,
+    _thread_guard: TracingThreadGuard,
+    _guard: Arc<TracingSystemGuard>,
 }
 
 impl TelemetryGuard {
     pub fn default() -> anyhow::Result<Self> {
-        Self::new(Config::default())
+        Self::new(Config::default(), true)
     }
 
-    pub fn new(config: Config) -> anyhow::Result<Self> {
+    //todo: refac enable_console_printer, put in config?
+    pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
         // order here is important
         Ok(Self {
-            _guard: alloc_telemetry_system(config)?,
-            _thread_guard: TelemetryThreadGuard::new(),
+            _guard: alloc_telemetry_system(config, enable_console_printer)?,
+            _thread_guard: TracingThreadGuard::new(),
         })
     }
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
         set_max_level(level_filter);
+        log::set_max_level(
+            immediate_event_sink::tracing_level_filter_to_log_level_filter(level_filter),
+        );
+        self
+    }
+    pub fn with_ctrlc_handling(self) -> Self {
+        ctrlc::set_handler(move || {
+            info!("Ctrl+C was hit!");
+            lgn_tracing::guards::shutdown_telemetry();
+            std::process::exit(1);
+        })
+        .expect("Error setting Ctrl+C handler");
         self
     }
 }

@@ -3,7 +3,7 @@
 
   import { createEventDispatcher } from "svelte";
   import Icon, { IconName } from "../Icon.svelte";
-  import TextInput from "../TextInput.svelte";
+  import TextInput from "../inputs/TextInput.svelte";
 
   type Item = $$Generic;
 

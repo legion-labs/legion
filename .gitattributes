@@ -13,10 +13,11 @@
 *.proto text eol=lf
 *.ts text eol=lf
 *.js text eol=lf
+*.json text eol=lf
 *.svelte text eol=lf
 *.lock text eol=lf
+*.yaml text eol=lf
 
-pnpm-lock.yaml text eol=lf
 test/sample-data/**/* eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.

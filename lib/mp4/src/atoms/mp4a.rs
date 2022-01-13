@@ -161,7 +161,7 @@ impl Atom for EsdsAtom {
     }
 
     fn summary(&self) -> Result<String> {
-        let s = format!("");
+        let s = String::new();
         Ok(s)
     }
 }

@@ -2873,6 +2873,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-renderer",
+ "lgn-transform",
  "lgn-utils",
  "memoffset 0.6.5",
  "serde",
@@ -3872,6 +3874,7 @@ dependencies = [
  "lgn-app",
  "lgn-config",
  "lgn-content-store",
+ "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-runtime",
@@ -4491,11 +4494,14 @@ name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "clap 3.0.5",
+ "generic-data",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
+ "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-runtime",
  "lgn-input",
  "lgn-math",
  "lgn-presenter",
@@ -4509,6 +4515,7 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "png 0.17.2",
+ "sample-data-runtime",
 ]
 
 [[package]]
@@ -4906,6 +4913,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "ctrlc",
  "json",
  "lazy_static",
  "lgn-config",
@@ -6502,11 +6510,14 @@ dependencies = [
  "dolly",
  "generic-data",
  "lgn-app",
+ "lgn-core",
  "lgn-ecs",
  "lgn-input",
  "lgn-math",
  "lgn-renderer",
  "lgn-transform",
+ "lgn-window",
+ "rand 0.8.4",
  "runtime-srv",
 ]
 
@@ -7749,6 +7760,8 @@ dependencies = [
  "hyper",
  "lgn-source-control",
  "lgn-source-control-proto",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
  "serde_json",
  "tokio",
  "tonic",

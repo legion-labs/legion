@@ -62,7 +62,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 mod analytics_service;
 mod cache;
@@ -92,7 +92,8 @@ fn get_data_directory() -> Result<PathBuf> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuard::default()
         .unwrap()
-        .with_log_level(LevelFilter::Info);
+        .with_log_level(LevelFilter::Info)
+        .with_ctrlc_handling();
     span_scope!("analytics-srv::main");
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;

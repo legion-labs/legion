@@ -128,7 +128,7 @@ impl OffscreenHelper {
             shader_source: ShaderSource::Path(
                 "crate://presenter/data/display_mapper.hlsl".to_string(),
             ),
-            glob_defines: Vec::new(),
+            global_defines: Vec::new(),
             entry_points: vec![
                 EntryPoint {
                     defines: Vec::new(),

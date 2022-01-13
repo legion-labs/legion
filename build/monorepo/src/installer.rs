@@ -98,7 +98,7 @@ fn install_cargo_component_if_needed(
         }
         result.is_ok()
     } else {
-        skip_step!("Installer", "Already installed {}", name);
+        skip_step!("Installer", "{} already installed", name);
         true
     }
 }

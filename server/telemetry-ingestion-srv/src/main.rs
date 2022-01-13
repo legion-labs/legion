@@ -61,7 +61,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 mod local_ingestion_service;
 mod local_telemetry_db;

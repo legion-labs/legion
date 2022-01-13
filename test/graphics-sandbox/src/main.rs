@@ -94,7 +94,9 @@ fn main() {
     }
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
-            .add_plugin(AssetRegistryPlugin::default());
+            .add_plugin(AssetRegistryPlugin::default())
+            .add_plugin(generic_data::plugin::GenericDataPlugin::default())
+            .add_startup_system(register_asset_loaders);
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else {
@@ -302,4 +304,9 @@ fn on_snapshot_app_exit(
             commands.entity(entity).despawn();
         }
     }
+}
+
+fn register_asset_loaders(mut registry: NonSendMut<'_, lgn_data_runtime::AssetRegistryOptions>) {
+    sample_data_runtime::add_loaders(&mut registry);
+    lgn_graphics_runtime::add_loaders(&mut registry);
 }

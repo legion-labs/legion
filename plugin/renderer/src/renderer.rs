@@ -94,18 +94,18 @@ impl Renderer {
         let omnidirectional_lights_data =
             OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(
                 &static_buffer,
-                OmnidirectionalLight::SIZE as u64 * 8,
+                OmnidirectionalLight::PAGE_SIZE,
             ));
 
         let directional_lights_data =
             DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
                 &static_buffer,
-                DirectionalLight::SIZE as u64 * 8,
+                DirectionalLight::PAGE_SIZE,
             ));
 
         let spotlights_data = SpotlightsStaticBuffer::new(UniformGPUData::<Spotlight>::new(
             &static_buffer,
-            Spotlight::SIZE as u64 * 8,
+            Spotlight::PAGE_SIZE,
         ));
 
         let descriptor_heap_def = DescriptorHeapDef {
@@ -342,7 +342,7 @@ impl Renderer {
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
                 shader_source: ShaderSource::Path(shader_source),
-                glob_defines: Vec::new(),
+                global_defines: Vec::new(),
                 entry_points: vec![
                     EntryPoint {
                         defines: Vec::new(),

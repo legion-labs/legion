@@ -59,8 +59,8 @@
 use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
-use lgn_source_control::*;
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_source_control::{blob_storage::BlobStorageUrl, *};
+use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
 
 /// Legion Source Control
@@ -71,6 +71,9 @@ use lgn_tracing::*;
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
+
+    #[clap(name = "debug", short, long, help = "Enable debug logging")]
+    debug: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -234,35 +237,31 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _telemetry_guard = TelemetryGuard::default().unwrap();
+    let args = Cli::parse();
+    let _telemetry_guard = if args.debug {
+        TelemetryGuard::default()
+            .unwrap()
+            .with_log_level(LevelFilter::Debug)
+    } else {
+        TelemetryGuard::new(Config::default(), false)
+            .unwrap()
+            .with_log_level(LevelFilter::Info)
+    };
 
     span_scope!("lsc::main");
-
-    //let repository_url = command_match
-    //    .value_of(ARG_REPOSITORY_URL)
-    //    .map(RepositoryUrl::from_str)
-    //    .transpose()?
-    //    .unwrap_or_else(RepositoryUrl::from_current_dir)
-    //    .make_absolute(std::env::current_dir()?);
-
-    //let blob_storage_url = command_match
-    //    .value_of(ARG_BLOB_STORAGE_URL)
-    //    .map(BlobStorageUrl::from_str)
-    //    .transpose()?
-    //    .map(|url| std::env::current_dir().map(|d| url.make_absolute(d)))
-    //    .transpose()?;
-
-    let args = Cli::parse();
 
     match args.command {
         Commands::CreateRepository {
             repository_url,
             blob_storage_url,
         } => {
-            info!("create-repository");
+            println!("Creating repository at: {}", repository_url);
 
             let repository_query = repository_url.into_query();
-            repository_query.create_repository(blob_storage_url).await?;
+            repository_query
+                .create_repository(blob_storage_url)
+                .await
+                .map_err::<anyhow::Error, _>(Into::into)?;
 
             Ok(())
         }
@@ -270,7 +269,10 @@ async fn main() -> anyhow::Result<()> {
             info!("destroy-repository");
 
             let repository_query = repository_url.into_query();
-            repository_query.destroy_repository().await
+            repository_query
+                .destroy_repository()
+                .await
+                .map_err(Into::into)
         }
         Commands::InitWorkspace {
             workspace_directory,
@@ -411,7 +413,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Ping { repository_url } => {
             let repository_query = repository_url.into_query();
 
-            repository_query.ping().await
+            repository_query.ping().await.map_err(Into::into)
         }
     }
 }

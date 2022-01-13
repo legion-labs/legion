@@ -54,9 +54,12 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::new_without_default)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::missing_errors_doc)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::missing_errors_doc,
+    clippy::new_without_default,
+    clippy::uninit_vec
+)]
 
 #[path = "../codegen/rust/mod.rs"]
 mod cgen;

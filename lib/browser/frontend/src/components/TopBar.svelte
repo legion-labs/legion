@@ -7,6 +7,7 @@
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
   import { startUserAuth } from "../lib/auth";
+  import BrandLogo from "./BrandLogo.svelte";
 
   export let documentTitle: string | null = null;
 
@@ -42,13 +43,15 @@
   }
 
   function authenticate() {
-    startUserAuth(userInfo);
+    startUserAuth();
   }
 </script>
 
 <div class="root">
   <div use:clickOutside={closeMenu} class="menus">
-    <div class="brand">Legion</div>
+    {#if !window.__TAURI__}
+      <div class="brand"><BrandLogo class="brand-logo" /></div>
+    {/if}
     {#each topBarMenus as menu (menu.id)}
       <div
         data-testid="menu-{menu.id}"
@@ -110,7 +113,11 @@
   }
 
   .brand {
-    @apply flex items-center italic px-2;
+    @apply h-full flex items-center px-2;
+  }
+
+  .brand :global(.brand-logo) {
+    @apply h-full;
   }
 
   .menu {

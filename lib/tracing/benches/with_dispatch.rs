@@ -4,18 +4,18 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use lgn_tracing::{
     error,
     event::NullEventSink,
-    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
+    guards::{TracingSystemGuard, TracingThreadGuard},
     imetric, span_scope,
 };
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let _telemetry_guard = TelemetrySystemGuard::new(
+    let _tracing_guard = TracingSystemGuard::new(
         10 * 1024 * 1024,
         1024 * 1024,
         10 * 1024 * 1024,
         Arc::new(NullEventSink {}),
     );
-    let _thread_guard = TelemetryThreadGuard::new();
+    let _thread_guard = TracingThreadGuard::new();
 
     c.bench_function("dispatch/log", |b| {
         b.iter(|| {

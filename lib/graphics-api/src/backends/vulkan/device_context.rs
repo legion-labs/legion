@@ -250,9 +250,10 @@ fn choose_physical_device(
 ) -> GfxResult<(ash::vk::PhysicalDevice, PhysicalDeviceInfo)> {
     let physical_devices = unsafe { instance.enumerate_physical_devices()? };
 
-    if physical_devices.is_empty() {
-        panic!("Could not find a physical device");
-    }
+    assert!(
+        !physical_devices.is_empty(),
+        "Could not find a physical device"
+    );
 
     let mut best_physical_device = None;
     let mut best_physical_device_info = None;

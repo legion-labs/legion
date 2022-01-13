@@ -88,7 +88,6 @@ where
 
         TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(item_info)?,
 
-        #[allow(clippy::option_if_let_else)]
         TypeDefinition::Option(option_descriptor) => {
             let mut option_parent = T::new_item(item_info)?;
             if let Some(value_base) = unsafe { (option_descriptor.get_inner)(item_info.base) } {

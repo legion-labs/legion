@@ -425,7 +425,7 @@ impl SwapchainHelper {
         }
     }
 
-    /// Try aquire next image
+    /// Try acquire next image
     pub fn try_acquire_next_image(
         &mut self,
         window_width: u32,

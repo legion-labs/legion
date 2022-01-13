@@ -10,9 +10,9 @@ pub async fn print_process_metrics(
     process_id: &str,
 ) -> Result<()> {
     for_each_process_metric(connection, data_path, process_id, |obj| {
-        let metric = obj.get::<Object>("metric").unwrap();
-        let name = metric.get::<String>("name").unwrap();
-        let unit = metric.get::<String>("unit").unwrap();
+        let desc = obj.get::<Object>("desc").unwrap();
+        let name = desc.get::<String>("name").unwrap();
+        let unit = desc.get::<String>("unit").unwrap();
         let time = obj.get::<u64>("time").unwrap();
         if let Ok(int_value) = obj.get::<u64>("value") {
             println!("{} {} ({}) : {}", time, name, unit, int_value);

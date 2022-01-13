@@ -1,6 +1,5 @@
 <script lang="ts">
   import { ServerType } from "@lgn/frontend/src/api";
-  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
   import { Resolution } from "@lgn/frontend/src/lib/types";
   import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
   import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
@@ -13,25 +12,38 @@
   import ScriptEditor from "@/components/ScriptEditor.svelte";
   import { fakeFileSystemEntries } from "@/data/fake";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
+  import log from "@lgn/frontend/src/lib/log";
 
-  const { run: runGetAllResources } = asyncStore(getAllResources);
+  const { data: currentResourceData } = currentResource;
 
   let currentResourceDescription: ResourceDescription | null = null;
-  let fetchAllResources = runGetAllResources();
+
   let desiredVideoResolution: Resolution | null;
 
   let editorActiveTab: ServerType;
 
+  let allResourcesPromise = getAllResources();
+
   $: if (currentResourceDescription) {
-    getResourceProperties(currentResourceDescription).then((resource) => {
-      $currentResource = resource;
-    });
+    currentResource
+      .run(() => {
+        if (currentResourceDescription) {
+          return getResourceProperties(currentResourceDescription);
+        } else {
+          throw new Error("Current resource description not found");
+        }
+      })
+      .catch((error) =>
+        log.error(
+          log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`
+        )
+      );
   }
 
   function tryAgain() {
-    $currentResource = null;
+    $currentResourceData = null;
     currentResourceDescription = null;
-    fetchAllResources = runGetAllResources();
+    allResourcesPromise = getAllResources();
   }
 
   function setCurrentResourceDescription(
@@ -50,7 +62,7 @@
           <Panel let:isFocused tabs={["Resources"]}>
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resources-content">
-              {#await fetchAllResources}
+              {#await allResourcesPromise}
                 <div class="resources-loading">Loading...</div>
               {:then resources}
                 <PanelList

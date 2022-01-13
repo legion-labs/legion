@@ -12,6 +12,7 @@ keywords = ["legion"]
 # Legion engine
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
+lgn-core = { path = "../../plugin/core", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-config = { path = "../../lib/config", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }

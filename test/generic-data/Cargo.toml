@@ -16,6 +16,8 @@ lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
 lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
 lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 # other
 anyhow = "1.0"

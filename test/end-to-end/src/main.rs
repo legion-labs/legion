@@ -54,7 +54,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 fn main() {
     println!("Hello, world!");

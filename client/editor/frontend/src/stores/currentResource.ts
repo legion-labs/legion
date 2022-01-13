@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
-import { ResourceWithProperties } from "@/api/propertyGrid";
+import { ResourceWithProperties } from "@/lib/propertyGrid";
+import asyncStore from "@lgn/frontend/src/stores/asyncStore";
 
-export default writable<ResourceWithProperties | null>(null);
+export default asyncStore<ResourceWithProperties>();

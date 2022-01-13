@@ -46,7 +46,7 @@ pub struct EntryPoint {
 
 pub struct CompileParams {
     pub shader_source: ShaderSource,
-    pub glob_defines: Vec<CompileDefine>,
+    pub global_defines: Vec<CompileDefine>,
     pub entry_points: Vec<EntryPoint>,
 }
 
@@ -130,7 +130,7 @@ impl HlslCompiler {
         let shader_product = &params.entry_points[entry_point_idx];
 
         let mut defines = params
-            .glob_defines
+            .global_defines
             .iter()
             .map(|x| (x.name.as_str(), x.value.as_deref()))
             .collect::<Vec<_>>();
@@ -467,7 +467,7 @@ mod tests {
 
         let compile_params = CompileParams {
             shader_source: ShaderSource::Code(SHADER.to_owned()),
-            glob_defines: Vec::new(),
+            global_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
                 name: "main_vs".to_owned(),
@@ -499,7 +499,7 @@ mod tests {
 
         let compile_params = CompileParams {
             shader_source: ShaderSource::Code(SHADER.to_owned()),
-            glob_defines: Vec::new(),
+            global_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),
                 name: "main_ps".to_owned(),

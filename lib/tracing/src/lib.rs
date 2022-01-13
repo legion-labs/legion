@@ -19,14 +19,14 @@
 //! };
 //!
 //! // Initialize tracing, here with a null event sink, see `lgn-telemetry-sink` crate for a proper implementation
-//! // libraries don't need (and should not) setup any TelemetrySystemGuard
-//! let _telemetry_guard = guards::TelemetrySystemGuard::new(
+//! // libraries don't need (and should not) setup any TracingSystemGuard
+//! let _tracing_guard = guards::TracingSystemGuard::new(
 //!     8 * 1024 * 1024,
 //!     1024 * 1024,
 //!     16 * 1024 * 1024,
 //!     std::sync::Arc::new(event::NullEventSink {})
 //! );
-//! let _thread_guard = guards::TelemetryThreadGuard::new();
+//! let _thread_guard = guards::TracingThreadGuard::new();
 //!
 //! // Create a span scope, this will complete when the scope is dropped, and provide the time spent in the scope
 //! // Behind the scene this uses a thread local storage

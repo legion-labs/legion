@@ -182,7 +182,7 @@ fn test_build(ctx: &Context) -> Result<()> {
             build_args: BuildArgs::default(),
             ..build::Args::default()
         };
-        build::run(&args, ctx)?;
+        build::run(args, ctx)?;
     }
     let args = test::Args {
         package_args: SelectedPackageArgs {
@@ -206,6 +206,7 @@ fn test_run(ctx: &Context) -> Result<()> {
         args: if machine_has_discreet_gpu()? {
             vec![]
         } else {
+            action_step!("-- CI --", "Skipping Gpu tests");
             vec!["--skip".into(), "gpu_".into()]
         },
         ..test::Args::default()
@@ -216,7 +217,7 @@ fn test_run(ctx: &Context) -> Result<()> {
 fn machine_has_discreet_gpu() -> Result<bool> {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("wmic");
-        cmd.args(&["path", "Win32_VideoController", "Get", "DeviceID"]);
+        cmd.args(&["path", "Win32_VideoController", "Get", "name"]);
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
         let output = cmd
             .output()

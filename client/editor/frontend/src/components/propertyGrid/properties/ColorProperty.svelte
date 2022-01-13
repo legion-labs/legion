@@ -2,14 +2,16 @@
   import { createEventDispatcher } from "svelte";
   import clickOutside from "@lgn/frontend/src/actions/clickOutside";
   import { ColorSet, colorSetFromHex } from "@/lib/colors";
-  import ColorPicker from "@/components/ColorPicker.svelte";
-  import TextInput from "@/components/TextInput.svelte";
+  import ColorPicker from "@/components/inputs/ColorPicker.svelte";
+  import TextInput from "@/components/inputs/TextInput.svelte";
 
   const dispatch = createEventDispatcher<{
     input: number;
   }>();
 
   export let value: number;
+
+  export let disabled = false;
 
   let visible = false;
 
@@ -43,6 +45,7 @@
     on:input={setColorsFromTextInput}
     fullWidth
     autoSelect
+    {disabled}
   >
     <div
       class="h-full w-full flex items-center justify-center text-xl font-bold"
@@ -57,6 +60,7 @@
       bind:visible
       colors={colorSetFromHex(hexValue)}
       position="left"
+      {disabled}
     />
   </TextInput>
 </div>

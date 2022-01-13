@@ -28,7 +28,7 @@ impl ScaleManipulator {
         default_meshes: &DefaultMeshes,
         picking_manager: &PickingManager,
     ) {
-        let mut picking_block = picking_manager.aquire_picking_id_block();
+        let mut picking_block = picking_manager.acquire_picking_id_block();
 
         let rotate_x_pointer =
             Mat4::from_axis_angle(Vec3::new(-1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);

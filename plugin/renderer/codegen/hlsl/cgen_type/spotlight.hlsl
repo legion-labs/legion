@@ -10,6 +10,7 @@
         float3 dir;
         float cone_angle;
         float3 color;
+        uint pad[5];
     };
 
 #endif

@@ -1,8 +1,8 @@
 import { getUserInfo as tauriGetUserInfo } from "./lib/auth/tauri";
 import { userAuth as browserUserAuth } from "./lib/auth/browser";
 import log, { Level as LogLevel } from "./lib/log";
-import userInfo from "./stores/userInfo";
 import { UserInfo } from "./lib/auth";
+import userInfo from "./stores/userInfo";
 
 export type AuthUserConfig = {
   /** Force authentication on application start */
@@ -75,6 +75,8 @@ export type Config<SvelteComponent> = {
   rootQuerySelector: string;
   /** Log level, if set to `null` logs are entirely disabled  */
   logLevel: LogLevel | null;
+  /** Hook called before the application start */
+  onPreInit?(): Promise<void> | void;
 };
 
 /**
@@ -89,39 +91,38 @@ export async function run<SvelteComponent>({
   auth: authConfig,
   rootQuerySelector,
   logLevel,
+  onPreInit,
 }: Config<SvelteComponent>): Promise<void> {
+  onPreInit && (await onPreInit());
+
   const target = getTarget(rootQuerySelector);
 
   if (logLevel) {
     log.init();
     log.set(logLevel);
+
+    userInfo.data.subscribe((userInfo) => {
+      log.debug(
+        "user",
+        userInfo ? log.json`User is authed: ${userInfo}` : "User is not authed"
+      );
+    });
   }
 
   if (!target) {
     return;
   }
 
-  let userInfoSet: UserInfo | null = null;
-
   if (authConfig) {
     if (window.__TAURI__) {
-      userInfoSet = await tauriGetUserInfo(userInfo, {
+      await tauriGetUserInfo({
         forceAuth: authConfig.forceAuth,
       });
     } else {
-      userInfoSet = await browserUserAuth(userInfo, {
+      await browserUserAuth({
         forceAuth: authConfig.forceAuth,
       });
     }
-  }
-
-  if (logLevel) {
-    log.debug(
-      "user",
-      userInfoSet
-        ? log.json`User is authed: ${userInfoSet}`
-        : "User is not authed"
-    );
   }
 
   try {

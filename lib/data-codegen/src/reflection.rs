@@ -113,7 +113,7 @@ pub fn get_data_container_info(
             } else {
                 let str = format!(
                     "Legion: unsupported field type: {}",
-                    field.ident.as_ref().unwrap().to_string()
+                    field.ident.as_ref().unwrap()
                 );
                 return Err(str);
             }

@@ -290,7 +290,7 @@ fn log_level_to_tracing_level(level: log::Level) -> Level {
     }
 }
 
-fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
+pub(crate) fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
     match level {
         LevelFilter::Off => log::LevelFilter::Off,
         LevelFilter::Error => log::LevelFilter::Error,
