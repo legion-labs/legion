@@ -185,7 +185,7 @@ pub(crate) fn update_streams(
     for event in video_stream_events.iter() {
         match &event.info {
             VideoStreamEventInfo::Initialize {
-                _color: _,
+                color: _,
                 width,
                 height,
             } => {

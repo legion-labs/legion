@@ -62,10 +62,10 @@ use dolly::{prelude::*, rig::CameraRig};
 use lgn_app::prelude::*;
 use lgn_core::Name;
 use lgn_ecs::prelude::*;
+use lgn_input::mouse::MouseMotion;
 use lgn_math::Vec3;
 use lgn_renderer::components::CameraComponent;
 use lgn_transform::components::Transform;
-use lgn_window::{CreateWindow, CursorMoved, WindowResized};
 use runtime_srv::{build_runtime, start_runtime};
 
 #[allow(clippy::too_many_lines)]
@@ -81,7 +81,7 @@ fn main() {
 
     app.insert_resource(GameState::default())
         .add_startup_system_to_stage(StartupStage::PostStartup, game_setup)
-        .add_system(update_cursor_pos)
+        .add_system(update_mouse)
         .add_system(game_logic);
 
     start_runtime(&mut app);
@@ -94,8 +94,7 @@ struct GameState {
     ball_id: Option<u32>,
     velocity: f32,
     direction: Vec3,
-    window_width: f32,
-    cursor_x_normalized: f32,
+    paddle_delta: f32,
 }
 
 fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMut<'_, GameState>) {
@@ -118,23 +117,17 @@ fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMu
     state.direction = state.direction.normalize() * 0.1_f32;
 }
 
-fn update_cursor_pos(
-    mut create_window_events: EventReader<'_, '_, CreateWindow>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
-    mut cursor_moved_events: EventReader<'_, '_, CursorMoved>,
+fn update_mouse(
+    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut state: ResMut<'_, GameState>,
 ) {
-    for create_window in create_window_events.iter() {
-        state.window_width = create_window.descriptor.width;
+    // aggregate mouse movement
+    let mut mouse_delta_x = 0_f32;
+    for motion_event in mouse_motion_events.iter() {
+        mouse_delta_x += motion_event.delta.x;
     }
 
-    for window_resized in window_resized_events.iter() {
-        state.window_width = window_resized.width;
-    }
-
-    for cursor_moved in cursor_moved_events.iter() {
-        state.cursor_x_normalized = cursor_moved.position.x / state.window_width;
-    }
+    state.paddle_delta = mouse_delta_x / 200_f32;
 }
 
 fn game_logic(
@@ -156,13 +149,17 @@ fn game_logic(
     let right_paddle_id = state.right_paddle_id.unwrap();
 
     // update paddles
-    let right_paddle = state.cursor_x_normalized * 3.0 - 1.5;
-    let left_paddle = -right_paddle;
+    let mut left_paddle = 0.0;
+    let mut right_paddle = 0.0;
     for (entity, _name, mut transform) in entities.iter_mut() {
         if entity.id() == left_paddle_id {
-            transform.translation.y = left_paddle;
+            transform.translation.y -= state.paddle_delta;
+            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+            left_paddle = transform.translation.y;
         } else if entity.id() == right_paddle_id {
-            transform.translation.y = right_paddle;
+            transform.translation.y += state.paddle_delta;
+            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
+            right_paddle = transform.translation.y;
         }
     }
 
