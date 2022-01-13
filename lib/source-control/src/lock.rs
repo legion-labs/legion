@@ -5,7 +5,7 @@ use lgn_tracing::span_fn;
 
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
-    read_workspace_spec, LocalWorkspaceConnection, RepositoryQuery,
+    read_workspace_spec, IndexBackend, LocalWorkspaceConnection,
 };
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl From<lgn_source_control_proto::Lock> for Lock {
 }
 
 pub async fn verify_empty_lock_domain(
-    query: &dyn RepositoryQuery,
+    query: &dyn IndexBackend,
     lock_domain_id: &str,
 ) -> Result<()> {
     if query.count_locks_in_domain(lock_domain_id).await? > 0 {
@@ -57,7 +57,7 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let repo_branch = query.read_branch(&branch_name).await?;
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
@@ -75,7 +75,7 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let repo_branch = query.read_branch(&branch_name).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
     query
@@ -92,7 +92,7 @@ pub async fn list_locks_command() -> Result<()> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let repo_branch = query.read_branch(&branch_name).await?;
     let locks = query
         .find_locks_in_domain(&repo_branch.lock_domain_id)
@@ -111,7 +111,7 @@ pub async fn list_locks_command() -> Result<()> {
 
 #[span_fn]
 pub async fn assert_not_locked(
-    query: &dyn RepositoryQuery,
+    query: &dyn IndexBackend,
     workspace_root: &Path,
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     path_specified: &Path,

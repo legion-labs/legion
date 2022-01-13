@@ -2,40 +2,127 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::Row;
+use reqwest::Url;
+use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
 use tokio::sync::Mutex;
 
 use crate::{
-    blob_storage::BlobStorageUrl,
-    sql::{create_database, drop_database, SqlConnectionPool},
-    Branch, ChangeType, Commit, Error, HashedChange, Lock, MapOtherError, RepositoryQuery, Result,
-    Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
+    blob_storage::BlobStorageUrl, sql::SqlConnectionPool, Branch, ChangeType, Commit, Error,
+    HashedChange, IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType,
+    WorkspaceRegistration,
 };
 
-pub enum DatabaseUri {
+enum SqlDatabaseDriver {
     Sqlite(String),
     Mysql(String),
 }
 
-// access to repository metadata inside a mysql or sqlite database
-pub struct SqlRepositoryQuery {
-    uri: DatabaseUri,
-    pool: Mutex<Option<Arc<SqlConnectionPool>>>,
+impl SqlDatabaseDriver {
+    fn new(url: &Url) -> Result<Self> {
+        match url.scheme() {
+            "mysql" => Ok(Self::Mysql(url.to_string())),
+            "sqlite" => Ok(Self::Sqlite(url.to_string())),
+            scheme => Err(Error::invalid_index_url(
+                url.to_string(),
+                anyhow::anyhow!("unsupported SQL database driver: {}", scheme),
+            )),
+        }
+    }
+
+    fn url(&self) -> &str {
+        match self {
+            Self::Sqlite(url) | Self::Mysql(url) => url.trim_end_matches('?'),
+        }
+    }
+
+    async fn new_pool(&self) -> Result<SqlConnectionPool> {
+        Ok(match &self {
+            Self::Sqlite(uri) => SqlConnectionPool::new(uri).await.map_other_err(format!(
+                "failed to establish a SQLite connection pool to `{}`",
+                uri
+            ))?,
+            Self::Mysql(uri) => SqlConnectionPool::new(uri).await.map_other_err(format!(
+                "failed to establish a MySQL connection pool to `{}`",
+                uri
+            ))?,
+        })
+    }
+
+    async fn create_database(&self) -> Result<()> {
+        match &self {
+            Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::create_database(uri)
+                .await
+                .map_other_err("failed to create database"),
+        }
+    }
+
+    async fn drop_database(&self) -> Result<()> {
+        match &self {
+            Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::drop_database(uri)
+                .await
+                .map_other_err("failed to create database"),
+        }
+    }
+
+    async fn check_if_database_exists(&self) -> Result<bool> {
+        match &self {
+            Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::database_exists(uri)
+                .await
+                .map_other_err("failed to check if database exists"),
+        }
+    }
 }
 
-impl SqlRepositoryQuery {
-    const TABLE_CONFIGURATION: &'static str = "configuration";
+// access to repository metadata inside a mysql or sqlite database
+pub struct SqlIndexBackend {
+    driver: SqlDatabaseDriver,
+    pool: Mutex<Option<Arc<SqlConnectionPool>>>,
+    blob_storage_url: BlobStorageUrl,
+}
+
+impl SqlIndexBackend {
     const TABLE_COMMITS: &'static str = "commits";
+    const TABLE_COMMIT_PARENTS: &'static str = "commit_parents";
+    const TABLE_COMMIT_CHANGES: &'static str = "commit_changes";
     const TABLE_FOREST: &'static str = "forest";
     const TABLE_BRANCHES: &'static str = "branches";
     const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
     const TABLE_LOCKS: &'static str = "locks";
 
-    pub fn new(uri: DatabaseUri) -> Self {
-        Self {
-            uri,
+    /// Instanciate a new SQL index backend.
+    ///
+    /// The url is expected to contain a `blob_storage_url` parameter.
+    pub fn new(url: &Url) -> Result<Self> {
+        let blob_storage_url = url
+            .query_pairs()
+            .find(|(k, _)| k == "blob_storage_url")
+            .ok_or_else(|| {
+                Error::invalid_index_url(
+                    url.to_string(),
+                    anyhow::anyhow!("missing `blob_storage_url` parameter in SQL index URL"),
+                )
+            })
+            .map(|(_, v)| v.to_string())?;
+
+        let blob_storage_url = blob_storage_url.parse().map_other_err(format!(
+            "failed to parse `blob_storage_url` parameter in SQL index URL: {}",
+            blob_storage_url
+        ))?;
+
+        let mut sql_url = url.clone();
+
+        sql_url
+            .query_pairs_mut()
+            .clear()
+            .extend_pairs(url.query_pairs().filter(|(k, _)| k != "blob_storage_url"));
+
+        let driver = SqlDatabaseDriver::new(&sql_url)?;
+
+        Ok(Self {
+            driver,
             pool: Mutex::new(None),
-        }
+            blob_storage_url,
+        })
     }
 
     async fn get_conn(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
@@ -60,14 +147,7 @@ impl SqlRepositoryQuery {
         if let Some(pool) = pool.as_ref() {
             Ok(Arc::clone(pool))
         } else {
-            let new_pool = Arc::new(match &self.uri {
-                DatabaseUri::Sqlite(uri) => SqlConnectionPool::new(uri).await.map_other_err(
-                    format!("failed to establish a SQLite connection pool to `{}`", uri),
-                )?,
-                DatabaseUri::Mysql(uri) => SqlConnectionPool::new(uri).await.map_other_err(
-                    format!("failed to establish a MySQL connection pool to `{}`", uri),
-                )?,
-            });
+            let new_pool = Arc::new(self.driver.new_pool().await?);
 
             *pool = Some(Arc::clone(&new_pool));
 
@@ -75,114 +155,85 @@ impl SqlRepositoryQuery {
         }
     }
 
-    async fn initialize_database(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        blob_storage_url: &BlobStorageUrl,
-    ) -> Result<()> {
-        Self::create_configuration_table(transaction).await?;
-        Self::create_commits_database(transaction).await?;
-        Self::create_forest_database(transaction).await?;
-        Self::create_branches_table(transaction).await?;
-        Self::create_workspace_registrations_table(transaction).await?;
-        Self::create_locks_table(transaction).await?;
-
-        Self::insert_configuration(transaction, blob_storage_url).await?;
+    async fn initialize_database(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        Self::create_commits_table(conn).await?;
+        Self::create_forest_table(conn).await?;
+        Self::create_branches_table(conn).await?;
+        Self::create_workspace_registrations_table(conn).await?;
+        Self::create_locks_table(conn).await?;
 
         Ok(())
     }
 
-    async fn create_configuration_table(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
-        sqlx::query(&format!(
-            "CREATE TABLE {}(blob_storage_url TEXT);",
-            Self::TABLE_CONFIGURATION
-        ))
-        .execute(&mut *transaction)
-        .await
-        .map_other_err("failed to create the configuration table")
-        .map(|_| ())
-    }
+    async fn create_commits_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str = &format!(
+        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), unique (id));
+         CREATE TABLE `{}` (id VARCHAR(255), parent_id TEXT);
+         CREATE INDEX commit_parents_id on `{}`(id);
+         CREATE TABLE `{}` (commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
+         CREATE INDEX commit_changes_commit on `{}`(commit_id);",
+         Self::TABLE_COMMITS,
+         Self::TABLE_COMMIT_PARENTS,
+         Self::TABLE_COMMIT_PARENTS,
+         Self::TABLE_COMMIT_CHANGES,
+         Self::TABLE_COMMIT_CHANGES
+        );
 
-    async fn create_commits_database(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
-        sqlx::query(&format!("CREATE TABLE {}(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
-         CREATE UNIQUE INDEX commit_id on commits(id);
-         CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
-         CREATE INDEX commit_parents_id on commit_parents(id);
-         CREATE TABLE commit_changes(commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
-         CREATE INDEX commit_changes_commit on commit_changes(commit_id);
-        ", Self::TABLE_COMMITS))
-        .execute(&mut *transaction)
-        .await
-        .map_other_err("failed to create the commits table")
-        .map(|_| ())
-    }
-
-    async fn create_forest_database(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
-        sqlx::query(&format!(
-        "CREATE TABLE {} (name VARCHAR(255), hash CHAR(64), parent_tree_hash CHAR(64), node_type INTEGER);
-         CREATE INDEX tree on {}(parent_tree_hash);", Self::TABLE_FOREST, Self::TABLE_FOREST))
-        .execute(&mut *transaction)
+        conn.execute(sql)
             .await
-        .map_other_err("failed to create the forest table and tree index")
-        .map(|_| ())
+            .map_other_err("failed to create the commits table")
+            .map(|_| ())
     }
 
-    async fn create_branches_table(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
-        sqlx::query(&format!("CREATE TABLE {}(name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64));
-         CREATE UNIQUE INDEX branch_name on {}(name);
-        ", Self::TABLE_BRANCHES, Self::TABLE_BRANCHES))
-        .execute(&mut *transaction)
+    async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str=  &format!(
+        "CREATE TABLE `{}` (name VARCHAR(255), hash CHAR(64), parent_tree_hash CHAR(64), node_type INTEGER);
+         CREATE INDEX tree on {}(parent_tree_hash);",
+         Self::TABLE_FOREST,
+         Self::TABLE_FOREST
+        );
+
+        conn.execute(sql)
             .await
-        .map_other_err("failed to create the branches table and index")
-        .map(|_| ())
+            .map_other_err("failed to create the forest table and tree index")
+            .map(|_| ())
     }
 
-    async fn create_workspace_registrations_table(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
-        sqlx::query(&format!(
-            "CREATE TABLE {}(id VARCHAR(255), owner VARCHAR(255));
-               CREATE UNIQUE INDEX workspace_registration_id on {}(id);",
+    async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str = &format!(
+        "CREATE TABLE `{}` (name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64), unique (name));",
+        Self::TABLE_BRANCHES
+        );
+
+        conn.execute(sql)
+            .await
+            .map_other_err("failed to create the branches table and index")
+            .map(|_| ())
+    }
+
+    async fn create_workspace_registrations_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str = &format!(
+            "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), unique (id));",
             Self::TABLE_WORKSPACE_REGISTRATIONS,
-            Self::TABLE_WORKSPACE_REGISTRATIONS
-        ))
-        .execute(&mut *transaction)
-        .await
-        .map_other_err("failed to create the workspace registrations table and index")
-        .map(|_| ())
-    }
+        );
 
-    async fn create_locks_table(transaction: &mut sqlx::Transaction<'_, sqlx::Any>) -> Result<()> {
-        sqlx::query(&format!(
-        "CREATE TABLE {}(relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255));
-         CREATE UNIQUE INDEX lock_key on {}(relative_path, lock_domain_id);
-        ", Self::TABLE_LOCKS, Self::TABLE_LOCKS))
-        .execute(&mut *transaction)
+        conn.execute(sql)
             .await
-        .map_other_err("failed to create the locks table and index")
-        .map(|_| ())
+            .map_other_err("failed to create the workspace registrations table and index")
+            .map(|_| ())
     }
 
-    async fn insert_configuration(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        blob_storage: &BlobStorageUrl,
-    ) -> Result<()> {
-        sqlx::query(&format!(
-            "INSERT INTO {} VALUES(?);",
-            Self::TABLE_CONFIGURATION
-        ))
-        .bind(blob_storage.to_string())
-        .execute(&mut *transaction)
-        .await
-        .map_other_err("failed to insert the configuration")
-        .map(|_| ())
+    async fn create_locks_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str = &format!(
+        "CREATE TABLE `{}` (relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255), unique (relative_path, lock_domain_id));
+        ",
+        Self::TABLE_LOCKS
+        );
+
+        conn.execute(sql)
+            .await
+            .map_other_err("failed to create the locks table and index")
+            .map(|_| ())
     }
 
     async fn initialize_repository_data(
@@ -220,44 +271,32 @@ impl SqlRepositoryQuery {
         Ok(())
     }
 
-    async fn read_branch_sqlite(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        name: &str,
-    ) -> Result<Branch> {
-        let row = sqlx::query(&format!(
-            "SELECT head, parent, lock_domain_id
-             FROM {}
-             WHERE name = ?;",
-            Self::TABLE_BRANCHES
-        ))
-        .bind(name)
-        .fetch_one(transaction)
-        .await
-        .map_other_err("failed to read the branch from SQLite")?;
-
-        Ok(Branch::new(
-            String::from(name),
-            row.get("head"),
-            row.get("parent"),
-            row.get("lock_domain_id"),
-        ))
-    }
-
-    async fn read_branch_mysql<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+    async fn read_branch_for_update<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+        &self,
         executor: E,
         name: &str,
     ) -> Result<Branch> {
-        let row = sqlx::query(&format!(
-            "SELECT head, parent, lock_domain_id
-             FROM {}
-             WHERE name = ?
-             FOR UPDATE;",
-            Self::TABLE_BRANCHES
-        ))
-        .bind(name)
-        .fetch_one(executor)
-        .await
-        .map_other_err("failed to read the branch from MySQL")?;
+        let query = match &self.driver {
+            SqlDatabaseDriver::Sqlite(_) => format!(
+                "SELECT head, parent, lock_domain_id
+                     FROM `{}`
+                     WHERE name = ?;",
+                Self::TABLE_BRANCHES
+            ),
+            SqlDatabaseDriver::Mysql(_) => format!(
+                "SELECT head, parent, lock_domain_id
+                     FROM `{}`
+                     WHERE name = ?
+                     FOR UPDATE;",
+                Self::TABLE_BRANCHES
+            ),
+        };
+
+        let row = sqlx::query(&query)
+            .bind(name)
+            .fetch_one(executor)
+            .await
+            .map_other_err("failed to read the branch from MySQL")?;
 
         Ok(Branch::new(
             String::from(name),
@@ -272,7 +311,7 @@ impl SqlRepositoryQuery {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "INSERT INTO {} VALUES(?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
             Self::TABLE_BRANCHES
         ))
         .bind(branch.name.clone())
@@ -290,7 +329,7 @@ impl SqlRepositoryQuery {
         commit: &Commit,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "INSERT INTO {} VALUES(?, ?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?);",
             Self::TABLE_COMMITS
         ))
         .bind(commit.id.clone())
@@ -303,29 +342,35 @@ impl SqlRepositoryQuery {
         .map_other_err(format!("failed to insert the commit `{}`", &commit.id))?;
 
         for parent_id in &commit.parents {
-            sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
-                .bind(commit.id.clone())
-                .bind(parent_id.clone())
-                .execute(&mut *transaction)
-                .await
-                .map_other_err(format!(
-                    "failed to insert the commit parent `{}` for commit `{}`",
-                    parent_id, &commit.id
-                ))?;
+            sqlx::query(&format!(
+                "INSERT INTO `{}` VALUES(?, ?);",
+                Self::TABLE_COMMIT_PARENTS
+            ))
+            .bind(commit.id.clone())
+            .bind(parent_id.clone())
+            .execute(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to insert the commit parent `{}` for commit `{}`",
+                parent_id, &commit.id
+            ))?;
         }
 
         for change in &commit.changes {
-            sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
-                .bind(commit.id.clone())
-                .bind(change.relative_path.clone())
-                .bind(change.hash.clone())
-                .bind(change.change_type.clone() as i64)
-                .execute(&mut *transaction)
-                .await
-                .map_other_err(format!(
-                    "failed to insert the commit change for commit `{}`",
-                    &commit.id
-                ))?;
+            sqlx::query(&format!(
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+                Self::TABLE_COMMIT_CHANGES
+            ))
+            .bind(commit.id.clone())
+            .bind(change.relative_path.clone())
+            .bind(change.hash.clone())
+            .bind(change.change_type.clone() as i64)
+            .execute(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to insert the commit change for commit `{}`",
+                &commit.id
+            ))?;
         }
 
         Ok(())
@@ -336,7 +381,7 @@ impl SqlRepositoryQuery {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "UPDATE {} SET head=?, parent=?, lock_domain_id=?
+            "UPDATE `{}` SET head=?, parent=?, lock_domain_id=?
              WHERE name=?;",
             Self::TABLE_BRANCHES
         ))
@@ -364,7 +409,7 @@ impl SqlRepositoryQuery {
 
         for file_node in &tree.file_nodes {
             sqlx::query(&format!(
-                "INSERT INTO {} VALUES(?, ?, ?, ?);",
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
                 Self::TABLE_FOREST,
             ))
             .bind(file_node.name.clone())
@@ -381,7 +426,7 @@ impl SqlRepositoryQuery {
 
         for dir_node in &tree.directory_nodes {
             sqlx::query(&format!(
-                "INSERT INTO {} VALUES(?, ?, ?, ?);",
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
                 Self::TABLE_FOREST
             ))
             .bind(dir_node.name.clone())
@@ -408,7 +453,7 @@ impl SqlRepositoryQuery {
 
         let rows = sqlx::query(&format!(
             "SELECT name, hash, node_type
-             FROM {}
+             FROM `{}`
              WHERE parent_tree_hash = ?
              ORDER BY name;",
             Self::TABLE_FOREST
@@ -447,7 +492,7 @@ impl SqlRepositoryQuery {
     ) -> Result<Option<Lock>> {
         Ok(sqlx::query(&format!(
             "SELECT workspace_id, branch_name
-             FROM {}
+             FROM `{}`
              WHERE lock_domain_id=?
              AND relative_path=?;",
             Self::TABLE_LOCKS,
@@ -470,34 +515,27 @@ impl SqlRepositoryQuery {
 }
 
 #[async_trait]
-impl RepositoryQuery for SqlRepositoryQuery {
-    async fn ping(&self) -> Result<()> {
-        self.get_conn().await?;
-
-        Ok(())
+impl IndexBackend for SqlIndexBackend {
+    fn url(&self) -> &str {
+        self.driver.url()
     }
 
-    async fn create_repository(
-        &self,
-        blob_storage_url: Option<BlobStorageUrl>,
-    ) -> Result<BlobStorageUrl> {
-        let blob_storage_url = match blob_storage_url {
-            Some(blob_storage_url) => blob_storage_url,
-            None => return Err(Error::NoBlobStorageUrl),
-        };
-
-        match &self.uri {
-            DatabaseUri::Sqlite(uri) => {
-                create_database(uri).await?;
-            }
-            DatabaseUri::Mysql(uri) => {
-                create_database(uri).await?;
-            }
+    async fn create_index(&self) -> Result<BlobStorageUrl> {
+        if self.driver.check_if_database_exists().await? {
+            return Err(Error::index_already_exists(self.url()));
         }
 
-        let mut transaction = self.get_transaction().await?;
+        self.driver.create_database().await?;
 
-        Self::initialize_database(&mut transaction, &blob_storage_url).await?;
+        let mut conn = self.get_conn().await?;
+
+        Self::initialize_database(&mut conn).await?;
+
+        let mut transaction = conn
+            .begin()
+            .await
+            .map_other_err("failed to acquire SQL transaction")?;
+
         Self::initialize_repository_data(&mut transaction).await?;
 
         transaction
@@ -505,14 +543,23 @@ impl RepositoryQuery for SqlRepositoryQuery {
             .await
             .map_other_err("failed to commit transaction when creating repository")?;
 
-        Ok(blob_storage_url)
+        Ok(self.blob_storage_url.clone())
     }
 
-    async fn destroy_repository(&self) -> Result<()> {
-        match &self.uri {
-            DatabaseUri::Sqlite(uri) => drop_database(uri).await,
-            DatabaseUri::Mysql(uri) => drop_database(uri).await,
+    async fn destroy_index(&self) -> Result<()> {
+        if !self.driver.check_if_database_exists().await? {
+            return Err(Error::index_does_not_exist(self.url()));
         }
+
+        self.driver.drop_database().await
+    }
+
+    async fn index_exists(&self) -> Result<bool> {
+        if !self.driver.check_if_database_exists().await? {
+            return Ok(false);
+        }
+
+        Ok(self.get_conn().await.is_ok())
     }
 
     async fn register_workspace(
@@ -522,7 +569,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
-            "INSERT INTO {} VALUES(?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?);",
             Self::TABLE_WORKSPACE_REGISTRATIONS
         ))
         .bind(workspace_registration.id.clone())
@@ -571,7 +618,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         match sqlx::query(&format!(
             "SELECT head, parent, lock_domain_id 
-             FROM {}
+             FROM `{}`
              WHERE name = ?;",
             Self::TABLE_BRANCHES
         ))
@@ -598,7 +645,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         Ok(sqlx::query(&format!(
             "SELECT name, head, parent 
-             FROM {}
+             FROM `{}`
              WHERE lock_domain_id = ?;",
             Self::TABLE_BRANCHES
         ))
@@ -626,7 +673,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         Ok(sqlx::query(&format!(
             "SELECT name, head, parent, lock_domain_id 
-             FROM {};",
+             FROM `{}`;",
             Self::TABLE_BRANCHES
         ))
         .fetch_all(&mut conn)
@@ -647,11 +694,12 @@ impl RepositoryQuery for SqlRepositoryQuery {
     async fn read_commit(&self, id: &str) -> Result<Commit> {
         let mut conn = self.get_conn().await?;
 
-        let changes = sqlx::query(
+        let changes = sqlx::query(&format!(
             "SELECT relative_path, hash, change_type
-             FROM commit_changes
+             FROM `{}`
              WHERE commit_id = ?;",
-        )
+            Self::TABLE_COMMIT_CHANGES,
+        ))
         .bind(id)
         .fetch_all(&mut conn)
         .await
@@ -670,11 +718,12 @@ impl RepositoryQuery for SqlRepositoryQuery {
         })
         .collect();
 
-        let parents = sqlx::query(
+        let parents = sqlx::query(&format!(
             "SELECT parent_id
-             FROM commit_parents
+             FROM `{}`
              WHERE id = ?;",
-        )
+            Self::TABLE_COMMIT_PARENTS,
+        ))
         .bind(id)
         .fetch_all(&mut conn)
         .await
@@ -685,7 +734,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         sqlx::query(&format!(
             "SELECT owner, message, root_hash, date_time_utc 
-             FROM {}
+             FROM `{}`
              WHERE id = ?;",
             Self::TABLE_COMMITS
         ))
@@ -724,14 +773,9 @@ impl RepositoryQuery for SqlRepositoryQuery {
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
         let mut transaction = self.get_transaction().await?;
 
-        let stored_branch = match self.uri {
-            DatabaseUri::Sqlite(_) => {
-                Self::read_branch_sqlite(&mut transaction, &branch.name).await?
-            }
-            DatabaseUri::Mysql(_) => {
-                Self::read_branch_mysql(&mut transaction, &branch.name).await?
-            }
-        };
+        let stored_branch = self
+            .read_branch_for_update(&mut transaction, &branch.name)
+            .await?;
 
         if &stored_branch != branch {
             return Err(Error::stale_branch(stored_branch));
@@ -755,7 +799,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         sqlx::query(&format!(
             "SELECT count(*) as count
-             FROM {}
+             FROM `{}`
              WHERE id = ?;",
             Self::TABLE_COMMITS
         ))
@@ -773,7 +817,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         let rows = sqlx::query(&format!(
             "SELECT name, hash, node_type
-             FROM {}
+             FROM `{}`
              WHERE parent_tree_hash = ?
              ORDER BY name;",
             Self::TABLE_FOREST
@@ -830,7 +874,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
 
         sqlx::query(&format!(
-            "INSERT INTO {} VALUES(?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
             Self::TABLE_LOCKS
         ))
         .bind(lock.relative_path.clone())
@@ -865,7 +909,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         Ok(sqlx::query(&format!(
             "SELECT relative_path, workspace_id, branch_name
-             FROM {}
+             FROM `{}`
              WHERE lock_domain_id=?;",
             Self::TABLE_LOCKS,
         ))
@@ -890,7 +934,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
-            "DELETE from {} WHERE relative_path=? AND lock_domain_id=?;",
+            "DELETE from `{}` WHERE relative_path=? AND lock_domain_id=?;",
             Self::TABLE_LOCKS
         ))
         .bind(relative_path)
@@ -909,7 +953,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
         sqlx::query(&format!(
             "SELECT count(*) as count
-             FROM {}
+             FROM `{}`
              WHERE lock_domain_id = ?;",
             Self::TABLE_LOCKS,
         ))
@@ -924,19 +968,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        let mut conn = self.get_conn().await?;
-
-        let row = sqlx::query(&format!(
-            "SELECT blob_storage_url
-             FROM {};",
-            Self::TABLE_CONFIGURATION
-        ))
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err("failed to get blob storage url")?;
-
-        row.get::<&str, _>("blob_storage_url")
-            .parse()
-            .map_other_err("failed to parse blob storage url")
+        Ok(self.blob_storage_url.clone())
     }
 }

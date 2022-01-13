@@ -24,7 +24,7 @@ pub async fn delete_local_file(
     let repo_connection = connect_to_server(&workspace_spec).await?;
 
     assert_not_locked(
-        repo_connection.query(),
+        repo_connection.index_backend(),
         workspace_root,
         workspace_transaction,
         &abs_path,

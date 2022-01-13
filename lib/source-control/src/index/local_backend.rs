@@ -1,43 +1,43 @@
 use async_trait::async_trait;
 use lgn_tracing::info;
+use reqwest::Url;
 use std::path::PathBuf;
 
 use crate::{
-    blob_storage::BlobStorageUrl,
-    sql_repository_query::{DatabaseUri, SqlRepositoryQuery},
-    utils::make_path_absolute,
-    Branch, Commit, Error, Lock, MapOtherError, RepositoryQuery, Result, Tree,
-    WorkspaceRegistration,
+    blob_storage::BlobStorageUrl, utils::make_path_absolute, Branch, Commit, Error, IndexBackend,
+    Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
-pub struct LocalRepositoryQuery {
+pub struct LocalIndexBackend {
     directory: PathBuf,
-    sql_repository_query: SqlRepositoryQuery,
+    sql_repository_query: SqlIndexBackend,
 }
 
-impl LocalRepositoryQuery {
-    pub fn new(directory: PathBuf) -> Self {
+impl LocalIndexBackend {
+    pub fn new(directory: PathBuf) -> Result<Self> {
         let directory = make_path_absolute(directory);
         let db_path = directory.join("repo.db3");
-        let sqlite_url = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+        let blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
+        let sqlite_url = Url::parse_with_params(
+            &format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/")),
+            vec![("blob_storage_url", blob_storage_url.to_string())],
+        )
+        .map_other_err("failed to parse local SQLite repository database URL")?;
 
-        Self {
+        Ok(Self {
             directory,
-            sql_repository_query: SqlRepositoryQuery::new(DatabaseUri::Sqlite(sqlite_url)),
-        }
+            sql_repository_query: SqlIndexBackend::new(&sqlite_url)?,
+        })
     }
 }
 
 #[async_trait]
-impl RepositoryQuery for LocalRepositoryQuery {
-    async fn ping(&self) -> Result<()> {
-        self.sql_repository_query.ping().await
+impl IndexBackend for LocalIndexBackend {
+    fn url(&self) -> &str {
+        self.directory.to_str().unwrap()
     }
 
-    async fn create_repository(
-        &self,
-        blob_storage_url: Option<BlobStorageUrl>,
-    ) -> Result<BlobStorageUrl> {
+    async fn create_index(&self) -> Result<BlobStorageUrl> {
         match self.directory.read_dir() {
             Ok(mut entries) => {
                 if entries.next().is_some() {
@@ -57,7 +57,7 @@ impl RepositoryQuery for LocalRepositoryQuery {
             }
         };
 
-        info!("Creating repository root at {}", self.directory.display());
+        info!("Creating index root at {}", self.directory.display());
 
         tokio::fs::create_dir_all(&self.directory)
             .await
@@ -68,18 +68,11 @@ impl RepositoryQuery for LocalRepositoryQuery {
 
         info!("Creating SQLite database");
 
-        let default_blob_storage_url = &BlobStorageUrl::Local(self.directory.join("blobs"));
-        let blob_storage_url = blob_storage_url
-            .as_ref()
-            .unwrap_or(default_blob_storage_url);
-
-        self.sql_repository_query
-            .create_repository(Some(blob_storage_url.clone()))
-            .await
+        self.sql_repository_query.create_index().await
     }
 
-    async fn destroy_repository(&self) -> Result<()> {
-        self.sql_repository_query.destroy_repository().await?;
+    async fn destroy_index(&self) -> Result<()> {
+        self.sql_repository_query.destroy_index().await?;
 
         tokio::fs::remove_dir_all(&self.directory)
             .await
@@ -87,6 +80,10 @@ impl RepositoryQuery for LocalRepositoryQuery {
                 "failed to destroy repository root at `{}`",
                 &self.directory.display()
             ))
+    }
+
+    async fn index_exists(&self) -> Result<bool> {
+        self.sql_repository_query.index_exists().await
     }
 
     async fn register_workspace(

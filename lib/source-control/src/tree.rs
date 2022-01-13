@@ -9,7 +9,7 @@ use async_recursion::async_recursion;
 use sha2::{Digest, Sha256};
 use unicase::UniCase;
 
-use crate::{make_file_read_only, ChangeType, HashedChange, RepositoryConnection, RepositoryQuery};
+use crate::{make_file_read_only, ChangeType, HashedChange, IndexBackend, RepositoryConnection};
 
 pub enum TreeNodeType {
     Directory = 1,
@@ -156,7 +156,7 @@ impl Tree {
 }
 
 pub async fn fetch_tree_subdir(
-    query: &dyn RepositoryQuery,
+    query: &dyn IndexBackend,
     root: &Tree,
     subdir: &Path,
 ) -> Result<Tree> {
@@ -184,7 +184,7 @@ pub async fn find_file_hash_in_tree(
     root_tree: &Tree,
 ) -> Result<Option<String>> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(connection.query(), root_tree, parent_dir).await?;
+    let dir_tree = fetch_tree_subdir(connection.index_backend(), root_tree, parent_dir).await?;
     match dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -236,7 +236,7 @@ pub async fn update_tree_from_changes(
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
 
     for dir in dir_to_update_by_length {
-        let mut tree = fetch_tree_subdir(connection.query(), previous_root, &dir).await?;
+        let mut tree = fetch_tree_subdir(connection.index_backend(), previous_root, &dir).await?;
         for change in local_changes {
             let relative_path = Path::new(&change.relative_path);
             let parent = relative_path
@@ -291,7 +291,10 @@ pub async fn update_tree_from_changes(
             }
         }
 
-        connection.query().save_tree(&tree, &dir_hash).await?;
+        connection
+            .index_backend()
+            .save_tree(&tree, &dir_hash)
+            .await?;
         if dir.components().count() == 0 {
             return Ok(dir_hash);
         }
@@ -307,7 +310,7 @@ pub async fn remove_dir_rec(
     tree_hash: &str,
 ) -> Result<String> {
     let mut messages: Vec<String> = Vec::new();
-    let query = connection.query();
+    let query = connection.index_backend();
     let tree = query.read_tree(tree_hash).await?;
 
     for file_node in &tree.file_nodes {
@@ -361,7 +364,7 @@ pub async fn download_tree(
 
     while !dir_to_process.is_empty() {
         let dir_node = dir_to_process.pop().expect("empty dir_to_process");
-        let tree = connection.query().read_tree(&dir_node.hash).await?;
+        let tree = connection.index_backend().read_tree(&dir_node.hash).await?;
 
         for relative_subdir_node in tree.directory_nodes {
             let abs_subdir_node = TreeNode {

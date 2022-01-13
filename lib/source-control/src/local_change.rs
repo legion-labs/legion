@@ -9,8 +9,8 @@ use sqlx::Row;
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,
     make_canonical_relative_path, make_file_read_only, make_path_absolute, read_current_branch,
-    read_workspace_spec, sql::execute_sql, LocalWorkspaceConnection, RepositoryConnection,
-    RepositoryQuery,
+    read_workspace_spec, sql::execute_sql, IndexBackend, LocalWorkspaceConnection,
+    RepositoryConnection,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -211,7 +211,7 @@ pub async fn track_new_file(
     }
 
     assert_not_locked(
-        repo_connection.query(),
+        repo_connection.index_backend(),
         workspace_root,
         workspace_transaction,
         &abs_path,
@@ -246,7 +246,7 @@ pub async fn track_new_file_command(path_specified: &Path) -> Result<()> {
 pub async fn edit_file(
     workspace_root: &Path,
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    query: &dyn RepositoryQuery,
+    query: &dyn IndexBackend,
     path_specified: &Path,
 ) -> Result<()> {
     let abs_path = make_path_absolute(path_specified);
@@ -285,7 +285,7 @@ pub async fn edit_file_command(path_specified: &Path) -> Result<()> {
     edit_file(
         &workspace_root,
         &mut workspace_transaction,
-        connection.query(),
+        connection.index_backend(),
         path_specified,
     )
     .await?;

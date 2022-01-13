@@ -6,100 +6,120 @@ use url::Url;
 
 use lgn_source_control_proto::{
     source_control_client::SourceControlClient, ClearLockRequest, CommitExistsRequest,
-    CommitToBranchRequest, CountLocksInDomainRequest, CreateRepositoryRequest,
-    DestroyRepositoryRequest, FindBranchRequest, FindBranchesInLockDomainRequest, FindLockRequest,
-    FindLocksInDomainRequest, GetBlobStorageUrlRequest, InsertBranchRequest, InsertCommitRequest,
+    CommitToBranchRequest, CountLocksInDomainRequest, CreateIndexRequest, DestroyIndexRequest,
+    FindBranchRequest, FindBranchesInLockDomainRequest, FindLockRequest, FindLocksInDomainRequest,
+    GetBlobStorageUrlRequest, IndexExistsRequest, InsertBranchRequest, InsertCommitRequest,
     InsertLockRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
     RegisterWorkspaceRequest, SaveTreeRequest, UpdateBranchRequest,
 };
 
 use crate::{
-    blob_storage::BlobStorageUrl, Branch, Commit, Error, Lock, MapOtherError, RepositoryQuery,
-    Result, Tree, WorkspaceRegistration,
+    blob_storage::BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result,
+    Tree, WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.
-pub struct LscRepositoryQuery {
+pub struct GrpcIndexBackend {
+    url: Url,
     repository_name: String,
     client: Mutex<SourceControlClient<GrpcWebClient>>,
 }
 
-impl LscRepositoryQuery {
-    pub fn new(mut url: Url) -> Self {
+impl GrpcIndexBackend {
+    pub fn new(url: Url) -> Result<Self> {
         let repository_name = url.path().trim_start_matches('/').to_string();
-        url.set_path("");
+        let mut grpc_url = url.clone();
+        grpc_url.set_path("");
+
+        if repository_name.is_empty() {
+            return Err(Error::invalid_index_url(
+                url,
+                anyhow::anyhow!("invalid empty repository name"),
+            ));
+        }
 
         debug!(
-            "Instance targets repository `{}` at: {}",
-            repository_name, url
+            "gRPC index backend instance targets repository `{}` at: {}",
+            repository_name, grpc_url
         );
 
-        // TODO: To `to_string` hereafter is hardly optimal but this should not
-        // live in a critical path anyway so it probably does not matter.
+        // The `to_string` hereafter is hardly optimal but this should not live
+        // in a critical path anyway so it probably does not matter.
         //
         // If the conversion bothers you, feel free to change it.
-        let client = GrpcWebClient::new(url.to_string().parse().unwrap());
+        let client = GrpcWebClient::new(grpc_url.to_string().parse().unwrap());
         let client = Mutex::new(SourceControlClient::new(client));
 
-        Self {
+        Ok(Self {
+            url,
             repository_name,
             client,
-        }
+        })
     }
 }
 
 #[async_trait]
-impl RepositoryQuery for LscRepositoryQuery {
-    async fn ping(&self) -> Result<()> {
-        self.client
-            .lock()
-            .await
-            .ping(())
-            .await
-            .map_other_err("failed to ping repository")
-            .map(|_| ())
+impl IndexBackend for GrpcIndexBackend {
+    fn url(&self) -> &str {
+        self.url.as_str()
     }
 
-    async fn create_repository(
-        &self,
-        blob_storage_url: Option<BlobStorageUrl>,
-    ) -> Result<BlobStorageUrl> {
-        if let Some(blob_storage_url) = blob_storage_url {
-            return Err(Error::unexpected_blob_storage_url(blob_storage_url));
-        }
-
+    async fn create_index(&self) -> Result<BlobStorageUrl> {
         let resp = self
             .client
             .lock()
             .await
-            .create_repository(CreateRepositoryRequest {
+            .create_index(CreateIndexRequest {
                 repository_name: self.repository_name.clone(),
             })
             .await
-            .map_other_err(format!(
-                "failed to create repository `{}`",
-                self.repository_name
-            ))?
+            .map_other_err(format!("failed to create index `{}`", self.repository_name))?
             .into_inner();
+
+        if resp.already_exists {
+            return Err(Error::index_already_exists(self.url()));
+        }
 
         resp.blob_storage_url
             .parse()
             .map_other_err("failed to parse the returned blob storage url")
     }
 
-    async fn destroy_repository(&self) -> Result<()> {
-        self.client
+    async fn destroy_index(&self) -> Result<()> {
+        let resp = self
+            .client
             .lock()
             .await
-            .destroy_repository(DestroyRepositoryRequest {
+            .destroy_index(DestroyIndexRequest {
                 repository_name: self.repository_name.clone(),
             })
             .await
             .map_other_err(format!(
-                "failed to destroy repository `{}`",
+                "failed to destroy index `{}`",
                 self.repository_name
-            ))
-            .map(|_| ())
+            ))?
+            .into_inner();
+
+        if resp.does_not_exist {
+            return Err(Error::index_does_not_exist(self.url()));
+        }
+
+        Ok(())
+    }
+
+    async fn index_exists(&self) -> Result<bool> {
+        let resp = self
+            .client
+            .lock()
+            .await
+            .index_exists(IndexExistsRequest {
+                repository_name: self.repository_name.clone(),
+            })
+            .await
+            .map_other_err("failed to check if index exists")?
+            .into_inner();
+
+        Ok(resp.exists)
     }
 
     async fn register_workspace(

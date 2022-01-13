@@ -127,7 +127,7 @@ async fn change_file_to(
         edit_file(
             workspace_root,
             workspace_transaction,
-            repo_connection.query(),
+            repo_connection.index_backend(),
             &local_path,
         )
         .await?;
@@ -183,7 +183,7 @@ async fn find_commit_ancestors(
     let mut ancestors = BTreeSet::new();
     while !seeds.is_empty() {
         let seed = seeds.pop_front().unwrap();
-        let c = connection.query().read_commit(&seed).await?;
+        let c = connection.index_backend().read_commit(&seed).await?;
         for parent_id in &c.parents {
             if !ancestors.contains(parent_id) {
                 ancestors.insert(parent_id.clone());
@@ -203,7 +203,7 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let src_branch = query.read_branch(name).await?;
     let (current_branch_name, current_commit) =
         read_current_branch(&mut workspace_transaction).await?;
@@ -296,7 +296,7 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
             if let Err(e) = edit_file(
                 &workspace_root,
                 &mut workspace_transaction,
-                connection.query(),
+                connection.index_backend(),
                 &full_path,
             )
             .await

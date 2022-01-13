@@ -60,70 +60,89 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
-use lgn_source_control::{blob_storage::BlobStorageUrl, Commit, RepositoryQuery, RepositoryUrl};
+use lgn_source_control::{blob_storage::BlobStorageUrl, Commit, IndexBackend};
+use lgn_source_control::{new_index_backend, Error};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
     CommitToBranchRequest, CommitToBranchResponse, CountLocksInDomainRequest,
-    CountLocksInDomainResponse, CreateRepositoryRequest, CreateRepositoryResponse,
-    DestroyRepositoryRequest, DestroyRepositoryResponse, FindBranchRequest, FindBranchResponse,
-    FindBranchesInLockDomainRequest, FindBranchesInLockDomainResponse, FindLockRequest,
-    FindLockResponse, FindLocksInDomainRequest, FindLocksInDomainResponse,
-    GetBlobStorageUrlRequest, GetBlobStorageUrlResponse, InsertBranchRequest, InsertBranchResponse,
+    CountLocksInDomainResponse, CreateIndexRequest, CreateIndexResponse, DestroyIndexRequest,
+    DestroyIndexResponse, FindBranchRequest, FindBranchResponse, FindBranchesInLockDomainRequest,
+    FindBranchesInLockDomainResponse, FindLockRequest, FindLockResponse, FindLocksInDomainRequest,
+    FindLocksInDomainResponse, GetBlobStorageUrlRequest, GetBlobStorageUrlResponse,
+    IndexExistsRequest, IndexExistsResponse, InsertBranchRequest, InsertBranchResponse,
     InsertCommitRequest, InsertCommitResponse, InsertLockRequest, InsertLockResponse,
     ReadBranchesRequest, ReadBranchesResponse, ReadCommitRequest, ReadCommitResponse,
     ReadTreeRequest, ReadTreeResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
     SaveTreeRequest, SaveTreeResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
 use lgn_telemetry_sink::TelemetryGuard;
-use lgn_tracing::{debug, info, LevelFilter};
+use lgn_tracing::{debug, info, warn, LevelFilter};
+use tokio::sync::Mutex;
+use url::Url;
 
 struct Service {
-    repository_queries: RwLock<HashMap<String, Arc<Box<dyn RepositoryQuery>>>>,
-    sql_url: String,
+    index_backends: Mutex<HashMap<String, Arc<Box<dyn IndexBackend>>>>,
+    database_host: String,
+    database_username: Option<String>,
+    database_password: Option<String>,
     blob_storage_url: BlobStorageUrl,
 }
 
 impl Service {
     pub fn new(
-        database_host: &str,
-        database_username: Option<&str>,
-        database_password: Option<&str>,
+        database_host: String,
+        database_username: Option<String>,
+        database_password: Option<String>,
         blob_storage_url: BlobStorageUrl,
     ) -> Self {
-        let sql_url = format!(
-            "mysql://{}:{}@{}/",
-            database_username.unwrap_or_default(),
-            database_password.unwrap_or_default(),
-            database_host,
-        );
-
         Self {
-            repository_queries: RwLock::new(HashMap::new()),
-            sql_url,
+            index_backends: Mutex::new(HashMap::new()),
+            database_host,
+            database_username,
+            database_password,
             blob_storage_url,
         }
     }
 
-    fn get_repository_url(&self, name: &str) -> RepositoryUrl {
-        (self.sql_url.clone() + name).parse().unwrap()
+    fn new_index_backend_for_repository(&self, name: &str) -> Result<Box<dyn IndexBackend>> {
+        let index_url = Url::parse_with_params(
+            &format!(
+                "mysql://{}:{}@{}/{}",
+                self.database_username.as_deref().unwrap_or_default(),
+                self.database_password.as_deref().unwrap_or_default(),
+                self.database_host,
+                name,
+            ),
+            &[("blob_storage_url", self.blob_storage_url.to_string())],
+        )
+        .unwrap();
+
+        new_index_backend(index_url.as_str()).map_err(Into::into)
     }
 
-    fn get_repository_query(
+    async fn get_index_backend_for_repository(
         &self,
         name: &str,
-    ) -> Result<Arc<Box<dyn RepositoryQuery>>, tonic::Status> {
-        self.repository_queries
-            .read()
-            .unwrap()
-            .get(name)
-            .ok_or_else(|| anyhow::anyhow!("repository not found"))
-            .map(Arc::clone)
-            .map_err(|e| tonic::Status::unknown(e.to_string()))
+    ) -> Result<Arc<Box<dyn IndexBackend>>, tonic::Status> {
+        let mut index_backends = self.index_backends.lock().await;
+
+        if let Some(index_backend) = index_backends.get(name) {
+            Ok(Arc::clone(index_backend))
+        } else {
+            let backend = Arc::new(
+                self.new_index_backend_for_repository(name)
+                    .map_err(|e| tonic::Status::unknown(e.to_string()))?,
+            );
+
+            index_backends.insert(name.to_string(), backend.clone());
+
+            Ok(backend)
+        }
     }
 
     fn get_request_origin<T>(request: &tonic::Request<T>) -> String {
@@ -135,49 +154,45 @@ impl Service {
 
 #[tonic::async_trait]
 impl SourceControl for Service {
-    async fn ping(
+    async fn create_index(
         &self,
-        _request: tonic::Request<()>,
-    ) -> Result<tonic::Response<()>, tonic::Status> {
-        Ok(tonic::Response::new(()))
-    }
-
-    async fn create_repository(
-        &self,
-        request: tonic::Request<CreateRepositoryRequest>,
-    ) -> Result<tonic::Response<CreateRepositoryResponse>, tonic::Status> {
+        request: tonic::Request<CreateIndexRequest>,
+    ) -> Result<tonic::Response<CreateIndexResponse>, tonic::Status> {
         let origin = Self::get_request_origin(&request);
         let name = request.into_inner().repository_name;
 
-        debug!("{}: Creating repository `{}`...", origin, &name);
+        debug!("{}: Creating index `{}`...", origin, &name);
 
-        let repository_url = self.get_repository_url(&name);
-        let repository_query = repository_url.into_query();
+        let index_backend = self.get_index_backend_for_repository(&name).await?;
 
-        let blob_storage_url = repository_query
-            .create_repository(Some(self.blob_storage_url.clone()))
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+        let blob_storage_url = match index_backend.create_index().await {
+            Ok(blob_storage_url) => blob_storage_url,
+            Err(Error::IndexAlreadyExists { url: _ }) => {
+                warn!(
+                    "{}: Did not create index `{}` as it already exists",
+                    origin, &name
+                );
+                return Ok(tonic::Response::new(CreateIndexResponse {
+                    blob_storage_url: "".to_string(),
+                    already_exists: true,
+                }));
+            }
+            Err(e) => return Err(tonic::Status::unknown(e.to_string())),
+        };
 
-        info!(
-            "{}: Created repository `{}` with blob storage URL: {}",
-            origin, &name, &blob_storage_url
-        );
+        info!("{}: Created index `{}`", origin, &name);
 
-        self.repository_queries
-            .write()
-            .unwrap()
-            .insert(name, Arc::new(repository_query));
-
-        Ok(tonic::Response::new(CreateRepositoryResponse {
+        Ok(tonic::Response::new(CreateIndexResponse {
             blob_storage_url: blob_storage_url.to_string(),
+            already_exists: false,
         }))
     }
 
-    async fn destroy_repository(
+    async fn destroy_index(
         &self,
-        request: tonic::Request<DestroyRepositoryRequest>,
-    ) -> Result<tonic::Response<DestroyRepositoryResponse>, tonic::Status> {
+        request: tonic::Request<DestroyIndexRequest>,
+    ) -> Result<tonic::Response<DestroyIndexResponse>, tonic::Status> {
+        let origin = Self::get_request_origin(&request);
         let name = request.into_inner().repository_name;
 
         // This does not protect from the race condition where a repository is
@@ -190,19 +205,51 @@ impl SourceControl for Service {
         //
         // The only real protection here, is ensuring that this can't happen at
         // the database level, which we don't care about at this early stage.
-        let repository_query = self.repository_queries.write().unwrap().remove(&name);
+        let index_backend = self.index_backends.lock().await.remove(&name);
 
-        let repository_query = match repository_query {
-            Some(repository_query) => repository_query,
-            None => self.get_repository_query(&name)?,
+        let index_backend = match index_backend {
+            Some(index_backend) => index_backend,
+            None => Arc::new(
+                self.new_index_backend_for_repository(&name)
+                    .map_err(|e| tonic::Status::unknown(e.to_string()))?,
+            ),
         };
 
-        repository_query
-            .destroy_repository()
+        match index_backend.destroy_index().await {
+            Ok(()) => {
+                info!("{}: Destroyed index `{}`", origin, &name);
+
+                Ok(tonic::Response::new(DestroyIndexResponse {
+                    does_not_exist: false,
+                }))
+            }
+            Err(Error::IndexDoesNotExist { url: _ }) => {
+                warn!(
+                    "{}: Did not destroy index `{}` as it does not exist",
+                    origin, &name
+                );
+                Ok(tonic::Response::new(DestroyIndexResponse {
+                    does_not_exist: true,
+                }))
+            }
+            Err(e) => Err(tonic::Status::unknown(e.to_string())),
+        }
+    }
+
+    async fn index_exists(
+        &self,
+        request: tonic::Request<IndexExistsRequest>,
+    ) -> Result<tonic::Response<IndexExistsResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
+        let exists = index_backend
+            .index_exists()
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(DestroyRepositoryResponse {}))
+        Ok(tonic::Response::new(IndexExistsResponse { exists }))
     }
 
     async fn get_blob_storage_url(
@@ -220,9 +267,11 @@ impl SourceControl for Service {
     ) -> Result<tonic::Response<RegisterWorkspaceResponse>, tonic::Status> {
         let request = request.into_inner();
         let workspace_registration = request.workspace_registration.unwrap_or_default().into();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .register_workspace(&workspace_registration)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -235,9 +284,11 @@ impl SourceControl for Service {
         request: tonic::Request<FindBranchRequest>,
     ) -> Result<tonic::Response<FindBranchResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let branch = query
+        let branch = index_backend
             .find_branch(&request.branch_name)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?
@@ -251,9 +302,11 @@ impl SourceControl for Service {
         request: tonic::Request<ReadBranchesRequest>,
     ) -> Result<tonic::Response<ReadBranchesResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let branches = query
+        let branches = index_backend
             .read_branches()
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -268,9 +321,11 @@ impl SourceControl for Service {
         request: tonic::Request<FindBranchesInLockDomainRequest>,
     ) -> Result<tonic::Response<FindBranchesInLockDomainResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let branches = query
+        let branches = index_backend
             .find_branches_in_lock_domain(&request.lock_domain_id)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -285,10 +340,12 @@ impl SourceControl for Service {
         request: tonic::Request<ReadCommitRequest>,
     ) -> Result<tonic::Response<ReadCommitResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
         let commit = Some(
-            query
+            index_backend
                 .read_commit(&request.commit_id)
                 .await
                 .map_err(|e| tonic::Status::unknown(e.to_string()))?
@@ -303,10 +360,12 @@ impl SourceControl for Service {
         request: tonic::Request<ReadTreeRequest>,
     ) -> Result<tonic::Response<ReadTreeResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
         let tree = Some(
-            query
+            index_backend
                 .read_tree(&request.tree_hash)
                 .await
                 .map_err(|e| tonic::Status::unknown(e.to_string()))?
@@ -321,9 +380,11 @@ impl SourceControl for Service {
         request: tonic::Request<InsertLockRequest>,
     ) -> Result<tonic::Response<InsertLockResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .insert_lock(&request.lock.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -336,9 +397,11 @@ impl SourceControl for Service {
         request: tonic::Request<FindLockRequest>,
     ) -> Result<tonic::Response<FindLockResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let lock = query
+        let lock = index_backend
             .find_lock(&request.lock_domain_id, &request.canonical_relative_path)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?
@@ -352,9 +415,11 @@ impl SourceControl for Service {
         request: tonic::Request<FindLocksInDomainRequest>,
     ) -> Result<tonic::Response<FindLocksInDomainResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let locks = query
+        let locks = index_backend
             .find_locks_in_domain(&request.lock_domain_id)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?
@@ -370,9 +435,11 @@ impl SourceControl for Service {
         request: tonic::Request<SaveTreeRequest>,
     ) -> Result<tonic::Response<SaveTreeResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .save_tree(&request.tree.unwrap_or_default().into(), &request.hash)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -385,12 +452,14 @@ impl SourceControl for Service {
         request: tonic::Request<InsertCommitRequest>,
     ) -> Result<tonic::Response<InsertCommitResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
         let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
         let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        query
+        index_backend
             .insert_commit(&commit)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -403,12 +472,14 @@ impl SourceControl for Service {
         request: tonic::Request<CommitToBranchRequest>,
     ) -> Result<tonic::Response<CommitToBranchResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
         let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
         let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        query
+        index_backend
             .commit_to_branch(&commit, &request.branch.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -421,9 +492,11 @@ impl SourceControl for Service {
         request: tonic::Request<CommitExistsRequest>,
     ) -> Result<tonic::Response<CommitExistsResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let exists = query
+        let exists = index_backend
             .commit_exists(&request.commit_id)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -436,9 +509,11 @@ impl SourceControl for Service {
         request: tonic::Request<UpdateBranchRequest>,
     ) -> Result<tonic::Response<UpdateBranchResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .update_branch(&request.branch.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -451,9 +526,11 @@ impl SourceControl for Service {
         request: tonic::Request<InsertBranchRequest>,
     ) -> Result<tonic::Response<InsertBranchResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .insert_branch(&request.branch.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -466,9 +543,11 @@ impl SourceControl for Service {
         request: tonic::Request<ClearLockRequest>,
     ) -> Result<tonic::Response<ClearLockResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        query
+        index_backend
             .clear_lock(&request.lock_domain_id, &request.canonical_relative_path)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -481,9 +560,11 @@ impl SourceControl for Service {
         request: tonic::Request<CountLocksInDomainRequest>,
     ) -> Result<tonic::Response<CountLocksInDomainResponse>, tonic::Status> {
         let request = request.into_inner();
-        let query = self.get_repository_query(&request.repository_name)?;
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
 
-        let count = query
+        let count = index_backend
             .count_locks_in_domain(&request.lock_domain_id)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -534,9 +615,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let service = SourceControlServer::new(Service::new(
-        &args.database_host,
-        args.database_username.as_deref(),
-        args.database_password.as_deref(),
+        args.database_host,
+        args.database_username,
+        args.database_password,
         args.blob_storage_url,
     ));
     let server = tonic::transport::Server::builder()

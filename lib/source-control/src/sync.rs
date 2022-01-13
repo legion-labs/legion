@@ -23,7 +23,7 @@ async fn find_commit_range(
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>> {
-    let query = connection.query();
+    let query = connection.index_backend();
     let repo_branch = query.read_branch(branch_name).await?;
     let mut current_commit = query.read_commit(&repo_branch.head).await?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
@@ -164,7 +164,10 @@ pub async fn sync_workspace(
         // in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == destination_commit);
-        let root_tree = connection.query().read_tree(&ref_commit.root_hash).await?;
+        let root_tree = connection
+            .index_backend()
+            .read_tree(&ref_commit.root_hash)
+            .await?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
 
@@ -296,7 +299,7 @@ pub async fn sync_command() -> Result<()> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let repo_branch = query.read_branch(&branch_name).await?;
 
     sync_to_command(&repo_branch.head).await

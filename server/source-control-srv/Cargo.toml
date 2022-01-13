@@ -20,3 +20,4 @@ lgn-source-control-proto = { path = "../../proto/source-control", version = "0.1
 serde_json = "1.0"
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
+url = "2.2"

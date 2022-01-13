@@ -1,20 +1,35 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateRepositoryRequest {
+pub struct IndexExistsRequest {
     #[prost(string, tag = "1")]
     pub repository_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateRepositoryResponse {
+pub struct IndexExistsResponse {
+    #[prost(bool, tag = "1")]
+    pub exists: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateIndexRequest {
+    #[prost(string, tag = "1")]
+    pub repository_name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateIndexResponse {
     #[prost(string, tag = "1")]
     pub blob_storage_url: ::prost::alloc::string::String,
+    #[prost(bool, tag = "2")]
+    pub already_exists: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DestroyRepositoryRequest {
+pub struct DestroyIndexRequest {
     #[prost(string, tag = "1")]
     pub repository_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DestroyRepositoryResponse {}
+pub struct DestroyIndexResponse {
+    #[prost(bool, tag = "1")]
+    pub does_not_exist: bool,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetBlobStorageUrlRequest {
     #[prost(string, tag = "1")]
@@ -347,10 +362,10 @@ pub mod source_control_client {
             self.inner = self.inner.accept_gzip();
             self
         }
-        pub async fn ping(
+        pub async fn index_exists(
             &mut self,
-            request: impl tonic::IntoRequest<()>,
-        ) -> Result<tonic::Response<()>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::IndexExistsRequest>,
+        ) -> Result<tonic::Response<super::IndexExistsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -358,13 +373,14 @@ pub mod source_control_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/source_control.SourceControl/Ping");
+            let path =
+                http::uri::PathAndQuery::from_static("/source_control.SourceControl/IndexExists");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        pub async fn create_repository(
+        pub async fn create_index(
             &mut self,
-            request: impl tonic::IntoRequest<super::CreateRepositoryRequest>,
-        ) -> Result<tonic::Response<super::CreateRepositoryResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::CreateIndexRequest>,
+        ) -> Result<tonic::Response<super::CreateIndexResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -372,15 +388,14 @@ pub mod source_control_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/source_control.SourceControl/CreateRepository",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/source_control.SourceControl/CreateIndex");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        pub async fn destroy_repository(
+        pub async fn destroy_index(
             &mut self,
-            request: impl tonic::IntoRequest<super::DestroyRepositoryRequest>,
-        ) -> Result<tonic::Response<super::DestroyRepositoryResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::DestroyIndexRequest>,
+        ) -> Result<tonic::Response<super::DestroyIndexResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -388,9 +403,8 @@ pub mod source_control_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/source_control.SourceControl/DestroyRepository",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/source_control.SourceControl/DestroyIndex");
             self.inner.unary(request.into_request(), path, codec).await
         }
         pub async fn get_blob_storage_url(
@@ -679,18 +693,18 @@ pub mod source_control_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with SourceControlServer."]
     #[async_trait]
     pub trait SourceControl: Send + Sync + 'static {
-        async fn ping(
+        async fn index_exists(
             &self,
-            request: tonic::Request<()>,
-        ) -> Result<tonic::Response<()>, tonic::Status>;
-        async fn create_repository(
+            request: tonic::Request<super::IndexExistsRequest>,
+        ) -> Result<tonic::Response<super::IndexExistsResponse>, tonic::Status>;
+        async fn create_index(
             &self,
-            request: tonic::Request<super::CreateRepositoryRequest>,
-        ) -> Result<tonic::Response<super::CreateRepositoryResponse>, tonic::Status>;
-        async fn destroy_repository(
+            request: tonic::Request<super::CreateIndexRequest>,
+        ) -> Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
+        async fn destroy_index(
             &self,
-            request: tonic::Request<super::DestroyRepositoryRequest>,
-        ) -> Result<tonic::Response<super::DestroyRepositoryResponse>, tonic::Status>;
+            request: tonic::Request<super::DestroyIndexRequest>,
+        ) -> Result<tonic::Response<super::DestroyIndexResponse>, tonic::Status>;
         async fn get_blob_storage_url(
             &self,
             request: tonic::Request<super::GetBlobStorageUrlRequest>,
@@ -803,15 +817,20 @@ pub mod source_control_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/source_control.SourceControl/Ping" => {
+                "/source_control.SourceControl/IndexExists" => {
                     #[allow(non_camel_case_types)]
-                    struct PingSvc<T: SourceControl>(pub Arc<T>);
-                    impl<T: SourceControl> tonic::server::UnaryService<()> for PingSvc<T> {
-                        type Response = ();
+                    struct IndexExistsSvc<T: SourceControl>(pub Arc<T>);
+                    impl<T: SourceControl> tonic::server::UnaryService<super::IndexExistsRequest>
+                        for IndexExistsSvc<T>
+                    {
+                        type Response = super::IndexExistsResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::IndexExistsRequest>,
+                        ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).ping(request).await };
+                            let fut = async move { (*inner).index_exists(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -820,7 +839,7 @@ pub mod source_control_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = PingSvc(inner);
+                        let method = IndexExistsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,
@@ -831,21 +850,20 @@ pub mod source_control_server {
                     };
                     Box::pin(fut)
                 }
-                "/source_control.SourceControl/CreateRepository" => {
+                "/source_control.SourceControl/CreateIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateRepositorySvc<T: SourceControl>(pub Arc<T>);
-                    impl<T: SourceControl>
-                        tonic::server::UnaryService<super::CreateRepositoryRequest>
-                        for CreateRepositorySvc<T>
+                    struct CreateIndexSvc<T: SourceControl>(pub Arc<T>);
+                    impl<T: SourceControl> tonic::server::UnaryService<super::CreateIndexRequest>
+                        for CreateIndexSvc<T>
                     {
-                        type Response = super::CreateRepositoryResponse;
+                        type Response = super::CreateIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::CreateRepositoryRequest>,
+                            request: tonic::Request<super::CreateIndexRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).create_repository(request).await };
+                            let fut = async move { (*inner).create_index(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -854,7 +872,7 @@ pub mod source_control_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = CreateRepositorySvc(inner);
+                        let method = CreateIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,
@@ -865,21 +883,20 @@ pub mod source_control_server {
                     };
                     Box::pin(fut)
                 }
-                "/source_control.SourceControl/DestroyRepository" => {
+                "/source_control.SourceControl/DestroyIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct DestroyRepositorySvc<T: SourceControl>(pub Arc<T>);
-                    impl<T: SourceControl>
-                        tonic::server::UnaryService<super::DestroyRepositoryRequest>
-                        for DestroyRepositorySvc<T>
+                    struct DestroyIndexSvc<T: SourceControl>(pub Arc<T>);
+                    impl<T: SourceControl> tonic::server::UnaryService<super::DestroyIndexRequest>
+                        for DestroyIndexSvc<T>
                     {
-                        type Response = super::DestroyRepositoryResponse;
+                        type Response = super::DestroyIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DestroyRepositoryRequest>,
+                            request: tonic::Request<super::DestroyIndexRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).destroy_repository(request).await };
+                            let fut = async move { (*inner).destroy_index(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -888,7 +905,7 @@ pub mod source_control_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DestroyRepositorySvc(inner);
+                        let method = DestroyIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

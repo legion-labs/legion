@@ -64,7 +64,7 @@ pub async fn revert_file(
         .ok_or(anyhow::anyhow!("no parent to path provided"))?;
 
     let (_branch_name, current_commit) = read_current_branch(workspace_transaction).await?;
-    let query = repo_connection.query();
+    let query = repo_connection.index_backend();
     let current_commit = query.read_commit(&current_commit).await?;
     let root_tree = query.read_tree(&current_commit.root_hash).await?;
     let dir_tree = fetch_tree_subdir(query, &root_tree, parent_dir).await?;

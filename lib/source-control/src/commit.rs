@@ -186,7 +186,7 @@ pub async fn commit_local_changes(
     let (current_branch_name, current_workspace_commit) =
         read_current_branch(workspace_transaction).await?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let mut repo_branch = query.read_branch(&current_branch_name).await?;
 
     if repo_branch.head != current_workspace_commit {
@@ -260,7 +260,7 @@ pub async fn find_branch_commits(
     branch: &Branch,
 ) -> Result<Vec<Commit>> {
     let mut commits = Vec::new();
-    let query = connection.query();
+    let query = connection.index_backend();
     let mut c = query.read_commit(&branch.head).await?;
     commits.push(c.clone());
     while !c.parents.is_empty() {

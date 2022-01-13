@@ -1,30 +1,35 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use crate::{blob_storage::BlobStorage, RepositoryQuery, RepositoryUrl, Workspace};
+use crate::{blob_storage::BlobStorage, Index, IndexBackend, Workspace};
 
 pub struct RepositoryConnection {
-    pub repo_query: Box<dyn RepositoryQuery>,
+    pub index: Index,
     pub blob_storage: Box<dyn BlobStorage>,
 }
 
 impl RepositoryConnection {
-    pub async fn new(url: RepositoryUrl) -> Result<Self> {
-        let repository_query = url.into_query();
-        let blob_storage = repository_query
+    pub async fn new(index_url: &str) -> Result<Self> {
+        let index = Index::new(index_url)?;
+        let blob_storage = index
+            .backend()
             .get_blob_storage_url()
             .await?
             .into_blob_storage()
             .await?;
 
         Ok(Self {
-            repo_query: repository_query,
+            index,
             blob_storage,
         })
     }
 
-    pub fn query(&self) -> &dyn RepositoryQuery {
-        &*self.repo_query
+    pub fn index(&self) -> &Index {
+        &self.index
+    }
+
+    pub fn index_backend(&self) -> &dyn IndexBackend {
+        self.index.backend()
     }
 
     pub fn blob_storage(&self) -> &dyn BlobStorage {
@@ -33,7 +38,7 @@ impl RepositoryConnection {
 }
 
 pub async fn connect_to_server(workspace: &Workspace) -> Result<Arc<RepositoryConnection>> {
-    RepositoryConnection::new(workspace.repository_url.clone())
+    RepositoryConnection::new(&workspace.index_url)
         .await
         .map(Arc::new)
 }

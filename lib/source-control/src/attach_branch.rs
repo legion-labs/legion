@@ -14,7 +14,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let (current_branch_name, _current_commit) =
         read_current_branch(workspace_connection.sql()).await?;
     let mut repo_branch = query.read_branch(&current_branch_name).await?;
