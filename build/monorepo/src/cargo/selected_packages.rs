@@ -178,7 +178,7 @@ impl<'a> SelectedPackages<'a> {
     pub fn select_package_from_bin(&mut self, bin: &str, ctx: &'a Context) -> Result<()> {
         match self.includes {
             SelectedInclude::Workspace => {
-                self.includes = self.includes.intersection(
+                let includes = self.includes.intersection(
                     ctx.package_graph()?
                         .workspace()
                         .iter()
@@ -187,6 +187,13 @@ impl<'a> SelectedPackages<'a> {
                         })
                         .map(|package| package.name()),
                 );
+                if includes.is_empty() {
+                    return Err(Error::new(format!(
+                        "no package contained a binary named `{}`",
+                        bin
+                    )));
+                }
+                self.includes = includes;
             }
             SelectedInclude::Includes(_) => {}
         }
@@ -275,6 +282,13 @@ impl<'a> SelectedInclude<'a> {
             SelectedInclude::Includes(includes) => {
                 SelectedInclude::Includes(includes.intersection(&names).copied().collect())
             }
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        match self {
+            SelectedInclude::Workspace => false,
+            SelectedInclude::Includes(includes) => includes.is_empty(),
         }
     }
 }
