@@ -1,4 +1,5 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -11,11 +12,6 @@ struct VertexOut {
     float4 hpos : SV_POSITION;
     float3 picking_pos : POSITION;
     float3 picked_world_pos : COLOR;
-};
-
-struct ConstData {
-    float4x4 custom_world;            
-    float picking_distance;
 };
 
 struct EntityTransforms {
@@ -48,7 +44,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4x4 world = const_data.custom_world;
+    float4x4 world = const_data.world;
     if (push_constant.world_offset != 0xFFFFFFFF)
     {
         EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);

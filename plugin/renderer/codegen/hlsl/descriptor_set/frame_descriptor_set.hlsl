@@ -8,10 +8,12 @@
     #include "../cgen_type/spotlight.hlsl"
 
     [[vk::binding(0, 0)]]
-    StructuredBuffer<OmnidirectionalLight> sb_omni_lights;
+    StructuredBuffer<OmnidirectionalLight> omni_lights;
     [[vk::binding(1, 0)]]
-    StructuredBuffer<DirectionalLight> sb_dir_lights;
+    StructuredBuffer<DirectionalLight> dir_lights;
     [[vk::binding(2, 0)]]
-    StructuredBuffer<Spotlight> sb_spotlights;
+    StructuredBuffer<Spotlight> spot_lights;
+    [[vk::binding(3, 0)]]
+    ByteAddressBuffer static_buffer;
 
 #endif
