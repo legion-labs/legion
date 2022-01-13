@@ -9,8 +9,8 @@ use lgn_math::Vec2;
 use lgn_transform::prelude::Transform;
 
 use crate::{
+    cgen::cgen_type::PickingData,
     components::{ManipulatorComponent, PickedComponent},
-    render_pass::PickingData,
 };
 
 use super::ManipulatorType;
@@ -265,7 +265,7 @@ impl PickingManager {
             if !inner
                 .current_picking_data
                 .iter()
-                .any(|existing_data| existing_data.picking_id == picking_data.picking_id)
+                .any(|existing_data| existing_data.picking_id() == picking_data.picking_id())
             {
                 inner.current_picking_data.push(*picking_data);
             }
@@ -300,11 +300,12 @@ impl PickingManager {
 
             let mut picked_entities = Vec::with_capacity(inner.current_picking_data.len());
             for picking_data in &inner.current_picking_data {
-                let base_id = picking_data.picking_id & 0x00FFFFFF;
+                let picking_id: u32 = picking_data.picking_id().into();
+                let base_id = picking_id & 0x00FFFFFF;
                 let block_id = base_id / inner.block_size as u32;
 
                 if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
-                    picked_entities.push(block.entity_id_for_picking_id(picking_data.picking_id));
+                    picked_entities.push(block.entity_id_for_picking_id(picking_id));
                 }
             }
             let mut manipulator_picked = false;

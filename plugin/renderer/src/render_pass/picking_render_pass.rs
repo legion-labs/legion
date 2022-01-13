@@ -10,7 +10,7 @@ use lgn_graphics_api::{
 use lgn_transform::components::Transform;
 
 use crate::{
-    cgen,
+    cgen::{self, cgen_type::PickingData},
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
         StaticMesh,
@@ -21,22 +21,7 @@ use crate::{
     RenderContext, RenderHandle, Renderer,
 };
 
-use lgn_math::{Mat4, Vec2, Vec3};
-
-#[derive(Clone, Copy)]
-pub(crate) struct PickingData {
-    pub(crate) picking_pos: Vec3,
-    pub(crate) picking_id: u32,
-}
-
-impl Default for PickingData {
-    fn default() -> Self {
-        Self {
-            picking_pos: Vec3::ZERO,
-            picking_id: 0,
-        }
-    }
-}
+use lgn_math::{Mat4, Vec2};
 
 struct ReadbackBufferPool {
     device_context: DeviceContext,
@@ -340,11 +325,14 @@ impl PickingRenderPass {
         let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
         push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
         push_constant_data.set_world_offset(static_mesh.world_offset.into());
-        push_constant_data.set_picking_id(if let Some(id) = custom_picking_id {
-            id
-        } else {
-            static_mesh.picking_id
-        }.into());
+        push_constant_data.set_picking_id(
+            if let Some(id) = custom_picking_id {
+                id
+            } else {
+                static_mesh.picking_id
+            }
+            .into(),
+        );
 
         cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
