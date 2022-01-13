@@ -55,7 +55,6 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
 #![warn(missing_docs)]
 
 use std::stringify;

@@ -58,7 +58,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 use runtime_srv::{build_runtime, start_runtime};
 

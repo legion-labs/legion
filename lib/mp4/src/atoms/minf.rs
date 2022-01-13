@@ -45,7 +45,7 @@ impl Atom for MinfAtom {
     }
 
     fn summary(&self) -> Result<String> {
-        let s = format!("");
+        let s = String::new();
         Ok(s)
     }
 }

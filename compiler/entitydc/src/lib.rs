@@ -53,6 +53,6 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 include!(concat!(env!("OUT_DIR"), "/compiler_entitydc.rs"));

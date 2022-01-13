@@ -64,7 +64,7 @@ impl BuildManager {
                 Ok(built)
             }
             Err(e) => {
-                println!("Data Build {} Failed: '{}'", resource_id, e.to_string());
+                println!("Data Build {} Failed: '{}'", resource_id, e);
                 Err(anyhow::Error::new(e))
             }
         }

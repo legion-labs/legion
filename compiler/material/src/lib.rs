@@ -53,7 +53,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 use lgn_data_compiler::{
     compiler_api::{

@@ -57,7 +57,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;

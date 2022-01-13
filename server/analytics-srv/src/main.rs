@@ -62,7 +62,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 mod analytics_service;
 mod cache;

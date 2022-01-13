@@ -56,7 +56,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;

@@ -53,7 +53,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 // TODO: Replace by using Reflection conversion
 include!(concat!(env!("OUT_DIR"), "/compiler_testentity.rs"));

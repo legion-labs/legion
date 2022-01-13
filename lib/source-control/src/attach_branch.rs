@@ -69,14 +69,14 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
         new_lock.lock_domain_id = parent_branch.lock_domain_id.clone();
 
         if let Err(e) = query.insert_lock(&new_lock).await {
-            failed_new_locks.push(format!("{}: {}", new_lock.relative_path, e.to_string()));
+            failed_new_locks.push(format!("{}: {}", new_lock.relative_path, e));
         }
 
         if let Err(e) = query
             .clear_lock(&lock.lock_domain_id, &lock.relative_path)
             .await
         {
-            failed_old_locks.push(format!("{}: {}", lock.relative_path.clone(), e.to_string()));
+            failed_old_locks.push(format!("{}: {}", lock.relative_path.clone(), e));
         }
 
         println!("Moved lock for {}", lock.relative_path);

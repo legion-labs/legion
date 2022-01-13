@@ -58,7 +58,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 pub mod offline_compiler;
 pub mod offline_to_runtime;

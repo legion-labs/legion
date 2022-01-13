@@ -646,9 +646,11 @@ unsafe fn initialize_bundle(
     let mut deduped = component_ids.clone();
     deduped.sort();
     deduped.dedup();
-    if deduped.len() != component_ids.len() {
-        panic!("Bundle {} has duplicate components", bundle_type_name);
-    }
+    assert!(
+        deduped.len() == component_ids.len(),
+        "Bundle {} has duplicate components",
+        bundle_type_name
+    );
 
     BundleInfo {
         id,

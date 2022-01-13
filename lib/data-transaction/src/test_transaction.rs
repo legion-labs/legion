@@ -307,9 +307,10 @@ async fn test_transaction_system() -> anyhow::Result<()> {
                 "INVALID_PROPERTY",
                 "[1,2,3]",
             ));
-        if data_manager.commit_transaction(transaction).await.is_ok() {
-            panic!("Transaction with invalid property update shouldn't succceed");
-        }
+        assert!(
+            !data_manager.commit_transaction(transaction).await.is_ok(),
+            "Transaction with invalid property update shouldn't succceed"
+        );
         assert!(!project.lock().await.exists_named(&invalid_resource));
 
         drop(data_manager);

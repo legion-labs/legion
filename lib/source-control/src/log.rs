@@ -35,7 +35,7 @@ pub async fn log_command() -> Result<()> {
         println!(
             "{} {} {} {}",
             branch_id,
-            c.timestamp.format("%Y-%m-%d %H:%M:%S").to_string(),
+            c.timestamp.format("%Y-%m-%d %H:%M:%S"),
             c.owner,
             c.message
         );

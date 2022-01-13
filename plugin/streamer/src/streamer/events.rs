@@ -111,7 +111,7 @@ pub(crate) enum VideoStreamEventInfo {
     Resize { width: u32, height: u32 },
     #[serde(rename = "initialize")]
     Initialize {
-        color: Color,
+        _color: Color,
         width: u32,
         height: u32,
     },
