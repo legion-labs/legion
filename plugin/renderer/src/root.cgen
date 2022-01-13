@@ -1,73 +1,83 @@
-mod level_0;
-
 mod lighting;
-
-struct LayoutCB {
-    a: [Float1; 3],
-    b: Float2,
-    c: [Uint2; 2],
-    d: [Half3; 1],
-    e: [Half1; 1],
-    f: [Half1; 2],
-    g: Half1,
-}
-
-struct LayoutSB {
-    a: [Float1; 3],
-    b: Float2,
-    c: [Uint2; 2],
-    d: [Half3; 1],
-    e: [Half1; 1],
-    f: [Half1; 2],
-    g: Half2,
-}
-
-struct LayoutSB2 {
-    a: LayoutSB,
-}
 
 struct ViewData {
     view: Float4x4,
+    inv_view: Float4x4,
     projection: Float4x4,
+    inv_projection: Float4x4,
+    projection_view: Float4x4,
+    inv_projection_view: Float4x4,
+    screen_size: Float4,
+    cursor_pos: Float2,
 }
 
-struct PushConstantData {
+struct ConstData {
+    world: Float4x4,
     color: Float4,
+    picking_distance: Float1,
 }
 
-#[DescriptorSet(frequency = 0)]
-struct ViewDescriptorSet {
-    view_data: ConstantBuffer<ViewData>,
+struct EntityTransforms {
+    world: Float4x4,
 }
 
-#[DescriptorSet(frequency = 1, transient)]
+#[DescriptorSet(frequency = 0, transient)]
 struct FrameDescriptorSet {
-    smp: Sampler,
-    smp_arr: [Sampler; 10],
-    cb: ConstantBuffer<LayoutCB>,
-    #[Field(transient)]
-    cb_tr: ConstantBuffer<LayoutCB>,
-    sb: StructuredBuffer<LayoutSB>,
-    sb2: StructuredBuffer<LayoutSB2>,
-    sb_arr: [StructuredBuffer<LayoutSB>; 10],
-    rw_sb: RWStructuredBuffer<LayoutSB>,
-    bab: ByteAddressBuffer,
-    rw_bab: RWByteAddressBuffer,
-    tex2d: Texture2D<Float4>,
-    rw_tex2d: RWTexture2D<Float4>,
-    tex3d: Texture3D<Float4>,
-    rw_tex3d: RWTexture3D<Float4>,
-    tex2darr: Texture2DArray<Float4>,
-    rw_tex2darr: RWTexture2DArray<Float4>,
-    rw_texcube: TextureCube<Float4>,
-    rw_texcubearr: TextureCubeArray<Float4>,
-    sb_omni_lights: StructuredBuffer<OmnidirectionalLight>,
-    sb_dir_lights: StructuredBuffer<DirectionalLight>,
-    sb_spotlights: StructuredBuffer<Spotlight>,
+    omni_lights: StructuredBuffer<OmnidirectionalLight>,
+    dir_lights: StructuredBuffer<DirectionalLight>,
+    spot_lights: StructuredBuffer<Spotlight>,
+    static_buffer: ByteAddressBuffer,
+}
+
+#[DescriptorSet(frequency = 1)]
+struct ViewDescriptorSet {
+    camera: ConstantBuffer<ViewData>,
+}
+
+struct InstancePushConstantData {
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    is_picked: Uint1,
+    color: Float4,
 }
 
 #[PipelineLayout]
 struct TmpPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<PushConstantData>,
+    push_constant: PushConstant<InstancePushConstantData>,
+}
+
+struct EguiPushConstantData {
+    scale: Float2,
+    translation: Float2,
+    width: Float1,
+    height: Float1,
+}
+
+struct DebugPushConstantData {
+    vertex_offset: Uint1,
+}
+
+struct PickingPushConstantData {
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    picking_id: Uint1,
+}
+
+struct PickingData {
+    picking_pos: Float3,
+    picking_id: Uint1,
+}
+
+struct LightingData {
+    num_directional_lights: Uint1,
+    num_omnidirectional_lights: Uint1,
+    num_spotlights: Uint1,
+    diffuse: Uint1,
+    specular: Uint1,
+    specular_reflection: Float1,
+    diffuse_reflection: Float1,
+    ambient_reflection: Float1,
+    shininess: Float1,
 }

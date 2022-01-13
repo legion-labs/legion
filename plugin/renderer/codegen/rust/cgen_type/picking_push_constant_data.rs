@@ -7,21 +7,21 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "PushConstantData",
+    name: "PickingPushConstantData",
     id: 22,
-    size: 16,
+    size: 12,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<PushConstantData>(), 16);
+static_assertions::const_assert_eq!(mem::size_of::<PickingPushConstantData>(), 12);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct PushConstantData {
-    data: [u8; 16],
+pub struct PickingPushConstantData {
+    data: [u8; 12],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl PushConstantData {
+impl PickingPushConstantData {
     pub const fn id() -> u32 {
         22
     }
@@ -31,16 +31,42 @@ impl PushConstantData {
     }
 
     //
-    // member : color
+    // member : vertex_offset
     // offset : 0
-    // size : 16
+    // size : 4
     //
-    pub fn set_color(&mut self, value: Float4) {
+    pub fn set_vertex_offset(&mut self, value: Uint1) {
         self.set(0, value);
     }
 
-    pub fn color(&self) -> Float4 {
+    pub fn vertex_offset(&self) -> Uint1 {
         self.get(0)
+    }
+
+    //
+    // member : world_offset
+    // offset : 4
+    // size : 4
+    //
+    pub fn set_world_offset(&mut self, value: Uint1) {
+        self.set(4, value);
+    }
+
+    pub fn world_offset(&self) -> Uint1 {
+        self.get(4)
+    }
+
+    //
+    // member : picking_id
+    // offset : 8
+    // size : 4
+    //
+    pub fn set_picking_id(&mut self, value: Uint1) {
+        self.set(8, value);
+    }
+
+    pub fn picking_id(&self) -> Uint1 {
+        self.get(8)
     }
 
     #[allow(unsafe_code)]
@@ -64,10 +90,12 @@ impl PushConstantData {
     }
 }
 
-impl Default for PushConstantData {
+impl Default for PickingPushConstantData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 16] };
-        ret.set_color(Float4::default());
+        let mut ret = Self { data: [0; 12] };
+        ret.set_vertex_offset(Uint1::default());
+        ret.set_world_offset(Uint1::default());
+        ret.set_picking_id(Uint1::default());
         ret
     }
 }

@@ -5,7 +5,7 @@
 
     #include "../cgen_type/view_data.hlsl"
 
-    [[vk::binding(0, 0)]]
-    ConstantBuffer<ViewData> view_data;
+    [[vk::binding(0, 1)]]
+    ConstantBuffer<ViewData> camera;
 
 #endif

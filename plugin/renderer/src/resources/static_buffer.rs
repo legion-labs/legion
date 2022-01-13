@@ -9,10 +9,9 @@ use lgn_graphics_api::{
     MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
     ResourceUsage, Semaphore,
 };
-use lgn_math::Mat4;
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
-use crate::{RenderContext, RenderHandle};
+use crate::{cgen, RenderContext, RenderHandle};
 
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,
@@ -203,10 +202,6 @@ impl UnifiedStaticBuffer {
     }
 }
 
-pub struct EntityTransforms {
-    pub world: Mat4,
-}
-
 pub struct UniformGPUData<T> {
     static_baffer: UnifiedStaticBuffer,
     allocated_pages: Vec<PagedBufferAllocation>,
@@ -255,7 +250,7 @@ impl<T> UniformGPUData<T> {
     }
 }
 
-pub type TestStaticBuffer = RenderHandle<UniformGPUData<EntityTransforms>>;
+pub type TransformStaticsBuffer = RenderHandle<UniformGPUData<cgen::cgen_type::EntityTransforms>>;
 
 pub struct UniformGPUDataUploadJobBlock {
     upload_allocation: BufferAllocation,

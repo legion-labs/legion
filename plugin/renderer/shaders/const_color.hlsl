@@ -1,3 +1,7 @@
+#include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/debug_push_constant_data.hlsl"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
@@ -11,29 +15,20 @@ struct VertexOut {
     float2 uv_coord : TEXCOORD0;
 };
 
-struct ConstData {
-    float4x4 world;
-    float4x4 view;
-    float4x4 projection;
-    float4 color;
-};
 
+ConstantBuffer<ViewData> view_data;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
 
-struct PushConstData {
-    uint vertex_offset;
-};
-
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<DebugPushConstantData> push_constant;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4 pos_view_relative = mul(const_data.view, mul(const_data.world, vertex_in.pos));
-    vertex_out.hpos = mul(const_data.projection, pos_view_relative);
+    float4 pos_view_relative = mul(view_data.view, mul(const_data.world, vertex_in.pos));
+    vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.color = vertex_in.color;
     vertex_out.uv_coord = vertex_in.uv_coord;
 

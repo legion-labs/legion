@@ -1,3 +1,9 @@
+#include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
@@ -11,45 +17,20 @@ struct VertexOut {
     float3 picked_world_pos : COLOR;
 };
 
-struct ConstData {
-    float4x4 custom_world;
-    float4x4 view_proj;
-    float4x4 inv_view_proj;
-    float4 screen_size;
-    float2 cursor_pos;
-    float picking_distance;
-};
-
-struct EntityTransforms {
-    float4x4 world;
-};
-
+ConstantBuffer<ViewData> view_data;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
-
-struct PickingData
-{
-    float3 picking_pos;
-    uint picking_id;
-};
-
 RWStructuredBuffer<uint> picked_count;
 RWStructuredBuffer<PickingData> picked_objects;
 
-struct PushConstData {
-    uint vertex_offset;
-    uint world_offset;
-    uint picking_id;
-};
-
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<PickingPushConstantData> push_constant;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4x4 world = const_data.custom_world;
+    float4x4 world = const_data.world;
     if (push_constant.world_offset != 0xFFFFFFFF)
     {
         EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
@@ -57,20 +38,20 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     }
 
     float4 world_pos = mul(world, vertex_in.pos);
-    vertex_out.hpos = mul(const_data.view_proj, world_pos);
+    vertex_out.hpos = mul(view_data.projection_view, world_pos);
 
     float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;
     pers_div.y *= -1.0f;
 
     vertex_out.picked_world_pos = world_pos.xyz;
-    vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * const_data.screen_size.xy, world_pos.z);
+    vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * view_data.screen_size.xy, world_pos.z);
 
     return vertex_out;
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET 
 {
-    float2 proximity = vertex_out.picking_pos.xy - const_data.cursor_pos;
+    float2 proximity = vertex_out.picking_pos.xy - view_data.cursor_pos;
 
     if (dot(proximity, proximity) < const_data.picking_distance)
     {

@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "Spotlight",
-    id: 17,
+    id: 15,
     size: 64,
 };
 
@@ -23,7 +23,7 @@ pub struct Spotlight {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl Spotlight {
     pub const fn id() -> u32 {
-        17
+        15
     }
 
     pub fn def() -> &'static CGenTypeDef {

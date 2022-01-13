@@ -1,7 +1,7 @@
 use lgn_ecs::prelude::*;
 use lgn_math::Vec3;
 
-use crate::render_pass::PickingData;
+use crate::cgen::cgen_type::PickingData;
 
 #[derive(Component)]
 pub struct PickedComponent {
@@ -41,8 +41,9 @@ impl PickedComponent {
     pub fn get_closest_point(&self) -> Vec3 {
         let mut clostest_point = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
         for picking_data in &self.picking_data {
-            if picking_data.picking_pos.z < clostest_point.z {
-                clostest_point = picking_data.picking_pos;
+            let picking_pos = Vec3::from(picking_data.picking_pos());
+            if picking_pos.z < clostest_point.z {
+                clostest_point = picking_pos;
             }
         }
         clostest_point

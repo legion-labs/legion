@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "OmnidirectionalLight",
-    id: 13,
+    name: "InstancePushConstantData",
+    id: 19,
     size: 32,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<OmnidirectionalLight>(), 32);
+static_assertions::const_assert_eq!(mem::size_of::<InstancePushConstantData>(), 32);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct OmnidirectionalLight {
+pub struct InstancePushConstantData {
     data: [u8; 32],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl OmnidirectionalLight {
+impl InstancePushConstantData {
     pub const fn id() -> u32 {
-        13
+        19
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,55 +31,55 @@ impl OmnidirectionalLight {
     }
 
     //
-    // member : pos
+    // member : vertex_offset
     // offset : 0
-    // size : 12
+    // size : 4
     //
-    pub fn set_pos(&mut self, value: Float3) {
+    pub fn set_vertex_offset(&mut self, value: Uint1) {
         self.set(0, value);
     }
 
-    pub fn pos(&self) -> Float3 {
+    pub fn vertex_offset(&self) -> Uint1 {
         self.get(0)
     }
 
     //
-    // member : radiance
-    // offset : 12
+    // member : world_offset
+    // offset : 4
     // size : 4
     //
-    pub fn set_radiance(&mut self, value: Float1) {
-        self.set(12, value);
+    pub fn set_world_offset(&mut self, value: Uint1) {
+        self.set(4, value);
     }
 
-    pub fn radiance(&self) -> Float1 {
-        self.get(12)
+    pub fn world_offset(&self) -> Uint1 {
+        self.get(4)
+    }
+
+    //
+    // member : is_picked
+    // offset : 8
+    // size : 4
+    //
+    pub fn set_is_picked(&mut self, value: Uint1) {
+        self.set(8, value);
+    }
+
+    pub fn is_picked(&self) -> Uint1 {
+        self.get(8)
     }
 
     //
     // member : color
     // offset : 16
-    // size : 12
+    // size : 16
     //
-    pub fn set_color(&mut self, value: Float3) {
+    pub fn set_color(&mut self, value: Float4) {
         self.set(16, value);
     }
 
-    pub fn color(&self) -> Float3 {
+    pub fn color(&self) -> Float4 {
         self.get(16)
-    }
-
-    //
-    // member : pad
-    // offset : 28
-    // size : 4
-    //
-    pub fn set_pad(&mut self, value: Uint1) {
-        self.set(28, value);
-    }
-
-    pub fn pad(&self) -> Uint1 {
-        self.get(28)
     }
 
     #[allow(unsafe_code)]
@@ -103,13 +103,13 @@ impl OmnidirectionalLight {
     }
 }
 
-impl Default for OmnidirectionalLight {
+impl Default for InstancePushConstantData {
     fn default() -> Self {
         let mut ret = Self { data: [0; 32] };
-        ret.set_pos(Float3::default());
-        ret.set_radiance(Float1::default());
-        ret.set_color(Float3::default());
-        ret.set_pad(Uint1::default());
+        ret.set_vertex_offset(Uint1::default());
+        ret.set_world_offset(Uint1::default());
+        ret.set_is_picked(Uint1::default());
+        ret.set_color(Float4::default());
         ret
     }
 }

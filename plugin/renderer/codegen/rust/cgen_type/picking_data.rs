@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "LayoutC",
-    id: 14,
-    size: 2,
+    name: "PickingData",
+    id: 23,
+    size: 16,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<LayoutC>(), 2);
+static_assertions::const_assert_eq!(mem::size_of::<PickingData>(), 16);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct LayoutC {
-    data: [u8; 2],
+pub struct PickingData {
+    data: [u8; 16],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl LayoutC {
+impl PickingData {
     pub const fn id() -> u32 {
-        14
+        23
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,16 +31,29 @@ impl LayoutC {
     }
 
     //
-    // member : a
+    // member : picking_pos
     // offset : 0
-    // size : 2
+    // size : 12
     //
-    pub fn set_a(&mut self, value: Half1) {
+    pub fn set_picking_pos(&mut self, value: Float3) {
         self.set(0, value);
     }
 
-    pub fn a(&self) -> Half1 {
+    pub fn picking_pos(&self) -> Float3 {
         self.get(0)
+    }
+
+    //
+    // member : picking_id
+    // offset : 12
+    // size : 4
+    //
+    pub fn set_picking_id(&mut self, value: Uint1) {
+        self.set(12, value);
+    }
+
+    pub fn picking_id(&self) -> Uint1 {
+        self.get(12)
     }
 
     #[allow(unsafe_code)]
@@ -64,10 +77,11 @@ impl LayoutC {
     }
 }
 
-impl Default for LayoutC {
+impl Default for PickingData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 2] };
-        ret.set_a(Half1::default());
+        let mut ret = Self { data: [0; 16] };
+        ret.set_picking_pos(Float3::default());
+        ret.set_picking_id(Uint1::default());
         ret
     }
 }

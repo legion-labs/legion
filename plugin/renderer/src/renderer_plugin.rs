@@ -1,4 +1,5 @@
 use crate::{
+    cgen,
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
@@ -16,7 +17,7 @@ use lgn_transform::components::Transform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
-use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
+use crate::resources::UniformGPUDataUpdater;
 
 use crate::{
     components::{
@@ -201,10 +202,8 @@ fn update_transform(
         if manipulator.is_none() {
             mesh.world_offset = gpu_data.ensure_index_allocated(entity.id()) as u32;
 
-            let world = EntityTransforms {
-                world: transform.compute_matrix(),
-            };
-
+            let mut world = cgen::cgen_type::EntityTransforms::default();
+            world.set_world(transform.compute_matrix().into());
             updater.add_update_jobs(&[world], u64::from(mesh.world_offset));
         } else {
             mesh.world_offset = u32::MAX;

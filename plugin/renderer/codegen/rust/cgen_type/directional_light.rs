@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "DirectionalLight",
-    id: 16,
+    id: 14,
     size: 32,
 };
 
@@ -23,7 +23,7 @@ pub struct DirectionalLight {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl DirectionalLight {
     pub const fn id() -> u32 {
-        16
+        14
     }
 
     pub fn def() -> &'static CGenTypeDef {

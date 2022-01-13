@@ -4,26 +4,26 @@ use std::mem;
 
 use lgn_graphics_cgen_runtime::CGenTypeDef;
 
-use super::layout_sb::LayoutSB;
+use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "LayoutSB2",
-    id: 20,
-    size: 58,
+    name: "EntityTransforms",
+    id: 18,
+    size: 64,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<LayoutSB2>(), 58);
+static_assertions::const_assert_eq!(mem::size_of::<EntityTransforms>(), 64);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct LayoutSB2 {
-    data: [u8; 58],
+pub struct EntityTransforms {
+    data: [u8; 64],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl LayoutSB2 {
+impl EntityTransforms {
     pub const fn id() -> u32 {
-        20
+        18
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,15 +31,15 @@ impl LayoutSB2 {
     }
 
     //
-    // member : a
+    // member : world
     // offset : 0
-    // size : 58
+    // size : 64
     //
-    pub fn set_a(&mut self, value: LayoutSB) {
+    pub fn set_world(&mut self, value: Float4x4) {
         self.set(0, value);
     }
 
-    pub fn a(&self) -> LayoutSB {
+    pub fn world(&self) -> Float4x4 {
         self.get(0)
     }
 
@@ -64,10 +64,10 @@ impl LayoutSB2 {
     }
 }
 
-impl Default for LayoutSB2 {
+impl Default for EntityTransforms {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 58] };
-        ret.set_a(LayoutSB::default());
+        let mut ret = Self { data: [0; 64] };
+        ret.set_world(Float4x4::default());
         ret
     }
 }

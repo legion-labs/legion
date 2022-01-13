@@ -4,16 +4,20 @@
 #define PIPELINELAYOUT_TMPPIPELINELAYOUT
 
     // DescriptorSets
-    // - name: view_descriptor_set
+    // - name: frame_descriptor_set
     // - freq: 0
+    #include "../descriptor_set/frame_descriptor_set.hlsl"
+
+    // - name: view_descriptor_set
+    // - freq: 1
     #include "../descriptor_set/view_descriptor_set.hlsl"
 
     // PushConstant
     // - name: push_constant
-    #include "../cgen_type/push_constant_data.hlsl"
+    #include "../cgen_type/instance_push_constant_data.hlsl"
 
     [[vk::push_constant]]
-    ConstantBuffer<PushConstantData> push_constant; 
+    ConstantBuffer<InstancePushConstantData> push_constant; 
 
 
 #endif

@@ -6,8 +6,10 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
+use lgn_math::Vec4;
 
 use crate::{
+    cgen,
     components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     lighting::LightingManager,
@@ -124,25 +126,23 @@ impl TmpRenderPass {
             .definition()
             .descriptor_set_layouts[0];
 
-        let (view_matrix, projection_matrix) = camera.build_view_projection(
-            render_surface.extents().width() as f32,
-            render_surface.extents().height() as f32,
-        );
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let mut constant_data = Vec::with_capacity(32);
-        unsafe {
-            constant_data.set_len(32);
-        }
-        view_matrix.write_cols_to_slice(&mut constant_data[0..]);
-        projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
+        let view_data = camera.tmp_build_view_data(
+            render_surface.extents().width() as f32,
+            render_surface.extents().height() as f32,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        );
 
         let camera_buffer_view = transient_allocator
-            .copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER)
+            .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
         let lighting_manager_view = transient_allocator
-            .copy_data_slice(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+            .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
         for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
@@ -151,14 +151,14 @@ impl TmpRenderPass {
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "camera",
+                    "view_data",
                     &[DescriptorRef::BufferView(&camera_buffer_view)],
                 )
                 .unwrap();
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "lighting_manager",
+                    "lighting_data",
                     &[DescriptorRef::BufferView(&lighting_manager_view)],
                 )
                 .unwrap();
@@ -220,15 +220,12 @@ impl TmpRenderPass {
                 f32::from(static_mesh.color.a) / 255.0f32,
             );
 
-            let mut push_constant_data = [0; 8];
-            push_constant_data[0] = static_mesh.vertex_offset;
-            push_constant_data[1] = static_mesh.world_offset;
-            push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
-            push_constant_data[3] = 0; // padding
-            push_constant_data[4] = color.0.to_bits();
-            push_constant_data[5] = color.1.to_bits();
-            push_constant_data[6] = color.2.to_bits();
-            push_constant_data[7] = color.3.to_bits();
+            let mut push_constant_data = cgen::cgen_type::InstancePushConstantData::default();
+
+            push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
+            push_constant_data.set_world_offset(static_mesh.world_offset.into());
+            push_constant_data.set_is_picked(if picked_component.is_some() { 1 } else { 0 }.into());
+            push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 

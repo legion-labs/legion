@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "LayoutD",
-    id: 13,
-    size: 16,
+    name: "DebugPushConstantData",
+    id: 21,
+    size: 4,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<LayoutD>(), 16);
+static_assertions::const_assert_eq!(mem::size_of::<DebugPushConstantData>(), 4);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct LayoutD {
-    data: [u8; 16],
+pub struct DebugPushConstantData {
+    data: [u8; 4],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl LayoutD {
+impl DebugPushConstantData {
     pub const fn id() -> u32 {
-        13
+        21
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,15 +31,15 @@ impl LayoutD {
     }
 
     //
-    // member : a
+    // member : vertex_offset
     // offset : 0
-    // size : 16
+    // size : 4
     //
-    pub fn set_a(&mut self, value: Float4) {
+    pub fn set_vertex_offset(&mut self, value: Uint1) {
         self.set(0, value);
     }
 
-    pub fn a(&self) -> Float4 {
+    pub fn vertex_offset(&self) -> Uint1 {
         self.get(0)
     }
 
@@ -64,10 +64,10 @@ impl LayoutD {
     }
 }
 
-impl Default for LayoutD {
+impl Default for DebugPushConstantData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 16] };
-        ret.set_a(Float4::default());
+        let mut ret = Self { data: [0; 4] };
+        ret.set_vertex_offset(Uint1::default());
         ret
     }
 }
