@@ -102,10 +102,6 @@ pub enum CoreStage {
     /// Name of app stage responsible for processing the results of UPDATE. Runs
     /// after UPDATE.
     PostUpdate,
-    /// All work related to preparing command buffer generation
-    Prepare,
-    /// All work directlly related to command buffer generation
-    Render,
     /// Name of app stage that runs after all other app stages
     Last,
 }

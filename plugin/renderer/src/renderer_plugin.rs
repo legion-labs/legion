@@ -7,6 +7,7 @@ use crate::{
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::{DefaultMeshId, DefaultMeshes},
+    RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
 
@@ -22,7 +23,7 @@ use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, RenderSurface, StaticMesh,
     },
-    labels::RendererSystemLabel,
+    labels::CommandBufferLabel,
     RenderContext, Renderer,
 };
 
@@ -45,6 +46,18 @@ impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
+
+        app.add_stage_after(
+            CoreStage::PostUpdate,
+            RenderStage::Prepare,
+            SystemStage::parallel(),
+        );
+
+        app.add_stage_after(
+            RenderStage::Prepare,
+            RenderStage::Render,
+            SystemStage::parallel(),
+        );
 
         app.add_plugin(EguiPlugin::new(self.enable_egui));
         app.add_plugin(PickingPlugin {});
@@ -70,25 +83,25 @@ impl Plugin for RendererPlugin {
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system_to_stage(CoreStage::Prepare, ui_lights);
+            app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
-        app.add_system_to_stage(CoreStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(CoreStage::Prepare, update_transform);
-        app.add_system_to_stage(CoreStage::Prepare, update_lights);
-        app.add_system_to_stage(CoreStage::Prepare, camera_control);
+        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
+        app.add_system_to_stage(RenderStage::Prepare, update_transform);
+        app.add_system_to_stage(RenderStage::Prepare, update_lights);
+        app.add_system_to_stage(RenderStage::Prepare, camera_control);
 
         app.add_system_set_to_stage(
-            CoreStage::Render,
+            RenderStage::Render,
             SystemSet::new()
                 .with_system(render_update)
-                .before(RendererSystemLabel::Submit)
-                .label(RendererSystemLabel::Generation),
+                .before(CommandBufferLabel::Submit)
+                .label(CommandBufferLabel::Generate),
         );
 
         // Post-Update
         app.add_system_to_stage(
-            CoreStage::Render,
-            render_post_update.label(RendererSystemLabel::Submit),
+            RenderStage::Render,
+            render_post_update.label(CommandBufferLabel::Submit),
         );
 
         app.add_event::<RenderSurfaceCreatedForWindow>();

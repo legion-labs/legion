@@ -584,8 +584,6 @@ impl App {
             .add_stage(CoreStage::PreUpdate, SystemStage::parallel())
             .add_stage(CoreStage::Update, SystemStage::parallel())
             .add_stage(CoreStage::PostUpdate, SystemStage::parallel())
-            .add_stage(CoreStage::Prepare, SystemStage::parallel())
-            .add_stage(CoreStage::Render, SystemStage::parallel())
             .add_stage(CoreStage::Last, SystemStage::parallel())
     }
 
