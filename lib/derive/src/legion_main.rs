@@ -6,7 +6,7 @@ use syn::{parse_macro_input, ItemFn};
 pub fn legion_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     assert!(
-        !(input.sig.ident != "main"),
+        input.sig.ident == "main",
         "`legion_main` can only be used on a function called 'main'."
     );
 

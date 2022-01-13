@@ -647,7 +647,7 @@ unsafe fn initialize_bundle(
     deduped.sort();
     deduped.dedup();
     assert!(
-        !(deduped.len() != component_ids.len()),
+        deduped.len() == component_ids.len(),
         "Bundle {} has duplicate components",
         bundle_type_name
     );
