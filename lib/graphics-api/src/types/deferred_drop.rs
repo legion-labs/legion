@@ -95,6 +95,7 @@ struct DeferredDropperInner {
     pub receiver: Receiver<Box<dyn Any>>,
 }
 
+#[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for DeferredDropperInner {}
 
 unsafe impl Sync for DeferredDropperInner {}
