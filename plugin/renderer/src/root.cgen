@@ -51,3 +51,9 @@ struct EguiPushConstantData {
 struct DebugPushConstantData {
     vertex_offset: Uint1,
 }
+
+struct PickingPushConstantData {
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    picking_id: Uint1,
+}
