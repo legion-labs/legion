@@ -4,6 +4,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/instance_push_constant_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/lighting_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -18,23 +19,22 @@ struct VertexOut {
     float3 pos : POSITION;
 };
 
-struct LightingManager {
-    uint num_directional_lights;
-    uint num_omnidirectional_lights;
-    uint num_spotlights;
-    bool diffuse;
-    bool specular;
-    float specular_reflection;
-    float diffuse_reflection;
-    float ambient_reflection;
-    float shininess;
-};
-
 ConstantBuffer<ViewData> view_data;
-ConstantBuffer<LightingManager> lighting_manager;
+ConstantBuffer<LightingData> lighting_data;
 ByteAddressBuffer static_buffer;
 [[vk::push_constant]]
 ConstantBuffer<InstancePushConstantData> instance_data;
+
+#define PI 3.141592
+
+struct Lighting {
+    float3 specular;
+    float3 diffuse;
+};
+
+StructuredBuffer<DirectionalLight> directional_lights;
+StructuredBuffer<OmnidirectionalLight> omnidirectional_lights;
+StructuredBuffer<Spotlight> spotlights;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(instance_data.vertex_offset + vertexId * 56);
@@ -50,22 +50,12 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     return vertex_out;
 }
 
-#define PI 3.141592
-
-struct Lighting {
-    float3 specular;
-    float3 diffuse;
-};
-
-StructuredBuffer<DirectionalLight> directional_lights;
-StructuredBuffer<OmnidirectionalLight> omnidirectional_lights;
-StructuredBuffer<Spotlight> spotlights;
 
 // Position, normal, and light direction are in view space
 float GetSpecular(float3 pos, float3 light_dir, float3 normal) {
     float3 view_dir = normalize(-pos);
     float3 light_reflect = normalize(reflect(-light_dir, normal));
-    return pow(saturate(dot(view_dir, light_reflect)), lighting_manager.shininess);
+    return pow(saturate(dot(view_dir, light_reflect)), lighting_data.shininess);
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal, float3 pos) {
@@ -135,51 +125,51 @@ Lighting CalculateIncidentSpotlight(Spotlight light, float3 normal, float3 pos) 
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     float3 uniform_color = instance_data.color.xyz; 
-    float3 ambient_color = uniform_color * lighting_manager.ambient_reflection;
-    float3 diffuse_color = uniform_color * lighting_manager.diffuse_reflection;
-    float3 spec_color = float3(1.0, 1.0, 1.0) * lighting_manager.specular_reflection;
+    float3 ambient_color = uniform_color * lighting_data.ambient_reflection;
+    float3 diffuse_color = uniform_color * lighting_data.diffuse_reflection;
+    float3 spec_color = float3(1.0, 1.0, 1.0) * lighting_data.specular_reflection;
 
     float3 color = ambient_color;
-    for (uint i = 0; i < lighting_manager.num_directional_lights; i++)
+    for (uint i = 0; i < lighting_data.num_directional_lights; i++)
     {
         DirectionalLight light = directional_lights[i];
         Lighting lighting = CalculateIncidentDirectionalLight(light, vertex_out.normal, vertex_out.pos);
-        if (lighting_manager.diffuse)
+        if (lighting_data.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (lighting_manager.specular)
+        if (lighting_data.specular)
         {
             color += spec_color * lighting.specular;
         }
     }
 
-    for (i = 0; i < lighting_manager.num_omnidirectional_lights; i++)
+    for (i = 0; i < lighting_data.num_omnidirectional_lights; i++)
     {
         OmnidirectionalLight light = omnidirectional_lights[i];
         Lighting lighting = CalculateIncidentOmnidirectionalLight(light, vertex_out.normal, vertex_out.pos);
-        if (lighting_manager.diffuse)
+        if (lighting_data.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (lighting_manager.specular)
+        if (lighting_data.specular)
         {
             color += spec_color * lighting.specular;
         }
     }
 
-    for (i = 0; i < lighting_manager.num_spotlights; i++)
+    for (i = 0; i < lighting_data.num_spotlights; i++)
     {
         Spotlight light = spotlights[i];
         Lighting lighting = CalculateIncidentSpotlight(light, vertex_out.normal, vertex_out.pos);
-        if (lighting_manager.diffuse)
+        if (lighting_data.diffuse)
         {
             color += diffuse_color * lighting.diffuse;
         }
 
-        if (lighting_manager.specular)
+        if (lighting_data.specular)
         {
             color += spec_color * lighting.specular;
         }
