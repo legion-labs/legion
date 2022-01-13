@@ -223,8 +223,9 @@ impl DebugRenderPass {
         cmd_buffer: &HLCommandBuffer<'_>,
         default_meshes: &DefaultMeshes,
     ) {
-        let mut push_constant_data: [u32; 1] = [0; 1];
-        push_constant_data[0] = default_meshes.mesh_offset_from_id(mesh_id);
+        let mut push_constant_data = cgen::cgen_type::DebugPushConstantData::default();
+
+        push_constant_data.set_vertex_offset(default_meshes.mesh_offset_from_id(mesh_id).into());
 
         cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 

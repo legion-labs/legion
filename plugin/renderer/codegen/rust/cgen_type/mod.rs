@@ -15,9 +15,12 @@ pub(crate) use view_data::*;
 pub(crate) mod const_data;
 #[allow(unused_imports)]
 pub(crate) use const_data::*;
-pub(crate) mod push_constant_data;
+pub(crate) mod tmp_push_constant_data;
 #[allow(unused_imports)]
-pub(crate) use push_constant_data::*;
+pub(crate) use tmp_push_constant_data::*;
 pub(crate) mod egui_push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use egui_push_constant_data::*;
+pub(crate) mod debug_push_constant_data;
+#[allow(unused_imports)]
+pub(crate) use debug_push_constant_data::*;
