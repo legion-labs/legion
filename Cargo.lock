@@ -4494,11 +4494,14 @@ name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "clap 3.0.5",
+ "generic-data",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
+ "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-runtime",
  "lgn-input",
  "lgn-math",
  "lgn-presenter",
@@ -4512,6 +4515,7 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "png 0.17.2",
+ "sample-data-runtime",
 ]
 
 [[package]]
