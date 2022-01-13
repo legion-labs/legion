@@ -1,7 +1,8 @@
 <h1 align="center">
-    <a href="https://legionlabs.com"><img alt="Legion Labs" src="https://github.com/legion-labs/legion/raw/main/.github/images/logo.svg", width="340px" ></a>
     <br/>
-    Legion Engine
+    <a href="https://legionengine.com"><img alt="Legion Engine" src="https://github.com/legion-labs/legion/raw/main/.github/images/legion-engine-logo.svg", width="340px" ></a>
+    <br/>
+    <br/>
 </h1>
 
 <p align="center">
@@ -123,3 +124,9 @@ at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
+
+---
+
+<h1 align="center">
+    <a href="https://legionlabs.com"><img alt="Legion Labs" src="https://github.com/legion-labs/legion/raw/main/.github/images/legion-labs-logo.svg", width="240px" ></a>
+</h1>
