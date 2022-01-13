@@ -30,7 +30,7 @@ struct ViewDescriptorSet {
     camera: ConstantBuffer<ViewData>,
 }
 
-struct PushConstantData {
+struct TmpPushConstantData {
     color: Float4,
 }
 
@@ -38,7 +38,7 @@ struct PushConstantData {
 struct TmpPipelineLayout {
     frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<PushConstantData>,
+    push_constant: PushConstant<TmpPushConstantData>,
 }
 
 struct EguiPushConstantData {
@@ -46,4 +46,8 @@ struct EguiPushConstantData {
     translation: Float2,
     width: Float1,
     height: Float1,
+}
+
+struct DebugPushConstantData {
+    vertex_offset: Uint1,
 }

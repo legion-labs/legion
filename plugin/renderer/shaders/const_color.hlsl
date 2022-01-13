@@ -1,5 +1,6 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/debug_push_constant_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -19,12 +20,8 @@ ConstantBuffer<ViewData> view_data;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
 
-struct PushConstData {
-    uint vertex_offset;
-};
-
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<DebugPushConstantData> push_constant;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
