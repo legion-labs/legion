@@ -337,14 +337,14 @@ impl PickingRenderPass {
             descriptor_set_handle,
         );
 
-        let mut push_constant_data: [u32; 3] = [0; 3];
-        push_constant_data[0] = static_mesh.vertex_offset;
-        push_constant_data[1] = static_mesh.world_offset;
-        push_constant_data[2] = if let Some(id) = custom_picking_id {
+        let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+        push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
+        push_constant_data.set_world_offset(static_mesh.world_offset.into());
+        push_constant_data.set_picking_id(if let Some(id) = custom_picking_id {
             id
         } else {
             static_mesh.picking_id
-        };
+        }.into());
 
         cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 

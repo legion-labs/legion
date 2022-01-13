@@ -1,5 +1,6 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -31,14 +32,8 @@ struct PickingData
 RWStructuredBuffer<uint> picked_count;
 RWStructuredBuffer<PickingData> picked_objects;
 
-struct PushConstData {
-    uint vertex_offset;
-    uint world_offset;
-    uint picking_id;
-};
-
 [[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+ConstantBuffer<PickingPushConstantData> push_constant;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
