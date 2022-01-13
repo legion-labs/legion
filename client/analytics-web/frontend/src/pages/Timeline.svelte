@@ -115,12 +115,11 @@
     }
 
     renderingContext = context;
-    fetchProcessInfo();
+    fetchProcessInfo().then(updatePixelSize);
   });
 
   async function fetchProcessInfo() {
     const { process } = await client.find_process({ processId: processId });
-
     if (!process) {
       throw new Error(`Process ${processId} not found`);
     }
