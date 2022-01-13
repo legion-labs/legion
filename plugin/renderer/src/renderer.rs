@@ -342,7 +342,7 @@ impl Renderer {
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
                 shader_source: ShaderSource::Path(shader_source),
-                glob_defines: Vec::new(),
+                global_defines: Vec::new(),
                 entry_points: vec![
                     EntryPoint {
                         defines: Vec::new(),
