@@ -86,6 +86,7 @@ pub struct Config {
     threads_buffer_size: usize,
     max_level: LevelFilter,
     level_filters: HashMap<String, String>,
+    max_queue_size: isize,
 }
 
 impl Default for Config {
@@ -114,6 +115,7 @@ impl Default for Config {
             )
             .unwrap_or(LevelFilter::Off),
             level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+            max_queue_size: 16, //todo: change to nb_threads * 2
         }
     }
 }
@@ -131,7 +133,7 @@ fn alloc_telemetry_system(
         return Ok(arc);
     }
     let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
-        Ok(url) => Arc::new(GRPCEventSink::new(&url)),
+        Ok(url) => Arc::new(GRPCEventSink::new(&url, config.max_queue_size)),
         Err(_no_url_in_env) => {
             if enable_console_printer {
                 Arc::new(ImmediateEventSink::new(

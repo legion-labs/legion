@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicIsize, Ordering};
 use std::{
     fmt,
     sync::{Arc, Mutex},
@@ -32,6 +33,7 @@ enum SinkEvent {
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
     sender: Mutex<Option<std::sync::mpsc::Sender<SinkEvent>>>,
+    queue_size: Arc<AtomicIsize>,
 }
 
 impl Drop for GRPCEventSink {
@@ -45,27 +47,61 @@ impl Drop for GRPCEventSink {
 }
 
 impl GRPCEventSink {
-    pub fn new(addr_server: &str) -> Self {
+    pub fn new(addr_server: &str, max_queue_size: isize) -> Self {
         let addr = addr_server.to_owned();
         let (sender, receiver) = std::sync::mpsc::channel::<SinkEvent>();
+        let queue_size = Arc::new(AtomicIsize::new(0));
+        let thread_queue_size = queue_size.clone();
         Self {
             thread: Some(std::thread::spawn(move || {
-                Self::thread_proc(addr, receiver);
+                Self::thread_proc(addr, receiver, thread_queue_size, max_queue_size);
             })),
             sender: Mutex::new(Some(sender)),
+            queue_size,
         }
     }
 
     fn send(&self, event: SinkEvent) {
         let guard = self.sender.lock().unwrap();
         if let Some(sender) = guard.as_ref() {
+            self.queue_size.fetch_add(1, Ordering::Relaxed);
             if let Err(e) = sender.send(event) {
+                self.queue_size.fetch_sub(1, Ordering::Relaxed);
                 error!("{}", e);
             }
         }
     }
 
-    async fn thread_proc_impl(addr: String, receiver: std::sync::mpsc::Receiver<SinkEvent>) {
+    async fn push_block(
+        client: &mut TelemetryIngestionClient<tonic::transport::Channel>,
+        buffer: &dyn StreamBlock,
+        current_queue_size: &AtomicIsize,
+        max_queue_size: isize,
+    ) {
+        if current_queue_size.load(Ordering::Relaxed) >= max_queue_size {
+            // could be better to have a budget for each block type
+            // this way thread data would not starve the other streams
+            return;
+        }
+        match buffer.encode() {
+            Ok(encoded_block) => match client.insert_block(encoded_block).await {
+                Ok(_response) => {}
+                Err(e) => {
+                    println!("insert_block failed: {}", e);
+                }
+            },
+            Err(e) => {
+                println!("block encoding failed: {}", e);
+            }
+        }
+    }
+
+    async fn thread_proc_impl(
+        addr: String,
+        receiver: std::sync::mpsc::Receiver<SinkEvent>,
+        queue_size: Arc<AtomicIsize>,
+        max_queue_size: isize,
+    ) {
         let mut client = match TelemetryIngestionClient::connect(addr).await {
             Ok(c) => c,
             Err(e) => {
@@ -73,7 +109,6 @@ impl GRPCEventSink {
                 return;
             }
         };
-
         loop {
             match receiver.recv() {
                 Ok(message) => match message {
@@ -93,39 +128,15 @@ impl GRPCEventSink {
                             }
                         }
                     }
-                    SinkEvent::ProcessLogBlock(buffer) => match buffer.encode() {
-                        Ok(encoded_block) => match client.insert_block(encoded_block).await {
-                            Ok(_response) => {}
-                            Err(e) => {
-                                println!("insert_block failed: {}", e);
-                            }
-                        },
-                        Err(e) => {
-                            println!("block encoding failed: {}", e);
-                        }
-                    },
-                    SinkEvent::ProcessMetricsBlock(buffer) => match buffer.encode() {
-                        Ok(encoded_block) => match client.insert_block(encoded_block).await {
-                            Ok(_response) => {}
-                            Err(e) => {
-                                println!("insert_block failed: {}", e);
-                            }
-                        },
-                        Err(e) => {
-                            println!("block encoding failed: {}", e);
-                        }
-                    },
-                    SinkEvent::ProcessThreadBlock(buffer) => match buffer.encode() {
-                        Ok(encoded_block) => match client.insert_block(encoded_block).await {
-                            Ok(_response) => {}
-                            Err(e) => {
-                                println!("insert_block failed: {}", e);
-                            }
-                        },
-                        Err(e) => {
-                            println!("block encoding failed: {}", e);
-                        }
-                    },
+                    SinkEvent::ProcessLogBlock(buffer) => {
+                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
+                    }
+                    SinkEvent::ProcessMetricsBlock(buffer) => {
+                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
+                    }
+                    SinkEvent::ProcessThreadBlock(buffer) => {
+                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
+                    }
                 },
                 Err(_e) => {
                     // can only fail when the sending half is disconnected
@@ -133,13 +144,24 @@ impl GRPCEventSink {
                     return;
                 }
             }
+            queue_size.fetch_sub(1, Ordering::Relaxed);
         }
     }
 
     #[allow(clippy::needless_pass_by_value)] // we don't want to leave the receiver in the calling thread
-    fn thread_proc(addr: String, receiver: std::sync::mpsc::Receiver<SinkEvent>) {
+    fn thread_proc(
+        addr: String,
+        receiver: std::sync::mpsc::Receiver<SinkEvent>,
+        queue_size: Arc<AtomicIsize>,
+        max_queue_size: isize,
+    ) {
         let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-        tokio_runtime.block_on(Self::thread_proc_impl(addr, receiver));
+        tokio_runtime.block_on(Self::thread_proc_impl(
+            addr,
+            receiver,
+            queue_size,
+            max_queue_size,
+        ));
     }
 }
 
