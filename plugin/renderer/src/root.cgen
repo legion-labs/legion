@@ -1,9 +1,14 @@
 mod lighting;
 
-struct CameraProps {
+struct ViewData {
     view: Float4x4,
+    inv_view: Float4x4,
     projection: Float4x4,
+    inv_projection: Float4x4,
     projection_view: Float4x4,
+    inv_projection_view: Float4x4,
+    screen_size: Float4,
+    cursor_pos: Float2,
 }
 
 struct ConstData {
@@ -20,7 +25,7 @@ struct FrameDescriptorSet {
 
 #[DescriptorSet(frequency = 1)]
 struct ViewDescriptorSet {
-    camera: ConstantBuffer<CameraProps>,
+    camera: ConstantBuffer<ViewData>,
 }
 
 struct PushConstantData {

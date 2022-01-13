@@ -9,9 +9,9 @@ pub(crate) use directional_light::*;
 pub(crate) mod spotlight;
 #[allow(unused_imports)]
 pub(crate) use spotlight::*;
-pub(crate) mod camera_props;
+pub(crate) mod view_data;
 #[allow(unused_imports)]
-pub(crate) use camera_props::*;
+pub(crate) use view_data::*;
 pub(crate) mod const_data;
 #[allow(unused_imports)]
 pub(crate) use const_data::*;
