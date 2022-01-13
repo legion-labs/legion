@@ -49,7 +49,9 @@
 
 <div class="root">
   <div use:clickOutside={closeMenu} class="menus">
-    <div class="brand"><BrandLogo class="brand-logo" /></div>
+    {#if !window.__TAURI__}
+      <div class="brand"><BrandLogo class="brand-logo" /></div>
+    {/if}
     {#each topBarMenus as menu (menu.id)}
       <div
         data-testid="menu-{menu.id}"
