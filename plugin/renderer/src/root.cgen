@@ -14,13 +14,15 @@ struct ViewData {
 struct ConstData {
     world: Float4x4,
     color: Float4,
+    picking_distance: Float1,
 }
 
 #[DescriptorSet(frequency = 0, transient)]
 struct FrameDescriptorSet {
-    sb_omni_lights: StructuredBuffer<OmnidirectionalLight>,
-    sb_dir_lights: StructuredBuffer<DirectionalLight>,
-    sb_spotlights: StructuredBuffer<Spotlight>,
+    omni_lights: StructuredBuffer<OmnidirectionalLight>,
+    dir_lights: StructuredBuffer<DirectionalLight>,
+    spot_lights: StructuredBuffer<Spotlight>,
+    static_buffer: ByteAddressBuffer,
 }
 
 #[DescriptorSet(frequency = 1)]

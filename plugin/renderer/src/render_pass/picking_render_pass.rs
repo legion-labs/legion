@@ -257,16 +257,15 @@ impl PickingRenderPass {
         &self,
         view_data: &cgen::cgen_type::ViewData,
         custom_world: &Mat4,
-        custom_picking_id: Option<u32>,        
+        custom_picking_id: Option<u32>,
         picking_distance: f32,
         static_mesh: &StaticMesh,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
-        let mut constant_data = [0.0; 17];
-        custom_world.write_cols_to_slice(&mut constant_data[0..]);
-
-        constant_data[16] = picking_distance;
+        let mut constant_data = cgen::cgen_type::ConstData::default();
+        constant_data.set_world((*custom_world).into());
+        constant_data.set_picking_distance(picking_distance.into());
 
         let transient_allocator = render_context.transient_buffer_allocator();
 
@@ -294,7 +293,7 @@ impl PickingRenderPass {
 
         {
             let sub_allocation =
-                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+                transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
