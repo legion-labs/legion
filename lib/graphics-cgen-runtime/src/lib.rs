@@ -226,7 +226,6 @@ impl From<f16> for Half1 {
     }
 }
 
-
 impl From<Half1> for f32 {
     fn from(value: Half1) -> Self {
         half::f16::from_bits(value.0).to_f32()
