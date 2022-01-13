@@ -18,3 +18,6 @@ pub(crate) use const_data::*;
 pub(crate) mod push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use push_constant_data::*;
+pub(crate) mod egui_push_constant_data;
+#[allow(unused_imports)]
+pub(crate) use egui_push_constant_data::*;

@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use lgn_graphics_api::prelude::*;
+use lgn_math::Vec2;
 
+use crate::cgen;
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
 use crate::hl_gfx_api::HLCommandBuffer;
@@ -265,14 +267,15 @@ impl EguiPass {
                 .bind_buffer_suballocation_as_index_buffer(&sub_allocation, IndexType::Uint32);
 
             let scale = 1.0;
-            let push_constant_data: [f32; 6] = [
-                scale,
-                scale,
-                0.0,
-                0.0,
-                render_surface.extents().width() as f32 / egui.ctx.pixels_per_point(),
-                render_surface.extents().height() as f32 / egui.ctx.pixels_per_point(),
-            ];
+            let mut push_constant_data = cgen::cgen_type::EguiPushConstantData::default();
+            push_constant_data.set_scale(Vec2::new(scale, scale).into());
+            push_constant_data.set_translation(Vec2::new(0.0, 0.0).into());
+            push_constant_data.set_width(
+                (render_surface.extents().width() as f32 / egui.ctx.pixels_per_point()).into(),
+            );
+            push_constant_data.set_height(
+                (render_surface.extents().height() as f32 / egui.ctx.pixels_per_point()).into(),
+            );
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 

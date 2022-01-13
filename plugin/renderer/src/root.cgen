@@ -40,3 +40,10 @@ struct TmpPipelineLayout {
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
     push_constant: PushConstant<PushConstantData>,
 }
+
+struct EguiPushConstantData {
+    scale: Float2,
+    translation: Float2,
+    width: Float1,
+    height: Float1,
+}
