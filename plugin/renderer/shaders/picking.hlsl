@@ -14,9 +14,7 @@ struct VertexOut {
 };
 
 struct ConstData {
-    float4x4 custom_world;    
-    float4 screen_size;
-    float2 cursor_pos;
+    float4x4 custom_world;            
     float picking_distance;
 };
 
@@ -64,14 +62,14 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     pers_div.y *= -1.0f;
 
     vertex_out.picked_world_pos = world_pos.xyz;
-    vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * const_data.screen_size.xy, world_pos.z);
+    vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * view_data.screen_size.xy, world_pos.z);
 
     return vertex_out;
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET 
 {
-    float2 proximity = vertex_out.picking_pos.xy - const_data.cursor_pos;
+    float2 proximity = vertex_out.picking_pos.xy - view_data.cursor_pos;
 
     if (dot(proximity, proximity) < const_data.picking_distance)
     {
