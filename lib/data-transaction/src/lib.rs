@@ -54,7 +54,6 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
 #![allow(clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 

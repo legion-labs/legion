@@ -30,11 +30,7 @@ impl Atom for HdlrAtom {
     }
 
     fn summary(&self) -> Result<String> {
-        let s = format!(
-            "handler_type={} name={}",
-            self.handler_type.to_string(),
-            self.name
-        );
+        let s = format!("handler_type={} name={}", self.handler_type, self.name);
         Ok(s)
     }
 }

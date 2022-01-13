@@ -5,9 +5,10 @@ use syn::{parse_macro_input, ItemFn};
 #[allow(clippy::needless_pass_by_value)]
 pub fn legion_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
-    if input.sig.ident != "main" {
-        panic!("`legion_main` can only be used on a function called 'main'.");
-    }
+    assert!(
+        !(input.sig.ident != "main"),
+        "`legion_main` can only be used on a function called 'main'."
+    );
 
     TokenStream::from(quote! {
         #[no_mangle]

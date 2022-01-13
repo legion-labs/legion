@@ -23,7 +23,7 @@ where
 {
     if model.size::<T>() > 0 {
         let folder = GeneratorContext::get_object_folder::<T>();
-        writer.add_line(format!("pub mod {};", folder.to_string()));
+        writer.add_line(format!("pub mod {};", folder));
     }
 }
 

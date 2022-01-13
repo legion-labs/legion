@@ -54,7 +54,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
+//#![allow()]
 
 mod asset_entities;
 mod asset_handles;
