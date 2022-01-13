@@ -2,6 +2,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/spotlight.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/instance_push_constant_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -32,19 +33,12 @@ struct EntityTransforms {
     float4x4 world;
 };
 
-struct InstanceData {
-    uint vertex_offset;
-    uint world_offset;
-    uint is_picked;
-    uint _pad;
-    float4 color;
-};
 
 ConstantBuffer<ViewData> view_data;
 ConstantBuffer<LightingManager> lighting_manager;
 ByteAddressBuffer static_buffer;
 [[vk::push_constant]]
-ConstantBuffer<InstanceData> instance_data;
+ConstantBuffer<InstancePushConstantData> instance_data;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(instance_data.vertex_offset + vertexId * 56);

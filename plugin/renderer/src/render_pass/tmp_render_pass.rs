@@ -6,12 +6,13 @@ use lgn_graphics_api::{
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
+use lgn_math::Vec4;
 
 use crate::{
     components::{CameraComponent, PickedComponent, RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     lighting::LightingManager,
-    RenderContext, Renderer,
+    RenderContext, Renderer, cgen,
 };
 
 pub struct TmpRenderPass {
@@ -218,15 +219,12 @@ impl TmpRenderPass {
                 f32::from(static_mesh.color.a) / 255.0f32,
             );
 
-            let mut push_constant_data = [0; 8];
-            push_constant_data[0] = static_mesh.vertex_offset;
-            push_constant_data[1] = static_mesh.world_offset;
-            push_constant_data[2] = if picked_component.is_some() { 1 } else { 0 };
-            push_constant_data[3] = 0; // padding
-            push_constant_data[4] = color.0.to_bits();
-            push_constant_data[5] = color.1.to_bits();
-            push_constant_data[6] = color.2.to_bits();
-            push_constant_data[7] = color.3.to_bits();
+            let mut push_constant_data = cgen::cgen_type::InstancePushConstantData::default();
+
+            push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
+            push_constant_data.set_world_offset(static_mesh.world_offset.into());
+            push_constant_data.set_is_picked( if picked_component.is_some() { 1 } else { 0 }.into());
+            push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into() );
 
             cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 

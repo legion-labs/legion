@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 
 use lgn_graphics_cgen_runtime::{CGenPipelineLayoutDef, PipelineDataProvider};
 
-use super::super::cgen_type::TmpPushConstantData;
+use super::super::cgen_type::InstancePushConstantData;
 use super::super::descriptor_set::FrameDescriptorSet;
 use super::super::descriptor_set::ViewDescriptorSet;
 
@@ -22,7 +22,7 @@ static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
         None,
         None,
     ],
-    push_constant_type: Some(TmpPushConstantData::id()),
+    push_constant_type: Some(InstancePushConstantData::id()),
 };
 
 static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
@@ -30,7 +30,7 @@ static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
 pub struct TmpPipelineLayout<'a> {
     pipeline: &'a Pipeline,
     descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    push_constant: TmpPushConstantData,
+    push_constant: InstancePushConstantData,
 }
 
 impl<'a> TmpPipelineLayout<'a> {
@@ -40,7 +40,7 @@ impl<'a> TmpPipelineLayout<'a> {
         descriptor_set_layouts: &[&DescriptorSetLayout],
     ) {
         unsafe {
-            let push_constant_def = Some(TmpPushConstantData::def());
+            let push_constant_def = Some(InstancePushConstantData::def());
             PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(
                 device_context,
                 descriptor_set_layouts,
@@ -71,7 +71,7 @@ impl<'a> TmpPipelineLayout<'a> {
         Self {
             pipeline,
             descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],
-            push_constant: TmpPushConstantData::default(),
+            push_constant: InstancePushConstantData::default(),
         }
     }
 
@@ -81,7 +81,7 @@ impl<'a> TmpPipelineLayout<'a> {
     pub fn set_view_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
         self.descriptor_sets[1] = Some(descriptor_set_handle);
     }
-    pub fn set_push_constant(&mut self, data: &TmpPushConstantData) {
+    pub fn set_push_constant(&mut self, data: &InstancePushConstantData) {
         self.push_constant = *data;
     }
 }
@@ -99,8 +99,8 @@ impl<'a> PipelineDataProvider for TmpPipelineLayout<'a> {
         #![allow(unsafe_code)]
         let data_slice = unsafe {
             &*ptr::slice_from_raw_parts(
-                (&self.push_constant as *const TmpPushConstantData).cast::<u8>(),
-                mem::size_of::<TmpPushConstantData>(),
+                (&self.push_constant as *const InstancePushConstantData).cast::<u8>(),
+                mem::size_of::<InstancePushConstantData>(),
             )
         };
         Some(data_slice)
