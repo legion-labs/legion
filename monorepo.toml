@@ -17,9 +17,6 @@ bans = [
     { name = "log", version = "*", suggestion = "use `lgn-telemetry` instead", exceptions = [
         "lgn-tracing",
         "lgn-telemetry-sink",
-
-        # wasm logger
-        "simple-wasm-logger",
     ] },
 ]
 
@@ -106,5 +103,8 @@ globs = [
     "lib/vite-plugins/**/*",
     "package.json",
     "trace-*",
+
+    # wasm
+    "lib/simple-wasm-logger/**/*",
 ]
 mark-changed = []
