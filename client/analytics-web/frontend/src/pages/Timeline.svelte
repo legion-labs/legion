@@ -15,8 +15,8 @@
   };
 
   type LoadingState = {
-    requested: number;
-    completed: number;
+    current: number;
+    total: number;
   };
 
   enum LODState {
@@ -87,7 +87,7 @@
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
-  let loadingProgression: LoadingState = { requested: 0, completed: 0 };
+  let loadingProgression: LoadingState = { current: 0, total: 0 };
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -133,20 +133,46 @@
   }
 
   function fetchPreferedLods(loadingProgression: LoadingState) {
+    let nbMissing = 0;
+    let nbLoaded = 0;
+    let nbInFlight = 0;
     for (let blockId in blocks) {
-      if (loadingProgression.requested - loadingProgression.completed >= 4) {
-        return;
+      const block = blocks[blockId];
+      const preferedLod = computePreferedBlockLod(block.blockDefinition);
+      if (preferedLod == null) {
+        continue;
       }
-      fetchBlockSpans(loadingProgression, blocks[blockId]);
+
+      if (!block.lods[preferedLod]) {
+        //untracked lod until now
+        block.lods[preferedLod] = {
+          state: LODState.Missing,
+          tracks: [],
+          lodId: preferedLod,
+        };
+      }
+
+      if (block.lods[preferedLod].state == LODState.Loaded) {
+        nbLoaded += 1;
+        continue;
+      }
+
+      if (block.lods[preferedLod].state == LODState.Requested) {
+        nbInFlight += 1;
+        continue;
+      }
+      nbMissing += 1;
+      if (nbInFlight < 8) {
+        fetchBlockSpans(blocks[blockId], preferedLod);
+        nbInFlight += 1;
+      }
     }
     // here would be a good place to load some low-priority block lods
     // like the lod that corresponds to the full time range being visible
     // this would have the added bonus of caching the lod0 of all blocks on the server
 
-    if (loadingProgression.completed == loadingProgression.requested) {
-      loadingProgression.requested = 0;
-      loadingProgression.completed = 0;
-    }
+    loadingProgression.current = nbLoaded;
+    loadingProgression.total = nbLoaded + nbMissing;
   }
 
   async function fetchStreams(process: Process) {
@@ -256,7 +282,6 @@
   }
 
   function onLodReceived(response: BlockSpansReply) {
-    loadingProgression.completed += 1;
     const blockId = response.blockId;
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${blockId}`);
@@ -276,44 +301,21 @@
     fetchPreferedLods(loadingProgression);
   }
 
-  function fetchBlockSpans(
-    loadingProgression: LoadingState,
-    block: ThreadBlock
-  ) {
+  function fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
     const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
     }
-
-    const preferedLod = computePreferedBlockLod(block.blockDefinition);
-    if (preferedLod == null) {
-      return;
-    }
-    if (!block.lods[preferedLod]) {
-      block.lods[preferedLod] = {
-        state: LODState.Missing,
-        tracks: [],
-        lodId: preferedLod,
-      };
-    }
-    if (
-      block.lods[preferedLod].state == LODState.Loaded ||
-      block.lods[preferedLod].state == LODState.Requested
-    ) {
-      return;
-    }
-    block.lods[preferedLod].state = LODState.Requested;
-    loadingProgression.requested += 1;
+    block.lods[lodToFetch].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
     const fut = client.block_spans({
       blockId: blockId,
       process,
       stream: threads[streamId].streamInfo,
-      lodId: preferedLod,
+      lodId: lodToFetch,
     });
     fut.then(onLodReceived, (e) => {
-      loadingProgression.completed += 1;
       console.log("Error fetching block spans", e);
     });
   }
@@ -529,7 +531,7 @@
       ) {
         let track = lodToRender.tracks[trackIndex];
         const offsetY = threadVerticalOffset + trackIndex * 20;
-        let color: string = "";
+        let color = "";
         if (trackIndex % 2 === 0) {
           color = "#fede99";
         } else {
@@ -660,8 +662,7 @@
     var elem = document.getElementById("loadedProgress");
     if (elem) {
       elem.style.width =
-        (loadingProgression.completed * 100) / loadingProgression.requested +
-        "%";
+        (loadingProgression.current * 100) / loadingProgression.total + "%";
     }
   }
 
