@@ -127,6 +127,6 @@ additional terms or conditions.
 
 ---
 
-<h1 align="center">
+<p align="center">
     <a href="https://legionlabs.com"><img alt="Legion Labs" src="https://github.com/legion-labs/legion/raw/main/.github/images/legion-labs-logo.svg", width="240px" ></a>
-</h1>
+</p>
