@@ -8,9 +8,9 @@ use sha2::{Digest, Sha256};
 use crate::{
     assert_not_locked, clear_local_changes, clear_pending_branch_merges, connect_to_server,
     find_workspace_root, make_file_read_only, read_bin_file, read_current_branch,
-    read_local_changes, read_pending_branch_merges, read_workspace_spec, sql::execute_sql,
-    update_current_branch, update_tree_from_changes, Branch, ChangeType, LocalChange,
-    LocalWorkspaceConnection, RepositoryConnection,
+    read_local_changes, read_pending_branch_merges, read_workspace_spec, update_current_branch,
+    update_tree_from_changes, Branch, ChangeType, LocalChange, LocalWorkspaceConnection,
+    RepositoryConnection,
 };
 
 #[derive(Debug, Clone)]
@@ -132,20 +132,6 @@ impl TryFrom<lgn_source_control_proto::Commit> for Commit {
             timestamp,
         })
     }
-}
-
-pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
-    let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
-         CREATE UNIQUE INDEX commit_id on commits(id);
-         CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
-         CREATE INDEX commit_parents_id on commit_parents(id);
-         CREATE TABLE commit_changes(commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
-         CREATE INDEX commit_changes_commit on commit_changes(commit_id);
-        ";
-
-    execute_sql(sql_connection, sql)
-        .await
-        .context("error creating commit table and indices")
 }
 
 async fn upload_localy_edited_blobs(

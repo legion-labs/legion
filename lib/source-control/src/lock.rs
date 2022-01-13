@@ -5,7 +5,7 @@ use lgn_tracing::span_fn;
 
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
-    read_workspace_spec, sql::execute_sql, LocalWorkspaceConnection, RepositoryQuery,
+    read_workspace_spec, LocalWorkspaceConnection, RepositoryQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -39,16 +39,6 @@ impl From<lgn_source_control_proto::Lock> for Lock {
     }
 }
 
-pub async fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()> {
-    let sql = "CREATE TABLE locks(relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255));
-         CREATE UNIQUE INDEX lock_key on locks(relative_path, lock_domain_id);
-        ";
-
-    execute_sql(sql_connection, sql)
-        .await
-        .context("error creating locks table and index")
-}
-
 pub async fn verify_empty_lock_domain(
     query: &dyn RepositoryQuery,
     lock_domain_id: &str,
@@ -75,7 +65,7 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
         workspace_id: workspace_spec.registration.id,
         branch_name: repo_branch.name,
     };
-    query.insert_lock(&lock).await
+    query.insert_lock(&lock).await.map_err(Into::into)
 }
 
 #[span_fn]
@@ -91,6 +81,7 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
     query
         .clear_lock(&repo_branch.lock_domain_id, &relative_path)
         .await
+        .map_err(Into::into)
 }
 
 #[span_fn]

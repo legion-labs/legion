@@ -59,7 +59,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
-use lgn_source_control::*;
+use lgn_source_control::{blob_storage::BlobStorageUrl, *};
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
 
@@ -258,7 +258,10 @@ async fn main() -> anyhow::Result<()> {
             println!("Creating repository at: {}", repository_url);
 
             let repository_query = repository_url.into_query();
-            repository_query.create_repository(blob_storage_url).await?;
+            repository_query
+                .create_repository(blob_storage_url)
+                .await
+                .map_err::<anyhow::Error, _>(Into::into)?;
 
             Ok(())
         }
@@ -266,7 +269,10 @@ async fn main() -> anyhow::Result<()> {
             info!("destroy-repository");
 
             let repository_query = repository_url.into_query();
-            repository_query.destroy_repository().await
+            repository_query
+                .destroy_repository()
+                .await
+                .map_err(Into::into)
         }
         Commands::InitWorkspace {
             workspace_directory,
@@ -407,7 +413,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Ping { repository_url } => {
             let repository_query = repository_url.into_query();
 
-            repository_query.ping().await
+            repository_query.ping().await.map_err(Into::into)
         }
     }
 }

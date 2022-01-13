@@ -1,29 +1,32 @@
-use anyhow::{Context, Result};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Executor;
+
+use crate::{MapOtherError, Result};
 
 pub async fn create_database(uri: &str) -> Result<()> {
     sqlx::Any::create_database(uri)
         .await
-        .context(format!("error creating database: {}", uri))
+        .map_other_err("failed to create database")
 }
 
 pub async fn database_exists(uri: &str) -> Result<bool> {
     sqlx::Any::database_exists(uri)
         .await
-        .context(format!("error checking database `{}` exists", uri))
+        .map_other_err("failed to check if database exists")
 }
 
 pub async fn drop_database(uri: &str) -> Result<()> {
     sqlx::Any::drop_database(uri)
         .await
-        .context(format!("error dropping database `{}`", uri))
+        .map_other_err("failed to drop database")
 }
 
 pub async fn execute_sql(connection: &mut sqlx::AnyConnection, sql: &str) -> Result<()> {
-    connection.execute(sql).await.context("SQL error")?;
-
-    Ok(())
+    connection
+        .execute(sql)
+        .await
+        .map_other_err("failed to execute SQL query")
+        .map(|_| ())
 }
 
 #[derive(Debug)]
@@ -33,29 +36,25 @@ pub struct SqlConnectionPool {
 
 impl SqlConnectionPool {
     pub async fn new(database_uri: &str) -> Result<Self> {
-        Ok(Self {
-            pool: alloc_sql_pool(database_uri).await?,
-        })
+        let pool = sqlx::any::AnyPoolOptions::new()
+            .connect(database_uri)
+            .await
+            .map_other_err("failed to allocate SQL connection pool")?;
+
+        Ok(Self { pool })
     }
 
     pub async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
         self.pool
             .acquire()
             .await
-            .context("error acquiring connection")
+            .map_other_err("failed to acquire connection from pool")
     }
 
     pub async fn begin(&self) -> Result<sqlx::Transaction<'static, sqlx::Any>> {
         self.pool
             .begin()
             .await
-            .context("error beginning transaction")
+            .map_other_err("failed to start transaction")
     }
-}
-
-pub async fn alloc_sql_pool(url: &str) -> Result<sqlx::AnyPool> {
-    sqlx::any::AnyPoolOptions::new()
-        .connect(url)
-        .await
-        .context("error allocating database pool")
 }

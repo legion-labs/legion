@@ -5,9 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 
-use crate::BlobStats;
-
-use super::{BlobStorage, Result};
+use super::{BlobStats, BlobStorage, Result};
 
 /// A LZ4-compressed blob storage adapter.
 pub struct Lz4BlobStorageAdapter<B: BlobStorage> {

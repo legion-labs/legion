@@ -3,9 +3,7 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use tokio::fs;
 
-use crate::BlobStats;
-
-use super::{BoxedAsyncRead, BoxedAsyncWrite, StreamingBlobStorage};
+use super::{BlobStats, BoxedAsyncRead, BoxedAsyncWrite, StreamingBlobStorage};
 
 pub struct LocalBlobStorage(PathBuf);
 

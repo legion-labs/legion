@@ -6,8 +6,8 @@ use std::{
     str::FromStr,
 };
 
-use super::{AwsS3BlobStorage, BlobStorage, LocalBlobStorage};
-use crate::{parse_url_or_path, AwsS3Url, Lz4BlobStorageAdapter, UrlOrPath};
+use super::{AwsS3BlobStorage, AwsS3Url, BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
+use crate::{parse_url_or_path, UrlOrPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BlobStorageUrl {
@@ -88,8 +88,6 @@ impl<'de> Deserialize<'de> for BlobStorageUrl {
 
 #[cfg(test)]
 mod tests {
-    use crate::AwsS3Url;
-
     use super::*;
 
     #[test]
