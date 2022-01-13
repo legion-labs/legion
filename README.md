@@ -6,10 +6,11 @@
 </h1>
 
 <p align="center">
-    <b>Legion</b> is an interactive content creation <b>pipeline</b> that focusses on bringing <b>fast iteration</b> times at the scale of a <b>production</b> by providing collaborative tooling and automation.
+    <b>Legion Engine</b> is an interactive content creation <b>pipeline</b> that focusses on bringing <b>fast iteration</b> times at the scale of a <b>production</b> by providing collaborative tooling and automation.
     <br/>
     <br/>
     From the <b>inception</b> of an idea, to having it in the hands of the <b>players</b>, Legion's goal is to allow you to focus on <b>finding the fun</b>.
+    <br/>
 </p>
 
 <p align="center">
