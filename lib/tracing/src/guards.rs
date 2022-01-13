@@ -10,9 +10,9 @@ use crate::{
     spans::ThreadSpanMetadata,
 };
 
-pub struct TelemetrySystemGuard {}
+pub struct TracingSystemGuard {}
 
-impl TelemetrySystemGuard {
+impl TracingSystemGuard {
     pub fn new(
         logs_buffer_size: usize,
         metrics_buffer_size: usize,
@@ -29,7 +29,7 @@ impl TelemetrySystemGuard {
     }
 }
 
-impl std::ops::Drop for TelemetrySystemGuard {
+impl std::ops::Drop for TracingSystemGuard {
     fn drop(&mut self) {
         shutdown_telemetry();
     }
@@ -57,11 +57,11 @@ pub fn shutdown_telemetry() {
     shutdown_dispatch();
 }
 
-pub struct TelemetryThreadGuard {
+pub struct TracingThreadGuard {
     _dummy_ptr: *mut u8,
 }
 
-impl TelemetryThreadGuard {
+impl TracingThreadGuard {
     pub fn new() -> Self {
         init_thread_stream();
         Self {
@@ -70,14 +70,14 @@ impl TelemetryThreadGuard {
     }
 }
 
-impl std::ops::Drop for TelemetryThreadGuard {
+impl std::ops::Drop for TracingThreadGuard {
     fn drop(&mut self) {
         flush_thread_buffer();
     }
 }
 
 //not used at the time of writing, but clippy wants it
-impl Default for TelemetryThreadGuard {
+impl Default for TracingThreadGuard {
     fn default() -> Self {
         Self::new()
     }

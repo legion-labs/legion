@@ -76,7 +76,7 @@ use lgn_tracing::event::NullEventSink;
 use lgn_tracing::info;
 use lgn_tracing::{
     event::EventSink,
-    guards::{TelemetrySystemGuard, TelemetryThreadGuard},
+    guards::{TracingSystemGuard, TracingThreadGuard},
     set_max_level, LevelFilter,
 };
 
@@ -121,9 +121,9 @@ impl Default for Config {
 fn alloc_telemetry_system(
     config: Config,
     enable_console_printer: bool,
-) -> anyhow::Result<Arc<TelemetrySystemGuard>> {
+) -> anyhow::Result<Arc<TracingSystemGuard>> {
     lazy_static::lazy_static! {
-        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TelemetrySystemGuard>> = Mutex::new(Weak::new());
+        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TracingSystemGuard>> = Mutex::new(Weak::new());
     }
     let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
     let weak = &mut *weak_guard;
@@ -144,21 +144,21 @@ fn alloc_telemetry_system(
         }
     };
 
-    let arc = Arc::<TelemetrySystemGuard>::new(TelemetrySystemGuard::new(
+    let arc = Arc::<TracingSystemGuard>::new(TracingSystemGuard::new(
         config.logs_buffer_size,
         config.metrics_buffer_size,
         config.threads_buffer_size,
         sink,
     )?);
     set_max_level(config.max_level);
-    *weak = Arc::<TelemetrySystemGuard>::downgrade(&arc);
+    *weak = Arc::<TracingSystemGuard>::downgrade(&arc);
     Ok(arc)
 }
 
 pub struct TelemetryGuard {
     // note we rely here on the drop order being the same as the declaration order
-    _thread_guard: TelemetryThreadGuard,
-    _guard: Arc<TelemetrySystemGuard>,
+    _thread_guard: TracingThreadGuard,
+    _guard: Arc<TracingSystemGuard>,
 }
 
 impl TelemetryGuard {
@@ -171,7 +171,7 @@ impl TelemetryGuard {
         // order here is important
         Ok(Self {
             _guard: alloc_telemetry_system(config, enable_console_printer)?,
-            _thread_guard: TelemetryThreadGuard::new(),
+            _thread_guard: TracingThreadGuard::new(),
         })
     }
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
