@@ -14,10 +14,10 @@
 
     // PushConstant
     // - name: push_constant
-    #include "../cgen_type/tmp_push_constant_data.hlsl"
+    #include "../cgen_type/instance_push_constant_data.hlsl"
 
     [[vk::push_constant]]
-    ConstantBuffer<TmpPushConstantData> push_constant; 
+    ConstantBuffer<InstancePushConstantData> push_constant; 
 
 
 #endif
