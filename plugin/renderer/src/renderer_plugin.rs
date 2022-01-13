@@ -65,29 +65,34 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+        app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
+        app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            on_window_close_requested.exclusive_system(),
+        );
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system(update_lighting_ui.before(RendererSystemLabel::FrameUpdate));
+            app.add_system_to_stage(CoreStage::Prepare, update_lighting_ui);
         }
-        app.add_system(update_debug.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(update_lights.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(on_window_created.exclusive_system());
-        app.add_system(on_window_resized.exclusive_system());
-        app.add_system(on_window_close_requested.exclusive_system());
+        app.add_system_to_stage(CoreStage::Prepare, update_debug);
+        app.add_system_to_stage(CoreStage::Prepare, update_transform);
+        app.add_system_to_stage(CoreStage::Prepare, update_lights);
+        app.add_system_to_stage(CoreStage::Prepare, camera_control);
 
-        app.add_system_set(
+        app.add_system_set_to_stage(
+            CoreStage::Render,
             SystemSet::new()
                 .with_system(render_update)
-                .label(RendererSystemLabel::FrameUpdate),
+                .before(RendererSystemLabel::Submit)
+                .label(RendererSystemLabel::Generation),
         );
 
         // Post-Update
         app.add_system_to_stage(
-            CoreStage::PostUpdate,
-            render_post_update, // .label(RendererSystemLabel::FrameDone),
+            CoreStage::Render,
+            render_post_update.label(RendererSystemLabel::Submit),
         );
 
         app.add_event::<RenderSurfaceCreatedForWindow>();

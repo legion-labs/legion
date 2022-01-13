@@ -18,7 +18,7 @@ use lgn_renderer::{
         RenderSurfaceExtents, RotationComponent, StaticMesh,
     },
     resources::{DefaultMeshId, DefaultMeshes},
-    {Renderer, RendererPlugin, RendererSystemLabel},
+    {Renderer, RendererPlugin},
 };
 use lgn_transform::components::Transform;
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
@@ -83,7 +83,7 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
+        .add_system(presenter_snapshot_system)
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WinitConfig {
