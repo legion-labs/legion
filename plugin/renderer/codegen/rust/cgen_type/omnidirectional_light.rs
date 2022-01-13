@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "OmnidirectionalLight",
-    id: 15,
+    id: 13,
     size: 32,
 };
 
@@ -23,7 +23,7 @@ pub struct OmnidirectionalLight {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl OmnidirectionalLight {
     pub const fn id() -> u32 {
-        15
+        13
     }
 
     pub fn def() -> &'static CGenTypeDef {

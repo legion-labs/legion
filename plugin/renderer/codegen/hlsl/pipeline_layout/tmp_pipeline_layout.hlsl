@@ -4,8 +4,12 @@
 #define PIPELINELAYOUT_TMPPIPELINELAYOUT
 
     // DescriptorSets
-    // - name: view_descriptor_set
+    // - name: frame_descriptor_set
     // - freq: 0
+    #include "../descriptor_set/frame_descriptor_set.hlsl"
+
+    // - name: view_descriptor_set
+    // - freq: 1
     #include "../descriptor_set/view_descriptor_set.hlsl"
 
     // PushConstant

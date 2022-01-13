@@ -7,6 +7,8 @@ use lgn_input::{
 };
 use lgn_math::{Mat3, Mat4, Quat, Vec3};
 
+use crate::cgen;
+
 #[derive(Component)]
 pub struct CameraComponent {
     pub camera_rig: CameraRig,
@@ -28,6 +30,21 @@ impl CameraComponent {
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
         (view_matrix, projection_matrix)
+    }
+
+    pub fn build_camera_props(&self, width: f32, height: f32) -> cgen::cgen_type::CameraProps {        
+        let (view_matrix, projection_matrix) = self.build_view_projection(
+            width,
+            height,
+        );
+        let view_proj_matrix = projection_matrix * view_matrix;
+
+        let mut camera_props = cgen::cgen_type::CameraProps::default();
+        camera_props.set_view(view_matrix.into());
+        camera_props.set_projection(projection_matrix.into());        
+        camera_props.set_projection_view(view_proj_matrix.into());  
+
+        camera_props
     }
 }
 

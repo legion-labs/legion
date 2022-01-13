@@ -9,6 +9,7 @@ use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::Transform;
 
 use crate::{
+    cgen,
     components::{
         CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
     },
@@ -154,11 +155,13 @@ impl DebugRenderPass {
     pub fn bind_pipeline_and_desc_set(
         &self,
         pipeline: &Pipeline,
-        constant_data: [f32; 52],
+        camera_props: &cgen::cgen_type::CameraProps,
+        constant_data: [f32; 20],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
         cmd_buffer.bind_pipeline(pipeline);
+
         let descriptor_set_layout = &pipeline
             .root_signature()
             .definition()
@@ -167,17 +170,30 @@ impl DebugRenderPass {
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
 
         let transient_allocator = render_context.transient_buffer_allocator();
-        let sub_allocation =
-            transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
 
-        let const_buffer_view = sub_allocation.const_buffer_view();
+        {
+            let sub_allocation =
+                transient_allocator.copy_data(camera_props, ResourceUsage::AS_CONST_BUFFER);
 
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "const_data",
-                &[DescriptorRef::BufferView(&const_buffer_view)],
-            )
-            .unwrap();
+            let const_buffer_view = sub_allocation.const_buffer_view();
+
+            descriptor_set_writer
+                .set_descriptors_by_name("camera", &[DescriptorRef::BufferView(&const_buffer_view)])
+                .unwrap();
+        }
+        {
+            let sub_allocation =
+                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+
+            let const_buffer_view = sub_allocation.const_buffer_view();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "const_data",
+                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                )
+                .unwrap();
+        }
 
         let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
         descriptor_set_writer
@@ -217,20 +233,22 @@ impl DebugRenderPass {
 
     pub fn render_ground_plane(
         &self,
-        mut constant_data: [f32; 52],
+        camera_props: &cgen::cgen_type::CameraProps,
+        mut constant_data: [f32; 20],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
         Mat4::IDENTITY.write_cols_to_slice(&mut constant_data[0..]);
 
-        constant_data[48] = 0.0;
-        constant_data[49] = 0.0;
-        constant_data[50] = 0.0;
-        constant_data[51] = 0.0;
+        constant_data[16] = 0.0;
+        constant_data[17] = 0.0;
+        constant_data[18] = 0.0;
+        constant_data[19] = 0.0;
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
+            camera_props,
             constant_data,
             cmd_buffer,
             render_context,
@@ -248,7 +266,8 @@ impl DebugRenderPass {
         &self,
         mesh_id: u32,
         transform: &Transform,
-        mut constant_data: [f32; 52],
+        camera_props: &cgen::cgen_type::CameraProps,
+        mut constant_data: [f32; 20],
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
@@ -283,13 +302,14 @@ impl DebugRenderPass {
             .compute_matrix()
             .write_cols_to_slice(&mut constant_data[0..]);
 
-        constant_data[48] = 1.0;
-        constant_data[49] = 1.0;
-        constant_data[50] = 0.0;
-        constant_data[51] = 1.0;
+        constant_data[16] = 1.0;
+        constant_data[17] = 1.0;
+        constant_data[18] = 0.0;
+        constant_data[19] = 1.0;
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
+            camera_props,
             constant_data,
             cmd_buffer,
             render_context,
@@ -306,7 +326,8 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        mut constant_data: [f32; 52],
+        camera_props: &cgen::cgen_type::CameraProps,
+        mut constant_data: [f32; 20],
         cmd_buffer: &HLCommandBuffer<'_>,
         debug_display: &mut DebugDisplay,
         default_meshes: &DefaultMeshes,
@@ -319,13 +340,14 @@ impl DebugRenderPass {
             primitive
                 .transform
                 .write_cols_to_slice(&mut constant_data[0..]);
-            constant_data[48] = primitive.color.0;
-            constant_data[49] = primitive.color.1;
-            constant_data[50] = primitive.color.2;
-            constant_data[51] = 1.0;
+            constant_data[16] = primitive.color.0;
+            constant_data[17] = primitive.color.1;
+            constant_data[18] = primitive.color.2;
+            constant_data[19] = 1.0;
 
             self.bind_pipeline_and_desc_set(
                 &self.wire_pso_depth,
+                camera_props,
                 constant_data,
                 cmd_buffer,
                 render_context,
@@ -374,11 +396,20 @@ impl DebugRenderPass {
             render_surface.extents().height() as f32,
         );
 
-        let mut constant_data: [f32; 52] = [0.0; 52];
-        view_matrix.write_cols_to_slice(&mut constant_data[16..]);
-        projection_matrix.write_cols_to_slice(&mut constant_data[32..]);
+        let camera_props = camera.build_camera_props(
+            render_surface.extents().width() as f32,
+            render_surface.extents().height() as f32,
+        );
 
-        self.render_ground_plane(constant_data, cmd_buffer, render_context, default_meshes);
+        let mut constant_data = [0.0; 20];
+
+        self.render_ground_plane(
+            &camera_props,
+            constant_data,
+            cmd_buffer,
+            render_context,
+            default_meshes,
+        );
 
         for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
         {
@@ -402,13 +433,14 @@ impl DebugRenderPass {
                     color = (1.0, 1.0, 0.0, 1.0);
                 }
 
-                constant_data[48] = color.0;
-                constant_data[49] = color.1;
-                constant_data[50] = color.2;
-                constant_data[51] = if manipulator.transparent { 0.9 } else { 1.0 };
+                constant_data[16] = color.0;
+                constant_data[17] = color.1;
+                constant_data[18] = color.2;
+                constant_data[19] = if manipulator.transparent { 0.9 } else { 1.0 };
 
                 self.bind_pipeline_and_desc_set(
                     &self.solid_pso_nodepth,
+                    &camera_props,
                     constant_data,
                     cmd_buffer,
                     render_context,
@@ -424,6 +456,7 @@ impl DebugRenderPass {
                 self.render_aabb_for_mesh(
                     static_mesh_component.mesh_id as u32,
                     transform,
+                    &camera_props,
                     constant_data,
                     cmd_buffer,
                     render_context,
@@ -434,6 +467,7 @@ impl DebugRenderPass {
 
         self.render_debug_display(
             render_context,
+            &camera_props,
             constant_data,
             cmd_buffer,
             debug_display,
