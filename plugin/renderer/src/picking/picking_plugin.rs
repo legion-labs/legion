@@ -9,9 +9,12 @@ use lgn_transform::prelude::Transform;
 use lgn_window::WindowResized;
 
 use super::{ManipulatorManager, PickingManager};
-use crate::components::{
-    CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
-    StaticMesh,
+use crate::{
+    components::{
+        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+        StaticMesh,
+    },
+    CommandBufferLabel, RenderStage,
 };
 
 pub struct PickingPlugin {}
@@ -30,29 +33,31 @@ impl Plugin for PickingPlugin {
         let picking_manager = PickingManager::new(4096);
         app.insert_resource(picking_manager);
 
-        app.add_system_to_stage(CoreStage::PreUpdate, gather_input);
-        app.add_system_to_stage(CoreStage::PreUpdate, gather_window_resize);
+        app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
+        app.add_system_to_stage(CoreStage::PostUpdate, gather_window_resize);
 
-        app.add_system_to_stage(CoreStage::PreUpdate, static_meshes_added);
-        app.add_system_to_stage(CoreStage::PreUpdate, lights_added);
+        app.add_system_to_stage(CoreStage::PostUpdate, static_meshes_added);
+        app.add_system_to_stage(CoreStage::PostUpdate, lights_added);
 
         app.add_system_to_stage(
-            CoreStage::PostUpdate,
+            RenderStage::Render,
             update_picking_components
-                .before(PickingSystemLabel::PickedEntity)
+                .before(CommandBufferLabel::Generate)
                 .label(PickingSystemLabel::PickedComponent),
         );
 
         app.add_system_to_stage(
-            CoreStage::PostUpdate,
+            RenderStage::Render,
             update_picked_entity
-                .before(PickingSystemLabel::Manipulator)
+                .after(PickingSystemLabel::PickedComponent)
                 .label(PickingSystemLabel::PickedEntity),
         );
 
         app.add_system_to_stage(
-            CoreStage::PostUpdate,
-            update_manipulator_component.label(PickingSystemLabel::Manipulator),
+            RenderStage::Render,
+            update_manipulator_component
+                .after(PickingSystemLabel::PickedEntity)
+                .label(PickingSystemLabel::Manipulator),
         );
     }
 }

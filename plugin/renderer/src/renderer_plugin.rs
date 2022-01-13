@@ -8,6 +8,7 @@ use crate::{
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::{DefaultMeshId, DefaultMeshes},
+    RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
 
@@ -23,7 +24,7 @@ use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, RenderSurface, StaticMesh,
     },
-    labels::RendererSystemLabel,
+    labels::CommandBufferLabel,
     RenderContext, Renderer,
 };
 
@@ -47,6 +48,18 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new().unwrap();
         let default_meshes = DefaultMeshes::new(&renderer);
 
+        app.add_stage_after(
+            CoreStage::PostUpdate,
+            RenderStage::Prepare,
+            SystemStage::parallel(),
+        );
+
+        app.add_stage_after(
+            RenderStage::Prepare,
+            RenderStage::Render,
+            SystemStage::parallel(),
+        );
+
         app.add_plugin(EguiPlugin::new(self.enable_egui));
         app.add_plugin(PickingPlugin {});
 
@@ -62,29 +75,34 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+        app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
+        app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            on_window_close_requested.exclusive_system(),
+        );
 
         // Update
         if self.runs_dynamic_systems {
-            app.add_system(ui_lights.before(RendererSystemLabel::FrameUpdate));
+            app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
-        app.add_system(debug_display_lights.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(update_transform.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(update_lights.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(camera_control.before(RendererSystemLabel::FrameUpdate));
-        app.add_system(on_window_created.exclusive_system());
-        app.add_system(on_window_resized.exclusive_system());
-        app.add_system(on_window_close_requested.exclusive_system());
+        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
+        app.add_system_to_stage(RenderStage::Prepare, update_transform);
+        app.add_system_to_stage(RenderStage::Prepare, update_lights);
+        app.add_system_to_stage(RenderStage::Prepare, camera_control);
 
-        app.add_system_set(
+        app.add_system_set_to_stage(
+            RenderStage::Render,
             SystemSet::new()
                 .with_system(render_update)
-                .label(RendererSystemLabel::FrameUpdate),
+                .before(CommandBufferLabel::Submit)
+                .label(CommandBufferLabel::Generate),
         );
 
         // Post-Update
         app.add_system_to_stage(
-            CoreStage::PostUpdate,
-            render_post_update, // .label(RendererSystemLabel::FrameDone),
+            RenderStage::Render,
+            render_post_update.label(CommandBufferLabel::Submit),
         );
 
         app.add_event::<RenderSurfaceCreatedForWindow>();
