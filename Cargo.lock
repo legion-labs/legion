@@ -2873,6 +2873,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-renderer",
+ "lgn-transform",
  "lgn-utils",
  "memoffset 0.6.5",
  "serde",
