@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "ViewData",
-    id: 21,
-    size: 128,
+    name: "CameraProps",
+    id: 16,
+    size: 192,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<ViewData>(), 128);
+static_assertions::const_assert_eq!(mem::size_of::<CameraProps>(), 192);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct ViewData {
-    data: [u8; 128],
+pub struct CameraProps {
+    data: [u8; 192],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl ViewData {
+impl CameraProps {
     pub const fn id() -> u32 {
-        21
+        16
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -56,6 +56,19 @@ impl ViewData {
         self.get(64)
     }
 
+    //
+    // member : projection_view
+    // offset : 128
+    // size : 64
+    //
+    pub fn set_projection_view(&mut self, value: Float4x4) {
+        self.set(128, value);
+    }
+
+    pub fn projection_view(&self) -> Float4x4 {
+        self.get(128)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -77,11 +90,12 @@ impl ViewData {
     }
 }
 
-impl Default for ViewData {
+impl Default for CameraProps {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 128] };
+        let mut ret = Self { data: [0; 192] };
         ret.set_view(Float4x4::default());
         ret.set_projection(Float4x4::default());
+        ret.set_projection_view(Float4x4::default());
         ret
     }
 }

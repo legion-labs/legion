@@ -1,3 +1,5 @@
+#include "crate://renderer/codegen/hlsl/cgen_type/camera_props.hlsl"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
@@ -12,12 +14,11 @@ struct VertexOut {
 };
 
 struct ConstData {
-    float4x4 world;
-    float4x4 view;
-    float4x4 projection;
+    float4x4 world;    
     float4 color;
 };
 
+ConstantBuffer<CameraProps> camera;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
 
@@ -32,8 +33,8 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4 pos_view_relative = mul(const_data.view, mul(const_data.world, vertex_in.pos));
-    vertex_out.hpos = mul(const_data.projection, pos_view_relative);
+    float4 pos_view_relative = mul(camera.view, mul(const_data.world, vertex_in.pos));
+    vertex_out.hpos = mul(camera.projection, pos_view_relative);
     vertex_out.color = vertex_in.color;
     vertex_out.uv_coord = vertex_in.uv_coord;
 

@@ -124,21 +124,12 @@ impl TmpRenderPass {
             .definition()
             .descriptor_set_layouts[0];
 
-        let (view_matrix, projection_matrix) = camera.build_view_projection(
-            render_surface.extents().width() as f32,
-            render_surface.extents().height() as f32,
-        );
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let mut constant_data = Vec::with_capacity(32);
-        unsafe {
-            constant_data.set_len(32);
-        }
-        view_matrix.write_cols_to_slice(&mut constant_data[0..]);
-        projection_matrix.write_cols_to_slice(&mut constant_data[16..]);
+        let camera_props = camera.build_camera_props(render_surface.extents().width() as f32, render_surface.extents().height() as f32);
 
         let camera_buffer_view = transient_allocator
-            .copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER)
+            .copy_data(&camera_props, ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
         let lighting_manager_view = transient_allocator

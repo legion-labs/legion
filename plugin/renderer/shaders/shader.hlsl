@@ -1,6 +1,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/omnidirectional_light.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/spotlight.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/camera_props.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -13,11 +14,6 @@ struct VertexOut {
     float4 hpos : SV_POSITION;
     float3 normal : NORMAL;
     float3 pos : POSITION;
-};
-
-struct Camera {
-    float4x4 view;
-    float4x4 projection;
 };
 
 struct LightingManager {
@@ -44,7 +40,7 @@ struct InstanceData {
     float4 color;
 };
 
-ConstantBuffer<Camera> camera;
+ConstantBuffer<CameraProps> camera;
 ConstantBuffer<LightingManager> lighting_manager;
 ByteAddressBuffer static_buffer;
 [[vk::push_constant]]

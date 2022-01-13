@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "PushConstantData",
-    id: 22,
+    id: 17,
     size: 16,
 };
 
@@ -23,7 +23,7 @@ pub struct PushConstantData {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl PushConstantData {
     pub const fn id() -> u32 {
-        22
+        17
     }
 
     pub fn def() -> &'static CGenTypeDef {

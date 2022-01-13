@@ -10,12 +10,18 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::{CGenPipelineLayoutDef, PipelineDataProvider};
 
 use super::super::cgen_type::PushConstantData;
+use super::super::descriptor_set::FrameDescriptorSet;
 use super::super::descriptor_set::ViewDescriptorSet;
 
 static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
     name: "TmpPipelineLayout",
     id: 0,
-    descriptor_set_layout_ids: [Some(ViewDescriptorSet::id()), None, None, None],
+    descriptor_set_layout_ids: [
+        Some(FrameDescriptorSet::id()),
+        Some(ViewDescriptorSet::id()),
+        None,
+        None,
+    ],
     push_constant_type: Some(PushConstantData::id()),
 };
 
@@ -69,8 +75,11 @@ impl<'a> TmpPipelineLayout<'a> {
         }
     }
 
-    pub fn set_view_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
+    pub fn set_frame_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
         self.descriptor_sets[0] = Some(descriptor_set_handle);
+    }
+    pub fn set_view_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
+        self.descriptor_sets[1] = Some(descriptor_set_handle);
     }
     pub fn set_push_constant(&mut self, data: &PushConstantData) {
         self.push_constant = *data;
