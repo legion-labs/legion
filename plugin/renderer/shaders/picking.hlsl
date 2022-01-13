@@ -1,6 +1,7 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
+#include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -22,13 +23,6 @@ struct EntityTransforms {
 ConstantBuffer<ViewData> view_data;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
-
-struct PickingData
-{
-    float3 picking_pos;
-    uint picking_id;
-};
-
 RWStructuredBuffer<uint> picked_count;
 RWStructuredBuffer<PickingData> picked_objects;
 

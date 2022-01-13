@@ -76,6 +76,12 @@ impl From<f32> for Float1 {
     }
 }
 
+impl From<Float1> for f32 {
+    fn from(value: Float1) -> Self {
+        value.0
+    }
+}
+
 ///
 /// Float2
 ///
@@ -85,6 +91,12 @@ pub struct Float2([f32; 2]);
 impl From<glam::Vec2> for Float2 {
     fn from(value: glam::Vec2) -> Self {
         Self(value.to_array())
+    }
+}
+
+impl From<Float2> for glam::Vec2 {
+    fn from(value: Float2) -> Self {
+        Self::new(value.0[0], value.0[1])
     }
 }
 
@@ -100,6 +112,12 @@ impl From<glam::Vec3> for Float3 {
     }
 }
 
+impl From<Float3> for glam::Vec3 {
+    fn from(value: Float3) -> Self {
+        Self::new(value.0[0], value.0[1], value.0[2])
+    }
+}
+
 ///
 /// Float4
 ///
@@ -112,15 +130,27 @@ impl From<glam::Vec4> for Float4 {
     }
 }
 
+impl From<Float4> for glam::Vec4 {
+    fn from(value: Float4) -> Self {
+        Self::new(value.0[0], value.0[1], value.0[2], value.0[3])
+    }
+}
+
 ///
 /// Uint1
 ///
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Uint1(u32);
 
 impl From<u32> for Uint1 {
     fn from(value: u32) -> Self {
         Self(value)
+    }
+}
+
+impl From<Uint1> for u32 {
+    fn from(value: Uint1) -> Self {
+        value.0
     }
 }
 
@@ -136,6 +166,12 @@ impl From<glam::UVec2> for Uint2 {
     }
 }
 
+impl From<Uint2> for glam::UVec2 {
+    fn from(value: Uint2) -> Self {
+        Self::new(value.0[0], value.0[1])
+    }
+}
+
 ///
 /// Uint3
 ///
@@ -148,6 +184,12 @@ impl From<glam::UVec3> for Uint3 {
     }
 }
 
+impl From<Uint3> for glam::UVec3 {
+    fn from(value: Uint3) -> Self {
+        Self::new(value.0[0], value.0[1], value.0[2])
+    }
+}
+
 ///
 /// Uint4
 ///
@@ -157,6 +199,12 @@ pub struct Uint4([u32; 4]);
 impl From<glam::UVec4> for Uint4 {
     fn from(value: glam::UVec4) -> Self {
         Self(value.to_array())
+    }
+}
+
+impl From<Uint4> for glam::UVec4 {
+    fn from(value: Uint4) -> Self {
+        Self::new(value.0[0], value.0[1], value.0[2], value.0[3])
     }
 }
 
@@ -178,6 +226,13 @@ impl From<f16> for Half1 {
     }
 }
 
+
+impl From<Half1> for f32 {
+    fn from(value: Half1) -> Self {
+        half::f16::from_bits(value.0).to_f32()
+    }
+}
+
 ///
 /// Half2
 ///
@@ -190,6 +245,15 @@ impl From<glam::Vec2> for Half2 {
             half::f16::from_f32(value.x).to_bits(),
             half::f16::from_f32(value.y).to_bits(),
         ])
+    }
+}
+
+impl From<Half2> for glam::Vec2 {
+    fn from(value: Half2) -> Self {
+        Self::new(
+            half::f16::from_bits(value.0[0]).to_f32(),
+            half::f16::from_bits(value.0[1]).to_f32(),
+        )
     }
 }
 
@@ -209,6 +273,16 @@ impl From<glam::Vec3> for Half3 {
     }
 }
 
+impl From<Half3> for glam::Vec3 {
+    fn from(value: Half3) -> Self {
+        Self::new(
+            half::f16::from_bits(value.0[0]).to_f32(),
+            half::f16::from_bits(value.0[1]).to_f32(),
+            half::f16::from_bits(value.0[2]).to_f32(),
+        )
+    }
+}
+
 ///
 /// Half4
 ///
@@ -223,6 +297,17 @@ impl From<glam::Vec4> for Half4 {
             half::f16::from_f32(value.z).to_bits(),
             half::f16::from_f32(value.w).to_bits(),
         ])
+    }
+}
+
+impl From<Half4> for glam::Vec4 {
+    fn from(value: Half4) -> Self {
+        Self::new(
+            half::f16::from_bits(value.0[0]).to_f32(),
+            half::f16::from_bits(value.0[1]).to_f32(),
+            half::f16::from_bits(value.0[2]).to_f32(),
+            half::f16::from_bits(value.0[3]).to_f32(),
+        )
     }
 }
 

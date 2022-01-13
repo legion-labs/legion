@@ -60,3 +60,9 @@ struct PickingPushConstantData {
     world_offset: Uint1,
     picking_id: Uint1,
 }
+
+struct PickingData
+{
+    picking_pos : Float3,
+    picking_id : Uint1
+}
