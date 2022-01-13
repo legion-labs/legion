@@ -3,7 +3,6 @@ use lgn_math::Vec3;
 
 use crate::cgen::cgen_type::PickingData;
 
-
 #[derive(Component)]
 pub struct PickedComponent {
     picking_data: Vec<PickingData>,

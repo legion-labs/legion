@@ -36,7 +36,7 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
-    static_buffer: UnifiedStaticBuffer,    
+    static_buffer: UnifiedStaticBuffer,
     transforms_data: TransformStaticsBuffer,
     omnidirectional_lights_data: OmnidirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
@@ -87,7 +87,9 @@ impl Renderer {
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
         let test_transform_data = TransformStaticsBuffer::new(UniformGPUData::<
             cgen::cgen_type::EntityTransforms,
-        >::new(&static_buffer, 64 * 1024));
+        >::new(
+            &static_buffer, 64 * 1024
+        ));
 
         let omnidirectional_lights_data =
             OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(

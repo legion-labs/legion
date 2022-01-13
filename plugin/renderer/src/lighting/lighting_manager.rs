@@ -16,7 +16,7 @@ pub struct LightingManager {
 impl LightingManager {
     pub fn gpu_data(&self) -> LightingData {
         let mut lighting_data = LightingData::default();
-        
+
         lighting_data.set_num_directional_lights(self.num_directional_lights.into());
         lighting_data.set_num_omnidirectional_lights(self.num_omnidirectional_lights.into());
         lighting_data.set_num_spotlights(self.num_spotlights.into());
@@ -26,7 +26,7 @@ impl LightingManager {
         lighting_data.set_diffuse_reflection(self.diffuse_reflection.into());
         lighting_data.set_ambient_reflection(self.ambient_reflection.into());
         lighting_data.set_shininess(self.shininess.into());
-        
+
         lighting_data
     }
 }
