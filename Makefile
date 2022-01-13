@@ -67,7 +67,6 @@ codegen:
 	cargo build --features=run-codegen
 
 build-release:
-	pnpm build
 	cargo build --release
 
 cov: rebuild
