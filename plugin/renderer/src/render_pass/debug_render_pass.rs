@@ -155,7 +155,7 @@ impl DebugRenderPass {
     pub fn bind_pipeline_and_desc_set(
         &self,
         pipeline: &Pipeline,
-        camera_props: &cgen::cgen_type::CameraProps,
+        view_data: &cgen::cgen_type::ViewData,
         constant_data: &cgen::cgen_type::ConstData,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
@@ -173,12 +173,15 @@ impl DebugRenderPass {
 
         {
             let sub_allocation =
-                transient_allocator.copy_data(camera_props, ResourceUsage::AS_CONST_BUFFER);
+                transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
             descriptor_set_writer
-                .set_descriptors_by_name("camera", &[DescriptorRef::BufferView(&const_buffer_view)])
+                .set_descriptors_by_name(
+                    "view_data",
+                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                )
                 .unwrap();
         }
         {
@@ -233,7 +236,7 @@ impl DebugRenderPass {
 
     pub fn render_ground_plane(
         &self,
-        camera_props: &cgen::cgen_type::CameraProps,
+        view_data: &cgen::cgen_type::ViewData,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
@@ -244,7 +247,7 @@ impl DebugRenderPass {
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
-            camera_props,
+            view_data,
             &constant_data,
             cmd_buffer,
             render_context,
@@ -262,7 +265,7 @@ impl DebugRenderPass {
         &self,
         mesh_id: u32,
         transform: &Transform,
-        camera_props: &cgen::cgen_type::CameraProps,
+        view_data: &cgen::cgen_type::ViewData,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
@@ -299,7 +302,7 @@ impl DebugRenderPass {
 
         self.bind_pipeline_and_desc_set(
             &self.wire_pso_depth,
-            camera_props,
+            view_data,
             &constant_data,
             cmd_buffer,
             render_context,
@@ -316,7 +319,7 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        camera_props: &cgen::cgen_type::CameraProps,
+        view_data: &cgen::cgen_type::ViewData,
         cmd_buffer: &HLCommandBuffer<'_>,
         debug_display: &mut DebugDisplay,
         default_meshes: &DefaultMeshes,
@@ -334,7 +337,7 @@ impl DebugRenderPass {
 
             self.bind_pipeline_and_desc_set(
                 &self.wire_pso_depth,
-                camera_props,
+                view_data,
                 &constant_data,
                 cmd_buffer,
                 render_context,
@@ -383,12 +386,16 @@ impl DebugRenderPass {
             render_surface.extents().height() as f32,
         );
 
-        let camera_props = camera.build_camera_props(
+        let view_data = camera.tmp_build_view_data(
             render_surface.extents().width() as f32,
             render_surface.extents().height() as f32,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
         );
 
-        self.render_ground_plane(&camera_props, cmd_buffer, render_context, default_meshes);
+        self.render_ground_plane(&view_data, cmd_buffer, render_context, default_meshes);
 
         for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
         {
@@ -419,7 +426,7 @@ impl DebugRenderPass {
 
                 self.bind_pipeline_and_desc_set(
                     &self.solid_pso_nodepth,
-                    &camera_props,
+                    &view_data,
                     &constant_data,
                     cmd_buffer,
                     render_context,
@@ -435,7 +442,7 @@ impl DebugRenderPass {
                 self.render_aabb_for_mesh(
                     static_mesh_component.mesh_id as u32,
                     transform,
-                    &camera_props,
+                    &view_data,
                     cmd_buffer,
                     render_context,
                     default_meshes,
@@ -445,7 +452,7 @@ impl DebugRenderPass {
 
         self.render_debug_display(
             render_context,
-            &camera_props,
+            &view_data,
             cmd_buffer,
             debug_display,
             default_meshes,

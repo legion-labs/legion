@@ -10,6 +10,7 @@ use lgn_graphics_api::{
 use lgn_transform::components::Transform;
 
 use crate::{
+    cgen,
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
         StaticMesh,
@@ -254,6 +255,7 @@ impl PickingRenderPass {
     #[allow(clippy::too_many_arguments)]
     fn render_mesh(
         &self,
+        view_data: &cgen::cgen_type::ViewData,
         custom_world: &Mat4,
         custom_picking_id: Option<u32>,
         view_proj_matrix: &Mat4,
@@ -264,28 +266,20 @@ impl PickingRenderPass {
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
-        let mut constant_data: [f32; 55] = [0.0; 55];
+        let mut constant_data = [0.0; 23];
         custom_world.write_cols_to_slice(&mut constant_data[0..]);
-        view_proj_matrix.write_cols_to_slice(&mut constant_data[16..]);
+        
+        constant_data[48-32] = screen_rect.x;
+        constant_data[49-32] = screen_rect.y;
+        constant_data[50-32] = 1.0 / screen_rect.x;
+        constant_data[51-32] = 1.0 / screen_rect.y;
 
-        let inv_view_proj_matrix = view_proj_matrix.inverse();
-        inv_view_proj_matrix.write_cols_to_slice(&mut constant_data[32..]);
+        constant_data[52-32] = cursor_pos.x;
+        constant_data[53-32] = cursor_pos.y;
 
-        constant_data[48] = screen_rect.x;
-        constant_data[49] = screen_rect.y;
-        constant_data[50] = 1.0 / screen_rect.x;
-        constant_data[51] = 1.0 / screen_rect.y;
-
-        constant_data[52] = cursor_pos.x;
-        constant_data[53] = cursor_pos.y;
-
-        constant_data[54] = picking_distance;
+        constant_data[54-32] = picking_distance;
 
         let transient_allocator = render_context.transient_buffer_allocator();
-        let sub_allocation =
-            transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-        let const_buffer_view = sub_allocation.const_buffer_view();
 
         let descriptor_set_layout = &self
             .pipeline
@@ -295,12 +289,33 @@ impl PickingRenderPass {
 
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
 
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "const_data",
-                &[DescriptorRef::BufferView(&const_buffer_view)],
-            )
-            .unwrap();
+        {
+            let sub_allocation =
+                transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
+
+            let const_buffer_view = sub_allocation.const_buffer_view();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "view_data",
+                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                )
+                .unwrap();
+        }
+
+        {
+            let sub_allocation =
+                transient_allocator.copy_data_slice(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+
+            let const_buffer_view = sub_allocation.const_buffer_view();
+
+            descriptor_set_writer
+                .set_descriptors_by_name(
+                    "const_data",
+                    &[DescriptorRef::BufferView(&const_buffer_view)],
+                )
+                .unwrap();
+        }
 
         let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
         descriptor_set_writer
@@ -402,6 +417,15 @@ impl PickingRenderPass {
 
             let cursor_pos = picking_manager.current_cursor_pos();
 
+            let view_data = camera.tmp_build_view_data(
+                render_surface.extents().width() as f32,
+                render_surface.extents().height() as f32,
+                screen_rect.x,
+                screen_rect.y,
+                cursor_pos.x,
+                cursor_pos.y,
+            );
+
             for (_index, (static_mesh, transform, manipulator)) in
                 manipulator_meshes.iter().enumerate()
             {
@@ -415,6 +439,7 @@ impl PickingRenderPass {
                     );
 
                     self.render_mesh(
+                        &view_data,
                         &custom_world,
                         None,
                         &view_proj_matrix,
@@ -433,6 +458,7 @@ impl PickingRenderPass {
                 let custom_world = Mat4::IDENTITY;
 
                 self.render_mesh(
+                    &view_data,
                     &custom_world,
                     None,
                     &view_proj_matrix,
@@ -449,6 +475,7 @@ impl PickingRenderPass {
                 let picking_distance = 1.0;
                 let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
                 self.render_mesh(
+                    &view_data,
                     &custom_world,
                     Some(light.picking_id),
                     &view_proj_matrix,

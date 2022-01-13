@@ -126,10 +126,17 @@ impl TmpRenderPass {
 
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        let camera_props = camera.build_camera_props(render_surface.extents().width() as f32, render_surface.extents().height() as f32);
+        let view_data = camera.tmp_build_view_data(
+            render_surface.extents().width() as f32,
+            render_surface.extents().height() as f32,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        );
 
         let camera_buffer_view = transient_allocator
-            .copy_data(&camera_props, ResourceUsage::AS_CONST_BUFFER)
+            .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
         let lighting_manager_view = transient_allocator
@@ -142,7 +149,7 @@ impl TmpRenderPass {
 
             descriptor_set_writer
                 .set_descriptors_by_name(
-                    "camera",
+                    "view_data",
                     &[DescriptorRef::BufferView(&camera_buffer_view)],
                 )
                 .unwrap();

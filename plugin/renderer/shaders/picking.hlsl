@@ -1,3 +1,5 @@
+#include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
@@ -12,9 +14,7 @@ struct VertexOut {
 };
 
 struct ConstData {
-    float4x4 custom_world;
-    float4x4 view_proj;
-    float4x4 inv_view_proj;
+    float4x4 custom_world;    
     float4 screen_size;
     float2 cursor_pos;
     float picking_distance;
@@ -24,6 +24,7 @@ struct EntityTransforms {
     float4x4 world;
 };
 
+ConstantBuffer<ViewData> view_data;
 ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
 
@@ -57,7 +58,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     }
 
     float4 world_pos = mul(world, vertex_in.pos);
-    vertex_out.hpos = mul(const_data.view_proj, world_pos);
+    vertex_out.hpos = mul(view_data.projection_view, world_pos);
 
     float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;
     pers_div.y *= -1.0f;

@@ -3,9 +3,9 @@
 #ifndef DESCRIPTORSET_VIEWDESCRIPTORSET
 #define DESCRIPTORSET_VIEWDESCRIPTORSET
 
-    #include "../cgen_type/camera_props.hlsl"
+    #include "../cgen_type/view_data.hlsl"
 
     [[vk::binding(0, 1)]]
-    ConstantBuffer<CameraProps> camera;
+    ConstantBuffer<ViewData> camera;
 
 #endif

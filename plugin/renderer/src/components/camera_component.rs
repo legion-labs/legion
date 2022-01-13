@@ -5,7 +5,7 @@ use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
 };
-use lgn_math::{Mat3, Mat4, Quat, Vec3};
+use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 
 use crate::cgen;
 
@@ -32,17 +32,37 @@ impl CameraComponent {
         (view_matrix, projection_matrix)
     }
 
-    pub fn build_camera_props(&self, width: f32, height: f32) -> cgen::cgen_type::CameraProps {        
-        let (view_matrix, projection_matrix) = self.build_view_projection(
-            width,
-            height,
-        );
+    pub fn tmp_build_view_data(
+        &self,
+        output_width: f32,
+        output_height: f32,
+        picking_width: f32,
+        picking_height: f32,
+        cursor_x: f32,
+        cursor_y: f32,
+    ) -> cgen::cgen_type::ViewData {
+        let (view_matrix, projection_matrix) =
+            self.build_view_projection(output_width, output_height);
         let view_proj_matrix = projection_matrix * view_matrix;
 
-        let mut camera_props = cgen::cgen_type::CameraProps::default();
+        let mut camera_props = cgen::cgen_type::ViewData::default();
+
         camera_props.set_view(view_matrix.into());
-        camera_props.set_projection(projection_matrix.into());        
-        camera_props.set_projection_view(view_proj_matrix.into());  
+        camera_props.set_inv_view(view_matrix.inverse().into());
+        camera_props.set_projection(projection_matrix.into());
+        camera_props.set_inv_projection(projection_matrix.inverse().into());
+        camera_props.set_projection_view(view_proj_matrix.into());
+        camera_props.set_inv_projection_view(view_proj_matrix.inverse().into());
+        camera_props.set_screen_size(
+            Vec4::new(
+                picking_width,
+                picking_height,
+                1.0 / picking_width,
+                1.0 / picking_height,
+            )
+            .into(),
+        );
+        camera_props.set_cursor_pos(Vec2::new(cursor_x, cursor_y).into());
 
         camera_props
     }
