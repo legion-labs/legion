@@ -17,6 +17,9 @@ bans = [
     { name = "log", version = "*", suggestion = "use `lgn-telemetry` instead", exceptions = [
         "lgn-tracing",
         "lgn-telemetry-sink",
+
+        # wasm logger
+        "simple-wasm-logger",
     ] },
 ]
 
