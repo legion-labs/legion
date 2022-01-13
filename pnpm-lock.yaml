@@ -99,7 +99,6 @@ importers:
       '@lgn/frontend': ^0.1.0
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-streaming': ^0.1.0
-      '@lgn/simple-wasm-logger': workspace:^0.1.0
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.34
       '@swc/core': ^1.2.127
       '@swc/jest': ^0.2.15
@@ -144,7 +143,6 @@ importers:
       '@lgn/frontend': link:../../../lib/browser/frontend
       '@lgn/proto-editor': link:../../../proto/editor
       '@lgn/proto-streaming': link:../../../proto/streaming
-      '@lgn/simple-wasm-logger': link:../../../lib/simple-wasm-logger/frontend
       '@tauri-apps/api': 1.0.0-beta.8
       browser-headers: 0.4.1
       color-convert: 2.0.1
