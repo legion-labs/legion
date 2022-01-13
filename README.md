@@ -43,7 +43,7 @@ The repo contains all the application code of the engine itself, the tools and t
 
 We currently don't support pre-built packages, but you can build and run locally all the components necessary to build the engine and it's tools. For a quick setup follow the guides below, We support Windows and Linux as our main development platforms and targets. The plan is to support MacOs as well.
 
-> This being a monorepo, it relies on some extra tooling to work around some Cargo limitations around monorepo and package selection. You will need to use the cargo command you are accustomed to like `cargo clippy`, `cargo run`, but you need to prefix them with `cargo mclippy`, `cargo mrun`. More information surrounding this is available [here]((https://book.legionengine.com/link_to_monorepo_tooling).
+> This being a monorepo, it relies on some extra tooling to work around some Cargo limitations around monorepo and package selection. You will need to use the cargo command you are accustomed to like `cargo clippy`, `cargo run`, but you need to prefix them with `cargo mclippy`, `cargo mrun`. More information surrounding this is available [here](https://book.legionengine.com/link_to_monorepo_tooling).
 
 <details><summary><b>Windows setup instructions</b></summary>
 
