@@ -1,7 +1,7 @@
 <script lang="ts">
   import { PropertyUpdate } from "@/api";
 
-  import { ResourceProperty } from "@/api/propertyGrid";
+  import { ResourceProperty } from "@/lib/propertyGrid";
   import PropertyInput from "./PropertyInput.svelte";
 
   type $$Events = {
@@ -13,7 +13,6 @@
   /** The property path parts */
   export let pathParts: string[];
 
-  /** Displays a nice little border below the resource property (or not)! */
   export let withBorder: boolean;
 </script>
 
@@ -41,7 +40,7 @@
   }
 
   .with-border {
-    @apply border-b border-gray-400 border-opacity-30 last:border-none;
+    @apply border-b border-gray-400 border-opacity-30;
   }
 
   .property-name {

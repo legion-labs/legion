@@ -1,11 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Vec3 } from "@/api/propertyGrid";
-  import NumberInput from "../../NumberInput.svelte";
+  import { Vec3 } from "@/lib/propertyGrid";
+  import NumberInput from "../../inputs/NumberInput.svelte";
 
   const dispatch = createEventDispatcher<{ input: Vec3 }>();
 
   export let value: Vec3;
+
+  export let disabled = false;
 
   function updateVectorAt(index: 0 | 1 | 2, { detail }: CustomEvent<number>) {
     dispatch("input", Object.assign([], value, { [index]: detail }));
@@ -20,6 +22,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
   <div>
@@ -29,6 +32,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
   <div>
@@ -38,6 +42,7 @@
       noArrow
       fullWidth
       autoSelect
+      {disabled}
     />
   </div>
 </div>
