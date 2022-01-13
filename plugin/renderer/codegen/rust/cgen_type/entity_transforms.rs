@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "DebugPushConstantData",
-    id: 21,
-    size: 4,
+    name: "EntityTransforms",
+    id: 18,
+    size: 64,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<DebugPushConstantData>(), 4);
+static_assertions::const_assert_eq!(mem::size_of::<EntityTransforms>(), 64);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct DebugPushConstantData {
-    data: [u8; 4],
+pub struct EntityTransforms {
+    data: [u8; 64],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl DebugPushConstantData {
+impl EntityTransforms {
     pub const fn id() -> u32 {
-        21
+        18
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -31,15 +31,15 @@ impl DebugPushConstantData {
     }
 
     //
-    // member : vertex_offset
+    // member : world
     // offset : 0
-    // size : 4
+    // size : 64
     //
-    pub fn set_vertex_offset(&mut self, value: Uint1) {
+    pub fn set_world(&mut self, value: Float4x4) {
         self.set(0, value);
     }
 
-    pub fn vertex_offset(&self) -> Uint1 {
+    pub fn world(&self) -> Float4x4 {
         self.get(0)
     }
 
@@ -64,10 +64,10 @@ impl DebugPushConstantData {
     }
 }
 
-impl Default for DebugPushConstantData {
+impl Default for EntityTransforms {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 4] };
-        ret.set_vertex_offset(Uint1::default());
+        let mut ret = Self { data: [0; 64] };
+        ret.set_world(Float4x4::default());
         ret
     }
 }

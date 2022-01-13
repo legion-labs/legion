@@ -17,6 +17,10 @@ struct ConstData {
     picking_distance: Float1,
 }
 
+struct EntityTransforms {
+    world: Float4x4,
+}
+
 #[DescriptorSet(frequency = 0, transient)]
 struct FrameDescriptorSet {
     omni_lights: StructuredBuffer<OmnidirectionalLight>,

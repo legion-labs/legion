@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "PickingData",
-    id: 22,
+    id: 23,
     size: 16,
 };
 
@@ -23,7 +23,7 @@ pub struct PickingData {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl PickingData {
     pub const fn id() -> u32 {
-        22
+        23
     }
 
     pub fn def() -> &'static CGenTypeDef {
