@@ -1,5 +1,3 @@
-use std::fs::File;
-
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
@@ -42,8 +40,8 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.id.to_string());
-        let mut file = File::create(path).expect("new file");
+        let path = resource_dir.join(source.id.resource_path());
+        let mut file = common::create_resource_file(&path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
         source
@@ -109,8 +107,8 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.id.to_string());
-        let mut file = File::create(path).expect("new file");
+        let path = resource_dir.join(source.id.resource_path());
+        let mut file = common::create_resource_file(&path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
         source
@@ -198,8 +196,8 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(source.id.to_string());
-        let mut file = File::create(path).expect("new file");
+        let path = resource_dir.join(source.id.resource_path());
+        let mut file = common::create_resource_file(&path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
         source
@@ -280,8 +278,8 @@ fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(source.id.to_string());
-        let mut file = File::create(path).expect("new file");
+        let path = resource_dir.join(source.id.resource_path());
+        let mut file = common::create_resource_file(&path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
         source

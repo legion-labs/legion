@@ -1,4 +1,7 @@
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use tempfile::TempDir;
@@ -35,4 +38,15 @@ pub fn test_env() -> CompilationEnv {
         platform: Platform::Windows,
         locale: Locale::new("en"),
     }
+}
+
+pub fn create_resource_file(path: &Path) -> std::io::Result<std::fs::File> {
+    let directory = {
+        let mut directory = path.to_owned();
+        directory.pop();
+        directory
+    };
+
+    std::fs::create_dir_all(&directory)?;
+    std::fs::File::create(path)
 }
