@@ -663,6 +663,9 @@ impl DataBuild {
                     self.compilers.registry(),
                 )?;
 
+                // registry must be updated to release any resources that are no longer referenced.
+                self.compilers.registry().update();
+
                 // we check if the expected named output was produced.
                 if let Some(expected_name) = expected_name {
                     if !resource_infos.iter().any(|info| {

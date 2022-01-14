@@ -231,8 +231,8 @@ pub enum Error {
     #[error("Compilation did not produce expected output.")]
     OutputNotPresent,
     /// Compiler returned an error.
-    #[error("Compiler returned an error.")]
-    Compiler(CompilerError),
+    #[error("Compiler returned an error: '{0}'")]
+    Compiler(#[source] CompilerError),
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {

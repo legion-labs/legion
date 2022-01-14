@@ -137,6 +137,13 @@ impl AssetRegistryOptions {
         self
     }
 
+    /// Specifying `directory device` will mount a device that allows to read
+    /// resources from a specified directory.
+    pub fn add_device_dir_mut(&mut self, path: impl AsRef<Path>) -> &Self {
+        self.devices.push(Box::new(vfs::DirDevice::new(path)));
+        self
+    }
+
     /// Specifying `content-addressable storage device` will mount a device that
     /// allows to read resources from a specified content store through
     /// provided manifest.
