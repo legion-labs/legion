@@ -23,6 +23,7 @@ use lgn_renderer::{
 use lgn_transform::components::Transform;
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
+use std::{fs::File, io, path::Path};
 
 struct SnapshotDescriptor {
     setup_name: String,
@@ -99,6 +100,8 @@ fn main() {
             .add_startup_system(register_asset_loaders);
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
+    } else if args.setup_name.eq("stress_test") {
+        app.add_startup_system(init_stress_test);
     } else {
         app.add_startup_system(init_scene);
     }
@@ -163,6 +166,69 @@ fn presenter_snapshot_system(
         app_exit_events.send(AppExit);
     }
     frame_counter.frame_count += 1;
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct ColorData {
+    data: Vec<u8>,
+    width: u32,
+    height: u32,
+}
+
+/// Load the image using `png`
+pub(crate) fn load_image(path: &Path) -> io::Result<ColorData> {
+    use png::ColorType::Rgb;
+    let decoder = png::Decoder::new(File::open(path)?);
+    let mut reader = decoder.read_info()?;
+    let mut img_data = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut img_data)?;
+
+    match info.color_type {
+        Rgb => Ok(ColorData {
+            data: img_data,
+            width: info.width,
+            height: info.height,
+        }),
+        _ => unreachable!("uncovered color type"),
+    }
+}
+
+fn init_stress_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+    let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("refs")
+        .join("stress-test")
+        .join("random_color")
+        .with_extension("png");
+
+    let random_color = load_image(&ref_path).unwrap();
+
+    let meta_cube_size = 20;
+    for x in 0..meta_cube_size {
+        for y in 0..meta_cube_size {
+            for z in 0..meta_cube_size {
+                let flattened_index =
+                    (x * meta_cube_size * meta_cube_size) + y * meta_cube_size + z;
+
+                let r = random_color.data[flattened_index * 3];
+                let g = random_color.data[flattened_index * 3 + 1];
+                let b = random_color.data[flattened_index * 3 + 2];
+
+                commands
+                    .spawn()
+                    .insert(Transform::from_xyz(
+                        x as f32 * 2.0,
+                        y as f32 * 2.0,
+                        z as f32 * 2.0,
+                    ))
+                    .insert(StaticMesh::from_default_meshes(
+                        default_meshes.as_ref(),
+                        DefaultMeshId::Cube as usize,
+                        (r, g, b).into(),
+                    ));
+            }
+        }
+    }
 }
 
 fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {

@@ -112,7 +112,15 @@ fn static_meshes_added(
     let mut picking_block = picking_manager.acquire_picking_id_block();
 
     for (entity, mut mesh) in query.iter_mut() {
-        mesh.picking_id = picking_block.acquire_picking_id(entity).unwrap();
+        mesh.picking_id = u32::MAX;
+        while mesh.picking_id == u32::MAX {
+            if let Some(picking_id) = picking_block.acquire_picking_id(entity) {
+                mesh.picking_id = picking_id;
+            } else {
+                picking_manager.release_picking_id_block(picking_block);
+                picking_block = picking_manager.acquire_picking_id_block();
+            }
+        }
     }
 
     picking_manager.release_picking_id_block(picking_block);

@@ -109,13 +109,13 @@ impl Renderer {
         ));
 
         let descriptor_heap_def = DescriptorHeapDef {
-            max_descriptor_sets: 32 * 4096,
-            sampler_count: 32 * 128,
-            constant_buffer_count: 32 * 1024,
-            buffer_count: 32 * 1024,
-            rw_buffer_count: 32 * 1024,
-            texture_count: 32 * 1024,
-            rw_texture_count: 32 * 1024,
+            max_descriptor_sets: 128 * 4096,
+            sampler_count: 128 * 128,
+            constant_buffer_count: 128 * 1024,
+            buffer_count: 128 * 1024,
+            rw_buffer_count: 128 * 1024,
+            texture_count: 128 * 1024,
+            rw_texture_count: 128 * 1024,
         };
 
         Ok(Self {
@@ -140,7 +140,7 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
+            transient_buffer: TransientPagedBuffer::new(device_context, 1024, 64 * 1024),
             static_buffer,
             transforms_data: test_transform_data,
             omnidirectional_lights_data,
