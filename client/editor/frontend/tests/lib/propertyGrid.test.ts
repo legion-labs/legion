@@ -23,7 +23,6 @@ import {
   ptypeBelongsToPrimitive,
   ResourceProperty,
 } from "@/lib/propertyGrid";
-
 import propertiesResponse from "@/resources/propertiesResponse.json";
 
 describe("formatProperties", () => {

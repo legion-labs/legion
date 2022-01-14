@@ -8,7 +8,10 @@ module.exports = {
   },
   moduleFileExtensions: ["js", "ts", "svelte"],
   testMatch: ["**/tests/**/*.test.ts"],
-  moduleNameMapper: { "^\\@\\/(.*)": "<rootDir>/src/$1" },
+  moduleNameMapper: {
+    "^\\@\\/resources\\/(.*)": "<rootDir>/tests/resources/$1",
+    "^\\@\\/(.*)": "<rootDir>/src/$1",
+  },
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
-  transformIgnorePatterns: [],
+  transformIgnorePatterns: ["node_modules/(?!(@tauri-apps/api)/)"],
 };
