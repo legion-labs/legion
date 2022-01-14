@@ -5,8 +5,8 @@ use ash::vk::{self};
 use lgn_tracing::{error, trace};
 
 use crate::{
-    DeviceContext, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
-    TextureSubResource,
+    DeviceContext, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Texture,
+    TextureDef, TextureSubResource,
 };
 
 // This is used to allow the underlying image/allocation to be removed from a
@@ -364,15 +364,28 @@ impl Texture {
         self.inner.platform_texture.image.vk_allocation
     }
 
-    pub(crate) fn map_texture_platform(&self) -> GfxResult<TextureSubResource<'_>> {
+    pub(crate) fn map_texture_platform(
+        &self,
+        plane: PlaneSlice,
+    ) -> GfxResult<TextureSubResource<'_>> {
         let ptr = self
             .inner
             .device_context
             .vk_allocator()
             .map_memory(&self.vk_allocation().unwrap())?;
 
+        let aspect_mask = match plane {
+            crate::PlaneSlice::Default => {
+                super::internal::image_format_to_aspect_mask(self.inner.texture_def.format)
+            }
+            crate::PlaneSlice::Depth => vk::ImageAspectFlags::DEPTH,
+            crate::PlaneSlice::Stencil => vk::ImageAspectFlags::STENCIL,
+            crate::PlaneSlice::Plane0 => vk::ImageAspectFlags::PLANE_0,
+            crate::PlaneSlice::Plane1 => vk::ImageAspectFlags::PLANE_1,
+            crate::PlaneSlice::Plane2 => vk::ImageAspectFlags::PLANE_2,
+        };
         let sub_res = vk::ImageSubresource::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .aspect_mask(aspect_mask)
             .build();
 
         unsafe {

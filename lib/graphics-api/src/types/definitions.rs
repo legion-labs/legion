@@ -234,6 +234,10 @@ pub enum PlaneSlice {
     Default,
     Depth,
     Stencil,
+    // Multi-planar formats support
+    Plane0,
+    Plane1,
+    Plane2,
 }
 
 #[derive(Clone, Copy, Debug)]

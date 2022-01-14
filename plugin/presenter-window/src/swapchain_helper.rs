@@ -90,16 +90,6 @@ pub struct PresentableFrame {
 }
 
 impl PresentableFrame {
-    /// An index that starts at 0 on the first present and increments every
-    /// frame, wrapping back to 0 after each swapchain image has been
-    /// presented once. (See `image_count` on `SwapchainHelper`). WARNING:
-    /// This is not always the returned swapchain image. Swapchain
-    /// images may be acquired in any order.
-    pub fn rotating_frame_index(&self) -> usize {
-        // The sync_frame_index can be used as-is for this purpose
-        self.sync_frame_index
-    }
-
     /// Returns the acquired swapchain image
     pub fn swapchain_texture(&self) -> &Texture {
         &self.swapchain_image.texture
@@ -293,11 +283,6 @@ impl SwapchainHelper {
     #[allow(dead_code)]
     pub fn format(&self) -> Format {
         self.format
-    }
-
-    /// Get image count
-    pub fn image_count(&self) -> usize {
-        self.image_count
     }
 
     /// Get swapchain definition

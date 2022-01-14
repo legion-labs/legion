@@ -14,7 +14,16 @@ impl VulkanTextureView {
         let device_context = texture.device_context();
         let device = device_context.vk_device();
         let texture_def = texture.definition();
-        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
+        let aspect_mask = match view_def.plane_slice {
+            crate::PlaneSlice::Default => {
+                super::internal::image_format_to_aspect_mask(texture_def.format)
+            }
+            crate::PlaneSlice::Depth => vk::ImageAspectFlags::DEPTH,
+            crate::PlaneSlice::Stencil => vk::ImageAspectFlags::STENCIL,
+            crate::PlaneSlice::Plane0 => vk::ImageAspectFlags::PLANE_0,
+            crate::PlaneSlice::Plane1 => vk::ImageAspectFlags::PLANE_1,
+            crate::PlaneSlice::Plane2 => vk::ImageAspectFlags::PLANE_2,
+        };
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_mip_level(view_def.first_mip)

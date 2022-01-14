@@ -4,7 +4,7 @@ use lgn_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{Buffer, BufferView, Sampler, Texture, TextureView};
+use crate::{Buffer, BufferView, PlaneSlice, Sampler, Texture, TextureView};
 
 /// Information about the device, mostly limits, requirements (like memory
 /// alignment), and flags to indicate whether certain features are supported
@@ -717,6 +717,8 @@ pub struct CmdCopyTextureParams {
     pub dst_mip_level: u8,
     pub src_array_slice: u16,
     pub dst_array_slice: u16,
+    pub src_plane_slice: PlaneSlice,
+    pub dst_plane_slice: PlaneSlice,
     pub extent: Extents3D,
 }
 

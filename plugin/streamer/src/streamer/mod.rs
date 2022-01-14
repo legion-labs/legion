@@ -8,12 +8,11 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
 };
-use lgn_presenter::offscreen_helper::Resolution;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
     RenderTaskPool, Renderer,
 };
-use lgn_tracing::{error, info, warn};
+use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{WindowCreated, WindowResized, Windows};
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
@@ -31,6 +30,42 @@ use streamer_windows::StreamerWindows;
 
 mod video_stream;
 use video_stream::VideoStream;
+
+mod rgb2yuv;
+use rgb2yuv::RgbToYuvConverter;
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Resolution {
+    width: u32,
+    height: u32,
+}
+
+impl Resolution {
+    pub fn new(mut width: u32, mut height: u32) -> Self {
+        // Ensure a minimum size for the resolution.
+        if width < 16 {
+            width = 16;
+        }
+
+        if height < 16 {
+            height = 16;
+        }
+
+        Self {
+            // Make sure width & height always are multiple of 2.
+            width: width & !1,
+            height: height & !1,
+        }
+    }
+
+    pub fn width(self) -> u32 {
+        self.width
+    }
+
+    pub fn height(self) -> u32 {
+        self.height
+    }
+}
 
 // Streamer provides interaction with the async network components (gRPC &
 // WebRTC) from the synchronous game-loop.
@@ -189,7 +224,7 @@ pub(crate) fn update_streams(
                 width,
                 height,
             } => {
-                info!("received initialize command");
+                trace!("received initialize command");
 
                 window_list.add(streamer_windows.create_window(
                     event.stream_id,
@@ -213,7 +248,7 @@ pub(crate) fn update_streams(
                 }
             }
             VideoStreamEventInfo::Speed { speed } => {
-                info!("received speed command {}", speed);
+                trace!("received speed command {}", speed);
 
                 match query.get_mut(event.stream_id.entity) {
                     Ok(render_surface) => {
@@ -230,7 +265,7 @@ pub(crate) fn update_streams(
                 }
             }
             VideoStreamEventInfo::Input { input } => {
-                info!("received input: {:?}", input);
+                trace!("received input: {:?}", input);
 
                 match input {
                     Input::MouseButtonInput(mouse_button_input) => {

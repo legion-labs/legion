@@ -9,7 +9,7 @@ use lgn_tracing::span_fn;
 use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};
 use crate::deferred_drop::Drc;
 use crate::{
-    DeviceContext, Extents3D, GfxResult, TextureDef, TextureSubResource, TextureView,
+    DeviceContext, Extents3D, GfxResult, PlaneSlice, TextureDef, TextureSubResource, TextureView,
     TextureViewDef,
 };
 
@@ -125,12 +125,12 @@ impl Texture {
     }
 
     #[span_fn]
-    pub fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
+    pub fn map_texture(&self, plane: PlaneSlice) -> GfxResult<TextureSubResource<'_>> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.map_texture_platform()
+        self.map_texture_platform(plane)
     }
 
     pub fn unmap_texture(&self) {

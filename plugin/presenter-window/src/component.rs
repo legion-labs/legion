@@ -2,13 +2,14 @@
 use std::convert::TryFrom;
 
 use lgn_graphics_api::prelude::*;
-use lgn_presenter::swapchain_helper::SwapchainHelper;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
 use lgn_tasks::TaskPool;
 use raw_window_handle::HasRawWindowHandle;
+
+use crate::SwapchainHelper;
 
 pub struct PresenterWindow {
     swapchain_helper: SwapchainHelper,

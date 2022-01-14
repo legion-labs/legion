@@ -14,7 +14,7 @@ bans = [
     { name = "structopts", version = "*", suggestion = "use `clap` 3.0 or above" },
     { name = "winapi", version = "*", suggestion = "use `windows`" },
     #{ name = "lazy_static", version = "*", suggestion = "use once_cell instead" },
-    { name = "log", version = "*", suggestion = "use `lgn-telemetry` instead", exceptions = [
+    { name = "log", version = "*", suggestion = "use `lgn-tracing` instead", exceptions = [
         "lgn-tracing",
         "lgn-telemetry-sink",
     ] },

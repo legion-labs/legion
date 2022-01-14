@@ -57,3 +57,6 @@
 //#![allow()]
 
 pub mod component;
+
+mod offscreen_capture;
+use offscreen_capture::OffscreenHelper;

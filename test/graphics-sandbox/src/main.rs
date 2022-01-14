@@ -9,7 +9,6 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
-use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
@@ -108,8 +107,8 @@ fn main() {
 fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
-    winit_wnd_list: Res<'_, WinitWindows>,
     renderer: Res<'_, Renderer>,
+    winit_wnd_list: Res<'_, WinitWindows>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     for event in event_render_surface_created.iter() {
@@ -150,7 +149,7 @@ fn presenter_snapshot_system(
                 frame_counter.frame_target,
                 renderer.into_inner(),
                 render_surface_id,
-                Resolution::new(
+                RenderSurfaceExtents::new(
                     snapshot_descriptor.width as u32,
                     snapshot_descriptor.height as u32,
                 ),

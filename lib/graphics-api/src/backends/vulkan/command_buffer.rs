@@ -6,8 +6,8 @@ use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContext, GfxResult,
-    IndexBufferBinding, Pipeline, PipelineType, ResourceState, ResourceUsage, RootSignature,
-    Texture, TextureBarrier, VertexBufferBinding,
+    IndexBufferBinding, Pipeline, PipelineType, PlaneSlice, ResourceState, ResourceUsage,
+    RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
@@ -792,10 +792,27 @@ impl CommandBuffer {
             .usage_flags
             .intersects(ResourceUsage::AS_TRANSFERABLE));
 
-        let src_aspect_mask =
-            super::internal::image_format_to_aspect_mask(src_texture.definition().format);
-        let dst_aspect_mask =
-            super::internal::image_format_to_aspect_mask(dst_texture.definition().format);
+        let src_aspect_mask = match params.src_plane_slice {
+            PlaneSlice::Default => {
+                super::internal::image_format_to_aspect_mask(src_texture.definition().format)
+            }
+            PlaneSlice::Depth => ash::vk::ImageAspectFlags::DEPTH,
+            PlaneSlice::Stencil => ash::vk::ImageAspectFlags::STENCIL,
+            PlaneSlice::Plane0 => ash::vk::ImageAspectFlags::PLANE_0,
+            PlaneSlice::Plane1 => ash::vk::ImageAspectFlags::PLANE_1,
+            PlaneSlice::Plane2 => ash::vk::ImageAspectFlags::PLANE_2,
+        };
+
+        let dst_aspect_mask = match params.dst_plane_slice {
+            PlaneSlice::Default => {
+                super::internal::image_format_to_aspect_mask(src_texture.definition().format)
+            }
+            PlaneSlice::Depth => ash::vk::ImageAspectFlags::DEPTH,
+            PlaneSlice::Stencil => ash::vk::ImageAspectFlags::STENCIL,
+            PlaneSlice::Plane0 => ash::vk::ImageAspectFlags::PLANE_0,
+            PlaneSlice::Plane1 => ash::vk::ImageAspectFlags::PLANE_1,
+            PlaneSlice::Plane2 => ash::vk::ImageAspectFlags::PLANE_2,
+        };
 
         let mut src_subresource = ash::vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)

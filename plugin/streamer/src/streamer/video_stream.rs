@@ -3,12 +3,11 @@ use std::{cmp::min, io::Cursor, sync::Arc};
 use bytes::Bytes;
 use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
-    formats::{self, RBGYUVConverter},
+    formats::YUVSource,
 };
-//use lgn_config::config_get_or;
+use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
@@ -19,6 +18,8 @@ use lgn_tracing::{debug, warn};
 use lgn_utils::memory::write_any;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
+
+use super::{Resolution, RgbToYuvConverter};
 
 #[span_fn]
 fn record_frame_time_metric(microseconds: u64) {
@@ -31,7 +32,7 @@ pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
     encoder: VideoStreamEncoder,
-    offscreen_helper: offscreen_helper::OffscreenHelper,
+    rgb_to_yuv: RgbToYuvConverter,
 }
 
 impl VideoStream {
@@ -43,17 +44,14 @@ impl VideoStream {
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
-            &renderer.shader_compiler(),
-            device_context,
-            resolution,
-        )?;
+        let rgb_to_yuv =
+            RgbToYuvConverter::new(&renderer.shader_compiler(), device_context, resolution)?;
 
         Ok(Self {
             video_data_channel,
             frame_id: 0,
             encoder,
-            offscreen_helper,
+            rgb_to_yuv,
         })
     }
 
@@ -65,7 +63,7 @@ impl VideoStream {
     ) -> anyhow::Result<()> {
         let device_context = renderer.device_context();
         let resolution = Resolution::new(extents.width(), extents.height());
-        if self.offscreen_helper.resize(device_context, resolution)? {
+        if self.rgb_to_yuv.resize(device_context, resolution)? {
             self.encoder = VideoStreamEncoder::new(resolution)?;
         }
         Ok(())
@@ -84,34 +82,33 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        //
-        // Render
-        //
+        #[cfg(debug_assertions)]
         {
-            self.offscreen_helper
-                .present(
-                    render_context,
-                    render_surface,
-                    |rgba: &[u8], row_pitch: usize| {
-                        self.encoder.converter.convert_rgba(rgba, row_pitch);
-                    },
-                )
-                .unwrap();
+            span_scope!("hack_to_slow_down_server");
+            std::thread::sleep(std::time::Duration::from_millis(20));
         }
+
+        self.rgb_to_yuv
+            .convert(
+                render_context,
+                render_surface,
+                self.encoder.yuv_holder.yuv.as_mut_slice(),
+            )
+            .unwrap();
 
         let chunks = self.encoder.encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        //let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 16_000u64);
+        let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 33_000u64);
 
-        //if elapsed >= max_frame_time {
-        //    warn!(
-        //        "stream: frame {:?} took {}ms",
-        //        self.frame_id,
-        //        elapsed / 1000
-        //    );
-        //}
+        if elapsed >= max_frame_time {
+            warn!(
+                "stream: frame {:?} took {}ms",
+                self.frame_id,
+                elapsed / 1000
+            );
+        }
 
         let video_data_channel = Arc::clone(&self.video_data_channel);
         let frame_id = self.frame_id;
@@ -155,9 +152,26 @@ impl Presenter for VideoStream {
     }
 }
 
+pub struct YuvHolder {
+    yuv: Vec<u8>,
+    width: usize,
+    height: usize,
+}
+
+impl YuvHolder {
+    /// Allocates a new helper for the given format.
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            yuv: vec![0u8; (3 * (width * height)) / 2],
+            width,
+            height,
+        }
+    }
+}
+
 struct VideoStreamEncoder {
     encoder: Encoder,
-    converter: RBGYUVConverter,
+    yuv_holder: YuvHolder,
     resolution: Resolution,
     mp4: Mp4Stream,
     writer: Cursor<Vec<u8>>,
@@ -171,14 +185,11 @@ impl VideoStreamEncoder {
             .constant_sps(true)
             .max_fps(60.0)
             .skip_frame(false)
-            .bitrate_bps(8_000_000);
+            .bitrate_bps(30_000_000);
 
         let encoder = encoder::Encoder::with_config(config)?;
 
-        let converter = formats::RBGYUVConverter::new(
-            resolution.width() as usize,
-            resolution.height() as usize,
-        );
+        let yuv_holder = YuvHolder::new(resolution.width() as usize, resolution.height() as usize);
 
         let mut writer = Cursor::new(Vec::<u8>::new());
         let mp4 = Mp4Stream::write_start(
@@ -194,7 +205,7 @@ impl VideoStreamEncoder {
 
         Ok(Self {
             encoder,
-            converter,
+            yuv_holder,
             resolution,
             mp4,
             writer,
@@ -205,7 +216,7 @@ impl VideoStreamEncoder {
     #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
         self.encoder.force_intra_frame(true);
-        let stream = self.encoder.encode(&self.converter).unwrap();
+        let stream = self.encoder.encode(&self.yuv_holder).unwrap();
 
         for layer in &stream.layers {
             if !layer.is_video {
@@ -301,4 +312,42 @@ fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
     }
 
     chunks
+}
+
+#[allow(clippy::cast_possible_wrap)]
+impl YUVSource for YuvHolder {
+    fn width(&self) -> i32 {
+        self.width as i32
+    }
+
+    fn height(&self) -> i32 {
+        self.height as i32
+    }
+
+    fn y(&self) -> &[u8] {
+        &self.yuv[0..self.width * self.height]
+    }
+
+    fn u(&self) -> &[u8] {
+        let base_u = self.width * self.height;
+        &self.yuv[base_u..base_u + base_u / 4]
+    }
+
+    fn v(&self) -> &[u8] {
+        let base_u = self.width * self.height;
+        let base_v = base_u + base_u / 4;
+        &self.yuv[base_v..]
+    }
+
+    fn y_stride(&self) -> i32 {
+        self.width as i32
+    }
+
+    fn u_stride(&self) -> i32 {
+        (self.width / 2) as i32
+    }
+
+    fn v_stride(&self) -> i32 {
+        (self.width / 2) as i32
+    }
 }

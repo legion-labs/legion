@@ -10,10 +10,10 @@ license = "MIT OR Apache-2.0"
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
 lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
 lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
-
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
+lgn-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
 anyhow = "1.0"
 crossbeam-channel = "0.5"
 instant = "0.1"

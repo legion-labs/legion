@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use lgn_app::Events;
-use lgn_presenter::offscreen_helper::Resolution;
 use lgn_utils::HashMap;
 use lgn_window::{Window, WindowCreated, WindowDescriptor, WindowId};
 use webrtc::data_channel::RTCDataChannel;
 
-use super::StreamID;
+use super::{Resolution, StreamID};
 
 #[derive(Default)]
 pub(crate) struct StreamerWindows {

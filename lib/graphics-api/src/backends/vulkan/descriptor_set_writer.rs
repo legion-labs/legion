@@ -40,6 +40,7 @@ impl<'frame> VulkanDescriptorSetWriter<'frame> {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 impl<'frame> DescriptorSetWriter<'frame> {
     #[allow(clippy::todo)]
     pub fn set_descriptors_by_index_platform(
@@ -143,7 +144,27 @@ impl<'frame> DescriptorSetWriter<'frame> {
             ShaderResourceType::RWTexture2D
             | ShaderResourceType::RWTexture2DArray
             | ShaderResourceType::RWTexture3D => {
-                todo!();
+                for update_data in update_datas {
+                    if let DescriptorRef::TextureView(texture_view) = update_data {
+                        assert!(texture_view.is_compatible_with_descriptor(descriptor));
+                        let image_info =
+                            &mut self.platform_write.vk_image_infos[next_index as usize];
+
+                        image_info.sampler = vk::Sampler::null();
+                        image_info.image_view = texture_view.vk_image_view();
+                        image_info.image_layout = vk::ImageLayout::GENERAL;
+                    } else {
+                        unreachable!();
+                    }
+                    next_index += 1;
+                }
+
+                self.platform_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
+                    .image_info(
+                        &self.platform_write.vk_image_infos
+                            [descriptor_first_update_data as usize..next_index as usize],
+                    )
+                    .build();
             }
         }
     }

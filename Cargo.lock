@@ -4505,7 +4505,6 @@ dependencies = [
  "lgn-graphics-runtime",
  "lgn-input",
  "lgn-math",
- "lgn-presenter",
  "lgn-presenter-snapshot",
  "lgn-presenter-window",
  "lgn-renderer",
@@ -4644,21 +4643,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-presenter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ash",
- "crossbeam-channel 0.5.2",
- "instant",
- "lgn-graphics-api",
- "lgn-pso-compiler",
- "lgn-renderer",
- "lgn-tracing",
- "raw-window-handle 0.4.2",
-]
-
-[[package]]
 name = "lgn-presenter-snapshot"
 version = "0.1.0"
 dependencies = [
@@ -4668,9 +4652,10 @@ dependencies = [
  "lgn-app",
  "lgn-ecs",
  "lgn-graphics-api",
- "lgn-presenter",
+ "lgn-pso-compiler",
  "lgn-renderer",
  "lgn-tasks",
+ "lgn-tracing",
  "png 0.17.2",
 ]
 
@@ -4678,12 +4663,14 @@ dependencies = [
 name = "lgn-presenter-window"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel 0.5.2",
+ "instant",
  "lgn-app",
  "lgn-ecs",
  "lgn-graphics-api",
- "lgn-presenter",
  "lgn-renderer",
  "lgn-tasks",
+ "lgn-tracing",
  "raw-window-handle 0.4.2",
 ]
 
@@ -4694,6 +4681,7 @@ dependencies = [
  "anyhow",
  "hassle-rs",
  "lgn-graphics-api",
+ "lgn-tracing",
  "normpath",
  "spirv-reflect",
  "spirv-tools",
@@ -4834,7 +4822,6 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
- "lgn-presenter",
  "lgn-pso-compiler",
  "lgn-renderer",
  "lgn-streaming-proto",

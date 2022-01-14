@@ -1,12 +1,13 @@
 #![allow(clippy::pedantic)]
 
 use lgn_ecs::prelude::Component;
-use lgn_presenter::offscreen_helper::{self, Resolution};
 use lgn_renderer::{
-    components::{Presenter, RenderSurface, RenderSurfaceId},
+    components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
     RenderContext, Renderer,
 };
 use lgn_tasks::TaskPool;
+
+use crate::OffscreenHelper;
 
 #[derive(Component)]
 pub struct PresenterSnapshot {
@@ -14,7 +15,7 @@ pub struct PresenterSnapshot {
     frame_idx: i32,
     frame_target: i32,
     render_surface_id: RenderSurfaceId,
-    offscreen_helper: offscreen_helper::OffscreenHelper,
+    offscreen_helper: OffscreenHelper,
 }
 
 impl std::fmt::Debug for PresenterSnapshot {
@@ -29,14 +30,11 @@ impl PresenterSnapshot {
         frame_target: i32,
         renderer: &Renderer,
         render_surface_id: RenderSurfaceId,
-        resolution: Resolution,
+        resolution: RenderSurfaceExtents,
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
-        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
-            &renderer.shader_compiler(),
-            device_context,
-            resolution,
-        )?;
+        let offscreen_helper =
+            OffscreenHelper::new(&renderer.shader_compiler(), device_context, resolution)?;
 
         Ok(Self {
             snapshot_name: snapshot_name.to_string(),
