@@ -89,8 +89,12 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 Box::new(#offline_identifier::default())
             }
 
-            fn extract_build_dependencies(&mut self, _resource: &dyn std::any::Any) -> Vec<lgn_data_offline::ResourcePathId> {
-                vec![]
+            fn extract_build_dependencies(&mut self, resource: &dyn std::any::Any) -> Vec<lgn_data_offline::ResourcePathId> {
+                let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
+                lgn_data_offline::extract_resource_dependencies(instance)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect()
             }
 
             fn get_resource_type_name(&self) -> Option<&'static str> {

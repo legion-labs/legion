@@ -1,6 +1,6 @@
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct DebugCube {
     pub name: String,
     pub position: Vec3,
@@ -126,7 +126,7 @@ impl lgn_data_runtime::Resource for DebugCube {
 impl lgn_data_runtime::Asset for DebugCube {
     type Loader = DebugCubeLoader;
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct DebugCubeReferenceType(lgn_data_runtime::Reference<DebugCube>);
 lgn_data_model::implement_primitive_type_def!(DebugCubeReferenceType);
 #[derive(Default)]

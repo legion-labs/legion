@@ -262,7 +262,7 @@ mod test {
     use tempfile::TempDir;
 
     #[tokio::test]
-    async fn test_scene_explorer() -> anyhow::Result<()> {
+    async fn test_resource_browser() -> anyhow::Result<()> {
         let project_dir = tempfile::tempdir().unwrap();
         let build_dir = project_dir.path().join("temp");
         std::fs::create_dir(&build_dir).unwrap();

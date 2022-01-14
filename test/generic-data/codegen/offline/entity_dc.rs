@@ -1,12 +1,14 @@
 use lgn_data_runtime::Component;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct EntityDc {
     pub name: String,
+    pub children: Vec<ResourcePathId>,
+    pub parent: Option<ResourcePathId>,
     pub components: Vec<Box<dyn Component>>,
 }
 impl EntityDc {
     #[allow(dead_code)]
-    const SIGNATURE_HASH: u64 = 8800754876911975167u64;
+    const SIGNATURE_HASH: u64 = 8973273802571056102u64;
     #[allow(dead_code)]
     pub fn get_default_instance() -> &'static Self {
         &__ENTITYDC_DEFAULT
@@ -16,7 +18,9 @@ impl EntityDc {
 impl Default for EntityDc {
     fn default() -> Self {
         Self {
-            name: "unnamed".into(),
+            name: "new_entity".into(),
+            children: Vec::new(),
+            parent: None,
             components: Vec::new(),
         }
     }
@@ -38,6 +42,31 @@ impl lgn_data_model::TypeReflection for EntityDc {
                     field_type: <String as lgn_data_model::TypeReflection>::get_type_def(),
                     attributes: {
                         let mut attr = std::collections::HashMap::new();
+                        attr
+                    }
+                },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "children".into(),
+                    offset: memoffset::offset_of!(EntityDc, children),
+                    field_type:
+                        <Vec<ResourcePathId> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("hidden"), String::from("true"));
+                        attr.insert(String::from("resource_type"), String::from("EntityDc"));
+                        attr
+                    }
+                },
+                lgn_data_model::FieldDescriptor {
+                    field_name: "parent".into(),
+                    offset: memoffset::offset_of!(EntityDc, parent),
+                    field_type:
+                        <Option<ResourcePathId> as lgn_data_model::TypeReflection>::get_type_def(),
+                    attributes: {
+                        let mut attr = std::collections::HashMap::new();
+                        attr.insert(String::from("hidden"), String::from("true"));
+                        attr.insert(String::from("ignore_deps"), String::from("true"));
+                        attr.insert(String::from("resource_type"), String::from("EntityDc"));
                         attr
                     }
                 },
@@ -65,6 +94,7 @@ impl lgn_data_model::TypeReflection for EntityDc {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __ENTITYDC_DEFAULT : EntityDc = EntityDc :: default () ; }
+use lgn_data_offline::ResourcePathId;
 impl lgn_data_runtime::Resource for EntityDc {
     const TYPENAME: &'static str = "offline_entitydc";
 }
@@ -96,9 +126,13 @@ impl lgn_data_offline::resource::ResourceProcessor for EntityDcProcessor {
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn std::any::Any,
+        resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
-        vec![]
+        let instance = resource.downcast_ref::<EntityDc>().unwrap();
+        lgn_data_offline::extract_resource_dependencies(instance)
+            .unwrap_or_default()
+            .into_iter()
+            .collect()
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
         Some(<EntityDc as lgn_data_runtime::Resource>::TYPENAME)

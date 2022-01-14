@@ -1,5 +1,5 @@
 use lgn_graphics_data::Color;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct LightComponent {
     pub light_color: Color,
 }
@@ -52,4 +52,10 @@ impl lgn_data_model::TypeReflection for LightComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __LIGHTCOMPONENT_DEFAULT : LightComponent = LightComponent :: default () ; }
 #[typetag::serde(name = "LightComponent")]
-impl lgn_data_runtime::Component for LightComponent {}
+impl lgn_data_runtime::Component for LightComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}

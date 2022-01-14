@@ -10,6 +10,8 @@ const LEGION_TAG: &str = "legion";
 const DEFAULT_ATTR: &str = "default";
 const HIDDEN_ATTR: &str = "hidden";
 const OFFLINE_ATTR: &str = "offline";
+const RUNTIME_ONLY_ATTR: &str = "runtime_only";
+const IGNORE_DEPS_ATTR: &str = "ignore_deps";
 const TOOLTIP_ATTR: &str = "tooltip";
 const READONLY_ATTR: &str = "readonly";
 const GROUP_ATTR: &str = "group";
@@ -129,6 +131,14 @@ impl MemberMetaInfo {
 
     pub fn is_offline(&self) -> bool {
         self.attributes.contains_key(OFFLINE_ATTR)
+    }
+
+    pub fn is_runtime_only(&self) -> bool {
+        self.attributes.contains_key(RUNTIME_ONLY_ATTR)
+    }
+
+    pub fn is_ingore_deps(&self) -> bool {
+        self.attributes.contains_key(IGNORE_DEPS_ATTR)
     }
 
     pub fn is_vec(&self) -> bool {
@@ -301,7 +311,8 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
                         }
 
                         // Bool Attributes
-                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ATTR | TRANSIENT_ATTR => {
+                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ATTR | TRANSIENT_ATTR
+                        | RUNTIME_ONLY_ATTR | IGNORE_DEPS_ATTR => {
                             member_info.attributes.insert(ident, "true".into());
                         }
 

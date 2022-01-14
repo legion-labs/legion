@@ -1,5 +1,5 @@
 use lgn_graphics_data::Color;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct StaticMeshComponent {
     pub mesh_id: usize,
     pub color: Color,
@@ -65,4 +65,10 @@ impl lgn_data_model::TypeReflection for StaticMeshComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __STATICMESHCOMPONENT_DEFAULT : StaticMeshComponent = StaticMeshComponent :: default () ; }
 #[typetag::serde(name = "StaticMeshComponent")]
-impl lgn_data_runtime::Component for StaticMeshComponent {}
+impl lgn_data_runtime::Component for StaticMeshComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}

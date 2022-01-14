@@ -5,7 +5,6 @@ use crate::compiler_api::CompilerError;
 use lgn_data_offline::ResourcePathId;
 
 use bincode::{DefaultOptions, Options};
-use lgn_data_model::collector::{ItemInfo, PropertyCollector};
 use lgn_data_model::{TypeDefinition, TypeReflection};
 use std::collections::HashSet;
 use std::str::FromStr;
@@ -53,62 +52,8 @@ pub fn reflection_compile(
             CompilerError::CompilationError("Failed to serialize Runtime asset to bincode")
         })?;
 
-    let resource_references = extract_resource_dependencies(offline_resource);
+    let resource_references = lgn_data_offline::extract_resource_dependencies(offline_resource);
     Ok((compiled_asset, resource_references))
-}
-
-fn extract_resource_dependencies(object: &dyn TypeReflection) -> Option<HashSet<ResourcePathId>> {
-    struct ExtractResourcePathId {
-        output: HashSet<ResourcePathId>,
-    }
-
-    impl PropertyCollector for ExtractResourcePathId {
-        type Item = Option<Self>;
-        fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
-            if let TypeDefinition::Primitive(primitive_descriptor) = item_info.type_def {
-                if primitive_descriptor.base_descriptor.type_name == "ResourcePathId" {
-                    let mut output = Vec::new();
-                    let mut json = serde_json::Serializer::new(&mut output);
-                    let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
-                    unsafe {
-                        (primitive_descriptor.base_descriptor.dynamic_serialize)(
-                            item_info.base,
-                            &mut serializer,
-                        )?;
-                    }
-
-                    let path = String::from_utf8(output)?;
-                    if let Ok(res_id) =
-                        ResourcePathId::from_str(path.trim_start_matches('"').trim_end_matches('"'))
-                    {
-                        let mut result = Self {
-                            output: HashSet::with_capacity(1),
-                        };
-                        result.output.insert(res_id);
-                        return Ok(Some(result));
-                    }
-                }
-            }
-            Ok(None)
-        }
-        fn add_child(parent: &mut Self::Item, child: Self::Item) {
-            if let Some(child) = child {
-                parent
-                    .get_or_insert(Self {
-                        output: HashSet::new(),
-                    })
-                    .output
-                    .extend(child.output);
-            }
-        }
-    }
-
-    if let Ok(Some(total)) =
-        lgn_data_model::collector::collect_properties::<ExtractResourcePathId>(object)
-    {
-        return Some(total.output);
-    }
-    None
 }
 
 fn convert_json_value_to_runtime(

@@ -59,7 +59,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
             type Loader = #runtime_loader;
         }
 
-        #[derive(serde::Serialize,serde::Deserialize)]
+        #[derive(serde::Serialize,serde::Deserialize,PartialEq)]
         pub struct #runtime_reftype (lgn_data_runtime::Reference<#runtime_identifier>);
 
         lgn_data_model::implement_primitive_type_def!(#runtime_reftype);

@@ -1,6 +1,6 @@
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct DebugCube {
     pub name: String,
     pub position: Vec3,
@@ -151,9 +151,13 @@ impl lgn_data_offline::resource::ResourceProcessor for DebugCubeProcessor {
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn std::any::Any,
+        resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
-        vec![]
+        let instance = resource.downcast_ref::<DebugCube>().unwrap();
+        lgn_data_offline::extract_resource_dependencies(instance)
+            .unwrap_or_default()
+            .into_iter()
+            .collect()
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
         Some(<DebugCube as lgn_data_runtime::Resource>::TYPENAME)

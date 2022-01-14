@@ -9,7 +9,7 @@ fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<
     members
         .iter()
         .filter(|m| {
-            gen_type == GenerationType::OfflineFormat
+            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
                 || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
@@ -28,7 +28,7 @@ fn generate_defaults(members: &[MemberMetaInfo], gen_type: GenerationType) -> Ve
     members
         .iter()
         .filter(|m| {
-            gen_type == GenerationType::OfflineFormat
+            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
                 || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
@@ -69,7 +69,7 @@ fn generate_fields_descriptors(
         .members
         .iter()
         .filter(|m| {
-            gen_type == GenerationType::OfflineFormat
+            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
                 || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
         })
         .map(|m| {
@@ -120,7 +120,7 @@ pub fn generate_reflection(
     let fields_descriptors = generate_fields_descriptors(data_container_info, gen_type);
 
     quote! {
-        #[derive(serde::Serialize, serde::Deserialize)]
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
         pub struct #type_identifier {
             #(#fields)*
         }

@@ -1,5 +1,5 @@
 use lgn_math::prelude::*;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TransformComponent {
     pub position: Vec3,
     pub rotation: Quat,
@@ -76,4 +76,10 @@ impl lgn_data_model::TypeReflection for TransformComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __TRANSFORMCOMPONENT_DEFAULT : TransformComponent = TransformComponent :: default () ; }
 #[typetag::serde(name = "TransformComponent")]
-impl lgn_data_runtime::Component for TransformComponent {}
+impl lgn_data_runtime::Component for TransformComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}

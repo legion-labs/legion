@@ -38,6 +38,15 @@ where
     }
 }
 
+impl<T> PartialEq for Reference<T>
+where
+    T: Any + Resource,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
 impl<T> Serialize for Reference<T>
 where
     T: Any + Resource,

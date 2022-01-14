@@ -43,19 +43,19 @@ async fn test_array_insert_operation(
         .add_operation(ArrayOperation::insert_element(
             resource_id,
             "test_blob",
-            0,
+            Some(0),
             "255",
         ))
         .add_operation(ArrayOperation::insert_element(
             resource_id,
             "test_blob",
-            1,
+            Some(1),
             "254",
         ))
         .add_operation(ArrayOperation::insert_element(
             resource_id,
             "test_blob",
-            6,
+            Some(6),
             "253",
         ));
     data_manager.commit_transaction(transaction).await?;
@@ -210,13 +210,13 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             .add_operation(ArrayOperation::insert_element(
                 new_id,
                 "test_resource_path_vec",
-                0,
+                None,
                 ref_path_id.to_string().as_str(),
             ))
             .add_operation(ArrayOperation::insert_element(
                 new_id,
                 "test_resource_path_vec",
-                1,
+                None,
                 ref_path_id.to_string().as_str(),
             ));
         data_manager.commit_transaction(transaction).await?;

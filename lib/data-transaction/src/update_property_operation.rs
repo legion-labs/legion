@@ -16,11 +16,15 @@ pub struct UpdatePropertyOperation {
 
 impl UpdatePropertyOperation {
     /// Return a newly created `UpdatePropertyOperation`
-    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Box<Self> {
+    pub fn new(
+        resource_id: ResourceTypeAndId,
+        property_name: impl AsRef<str>,
+        new_value: impl AsRef<str>,
+    ) -> Box<Self> {
         Box::new(Self {
             resource_id,
-            property_name: property_name.into(),
-            new_value: new_value.into(),
+            property_name: String::from(property_name.as_ref()),
+            new_value: String::from(new_value.as_ref()),
             old_value: None,
         })
     }

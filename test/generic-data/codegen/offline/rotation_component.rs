@@ -1,5 +1,5 @@
 use lgn_math::prelude::*;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct RotationComponent {
     pub rotation_speed: Vec3,
 }
@@ -52,4 +52,10 @@ impl lgn_data_model::TypeReflection for RotationComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __ROTATIONCOMPONENT_DEFAULT : RotationComponent = RotationComponent :: default () ; }
 #[typetag::serde(name = "RotationComponent")]
-impl lgn_data_runtime::Component for RotationComponent {}
+impl lgn_data_runtime::Component for RotationComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}

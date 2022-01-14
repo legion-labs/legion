@@ -1,7 +1,7 @@
 use lgn_data_runtime::Component;
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TestEntity {
     pub test_string: String,
     pub test_color: Color,
@@ -77,7 +77,7 @@ impl lgn_data_runtime::Resource for TestEntity {
 impl lgn_data_runtime::Asset for TestEntity {
     type Loader = TestEntityLoader;
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TestEntityReferenceType(lgn_data_runtime::Reference<TestEntity>);
 lgn_data_model::implement_primitive_type_def!(TestEntityReferenceType);
 #[derive(Default)]
@@ -94,7 +94,7 @@ impl lgn_data_runtime::AssetLoader for TestEntityLoader {
     }
     fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TestComponent {
     pub test_i32: i32,
 }
@@ -147,8 +147,14 @@ impl lgn_data_model::TypeReflection for TestComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __TESTCOMPONENT_DEFAULT : TestComponent = TestComponent :: default () ; }
 #[typetag::serde(name = "Runtime_TestComponent")]
-impl lgn_data_runtime::Component for TestComponent {}
-#[derive(serde :: Serialize, serde :: Deserialize)]
+impl lgn_data_runtime::Component for TestComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TestSubType1 {
     pub test_components: Vec<Box<dyn Component>>,
     pub test_string: String,
@@ -225,7 +231,7 @@ impl lgn_data_model::TypeReflection for TestSubType1 {
     }
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __TESTSUBTYPE1_DEFAULT : TestSubType1 = TestSubType1 :: default () ; }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct TestSubType2 {
     pub test_vec: Vec3,
 }
