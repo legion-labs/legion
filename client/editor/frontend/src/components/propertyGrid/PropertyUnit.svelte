@@ -1,22 +1,23 @@
 <script lang="ts">
   import { PropertyUpdate } from "@/api";
 
-  import { ResourceProperty } from "@/lib/propertyGrid";
+  import { BagResourceProperty, ResourceProperty } from "@/lib/propertyGrid";
   import PropertyInput from "./PropertyInput.svelte";
 
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;
+    removeVectorProperty: CustomEvent<string>;
   };
 
   export let property: ResourceProperty;
 
+  export let parentProperty: BagResourceProperty | null;
+
   /** The property path parts */
   export let pathParts: string[];
-
-  export let withBorder: boolean;
 </script>
 
-<div class="root" class:with-border={withBorder}>
+<div class="root">
   {#if property.name}
     <div class="property-name" title={property.name}>
       <div class="truncate">{property.name}</div>
@@ -26,36 +27,29 @@
     <div class="property-input">
       <PropertyInput
         on:input
+        on:removeVectorProperty
         pathParts={[...pathParts, property.name]}
         {property}
+        {parentProperty}
       />
     </div>
-    <div class="property-actions" />
   </div>
 </div>
 
 <style lang="postcss">
   .root {
-    @apply flex flex-row py-1 pl-1 space-x-1 justify-between;
-  }
-
-  .with-border {
-    @apply border-b border-gray-400 border-opacity-30;
+    @apply flex flex-row py-0.5 pl-1 space-x-1 justify-between;
   }
 
   .property-name {
-    @apply flex w-1/2 flex-shrink font-semibold text-lg min-w-0;
+    @apply flex w-full flex-grow text-lg min-w-0 border-b-[0.5px] border-dashed border-gray-400;
   }
 
   .property-input-container {
-    @apply flex w-1/2 min-w-[9rem] flex-shrink-0 space-x-1;
+    @apply flex w-[10rem] flex-shrink-0 flex-grow-0;
   }
 
   .property-input {
     @apply flex w-full justify-end;
-  }
-
-  .property-actions {
-    @apply flex flex-row items-center;
   }
 </style>

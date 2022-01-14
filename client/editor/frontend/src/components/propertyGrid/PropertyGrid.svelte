@@ -62,11 +62,11 @@
   {:else if !$currentResourceData.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    {#each $currentResourceData.properties as property, index (property.name)}
+    {#each $currentResourceData.properties as property (property.name)}
       <PropertyContainer
         pathParts={propertyIsGroup(property) ? [] : [property.name]}
         {property}
-        nextProperty={$currentResourceData.properties[index + 1]}
+        parentProperty={null}
         on:input={onInput}
       />
     {/each}
@@ -75,6 +75,6 @@
 
 <style lang="postcss">
   .root {
-    @apply h-full px-1 overflow-y-auto;
+    @apply h-full px-1 py-1 overflow-y-auto;
   }
 </style>
