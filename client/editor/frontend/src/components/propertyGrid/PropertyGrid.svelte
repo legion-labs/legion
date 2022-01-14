@@ -1,8 +1,18 @@
 <script lang="ts">
-  import { PropertyUpdate, updateResourceProperties } from "@/api";
+  import {
+    PropertyUpdate,
+    updateResourceProperties,
+    removeVectorSubProperty as removeVectorSubPropertyApi,
+    addPropertyInPropertyVector as addPropertyInPropertyVectorApi,
+  } from "@/api";
   import { propertyIsGroup } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
+  import log from "@lgn/frontend/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
+  import {
+    AddVectorSubPropertyEvent,
+    RemoveVectorSubPropertyEvent,
+  } from "./types";
 
   const { data: currentResourceData, error: currentResourceError } =
     currentResource;
@@ -52,6 +62,40 @@
       propertyUpdates = [];
     }, propertyUpdateDebounceTimeout);
   }
+
+  /** Adds a new property to a vector, only useful for vectors */
+  function addVectorSubProperty({
+    detail: { path, index, value },
+  }: CustomEvent<AddVectorSubPropertyEvent>) {
+    if (!$currentResourceData) {
+      log.error("No resources selected");
+
+      return;
+    }
+
+    addPropertyInPropertyVectorApi($currentResourceData.id, {
+      path,
+      index,
+      value,
+    });
+  }
+
+  /** Removes a new property from a vector, only useful for vectors */
+  function removeVectorSubProperty({
+    detail: { path, index },
+  }: CustomEvent<RemoveVectorSubPropertyEvent>) {
+    if (!$currentResourceData) {
+      log.error("No resources selected");
+
+      return;
+    }
+
+    // TODO: Batch remove?
+    removeVectorSubPropertyApi($currentResourceData.id, {
+      path,
+      indices: [index],
+    });
+  }
 </script>
 
 <div class="root">
@@ -64,10 +108,14 @@
   {:else}
     {#each $currentResourceData.properties as property (property.name)}
       <PropertyContainer
-        pathParts={propertyIsGroup(property) ? [] : [property.name]}
+        on:input={onInput}
+        on:addVectorSubProperty={addVectorSubProperty}
+        on:removeVectorSubProperty={removeVectorSubProperty}
+        pathParts={propertyIsGroup(property) || !property.name
+          ? []
+          : [property.name]}
         {property}
         parentProperty={null}
-        on:input={onInput}
       />
     {/each}
   {/if}

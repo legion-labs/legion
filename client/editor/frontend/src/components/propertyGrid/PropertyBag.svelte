@@ -7,12 +7,19 @@
     propertyIsOption,
     propertyIsVec,
   } from "@/lib/propertyGrid";
+  import { createEventDispatcher } from "svelte";
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
+  import {
+    AddVectorSubPropertyEvent,
+    RemoveVectorSubPropertyEvent,
+  } from "./types";
 
-  type $$Events = {
-    input: CustomEvent<PropertyUpdate>;
-  };
+  const dispatch = createEventDispatcher<{
+    input: PropertyUpdate;
+    addVectorSubProperty: AddVectorSubPropertyEvent;
+    removeVectorSubProperty: RemoveVectorSubPropertyEvent;
+  }>();
 
   // Option resource property can be groups
   export let property: BagResourceProperty;
@@ -22,23 +29,18 @@
   /** The property path parts */
   export let pathParts: string[];
 
-  /** Adds a new property to a vector, only useful for vectors */
   function addVectorSubProperty() {
-    // TODO: Dispatch event and use rpc add item
+    const index = property.subProperties.length;
 
-    property.subProperties = [
-      ...property.subProperties,
-      buildDefaultPrimitiveProperty(`[${property.subProperties.length}]`, "u8"),
-    ];
-  }
+    const addedProperty = buildDefaultPrimitiveProperty(`[${index}]`, "u8");
 
-  /** Removes a new property from a vector, only useful for vectors */
-  function removeVectorSubProperty({ detail: name }: CustomEvent<string>) {
-    // TODO: Dispatch event and use rpc remove item
+    property.subProperties = [...property.subProperties, addedProperty];
 
-    property.subProperties = property.subProperties
-      .filter((property) => property.name !== name)
-      .map((property, index) => ({ ...property, name: `[${index}]` }));
+    dispatch("addVectorSubProperty", {
+      path: [...pathParts, property.name].join("."),
+      index,
+      value: addedProperty.value,
+    });
   }
 </script>
 
@@ -66,12 +68,13 @@
   {#each property.subProperties as subProperty (subProperty.name)}
     <PropertyContainer
       on:input
-      on:removeVectorProperty={removeVectorSubProperty}
-      pathParts={propertyIsGroup(property)
+      on:addVectorSubProperty
+      on:removeVectorSubProperty
+      pathParts={propertyIsGroup(property) || !property.name
         ? pathParts
         : [...pathParts, property.name]}
       property={subProperty}
-      parentProperty={property}
+      bind:parentProperty={property}
       level={level + 1}
     />
   {/each}

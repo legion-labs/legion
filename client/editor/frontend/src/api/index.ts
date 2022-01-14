@@ -102,6 +102,40 @@ export async function updateResourceProperties(
   });
 }
 
+export type AddVectorSubProperty = {
+  path: string;
+  index: number;
+  value: ResourcePropertyWithValue["value"] | null;
+};
+
+export async function addPropertyInPropertyVector(
+  resourceId: string,
+  { path, index, value }: AddVectorSubProperty
+) {
+  await propertyInspectorClient.insertNewArrayElement({
+    resourceId,
+    arrayPath: path,
+    index,
+    jsonValue: JSON.stringify(value),
+  });
+}
+
+export type RemoveVectorSubProperty = {
+  path: string;
+  indices: number[];
+};
+
+export async function removeVectorSubProperty(
+  resourceId: string,
+  { path, indices }: RemoveVectorSubProperty
+) {
+  await propertyInspectorClient.deleteArrayElement({
+    resourceId,
+    arrayPath: path,
+    indices,
+  });
+}
+
 /**
  * Used for logging purpose
  * @param jsonCommand

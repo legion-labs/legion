@@ -4,6 +4,7 @@
     BagResourceProperty,
     buildDefaultPrimitiveProperty,
     extractOptionPType,
+    extractVecSubPropertyIndex,
     propertyIsBoolean,
     propertyIsColor,
     propertyIsNumber,
@@ -16,6 +17,8 @@
     ptypeBelongsToPrimitive,
     ResourceProperty,
   } from "@/lib/propertyGrid";
+  import currentResource from "@/stores/currentResource";
+  import log from "@lgn/frontend/src/lib/log";
   import { createEventDispatcher } from "svelte";
   import Checkbox from "../inputs/Checkbox.svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
@@ -25,12 +28,14 @@
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vec3Property from "./properties/Vec3Property.svelte";
+  import { RemoveVectorSubPropertyEvent } from "./types";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
-    // Where `string` is the property `name`
-    removeVectorProperty: string;
+    removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
+
+  const { data: currentResourceData } = currentResource;
 
   export let property: ResourceProperty;
 
@@ -41,14 +46,51 @@
 
   function onInput({ value }: Pick<PropertyUpdate, "value">) {
     dispatch("input", {
-      name: pathParts.filter(Boolean).join("."),
+      name: pathParts.join("."),
       value,
     });
   }
 
+  // Vector related code
+  // TODO: Extract this to a vector sub properties component?
+
+  function removeVectorSubProperty() {
+    if (!parentProperty) {
+      log.error("Vector sub property parent not found");
+
+      return;
+    }
+
+    if (!$currentResourceData) {
+      log.error(
+        "A vector sub property was removed while no resources were selected"
+      );
+
+      return;
+    }
+
+    const index = extractVecSubPropertyIndex(property.name);
+
+    if (!index) {
+      log.error(
+        `Vector sub property name didn't have the proper format: ${property.name}`
+      );
+
+      return;
+    }
+
+    parentProperty.subProperties = parentProperty.subProperties
+      .filter(({ name }) => property.name !== name)
+      .map((property, index) => ({ ...property, name: `[${index}]` }));
+
+    dispatch("removeVectorSubProperty", {
+      path: pathParts.slice(0, -1).join("."),
+      index,
+    });
+  }
+
   // Option related code
-  // TODO: Try to extract the option input in its own component.
-  // It seems to fail because of the mutual recursion though.
+  // TODO: Extract the option input in its own component.
 
   /**
    * Related to the option property, set to `null` if the property is not an option.
@@ -142,9 +184,10 @@
       <div class="option-property">
         <svelte:self
           on:input
-          on:removeVectorProperty
+          on:removeVectorSubProperty
           {pathParts}
           property={property.subProperties[0]}
+          bind:parentProperty={property}
           {disabled}
         />
         <div class="option-property-checkbox">
@@ -170,12 +213,7 @@
     </div>
   {/if}
   {#if parentProperty && propertyIsVec(parentProperty)}
-    <div
-      class="close-button"
-      on:click={() => dispatch("removeVectorProperty", property.name)}
-    >
-      &#215;
-    </div>
+    <div class="close-button" on:click={removeVectorSubProperty}>&#215;</div>
   {/if}
 </div>
 
