@@ -8,6 +8,9 @@ const vecPTypeRegExp = /^Vec\<(.*)\>$/;
 /** Matches any `ptype` of format "Option<subPType>" */
 const optionPTypeRegExp = /^Option\<(.*)\>$/;
 
+/** Matches any `name` of format "[index]", convenient for vector sub properties */
+const vecSubPropertyNameRegExp = /^\[(\w*)\]$/;
+
 /** Shared by all resource properties, be it a primitive, a vector, an option, or a component */
 type ResourcePropertyBase<Type extends string = string> = {
   ptype: Type;
@@ -233,7 +236,7 @@ export function propertyIsBag(
 /**
  * Extract the inner `ptype` of options:
  *
- * ```ts
+ * ```typescript
  * extractOptionPType("Option<X>"); // returns "X"
  * extractOptionPType("Nope<Y>"); // return null
  * ```
@@ -242,7 +245,7 @@ export function extractOptionPType<
   Property extends PrimitiveResourceProperty | ComponentResourceProperty
 >(property: OptionResourceProperty<Property>): Property["ptype"] | null {
   const ptype =
-    (property.ptype.match(optionPTypeRegExp)?.[1].trim() as
+    (property.ptype.match(optionPTypeRegExp)?.[1] as
       | Property["ptype"]
       | undefined) ?? null;
 
@@ -252,7 +255,7 @@ export function extractOptionPType<
 /**
  * Extract the inner `ptype` of arrays/vectors:
  *
- * ```ts
+ * ```typescript
  * extractVecPType("Vec<X>"); // returns "X"
  * extractVecPType("Nope<Y>"); // return null
  * ```
@@ -261,11 +264,30 @@ export function extractVecPType<
   Property extends PrimitiveResourceProperty | ComponentResourceProperty
 >(property: VecResourceProperty<Property>): Property["ptype"] | null {
   const ptype =
-    (property.ptype.match(vecPTypeRegExp)?.[1].trim() as
+    (property.ptype.match(vecPTypeRegExp)?.[1] as
       | Property["ptype"]
       | undefined) ?? null;
 
   return ptype;
+}
+
+/**
+ * Extract the inner index from a vector sub property `name`:
+ *
+ * ```typescript
+ * extractVecSubPropertyIndex("[0]"); // returns 0
+ * extractVecSubPropertyIndex("[x]"); // return null
+ * ```
+ */
+export function extractVecSubPropertyIndex(name: string): number | null {
+  const index = name.match(vecSubPropertyNameRegExp)?.[1] ?? null;
+
+  if (!index) {
+    return null;
+  }
+
+  // The regexp should already guarantee that the underlying value is a number
+  return +index;
 }
 
 const primitivePTypes: PrimitiveResourceProperty["ptype"][] = [

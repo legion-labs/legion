@@ -3,10 +3,11 @@
 
   import { BagResourceProperty, ResourceProperty } from "@/lib/propertyGrid";
   import PropertyInput from "./PropertyInput.svelte";
+  import { RemoveVectorSubPropertyEvent } from "./types";
 
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;
-    removeVectorProperty: CustomEvent<string>;
+    removeVectorSubProperty: CustomEvent<RemoveVectorSubPropertyEvent>;
   };
 
   export let property: ResourceProperty;
@@ -27,10 +28,10 @@
     <div class="property-input">
       <PropertyInput
         on:input
-        on:removeVectorProperty
-        pathParts={[...pathParts, property.name]}
+        on:removeVectorSubProperty
+        pathParts={property.name ? [...pathParts, property.name] : pathParts}
         {property}
-        {parentProperty}
+        bind:parentProperty
       />
     </div>
   </div>
