@@ -11,7 +11,6 @@ use crate::RenderContext;
 use crate::Renderer;
 
 pub struct EguiPass {
-    root_signature: RootSignature,
     pipeline: Pipeline,
     texture_data: Option<(u64, Texture, TextureView)>,
     sampler: Sampler,
@@ -21,8 +20,8 @@ impl EguiPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        let (shader, root_signature) =
-            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/ui.hlsl"));
+        let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
+        let shader = renderer.prepare_vs_ps_no_rs(String::from("crate://renderer/shaders/ui.hlsl"));
         //
         // Pipeline state
         //
@@ -59,7 +58,7 @@ impl EguiPass {
         let pipeline = device_context
             .create_graphics_pipeline(&GraphicsPipelineDef {
                 shader: &shader,
-                root_signature: &root_signature,
+                root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default_alpha_enabled(),
                 depth_state: &DepthState::default(),
@@ -88,7 +87,6 @@ impl EguiPass {
         let sampler = device_context.create_sampler(&sampler_def).unwrap();
 
         Self {
-            root_signature,
             pipeline,
             texture_data: None,
             sampler,
@@ -204,32 +202,6 @@ impl EguiPass {
 
         cmd_buffer.bind_pipeline(&self.pipeline);
 
-        let descriptor_set_layout = &self
-            .pipeline
-            .root_signature()
-            .definition()
-            .descriptor_set_layouts[0];
-        let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "font_texture",
-                &[DescriptorRef::TextureView(
-                    &self.texture_data.as_ref().unwrap().2,
-                )],
-            )
-            .unwrap();
-        descriptor_set_writer
-            .set_descriptors_by_name("font_sampler", &[DescriptorRef::Sampler(&self.sampler)])
-            .unwrap();
-        let descriptor_set_handle =
-            descriptor_set_writer.flush(render_context.renderer().device_context());
-
-        cmd_buffer.bind_descriptor_set_handle(
-            PipelineType::Graphics,
-            &self.root_signature,
-            descriptor_set_layout.definition().frequency,
-            descriptor_set_handle,
-        );
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 
         let transient_allocator = render_context.transient_buffer_allocator();
@@ -277,9 +249,19 @@ impl EguiPass {
                 (render_surface.extents().height() as f32 / egui.ctx.pixels_per_point()).into(),
             );
 
-            cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
+            {
+                let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
+                descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
+                descriptor_set.set_font_sampler(&self.sampler);
 
-            cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
+                let _handle = render_context.write_descriptor_set(&descriptor_set);
+
+                let mut pipeline_data =
+                    cgen::pipeline_layout::EguiPipelineLayout::new(&self.pipeline);
+                render_context.populate_pipeline_data(&mut pipeline_data);
+                pipeline_data.set_push_constant(&push_constant_data);
+                cmd_buffer.draw_indexed_with_data(&pipeline_data, mesh.indices.len() as u32, 0, 0);
+            }
         }
     }
 }

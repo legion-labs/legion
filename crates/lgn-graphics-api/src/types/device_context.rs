@@ -13,9 +13,9 @@ use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, DeviceInfo, ExtensionMode, Fence, GfxResult,
-    GraphicsPipelineDef, Instance, Pipeline, PipelineReflection, Queue, QueueType, RootSignature,
-    RootSignatureDef, Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef,
-    ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
+    GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature, RootSignatureDef,
+    Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef, ShaderStageDef,
+    Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended
@@ -235,12 +235,8 @@ impl DeviceContext {
         Buffer::new(self, buffer_def)
     }
 
-    pub fn create_shader(
-        &self,
-        stages: Vec<ShaderStageDef>,
-        pipeline_reflection: &PipelineReflection,
-    ) -> Shader {
-        Shader::new(self, stages, pipeline_reflection)
+    pub fn create_shader(&self, stages: Vec<ShaderStageDef>) -> Shader {
+        Shader::new(self, stages)
     }
 
     pub fn create_descriptorset_layout(

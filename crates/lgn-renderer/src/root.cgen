@@ -20,7 +20,7 @@ struct EntityTransforms {
     world: Float4x4,
 }
 
-#[DescriptorSet(frequency = 0, transient)]
+#[DescriptorSet(frequency = 0)]
 struct FrameDescriptorSet {
     omni_lights: StructuredBuffer<OmnidirectionalLight>,
     dir_lights: StructuredBuffer<DirectionalLight>,
@@ -47,11 +47,23 @@ struct TmpPipelineLayout {
     push_constant: PushConstant<InstancePushConstantData>,
 }
 
+#[DescriptorSet(frequency = 0)]
+struct EguiDescriptorSet {
+    font_texture: Texture2D<Float4>,
+    font_sampler: Sampler,    
+}
+
 struct EguiPushConstantData {
     scale: Float2,
     translation: Float2,
     width: Float1,
     height: Float1,
+}
+
+#[PipelineLayout]
+struct EguiPipelineLayout {
+    descriptor_set: DescriptorSet<EguiDescriptorSet>,    
+    push_constant: PushConstant<EguiPushConstantData>,
 }
 
 struct DebugPushConstantData {

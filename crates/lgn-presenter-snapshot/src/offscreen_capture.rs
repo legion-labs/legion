@@ -59,23 +59,20 @@ impl OffscreenHelper {
                 .module_def(),
         )?;
 
-        let shader = device_context.create_shader(
-            vec![
-                ShaderStageDef {
-                    entry_point: "main_vs".to_owned(),
-                    shader_stage: ShaderStageFlags::VERTEX,
-                    shader_module: vert_shader_module,
-                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
-                },
-                ShaderStageDef {
-                    entry_point: "main_ps".to_owned(),
-                    shader_stage: ShaderStageFlags::FRAGMENT,
-                    shader_module: frag_shader_module,
-                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
-                },
-            ],
-            &shader_build_result.pipeline_reflection,
-        );
+        let shader = device_context.create_shader(vec![
+            ShaderStageDef {
+                entry_point: "main_vs".to_owned(),
+                shader_stage: ShaderStageFlags::VERTEX,
+                shader_module: vert_shader_module,
+                // reflection: shader_build_result.reflection_info.clone().unwrap(),
+            },
+            ShaderStageDef {
+                entry_point: "main_ps".to_owned(),
+                shader_stage: ShaderStageFlags::FRAGMENT,
+                shader_module: frag_shader_module,
+                // reflection: shader_build_result.reflection_info.clone().unwrap(),
+            },
+        ]);
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {

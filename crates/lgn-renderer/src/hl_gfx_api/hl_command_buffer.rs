@@ -138,6 +138,18 @@ impl<'rc> HLCommandBuffer<'rc> {
             .cmd_draw_indexed(index_count, first_index, vertex_offset);
     }
 
+    pub fn draw_indexed_with_data(
+        &self,
+        pipeline_data: &impl PipelineDataProvider,
+        index_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+    ) {
+        self.set_pipeline_data(pipeline_data);
+        self.cmd_buffer
+            .cmd_draw_indexed(index_count, first_index, vertex_offset);
+    }
+
     pub fn draw_indexed_instanced(
         &self,
         index_count: u32,

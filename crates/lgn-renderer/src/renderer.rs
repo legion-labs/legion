@@ -266,6 +266,7 @@ impl Renderer {
         let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
+
     #[span_fn]
     pub(crate) fn begin_frame(&mut self) {
         //
@@ -373,21 +374,18 @@ impl Renderer {
             )
             .unwrap();
 
-        let shader = device_context.create_shader(
-            vec![
-                ShaderStageDef {
-                    entry_point: "main_vs".to_owned(),
-                    shader_stage: ShaderStageFlags::VERTEX,
-                    shader_module: vert_shader_module,
-                },
-                ShaderStageDef {
-                    entry_point: "main_ps".to_owned(),
-                    shader_stage: ShaderStageFlags::FRAGMENT,
-                    shader_module: frag_shader_module,
-                },
-            ],
-            &shader_build_result.pipeline_reflection,
-        );
+        let shader = device_context.create_shader(vec![
+            ShaderStageDef {
+                entry_point: "main_vs".to_owned(),
+                shader_stage: ShaderStageFlags::VERTEX,
+                shader_module: vert_shader_module,
+            },
+            ShaderStageDef {
+                entry_point: "main_ps".to_owned(),
+                shader_stage: ShaderStageFlags::FRAGMENT,
+                shader_module: frag_shader_module,
+            },
+        ]);
 
         //
         // Root signature
@@ -439,6 +437,57 @@ impl Renderer {
             .unwrap();
 
         (shader, root_signature)
+    }
+
+    pub(crate) fn prepare_vs_ps_no_rs(&self, shader_source: String) -> Shader {
+        let device_context = self.device_context();
+
+        let shader_compiler = self.shader_compiler();
+        let shader_build_result = shader_compiler
+            .compile(&CompileParams {
+                shader_source: ShaderSource::Path(shader_source),
+                global_defines: Vec::new(),
+                entry_points: vec![
+                    EntryPoint {
+                        defines: Vec::new(),
+                        name: "main_vs".to_owned(),
+                        target_profile: TargetProfile::Vertex,
+                    },
+                    EntryPoint {
+                        defines: Vec::new(),
+                        name: "main_ps".to_owned(),
+                        target_profile: TargetProfile::Pixel,
+                    },
+                ],
+            })
+            .unwrap();
+
+        let vert_shader_module = device_context
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
+
+        let frag_shader_module = device_context
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
+
+        device_context.create_shader(vec![
+            ShaderStageDef {
+                entry_point: "main_vs".to_owned(),
+                shader_stage: ShaderStageFlags::VERTEX,
+                shader_module: vert_shader_module,
+            },
+            ShaderStageDef {
+                entry_point: "main_ps".to_owned(),
+                shader_stage: ShaderStageFlags::FRAGMENT,
+                shader_module: frag_shader_module,
+            },
+        ])
     }
 }
 

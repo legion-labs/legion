@@ -358,8 +358,8 @@ pub trait ValueWrapper {
 }
 
 impl ValueWrapper for BufferView {
-    fn validate(&self, def: &CGenDescriptorDef) -> bool {
-        match def.shader_resource_type {
+    fn validate(&self, desc_def: &CGenDescriptorDef) -> bool {
+        match desc_def.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
             }
@@ -383,31 +383,32 @@ impl ValueWrapper for BufferView {
 }
 
 impl ValueWrapper for &[&BufferView] {
-    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for Sampler {
-    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
-        false
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
+        true
     }
 }
 
 impl ValueWrapper for &[&Sampler] {
-    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
         false
     }
 }
 
 impl ValueWrapper for TextureView {
-    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
-        false
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
+        let res_def = self.definition();
+        res_def.array_size == 1
     }
 }
 
 impl ValueWrapper for &[&TextureView] {
-    fn validate(&self, _def: &CGenDescriptorDef) -> bool {
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
         false
     }
 }
