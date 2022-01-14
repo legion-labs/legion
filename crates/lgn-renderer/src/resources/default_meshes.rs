@@ -46,6 +46,9 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_sphere(0.25, 64, 64),
             StaticMeshRenderData::new_arrow(),
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
+            StaticMeshRenderData::new_gltf(String::from(
+                "C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
+            )),
         ];
 
         let mut vertex_data_size_in_bytes = 0;
@@ -86,5 +89,9 @@ impl DefaultMeshes {
 
     pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {
         &self.static_meshes[mesh_id as usize]
+    }
+
+    pub fn mesh_indices_from_id(&self, mesh_id: u32) -> &Option<Vec<u32>> {
+        &self.static_meshes[mesh_id as usize].indices
     }
 }
