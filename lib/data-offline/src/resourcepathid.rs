@@ -18,6 +18,31 @@ impl Transform {
     }
 }
 
+impl fmt::Display for Transform {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}-{}", self.from, self.to))
+    }
+}
+
+impl FromStr for Transform {
+    type Err = Box<dyn std::error::Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut iter = s.split(|c| c == '-');
+        let from = iter
+            .next()
+            .ok_or_else(|| "Z".parse::<u64>().expect_err("ParseIntError"))?;
+        let to = iter
+            .next()
+            .ok_or_else(|| "Z".parse::<u64>().expect_err("ParseIntError"))?;
+
+        Ok(Self {
+            from: ResourceType::from_str(from)?,
+            to: ResourceType::from_str(to)?,
+        })
+    }
+}
+
 /// Identifier of a path in a build graph.
 ///
 /// Considering a build graph where nodes represent *resources* and edges
@@ -358,7 +383,7 @@ mod tests {
 
     use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 
-    use crate::{resource::test_resource, ResourcePathId};
+    use crate::{resource::test_resource, ResourcePathId, Transform};
 
     #[test]
     fn simple_path() {
@@ -375,6 +400,21 @@ mod tests {
 
         let name_b = path_b.to_string();
         assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
+    }
+
+    #[test]
+    fn transform() {
+        let source = Transform::new(
+            test_resource::TestResource::TYPE,
+            test_resource::TestResource::TYPE,
+        );
+
+        let text = source.to_string();
+        assert!(text.len() > 1);
+        assert!(text.contains('-'));
+
+        let parsed = Transform::from_str(&text).expect("parsed Transform");
+        assert_eq!(source, parsed);
     }
 
     #[test]

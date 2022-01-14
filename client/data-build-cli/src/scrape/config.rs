@@ -5,7 +5,7 @@ use std::{
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::{DataBuild, DataBuildOptions};
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};

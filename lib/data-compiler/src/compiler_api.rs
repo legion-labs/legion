@@ -21,7 +21,7 @@
 //! # use lgn_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use lgn_data_offline::{ResourcePathId, Transform};
-//! # use lgn_data_runtime::ResourceType;
+//! # use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
 //! # use lgn_content_store::ContentStoreAddr;
 //! # use std::path::Path;
 //! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
@@ -32,6 +32,7 @@
 //!    code_version: "",
 //!    data_version: "",
 //!    transform: &Transform::new(INPUT_TYPE, OUTPUT_TYPE),
+//!    init_func: init,
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -41,6 +42,10 @@
 //!    data: &'static str,
 //!    env: &CompilationEnv,
 //! ) -> CompilerHash {
+//!    todo!()
+//! }
+//!
+//! fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 //!    todo!()
 //! }
 //!
@@ -67,14 +72,15 @@
 use std::{
     env,
     io::{self, stdout},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
+    sync::Arc,
 };
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_offline::{ResourcePathId, Transform};
-use lgn_data_runtime::AssetRegistryOptions;
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -82,8 +88,9 @@ use crate::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
-        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
+    compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
 };
 
@@ -123,7 +130,7 @@ pub struct CompilationEnv {
 }
 
 /// Compiler information.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CompilerInfo {
     /// Data build version of data compiler.
     pub build_version: String,
@@ -144,7 +151,7 @@ pub struct CompilerContext<'a> {
     /// Compilation dependency list.
     pub dependencies: &'a [ResourcePathId],
     /// Pre-configures asset registry builder.
-    resources: Option<AssetRegistryOptions>,
+    registry: Arc<AssetRegistry>,
     /// Compilation environment.
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
@@ -152,9 +159,9 @@ pub struct CompilerContext<'a> {
 }
 
 impl CompilerContext<'_> {
-    /// Returns options that can be used to create asset registry.
-    pub fn take_registry(&mut self) -> AssetRegistryOptions {
-        self.resources.take().unwrap()
+    /// Returns asset registry responsible for loading resources.
+    pub fn registry(&self) -> Arc<AssetRegistry> {
+        self.registry.clone()
     }
 
     /// Stores `compiled_content` in the content store.
@@ -189,7 +196,9 @@ pub struct CompilerDescriptor {
     pub data_version: &'static str,
     /// Compiler supported resource transformation `f(.0)->.1`.
     pub transform: &'static Transform,
-    /// Function returning a list of `CompilerHash` for a given context.
+    /// Compiler initialization function.
+    pub init_func: fn(registry: AssetRegistryOptions) -> AssetRegistryOptions,
+    /// Function returning a `CompilerHash` for a given context.
     pub compiler_hash_func:
         fn(code: &'static str, data: &'static str, env: &CompilationEnv) -> CompilerHash,
     /// Data compilation function.
@@ -208,8 +217,12 @@ pub enum CompilerError {
     InvalidResourceId,
     /// Resource not found.
     ResourceNotFound,
+    /// Compiler not found for a given transform.
+    CompilerNotFound(Transform),
     /// Invalid input/output resource type pair.
     InvalidTransform,
+    /// Invalid ResourcePathId provided as input.
+    InvalidResource(ResourcePathId),
     /// Unknown platform.
     InvalidPlatform,
     /// Unknown target.
@@ -234,7 +247,13 @@ impl std::fmt::Display for CompilerError {
             CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
             CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),
             CompilerError::ResourceNotFound => write!(f, "ResourceNotFound"),
+            CompilerError::CompilerNotFound(transform) => {
+                f.write_fmt(format_args!("CompilerNotFoud for '{}'", transform))
+            }
             CompilerError::InvalidTransform => write!(f, "InvalidResourceType"),
+            CompilerError::InvalidResource(resource) => {
+                f.write_fmt(format_args!("InvalidResource '{}'", resource))
+            }
             CompilerError::InvalidTarget => write!(f, "InvalidTarget"),
             CompilerError::InvalidPlatform => write!(f, "InvalidPlatform"),
             CompilerError::UnknownCommand => write!(f, "UnknownCommand"),
@@ -258,9 +277,9 @@ impl CompilerDescriptor {
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
-        derived_deps: &[CompiledResource],
+        _derived_deps: &[CompiledResource],
+        registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
-        resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -270,54 +289,15 @@ impl CompilerDescriptor {
             return Err(CompilerError::InvalidTransform);
         }
 
-        let source_store =
-            HddContentStore::open(cas_addr.clone()).ok_or(CompilerError::AssetStoreError)?;
         let mut output_store =
             HddContentStore::open(cas_addr).ok_or(CompilerError::AssetStoreError)?;
-        let manifest = Manifest {
-            compiled_resources: derived_deps.to_owned(),
-        };
-
-        /*
-        eprintln!("# Target: {}({})", derived, derived.resource_id());
-        if let Some(source) = derived.direct_dependency() {
-            eprintln!("# Source: {}({})", source, source.resource_id());
-        }
-        for derived_input in &manifest.compiled_resources {
-            eprintln!(
-                "# Derived Input: {}({}) chk: {} size: {}",
-                derived_input.path,
-                derived_input.path.resource_id(),
-                derived_input.checksum,
-                derived_input.size
-            );
-        }
-
-        eprintln!("# Resource Dir: {:?}", &resource_dir);
-        let paths = std::fs::read_dir(&resource_dir).unwrap();
-        for path in paths {
-            eprintln!("## File: {}", path.unwrap().path().display());
-        }
-
-        eprintln!("# CAS Dir: {:?}", &cas_dir);
-        let paths = std::fs::read_dir(&cas_dir).unwrap();
-        for path in paths {
-            eprintln!("## File: {}", path.unwrap().path().display());
-        }
-        */
-
-        let manifest = manifest.into_rt_manifest(|_rpid| true);
-
-        let registry = AssetRegistryOptions::new()
-            .add_device_cas(Box::new(source_store), manifest)
-            .add_device_dir(resource_dir); // todo: filter dependencies only
 
         assert!(!compile_path.is_named());
         let context = CompilerContext {
             source: compile_path.direct_dependency().unwrap(),
             target_unnamed: compile_path,
             dependencies,
-            resources: Some(registry),
+            registry,
             env,
             output_store: &mut output_store,
         };
@@ -326,12 +306,13 @@ impl CompilerDescriptor {
     }
 }
 
-fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), CompilerError> {
+#[allow(clippy::too_many_lines)]
+fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerError> {
     match command {
         Commands::Info => {
             serde_json::to_writer_pretty(
                 stdout(),
-                &CompilerInfoCmdOutput::from_descriptor(descriptor),
+                &CompilerInfoCmdOutput::from_registry(&compilers),
             )
             .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
@@ -340,20 +321,51 @@ fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), Compile
             target,
             platform,
             locale,
+            transform,
         } => {
             let target = Target::from_str(&target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
                 Platform::from_str(&platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(&locale);
+            let transform = transform
+                .map(|transform| {
+                    Transform::from_str(&transform).map_err(|_e| CompilerError::InvalidTransform)
+                })
+                .transpose()?;
 
             let env = CompilationEnv {
                 target,
                 platform,
                 locale,
             };
-            let compiler_hash = descriptor.compiler_hash(&env);
 
-            let output = CompilerHashCmdOutput { compiler_hash };
+            let get_transform_hash = |transform| -> Result<CompilerHash, CompilerError> {
+                let (compiler, transform) = compilers
+                    .find_compiler(transform)
+                    .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+                let compiler_hash = compiler
+                    .compiler_hash(transform, &env)
+                    .map_err(|_e| CompilerError::CompilerNotFound(transform))?;
+
+                Ok(compiler_hash)
+            };
+
+            let compiler_hash_list = if let Some(transform) = transform {
+                let compiler_hash = get_transform_hash(transform)?;
+                vec![(transform, compiler_hash)]
+            } else {
+                let mut compiler_hashes = vec![];
+                for info in compilers.infos() {
+                    let transform = info.transform;
+                    let compiler_hash = get_transform_hash(transform)?;
+                    compiler_hashes.push((transform, compiler_hash));
+                }
+
+                compiler_hashes
+            };
+
+            let output = CompilerHashCmdOutput { compiler_hash_list };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())
@@ -390,10 +402,43 @@ fn run(command: Commands, descriptor: &CompilerDescriptor) -> Result<(), Compile
                 locale,
             };
 
-            let compilation_output = descriptor.compile(
+            let transform = derived
+                .last_transform()
+                .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
+
+            let registry = {
+                let (compiler, _) = compilers
+                    .find_compiler(transform)
+                    .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+                let source_store = HddContentStore::open(cas_addr.clone())
+                    .ok_or(CompilerError::AssetStoreError)?;
+
+                let manifest = Manifest {
+                    compiled_resources: derived_deps.clone(),
+                };
+
+                let manifest = manifest.into_rt_manifest(|_rpid| true);
+
+                let registry = AssetRegistryOptions::new()
+                    .add_device_cas(Box::new(source_store), manifest)
+                    .add_device_dir(&resource_dir); // todo: filter dependencies only
+
+                compiler.init(registry).create()
+            };
+
+            let shell = CompilerNode::new(compilers, registry);
+
+            let (compiler, _) = shell
+                .compilers()
+                .find_compiler(transform)
+                .ok_or(CompilerError::CompilerNotFound(transform))?;
+
+            let compilation_output = compiler.compile(
                 derived,
                 &dependencies,
                 &derived_deps,
+                shell.registry(),
                 cas_addr,
                 &resource_dir,
                 &env,
@@ -436,6 +481,9 @@ enum Commands {
         /// Build localization (en, fr, etc).
         #[clap(long)]
         locale: String,
+        /// Optional transformation to return hash for. Otherwise returns hashes for all transformations.
+        #[clap(long = COMMAND_ARG_TRANSFORM)]
+        transform: Option<String>,
     },
     /// Compile given resource.
     #[clap(name = COMMAND_NAME_COMPILE)]
@@ -474,16 +522,28 @@ enum Commands {
 ///
 /// > **NOTE**: Data compiler must not write to stdout because this could break
 /// the specific output that is expected.
-// TODO: remove the limitation above.
 pub fn compiler_main(
     args: env::Args,
-    descriptor: &CompilerDescriptor,
+    descriptor: &'static CompilerDescriptor,
+) -> Result<(), CompilerError> {
+    let compilers = CompilerRegistryOptions::default().add_compiler(descriptor);
+
+    multi_compiler_main(args, compilers)
+}
+
+/// Same as `compiler_main` but supports many compilers in a single binary.
+pub fn multi_compiler_main(
+    args: env::Args,
+    compilers: CompilerRegistryOptions,
 ) -> Result<(), CompilerError> {
     let args = Cli::try_parse_from(args).map_err(|err| {
         eprintln!("{}", err);
         CompilerError::InvalidArgs
     })?;
-    let result = run(args.command, descriptor);
+
+    let compilers = compilers.create();
+
+    let result = run(args.command, compilers);
     if let Err(error) = &result {
         eprintln!("Compiler Failed With: '{:?}'", error);
     }

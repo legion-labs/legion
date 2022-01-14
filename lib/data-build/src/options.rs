@@ -1,7 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
+use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
 
@@ -17,7 +21,7 @@ use crate::{DataBuild, Error};
 /// ```
 /// # use lgn_data_build::DataBuildOptions;
 /// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+/// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create(".");
@@ -26,6 +30,7 @@ pub struct DataBuildOptions {
     pub(crate) buildindex_dir: PathBuf,
     pub(crate) contentstore_path: ContentStoreAddr,
     pub(crate) compiler_options: CompilerRegistryOptions,
+    pub(crate) registry: Option<Arc<AssetRegistry>>,
 }
 
 impl DataBuildOptions {
@@ -38,12 +43,20 @@ impl DataBuildOptions {
             buildindex_dir: buildindex_dir.as_ref().to_owned(),
             contentstore_path: ContentStoreAddr::from(buildindex_dir.as_ref()),
             compiler_options,
+            registry: None,
         }
     }
 
     /// Set content store location for derived resources.
     pub fn content_store(mut self, contentstore_path: &ContentStoreAddr) -> Self {
         self.contentstore_path = contentstore_path.clone();
+        self
+    }
+
+    /// Set asset registry used by data compilers. If it is not set `DataBuild` will use
+    /// a new instance of asset registry.
+    pub fn asset_registry(mut self, registry: Arc<AssetRegistry>) -> Self {
+        self.registry = Some(registry);
         self
     }
 

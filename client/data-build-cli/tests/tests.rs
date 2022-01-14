@@ -3,7 +3,7 @@ use std::fs;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
-    compiler_api::CompilationEnv, compiler_reg::CompilerRegistryOptions, Locale, Platform, Target,
+    compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},

@@ -24,8 +24,8 @@ pub fn generate(
             compiler_reflection::reflection_compile
         };
 
-        use lgn_data_offline::{Transform,ResourcePathId};
-        use lgn_data_runtime::{Resource};
+        use lgn_data_offline::{ResourcePathId, Transform};
+        use lgn_data_runtime::{AssetRegistryOptions, Resource};
         type OfflineType = #crate_name::offline::#type_name;
         type RuntimeType = #crate_name::runtime::#type_name;
 
@@ -35,13 +35,20 @@ pub fn generate(
             code_version: "1",
             data_version: #signature_hash,
             transform: &Transform::new(OfflineType::TYPE, RuntimeType::TYPE),
+            init_func: init,
             compiler_hash_func: hash_code_and_data,
             compile_func: compile,
         };
 
 
+
+        fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+            registry.add_loader::<OfflineType>()
+        }
+
         fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-            let resources = context.take_registry().add_loader::<OfflineType>().create();
+            let resources = context.registry();
+
             let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
             let offline_resource = offline_resource
                 .get(&resources)

@@ -1,15 +1,17 @@
 use std::{
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
 use super::CompilerStub;
 use crate::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
-    compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
+    compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
     CompiledResource, CompilerHash,
 };
 
@@ -18,10 +20,29 @@ pub(super) struct BinCompilerStub {
 }
 
 impl CompilerStub for BinCompilerStub {
-    fn compiler_hash(&self, env: &CompilationEnv) -> io::Result<CompilerHash> {
-        let cmd = CompilerHashCmd::new(env);
-        cmd.execute(&self.bin_path)
-            .map(|output| output.compiler_hash)
+    fn compiler_hash(
+        &self,
+        transform: Transform,
+        env: &CompilationEnv,
+    ) -> io::Result<CompilerHash> {
+        let cmd = CompilerHashCmd::new(env, Some(transform));
+        let transforms = cmd
+            .execute(&self.bin_path)
+            .map(|output| output.compiler_hash_list)?;
+
+        if transforms.len() == 1 && transforms[0].0 == transform {
+            return Ok(transforms[0].1);
+        }
+
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "Unexpected CompilerHashCmd output",
+        ))
+    }
+
+    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        // does nothing as the compiler process is responsible for initialization.
+        registry
     }
 
     fn compile(
@@ -29,6 +50,7 @@ impl CompilerStub for BinCompilerStub {
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
+        _registry: Arc<AssetRegistry>,
         cas_addr: ContentStoreAddr,
         resource_dir: &Path,
         env: &CompilationEnv,
@@ -50,13 +72,8 @@ impl CompilerStub for BinCompilerStub {
             .map_err(|_e| CompilerError::StdoutError)
     }
 
-    fn info(&self) -> io::Result<CompilerInfo> {
+    fn info(&self) -> io::Result<Vec<CompilerInfo>> {
         let cmd = CompilerInfoCmd::default();
-        cmd.execute(&self.bin_path).map(|output| CompilerInfo {
-            build_version: output.build_version,
-            code_version: output.code_version,
-            data_version: output.data_version,
-            transform: output.transform,
-        })
+        cmd.execute(&self.bin_path).map(CompilerInfoCmdOutput::take)
     }
 }

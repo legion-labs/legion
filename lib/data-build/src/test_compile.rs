@@ -7,7 +7,7 @@ use std::{env, vec};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::CompilationEnv;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_compiler::{Locale, Manifest, Platform, Target};
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_offline::{

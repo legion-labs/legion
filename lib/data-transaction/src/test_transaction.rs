@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store::ContentStoreAddr;
+use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::compiler_reg::CompilerRegistryOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::{
@@ -138,19 +138,25 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     std::fs::create_dir(&build_dir).unwrap();
 
     let project = Project::create_new(&project_dir).unwrap();
+    let resource_dir = project.resource_dir();
     let project = Arc::new(Mutex::new(project));
 
     let mut registry = ResourceRegistryOptions::new();
     generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
-
-    let asset_registry = AssetRegistryOptions::new().create();
+    let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
+    let asset_registry = AssetRegistryOptions::new()
+        .add_device_dir(&resource_dir)
+        .add_device_cas(Box::new(content_store), Manifest::default())
+        .add_loader::<TestEntity>()
+        .create();
 
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
 
     let options = DataBuildOptions::new(&build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()));
+        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
+        .asset_registry(asset_registry.clone());
 
     let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).unwrap();
 
@@ -158,7 +164,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         let mut data_manager = DataManager::new(
             project.clone(),
             resource_registry.clone(),
-            asset_registry,
+            asset_registry.clone(),
             build_manager,
         );
         let resource_path: ResourcePathName = "/entity/create_test.dc".into();
@@ -215,16 +221,21 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             ));
         data_manager.commit_transaction(transaction).await?;
 
+        asset_registry.update();
+
         assert!(project.lock().await.exists_named(&resource_path));
 
         // Test Array Insert Operation
         test_array_insert_operation(new_id, &mut data_manager).await?;
+        asset_registry.update();
 
         // Test Array Delete Operation
         test_array_delete_operation(new_id, &mut data_manager).await?;
+        asset_registry.update();
 
         // Test Array Reorder Operation
         test_array_reorder_operation(new_id, &mut data_manager).await?;
+        asset_registry.update();
 
         // Clone the created Resource
         let clone_name: ResourcePathName = "/entity/test_clone.dc".into();
@@ -238,6 +249,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             clone_name.clone(),
         ));
         data_manager.commit_transaction(transaction).await?;
+        asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_name));
         assert!(project.lock().await.exists(clone_id));
 
@@ -248,42 +260,50 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             clone_new_name.clone(),
         ));
         data_manager.commit_transaction(transaction).await?;
+        asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_new_name));
         assert!(!project.lock().await.exists_named(&clone_name));
 
         // Undo Rename
         data_manager.undo_transaction().await?;
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&clone_new_name));
         assert!(project.lock().await.exists_named(&clone_name));
 
         // Undo Clone
         data_manager.undo_transaction().await?;
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&clone_name));
         assert!(!project.lock().await.exists(clone_id));
 
         // Delete the created Resource
         let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
         data_manager.commit_transaction(transaction).await?;
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
         assert!(!project.lock().await.exists(new_id));
 
         // Undo delete
         data_manager.undo_transaction().await?;
+        asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path));
         assert!(project.lock().await.exists(new_id));
 
         // Undo Create
         data_manager.undo_transaction().await?;
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
         assert!(!project.lock().await.exists(new_id));
 
         // Redo Create
         data_manager.redo_transaction().await?;
+        asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path));
         assert!(project.lock().await.exists(new_id));
 
         // Redo Delete
         data_manager.redo_transaction().await?;
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
         assert!(!project.lock().await.exists(new_id));
 
@@ -311,6 +331,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             !data_manager.commit_transaction(transaction).await.is_ok(),
             "Transaction with invalid property update shouldn't succceed"
         );
+        asset_registry.update();
         assert!(!project.lock().await.exists_named(&invalid_resource));
 
         drop(data_manager);
