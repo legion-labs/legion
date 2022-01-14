@@ -1,5 +1,5 @@
+use std::cmp::min;
 use std::collections::HashMap;
-use std::{cmp::min, path::Path};
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
@@ -9,7 +9,8 @@ use lgn_telemetry_proto::analytics::{
 };
 use lgn_tracing::prelude::*;
 
-use crate::call_tree::{compute_block_call_tree, ScopeHashMap}; //todo: move to analytics lib
+use crate::call_tree::ScopeHashMap;
+use crate::call_tree_store::CallTreeStore;
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
@@ -88,7 +89,7 @@ fn record_tree_stats(
 
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    call_trees: &CallTreeStore,
     process: &lgn_telemetry_sink::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
@@ -113,9 +114,7 @@ async fn record_process_call_graph(
         .await?;
 
         for b in blocks {
-            //compute_block_call_tree fetches the block metadata again
-            let tree =
-                compute_block_call_tree(connection, data_path, process, &s, &b.block_id).await?;
+            let tree = call_trees.get_call_tree(process, &s, &b.block_id).await?;
             if let Some(root) = tree.root {
                 scopes.extend(tree.scopes);
                 record_tree_stats(&root, begin_ms, end_ms, stats, None);
@@ -128,7 +127,7 @@ async fn record_process_call_graph(
 #[allow(clippy::cast_precision_loss)]
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    call_trees: &CallTreeStore,
     process: &lgn_telemetry_sink::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
@@ -138,7 +137,7 @@ pub(crate) async fn compute_cumulative_call_graph(
     let mut stats = StatsHashMap::new();
     record_process_call_graph(
         connection,
-        data_path,
+        call_trees,
         process,
         begin_ms,
         end_ms,
@@ -160,7 +159,7 @@ pub(crate) async fn compute_cumulative_call_graph(
         let time_offset_total = time_offset_ms + (time_offset_ns / 1_000_000.0);
         record_process_call_graph(
             connection,
-            data_path,
+            call_trees,
             &child_process,
             begin_ms - time_offset_total,
             end_ms - time_offset_total,

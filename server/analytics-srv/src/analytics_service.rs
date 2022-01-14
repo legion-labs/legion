@@ -168,7 +168,7 @@ impl AnalyticsService {
         end_ms: f64,
     ) -> Result<CumulativeCallGraphReply> {
         let mut connection = self.pool.acquire().await?;
-        compute_cumulative_call_graph(&mut connection, &self.data_dir, process, begin_ms, end_ms)
+        compute_cumulative_call_graph(&mut connection, &self.call_trees, process, begin_ms, end_ms)
             .await
     }
 
