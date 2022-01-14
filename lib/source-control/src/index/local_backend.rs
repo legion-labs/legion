@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use lgn_tracing::info;
-use reqwest::Url;
 use std::path::PathBuf;
 
 use crate::{
@@ -10,7 +9,7 @@ use crate::{
 
 pub struct LocalIndexBackend {
     directory: PathBuf,
-    sql_repository_query: SqlIndexBackend,
+    sql_repository_index: SqlIndexBackend,
 }
 
 impl LocalIndexBackend {
@@ -18,15 +17,24 @@ impl LocalIndexBackend {
         let directory = make_path_absolute(directory);
         let db_path = directory.join("repo.db3");
         let blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
-        let sqlite_url = Url::parse_with_params(
-            &format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/")),
-            vec![("blob_storage_url", blob_storage_url.to_string())],
-        )
-        .map_other_err("failed to parse local SQLite repository database URL")?;
+
+        // Careful: here be dragons. You may be tempted to store the SQLite url
+        // in a `Url` but this will break SQLite on Windows, as attempting to
+        // parse a SQLite URL like:
+        //
+        // sqlite:///C:/Users/user/repo/repo.db3
+        //
+        // Will actually remove the trailing ':' from the disk letter.
+
+        let sqlite_url = format!(
+            "sqlite://{}?blob_storage_url={}",
+            db_path.to_str().unwrap().replace("\\", "/"),
+            urlencoding::encode(&blob_storage_url.to_string())
+        );
 
         Ok(Self {
             directory,
-            sql_repository_query: SqlIndexBackend::new(&sqlite_url)?,
+            sql_repository_index: SqlIndexBackend::new(sqlite_url)?,
         })
     }
 }
@@ -66,13 +74,16 @@ impl IndexBackend for LocalIndexBackend {
                 &self.directory.display()
             ))?;
 
-        info!("Creating SQLite database");
+        info!(
+            "Creating SQLite database at {}",
+            self.sql_repository_index.url()
+        );
 
-        self.sql_repository_query.create_index().await
+        self.sql_repository_index.create_index().await
     }
 
     async fn destroy_index(&self) -> Result<()> {
-        self.sql_repository_query.destroy_index().await?;
+        self.sql_repository_index.destroy_index().await?;
 
         tokio::fs::remove_dir_all(&self.directory)
             .await
@@ -83,68 +94,68 @@ impl IndexBackend for LocalIndexBackend {
     }
 
     async fn index_exists(&self) -> Result<bool> {
-        self.sql_repository_query.index_exists().await
+        self.sql_repository_index.index_exists().await
     }
 
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
-        self.sql_repository_query
+        self.sql_repository_index
             .register_workspace(workspace_registration)
             .await
     }
 
     async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>> {
-        self.sql_repository_query.find_branch(branch_name).await
+        self.sql_repository_index.find_branch(branch_name).await
     }
 
     async fn read_branches(&self) -> Result<Vec<Branch>> {
-        self.sql_repository_query.read_branches().await
+        self.sql_repository_index.read_branches().await
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        self.sql_repository_query.insert_branch(branch).await
+        self.sql_repository_index.insert_branch(branch).await
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        self.sql_repository_query.update_branch(branch).await
+        self.sql_repository_index.update_branch(branch).await
     }
 
     async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>> {
-        self.sql_repository_query
+        self.sql_repository_index
             .find_branches_in_lock_domain(lock_domain_id)
             .await
     }
 
     async fn read_commit(&self, commit_id: &str) -> Result<Commit> {
-        self.sql_repository_query.read_commit(commit_id).await
+        self.sql_repository_index.read_commit(commit_id).await
     }
 
     async fn insert_commit(&self, commit: &Commit) -> Result<()> {
-        self.sql_repository_query.insert_commit(commit).await
+        self.sql_repository_index.insert_commit(commit).await
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
-        self.sql_repository_query
+        self.sql_repository_index
             .commit_to_branch(commit, branch)
             .await
     }
 
     async fn commit_exists(&self, commit_id: &str) -> Result<bool> {
-        self.sql_repository_query.commit_exists(commit_id).await
+        self.sql_repository_index.commit_exists(commit_id).await
     }
 
     async fn read_tree(&self, tree_hash: &str) -> Result<Tree> {
-        self.sql_repository_query.read_tree(tree_hash).await
+        self.sql_repository_index.read_tree(tree_hash).await
     }
 
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()> {
-        self.sql_repository_query.save_tree(tree, hash).await
+        self.sql_repository_index.save_tree(tree, hash).await
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<()> {
-        self.sql_repository_query.insert_lock(lock).await
+        self.sql_repository_index.insert_lock(lock).await
     }
 
     async fn find_lock(
@@ -152,30 +163,30 @@ impl IndexBackend for LocalIndexBackend {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<Option<Lock>> {
-        self.sql_repository_query
+        self.sql_repository_index
             .find_lock(lock_domain_id, canonical_relative_path)
             .await
     }
 
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>> {
-        self.sql_repository_query
+        self.sql_repository_index
             .find_locks_in_domain(lock_domain_id)
             .await
     }
 
     async fn clear_lock(&self, lock_domain_id: &str, canonical_relative_path: &str) -> Result<()> {
-        self.sql_repository_query
+        self.sql_repository_index
             .clear_lock(lock_domain_id, canonical_relative_path)
             .await
     }
 
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32> {
-        self.sql_repository_query
+        self.sql_repository_index
             .count_locks_in_domain(lock_domain_id)
             .await
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        self.sql_repository_query.get_blob_storage_url().await
+        self.sql_repository_index.get_blob_storage_url().await
     }
 }

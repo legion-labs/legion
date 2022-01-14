@@ -18,20 +18,25 @@ enum SqlDatabaseDriver {
 }
 
 impl SqlDatabaseDriver {
-    fn new(url: &Url) -> Result<Self> {
-        match url.scheme() {
-            "mysql" => Ok(Self::Mysql(url.to_string())),
-            "sqlite" => Ok(Self::Sqlite(url.to_string())),
-            scheme => Err(Error::invalid_index_url(
-                url.to_string(),
-                anyhow::anyhow!("unsupported SQL database driver: {}", scheme),
-            )),
+    fn new(url: String) -> Result<Self> {
+        if url.starts_with("mysql://") {
+            Ok(Self::Mysql(url))
+        } else if url.starts_with("sqlite://") {
+            Ok(Self::Sqlite(url))
+        } else {
+            Err(Error::invalid_index_url(
+                url.clone(),
+                anyhow::anyhow!(
+                    "unsupported SQL database driver: {}",
+                    url.split(':').next().unwrap_or_default()
+                ),
+            ))
         }
     }
 
     fn url(&self) -> &str {
         match self {
-            Self::Sqlite(url) | Self::Mysql(url) => url.trim_end_matches('?'),
+            Self::Sqlite(url) | Self::Mysql(url) => url,
         }
     }
 
@@ -92,13 +97,15 @@ impl SqlIndexBackend {
     /// Instanciate a new SQL index backend.
     ///
     /// The url is expected to contain a `blob_storage_url` parameter.
-    pub fn new(url: &Url) -> Result<Self> {
-        let blob_storage_url = url
+    pub fn new(url: String) -> Result<Self> {
+        let mut sql_url = Url::parse(&url).map_other_err(format!("invalid SQL URL: {}", url))?;
+
+        let blob_storage_url = sql_url
             .query_pairs()
             .find(|(k, _)| k == "blob_storage_url")
             .ok_or_else(|| {
                 Error::invalid_index_url(
-                    url.to_string(),
+                    url.clone(),
                     anyhow::anyhow!("missing `blob_storage_url` parameter in SQL index URL"),
                 )
             })
@@ -109,14 +116,27 @@ impl SqlIndexBackend {
             blob_storage_url
         ))?;
 
-        let mut sql_url = url.clone();
+        let old_sql_url = sql_url.clone();
 
-        sql_url
-            .query_pairs_mut()
-            .clear()
-            .extend_pairs(url.query_pairs().filter(|(k, _)| k != "blob_storage_url"));
+        sql_url.query_pairs_mut().clear().extend_pairs(
+            old_sql_url
+                .query_pairs()
+                .filter(|(k, _)| k != "blob_storage_url"),
+        );
 
-        let driver = SqlDatabaseDriver::new(&sql_url)?;
+        let url = if let Some(idx) = url.find('?') {
+            format!(
+                "{}?{}",
+                url.split_at(idx).0,
+                sql_url.query().unwrap_or_default(),
+            )
+        } else {
+            url
+        }
+        .trim_end_matches('?')
+        .to_string();
+
+        let driver = SqlDatabaseDriver::new(url)?;
 
         Ok(Self {
             driver,

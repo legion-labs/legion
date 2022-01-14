@@ -50,7 +50,7 @@ pub fn new_index_backend(url: &str) -> Result<Box<dyn IndexBackend>> {
         {
             UrlOrPath::Path(path) => Box::new(LocalIndexBackend::new(path)?),
             UrlOrPath::Url(url) => match url.scheme() {
-                "mysql" => Box::new(SqlIndexBackend::new(&url)?),
+                "mysql" => Box::new(SqlIndexBackend::new(url.to_string())?),
                 "http" | "https" => Box::new(GrpcIndexBackend::new(url)?),
                 scheme => {
                     return Err(Error::invalid_index_url(
