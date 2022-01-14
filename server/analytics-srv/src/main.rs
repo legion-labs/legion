@@ -67,6 +67,7 @@
 mod analytics_service;
 mod cache;
 mod call_tree;
+mod call_tree_store;
 mod cumulative_call_graph;
 mod metrics;
 

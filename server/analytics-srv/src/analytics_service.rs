@@ -7,7 +7,6 @@ use lgn_analytics::prelude::*;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
-use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FetchProcessMetricRequest;
 use lgn_telemetry_proto::analytics::FindProcessReply;
@@ -35,9 +34,9 @@ use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
 
 use crate::cache::DiskCache;
-use crate::call_tree::compute_block_call_tree;
 use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
+use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::metrics;
 
@@ -70,14 +69,16 @@ pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_dir: PathBuf,
     cache: DiskCache,
+    call_trees: CallTreeStore,
 }
 
 impl AnalyticsService {
     pub async fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
         Ok(Self {
-            pool,
-            data_dir,
+            pool: pool.clone(),
+            data_dir: data_dir.clone(),
             cache: DiskCache::new().await?,
+            call_trees: CallTreeStore::new(pool, data_dir).await?,
         })
     }
 
@@ -117,22 +118,6 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
-    async fn get_call_tree(
-        &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
-        block_id: &str,
-    ) -> Result<CallTree> {
-        let cache_item_name = format!("tree_{}", block_id);
-        self.cache
-            .get_or_put(&cache_item_name, async {
-                let mut connection = self.pool.acquire().await?;
-                compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
-                    .await
-            })
-            .await
-    }
-
     async fn compute_spans_lod(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -141,7 +126,10 @@ impl AnalyticsService {
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
         if lod_id == 0 {
-            let tree = self.get_call_tree(process, stream, block_id).await?;
+            let tree = self
+                .call_trees
+                .get_call_tree(process, stream, block_id)
+                .await?;
             return compute_block_spans(tree, block_id);
         }
         let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
