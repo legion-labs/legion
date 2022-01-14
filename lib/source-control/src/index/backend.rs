@@ -102,12 +102,12 @@ mod tests {
         #[cfg(windows)]
         assert_eq!(
             new_index_backend(r"C:/Users/user/repo").unwrap().url(),
-            r"C:\Users\user\repo"
+            r"C:/Users/user/repo"
         );
         #[cfg(windows)]
         assert_eq!(
             new_index_backend(r"C:\Users\user\repo").unwrap().url(),
-            r"C:/Users/user/repo"
+            r"C:\Users\user\repo"
         );
     }
 
