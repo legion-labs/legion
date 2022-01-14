@@ -1,5 +1,8 @@
 import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
+import {
+  ResourceProperty as RawResourceProperty,
+  ResourcePropertyUpdate,
+} from "@lgn/proto-editor/dist/property_inspector";
 import { filterMap } from "./array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
@@ -9,7 +12,7 @@ const vecPTypeRegExp = /^Vec\<(.*)\>$/;
 const optionPTypeRegExp = /^Option\<(.*)\>$/;
 
 /** Matches any `name` of format "[index]", convenient for vector sub properties */
-const vecSubPropertyNameRegExp = /^\[(\w*)\]$/;
+const vecSubPropertyNameRegExp = /^\[(\d*)\]$/;
 
 /** Shared by all resource properties, be it a primitive, a vector, an option, or a component */
 type ResourcePropertyBase<Type extends string = string> = {
@@ -26,8 +29,8 @@ export type GroupResourceProperty = ResourcePropertyBase<"group">;
  * Extends `ResourcePropertyBase`
  */
 type ResourcePropertyWithValueBase<
-  Type extends string,
-  Value
+  Type extends string = string,
+  Value = unknown
 > = ResourcePropertyBase<Type> & {
   value: Value;
 };
@@ -198,9 +201,12 @@ export function propertyIsComponent(
 ): property is ComponentResourceProperty {
   // Using `every` instead of `some` so that it can early return
   // if one of the predicates return `true`
-  return ![propertyIsPrimitive, propertyIsVec, propertyIsOption].some(
-    (predicate) => predicate(property)
-  );
+  return ![
+    propertyIsPrimitive,
+    propertyIsVec,
+    propertyIsOption,
+    propertyIsGroup,
+  ].some((predicate) => predicate(property));
 }
 
 export function propertyIsGroup(
@@ -313,6 +319,61 @@ export function ptypeBelongsToPrimitive(
   ptype: string
 ): ptype is PrimitiveResourceProperty["ptype"] {
   return (primitivePTypes as string[]).includes(ptype);
+}
+
+/** Builds an Option property from a property */
+export function buildOptionProperty<
+  SubProperty extends ResourcePropertyBase | ResourcePropertyWithValueBase
+>(name: string, subProperty: SubProperty): OptionResourceProperty<SubProperty> {
+  return {
+    attributes: {},
+    name,
+    ptype: `Option<${subProperty.ptype}>`,
+    subProperties: [subProperty],
+  };
+}
+
+/** Builds an Option property with a `None` value */
+export function buildOptionNoneProperty<
+  SubProperty extends PrimitiveResourceProperty
+>(
+  name: string,
+  ptype: SubProperty["ptype"]
+): OptionResourceProperty<SubProperty> {
+  return {
+    attributes: {},
+    name,
+    ptype: `Option<${ptype}>`,
+    subProperties: [],
+  };
+}
+
+/** Builds a Vec property from a non empty array of properties */
+export function buildGroupProperty<SubProperty extends ResourceProperty>(
+  name: string,
+  subProperties: SubProperty[]
+): GroupResourceProperty {
+  return {
+    attributes: {},
+    name,
+    ptype: "group",
+    subProperties,
+  };
+}
+
+/** Builds a group property from a non empty array of propert */
+export function buildVecProperty<
+  SubProperty extends ResourcePropertyBase | ResourcePropertyWithValueBase
+>(
+  name: string,
+  subProperties: [SubProperty, ...SubProperty[]]
+): VecResourceProperty<SubProperty> {
+  return {
+    attributes: {},
+    name,
+    ptype: `Vec<${subProperties[0].ptype}>`,
+    subProperties,
+  };
 }
 
 // TODO: Drop this when the server can return default values
@@ -455,6 +516,7 @@ function formatProperty(
   };
 }
 
+// TODO: Ideally we should get rid of this one
 export function formatProperties(
   properties: RawResourceProperty[]
 ): ResourceProperty[] {

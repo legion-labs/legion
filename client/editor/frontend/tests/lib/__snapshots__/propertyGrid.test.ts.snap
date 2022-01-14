@@ -1,0 +1,426 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Color\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "Color",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Quat\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "Quat",
+  "subProperties": Array [],
+  "value": Array [
+    0,
+    0,
+    0,
+    0,
+  ],
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Speed\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "Speed",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`String\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "String",
+  "subProperties": Array [],
+  "value": "",
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Vec3\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "Vec3",
+  "subProperties": Array [],
+  "value": Array [
+    0,
+    0,
+    0,
+  ],
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`bool\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "bool",
+  "subProperties": Array [],
+  "value": false,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`f32\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "f32",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`f64\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "f64",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`i32\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "i32",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`u8\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "u8",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`u32\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "u32",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`usize\` 1`] = `
+Object {
+  "attributes": Object {},
+  "name": "My resource property",
+  "ptype": "usize",
+  "subProperties": Array [],
+  "value": 0,
+}
+`;
+
+exports[`formatProperties It properly formats the properties received from the server 1`] = `
+Array [
+  Object {
+    "attributes": Object {},
+    "name": "",
+    "ptype": "TestEntity",
+    "subProperties": Array [
+      Object {
+        "attributes": Object {
+          "readonly": "true",
+        },
+        "name": "test_string",
+        "ptype": "String",
+        "subProperties": Array [],
+        "value": "Editable String Value",
+      },
+      Object {
+        "attributes": Object {},
+        "name": "GroupTest1",
+        "ptype": "group",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {
+              "group": "GroupTest1",
+            },
+            "name": "test_color",
+            "ptype": "Color",
+            "subProperties": Array [],
+            "value": 4278190335,
+          },
+          Object {
+            "attributes": Object {
+              "group": "GroupTest1",
+              "hidden": "true",
+            },
+            "name": "test_position",
+            "ptype": "Vec3",
+            "subProperties": Array [],
+            "value": Array [
+              0,
+              100,
+              0,
+            ],
+          },
+          Object {
+            "attributes": Object {
+              "group": "GroupTest1",
+              "tooltip": "Rotation Tooltip",
+            },
+            "name": "test_rotation",
+            "ptype": "Quat",
+            "subProperties": Array [],
+            "value": Array [
+              0,
+              0,
+              0,
+              1,
+            ],
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "GroupTest2",
+        "ptype": "group",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {
+              "group": "GroupTest2",
+            },
+            "name": "test_bool",
+            "ptype": "bool",
+            "subProperties": Array [],
+            "value": false,
+          },
+          Object {
+            "attributes": Object {
+              "group": "GroupTest2",
+            },
+            "name": "test_float32",
+            "ptype": "f32",
+            "subProperties": Array [],
+            "value": 1,
+          },
+          Object {
+            "attributes": Object {
+              "group": "GroupTest2",
+            },
+            "name": "test_int",
+            "ptype": "i32",
+            "subProperties": Array [],
+            "value": 1337,
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {
+          "offline": "true",
+        },
+        "name": "test_float64",
+        "ptype": "f64",
+        "subProperties": Array [],
+        "value": 2,
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_blob",
+        "ptype": "Vec<u8>",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {},
+            "name": "[0]",
+            "ptype": "u8",
+            "subProperties": Array [],
+            "value": 0,
+          },
+          Object {
+            "attributes": Object {},
+            "name": "[1]",
+            "ptype": "u8",
+            "subProperties": Array [],
+            "value": 1,
+          },
+          Object {
+            "attributes": Object {},
+            "name": "[2]",
+            "ptype": "u8",
+            "subProperties": Array [],
+            "value": 2,
+          },
+          Object {
+            "attributes": Object {},
+            "name": "[3]",
+            "ptype": "u8",
+            "subProperties": Array [],
+            "value": 3,
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_sub_type",
+        "ptype": "TestSubType1",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {},
+            "name": "test_components",
+            "ptype": "Vec<Box<dyn Component>>",
+            "subProperties": Array [
+              Object {
+                "attributes": Object {},
+                "name": "[0]",
+                "ptype": "TestComponent",
+                "subProperties": Array [
+                  Object {
+                    "attributes": Object {},
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": Array [],
+                    "value": 0,
+                  },
+                ],
+              },
+              Object {
+                "attributes": Object {},
+                "name": "[1]",
+                "ptype": "TestComponent",
+                "subProperties": Array [
+                  Object {
+                    "attributes": Object {},
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": Array [],
+                    "value": 1,
+                  },
+                ],
+              },
+              Object {
+                "attributes": Object {},
+                "name": "[2]",
+                "ptype": "TestComponent",
+                "subProperties": Array [
+                  Object {
+                    "attributes": Object {},
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": Array [],
+                    "value": 2,
+                  },
+                ],
+              },
+            ],
+          },
+          Object {
+            "attributes": Object {},
+            "name": "test_string",
+            "ptype": "String",
+            "subProperties": Array [],
+            "value": "",
+          },
+          Object {
+            "attributes": Object {},
+            "name": "test_sub_type",
+            "ptype": "TestSubType2",
+            "subProperties": Array [
+              Object {
+                "attributes": Object {},
+                "name": "test_vec",
+                "ptype": "Vec3",
+                "subProperties": Array [],
+                "value": Array [
+                  0,
+                  0,
+                  0,
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_option_set",
+        "ptype": "Option<TestSubType2>",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {},
+            "name": "",
+            "ptype": "TestSubType2",
+            "subProperties": Array [
+              Object {
+                "attributes": Object {},
+                "name": "test_vec",
+                "ptype": "Vec3",
+                "subProperties": Array [],
+                "value": Array [
+                  0,
+                  0,
+                  0,
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_option_none",
+        "ptype": "Option<TestSubType2>",
+        "subProperties": Array [],
+      },
+      Object {
+        "attributes": Object {
+          "resource_type": "TestEntity",
+        },
+        "name": "test_resource_path_option",
+        "ptype": "Option<ResourcePathId>",
+        "subProperties": Array [],
+      },
+      Object {
+        "attributes": Object {
+          "resource_type": "TestEntity",
+        },
+        "name": "test_resource_path_vec",
+        "ptype": "Vec<ResourcePathId>",
+        "subProperties": Array [],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_option_primitive_set",
+        "ptype": "Option<Vec3>",
+        "subProperties": Array [
+          Object {
+            "attributes": Object {},
+            "name": "",
+            "ptype": "Vec3",
+            "subProperties": Array [],
+            "value": Array [
+              0,
+              0,
+              0,
+            ],
+          },
+        ],
+      },
+      Object {
+        "attributes": Object {},
+        "name": "test_option_primitive_none",
+        "ptype": "Option<Vec3>",
+        "subProperties": Array [],
+      },
+    ],
+  },
+]
+`;
