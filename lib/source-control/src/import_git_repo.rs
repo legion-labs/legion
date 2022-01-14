@@ -6,8 +6,8 @@ use lgn_tracing::span_fn;
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
     find_workspace_root, make_canonical_relative_path, read_workspace_spec, revert_file,
-    track_new_file, write_file, ChangeType, LocalWorkspaceConnection, RepositoryConnection,
-    RepositoryQuery,
+    track_new_file, write_file, ChangeType, IndexBackend, LocalWorkspaceConnection,
+    RepositoryConnection,
 };
 
 fn format_commit(c: &git2::Commit<'_>) -> String {
@@ -60,7 +60,7 @@ async fn add_file_from_git(
         return edit_file_from_git(
             workspace_root,
             workspace_transaction,
-            repo_connection.query(),
+            repo_connection.index_backend(),
             git_repo,
             new_file_path,
             new_file_id,
@@ -90,7 +90,7 @@ async fn add_file_from_git(
 async fn edit_file_from_git(
     workspace_root: &Path,
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    query: &dyn RepositoryQuery,
+    query: &dyn IndexBackend,
     git_repo: &git2::Repository,
     new_file_path: impl AsRef<Path>,
     new_file_id: git2::Oid,
@@ -203,7 +203,7 @@ async fn import_commit_diff(
         edit_file_from_git(
             workspace_root,
             workspace_transaction,
-            repo_connection.query(),
+            repo_connection.index_backend(),
             git_repo,
             &new_file_path,
             new_file_id,
@@ -229,7 +229,7 @@ async fn import_commit_sequence(
 ) -> Result<()> {
     let mut stack = vec![root_commit.clone()];
     let mut reference_index = git2::Index::new().unwrap();
-    let query = repo_connection.query();
+    let query = repo_connection.index_backend();
 
     loop {
         let commit = stack.pop().unwrap();
@@ -329,7 +329,7 @@ async fn import_branch(
     println!("importing branch {}", branch_name);
 
     match repo_connection
-        .query()
+        .index_backend()
         .find_branch(branch_name)
         .await
         .context(format!("error reading local branch {}", branch_name))?

@@ -19,7 +19,7 @@ pub async fn log_command() -> Result<()> {
         &branch_name, &current_commit
     );
 
-    let repo_branch = connection.query().read_branch(&branch_name).await?;
+    let repo_branch = connection.index_backend().read_branch(&branch_name).await?;
 
     let commits = find_branch_commits(&connection, &repo_branch)
         .await

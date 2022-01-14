@@ -7,14 +7,14 @@ use lgn_tracing::span_fn;
 use crate::{
     connect_to_server, create_workspace_branch_table, download_tree,
     init_branch_merge_pending_database, init_local_changes_database, init_resolve_pending_database,
-    insert_current_branch, make_path_absolute, sql::create_database, write_workspace_spec,
-    LocalWorkspaceConnection, RepositoryUrl, Workspace,
+    insert_current_branch, make_path_absolute, sql::create_database, write_workspace_spec, Index,
+    LocalWorkspaceConnection, Workspace,
 };
 
 #[span_fn]
 pub async fn init_workspace_command(
     workspace_directory: &Path,
-    repository_url: RepositoryUrl,
+    index_url: impl Into<String>,
 ) -> Result<()> {
     let workspace_directory = make_path_absolute(workspace_directory);
 
@@ -22,10 +22,14 @@ pub async fn init_workspace_command(
     let db_path = lsc_dir.join("workspace.db3");
     let db_uri = format!("sqlite://{}", db_path.display());
 
+    // Make sure the index URL is normalized.
+    let index = Index::new(&index_url.into())?;
+    let index_url = index.backend().url().to_string();
+
     let workspace = Workspace {
         registration: crate::WorkspaceRegistration::new(whoami::username()),
         root: String::from(workspace_directory.to_str().unwrap()),
-        repository_url,
+        index_url,
     };
 
     let connection = connect_to_server(&workspace).await?;
@@ -49,7 +53,7 @@ pub async fn init_workspace_command(
         &workspace,
     )?;
 
-    let query = connection.query();
+    let query = connection.index_backend();
     query.register_workspace(&workspace.registration).await?;
     let main_branch = query.read_branch("main").await?;
     insert_current_branch(

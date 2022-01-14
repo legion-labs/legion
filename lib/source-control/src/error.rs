@@ -2,16 +2,22 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{blob_storage::BlobStorageUrl, Branch, Lock};
+use crate::{Branch, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
+    #[error("the specified index does not exist")]
+    IndexDoesNotExist { url: String },
+    #[error("the specified index already exists")]
+    IndexAlreadyExists { url: String },
+    #[error("invalid index URL `{url}`: {source}")]
+    InvalidIndexUrl {
+        url: String,
+        #[source]
+        source: anyhow::Error,
+    },
     #[error("branch `{branch_name}` was not found")]
     BranchNotFound { branch_name: String },
-    #[error("no blob storage URL was specified")]
-    NoBlobStorageUrl,
-    #[error("a blob storage URL was specified")]
-    UnexpectedBlobStorageUrl { blob_storage_url: BlobStorageUrl },
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
     StaleBranch { branch: Branch },
     #[error("lock `{}` already exists in domain `{}`", .lock.relative_path, .lock.lock_domain_id)]
@@ -27,16 +33,23 @@ pub enum Error {
 }
 
 impl Error {
+    pub fn index_does_not_exist(url: impl Into<String>) -> Self {
+        Self::IndexDoesNotExist { url: url.into() }
+    }
+
+    pub fn index_already_exists(url: impl Into<String>) -> Self {
+        Self::IndexAlreadyExists { url: url.into() }
+    }
+
+    pub fn invalid_index_url(url: impl Into<String>, source: impl Into<anyhow::Error>) -> Self {
+        Self::InvalidIndexUrl {
+            url: url.into(),
+            source: source.into(),
+        }
+    }
+
     pub fn branch_not_found(branch_name: String) -> Self {
         Self::BranchNotFound { branch_name }
-    }
-
-    pub fn no_blob_storage_url() -> Self {
-        Self::NoBlobStorageUrl
-    }
-
-    pub fn unexpected_blob_storage_url(blob_storage_url: BlobStorageUrl) -> Self {
-        Self::UnexpectedBlobStorageUrl { blob_storage_url }
     }
 
     pub fn stale_branch(branch: Branch) -> Self {

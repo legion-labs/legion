@@ -22,7 +22,7 @@ pub async fn sync_tree_diff(
 ) -> Result<()> {
     let mut files_present: BTreeMap<String, String> = BTreeMap::new();
     let mut dirs_present: BTreeMap<String, String> = BTreeMap::new();
-    let query = connection.query();
+    let query = connection.index_backend();
 
     if !current_tree_hash.is_empty() {
         let current_tree = query.read_tree(current_tree_hash).await?;
@@ -139,11 +139,11 @@ pub async fn switch_branch_command(name: &str) -> Result<()> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let (_current_branch_name, current_commit) =
         read_current_branch(workspace_connection.sql()).await?;
     let old_commit = query.read_commit(&current_commit).await?;
-    let query = connection.query();
+    let query = connection.index_backend();
     let new_branch = query.read_branch(name).await?;
     let new_commit = query.read_commit(&new_branch.head).await?;
 

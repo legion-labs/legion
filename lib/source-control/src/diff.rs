@@ -7,11 +7,11 @@ use anyhow::{Context, Result};
 use crate::{
     connect_to_server, download_temp_file, find_file_hash_at_commit, find_workspace_root,
     make_path_absolute, path_relative_to, read_current_branch, read_text_file, read_workspace_spec,
-    Config, LocalWorkspaceConnection, RepositoryConnection, RepositoryQuery,
+    Config, IndexBackend, LocalWorkspaceConnection, RepositoryConnection,
 };
 
 async fn reference_version_name_as_commit_id(
-    repo_query: &dyn RepositoryQuery,
+    repo_query: &dyn IndexBackend,
     workspace_connection: &mut LocalWorkspaceConnection,
     reference_version_name: &str,
 ) -> Result<String> {
@@ -56,7 +56,7 @@ pub async fn diff_file_command(
     let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id = reference_version_name_as_commit_id(
-        connection.query(),
+        connection.index_backend(),
         &mut workspace_connection,
         reference_version_name,
     )

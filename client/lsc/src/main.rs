@@ -59,7 +59,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
-use lgn_source_control::{blob_storage::BlobStorageUrl, *};
+use lgn_source_control::*;
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
 
@@ -78,20 +78,23 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Initializes a repository stored on a local or remote system
-    #[clap(name = "create-repository")]
-    CreateRepository {
-        /// The repository URL.
-        repository_url: RepositoryUrl,
-        // The optional blob storage URL. If none is specified, one will be
-        // guessed from the repository URL.
-        blob_storage_url: Option<BlobStorageUrl>,
+    /// Initializes an index stored on a local or remote system
+    #[clap(name = "create-index")]
+    CreateIndex {
+        /// The index URL.
+        index_url: String,
     },
-    /// Destroys all repository data permanently
-    #[clap(name = "destroy-repository")]
-    DestroyRepository {
-        /// The repository URL.
-        repository_url: RepositoryUrl,
+    /// Destroys all index data permanently
+    #[clap(name = "destroy-index")]
+    DestroyIndex {
+        /// The index URL.
+        index_url: String,
+    },
+    /// Checks if an index exists.
+    #[clap(name = "index-exists")]
+    IndexExists {
+        /// The index URL.
+        index_url: String,
     },
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace")]
@@ -99,7 +102,7 @@ enum Commands {
         /// lsc workspace directory
         workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
-        repository_url: RepositoryUrl,
+        index_url: String,
     },
     /// Adds local file to the set of pending changes
     #[clap(name = "add")]
@@ -227,12 +230,6 @@ enum Commands {
         /// Name of the branch to import
         branch: String,
     },
-    /// Contact server
-    #[clap(name = "ping")]
-    Ping {
-        /// The repository URL.
-        repository_url: RepositoryUrl,
-    },
 }
 
 #[tokio::main]
@@ -251,36 +248,47 @@ async fn main() -> anyhow::Result<()> {
     span_scope!("lsc::main");
 
     match args.command {
-        Commands::CreateRepository {
-            repository_url,
-            blob_storage_url,
-        } => {
-            println!("Creating repository at: {}", repository_url);
+        Commands::CreateIndex { index_url } => {
+            println!("Creating index at: {}", &index_url);
 
-            let repository_query = repository_url.into_query();
-            repository_query
-                .create_repository(blob_storage_url)
+            let index = Index::new(&index_url)?;
+
+            index
+                .create()
                 .await
                 .map_err::<anyhow::Error, _>(Into::into)?;
 
             Ok(())
         }
-        Commands::DestroyRepository { repository_url } => {
-            info!("destroy-repository");
+        Commands::DestroyIndex { index_url } => {
+            println!("Destroying index at: {}", &index_url);
 
-            let repository_query = repository_url.into_query();
-            repository_query
-                .destroy_repository()
+            let index = Index::new(&index_url)?;
+
+            index.destroy().await.map_err(Into::into)
+        }
+        Commands::IndexExists { index_url } => {
+            let index = Index::new(&index_url)?;
+
+            if index
+                .exists()
                 .await
-                .map_err(Into::into)
+                .map_err::<anyhow::Error, _>(Into::into)?
+            {
+                println!("The index exists");
+            } else {
+                println!("The index does not exist");
+            }
+
+            Ok(())
         }
         Commands::InitWorkspace {
             workspace_directory,
-            repository_url,
+            index_url,
         } => {
             info!("init-workspace");
 
-            init_workspace_command(&workspace_directory, repository_url).await
+            init_workspace_command(&workspace_directory, index_url).await
         }
         Commands::Add { path } => {
             info!("add {}", path);
@@ -409,11 +417,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::ImportGitBranch { path, branch } => {
             info!("import-git-branch {} {} ", path, branch);
             import_git_branch_command(Path::new(&path), &branch).await
-        }
-        Commands::Ping { repository_url } => {
-            let repository_query = repository_url.into_query();
-
-            repository_query.ping().await.map_err(Into::into)
         }
     }
 }

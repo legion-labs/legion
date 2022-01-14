@@ -5,12 +5,12 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{make_path_absolute, read_text_file, RepositoryConnection};
-use crate::{write_file, RepositoryUrl, WorkspaceRegistration};
+use crate::{write_file, WorkspaceRegistration};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Workspace {
     pub registration: WorkspaceRegistration,
-    pub repository_url: RepositoryUrl,
+    pub index_url: String,
     pub root: String,
 }
 

@@ -55,7 +55,7 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
 
         let _status = Command::new(LSC_CLI_EXE_VAR)
             .current_dir(test_dir)
-            .args(["destroy-repository", &repo_uri])
+            .args(["destroy-index", &repo_uri])
             .status()
             .expect("failed to execute command");
 
@@ -64,12 +64,13 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 test_dir,
                 &["init-remote-repository", &repo_uri, &blob_storage_uri],
             ),
-            Err(_) => lsc_cli_sys(test_dir, &["create-repository", &repo_uri]),
+            Err(_) => lsc_cli_sys(test_dir, &["create-index", &repo_uri]),
         }
         repo_uri
     } else {
         let repo_dir = test_dir.join("repo");
-        lsc_cli_sys(test_dir, &["create-repository", repo_dir.to_str().unwrap()]);
+        lsc_cli_sys(test_dir, &["create-index", repo_dir.to_str().unwrap()]);
+        lsc_cli_sys(test_dir, &["index-exists", repo_dir.to_str().unwrap()]);
         String::from(repo_dir.to_str().unwrap())
     }
 }
@@ -175,7 +176,7 @@ fn local_repo_suite() {
     let connection = tokio_runtime
         .block_on(lgn_source_control::connect_to_server(&workspace_spec))
         .unwrap();
-    let query = connection.query();
+    let query = connection.index_backend();
     let main_branch = tokio_runtime.block_on(query.read_branch("main")).unwrap();
     let log_vec = tokio_runtime
         .block_on(lgn_source_control::find_branch_commits(

@@ -4795,6 +4795,7 @@ dependencies = [
  "tokio-util",
  "unicase",
  "url",
+ "urlencoding",
  "uuid",
  "whoami",
 ]
@@ -7765,6 +7766,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
+ "url",
 ]
 
 [[package]]
