@@ -54,3 +54,47 @@ debug-assertions = false
 opt-level = 3
 debug = true
 debug-assertions = false
+
+
+# These packages slow down debug builds a lot, so we want to optimize them
+# even in dev mode, we will revisit if they impact too much the debugging
+# experience
+[profile.dev.package.webrtc-sctp]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.webrtc-dtls]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.aead]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.aes]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.aes-gcm]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.cipher]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.ctr]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.dev.package.aes-soft]
+opt-level = 3
+debug = true
+debug-assertions = false

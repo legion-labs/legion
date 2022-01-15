@@ -82,12 +82,6 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        #[cfg(debug_assertions)]
-        {
-            span_scope!("hack_to_slow_down_server");
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-
         self.rgb_to_yuv
             .convert(
                 render_context,
