@@ -136,7 +136,8 @@ impl Project {
             .map_err(|e| Error::Io(index_path.clone(), e))?;
 
         let db = ResourceDb::default();
-        serde_json::to_writer_pretty(&file, &db).map_err(|e| Error::Parse(index_path.clone(), e))?;
+        serde_json::to_writer_pretty(&file, &db)
+            .map_err(|e| Error::Parse(index_path.clone(), e))?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
