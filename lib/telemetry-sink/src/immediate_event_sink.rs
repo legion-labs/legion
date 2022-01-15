@@ -232,21 +232,13 @@ impl EventSink for ImmediateEventSink {
         if let Some(process_data) = &*process_data {
             if let Some((thread_id, _)) = self.thread_ids.read().unwrap().get(&block.stream_id) {
                 for x in block.events.iter() {
-                    let (phase, tick, name, file, line) = match x {
-                        ThreadEventQueueAny::BeginThreadSpanEvent(evt) => (
-                            "B",
-                            evt.time,
-                            evt.thread_span_desc.name,
-                            evt.thread_span_desc.file,
-                            evt.thread_span_desc.line,
-                        ),
-                        ThreadEventQueueAny::EndThreadSpanEvent(evt) => (
-                            "E",
-                            evt.time,
-                            evt.thread_span_desc.name,
-                            evt.thread_span_desc.file,
-                            evt.thread_span_desc.line,
-                        ),
+                    let (phase, tick, name) = match x {
+                        ThreadEventQueueAny::BeginThreadSpanEvent(evt) => {
+                            ("B", evt.time, evt.thread_span_desc.name)
+                        }
+                        ThreadEventQueueAny::EndThreadSpanEvent(evt) => {
+                            ("E", evt.time, evt.thread_span_desc.name)
+                        }
                     };
                     let time = 1000.0 * 1000.0 * (tick - process_data.start_ticks) as f64
                         / process_data.tsc_frequency as f64;
@@ -257,10 +249,6 @@ impl EventSink for ImmediateEventSink {
                         pid: 1,
                         tid: *thread_id,
                         ts: time,
-                        args: {
-                            "[file]": file,
-                            "[line]": line,
-                        },
                     };
                     let mut events = self.chrome_events.lock().unwrap();
                     events.push(event);
