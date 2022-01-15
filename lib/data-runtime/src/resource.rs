@@ -1,9 +1,11 @@
 use std::convert::TryFrom;
+use std::path::PathBuf;
 use std::{fmt, hash::Hash, str::FromStr};
 
 use lgn_utils::DefaultHash;
 use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::Write;
 use uuid::Uuid;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 
@@ -142,6 +144,11 @@ impl ResourceId {
             .unwrap(),
         )
     }
+
+    /// Returns a path of a resource.
+    pub fn resource_path(&self) -> PathBuf {
+        PathBuf::from(self)
+    }
 }
 
 impl fmt::Display for ResourceId {
@@ -164,6 +171,20 @@ impl TryFrom<u128> for ResourceId {
 
     fn try_from(value: u128) -> Result<Self, Self::Error> {
         Ok(Self::from_raw(value))
+    }
+}
+
+impl From<&ResourceId> for PathBuf {
+    fn from(id: &ResourceId) -> Self {
+        let mut path = Self::new();
+        let mut byte_text = String::with_capacity(2);
+        for byte in id.0.get().to_be_bytes().into_iter().take(3) {
+            write!(byte_text, "{:02x}", byte).unwrap();
+            path.push(&byte_text);
+            byte_text.clear();
+        }
+        path.push(id.to_string());
+        path
     }
 }
 
@@ -266,4 +287,28 @@ pub trait Resource {
     const TYPENAME: &'static str;
     /// Type of the asset.
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{ffi::OsStr, path::PathBuf, str::FromStr};
+
+    use crate::ResourceId;
+
+    #[test]
+    fn resource_path() {
+        let text = "986a4ba3-d1d0-43ca-9051-56d26ad421ad";
+        let id = ResourceId::from_str(text).expect("valid uuid");
+        let path: PathBuf = id.resource_path();
+
+        let mut iter = path.iter();
+        assert_eq!(iter.next(), Some(OsStr::new("98")));
+        assert_eq!(iter.next(), Some(OsStr::new("6a")));
+        assert_eq!(iter.next(), Some(OsStr::new("4b")));
+        assert_eq!(
+            iter.next(),
+            Some(OsStr::new("986a4ba3-d1d0-43ca-9051-56d26ad421ad"))
+        );
+        assert_eq!(iter.next(), None);
+    }
 }

@@ -284,6 +284,14 @@ impl Project {
         let meta_path = self.metadata_path(type_id);
         let resource_path = self.resource_path(type_id);
 
+        let directory = {
+            let mut directory = resource_path.clone();
+            directory.pop();
+            directory
+        };
+
+        std::fs::create_dir_all(&directory).map_err(|e| Error::Io(directory.clone(), e))?;
+
         let build_dependencies = {
             let mut resource_file =
                 File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
@@ -431,13 +439,13 @@ impl Project {
 
     fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(type_id.id.to_string());
+        path.push(type_id.id.resource_path());
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(type_id.id.to_string())
+        self.resource_dir().join(type_id.id.resource_path())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.

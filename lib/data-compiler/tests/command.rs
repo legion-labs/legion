@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::path::Path;
 
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
@@ -8,8 +8,8 @@ use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
 mod common;
 
 fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
-    let path = dir.join(id.id.to_string());
-    let mut file = File::create(path).expect("new file");
+    let path = dir.join(id.id.resource_path());
+    let mut file = common::create_resource_file(&path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};
     let mut resource = proc.new_resource();
