@@ -32,16 +32,25 @@ linker = "rust-lld.exe"
 [profile.dev]
 panic = 'abort'
 
+# To be enabled to compare perfs between debug where this is 0
+# and allowing a bit of inlining.
+#[target.'cfg(debug_assertions)']
+#rustflags = ["-C", "inline-threshold=25"]
+
+[profile.bench]
+opt-level = 3
+debug = true
+debug-assertions = false
+
 [profile.release]
 opt-level = 3
 debug = true
 debug-assertions = false
 panic = 'abort'
 
-[profile.bench]
-opt-level = 3
-debug = true
-debug-assertions = false
+[profile.release-lto]
+inherits = "release"
+lto = true
 
 # this is one of the real time-critical sections of the code
 # We want it optimal even even in dev mode
