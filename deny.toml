@@ -180,8 +180,6 @@ skip = [
   # Introduced by criterion
   { name = "clap", version = "=2.34.0" },
   { name = "textwrap", version = "=0.11.0" },
-  # Introduced by sqlx
-  { name = "simple_asn1", version = "=0.5.4" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 

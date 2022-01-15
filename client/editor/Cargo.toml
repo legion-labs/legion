@@ -32,7 +32,7 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 json = "0.12.4"
 regex = "1.5"
 url = "2.2.2"
-sqlx = { version = "0.5", features = [
+sqlx = { version = "0.5.10", features = [
     "sqlite",
     "any",
     "mysql",

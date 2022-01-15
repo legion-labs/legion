@@ -18,5 +18,5 @@ generic-data = { path = "../../test/generic-data", version = "0.1.0", features =
 ] }
 runtime-srv = { path = "../../server/runtime-srv", version = "0.1.0" }
 
-dolly = "0.1.4"
+dolly = "0.2.0"
 rand = "0.8"
