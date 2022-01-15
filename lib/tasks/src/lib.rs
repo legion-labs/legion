@@ -83,7 +83,7 @@ pub use countdown_event::CountdownEvent;
 mod iter;
 pub use iter::ParallelIterator;
 
-mod executor;
+pub mod executor;
 
 pub mod prelude {
     #[doc(hidden)]
