@@ -21,11 +21,16 @@ declare_queue_struct!(
 
 #[test]
 fn test_queue() {
-    #[allow(clippy::assertions_on_constants)]
-    // not going to introduce a crate for this :)
+    #[allow(clippy::assertions_on_constants)] // not going to introduce a crate for this :)
     {
-        assert!(<MyTestEvent as InProcSerialize>::IS_CONST_SIZE);
-        assert!(<OtherEvent as InProcSerialize>::IS_CONST_SIZE);
+        assert!(matches!(
+            <MyTestEvent as InProcSerialize>::IN_PROC_SIZE,
+            InProcSize::Const(_)
+        ));
+        assert!(matches!(
+            <OtherEvent as InProcSerialize>::IN_PROC_SIZE,
+            InProcSize::Const(_)
+        ));
     }
 
     let mut q = MyQueue::new(1024);

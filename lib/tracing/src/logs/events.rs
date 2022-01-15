@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use lgn_tracing_transit::prelude::*;
+use lgn_tracing_transit::{prelude::*, StringId};
 
 use crate::{Level, LevelFilter};
 
@@ -88,7 +88,7 @@ pub struct LogStringEvent {
 }
 
 impl InProcSerialize for LogStringEvent {
-    const IS_CONST_SIZE: bool = false;
+    const IN_PROC_SIZE: InProcSize = InProcSize::Dynamic;
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
@@ -141,10 +141,8 @@ impl Reflect for LogStringEvent {
 pub struct LogStaticStrInteropEvent {
     pub time: i64,
     pub level: u32,
-    pub target_len: u32,
-    pub target: *const u8,
-    pub msg_len: u32,
-    pub msg: *const u8,
+    pub target: StringId,
+    pub msg: StringId,
 }
 
 impl InProcSerialize for LogStaticStrInteropEvent {}
@@ -153,13 +151,12 @@ impl InProcSerialize for LogStaticStrInteropEvent {}
 pub struct LogStringInteropEvent {
     pub time: i64,
     pub level: u32,
-    pub target_len: u32,
-    pub target: *const u8,
+    pub target: StringId,
     pub msg: DynString,
 }
 
 impl InProcSerialize for LogStringInteropEvent {
-    const IS_CONST_SIZE: bool = false;
+    const IN_PROC_SIZE: InProcSize = InProcSize::Dynamic;
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
@@ -171,8 +168,7 @@ impl InProcSerialize for LogStringInteropEvent {
     fn write_value(&self, buffer: &mut Vec<u8>) {
         write_any(buffer, &self.time);
         write_any(buffer, &self.level);
-        write_any(buffer, &self.target_len);
-        write_any(buffer, &self.target);
+        self.target.write_value(buffer);
         self.msg.write_value(buffer);
     }
 
@@ -180,21 +176,18 @@ impl InProcSerialize for LogStringInteropEvent {
         let time = read_any::<i64>(ptr);
         let level_offset = std::mem::size_of::<i64>();
         let level = read_any::<u32>(ptr.add(level_offset));
-        let target_len_offset = level_offset + std::mem::size_of::<u32>();
-        let target_len = read_any::<u32>(ptr.add(target_len_offset));
-        let target_offset = target_len_offset + std::mem::size_of::<u32>();
-        let target = read_any::<*const u8>(ptr.add(target_offset));
+        let target_offset = level_offset + std::mem::size_of::<u32>();
+        let target = StringId::read_value(ptr.add(target_offset), None);
         let buffer_size = value_size.unwrap();
-        let string_offset = std::mem::size_of::<*const u8>() + target_offset;
-        let string_ptr = ptr.add(string_offset);
+        let msg_offset = target_offset + StringId::rw_size();
+        let msg_ptr = ptr.add(msg_offset);
         let msg = <DynString as InProcSerialize>::read_value(
-            string_ptr,
-            Some(buffer_size - string_offset as u32),
+            msg_ptr,
+            Some(buffer_size - msg_offset as u32),
         );
         Self {
             time,
             level,
-            target_len,
             target,
             msg,
         }

@@ -1,10 +1,10 @@
-use crate::InProcSerialize;
+use crate::{InProcSerialize, InProcSize};
 
 #[derive(Debug)]
 pub struct DynString(pub String);
 
 impl InProcSerialize for DynString {
-    const IS_CONST_SIZE: bool = false;
+    const IN_PROC_SIZE: InProcSize = InProcSize::Dynamic;
 
     fn get_value_size(&self) -> Option<u32> {
         Some(self.0.len() as u32)

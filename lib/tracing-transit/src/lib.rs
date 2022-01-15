@@ -57,12 +57,13 @@
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc, clippy::inline_always)]
 
-pub mod dyn_string;
-pub mod heterogeneous_queue;
-pub mod parser;
-pub mod reflect;
-pub mod serialize;
-pub mod static_string;
+mod dyn_string;
+mod heterogeneous_queue;
+mod parser;
+mod reflect;
+mod serialize;
+mod static_string;
+mod string_id;
 
 pub use dyn_string::*;
 pub use heterogeneous_queue::*;
@@ -70,6 +71,7 @@ pub use parser::*;
 pub use reflect::*;
 pub use serialize::*;
 pub use static_string::*;
+pub use string_id::*;
 
 #[allow(unused_imports)]
 #[macro_use]
@@ -79,7 +81,7 @@ pub mod prelude {
     pub use lgn_derive_tracing_transit::*;
 
     pub use crate::{
-        read_any, write_any, DynString, HeterogeneousQueue, InProcSerialize, Member, Object,
-        QueueIterator, Reflect, StaticString, UserDefinedType, Value,
+        read_any, write_any, DynString, HeterogeneousQueue, InProcSerialize, InProcSize, Member,
+        Object, QueueIterator, Reflect, StaticString, UserDefinedType, Value,
     };
 }

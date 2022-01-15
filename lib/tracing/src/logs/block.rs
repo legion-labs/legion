@@ -71,14 +71,18 @@ impl ExtractDeps for LogMsgQueue {
                     record_log_event_dependencies(evt.desc, &mut recorded_deps, &mut deps);
                 }
                 LogMsgQueueAny::LogStaticStrInteropEvent(evt) => {
-                    if recorded_deps.insert(evt.msg as u64) {
-                        deps.push(StaticString {
-                            len: evt.msg_len,
-                            ptr: evt.msg,
-                        });
+                    if recorded_deps.insert(evt.target.id()) {
+                        deps.push(StaticString::from(&evt.target));
+                    }
+                    if recorded_deps.insert(evt.msg.id()) {
+                        deps.push(StaticString::from(&evt.msg));
                     }
                 }
-                LogMsgQueueAny::LogStringInteropEvent(_evt) => {}
+                LogMsgQueueAny::LogStringInteropEvent(evt) => {
+                    if recorded_deps.insert(evt.target.id()) {
+                        deps.push(StaticString::from(&evt.target));
+                    }
+                }
             }
         }
         deps

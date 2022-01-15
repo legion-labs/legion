@@ -19,10 +19,16 @@ pub unsafe fn read_any<T>(ptr: *const u8) -> T {
     std::ptr::read_unaligned(ptr.cast::<T>())
 }
 
+/// Helps speed up the serialization of types which size is known at compile time.
+pub enum InProcSize {
+    Const(usize),
+    Dynamic,
+}
+
 // InProcSerialize is used by the heterogeneous queue to write objects in its
 // buffer serialized objects can have references with static lifetimes
-pub trait InProcSerialize {
-    const IS_CONST_SIZE: bool = true;
+pub trait InProcSerialize: Sized {
+    const IN_PROC_SIZE: InProcSize = InProcSize::Const(std::mem::size_of::<Self>());
 
     fn get_value_size(&self) -> Option<u32> {
         // for POD serialization we don't write the size of each instance
@@ -35,7 +41,7 @@ pub trait InProcSerialize {
     where
         Self: Sized,
     {
-        assert!(Self::IS_CONST_SIZE);
+        assert!(matches!(Self::IN_PROC_SIZE, InProcSize::Const(_)));
         #[allow(clippy::needless_borrow)]
         //clippy complains here but we don't want to move or copy the value
         write_any::<Self>(buffer, &self);

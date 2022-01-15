@@ -191,7 +191,7 @@ impl GitCli {
     /// performance reasons.
     fn get_or_init_scratch(&self, hash: &GitHash) -> Result<Utf8PathBuf> {
         let mut scratch_dir = self.root.join("target");
-        scratch_dir.extend(&["x-scratch", "tree"]);
+        scratch_dir.extend(&["m-scratch", "tree"]);
 
         if scratch_dir.is_dir() && self.is_git_repo(&scratch_dir)? {
             debug!("Using existing scratch worktree at {}", scratch_dir,);

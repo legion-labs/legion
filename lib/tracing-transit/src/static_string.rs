@@ -1,4 +1,4 @@
-use crate::{read_any, write_any, InProcSerialize, Reflect, UserDefinedType};
+use crate::{read_any, write_any, InProcSerialize, InProcSize, Reflect, UserDefinedType};
 
 // StaticString serializes the value of the pointer and the contents of the
 // string
@@ -29,7 +29,7 @@ impl Reflect for StaticString {
 }
 
 impl InProcSerialize for StaticString {
-    const IS_CONST_SIZE: bool = false;
+    const IN_PROC_SIZE: InProcSize = InProcSize::Dynamic;
 
     fn get_value_size(&self) -> Option<u32> {
         let id_size = std::mem::size_of::<usize>() as u32;

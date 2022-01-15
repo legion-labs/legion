@@ -398,17 +398,14 @@ impl Dispatch {
             log_stream.get_events_mut().push(LogStaticStrInteropEvent {
                 time,
                 level: desc.level as u32,
-                target_len: desc.target.len() as u32,
-                target: desc.target.as_ptr(),
-                msg_len: msg.len() as u32,
-                msg: msg.as_ptr(),
+                target: desc.target.into(),
+                msg: msg.into(),
             });
         } else {
             log_stream.get_events_mut().push(LogStringInteropEvent {
                 time,
                 level: desc.level as u32,
-                target_len: desc.target.len() as u32,
-                target: desc.target.as_ptr(),
+                target: desc.target.into(),
                 msg: lgn_tracing_transit::DynString(args.to_string()),
             });
         }

@@ -15,8 +15,8 @@ fn gen_read_method(
                 unsafe {
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
-                    let value_size = if <#value_type_id as lgn_tracing_transit::InProcSerialize>::IS_CONST_SIZE {
-                        next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
+                    let value_size = if let InProcSize::Const(size) = <#value_type_id as lgn_tracing_transit::InProcSerialize>::IN_PROC_SIZE {
+                        next_object_offset = offset + 1 + size;
                         None
                     } else {
                         let size_instance = lgn_tracing_transit::read_any::<u32>(begin_obj);
@@ -168,9 +168,9 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                 self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);
 
                 let buffer_size_before = self.buffer.len();
-                if T::IS_CONST_SIZE {
+                if let InProcSize::Const(size) = T::IN_PROC_SIZE {
                     value.write_value(&mut self.buffer);
-                    assert!(self.buffer.len() == buffer_size_before + std::mem::size_of::<T>());
+                    assert!(self.buffer.len() == buffer_size_before + size);
                 } else {
                     // we force the dynamically sized object to first serialize their size as unsigned 32 bits
                     // this will allow unparsable objects to be skipped by the reader
