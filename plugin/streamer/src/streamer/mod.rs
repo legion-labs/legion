@@ -2,6 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use bytes::Bytes;
 use lgn_app::{AppExit, Events};
+use lgn_async::TokioAsyncRuntime;
 use lgn_ecs::prelude::*;
 use lgn_input::{
     keyboard::KeyboardInput,
@@ -10,7 +11,7 @@ use lgn_input::{
 };
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
-    RenderTaskPool, Renderer,
+    Renderer,
 };
 use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{WindowCreated, WindowResized, Windows};
@@ -115,7 +116,7 @@ impl Streamer {
 }
 
 pub(crate) fn handle_stream_events(
-    task_pool: Res<'_, RenderTaskPool>,
+    async_rt: Res<'_, TokioAsyncRuntime>,
     streamer: Res<'_, Streamer>,
     mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
@@ -171,7 +172,7 @@ pub(crate) fn handle_stream_events(
                 let mut control_stream = ControlStream::new(data_channel);
                 match control_stream.say_hello() {
                     Ok(future) => {
-                        task_pool.spawn(future).detach();
+                        async_rt.start_detached(future);
                     }
                     Err(e) => {
                         error!("say_hello failed: {}", e);
@@ -311,6 +312,7 @@ pub(crate) fn on_render_surface_created_for_window(
     streamer_windows: Res<'_, StreamerWindows>,
     renderer: Res<'_, Renderer>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
     for event in event_render_surface_created.iter() {
         let render_surface = render_surfaces
@@ -327,6 +329,7 @@ pub(crate) fn on_render_surface_created_for_window(
                 &renderer,
                 Resolution::new(wnd.physical_width(), wnd.physical_height()),
                 video_data_channel.clone(),
+                async_rt.handle(),
             )
             .unwrap();
             render_surface.register_presenter(|| video_stream);

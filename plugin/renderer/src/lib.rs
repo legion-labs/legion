@@ -88,7 +88,6 @@ pub mod picking;
 
 pub mod static_mesh_render_data;
 
-pub use lgn_tasks::IoTaskPool as RenderTaskPool;
 pub mod debug_display;
 pub mod egui;
 
@@ -354,7 +353,6 @@ fn render_update(
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
     q_lights: Query<'_, '_, (&LightComponent, &Transform)>,
-    task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
@@ -472,7 +470,7 @@ fn render_update(
         let graphics_queue = render_context.graphics_queue();
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
-        render_surface.present(&render_context, &task_pool);
+        render_surface.present(&render_context);
     }
 }
 

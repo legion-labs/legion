@@ -6,7 +6,6 @@ use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
-use lgn_tasks::TaskPool;
 use raw_window_handle::HasRawWindowHandle;
 
 use crate::SwapchainHelper;
@@ -142,12 +141,7 @@ impl Presenter for PresenterWindow {
         self.extents = extents;
     }
 
-    fn present(
-        &mut self,
-        render_context: &RenderContext<'_>,
-        render_surface: &mut RenderSurface,
-        _task_pool: &TaskPool,
-    ) {
+    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
         // FIXME: if the windows is minimized, we should not resize the RenderSurface
         // and we should not present the swapchain.
         if self.extents.width() > 1 && self.extents.height() > 1 {

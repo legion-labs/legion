@@ -5,7 +5,6 @@ use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
     RenderContext, Renderer,
 };
-use lgn_tasks::TaskPool;
 
 use crate::OffscreenHelper;
 
@@ -98,12 +97,7 @@ impl Presenter for PresenterSnapshot {
         unreachable!();
     }
 
-    fn present(
-        &mut self,
-        render_context: &RenderContext<'_>,
-        render_surface: &mut RenderSurface,
-        _task_pool: &TaskPool,
-    ) {
+    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
         self.present(render_context, render_surface).unwrap();
     }
 }

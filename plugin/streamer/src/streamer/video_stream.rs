@@ -1,6 +1,7 @@
 use std::{cmp::min, io::Cursor, sync::Arc};
 
 use bytes::Bytes;
+use lgn_async::TokioAsyncRuntimeHandle;
 use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::YUVSource,
@@ -12,7 +13,6 @@ use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
-use lgn_tasks::TaskPool;
 use lgn_tracing::prelude::*;
 use lgn_tracing::{debug, warn};
 use lgn_utils::memory::write_any;
@@ -29,6 +29,7 @@ fn record_frame_time_metric(microseconds: u64) {
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
+    async_rt: TokioAsyncRuntimeHandle,
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
     encoder: VideoStreamEncoder,
@@ -41,6 +42,7 @@ impl VideoStream {
         renderer: &Renderer,
         resolution: Resolution,
         video_data_channel: Arc<RTCDataChannel>,
+        async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
         let encoder = VideoStreamEncoder::new(resolution)?;
@@ -48,6 +50,7 @@ impl VideoStream {
             RgbToYuvConverter::new(&renderer.shader_compiler(), device_context, resolution)?;
 
         Ok(Self {
+            async_rt,
             video_data_channel,
             frame_id: 0,
             encoder,
@@ -78,7 +81,7 @@ impl VideoStream {
         &mut self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-    ) -> impl std::future::Future<Output = ()> + 'static {
+    ) {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
@@ -108,8 +111,7 @@ impl VideoStream {
         self.frame_id += 1;
 
         let video_data_channel = Arc::clone(&self.video_data_channel);
-        async move {
-            //span_scope!("write_to_data_channel");
+        self.async_rt.start_detached(async move {
             for (i, data) in chunks.iter().enumerate() {
                 #[allow(clippy::redundant_else)]
                 if let Err(err) = video_data_channel.send(data).await {
@@ -126,7 +128,7 @@ impl VideoStream {
                     debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
                 }
             }
-        }
+        });
     }
 }
 
@@ -134,15 +136,8 @@ impl Presenter for VideoStream {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
         self.resize(renderer, extents).unwrap();
     }
-    fn present(
-        &mut self,
-        render_context: &RenderContext<'_>,
-        render_surface: &mut RenderSurface,
-        task_pool: &TaskPool,
-    ) {
-        task_pool
-            .spawn(self.present(render_context, render_surface))
-            .detach();
+    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
+        self.present(render_context, render_surface);
     }
 }
 

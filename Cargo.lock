@@ -4802,6 +4802,7 @@ dependencies = [
  "hex",
  "interceptor",
  "lgn-app",
+ "lgn-async",
  "lgn-codec-api",
  "lgn-config",
  "lgn-core",

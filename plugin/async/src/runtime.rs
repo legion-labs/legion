@@ -14,7 +14,7 @@ use lgn_tracing::{
     Lod,
 };
 use retain_mut::RetainMut;
-use tokio::runtime::{Builder, Runtime};
+use tokio::runtime::{Builder, Handle, Runtime};
 
 use super::operation::{AsyncOperation, AsyncOperationError, AsyncOperationResult};
 
@@ -24,6 +24,9 @@ pub struct TokioAsyncRuntime {
     tokio_runtime: Runtime,
     result_handlers: Vec<Box<dyn TokioFutureWrapperAsyncResult>>,
 }
+
+// newtype the Runtime handle to provide the start detached functionality
+pub struct TokioAsyncRuntimeHandle(Handle);
 
 impl Default for TokioAsyncRuntime {
     fn default() -> Self {
@@ -78,6 +81,12 @@ impl TokioAsyncRuntime {
         F::Output: Send + 'static,
     {
         self.tokio_runtime.spawn(future);
+    }
+
+    pub fn handle(&self) -> TokioAsyncRuntimeHandle {
+        TokioAsyncRuntimeHandle {
+            0: self.tokio_runtime.handle().clone(),
+        }
     }
 
     // Start a future on the tokio thread-pool that is associated to the
@@ -147,6 +156,16 @@ impl TokioAsyncRuntime {
         });
 
         num_completed
+    }
+}
+
+impl TokioAsyncRuntimeHandle {
+    pub fn start_detached<F>(&self, future: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.0.spawn(future);
     }
 }
 

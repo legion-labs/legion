@@ -5,7 +5,6 @@ use lgn_graphics_api::{
     Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage,
     Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
-use lgn_tasks::TaskPool;
 use lgn_window::WindowId;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -18,12 +17,7 @@ use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
-    fn present(
-        &mut self,
-        render_context: &RenderContext<'_>,
-        render_surface: &mut RenderSurface,
-        task_pool: &TaskPool,
-    );
+    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface);
 }
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -255,11 +249,11 @@ impl RenderSurface {
         }
     }
 
-    pub fn present(&mut self, render_context: &RenderContext<'_>, task_pool: &TaskPool) {
+    pub fn present(&mut self, render_context: &RenderContext<'_>) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {
-            presenter.as_mut().present(render_context, self, task_pool);
+            presenter.as_mut().present(render_context, self);
         }
 
         self.presenters = presenters;
