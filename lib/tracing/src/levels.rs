@@ -717,13 +717,13 @@ pub fn max_level() -> LevelFilter {
 
 /// Sets the global maximum log level.
 #[inline]
-pub fn set_max_lod(level: LevelFilter) {
+pub fn set_max_lod(level: LodFilter) {
     MAX_LOD_FILTER.store(level as u32, atomic::Ordering::Relaxed);
 }
 
 /// Returns the current maximum log level.
 #[inline]
-pub fn max_lod() -> LevelFilter {
+pub fn max_lod() -> LodFilter {
     // See comment above
     unsafe { std::mem::transmute(MAX_LOD_FILTER.load(atomic::Ordering::Relaxed)) }
 }

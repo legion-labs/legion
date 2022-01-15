@@ -9,11 +9,13 @@ license = "MIT OR Apache-2.0"
 keywords = ["ecs", "game", "legion"]
 
 [dependencies]
-futures-lite = "1.12"
 lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-tracing = { path = "../../lib/tracing", version = "0.1.0" }
+lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 retain_mut = "0.1"
+futures-lite = "1.12"
 
 [dev-dependencies]
 ntest = "0.7"

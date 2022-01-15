@@ -258,20 +258,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-executor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "871f9bb5e0a22eeb7e8cf16641feb87c9dc67032ccf8ff49e772eb9941d3a965"
-dependencies = [
- "async-task",
- "concurrent-queue",
- "fastrand",
- "futures-lite",
- "once_cell",
- "slab",
-]
-
-[[package]]
 name = "async-io"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3893,6 +3879,8 @@ dependencies = [
  "futures-lite",
  "lgn-app",
  "lgn-ecs",
+ "lgn-tasks",
+ "lgn-tracing",
  "ntest",
  "retain_mut",
  "tokio",
@@ -4854,12 +4842,16 @@ name = "lgn-tasks"
 version = "0.1.0"
 dependencies = [
  "async-channel",
- "async-executor",
+ "async-task",
+ "concurrent-queue",
  "event-listener",
+ "fastrand",
  "futures-lite",
  "instant",
  "lgn-tracing",
  "num_cpus",
+ "once_cell",
+ "slab",
  "wasm-bindgen-futures",
 ]
 

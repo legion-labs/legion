@@ -1,8 +1,18 @@
 use std::{
     future::Future,
-    sync::{Arc, Mutex, Weak},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex, Weak,
+    },
 };
 
+use lgn_tasks::logical_core_count;
+use lgn_tracing::{
+    dispatch::{flush_thread_buffer, init_thread_stream, on_begin_scope, on_end_scope},
+    max_lod,
+    spans::ThreadSpanMetadata,
+    Lod,
+};
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Runtime};
 
@@ -17,7 +27,40 @@ pub struct TokioAsyncRuntime {
 
 impl Default for TokioAsyncRuntime {
     fn default() -> Self {
-        let rt = Builder::new_multi_thread().enable_all().build().unwrap();
+        static PARK_SPAN_METADATA: ThreadSpanMetadata = ThreadSpanMetadata {
+            lod: Lod::Max,
+            name: "tokio::busy",
+            target: module_path!(),
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        let rt = Builder::new_multi_thread()
+            .enable_all()
+            .thread_name_fn(|| {
+                static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+                let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+                format!("Tokio Task Pool {}", id)
+            })
+            .worker_threads(std::cmp::min(logical_core_count(), 4)) // take 4 thread max
+            .on_thread_start(init_thread_stream)
+            .on_thread_stop(flush_thread_buffer)
+            .on_thread_park(|| {
+                // This is inverted on purpose even if we receive these callbacks
+                // the logical order park/unpark, we want to keep track of the
+                // busy work on the thread.
+                if PARK_SPAN_METADATA.lod <= max_lod() {
+                    on_end_scope(&PARK_SPAN_METADATA);
+                }
+            })
+            .on_thread_unpark(|| {
+                if PARK_SPAN_METADATA.lod <= max_lod() {
+                    on_begin_scope(&PARK_SPAN_METADATA);
+                }
+            })
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
 
         Self {
             tokio_runtime: rt,

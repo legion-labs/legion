@@ -8,7 +8,7 @@ use std::{
 
 use futures_lite::{future, pin};
 
-use crate::Task;
+use crate::{executor, Task};
 
 /// Used to create a `TaskPool`
 #[derive(Debug, Default, Clone)]
@@ -91,7 +91,7 @@ pub struct TaskPool {
     /// an Arc<Executor> to pass into the worker threads, and we must create
     /// the worker threads before we can create the `Vec<Task<T>>` contained
     /// within `TaskPoolInner`
-    executor: Arc<async_executor::Executor<'static>>,
+    executor: Arc<executor::Executor<'static>>,
 
     /// Inner state of the pool
     inner: Arc<TaskPoolInner>,
@@ -99,7 +99,7 @@ pub struct TaskPool {
 
 impl TaskPool {
     thread_local! {
-        static LOCAL_EXECUTOR: async_executor::LocalExecutor<'static> = async_executor::LocalExecutor::new();
+        static LOCAL_EXECUTOR: executor::LocalExecutor<'static> = executor::LocalExecutor::new();
     }
 
     /// Create a `TaskPool` with the default configuration.
@@ -114,7 +114,7 @@ impl TaskPool {
     ) -> Self {
         let (shutdown_tx, shutdown_rx) = async_channel::unbounded::<()>();
 
-        let executor = Arc::new(async_executor::Executor::new());
+        let executor = Arc::new(executor::Executor::new());
 
         let num_threads = num_threads.unwrap_or_else(num_cpus::get);
 
@@ -179,10 +179,9 @@ impl TaskPool {
             // return before this function returns. However, rust has no way of
             // knowing this so we must convert to 'static here to appease the
             // compiler as it is unable to validate safety.
-            let executor: &async_executor::Executor<'_> = &*self.executor;
-            let executor: &'scope async_executor::Executor<'_> =
-                unsafe { mem::transmute(executor) };
-            let local_executor: &'scope async_executor::LocalExecutor<'_> =
+            let executor: &executor::Executor<'_> = &*self.executor;
+            let executor: &'scope executor::Executor<'_> = unsafe { mem::transmute(executor) };
+            let local_executor: &'scope executor::LocalExecutor<'_> =
                 unsafe { mem::transmute(local_executor) };
             let mut scope = Scope {
                 executor,
@@ -263,9 +262,9 @@ impl Default for TaskPool {
 
 #[derive(Debug)]
 pub struct Scope<'scope, T> {
-    executor: &'scope async_executor::Executor<'scope>,
-    local_executor: &'scope async_executor::LocalExecutor<'scope>,
-    spawned: Vec<async_executor::Task<T>>,
+    executor: &'scope executor::Executor<'scope>,
+    local_executor: &'scope executor::LocalExecutor<'scope>,
+    spawned: Vec<executor::Task<T>>,
 }
 
 impl<'scope, T: Send + 'scope> Scope<'scope, T> {

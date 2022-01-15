@@ -73,12 +73,12 @@ pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
 use lgn_tracing::event::NullEventSink;
-use lgn_tracing::info;
 use lgn_tracing::{
     event::EventSink,
     guards::{TracingSystemGuard, TracingThreadGuard},
     set_max_level, LevelFilter,
 };
+use lgn_tracing::{info, set_max_lod, LodFilter};
 
 pub struct Config {
     logs_buffer_size: usize,
@@ -153,6 +153,7 @@ fn alloc_telemetry_system(
         sink,
     )?);
     set_max_level(config.max_level);
+    set_max_lod(LodFilter::Max);
     *weak = Arc::<TracingSystemGuard>::downgrade(&arc);
     Ok(arc)
 }
