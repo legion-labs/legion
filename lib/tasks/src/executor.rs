@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use async_executor::Executor;
+//! use lgn_tasks::executor::Executor;
 //! use futures_lite::future;
 //!
 //! // Create a new executor.
@@ -46,9 +46,9 @@ pub use async_task::Task;
 ///
 /// A multi-threaded executor:
 ///
-/// ```
+/// ```ignore
 /// use async_channel::unbounded;
-/// use async_executor::Executor;
+/// use lgn_tasks::executor::Executor;
 /// use easy_parallel::Parallel;
 /// use futures_lite::future;
 ///
@@ -87,7 +87,7 @@ impl<'a> Executor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::Executor;
+    /// use lgn_tasks::executor::Executor;
     ///
     /// let ex = Executor::new();
     /// ```
@@ -103,7 +103,7 @@ impl<'a> Executor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::Executor;
+    /// use lgn_tasks::executor::Executor;
     ///
     /// let ex = Executor::new();
     /// assert!(ex.is_empty());
@@ -125,7 +125,7 @@ impl<'a> Executor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::Executor;
+    /// use lgn_tasks::executor::Executor;
     ///
     /// let ex = Executor::new();
     ///
@@ -160,7 +160,7 @@ impl<'a> Executor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::Executor;
+    /// use lgn_tasks::executor::Executor;
     ///
     /// let ex = Executor::new();
     /// assert!(!ex.try_tick()); // no tasks to run
@@ -193,8 +193,8 @@ impl<'a> Executor<'a> {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use async_executor::Executor;
+    /// ```ignore
+    /// use lgn_tasks::executor::Executor;
     /// use futures_lite::future;
     ///
     /// let ex = Executor::new();
@@ -214,8 +214,8 @@ impl<'a> Executor<'a> {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use async_executor::Executor;
+    /// ```ignore
+    /// use lgn_task::executor::Executor;
     /// use futures_lite::future;
     ///
     /// let ex = Executor::new();
@@ -290,7 +290,7 @@ impl<'a> Default for Executor<'a> {
 /// # Examples
 ///
 /// ```
-/// use async_executor::LocalExecutor;
+/// use lgn_tasks::executor::LocalExecutor;
 /// use futures_lite::future;
 ///
 /// let local_ex = LocalExecutor::new();
@@ -317,7 +317,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     ///
     /// let local_ex = LocalExecutor::new();
     /// ```
@@ -333,7 +333,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     ///
     /// let local_ex = LocalExecutor::new();
     /// assert!(local_ex.is_empty());
@@ -355,7 +355,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     ///
     /// let local_ex = LocalExecutor::new();
     ///
@@ -390,7 +390,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     ///
     /// let ex = LocalExecutor::new();
     /// assert!(!ex.try_tick()); // no tasks to run
@@ -413,7 +413,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     /// use futures_lite::future;
     ///
     /// let ex = LocalExecutor::new();
@@ -432,7 +432,7 @@ impl<'a> LocalExecutor<'a> {
     /// # Examples
     ///
     /// ```
-    /// use async_executor::LocalExecutor;
+    /// use lgn_tasks::executor::LocalExecutor;
     /// use futures_lite::future;
     ///
     /// let local_ex = LocalExecutor::new();
