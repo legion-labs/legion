@@ -84,8 +84,8 @@ impl VideoStream {
 
         #[cfg(debug_assertions)]
         {
-            span_scope!("hack_to_slow_down_server");
-            std::thread::sleep(std::time::Duration::from_millis(20));
+            // /span_scope!("hack_to_slow_down_server");
+            //std::thread::sleep(std::time::Duration::from_millis(20));
         }
 
         self.rgb_to_yuv
@@ -116,6 +116,7 @@ impl VideoStream {
         self.frame_id += 1;
 
         async move {
+            //span_scope!("write_to_data_channel");
             for (i, data) in chunks.iter().enumerate() {
                 #[allow(clippy::redundant_else)]
                 if let Err(err) = video_data_channel.send(data).await {
