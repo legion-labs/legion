@@ -10,5 +10,5 @@ module.exports = {
   testMatch: ["**/tests/**/*.test.ts"],
   moduleNameMapper: { "^\\@\\/(.*)": "<rootDir>/src/$1" },
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
-  transformIgnorePatterns: [],
+  transformIgnorePatterns: ["node_modules/(?!@tauri-apps/api)"],
 };

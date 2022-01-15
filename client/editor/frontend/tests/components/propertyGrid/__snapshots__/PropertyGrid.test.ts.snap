@@ -1,0 +1,49 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PropertyGrid renders properly with an error 1`] = `
+<body>
+  <div>
+    <div
+      class="root svelte-ayzbxh"
+    >
+      <div
+        class="italic"
+      >
+        An error occured
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`PropertyGrid renders properly with the current resource set 1`] = `
+<body>
+  <div>
+    <div
+      class="root svelte-ayzbxh"
+    >
+      <div
+        class="italic"
+      >
+        An error occured
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`PropertyGrid renders properly without resources 1`] = `
+<body>
+  <div>
+    <div
+      class="root svelte-ayzbxh"
+    >
+      <div
+        class="italic"
+      >
+        No resource selected
+      </div>
+    </div>
+  </div>
+</body>
+`;

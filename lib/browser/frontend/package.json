@@ -17,7 +17,7 @@
     "prettier:fix": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "svelte:check": "tsc --noEmit && svelte-check",
     "clean": "rimraf node_modules",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "jest"
   },
   "devDependencies": {
     "@swc/core": "^1.2.127",
@@ -29,7 +29,6 @@
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
     "autoprefixer": "^10.4.2",
-    "cross-env": "^7.0.3",
     "eslint": "^8.6.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-svelte3": "^3.3.0",

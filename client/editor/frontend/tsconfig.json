@@ -15,6 +15,7 @@
     "types": ["svelte", "jest", "vite/client", "@lgn/frontend/src/types/tauri"],
     "baseUrl": ".",
     "paths": {
+      "@/resources/*": ["tests/resources/*"],
       "@/*": ["src/*"]
     }
   },

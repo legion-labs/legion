@@ -1,0 +1,272 @@
+[
+  {
+    "attributes": {},
+    "name": "",
+    "ptype": "TestEntity",
+    "subProperties": [
+      {
+        "attributes": {
+          "readonly": "true"
+        },
+        "jsonValue": "\"Editable String Value\"",
+        "name": "test_string",
+        "ptype": "String",
+        "subProperties": []
+      },
+      {
+        "attributes": {},
+        "name": "GroupTest1",
+        "ptype": "_group_",
+        "subProperties": [
+          {
+            "attributes": {
+              "group": "GroupTest1"
+            },
+            "jsonValue": "4278190335",
+            "name": "test_color",
+            "ptype": "Color",
+            "subProperties": []
+          },
+          {
+            "attributes": {
+              "group": "GroupTest1",
+              "hidden": "true"
+            },
+            "jsonValue": "[0.0,100.0,0.0]",
+            "name": "test_position",
+            "ptype": "Vec3",
+            "subProperties": []
+          },
+          {
+            "attributes": {
+              "group": "GroupTest1",
+              "tooltip": "Rotation Tooltip"
+            },
+            "jsonValue": "[0.0,0.0,0.0,1.0]",
+            "name": "test_rotation",
+            "ptype": "Quat",
+            "subProperties": []
+          }
+        ]
+      },
+      {
+        "attributes": {},
+        "name": "GroupTest2",
+        "ptype": "_group_",
+        "subProperties": [
+          {
+            "attributes": {
+              "group": "GroupTest2"
+            },
+            "jsonValue": "false",
+            "name": "test_bool",
+            "ptype": "bool",
+            "subProperties": []
+          },
+          {
+            "attributes": {
+              "group": "GroupTest2"
+            },
+            "jsonValue": "1.0",
+            "name": "test_float32",
+            "ptype": "f32",
+            "subProperties": []
+          },
+          {
+            "attributes": {
+              "group": "GroupTest2"
+            },
+            "jsonValue": "1337",
+            "name": "test_int",
+            "ptype": "i32",
+            "subProperties": []
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "offline": "true"
+        },
+        "jsonValue": "2.0",
+        "name": "test_float64",
+        "ptype": "f64",
+        "subProperties": []
+      },
+      {
+        "attributes": {},
+        "name": "test_blob",
+        "ptype": "Vec<u8>",
+        "subProperties": [
+          {
+            "attributes": {},
+            "jsonValue": "0",
+            "name": "[0]",
+            "ptype": "u8",
+            "subProperties": []
+          },
+          {
+            "attributes": {},
+            "jsonValue": "1",
+            "name": "[1]",
+            "ptype": "u8",
+            "subProperties": []
+          },
+          {
+            "attributes": {},
+            "jsonValue": "2",
+            "name": "[2]",
+            "ptype": "u8",
+            "subProperties": []
+          },
+          {
+            "attributes": {},
+            "jsonValue": "3",
+            "name": "[3]",
+            "ptype": "u8",
+            "subProperties": []
+          }
+        ]
+      },
+      {
+        "attributes": {},
+        "name": "test_sub_type",
+        "ptype": "TestSubType1",
+        "subProperties": [
+          {
+            "attributes": {},
+            "name": "test_components",
+            "ptype": "Vec<Box<dyn Component>>",
+            "subProperties": [
+              {
+                "attributes": {},
+                "name": "[0]",
+                "ptype": "TestComponent",
+                "subProperties": [
+                  {
+                    "attributes": {},
+                    "jsonValue": "0",
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": []
+                  }
+                ]
+              },
+              {
+                "attributes": {},
+                "name": "[1]",
+                "ptype": "TestComponent",
+                "subProperties": [
+                  {
+                    "attributes": {},
+                    "jsonValue": "1",
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": []
+                  }
+                ]
+              },
+              {
+                "attributes": {},
+                "name": "[2]",
+                "ptype": "TestComponent",
+                "subProperties": [
+                  {
+                    "attributes": {},
+                    "jsonValue": "2",
+                    "name": "test_i32",
+                    "ptype": "i32",
+                    "subProperties": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "attributes": {},
+            "jsonValue": "\"\"",
+            "name": "test_string",
+            "ptype": "String",
+            "subProperties": []
+          },
+          {
+            "attributes": {},
+            "name": "test_sub_type",
+            "ptype": "TestSubType2",
+            "subProperties": [
+              {
+                "attributes": {},
+                "jsonValue": "[0.0,0.0,0.0]",
+                "name": "test_vec",
+                "ptype": "Vec3",
+                "subProperties": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "attributes": {},
+        "name": "test_option_set",
+        "ptype": "Option<TestSubType2>",
+        "subProperties": [
+          {
+            "attributes": {},
+            "name": "",
+            "ptype": "TestSubType2",
+            "subProperties": [
+              {
+                "attributes": {},
+                "jsonValue": "[0.0,0.0,0.0]",
+                "name": "test_vec",
+                "ptype": "Vec3",
+                "subProperties": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "attributes": {},
+        "name": "test_option_none",
+        "ptype": "Option<TestSubType2>",
+        "subProperties": []
+      },
+      {
+        "attributes": {
+          "resource_type": "TestEntity"
+        },
+        "name": "test_resource_path_option",
+        "ptype": "Option<ResourcePathId>",
+        "subProperties": []
+      },
+      {
+        "attributes": {
+          "resource_type": "TestEntity"
+        },
+        "name": "test_resource_path_vec",
+        "ptype": "Vec<ResourcePathId>",
+        "subProperties": []
+      },
+      {
+        "attributes": {},
+        "name": "test_option_primitive_set",
+        "ptype": "Option<Vec3>",
+        "subProperties": [
+          {
+            "attributes": {},
+            "jsonValue": "[0.0,0.0,0.0]",
+            "name": "",
+            "ptype": "Vec3",
+            "subProperties": []
+          }
+        ]
+      },
+      {
+        "attributes": {},
+        "name": "test_option_primitive_none",
+        "ptype": "Option<Vec3>",
+        "subProperties": []
+      }
+    ]
+  }
+]

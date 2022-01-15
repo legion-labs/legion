@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api";
 import { UserInfo } from "../lib/auth";
-
 import { createAwsCognito } from "../lib/auth/browser";
 import { getCookie } from "../lib/cookie";
 import asyncStore from "./asyncStore";
