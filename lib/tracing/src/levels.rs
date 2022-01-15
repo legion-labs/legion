@@ -50,68 +50,68 @@ pub enum LevelFilter {
 }
 
 impl PartialEq<LevelFilter> for Level {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &LevelFilter) -> bool {
         *self as u32 == *other as u32
     }
 }
 
 impl PartialOrd for Level {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Self) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Self) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Self) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Self) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl PartialOrd<LevelFilter> for Level {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &LevelFilter) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &LevelFilter) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &LevelFilter) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &LevelFilter) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl Ord for Level {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
@@ -171,13 +171,13 @@ impl Level {
         }
     }
     /// Returns the most verbose logging level.
-    #[inline]
+    #[inline(always)]
     pub fn max() -> Self {
         Self::Trace
     }
 
     /// Converts the `Level` to the equivalent `LevelFilter`.
-    #[inline]
+    #[inline(always)]
     pub fn to_level_filter(self) -> LevelFilter {
         LevelFilter::from_u32(self as u32).unwrap()
     }
@@ -209,68 +209,68 @@ impl Level {
 }
 
 impl PartialEq<Level> for LevelFilter {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &Level) -> bool {
         other.eq(self)
     }
 }
 
 impl PartialOrd for LevelFilter {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Self) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Self) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Self) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Self) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl PartialOrd<Level> for LevelFilter {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Level) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Level) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Level) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Level) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl Ord for LevelFilter {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
@@ -321,7 +321,7 @@ impl LevelFilter {
     }
 
     /// Returns the most verbose logging level filter.
-    #[inline]
+    #[inline(always)]
     pub fn max() -> Self {
         Self::Trace
     }
@@ -329,7 +329,7 @@ impl LevelFilter {
     /// Converts `self` to the equivalent `Level`.
     ///
     /// Returns `None` if `self` is `LevelFilter::Off`.
-    #[inline]
+    #[inline(always)]
     pub fn to_level(self) -> Option<Level> {
         Level::from_u32(self as u32)
     }
@@ -393,68 +393,68 @@ pub enum LodFilter {
 }
 
 impl PartialEq<LodFilter> for Lod {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &LodFilter) -> bool {
         *self as u32 == *other as u32
     }
 }
 
 impl PartialOrd for Lod {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Self) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Self) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Self) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Self) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl PartialOrd<LodFilter> for Lod {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &LodFilter) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &LodFilter) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &LodFilter) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &LodFilter) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &LodFilter) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl Ord for Lod {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
@@ -502,13 +502,13 @@ impl Lod {
     }
 
     /// Returns the most verbose logging level.
-    #[inline]
+    #[inline(always)]
     pub fn max() -> Self {
         Self::Max
     }
 
     /// Converts the `Lod` to the equivalent `LodFilter`.
-    #[inline]
+    #[inline(always)]
     pub fn to_level_filter(self) -> LodFilter {
         LodFilter::from_u32(self as u32).unwrap()
     }
@@ -540,68 +540,68 @@ impl Lod {
 }
 
 impl PartialEq<Lod> for LodFilter {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &Lod) -> bool {
         other.eq(self)
     }
 }
 
 impl PartialOrd for LodFilter {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Self) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Self) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Self) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Self) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl PartialOrd<Lod> for LodFilter {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Lod) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Lod) -> bool {
         (*self as u32) < *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Lod) -> bool {
         *self as u32 <= *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Lod) -> bool {
         *self as u32 > *other as u32
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Lod) -> bool {
         *self as u32 >= *other as u32
     }
 }
 
 impl Ord for LodFilter {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
@@ -648,7 +648,7 @@ impl LodFilter {
     }
 
     /// Returns the most verbose logging level filter.
-    #[inline]
+    #[inline(always)]
     pub fn max() -> Self {
         Self::Max
     }
@@ -656,7 +656,7 @@ impl LodFilter {
     /// Converts `self` to the equivalent `Lod`.
     ///
     /// Returns `None` if `self` is `LodFilter::Off`.
-    #[inline]
+    #[inline(always)]
     pub fn to_level(self) -> Option<Lod> {
         Lod::from_u32(self as u32)
     }
@@ -698,13 +698,13 @@ static LOD_NAMES: [&str; 4] = ["OFF", "LOW", "MED", "HIGH"];
 /// Generally, this should only be called by the active logging implementation.
 ///
 /// Note that `Trace` is the maximum level, because it provides the maximum amount of detail in the emitted logs.
-#[inline]
+#[inline(always)]
 pub fn set_max_level(level: LevelFilter) {
     MAX_LEVEL_FILTER.store(level as u32, atomic::Ordering::Relaxed);
 }
 
 /// Returns the current maximum log level.
-#[inline]
+#[inline(always)]
 pub fn max_level() -> LevelFilter {
     // Since `LevelFilter` is `repr(u32)`,
     // this transmute is sound if and only if `MAX_LOG_LEVEL_FILTER`
@@ -716,13 +716,13 @@ pub fn max_level() -> LevelFilter {
 }
 
 /// Sets the global maximum log level.
-#[inline]
+#[inline(always)]
 pub fn set_max_lod(level: LodFilter) {
     MAX_LOD_FILTER.store(level as u32, atomic::Ordering::Relaxed);
 }
 
 /// Returns the current maximum log level.
-#[inline]
+#[inline(always)]
 pub fn max_lod() -> LodFilter {
     // See comment above
     unsafe { std::mem::transmute(MAX_LOD_FILTER.load(atomic::Ordering::Relaxed)) }

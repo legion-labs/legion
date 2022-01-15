@@ -84,8 +84,8 @@ impl VideoStream {
 
         #[cfg(debug_assertions)]
         {
-            // /span_scope!("hack_to_slow_down_server");
-            //std::thread::sleep(std::time::Duration::from_millis(20));
+            span_scope!("hack_to_slow_down_server");
+            std::thread::sleep(std::time::Duration::from_millis(20));
         }
 
         self.rgb_to_yuv
@@ -110,11 +110,10 @@ impl VideoStream {
             );
         }
 
-        let video_data_channel = Arc::clone(&self.video_data_channel);
         let frame_id = self.frame_id;
-
         self.frame_id += 1;
 
+        let video_data_channel = Arc::clone(&self.video_data_channel);
         async move {
             //span_scope!("write_to_data_channel");
             for (i, data) in chunks.iter().enumerate() {

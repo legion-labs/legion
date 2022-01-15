@@ -55,7 +55,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(unsafe_code, clippy::missing_errors_doc)]
+#![allow(unsafe_code, clippy::missing_errors_doc, clippy::inline_always)]
 
 pub mod dyn_string;
 pub mod heterogeneous_queue;

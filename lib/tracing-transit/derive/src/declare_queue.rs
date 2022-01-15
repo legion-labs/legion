@@ -147,10 +147,12 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
         }
 
         impl #struct_identifier {
+            #[inline(always)]
             pub fn as_bytes(&self) -> &[u8]{
                 &self.buffer
             }
 
+            #[inline(always)]
             pub fn into_bytes(self) -> Vec<u8>{
                 self.buffer
             }

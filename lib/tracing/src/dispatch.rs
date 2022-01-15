@@ -53,7 +53,6 @@ pub fn process_id() -> Option<String> {
     unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
 }
 
-#[inline]
 pub fn shutdown_dispatch() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -62,7 +61,7 @@ pub fn shutdown_dispatch() {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn int_metric(metric_desc: &'static MetricMetadata, value: u64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -71,7 +70,7 @@ pub fn int_metric(metric_desc: &'static MetricMetadata, value: u64) {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn float_metric(metric_desc: &'static MetricMetadata, value: f64) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -80,7 +79,7 @@ pub fn float_metric(metric_desc: &'static MetricMetadata, value: f64) {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -89,7 +88,7 @@ pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn log_interop(desc: &LogMetadata, args: &fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -98,7 +97,7 @@ pub fn log_interop(desc: &LogMetadata, args: &fmt::Arguments<'_>) {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn log_enabled(target: &str, level: Level) -> bool {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -109,7 +108,7 @@ pub fn log_enabled(target: &str, level: Level) -> bool {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn flush_log_buffer() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -118,7 +117,7 @@ pub fn flush_log_buffer() {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn flush_metrics_buffer() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -129,7 +128,7 @@ pub fn flush_metrics_buffer() {
 
 //todo: should be implicit by default but limit the maximum number of tracked
 // threads
-#[inline]
+#[inline(always)]
 pub fn init_thread_stream() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         if (*cell.as_ptr()).is_some() {
@@ -143,7 +142,7 @@ pub fn init_thread_stream() {
     });
 }
 
-#[inline]
+#[inline(always)]
 pub fn flush_thread_buffer() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         let opt_stream = &mut *cell.as_ptr();
@@ -160,7 +159,7 @@ pub fn flush_thread_buffer() {
     });
 }
 
-#[inline]
+#[inline(always)]
 pub fn on_begin_scope(scope: &'static ThreadSpanMetadata) {
     on_thread_event(BeginThreadSpanEvent {
         time: now(),
@@ -168,7 +167,7 @@ pub fn on_begin_scope(scope: &'static ThreadSpanMetadata) {
     });
 }
 
-#[inline]
+#[inline(always)]
 pub fn on_end_scope(scope: &'static ThreadSpanMetadata) {
     on_thread_event(EndThreadSpanEvent {
         time: now(),
@@ -182,7 +181,7 @@ thread_local! {
     static LOCAL_THREAD_STREAM: Cell<Option<ThreadStream>> = Cell::new(None);
 }
 
-#[inline]
+#[inline(always)]
 fn on_thread_event<T>(event: T)
 where
     T: lgn_tracing_transit::InProcSerialize + ThreadEventQueueTypeIndex,

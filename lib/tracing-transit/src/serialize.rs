@@ -1,5 +1,5 @@
 #[allow(unsafe_code)]
-#[inline]
+#[inline(always)]
 pub fn write_any<T>(buffer: &mut Vec<u8>, value: &T) {
     let ptr = std::ptr::addr_of!(*value).cast::<u8>();
     let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<T>());
@@ -14,7 +14,7 @@ pub fn write_any<T>(buffer: &mut Vec<u8>, value: &T) {
 /// # Safety
 /// ptr must be valid it's size and it's memory size must be the size
 /// of T or higher.
-#[inline]
+#[inline(always)]
 pub unsafe fn read_any<T>(ptr: *const u8) -> T {
     std::ptr::read_unaligned(ptr.cast::<T>())
 }
@@ -30,6 +30,7 @@ pub trait InProcSerialize {
         None
     }
 
+    #[inline(always)]
     fn write_value(&self, buffer: &mut Vec<u8>)
     where
         Self: Sized,
@@ -46,6 +47,7 @@ pub trait InProcSerialize {
     /// This is called from the serializer context that that uses `value_size`
     /// call to make sure that the proper size is used
     #[allow(unsafe_code)]
+    #[inline(always)]
     unsafe fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
     where
         Self: Sized,
