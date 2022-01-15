@@ -7,7 +7,6 @@
     struct ConstData {
         float4x4 world;
         float4 color;
-        float picking_distance;
     };
 
 #endif

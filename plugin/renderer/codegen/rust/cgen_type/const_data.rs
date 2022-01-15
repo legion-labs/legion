@@ -9,15 +9,15 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "ConstData",
     id: 17,
-    size: 84,
+    size: 80,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<ConstData>(), 84);
+static_assertions::const_assert_eq!(mem::size_of::<ConstData>(), 80);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct ConstData {
-    data: [u8; 84],
+    data: [u8; 80],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -56,19 +56,6 @@ impl ConstData {
         self.get(64)
     }
 
-    //
-    // member : picking_distance
-    // offset : 80
-    // size : 4
-    //
-    pub fn set_picking_distance(&mut self, value: Float1) {
-        self.set(80, value);
-    }
-
-    pub fn picking_distance(&self) -> Float1 {
-        self.get(80)
-    }
-
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -92,10 +79,9 @@ impl ConstData {
 
 impl Default for ConstData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 84] };
+        let mut ret = Self { data: [0; 80] };
         ret.set_world(Float4x4::default());
         ret.set_color(Float4::default());
-        ret.set_picking_distance(Float1::default());
         ret
     }
 }
