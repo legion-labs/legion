@@ -171,13 +171,17 @@ allow = [] #{ name = "ansi_term", version = "=0.11.0" },
 deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
+  # Intoduced by notify
   { name = "mio", version = "=0.6.23" },
+  # Intoduced by aws sdk
   { name = "hyper-rustls", version = "=0.22.1" },
   { name = "rustls-native-certs", version = "=0.5.0" },
   { name = "tokio-rustls", version = "=0.22.0" },
-  # clap 2 stuff introduced by criterion
+  # Introduced by criterion
   { name = "clap", version = "=2.34.0" },
   { name = "textwrap", version = "=0.11.0" },
+  # Introduced by sqlx
+  { name = "simple_asn1", version = "=0.5.4" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
