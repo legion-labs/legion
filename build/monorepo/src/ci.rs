@@ -1,91 +1,130 @@
 use std::process::{Command, Stdio};
 
+use clap::Subcommand;
 use lgn_tracing::{span_fn, span_scope};
 
 use crate::cargo::{BuildArgs, SelectedPackageArgs};
-use crate::{action_step, build, check, clippy, fmt, lint, skip_step, test, Error};
+use crate::{action_step, bench, build, check, clippy, fmt, lint, test, Error};
 use crate::{context::Context, Result};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
-    /// Run CI checks
-    #[clap(
-        long,
-        multiple_values = true,
-        use_delimiter = true,
-        possible_values = &["all", "fmt", "gfx-no-api", "clippy", "mlint", "cargo-deny"],
-    )]
-    checks: Vec<String>,
-    /// Run CI tests
-    #[clap(
-        long,
-        multiple_values = true,
-        use_delimiter = true,
-        possible_values = &["all", "build", "run"],
-    )]
-    tests: Vec<String>,
+    #[clap(subcommand)]
+    command: Option<Commands>,
 }
 
-type CheckFn = fn(&Context) -> Result<()>;
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Run all CI checks
+    #[clap(name = "check")]
+    Check {
+        /// Run formatting check
+        #[clap(long)]
+        fmt: bool,
+        #[clap(long)]
+        gfx_no_api: bool,
+        #[clap(long)]
+        clippy: bool,
+        #[clap(long)]
+        repo_lints: bool,
+        #[clap(long)]
+        cargo_deny: bool,
+    },
+    #[clap(name = "test")]
+    Test {
+        /// Run build tests
+        #[clap(long)]
+        build: bool,
+        /// Run run tests
+        #[clap(long)]
+        run: bool,
+    },
+    #[clap(name = "bench")]
+    Bench {
+        /// Run build tests
+        #[clap(long)]
+        build: bool,
+        /// Run run tests
+        #[clap(long)]
+        run: bool,
+    },
+}
 
 #[span_fn]
-pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
-    if args.checks.is_empty() && args.tests.is_empty() {
-        args.checks.push("all".into());
-        args.tests.push("all".into());
-    }
-    if !args.checks.is_empty() {
-        action_step!("-- CI --", "Running checks");
-        for (check_name, check_fn) in &[
-            ("fmt", check_fmt as CheckFn),
-            ("gfx-no-api", check_graphic_crate as CheckFn),
-            ("clippy", check_clippy as CheckFn),
-            ("mlint", check_monorepo_lints as CheckFn),
-            ("cargo-deny", check_cargo_deny as CheckFn),
-        ] {
-            run_step(ctx, "checks", check_name, *check_fn, &args.checks)?;
-        }
+pub fn run(args: &Args, ctx: &Context) -> Result<()> {
+    if let Some(ref command) = args.command {
+        run_command(ctx, command)?;
     } else {
-        skip_step!("-- CI --", "Skipping checks");
-    }
-
-    if !args.tests.is_empty() {
-        action_step!("-- CI --", "Running tests");
-        for (check_name, check_fn) in &[
-            ("build", test_build as CheckFn),
-            ("run", test_run as CheckFn),
-        ] {
-            run_step(ctx, "tests", check_name, *check_fn, &args.tests)?;
-        }
-    } else {
-        skip_step!("-- CI --", "Skipping tests");
+        let command = Commands::Check {
+            fmt: true,
+            gfx_no_api: true,
+            clippy: true,
+            repo_lints: true,
+            cargo_deny: true,
+        };
+        run_command(ctx, &command)?;
+        let command = Commands::Test {
+            build: true,
+            run: true,
+        };
+        run_command(ctx, &command)?;
+        // do not run benches by default
+        //let command = Commands::Bench {
+        //    build: true,
+        //    run: true,
+        //};
+        //run_command(ctx, &command)?;
     }
     Ok(())
 }
 
-fn run_step(
-    ctx: &Context,
-    group: &str,
-    name: &str,
-    check_fn: fn(&Context) -> Result<()>,
-    args: &[String],
-) -> Result<()> {
-    if args
-        .iter()
-        .map(String::as_str)
-        .any(|check| check == "all" || check == name)
-    {
-        check_fn(ctx).map_err(|e| {
-            Error::new(format!(
-                "failed to run {}, to re-run: `cargo ci --{}={}`",
-                name, group, name
-            ))
-            .with_exit_code(e.exit_code())
-            .with_source(e)
-        })
-    } else {
-        skip_step!("-- CI --", "Skipping step {} from {}", name, group);
-        Ok(())
+fn run_command(ctx: &Context, command: &Commands) -> Result<()> {
+    match command {
+        Commands::Check {
+            fmt,
+            gfx_no_api,
+            clippy,
+            repo_lints,
+            cargo_deny,
+        } => {
+            let all = !fmt && !gfx_no_api && !clippy && !repo_lints && !cargo_deny;
+            if all || *fmt {
+                check_fmt(ctx)?;
+            }
+            if all || *gfx_no_api {
+                check_graphic_crate(ctx)?;
+            }
+            if all || *clippy {
+                check_clippy(ctx)?;
+            }
+            if all || *repo_lints {
+                check_repo_lints(ctx)?;
+            }
+            if all || *cargo_deny {
+                check_cargo_deny(ctx)?;
+            }
+            Ok(())
+        }
+        Commands::Test { build, run } => {
+            let all = !build && !run;
+            if all || *build {
+                test_build(ctx)?;
+            }
+            if all || *run {
+                test_run(ctx)?;
+            }
+            Ok(())
+        }
+        Commands::Bench { build, run } => {
+            let all = !build && !run;
+            if all || *build {
+                bench_build(ctx)?;
+            }
+            if all || *run {
+                bench_run(ctx)?;
+            }
+            Ok(())
+        }
     }
 }
 
@@ -139,7 +178,7 @@ fn check_graphic_crate(ctx: &Context) -> Result<()> {
 }
 
 #[span_fn]
-fn check_monorepo_lints(ctx: &Context) -> Result<()> {
+fn check_repo_lints(ctx: &Context) -> Result<()> {
     action_step!("-- CI --", "Running monorepo lints");
     lint::run(&lint::Args::default(), ctx)
 }
@@ -212,6 +251,30 @@ fn test_run(ctx: &Context) -> Result<()> {
         ..test::Args::default()
     };
     test::run(args, ctx)
+}
+
+#[span_fn]
+fn bench_build(ctx: &Context) -> Result<()> {
+    action_step!("-- CI --", "Building benches");
+    let args = bench::Args {
+        package_args: SelectedPackageArgs {
+            ..SelectedPackageArgs::default()
+        },
+        ..bench::Args::default()
+    };
+    bench::run(args, ctx)
+}
+
+#[span_fn]
+fn bench_run(ctx: &Context) -> Result<()> {
+    action_step!("-- CI --", "Running benches");
+    let args = bench::Args {
+        package_args: SelectedPackageArgs {
+            ..SelectedPackageArgs::default()
+        },
+        ..bench::Args::default()
+    };
+    bench::run(args, ctx)
 }
 
 fn machine_has_discreet_gpu() -> Result<bool> {

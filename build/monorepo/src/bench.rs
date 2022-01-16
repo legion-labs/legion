@@ -10,17 +10,17 @@ use crate::{
 };
 use std::ffi::OsString;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, Default, clap::Args)]
 pub struct Args {
     #[clap(flatten)]
-    package_args: SelectedPackageArgs,
+    pub(crate) package_args: SelectedPackageArgs,
     /// Do not run the benchmarks, but compile them
     #[clap(long)]
-    no_run: bool,
+    pub(crate) no_run: bool,
     #[clap(name = "BENCHNAME", parse(from_os_str))]
-    benchname: Option<OsString>,
+    pub(crate) benchname: Option<OsString>,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
 }
 
 #[span_fn]

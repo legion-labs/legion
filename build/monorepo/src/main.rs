@@ -185,7 +185,7 @@ fn main() {
         Commands::Test(args) => test::run(args, &ctx),
 
         Commands::Cd(args) => cd::run(&args, &ctx),
-        Commands::Ci(args) => ci::run(args, &ctx),
+        Commands::Ci(args) => ci::run(&args, &ctx),
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx),
         Commands::Hakari => hakari::run(&ctx),
         Commands::Lint(args) => lint::run(&args, &ctx),
