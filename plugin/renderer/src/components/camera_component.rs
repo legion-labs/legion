@@ -1,9 +1,11 @@
 use dolly::prelude::{Position, Smooth, YawPitch};
 use dolly::rig::CameraRig;
+use lgn_core::Time;
 use lgn_ecs::prelude::*;
+use lgn_input::Input;
 use lgn_input::{
-    keyboard::{KeyCode, KeyboardInput},
-    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
+    keyboard::KeyCode,
+    mouse::{MouseButton, MouseMotion, MouseWheel},
 };
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 
@@ -81,13 +83,13 @@ impl Default for CameraComponent {
         let camera_rig = CameraRig::builder()
             .with(Position::new(eye))
             .with(YawPitch::new().rotation_quat(rotation))
-            .with(Smooth::new_position_rotation(1.1, 1.1))
+            .with(Smooth::new_position_rotation(0.2, 0.2))
             .build();
 
         Self {
             camera_rig,
-            speed: 5.0,
-            rotation_speed: 45.0,
+            speed: 2.5,
+            rotation_speed: 40.0,
         }
     }
 }
@@ -99,75 +101,61 @@ pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
 #[derive(Default)]
 pub(crate) struct CameraMoving(bool);
 
+#[allow(clippy::needless_pass_by_value)]
 pub(crate) fn camera_control(
-    mut q_cameras: Query<'_, '_, &mut CameraComponent>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut cameras_query: Query<'_, '_, &mut CameraComponent>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
-    mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
-    mut camera_moving: Local<'_, CameraMoving>,
+    mouse_buttons: Res<'_, Input<MouseButton>>,
+    keys: Res<'_, Input<KeyCode>>,
+    time: Res<'_, Time>,
 ) {
-    for mouse_button_input_event in mouse_button_input_events.iter() {
-        if mouse_button_input_event.button == MouseButton::Right {
-            camera_moving.0 = mouse_button_input_event.state.is_pressed();
-        }
-    }
-
-    const FRAME_TIME: f32 = 1.0 / 60.0;
-
-    if q_cameras.is_empty() {
+    if cameras_query.is_empty() {
         return;
     }
-
-    let mut camera = q_cameras.iter_mut().next().unwrap();
-
-    if !camera_moving.0 {
-        camera.camera_rig.update(FRAME_TIME);
-        return;
-    }
-
-    let mut camera_translation_change = Vec3::ZERO;
-
-    for keyboard_input_event in keyboard_input_events.iter() {
-        if let Some(key_code) = keyboard_input_event.key_code {
-            match key_code {
-                KeyCode::W => {
-                    let dir = camera.camera_rig.final_transform.forward();
-                    camera_translation_change += dir * camera.speed / 60.0;
-                }
-                KeyCode::S => {
-                    let dir = -camera.camera_rig.final_transform.forward();
-                    camera_translation_change += dir * camera.speed / 60.0;
-                }
-                KeyCode::D => {
-                    let dir = -camera.camera_rig.final_transform.right();
-                    camera_translation_change += dir * camera.speed / 60.0;
-                }
-                KeyCode::A => {
-                    let dir = camera.camera_rig.final_transform.right();
-                    camera_translation_change += dir * camera.speed / 60.0;
-                }
-                _ => {}
-            }
+    // Need to associate inputs with window/camera... we don''t have that for now
+    for mut camera in cameras_query.iter_mut() {
+        let camera = camera.as_mut();
+        if !mouse_buttons.pressed(MouseButton::Right) {
+            camera.camera_rig.update(time.delta_seconds());
+            continue;
         }
-    }
+        let mut camera_translation_change = Vec3::ZERO;
+        if keys.pressed(KeyCode::W) {
+            camera_translation_change += camera.camera_rig.final_transform.forward();
+        }
+        if keys.pressed(KeyCode::S) {
+            camera_translation_change -= camera.camera_rig.final_transform.forward();
+        }
+        if keys.pressed(KeyCode::A) {
+            camera_translation_change += camera.camera_rig.final_transform.right();
+        }
+        if keys.pressed(KeyCode::D) {
+            camera_translation_change -= camera.camera_rig.final_transform.right();
+        }
+        let mut speed = camera.speed;
+        if keys.pressed(KeyCode::LShift) {
+            speed *= 2.0;
+        }
+        camera_translation_change *= speed * time.delta_seconds();
 
-    camera
-        .camera_rig
-        .driver_mut::<Position>()
-        .translate(camera_translation_change);
+        camera
+            .camera_rig
+            .driver_mut::<Position>()
+            .translate(camera_translation_change);
 
-    let rotation_speed = camera.rotation_speed;
-    let camera_driver = camera.camera_rig.driver_mut::<YawPitch>();
-    for mouse_motion_event in mouse_motion_events.iter() {
-        camera_driver.rotate_yaw_pitch(
-            mouse_motion_event.delta.x * rotation_speed / 60.0,
-            -mouse_motion_event.delta.y * rotation_speed / 60.0,
-        );
-    }
-    for mouse_wheel_event in mouse_wheel_events.iter() {
-        camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
-    }
+        let rotation_speed = camera.rotation_speed;
+        let camera_driver = camera.camera_rig.driver_mut::<YawPitch>();
+        for mouse_motion_event in mouse_motion_events.iter() {
+            camera_driver.rotate_yaw_pitch(
+                mouse_motion_event.delta.x * rotation_speed * time.delta_seconds(),
+                -mouse_motion_event.delta.y * rotation_speed * time.delta_seconds(),
+            );
+        }
+        for mouse_wheel_event in mouse_wheel_events.iter() {
+            camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
+        }
 
-    camera.camera_rig.update(FRAME_TIME);
+        camera.camera_rig.update(time.delta_seconds());
+    }
 }

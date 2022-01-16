@@ -4686,6 +4686,7 @@ dependencies = [
  "epaint",
  "lgn-app",
  "lgn-build-utils",
+ "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-graphics-cgen",
