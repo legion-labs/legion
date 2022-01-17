@@ -18,6 +18,7 @@ dirs = "4.0"
 git2 = { version = "0.13", features = ["vendored-openssl"] }
 glob = "0.3"
 http = "0.2"
+lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }

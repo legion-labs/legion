@@ -163,6 +163,7 @@ dependencies = [
  "async-recursion",
  "chrono",
  "lgn-analytics",
+ "lgn-blob-storage",
  "lgn-source-control",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
@@ -3886,6 +3887,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-blob-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "aws-config",
+ "aws-sdk-s3",
+ "bytes",
+ "lz4",
+ "pin-project",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+]
+
+[[package]]
 name = "lgn-browser"
 version = "0.1.0"
 dependencies = [
@@ -4754,6 +4775,7 @@ dependencies = [
  "git2",
  "glob",
  "http",
+ "lgn-blob-storage",
  "lgn-online",
  "lgn-source-control-proto",
  "lgn-tracing",

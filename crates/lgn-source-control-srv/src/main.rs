@@ -64,8 +64,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
-use lgn_source_control::{blob_storage::BlobStorageUrl, Commit, IndexBackend};
 use lgn_source_control::{new_index_backend, Error};
+use lgn_source_control::{BlobStorageUrl, Commit, IndexBackend};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,

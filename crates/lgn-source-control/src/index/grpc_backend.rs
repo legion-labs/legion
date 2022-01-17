@@ -14,8 +14,8 @@ use lgn_source_control_proto::{
 };
 
 use crate::{
-    blob_storage::BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result,
-    Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result, Tree,
+    WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.

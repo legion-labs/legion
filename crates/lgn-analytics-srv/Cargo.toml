@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
+lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }

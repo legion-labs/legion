@@ -8,7 +8,7 @@ pub use grpc_backend::*;
 pub use local_backend::*;
 pub use sql_backend::*;
 
-use crate::{blob_storage::BlobStorageUrl, Result};
+use crate::{BlobStorageUrl, Result};
 
 /// Represents a source control index.
 pub struct Index {

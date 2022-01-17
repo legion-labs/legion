@@ -7,9 +7,8 @@ use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
 use tokio::sync::Mutex;
 
 use crate::{
-    blob_storage::BlobStorageUrl, sql::SqlConnectionPool, Branch, ChangeType, Commit, Error,
-    HashedChange, IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType,
-    WorkspaceRegistration,
+    sql::SqlConnectionPool, BlobStorageUrl, Branch, ChangeType, Commit, Error, HashedChange,
+    IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
 };
 
 enum SqlDatabaseDriver {

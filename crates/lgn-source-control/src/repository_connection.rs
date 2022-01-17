@@ -1,7 +1,8 @@
 use anyhow::Result;
+use lgn_blob_storage::BlobStorage;
 use std::sync::Arc;
 
-use crate::{blob_storage::BlobStorage, Index, IndexBackend, Workspace};
+use crate::{Index, IndexBackend, Workspace};
 
 pub struct RepositoryConnection {
     pub index: Index,

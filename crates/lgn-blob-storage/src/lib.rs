@@ -1,11 +1,9 @@
 mod aws_s3_blob_storage;
-mod blob_storage_url;
 mod error;
 mod local_blob_storage;
 mod lz4_blob_storage_adapter;
 
 pub use aws_s3_blob_storage::{AwsS3BlobStorage, AwsS3Url};
-pub use blob_storage_url::BlobStorageUrl;
 pub use error::{Error, Result};
 pub use local_blob_storage::LocalBlobStorage;
 pub use lz4_blob_storage_adapter::Lz4BlobStorageAdapter;

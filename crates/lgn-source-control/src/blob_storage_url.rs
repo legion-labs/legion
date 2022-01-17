@@ -6,8 +6,10 @@ use std::{
     str::FromStr,
 };
 
-use super::{AwsS3BlobStorage, AwsS3Url, BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
 use crate::{parse_url_or_path, UrlOrPath};
+use lgn_blob_storage::{
+    AwsS3BlobStorage, AwsS3Url, BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BlobStorageUrl {

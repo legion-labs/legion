@@ -3,8 +3,8 @@ use lgn_tracing::info;
 use std::path::PathBuf;
 
 use crate::{
-    blob_storage::BlobStorageUrl, utils::make_path_absolute, Branch, Commit, Error, IndexBackend,
-    Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    utils::make_path_absolute, BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock,
+    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 pub struct LocalIndexBackend {

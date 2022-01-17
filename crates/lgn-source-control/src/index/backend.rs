@@ -1,10 +1,9 @@
 use async_trait::async_trait;
 
 use crate::{
-    blob_storage::BlobStorageUrl,
     utils::{parse_url_or_path, UrlOrPath},
-    Branch, Commit, Error, GrpcIndexBackend, LocalIndexBackend, Lock, MapOtherError, Result,
-    SqlIndexBackend, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, Commit, Error, GrpcIndexBackend, LocalIndexBackend, Lock,
+    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 #[async_trait]

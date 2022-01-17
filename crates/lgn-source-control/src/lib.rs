@@ -57,7 +57,7 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub mod attach_branch;
-pub mod blob_storage;
+pub mod blob_storage_url;
 pub mod branch;
 pub mod commit;
 pub mod config;
@@ -86,6 +86,7 @@ pub mod workspace_registration;
 
 pub use crate::log::*;
 pub use attach_branch::*;
+pub use blob_storage_url::*;
 pub use branch::*;
 pub use commit::*;
 pub use config::*;
