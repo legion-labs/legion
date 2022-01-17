@@ -66,32 +66,61 @@
 mod local_ingestion_service;
 mod local_telemetry_db;
 
-use anyhow::{Context, Result};
+use std::path::PathBuf;
+
+use anyhow::Result;
+use clap::{AppSettings, Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
-use local_ingestion_service::LocalIngestionService;
-use local_telemetry_db::{alloc_sql_pool, get_blocks_directory, get_data_directory};
+use local_ingestion_service::connect_to_local_data_lake;
+use std::net::SocketAddr;
 use tonic::transport::Server;
+
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Telemetry Ingestion Server")]
+#[clap(about = "Legion Telemetry Ingestion Server", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(long, default_value = "[::1]:8080")]
+    listen_endpoint: SocketAddr,
+
+    #[clap(subcommand)]
+    spec: DataLakeSpec,
+}
+
+#[derive(Subcommand, Debug)]
+enum DataLakeSpec {
+    Local {
+        path: PathBuf,
+    },
+
+    Remote {
+        db_uri: String,
+        username: String,
+        password: String,
+        bucket_uri: String,
+    },
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuard::default().unwrap();
-    let addr = "127.0.0.1:8080".parse()?;
-
-    let blocks_folder = get_blocks_directory()?;
-    if !blocks_folder.exists() {
-        std::fs::create_dir_all(&blocks_folder)
-            .with_context(|| format!("Error creating blocks folder {}", blocks_folder.display()))?;
-    }
-
-    let db_pool = alloc_sql_pool(get_data_directory().as_ref().unwrap()).await?;
-    let service = LocalIngestionService::new(db_pool, blocks_folder);
-
+    let args = Cli::parse();
+    let service = match args.spec {
+        DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
+        DataLakeSpec::Remote {
+            db_uri: _,
+            username: _,
+            password: _,
+            bucket_uri: _,
+        } => {
+            panic!("remote");
+        }
+    };
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
-        .serve(addr)
+        .serve(args.listen_endpoint)
         .await?;
-
     Ok(())
 }

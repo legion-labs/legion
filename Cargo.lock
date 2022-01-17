@@ -8389,6 +8389,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "clap 3.0.7",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
