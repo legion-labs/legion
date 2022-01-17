@@ -32,7 +32,9 @@ where
     /// Promote a reference to an active handle
     pub fn activate(&mut self, registry: &AssetRegistry) {
         if let Self::Passive(resource_id) = self {
-            let handle = registry.get_untyped(*resource_id).unwrap();
+            let handle = registry
+                .get_untyped(*resource_id)
+                .unwrap_or_else(|| panic!("Cannot activate {}", *resource_id));
             *self = Self::Active(handle.into());
         }
     }
