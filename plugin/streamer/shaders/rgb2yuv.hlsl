@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // https://en.wikipedia.org/wiki/YCbCr
+// https://docs.microsoft.com/en-us/windows/win32/medfound/recommended-8-bit-yuv-formats-for-video-rendering
 // https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.709-6-201506-I!!PDF-E.pdf
 // https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.2020-2-201510-I!!PDF-E.pdf
 float4x4 rgb2yuv_matrix(float kr, float kb, int black, int white, int mid, int maxi) {
