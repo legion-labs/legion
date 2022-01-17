@@ -26,10 +26,10 @@ pub struct Context {
 impl Context {
     #[span_fn]
     pub fn new() -> Result<Self> {
-        const X_DEPTH: usize = 2;
+        const MONOREPO_DEPTH: usize = 2;
         let workspace_root = Utf8Path::new(&env!("CARGO_MANIFEST_DIR"))
             .ancestors()
-            .nth(X_DEPTH)
+            .nth(MONOREPO_DEPTH)
             .unwrap();
 
         let current_dir: Utf8PathBuf = std::env::current_dir()
@@ -75,7 +75,7 @@ impl Context {
             let mut cmd = guppy::MetadataCommand::new();
             cmd.current_dir(self.workspace_root);
             guppy::graph::PackageGraph::from_command(&mut cmd)
-                .map_err(|err| Error::new("").with_source(err))
+                .map_err(|err| Error::new("failed to build package graph").with_source(err))
         })
     }
 

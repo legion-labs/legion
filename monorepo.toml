@@ -108,3 +108,5 @@ globs = [
     "lib/simple-wasm-logger/**/*",
 ]
 mark-changed = []
+
+[vscode]

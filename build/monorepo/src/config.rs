@@ -16,18 +16,26 @@ pub struct MonorepoConfig {
     pub cargo_installs: HashMap<String, CargoInstallation>,
     pub dependencies: Dependencies,
     pub crate_attributes: CrateAttributes,
+    pub vscode: VsCode,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct LocalMonorepoConfig {
+    pub vscode: Option<VsCode>,
 }
 
 impl MonorepoConfig {
     #[span_fn]
     pub fn new(root: &Utf8Path) -> Result<Self> {
+        let mut contents = vec![];
         let monorepo_file = root.join("monorepo.toml");
-        let contents = fs::read(&monorepo_file).map_err(|err| {
-            Error::new(format!("could not read config file {}", &monorepo_file)).with_source(err)
-        })?;
-        let mut config: Self = toml::from_slice(&contents).map_err(|err| {
-            Error::new(format!("failed to parse config file {}", &monorepo_file)).with_source(err)
-        })?;
+        let mut config: Self = read_config(&monorepo_file, &mut contents)?;
+        let local_monorepo_file = root.join("monorepo.local.toml");
+        if std::fs::metadata(&local_monorepo_file).is_ok() {
+            let local_config = read_config(&local_monorepo_file, &mut contents)?;
+            config.merge_with(&local_config);
+        }
         if let Some(sscache) = &config.cargo_config.sccache {
             config
                 .cargo_installs
@@ -35,6 +43,24 @@ impl MonorepoConfig {
         }
         Ok(config)
     }
+    pub fn merge_with(&mut self, other: &LocalMonorepoConfig) {
+        if let Some(vs_code) = &other.vscode {
+            self.vscode = vs_code.clone();
+        }
+    }
+}
+
+pub fn read_config<'de, T: Deserialize<'de>>(
+    path: &Utf8Path,
+    contents: &'de mut Vec<u8>,
+) -> Result<T> {
+    *contents = fs::read(path).map_err(|err| {
+        Error::new(format!("could not read config file {}", path)).with_source(err)
+    })?;
+    let config: T = toml::from_slice(contents).map_err(|err| {
+        Error::new(format!("failed to parse config file {}", path)).with_source(err)
+    })?;
+    Ok(config)
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -155,6 +181,6 @@ pub struct RustDoc {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct MonorepoConfigContainer {
-    pub(crate) monorepo: MonorepoConfig,
+pub struct VsCode {
+    pub target: Option<String>,
 }
