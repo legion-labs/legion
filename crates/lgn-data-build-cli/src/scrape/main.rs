@@ -384,6 +384,8 @@ fn main() -> Result<(), String> {
                             .find(|(n, _)| *n == name)
                     {
                         println!("{} = {}", name, ty);
+                    } else {
+                        println!("{} = {}", name, ResourceType::new(name.as_bytes()));
                     }
                 }
                 RtyCommands::Decode { ty } => {
