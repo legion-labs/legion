@@ -20,7 +20,7 @@ export function detectMainPathSeparator(path: Path): string | null {
   return null;
 }
 
-/** Split A path into components. Empty parts are removed. */
+/** Split a path into components. Empty parts are removed. */
 export function components(path: Path): string[] {
   // We assume / as the path seperator if none detected
   const pathSeparator = detectMainPathSeparator(path) || "/";

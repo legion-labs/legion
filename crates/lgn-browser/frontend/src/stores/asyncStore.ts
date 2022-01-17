@@ -46,7 +46,7 @@ export type AsyncStore<Data> = Data extends unknown[]
  *
  * `run` will also throw if an error occurs so don't forget to `catch` it.
  *
- * Example:
+ * ## Example
  *
  * ```
  * const { data, error } = asyncStore<string>();
@@ -68,12 +68,12 @@ export type AsyncStore<Data> = Data extends unknown[]
  * @param initValue - Defaults to "init", data, error, and even the loading state can be initialized using this param
  * @returns An object containing several states, including the resolved data, errors if any, and a loading state
  */
-export default function asyncStore<Data extends unknown[]>(
-  initValue?: InitAsyncStoreValue<Data>
-): ListAsyncStore<Data>;
 export default function asyncStore<Data>(
   initValue?: InitAsyncStoreValue<Data>
 ): SingleValueAsyncStore<Data>;
+export default function asyncStore<Data extends unknown[]>(
+  initValue?: InitAsyncStoreValue<Data>
+): ListAsyncStore<Data>;
 export default function asyncStore<Data extends unknown[]>(
   initValue: InitAsyncStoreValue<Data> = {}
 ): unknown {
