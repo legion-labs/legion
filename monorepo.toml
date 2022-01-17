@@ -94,13 +94,13 @@ mark-changed = "all"
 globs = [
     ".vscode/*",
     "CREDITS.md",
-    "doc/**/*",
+    "docs/**/*",
     "build/env/**/*",
     "pnpm-*",
     "deny.toml",
     "Makefile",
     "legion.toml",
-    "lib/vite-plugins/**/*",
+    "npm-pkgs/**/*",
     "package.json",
     "trace-*",
 
