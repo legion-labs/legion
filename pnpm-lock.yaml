@@ -465,9 +465,6 @@ importers:
       ts-proto: 1.100.1
       typescript: 4.5.4
 
-  npm-pkgs/simple-wasm-logger/frontend:
-    specifiers: {}
-
   npm-pkgs/vite-plugins/vite-plugin-ts-proto:
     specifiers:
       '@types/glob': ^7.2.0

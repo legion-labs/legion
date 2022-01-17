@@ -2,36 +2,38 @@ use std::sync::Mutex;
 
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
+/// `AsyncReverseSingleLock` is a lock that is created locked and that can only
+/// be unlocked once.
 pub(crate) struct AsyncReverseSingleLock<'a, T = ()> {
     rwlock: &'a RwLock<T>,
     wguard: Mutex<Option<RwLockWriteGuard<'a, T>>>,
 }
 
 impl<'a, T: 'a> AsyncReverseSingleLock<'a, T> {
-    pub fn new(rwlock: &'a RwLock<T>) -> Self {
+    pub(crate) fn new(rwlock: &'a RwLock<T>) -> Self {
         Self {
             rwlock,
             wguard: Mutex::new(rwlock.try_write().ok()),
         }
     }
 
-    /// Unlock the lock if it was previously locked, returning a non-empty
-    /// option if the lock was previously locked.
-    pub fn unlock(&self) -> Option<()> {
+    /// Unlock the lock if it was previously locked, returning true if the lock
+    /// was previously locked.
+    pub(crate) fn unlock(&self) -> bool {
         self.wguard
             .lock()
             .expect("failed to acquire rwlock guard mutex")
             .take()
-            .map(|_| ())
+            .is_some()
     }
 
     // Try to wait for the lock to be unlocked.
-    pub fn try_wait(&self) -> Option<()> {
-        self.rwlock.try_read().map(|_| ()).ok()
+    pub(crate) fn try_wait(&self) -> bool {
+        self.rwlock.try_read().is_ok()
     }
 
     // Wait for the lock to be unlocked.
-    pub async fn wait(&self) {
+    pub(crate) async fn wait(&self) {
         self.rwlock.read().await;
     }
 }
@@ -45,7 +47,7 @@ mod tests {
         let rwlock = RwLock::new(());
         let lock = AsyncReverseSingleLock::new(&rwlock);
 
-        assert!(lock.try_wait().is_none());
+        assert!(!lock.try_wait());
 
         tokio::select! {
             biased;
@@ -53,10 +55,10 @@ mod tests {
             _ = async {} => {},
         };
 
-        assert!(lock.unlock().is_some());
-        assert!(lock.unlock().is_none());
+        assert!(lock.unlock());
+        assert!(!lock.unlock());
 
-        assert!(lock.try_wait().is_some());
+        assert!(lock.try_wait());
 
         tokio::select! {
             biased;
