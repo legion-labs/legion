@@ -8,6 +8,10 @@ use super::{BlobStats, BoxedAsyncRead, BoxedAsyncWrite, StreamingBlobStorage};
 pub struct LocalBlobStorage(PathBuf);
 
 impl LocalBlobStorage {
+    /// returns a ``LocalBlobStorage`` instance ready to be used
+    ///
+    /// # Errors
+    /// Could fail to create the directory if it does not already exist
     pub async fn new(root: PathBuf) -> Result<Self> {
         fs::create_dir_all(&root)
             .await
