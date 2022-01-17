@@ -1,0 +1,46 @@
+[package]
+name = "lgn-renderer"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-core = { path = "../lgn-core", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
+lgn-input = { path = "../lgn-input", version = "0.1.0" }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
+lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
+lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
+lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
+lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
+lgn-window = { path = "../lgn-window", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+
+anyhow = "1.0"
+bumpalo = "3.8"
+egui = "0.16.0"
+epaint = "0.16.0"
+parking_lot = "0.11"
+smallvec = "1.7"
+static_assertions = "1.1.0"
+dolly = "0.2.0"
+paste = "1.0.6"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+uuid = { version = "0.8", features = ["v4", "serde"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { version = "0.8", features = ["wasm-bindgen"] }
+
+[features]
+default = ["lgn-graphics-api/vulkan"]
+vulkan = ["lgn-graphics-api/vulkan"]

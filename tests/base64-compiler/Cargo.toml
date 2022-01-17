@@ -1,0 +1,22 @@
+[package]
+name = "lgn-compiler-test-base64"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+doc = false
+
+[[bin]]
+name = "compiler-test-base64"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+base64 = "0.13.0"
+lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
+lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
+lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
+text-resource = { path = "../../crates/lgn-data-offline/test-text-resource" }
+binary-resource = { path = "../../crates/lgn-data-offline/test-binary-resource" }

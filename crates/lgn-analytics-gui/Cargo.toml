@@ -1,0 +1,30 @@
+[package]
+name = "analytics-web"
+version = "0.1.0"
+edition = "2021"
+description = "The Analytics client"
+authors = ["devs@legionlabs.com"]
+repository = ""
+default-run = "analytics-web"
+license = "MIT OR Apache-2.0"
+keywords = ["game", "legion", "analytics"]
+
+[dependencies]
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
+anyhow = "1.0.44"
+clap = { version = "3.0", features = ["derive"] }
+url = "2.2.2"
+tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+directories = "4"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../lgn-build-utils-web", version = "0.1.0" }
+tauri-build = "1.0.0-beta.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

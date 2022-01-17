@@ -6,17 +6,18 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-app = { path = "../../lib/app", version = "0.1.0" }
-lgn-core = { path = "../../plugin/core", version = "0.1.0" }
-lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-lgn-input = { path = "../../plugin/input", version = "0.1.0" }
-lgn-math = { path = "../../lib/math", version = "0.1.0" }
-lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
-generic-data = { path = "../../test/generic-data", version = "0.1.0", features = [
+lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
+lgn-core = { path = "../../crates/lgn-core", version = "0.1.0" }
+lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
+lgn-input = { path = "../../crates/lgn-input", version = "0.1.0" }
+lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
+lgn-renderer = { path = "../../crates/lgn-renderer", version = "0.1.0" }
+lgn-transform = { path = "../../crates/lgn-transform", version = "0.1.0" }
+runtime-srv = { path = "../../crates/lgn-runtime-srv", version = "0.1.0" }
+generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "runtime",
 ] }
-runtime-srv = { path = "../../server/runtime-srv", version = "0.1.0" }
+
 
 dolly = "0.2.0"
 rand = "0.8"

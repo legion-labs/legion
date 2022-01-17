@@ -1,0 +1,24 @@
+[package]
+name = "lgn-presenter-snapshot"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
+anyhow = "1.0"
+crossbeam-channel = "0.5"
+instant = "0.1"
+png = "0.17"
+
+[features]
+default = []
+vulkan = ["lgn-graphics-api/vulkan"]

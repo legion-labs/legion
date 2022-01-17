@@ -1,0 +1,45 @@
+[package]
+name = "lgn-streamer"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
+lgn-codec-api = { path = "../lgn-codec-api", version = "0.1.0" }
+lgn-core = { path = "../lgn-core", version = "0.1.0" }
+lgn-config = { path = "../lgn-config", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
+lgn-input = { path = "../lgn-input", version = "0.1.0", features = [
+    "serialize",
+] }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
+lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
+lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
+lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-streaming-proto = { path = "../lgn-streaming-proto", version = "0.1.0" }
+lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
+lgn-window = { path = "../lgn-window", version = "0.1.0" }
+
+anyhow = "1.0"
+base64 = "0.13"
+bytes = "1.1"
+crossbeam = "0.8"
+futures-lite = "1.12"
+hex = "0.4"
+interceptor = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.13", features = ["full"] }
+tonic = "0.6"
+webrtc = "0.3"
+
+[features]
+default = []
+vulkan = ["lgn-renderer/vulkan"]

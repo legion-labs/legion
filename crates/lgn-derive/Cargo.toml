@@ -1,0 +1,18 @@
+[package]
+name = "lgn-derive"
+version = "0.1.0"
+edition = "2021"
+description = "Provides derive implementations for Legion"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["legion"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+lgn-macro-utils = { path = "../lgn-macro-utils", version = "0.1.0" }
+
+quote = "1.0"
+syn = "1.0"

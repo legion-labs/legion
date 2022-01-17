@@ -1,0 +1,60 @@
+[package]
+name = "editor-srv"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Legion engine
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-asset-registry = { path = "../lgn-asset-registry", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
+lgn-codec-api = { path = "../lgn-codec-api", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-core = { path = "../lgn-core", version = "0.1.0" }
+lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+lgn-data-transaction = { path = "../lgn-data-transaction", version = "0.1.0" }
+lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
+lgn-editor-proto = { path = "../lgn-editor-proto", version = "0.1.0" }
+lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
+lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
+lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-resource-registry = { path = "../lgn-resource-registry", version = "0.1.0" }
+lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
+lgn-config = { path = "../lgn-config", version = "0.1.0" }
+lgn-input = { path = "../lgn-input" }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+lgn-window = { path = "../lgn-window", version = "0.1.0" }
+tokio = { version = "1.13", features = ["full"] }
+tonic = "0.6"
+clap = { version = "3.0", features = ["derive"] }
+anyhow = "1.0"
+serde_json = "1.0"
+erased-serde = "0.3.12"
+
+# PlugIn
+generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+sample-data-offline = { path = "../../tests/sample-data-offline", version = "0.1.0" }
+sample-data-runtime = { path = "../../tests/sample-data-runtime", version = "0.1.0" }
+lgn-graphics-offline = { path = "../lgn-graphics-offline", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../lgn-graphics-runtime", version = "0.1.0" }
+
+
+[dev-dependencies]
+tempfile = "3.2.0"
+lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
+lgn-data-build = { path = "../lgn-data-build", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
+lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
+lgn-compiler-entitydc = { path = "../lgn-entitydc-compiler" }
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
+    "vulkan",
+] }

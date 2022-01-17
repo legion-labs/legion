@@ -1,0 +1,37 @@
+[package]
+name = "lgn-ubercompiler"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+doc = false
+
+
+[[bin]]
+name = "compiler-ubercompiler"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+lgn-data-offline = { path = "../lgn-data-offline" }
+lgn-data-runtime = { path = "../lgn-data-runtime" }
+lgn-data-compiler = { path = "../lgn-data-compiler" }
+
+# Compilers
+lgn-compiler-debugcube = { path = "../lgn-debugcube-compiler" }
+lgn-compiler-entitydc = { path = "../lgn-entitydc-compiler" }
+lgn-compiler-instancedc = { path = "../lgn-instancedc-compiler" }
+lgn-compiler-material = { path = "../lgn-material-compiler" }
+lgn-compiler-psd2tex = { path = "../lgn-psd2tex-compiler" }
+lgn-compiler-runtime-entity = { path = "../lgn-runtime-entity-compiler" }
+lgn-compiler-runtime-instance = { path = "../lgn-runtime-instance-compiler" }
+lgn-compiler-runtime-mesh = { path = "../lgn-runtime-mesh-compiler" }
+lgn-compiler-test-atoi = { path = "../../tests/atoi-compiler" }
+lgn-compiler-test-base64 = { path = "../../tests/base64-compiler" }
+lgn-compiler-test-refs = { path = "../../tests/refs-compiler" }
+lgn-compiler-test-reverse = { path = "../../tests/reverse-compiler" }
+lgn-compiler-test-split = { path = "../../tests/split-compiler" }
+lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
+lgn-compiler-tex2bin = { path = "../../tests/tex2bin-compiler" }

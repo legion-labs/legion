@@ -1,0 +1,20 @@
+[package]
+name = "lgn-analytics"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
+lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
+sqlx = { version = "0.5", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+anyhow = "1.0"
+prost = "0.9"
+serde_json = "1.0"
+async-recursion = "1"

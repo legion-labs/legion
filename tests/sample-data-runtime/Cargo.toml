@@ -1,0 +1,17 @@
+[package]
+name = "sample-data-runtime"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Legion engine
+lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../../crates/lgn-graphics-runtime" }
+lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
+lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
+
+# other
+bincode = "1.3.3"
+serde = { version = "1.0", features = ["derive"] }
+typetag = "0.1.8"

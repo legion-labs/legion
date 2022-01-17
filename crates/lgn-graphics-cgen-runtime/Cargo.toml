@@ -1,0 +1,13 @@
+[package]
+name = "lgn-graphics-cgen-runtime"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+
+bumpalo = "3.8"
+glam = "0.20"
+half = "1.8.2"
+serde = { version = "1.0", features = ["derive"] }

@@ -1,9 +1,9 @@
 [editor_srv]
-project_dir = "test/sample-data"
+project_dir = "tests/sample-data"
 server_addr = "[::1]:50051"
 
 [runtime_srv]
-project_dir = "test/sample-data"
+project_dir = "tests/sample-data"
 server_addr = "[::1]:50052"
 
 [streamer]

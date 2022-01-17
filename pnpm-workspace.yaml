@@ -1,5 +1,4 @@
 packages:
-  - "client/*/frontend"
-  - "lib/*/frontend"
-  - "lib/vite-plugins/*"
-  - "proto/*"
+  - "crates/*/frontend"
+  - "npm-pkgs/*/*"
+  - "crates/lgn-*-proto"

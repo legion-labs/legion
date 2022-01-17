@@ -1,14 +1,9 @@
 [workspace]
 members = [
-    "client/*",
-    "server/*",
-    "lib/*",
-    "plugin/*",
-    "proto/*",
+    "crates/*",
     "examples/*",
-    "test/*",
-    "compiler/*",
-    "build/monorepo",
-    "build/workspace-hack",
+    "tests/*",
+    "build/lgn-monorepo",
+    "build/lgn-workspace-hack",
 ]
-exclude = ["lib/vite-plugins", "lib/simple-wasm-logger"]
+exclude = []

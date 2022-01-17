@@ -1,0 +1,34 @@
+[package]
+name = "lgn-graphics-api"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+track-device-contexts = ["backtrace"]
+vulkan = ["ash", "vk-mem"]
+
+[dependencies]
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
+backtrace = { version = "0.3", optional = true }
+bitflags = "1.3"
+bumpalo = "3.8"
+crossbeam-channel = "0.5"
+fnv = "1.0"
+raw-window-handle = "0.4"
+serde = { version = "1.0", features = ["serde_derive"] }
+strum = { version = "0.23", features = ["derive"] }
+
+# vulkan backend
+ash = { version = ">= 0.33", features = ["linked"], optional = true }
+vk-mem = { git = "https://github.com/legion-labs/vk-mem-rs", branch = "ash-fixes", optional = true }
+
+[package.metadata.docs.rs]
+features = ["serde", "vulkan"]
+default-target = "x86_64-unknown-linux-gnu"
+targets = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]

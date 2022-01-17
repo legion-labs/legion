@@ -10,9 +10,9 @@
     "clean": "pnpm -r clean && rimraf node_modules",
     "test": "pnpm -r test",
     "prettier:fix": "pnpm -r prettier:fix",
-    "analytics:dev": "pnpm -C client/analytics-web/frontend dev",
-    "editor:dev": "pnpm -C client/editor/frontend dev",
-    "runtime:dev": "pnpm -C client/runtime/frontend dev"
+    "analytics:dev": "pnpm -C crates/lgn-analytics-gui/frontend dev",
+    "editor:dev": "pnpm -C crates/lgn-editor-gui/frontend dev",
+    "runtime:dev": "pnpm -C crates/lgn-runtime-gui/frontend dev"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

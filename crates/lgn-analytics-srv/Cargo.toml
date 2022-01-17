@@ -1,0 +1,32 @@
+[package]
+name = "analytics-srv"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
+lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
+anyhow = "1.0"
+async-recursion = "1"
+chrono = "0.4"
+tonic = "0.6"
+tonic-web = "0.2"
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+sqlx = { version = "0.5", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+prost = "0.9"
+xxhash-rust = { version = "0.8.2", features = ["xxh32", "const_xxh32"] }
+
+[build-dependencies]
+tonic-build = "0.6"

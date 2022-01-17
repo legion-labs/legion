@@ -1,0 +1,35 @@
+[package]
+name = "runtime-client"
+version = "0.1.0"
+edition = "2021"
+description = "The runtime engine streaming client"
+authors = ["devs@legionlabs.com"]
+repository = ""
+default-run = "runtime-client"
+license = "MIT OR Apache-2.0"
+keywords = ["game", "legion"]
+
+[dependencies]
+# Legion engine
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+
+# others
+anyhow = "1.0.44"
+clap = { version = "3.0", features = ["derive"] }
+directories = "4"
+tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+url = "2.2.2"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../lgn-build-utils-web", version = "0.1.0" }
+tauri-build = "1.0.0-beta.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

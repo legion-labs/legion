@@ -104,7 +104,7 @@ api-doc:
 	echo "<meta http-equiv=\"refresh\" content=\"0; URL=lgn_app/index.html\"/>" > target/doc/index.html
 
 book:
-	mdbook build ./doc/
+	mdbook build ./docs/
 
 clean:
 	cargo clean

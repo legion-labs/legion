@@ -1,0 +1,54 @@
+[package]
+name = "editor-client"
+version = "0.1.0"
+edition = "2021"
+description = "The Legion editor client"
+authors = ["devs@legionlabs.com"]
+repository = ""
+default-run = "editor-client"
+license = "MIT OR Apache-2.0"
+keywords = ["game", "legion"]
+
+[dependencies]
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
+lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
+lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
+lgn-browser = { path = "../lgn-browser", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+anyhow = "1.0.44"
+clap = { version = "3.0", features = ["derive"] }
+tonic = "0.6"
+prost = "0.9"
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+base64 = "0.13"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+json = "0.12.4"
+regex = "1.5"
+url = "2.2.2"
+sqlx = { version = "0.5.10", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+directories = "4"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-build-utils-web = { path = "../lgn-build-utils-web", version = "0.1.0" }
+tauri-build = "1.0.0-beta.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[[bin]]
+name = "perf-report"
+path = "perf-report/src/main.rs"

@@ -42,10 +42,10 @@ jobs:
         uses: tj-actions/changed-files@v13.1
         with:
           files: |
-            ^lib/graphics-*
-            ^plugin/renderer
-            ^plugin/presenter-*
-            ^test/graphics-*
+            ^crates/lgn-graphics-*
+            ^crates/lgn-renderer
+            ^crates/lgn-presenter-*
+            ^tests/graphics-*
 
   test:
     name: Running tests
@@ -74,10 +74,7 @@ jobs:
     strategy:
       matrix:
         os:
-          [
-            [self-hosted, windows, gpu, build],
-            [self-hosted, linux, gpu, build],
-          ]
+          [[self-hosted, windows, gpu, build], [self-hosted, linux, gpu, build]]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2

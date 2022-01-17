@@ -18,7 +18,7 @@
 *.lock text eol=lf
 *.yaml text eol=lf
 
-test/sample-data/**/* eol=lf
+tests/sample-data/**/* eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.
 *.sln text eol=crlf
