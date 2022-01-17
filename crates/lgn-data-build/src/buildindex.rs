@@ -281,7 +281,7 @@ impl BuildIndex {
         let mut queue = VecDeque::<ResourcePathId>::new();
 
         // we process the whole path as derived resources might not exist in
-        // the build index as those are never refered to as dependencies.
+        // the build index as those are never referred to as dependencies.
         let mut resource_path = Some(compile_path);
         while let Some(path) = resource_path {
             let direct_dependency = path.direct_dependency();

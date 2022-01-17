@@ -91,7 +91,7 @@ impl AssetToECS for runtime_data::Entity {
                     picking_id: 0,
                 });
             }
-            //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+            // } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
             // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
             // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {

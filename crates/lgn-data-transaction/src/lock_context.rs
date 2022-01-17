@@ -20,7 +20,7 @@ pub struct LockContext<'a> {
     pub asset_registry: Arc<AssetRegistry>,
     /// Reference to build manager.
     pub build: MutexGuard<'a, BuildManager>,
-    // List of Resouce changed during the lock (that need saving)
+    // List of Resource changed during the lock (that need saving)
     pub(crate) changed_resources: HashSet<ResourceTypeAndId>,
 }
 

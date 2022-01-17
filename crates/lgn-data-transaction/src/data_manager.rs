@@ -107,7 +107,7 @@ impl DataManager {
         Ok(())
     }
 
-    /// Undo the last commited transaction
+    /// Undo the last committed transaction
     pub async fn undo_transaction(&mut self) -> anyhow::Result<()> {
         if let Some(mut transaction) = self.commited_transactions.pop() {
             transaction
