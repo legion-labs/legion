@@ -126,8 +126,7 @@ impl RgbToYuvConverter {
                 shader_stage: ShaderStageFlags::COMPUTE,
                 shader_module: compute_shader_module,
                 // reflection: shader_build_result.reflection_info.clone().unwrap(),
-            }],
-            &shader_build_result.pipeline_reflection,
+            }]            
         );
 
         let mut descriptor_set_layouts = Vec::new();
@@ -211,7 +210,7 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
         render_surface.transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
