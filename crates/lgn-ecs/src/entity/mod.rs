@@ -62,16 +62,52 @@ pub enum AllocAtWithoutReplacement {
 }
 
 impl Entity {
-    /// Creates a new entity reference with a generation of 0.
+    /// Creates a new entity reference with the specified `id` and a generation of 0.
     ///
     /// # Note
     ///
-    /// Spawning a specific `entity` value is rarely the right choice. Most apps
-    /// should favor [`Commands::spawn`](crate::system::Commands::spawn).
-    /// This method should generally only be used for sharing entities
-    /// across apps, and only when they have a scheme worked out to share an
-    /// ID space (which doesn't happen by default).
-    pub fn new(id: u32) -> Self {
+    /// Spawning a specific `entity` value is __rarely the right choice__. Most apps should favor
+    /// [`Commands::spawn`](crate::system::Commands::spawn). This method should generally
+    /// only be used for sharing entities across apps, and only when they have a scheme
+    /// worked out to share an ID space (which doesn't happen by default).
+    ///
+    /// In general, one should not try to synchronize the ECS by attempting to ensure that
+    /// `Entity` lines up between instances, but instead insert a secondary identifier as
+    /// a component.
+    ///
+    /// There are still some use cases where it might be appropriate to use this function
+    /// externally.
+    ///
+    /// ## Examples
+    ///
+    /// Initializing a collection (e.g. `array` or `Vec`) with a known size:
+    ///
+    /// ```no_run
+    /// # use lgn_ecs::prelude::*;
+    /// // Create a new array of size 10 and initialize it with (invalid) entities.
+    /// let mut entities: [Entity; 10] = [Entity::from_raw(0); 10];
+    ///
+    /// // ... replace the entities with valid ones.
+    /// ```
+    ///
+    /// Deriving `Reflect` for a component that has an `Entity` field:
+    ///
+    /// ```no_run
+    /// # use lgn_ecs::{prelude::*, component::*};
+    /// #[derive(Component)]
+    /// pub struct MyStruct {
+    ///     pub entity: Entity,
+    /// }
+    ///
+    /// impl FromWorld for MyStruct {
+    ///     fn from_world(_world: &mut World) -> Self {
+    ///         Self {
+    ///             entity: Entity::from_raw(u32::MAX),
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn from_raw(id: u32) -> Self {
         Self { id, generation: 0 }
     }
 
@@ -130,7 +166,7 @@ impl SparseSetIndex for Entity {
     }
 
     fn get_sparse_set_index(value: usize) -> Self {
-        Self::new(value as u32)
+        Self::from_raw(value as u32)
     }
 }
 
@@ -477,10 +513,9 @@ impl Entities {
     /// function.
     ///
     /// # Safety
-    /// Flush _must_ set the entity location to the correct `ArchetypeId` for
-    /// the given Entity each time init is called. This _can_ be
-    /// `ArchetypeId::INVALID`, provided the Entity has not been assigned to
-    /// an Archetype.
+    /// Flush _must_ set the entity location to the correct [`ArchetypeId`] for the given [`Entity`]
+    /// each time init is called. This _can_ be [`ArchetypeId::INVALID`], provided the [`Entity`]
+    /// has not been assigned to an [`Archetype`][crate::archetype::Archetype].
     pub unsafe fn flush(&mut self, mut init: impl FnMut(Entity, &mut EntityLocation)) {
         let free_cursor = self.free_cursor.get_mut();
         let current_free_cursor = *free_cursor;

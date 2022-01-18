@@ -1,7 +1,7 @@
 //! Legion ECS  
 //!
 //! TODO: write documentation.
-
+#![doc = include_str!("../README.md")]
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
@@ -1370,8 +1370,8 @@ mod tests {
         let mut world_a = World::new();
         let world_b = World::new();
         let mut query = world_a.query::<&A>();
-        let _ = query.get(&world_a, Entity::new(0));
-        let _ = query.get(&world_b, Entity::new(0));
+        let _ = query.get(&world_a, Entity::from_raw(0));
+        let _ = query.get(&world_b, Entity::from_raw(0));
     }
 
     #[test]
@@ -1595,7 +1595,7 @@ mod tests {
     fn insert_or_spawn_batch() {
         let mut world = World::default();
         let e0 = world.spawn().insert(A(0)).id();
-        let e1 = Entity::new(1);
+        let e1 = Entity::from_raw(1);
 
         let values = vec![(e0, (B(0), C)), (e1, (B(1), C))];
 
@@ -1632,7 +1632,7 @@ mod tests {
     fn insert_or_spawn_batch_invalid() {
         let mut world = World::default();
         let e0 = world.spawn().insert(A(0)).id();
-        let e1 = Entity::new(1);
+        let e1 = Entity::from_raw(1);
         let e2 = world.spawn().id();
         let invalid_e2 = Entity {
             generation: 1,

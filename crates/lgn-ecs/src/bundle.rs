@@ -80,28 +80,27 @@ use crate::{
 ///   [`ComponentId`] returned by [`Bundle::component_ids`].
 pub unsafe trait Bundle: Send + Sync + 'static {
     /// Gets this [Bundle]'s component ids, in the order of this bundle's
-    /// Components
+    /// [`Component`]s
     fn component_ids(components: &mut Components, storages: &mut Storages) -> Vec<ComponentId>;
 
     /// Calls `func`, which should return data for each component in the bundle,
-    /// in the order of this bundle's Components
+    /// in the order of this bundle's [`Component`]s
     ///
     /// # Safety
     /// Caller must return data for each component in the bundle, in the order
-    /// of this bundle's Components
+    /// of this bundle's [`Component`]s
     unsafe fn from_components(func: impl FnMut() -> *mut u8) -> Self
     where
         Self: Sized;
 
-    /// Calls `func` on each value, in the order of this bundle's Components.
-    /// This will "`mem::forget`" the bundle fields, so callers are
-    /// responsible for dropping the fields if that is desirable.
+    /// Calls `func` on each value, in the order of this bundle's [`Component`]s. This will
+    /// [`std::mem::forget`] the bundle fields, so callers are responsible for dropping the fields
+    /// if that is desirable.
     fn get_components(self, func: impl FnMut(*mut u8));
 }
 
 macro_rules! tuple_impl {
     ($($name: ident),*) => {
-        /// SAFE: Component is returned in tuple-order. [`Bundle::from_components`] and [`Bundle::get_components`] use tuple-order
         unsafe impl<$($name: Component),*> Bundle for ($($name,)*) {
             #[allow(unused_variables)]
             fn component_ids(components: &mut Components, storages: &mut Storages) -> Vec<ComponentId> {

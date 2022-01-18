@@ -282,6 +282,7 @@ impl<'w> EntityMut<'w> {
     ///
     /// when DROP is true removed components will be dropped otherwise they will
     /// be forgotten
+    ///
     // We use a const generic here so that we are less reliant on
     // inlining for rustc to optimize out the `match DROP`
     #[allow(clippy::too_many_arguments)]

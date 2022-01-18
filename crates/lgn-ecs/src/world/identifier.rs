@@ -47,7 +47,8 @@ mod tests {
     }
 
     // We cannot use this test as-is, as it causes other tests to panic due to
-    // using the same atomic variable. #[test]
+    // using the same atomic variable.
+    // #[test]
     // #[should_panic]
     // fn panic_on_overflow() {
     //     MAX_WORLD_ID.store(usize::MAX - 50, Ordering::Relaxed);

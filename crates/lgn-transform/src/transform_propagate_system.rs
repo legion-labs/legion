@@ -39,6 +39,9 @@ pub fn transform_propagate_system(
             }
         }
     }
+
+    drop(changed_transform_query);
+    drop(children_query);
 }
 
 fn propagate_recursive(
