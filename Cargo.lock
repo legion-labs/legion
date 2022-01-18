@@ -4807,6 +4807,7 @@ dependencies = [
  "lgn-tracing",
  "libc",
  "tokio",
+ "users",
 ]
 
 [[package]]
