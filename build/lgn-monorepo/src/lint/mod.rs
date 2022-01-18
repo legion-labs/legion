@@ -29,7 +29,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     if all || args.dependencies {
         dependencies::run(ctx)?;
     }
-    if all || args.crate_attributes {
+    if args.crate_attributes {
         crate_attributes::run(ctx)?;
     }
 
