@@ -5,7 +5,7 @@ use sqlx::migrate::MigrateDatabase;
 use std::path::PathBuf;
 
 use crate::{
-    local_ingestion_service::LocalIngestionService,
+    ingestion_service::LocalIngestionService,
     local_telemetry_db::{create_tables, read_schema_version},
 };
 

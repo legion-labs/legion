@@ -11,7 +11,7 @@
 //#![allow()]
 
 mod local_data_lake;
-mod local_ingestion_service;
+mod ingestion_service;
 mod local_telemetry_db;
 
 use std::path::PathBuf;
