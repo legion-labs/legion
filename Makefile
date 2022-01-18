@@ -26,17 +26,16 @@ check-env:
 	protoc --version
 
 check-format:
-	cargo fmt --all -- --check
+	cargo ci check --fmt
 
 check-build:
-	cargo check --locked -p lgn-graphics-api --all-targets
-	cargo check --locked --all-targets --all-features
+	cargo ci check --gfx-no-api
 
 check-clippy:
-	cargo clippy --locked --all-targets --all-features -- -D warnings
+	cargo ci check --clippy
 
 check-deps:
-	cargo deny check
+	cargo ci check --cargo-deny
 
 test: test-build test-run
 
