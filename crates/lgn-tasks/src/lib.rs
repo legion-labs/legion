@@ -94,10 +94,5 @@ pub mod prelude {
     };
 }
 
-pub fn logical_core_count() -> usize {
-    num_cpus::get()
-}
-
-pub fn physical_core_count() -> usize {
-    num_cpus::get_physical()
-}
+pub use num_cpus::get as logical_core_count;
+pub use num_cpus::get_physical as physical_core_count;

@@ -10,28 +10,27 @@ use futures_lite::{future, pin};
 
 use crate::{executor, Task};
 
-/// Used to create a `TaskPool`
+/// Used to create a [`TaskPool`]
 #[derive(Debug, Default, Clone)]
 pub struct TaskPoolBuilder {
-    /// If set, we'll set up the thread pool to use at most n threads. Otherwise
-    /// use the logical core count of the system
+    /// If set, we'll set up the thread pool to use at most n threads. Otherwise use
+    /// the logical core count of the system
     num_threads: Option<usize>,
     /// If set, we'll use the given stack size rather than the system default
     stack_size: Option<usize>,
-    /// Allows customizing the name of the threads - helpful for debugging. If
-    /// set, threads will be named <thread_name> (<thread_index>), i.e.
-    /// "MyThreadPool (2)"
+    /// Allows customizing the name of the threads - helpful for debugging. If set, threads will
+    /// be named <thread_name> (<thread_index>), i.e. "MyThreadPool (2)"
     thread_name: Option<String>,
 }
 
 impl TaskPoolBuilder {
-    /// Creates a new `TaskPoolBuilder` instance
+    /// Creates a new [`TaskPoolBuilder`] instance
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Override the number of threads created for the pool. If unset, we
-    /// default to the number of logical cores of the system
+    /// Override the number of threads created for the pool. If unset, we default to the number
+    /// of logical cores of the system
     pub fn num_threads(mut self, num_threads: usize) -> Self {
         self.num_threads = Some(num_threads);
         self
@@ -43,15 +42,14 @@ impl TaskPoolBuilder {
         self
     }
 
-    /// Override the name of the threads created for the pool. If set, threads
-    /// will be named <`thread_name`> (<`thread_index`>), i.e.
-    /// "`MyThreadPool` (2)"
+    /// Override the name of the threads created for the pool. If set, threads will
+    /// be named `<thread_name> (<thread_index>)`, i.e. `MyThreadPool (2)`
     pub fn thread_name(mut self, thread_name: String) -> Self {
         self.thread_name = Some(thread_name);
         self
     }
 
-    /// Creates a new `ThreadPoolBuilder` based on the current options.
+    /// Creates a new [`TaskPool`] based on the current options.
     pub fn build(self) -> TaskPool {
         TaskPool::new_internal(
             self.num_threads,
@@ -235,9 +233,11 @@ impl TaskPool {
         })
     }
 
-    /// Spawns a static future onto the thread pool. The returned Task is a
-    /// future. It can also be cancelled and "detached" allowing it to
-    /// continue running without having to be polled by the end-user.
+    /// Spawns a static future onto the thread pool. The returned Task is a future. It can also be
+    /// cancelled and "detached" allowing it to continue running without having to be polled by the
+    /// end-user.
+    ///
+    /// If the provided future is non-`Send`, [`TaskPool::spawn_local`] should be used instead.
     pub fn spawn<T>(&self, future: impl Future<Output = T> + Send + 'static) -> Task<T>
     where
         T: Send + 'static,
@@ -245,6 +245,11 @@ impl TaskPool {
         Task::new(self.executor.spawn(future))
     }
 
+    /// Spawns a static future on the thread-local async executor for the current thread. The task
+    /// will run entirely on the thread the task was spawned on.  The returned Task is a future.
+    /// It can also be cancelled and "detached" allowing it to continue running without having
+    /// to be polled by the end-user. Users should generally prefer to use [`TaskPool::spawn`]
+    /// instead, unless the provided future is not `Send`.
     #[allow(clippy::unused_self)]
     pub fn spawn_local<T>(&self, future: impl Future<Output = T> + 'static) -> Task<T>
     where
@@ -260,6 +265,9 @@ impl Default for TaskPool {
     }
 }
 
+/// A `TaskPool` scope for running one or more non-`'static` futures.
+///
+/// For more information, see [`TaskPool::scope`].
 #[derive(Debug)]
 pub struct Scope<'scope, T> {
     executor: &'scope executor::Executor<'scope>,
@@ -268,11 +276,25 @@ pub struct Scope<'scope, T> {
 }
 
 impl<'scope, T: Send + 'scope> Scope<'scope, T> {
+    /// Spawns a scoped future onto the thread pool. The scope *must* outlive
+    /// the provided future. The results of the future will be returned as a part of
+    /// [`TaskPool::scope`]'s return value.
+    ///
+    /// If the provided future is non-`Send`, [`Scope::spawn_local`] should be used
+    /// instead.
+    ///
+    /// For more information, see [`TaskPool::scope`].
     pub fn spawn<Fut: Future<Output = T> + 'scope + Send>(&mut self, f: Fut) {
         let task = self.executor.spawn(f);
         self.spawned.push(task);
     }
 
+    /// Spawns a scoped future onto the thread-local executor. The scope *must* outlive
+    /// the provided future. The results of the future will be returned as a part of
+    /// [`TaskPool::scope`]'s return value.  Users should generally prefer to use
+    /// [`Scope::spawn`] instead, unless the provided future is not `Send`.
+    ///
+    /// For more information, see [`TaskPool::scope`].
     pub fn spawn_local<Fut: Future<Output = T> + 'scope>(&mut self, f: Fut) {
         let task = self.local_executor.spawn(f);
         self.spawned.push(task);
