@@ -21,7 +21,10 @@
 
 # Emacs/Vim temp files
 *~
+
+# local user files
 legion_local.toml
+monorepo.local.toml
 
 # Pnpm/NodeJs files
 node_modules/

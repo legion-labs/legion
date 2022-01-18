@@ -86,12 +86,12 @@ fn name_rules(ctx: &Context) -> Result<Vec<NameRule>> {
             let glob = GlobBuilder::new(glob)
                 .literal_separator(lint.glob_literal_separator.unwrap_or_default())
                 .build()
-                .map_err(|err| Error::new("").with_source(err))?;
+                .map_err(|err| Error::new("failed to write to build glob spec").with_source(err))?;
             builder.add(glob);
         }
         let glob_set = builder
             .build()
-            .map_err(|err| Error::new("").with_source(err))?;
+            .map_err(|err| Error::new("failed to build glob set").with_source(err))?;
         names_lints.push((regex, negative_regex, glob_set, lint.help.clone()));
     }
     Ok(names_lints)
@@ -105,12 +105,12 @@ fn license_rules(ctx: &Context) -> Result<Vec<(String, GlobSet)>> {
         for glob in &lint.globs {
             let glob = GlobBuilder::new(glob)
                 .build()
-                .map_err(|err| Error::new("").with_source(err))?;
+                .map_err(|err| Error::new("failed to write to build glob spec").with_source(err))?;
             builder.add(glob);
         }
         let glob_set = builder
             .build()
-            .map_err(|err| Error::new("").with_source(err))?;
+            .map_err(|err| Error::new("failed to build glob set").with_source(err))?;
         license_lints.push((lint.spdx.clone(), glob_set));
     }
     Ok(license_lints)

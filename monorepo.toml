@@ -3,7 +3,9 @@
 cargo-deny = { version = "0.11.0" }
 grcov = { version = "0.8.4" }
 mdbook = { version = "0.4.14" }
-sccache = { version = "0.2.15" }
+sccache = { version = "0.2.15", features = ["s3"] }
+
+################################################################################
 
 #[cargo.sccache]
 #bucket = "ci-artifacts.legionlabs.com"
@@ -14,6 +16,8 @@ sccache = { version = "0.2.15" }
 #required-cargo-home = { windows = "C:\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/home/ubuntu/.cargo/", macos = "tbd" }
 #required-git-home = { windows = "C:\\github\\workspace", linux = "/github/workspace", macos = "tbd" }
 #envs = []
+
+################################################################################
 
 # dependencies lints
 [lints.direct-dependencies]
@@ -27,6 +31,8 @@ bans = [
         "lgn-telemetry-sink",
     ] },
 ]
+
+################################################################################
 
 # crate attributes lints
 [lints.crate-attributes]
@@ -58,11 +64,14 @@ pattern = "^(?:lgn-)[a-z0-9-]+$"
 globs = ["crates/*", "build/*"]
 glob-literal-separator = true
 
+################################################################################
+
 [vscode]
 debugger-type = { windows = "cppvsdbg", linux = "lldb", macos = "lldb" }
 compounds = { editor-compound = ["editor-client", "editor-srv"] }
 overrides = { lgn-graphics-sandbox = { args = ["--egui"] } }
 
+################################################################################
 
 [rustdoc]
 entry-point = "lgn-app"
@@ -74,6 +83,8 @@ warn = [
     "rustdoc::private_intra_doc_links",
 ]
 allow = []
+
+################################################################################
 
 [clippy]
 deny = ["unsafe_code"]
@@ -124,6 +135,8 @@ allow = [
     "clippy::too_many_lines",
 ]
 
+################################################################################
+
 [[determinator.path-rule]]
 globs = [".github/**/*", "rust-toolchain.toml", "monorepo.toml"]
 mark-changed = "all"
@@ -143,3 +156,5 @@ globs = [
     "trace-*",
 ]
 mark-changed = []
+
+################################################################################

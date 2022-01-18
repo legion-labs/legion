@@ -24,14 +24,13 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             })
         })
         .collect();
-    let debugger_type = ctx
-        .config()
-        .vscode
+    let vscode_config = &ctx.config().vscode;
+    let debugger_type = vscode_config
         .debugger_type
         .as_ref()
         .map_or("lldb", HostConfig::as_str);
 
-    for package in ctx.config().vscode.overrides.keys() {
+    for package in vscode_config.overrides.keys() {
         if !workspace.contains_name(package) {
             return Err(Error::new(format!(
                 "override {} is not in the workspace",
@@ -74,13 +73,21 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                         "$rustc"
                     ],
                     "label": label,
+                    "presentation": {
+                        "echo": true,
+                        "reveal": "always",
+                        "focus": false,
+                        "panel": "shared",
+                        "showReuseMessage": true,
+                        "clear": true
+                      }
                 }));
                 configurations.push(json!({
                     "name": name,
                     "type": debugger_type,
                     "request": "launch",
                     "program": format!("${{workspaceFolder}}/target/debug/{}.exe", name),
-                    "args": ctx.config().vscode.overrides.get(package.name()).map_or_else(
+                    "args": vscode_config.overrides.get(package.name()).map_or_else(
                         std::vec::Vec::new,
                         |dict| dict.get("args").unwrap_or(&vec![]).clone()
                     ),
@@ -92,7 +99,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                         "/rustc/02072b482a8b5357f7fb5e5637444ae30e423c40": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.58.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
-                    "preLaunchTask": label,
+                    "preLaunchTask": vscode_config.disable_prelaunch.as_ref().map_or_else(|| label.as_str(), |disable| if *disable { "" } else { label.as_str() } ) ,
                 }));
             }
         }
@@ -104,7 +111,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "tasks": &tasks,
     });
     let mut compounds = vec![];
-    for (name, config) in &ctx.config().vscode.compounds {
+    for (name, config) in &vscode_config.compounds {
         compounds.push(json!({
             "name": name,
             "configurations": config,

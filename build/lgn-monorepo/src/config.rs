@@ -191,6 +191,7 @@ pub struct VsCode {
     pub debugger_type: Option<HostConfig>,
     pub compounds: HashMap<String, Vec<String>>,
     pub overrides: HashMap<String, HashMap<String, Vec<String>>>,
+    pub disable_prelaunch: Option<bool>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
