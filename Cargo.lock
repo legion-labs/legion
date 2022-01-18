@@ -243,7 +243,7 @@ version = "0.35.0+1.2.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a7638ce84f8c84d6fd6faa63aa267574d345181ba591c0eeb5550d4c30cd600"
 dependencies = [
- "libloading",
+ "libloading 0.7.3",
 ]
 
 [[package]]
@@ -1730,6 +1730,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
+name = "curl"
+version = "0.4.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7de97b894edd5b5bcceef8b78d7da9b75b1d2f2f9a910569d0bde3dd31d84939"
+dependencies = [
+ "curl-sys",
+ "libc",
+ "openssl-probe",
+ "openssl-sys",
+ "schannel",
+ "socket2",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "curl-sys"
+version = "0.4.52+curl-7.81.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14b8c2d1023ea5fded5b7b892e4b8e95f70038a421126a056761a84246a28971"
+dependencies = [
+ "cc",
+ "libc",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+ "vcpkg",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2151,7 +2181,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac1b7517328c04c2aa68422fc60a41b92208182142ed04a25879c26c8f878794"
 dependencies = [
- "libloading",
+ "libloading 0.7.3",
 ]
 
 [[package]]
@@ -3296,7 +3326,7 @@ source = "git+https://github.com/legion-labs/hassle-rs?branch=com_to_tinycom#a0d
 dependencies = [
  "bitflags",
  "libc",
- "libloading",
+ "libloading 0.7.3",
  "thiserror",
  "tinycom",
  "widestring 0.5.1",
@@ -3881,6 +3911,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-runtime",
  "lgn-renderer",
+ "lgn-scripting",
  "lgn-tracing",
  "lgn-transform",
  "sample-data-runtime",
@@ -4077,6 +4108,25 @@ dependencies = [
  "sample-data-compiler",
  "sample-data-offline",
  "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-script2asm"
+version = "0.1.0"
+dependencies = [
+ "curl",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+ "lgn-scripting",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+ "serde",
+ "serde_json",
+ "zip",
 ]
 
 [[package]]
@@ -4777,6 +4827,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-scripting"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "erased-serde",
+ "lazy_static",
+ "lgn-app",
+ "lgn-data-codegen",
+ "lgn-data-model",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "memoffset 0.6.5",
+ "mun_runtime",
+ "sample-data-offline",
+ "serde",
+ "serde_json",
+ "typetag",
+]
+
+[[package]]
 name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
@@ -5110,6 +5181,16 @@ dependencies = [
  "libz-sys",
  "openssl-sys",
  "pkg-config",
+]
+
+[[package]]
+name = "libloading"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "351a32417a12d5f7e82c368a66781e307834dae04c6ce0cd4456d52989229883"
+dependencies = [
+ "cfg-if 1.0.0",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -5485,6 +5566,85 @@ dependencies = [
  "lgn-data-runtime",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "mun_abi"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "853c68e0b5a3c174f1393181ea31ebdaca4713c6e9a46e22f73372348ba3100a"
+dependencies = [
+ "md5",
+ "once_cell",
+ "parking_lot 0.10.2",
+]
+
+[[package]]
+name = "mun_libloader"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e889bcc2f0bbbf919a94ac694cbd922aaa0491588f0830088f88e9db61aed92a"
+dependencies = [
+ "anyhow",
+ "libloading 0.6.7",
+ "log",
+ "mun_abi",
+ "tempfile",
+]
+
+[[package]]
+name = "mun_memory"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08f91f6a85173a62acde2a555c25683f8b0d7d0dfb03230eb24ad7efaebc98ae"
+dependencies = [
+ "lazy_static",
+ "mun_abi",
+ "once_cell",
+ "parking_lot 0.10.2",
+]
+
+[[package]]
+name = "mun_paths"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41f0e73fde21bee0f0b9e1d9d5a60153e2557e40e6d053031e8b03f2aec20e2f"
+dependencies = [
+ "relative-path",
+]
+
+[[package]]
+name = "mun_project"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b90bb596f3c4aa4d6bb0ff0627b0cee7abec38277f880dc36ce23171ee6cb74"
+dependencies = [
+ "anyhow",
+ "mun_paths",
+ "rustc-hash",
+ "semver 0.10.0",
+ "serde",
+ "serde_derive",
+ "toml",
+]
+
+[[package]]
+name = "mun_runtime"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b73f78d3dfde7c7344043ac2a863779a7af9d939920aad35480f4f862b7e616"
+dependencies = [
+ "anyhow",
+ "log",
+ "md5",
+ "mun_abi",
+ "mun_libloader",
+ "mun_memory",
+ "mun_project",
+ "notify",
+ "once_cell",
+ "parking_lot 0.10.2",
+ "rustc-hash",
 ]
 
 [[package]]
@@ -6552,6 +6712,7 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-renderer",
+ "lgn-scripting",
  "lgn-transform",
  "rand 0.8.4",
  "runtime-srv",
@@ -7173,6 +7334,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef03e0a2b150c7a90d01faf6254c9c48a41e95fb2a8c2ac1c6f0d2b9aefc342"
 
 [[package]]
+name = "rustc-hash"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
 name = "rustc_version"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7446,11 +7613,21 @@ dependencies = [
 
 [[package]]
 name = "semver"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394cec28fa623e00903caf7ba4fa6fb9a0e260280bb8cdbbba029611108a0190"
+dependencies = [
+ "semver-parser 0.7.0",
+ "serde",
+]
+
+[[package]]
+name = "semver"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
- "semver-parser",
+ "semver-parser 0.10.2",
 ]
 
 [[package]]
@@ -7461,6 +7638,12 @@ checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "semver-parser"

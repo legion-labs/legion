@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, env::temp_dir};
 
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::{Reference, Resource};
@@ -59,6 +59,12 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
                 components.push(Box::new(runtime_data::Light::from_offline(light)));
             } else if let Some(physics) = component.downcast_ref::<offline_data::Physics>() {
                 components.push(Box::new(runtime_data::Physics::from_offline(physics)));
+            } else if let Some(script_comp) =
+                component.downcast_ref::<offline_data::ScriptComponent>()
+            {
+                components.push(Box::new(runtime_data::ScriptComponent::from_offline(
+                    script_comp,
+                )));
             }
         }
         Self {
@@ -167,6 +173,34 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
         Self {
             dynamic: offline.dynamic,
             collision_geometry: to_reference(&offline.collision_geometry),
+        }
+    }
+}
+
+impl FromOffline<offline_data::ScriptComponent> for runtime_data::ScriptComponent {
+    fn from_offline(offline: &offline_data::ScriptComponent) -> Self {
+        // FIXME: This is a horrible hack to workaround Mun currently not supporting loading a .munlib from a memory buffer.
+        // We load instead from the temp folder where the Mun lib was built.
+        // Please note that the CAS still contains the Mun lib, but we don't know its path here.
+        // This is to be removed when we switch to another scripting language.
+        let mut lib_path = temp_dir();
+        lib_path.push(
+            offline
+                .script
+                .as_ref()
+                .unwrap()
+                .source_resource()
+                .id
+                .to_string(),
+        );
+        lib_path.push("target");
+        lib_path.push("mod.munlib");
+
+        Self {
+            input_values: offline.input_values.clone(),
+            entry_fn: offline.entry_fn.clone(),
+            script: to_reference(&offline.script),
+            lib_path,
         }
     }
 }

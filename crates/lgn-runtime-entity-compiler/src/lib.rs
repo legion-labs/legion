@@ -99,6 +99,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     for child in &entity.children {
         resource_references.push((context.target_unnamed.clone(), child.clone()));
     }
+    // FIXME: replace by processor.extract_build_dependencies()
     for component in &entity.components {
         if let Some(visual) = component.downcast_ref::<offline_data::Visual>() {
             if let Some(mesh_ref) = &visual.renderable_geometry {
@@ -107,6 +108,11 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         } else if let Some(physics) = component.downcast_ref::<offline_data::Physics>() {
             if let Some(mesh_ref) = &physics.collision_geometry {
                 resource_references.push((context.target_unnamed.clone(), mesh_ref.clone()));
+            }
+        } else if let Some(script_comp) = component.downcast_ref::<offline_data::ScriptComponent>()
+        {
+            if let Some(script) = &script_comp.script {
+                resource_references.push((context.target_unnamed.clone(), script.clone()));
             }
         }
     }

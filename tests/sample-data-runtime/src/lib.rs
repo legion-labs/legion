@@ -59,6 +59,7 @@
 use std::{
     any::{Any, TypeId},
     io,
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -74,7 +75,8 @@ pub fn add_loaders(registry: &mut AssetRegistryOptions) {
     registry
         .add_loader_mut::<Entity>()
         .add_loader_mut::<Instance>()
-        .add_loader_mut::<Mesh>();
+        .add_loader_mut::<Mesh>()
+        .add_loader_mut::<Script>();
 }
 
 fn deserialize_bincode_asset<T>(reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>>
@@ -282,6 +284,56 @@ pub struct StaticMesh {
 
 #[typetag::serde]
 impl Component for StaticMesh {}
+
+// ------------------ Script -----------------------------------
+
+#[derive(Serialize, Deserialize)]
+pub struct ScriptComponent {
+    pub input_values: Vec<String>,
+    pub entry_fn: String,
+    pub script: Option<Reference<Script>>,
+    pub lib_path: PathBuf, // temporary until we switch off Mun
+}
+
+#[typetag::serde]
+impl Component for ScriptComponent {}
+
+#[resource("runtime_script")]
+#[derive(Serialize, Deserialize)]
+pub struct Script {
+    pub data: Vec<u8>,
+}
+
+impl Asset for Script {
+    type Loader = ScriptLoader;
+}
+
+#[derive(Default)]
+pub struct ScriptLoader {
+    registry: Option<Arc<AssetRegistry>>,
+}
+
+impl AssetLoader for ScriptLoader {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        deserialize_bincode_asset::<Script>(reader)
+    }
+
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+        let _script = asset.downcast_mut::<Script>().unwrap();
+        println!("runtime script loaded");
+
+        // activate references
+        /*if let Some(registry) = &self.registry {
+            if let Some(original) = &mut instance.original {
+                original.activate(registry);
+            }
+        }*/
+    }
+
+    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
+        self.registry = Some(registry);
+    }
+}
 
 // ------------------ Instance  -----------------------------------
 

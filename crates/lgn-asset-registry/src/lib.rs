@@ -232,7 +232,16 @@ impl AssetRegistryPlugin {
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
-                        ) {
+                        )
+                        /*&& !load_ecs_asset::<runtime_data::Script>(
+                            asset_id,
+                            handle,
+                            &registry,
+                            &mut commands,
+                            &mut asset_to_entity_map,
+                            &default_meshes,
+                        )*/
+                        {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
                                 asset_id.kind, asset_id
