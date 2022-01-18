@@ -19,6 +19,7 @@ impl WindowId {
     }
 }
 
+use crate::CursorIcon;
 use std::fmt;
 
 impl fmt::Display for WindowId {
@@ -122,6 +123,7 @@ pub struct Window {
     vsync: bool,
     resizable: bool,
     decorations: bool,
+    cursor_icon: CursorIcon,
     cursor_visible: bool,
     cursor_locked: bool,
     physical_cursor_position: Option<DVec2>,
@@ -161,6 +163,9 @@ pub enum WindowCommand {
     },
     SetCursorLockMode {
         locked: bool,
+    },
+    SetCursorIcon {
+        icon: CursorIcon,
     },
     SetCursorVisibility {
         visible: bool,
@@ -222,6 +227,7 @@ impl Window {
             decorations: window_descriptor.decorations,
             cursor_visible: window_descriptor.cursor_visible,
             cursor_locked: window_descriptor.cursor_locked,
+            cursor_icon: CursorIcon::Default,
             physical_cursor_position: None,
             focused: true,
             mode: window_descriptor.mode,
@@ -398,7 +404,7 @@ impl Window {
     }
 
     /// The window scale factor as reported by the window backend.
-    /// This value is unaffected by `scale_factor_override`.
+    /// This value is unaffected by [`scale_factor_override`](Window::scale_factor_override).
     #[inline]
     pub fn backend_scale_factor(&self) -> f64 {
         self.backend_scale_factor
@@ -473,6 +479,16 @@ impl Window {
         self.command_queue.push(WindowCommand::SetCursorVisibility {
             visible: visibile_mode,
         });
+    }
+
+    #[inline]
+    pub fn cursor_icon(&self) -> CursorIcon {
+        self.cursor_icon
+    }
+
+    pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
+        self.command_queue
+            .push(WindowCommand::SetCursorIcon { icon });
     }
 
     /// The current mouse position, in physical pixels.
