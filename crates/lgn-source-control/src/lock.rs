@@ -5,39 +5,8 @@ use lgn_tracing::span_fn;
 
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
-    read_workspace_spec, IndexBackend, LocalWorkspaceConnection,
+    read_workspace_spec, IndexBackend, LocalWorkspaceConnection, Lock,
 };
-
-#[derive(Debug, Clone)]
-pub struct Lock {
-    pub relative_path: String, /* needs to have a stable representation across platforms because
-                                * it seeds the hash */
-    pub lock_domain_id: String,
-    pub workspace_id: String,
-    pub branch_name: String,
-}
-
-impl From<Lock> for lgn_source_control_proto::Lock {
-    fn from(lock: Lock) -> Self {
-        Self {
-            relative_path: lock.relative_path,
-            lock_domain_id: lock.lock_domain_id,
-            workspace_id: lock.workspace_id,
-            branch_name: lock.branch_name,
-        }
-    }
-}
-
-impl From<lgn_source_control_proto::Lock> for Lock {
-    fn from(lock: lgn_source_control_proto::Lock) -> Self {
-        Self {
-            relative_path: lock.relative_path,
-            lock_domain_id: lock.lock_domain_id,
-            workspace_id: lock.workspace_id,
-            branch_name: lock.branch_name,
-        }
-    }
-}
 
 pub async fn verify_empty_lock_domain(
     query: &dyn IndexBackend,

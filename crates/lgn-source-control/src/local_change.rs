@@ -3,53 +3,14 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
-use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,
     make_canonical_relative_path, make_file_read_only, make_path_absolute, read_current_branch,
-    read_workspace_spec, sql::execute_sql, IndexBackend, LocalWorkspaceConnection,
+    read_workspace_spec, sql::execute_sql, ChangeType, IndexBackend, LocalWorkspaceConnection,
     RepositoryConnection,
 };
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ChangeType {
-    Edit = 1,
-    Add = 2,
-    Delete = 3,
-}
-
-impl From<ChangeType> for lgn_source_control_proto::ChangeType {
-    fn from(change_type: ChangeType) -> Self {
-        match change_type {
-            ChangeType::Edit => Self::Edit,
-            ChangeType::Add => Self::Add,
-            ChangeType::Delete => Self::Delete,
-        }
-    }
-}
-
-impl From<lgn_source_control_proto::ChangeType> for ChangeType {
-    fn from(change_type: lgn_source_control_proto::ChangeType) -> Self {
-        match change_type {
-            lgn_source_control_proto::ChangeType::Edit => Self::Edit,
-            lgn_source_control_proto::ChangeType::Add => Self::Add,
-            lgn_source_control_proto::ChangeType::Delete => Self::Delete,
-        }
-    }
-}
-
-impl ChangeType {
-    pub fn from_int(i: i64) -> Result<Self> {
-        match i {
-            1 => Ok(Self::Edit),
-            2 => Ok(Self::Add),
-            3 => Ok(Self::Delete),
-            _ => anyhow::bail!("invalid change type {}", i),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct LocalChange {

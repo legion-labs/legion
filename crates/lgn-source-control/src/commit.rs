@@ -1,4 +1,4 @@
-use std::{path::Path, time::SystemTime};
+use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::prelude::*;
@@ -9,130 +9,9 @@ use crate::{
     assert_not_locked, clear_local_changes, clear_pending_branch_merges, connect_to_server,
     find_workspace_root, make_file_read_only, read_bin_file, read_current_branch,
     read_local_changes, read_pending_branch_merges, read_workspace_spec, update_current_branch,
-    update_tree_from_changes, Branch, ChangeType, LocalChange, LocalWorkspaceConnection,
-    RepositoryConnection,
+    update_tree_from_changes, Branch, ChangeType, Commit, HashedChange, LocalChange,
+    LocalWorkspaceConnection, RepositoryConnection,
 };
-
-#[derive(Debug, Clone)]
-pub struct HashedChange {
-    pub relative_path: String,
-    pub hash: String,
-    pub change_type: ChangeType,
-}
-
-impl From<HashedChange> for lgn_source_control_proto::HashedChange {
-    fn from(hashed_change: HashedChange) -> Self {
-        let change_type: lgn_source_control_proto::ChangeType = hashed_change.change_type.into();
-
-        Self {
-            relative_path: hashed_change.relative_path,
-            hash: hashed_change.hash,
-            change_type: change_type as i32,
-        }
-    }
-}
-
-impl TryFrom<lgn_source_control_proto::HashedChange> for HashedChange {
-    type Error = anyhow::Error;
-
-    fn try_from(hashed_change: lgn_source_control_proto::HashedChange) -> Result<Self> {
-        let change_type =
-            match lgn_source_control_proto::ChangeType::from_i32(hashed_change.change_type) {
-                Some(change_type) => change_type.into(),
-                None => {
-                    return Err(anyhow::anyhow!(
-                        "invalid change type {}",
-                        hashed_change.change_type
-                    ))
-                }
-            };
-
-        Ok(Self {
-            relative_path: hashed_change.relative_path,
-            hash: hashed_change.hash,
-            change_type,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Commit {
-    pub id: String,
-    pub owner: String,
-    pub message: String,
-    pub changes: Vec<HashedChange>,
-    pub root_hash: String,
-    pub parents: Vec<String>,
-    pub timestamp: DateTime<Utc>,
-}
-
-impl Commit {
-    #[span_fn]
-    pub fn new(
-        id: String,
-        owner: String,
-        message: String,
-        changes: Vec<HashedChange>,
-        root_hash: String,
-        parents: Vec<String>,
-        timestamp: DateTime<Utc>,
-    ) -> Self {
-        assert!(!parents.contains(&id));
-        Self {
-            id,
-            owner,
-            message,
-            changes,
-            root_hash,
-            parents,
-            timestamp,
-        }
-    }
-}
-
-impl From<Commit> for lgn_source_control_proto::Commit {
-    fn from(commit: Commit) -> Self {
-        let timestamp: SystemTime = commit.timestamp.into();
-
-        Self {
-            id: commit.id,
-            owner: commit.owner,
-            message: commit.message,
-            changes: commit.changes.into_iter().map(Into::into).collect(),
-            root_hash: commit.root_hash,
-            parents: commit.parents,
-            timestamp: Some(timestamp.into()),
-        }
-    }
-}
-
-impl TryFrom<lgn_source_control_proto::Commit> for Commit {
-    type Error = anyhow::Error;
-
-    fn try_from(commit: lgn_source_control_proto::Commit) -> Result<Self> {
-        let timestamp = commit.timestamp.unwrap_or_default();
-        let timestamp = DateTime::from_utc(
-            NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
-            Utc,
-        );
-
-        let changes = commit
-            .changes
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(Self {
-            id: commit.id,
-            owner: commit.owner,
-            message: commit.message,
-            changes,
-            root_hash: commit.root_hash,
-            parents: commit.parents,
-            timestamp,
-        })
-    }
-}
 
 async fn upload_localy_edited_blobs(
     workspace_root: &Path,
