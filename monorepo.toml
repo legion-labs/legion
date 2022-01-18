@@ -11,8 +11,8 @@ sccache = { version = "0.2.15" }
 #public = false
 #region = "ca-central-1"
 #endpoint = "https://s3-ca-central-1.amazonaws.com"
-#required-cargo-home = { windows = "C:\\cargo_home", linux = "/cargo_home", macos = "tbd" }
-#required-git-home = { windows = "C:\\git_home", linux = "/git_home", macos = "tbd" }
+#required-cargo-home = { windows = "C:\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/home/ubuntu/.cargo/", macos = "tbd" }
+#required-git-home = { windows = "C:\\github\\workspace", linux = "/github/workspace", macos = "tbd" }
 #envs = []
 
 # dependencies lints
