@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use lgn_tracing::info;
-use sqlx::Row;
+use sqlx::{Executor, Row};
 
 async fn create_migration_table(connection: &mut sqlx::AnyConnection) -> Result<()> {
     sqlx::query("CREATE table migration(version BIGINT);")
@@ -29,11 +29,11 @@ async fn create_processes_table(connection: &mut sqlx::AnyConnection) -> Result<
                   start_ticks BIGINT,
                   insert_date DATE,
                   parent_process_id VARCHAR(36));
-         CREATE UNIQUE INDEX process_id on processes(process_id);
+         CREATE INDEX process_id on processes(process_id);
          CREATE INDEX parent_process_id on processes(parent_process_id);
          CREATE INDEX process_insert_date on processes(insert_date);";
-    sqlx::query(sql)
-        .execute(connection)
+    connection
+        .execute(sql)
         .await
         .with_context(|| String::from("Creating table processes and its indices"))?;
     Ok(())
@@ -51,10 +51,10 @@ async fn create_streams_table(connection: &mut sqlx::AnyConnection) -> Result<()
                   tags TEXT,
                   properties TEXT
                   );
-         CREATE UNIQUE INDEX stream_id on streams(stream_id);
+         CREATE INDEX stream_id on streams(stream_id);
          CREATE INDEX stream_process_id on streams(process_id);";
-    sqlx::query(sql)
-        .execute(connection)
+    connection
+        .execute(sql)
         .await
         .with_context(|| String::from("Creating table streams and its indices"))?;
     Ok(())
@@ -71,10 +71,10 @@ async fn create_blocks_table(connection: &mut sqlx::AnyConnection) -> Result<()>
                   end_ticks BIGINT,
                   nb_objects INT
                   );
-         CREATE UNIQUE INDEX block_id on blocks(block_id);
+         CREATE INDEX block_id on blocks(block_id);
          CREATE INDEX block_stream_id on blocks(stream_id);";
-    sqlx::query(sql)
-        .execute(connection)
+    connection
+        .execute(sql)
         .await
         .with_context(|| String::from("Creating table blocks and its indices"))?;
     Ok(())
@@ -86,20 +86,20 @@ async fn create_payloads_table(connection: &mut sqlx::AnyConnection) -> Result<(
                   block_id VARCHAR(36), 
                   payload LONGBLOB
                   );
-         CREATE UNIQUE INDEX payload_block_id on payloads(block_id);";
-    sqlx::query(sql)
-        .execute(connection)
+         CREATE INDEX payload_block_id on payloads(block_id);";
+    connection
+        .execute(sql)
         .await
         .with_context(|| "Creating table payloads and its index")?;
     Ok(())
 }
 
 pub async fn create_tables(connection: &mut sqlx::AnyConnection) -> Result<()> {
-    create_migration_table(connection).await?;
     create_processes_table(connection).await?;
     create_streams_table(connection).await?;
     create_blocks_table(connection).await?;
     create_payloads_table(connection).await?;
+    create_migration_table(connection).await?;
     Ok(())
 }
 

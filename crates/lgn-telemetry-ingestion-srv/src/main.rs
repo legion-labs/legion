@@ -13,6 +13,7 @@
 mod ingestion_service;
 mod local_data_lake;
 mod local_telemetry_db;
+mod remote_data_lake;
 
 use std::path::PathBuf;
 
@@ -22,6 +23,7 @@ use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngesti
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
 use local_data_lake::connect_to_local_data_lake;
+use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
 use tonic::transport::Server;
 
@@ -39,16 +41,8 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum DataLakeSpec {
-    Local {
-        path: PathBuf,
-    },
-
-    Remote {
-        db_uri: String,
-        username: String,
-        password: String,
-        bucket_uri: String,
-    },
+    Local { path: PathBuf },
+    Remote { db_uri: String, bucket_uri: String },
 }
 
 #[tokio::main]
@@ -58,13 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service = match args.spec {
         DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
         DataLakeSpec::Remote {
-            db_uri: _,
-            username: _,
-            password: _,
+            db_uri,
             bucket_uri: _,
-        } => {
-            panic!("remote");
-        }
+        } => connect_to_remote_data_lake(&db_uri).await?,
     };
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
