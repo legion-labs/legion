@@ -140,7 +140,7 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 128, 64 * 1024),
+            transient_buffer: TransientPagedBuffer::new(device_context, 512, 64 * 1024),
             static_buffer,
             transforms_data: test_transform_data,
             omnidirectional_lights_data,
@@ -210,6 +210,7 @@ impl Renderer {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 
+    #[span_fn]
     pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
         let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
         let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];

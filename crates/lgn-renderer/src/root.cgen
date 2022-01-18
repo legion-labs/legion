@@ -14,7 +14,6 @@ struct ViewData {
 struct ConstData {
     world: Float4x4,
     color: Float4,
-    picking_distance: Float1,
 }
 
 struct EntityTransforms {
@@ -60,9 +59,11 @@ struct DebugPushConstantData {
 }
 
 struct PickingPushConstantData {
+    custom_world: Float4x4,
     vertex_offset: Uint1,
     world_offset: Uint1,
     picking_id: Uint1,
+    picking_distance: Float1,
 }
 
 struct PickingData {

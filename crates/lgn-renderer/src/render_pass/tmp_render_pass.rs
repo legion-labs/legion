@@ -7,6 +7,7 @@ use lgn_graphics_api::{
     ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_math::Vec4;
+use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
@@ -87,6 +88,7 @@ impl TmpRenderPass {
         self.speed = speed;
     }
 
+    #[span_fn]
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         &self,
@@ -145,74 +147,73 @@ impl TmpRenderPass {
             .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
             .const_buffer_view();
 
+        let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
+
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "view_data",
+                &[DescriptorRef::BufferView(&camera_buffer_view)],
+            )
+            .unwrap();
+
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "lighting_data",
+                &[DescriptorRef::BufferView(&lighting_manager_view)],
+            )
+            .unwrap();
+
+        let directional_lights_buffer_view = render_context
+            .renderer()
+            .directional_lights_data_structured_buffer_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "directional_lights",
+                &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
+            )
+            .unwrap();
+
+        let omnidirectional_lights_buffer_view = render_context
+            .renderer()
+            .omnidirectional_lights_data_structured_buffer_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "omnidirectional_lights",
+                &[DescriptorRef::BufferView(
+                    &omnidirectional_lights_buffer_view,
+                )],
+            )
+            .unwrap();
+
+        let spotlights_buffer_view = render_context
+            .renderer()
+            .spotlights_data_structured_buffer_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "spotlights",
+                &[DescriptorRef::BufferView(&spotlights_buffer_view)],
+            )
+            .unwrap();
+
+        let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
+        descriptor_set_writer
+            .set_descriptors_by_name(
+                "static_buffer",
+                &[DescriptorRef::BufferView(&static_buffer_ro_view)],
+            )
+            .unwrap();
+
+        let descriptor_set_handle =
+            descriptor_set_writer.flush(render_context.renderer().device_context());
+
+        cmd_buffer.bind_descriptor_set_handle(
+            PipelineType::Graphics,
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency,
+            descriptor_set_handle,
+        );
+
         for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
-            let mut descriptor_set_writer =
-                render_context.alloc_descriptor_set(descriptor_set_layout);
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "view_data",
-                    &[DescriptorRef::BufferView(&camera_buffer_view)],
-                )
-                .unwrap();
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "lighting_data",
-                    &[DescriptorRef::BufferView(&lighting_manager_view)],
-                )
-                .unwrap();
-
-            let directional_lights_buffer_view = render_context
-                .renderer()
-                .directional_lights_data_structured_buffer_view();
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "directional_lights",
-                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
-                )
-                .unwrap();
-
-            let omnidirectional_lights_buffer_view = render_context
-                .renderer()
-                .omnidirectional_lights_data_structured_buffer_view();
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "omnidirectional_lights",
-                    &[DescriptorRef::BufferView(
-                        &omnidirectional_lights_buffer_view,
-                    )],
-                )
-                .unwrap();
-
-            let spotlights_buffer_view = render_context
-                .renderer()
-                .spotlights_data_structured_buffer_view();
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "spotlights",
-                    &[DescriptorRef::BufferView(&spotlights_buffer_view)],
-                )
-                .unwrap();
-
-            let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "static_buffer",
-                    &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-                )
-                .unwrap();
-
-            let descriptor_set_handle =
-                descriptor_set_writer.flush(render_context.renderer().device_context());
-
-            cmd_buffer.bind_descriptor_set_handle(
-                PipelineType::Graphics,
-                &self.root_signature,
-                descriptor_set_layout.definition().frequency,
-                descriptor_set_handle,
-            );
-
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh.color.r) / 255.0f32,
                 f32::from(static_mesh.color.g) / 255.0f32,
