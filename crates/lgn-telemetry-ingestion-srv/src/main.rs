@@ -10,6 +10,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+mod local_data_lake;
 mod local_ingestion_service;
 mod local_telemetry_db;
 
@@ -19,7 +20,8 @@ use anyhow::Result;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuard;
-use local_ingestion_service::connect_to_local_data_lake;
+use lgn_tracing::prelude::*;
+use local_data_lake::connect_to_local_data_lake;
 use std::net::SocketAddr;
 use tonic::transport::Server;
 

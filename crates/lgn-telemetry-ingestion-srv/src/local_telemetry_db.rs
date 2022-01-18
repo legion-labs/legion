@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use lgn_tracing::info;
+use sqlx::Row;
 
 async fn create_migration_table(connection: &mut sqlx::AnyConnection) -> Result<()> {
     sqlx::query("CREATE table migration(version BIGINT);")
@@ -99,4 +101,20 @@ pub async fn create_tables(connection: &mut sqlx::AnyConnection) -> Result<()> {
     create_blocks_table(connection).await?;
     create_payloads_table(connection).await?;
     Ok(())
+}
+
+pub async fn read_schema_version(connection: &mut sqlx::AnyConnection) -> i32 {
+    match sqlx::query(
+        "SELECT version
+         FROM migration;",
+    )
+    .fetch_one(connection)
+    .await
+    {
+        Ok(row) => row.get("version"),
+        Err(e) => {
+            info!("Error reading schema version, assuming version 0: {}", e);
+            0
+        }
+    }
 }
