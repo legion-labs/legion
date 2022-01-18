@@ -1,5 +1,6 @@
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
+use lgn_tracing::span_fn;
 
 use crate::resources::DefaultMeshes;
 #[derive(Component)]
@@ -14,6 +15,7 @@ pub struct StaticMesh {
 }
 
 impl StaticMesh {
+    #[span_fn]
     pub fn from_default_meshes(
         default_meshes: &DefaultMeshes,
         mesh_id: usize,

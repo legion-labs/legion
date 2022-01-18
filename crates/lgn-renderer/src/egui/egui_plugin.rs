@@ -5,6 +5,7 @@ use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
+use lgn_tracing::span_fn;
 use lgn_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
 
 #[derive(Default)]
@@ -188,6 +189,7 @@ fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
     egui.ctx.begin_frame(raw_input.to_owned());
 }
 
+#[span_fn]
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {
     let (output, shapes) = egui.ctx.end_frame();
     (*egui).output = output;

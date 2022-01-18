@@ -1,5 +1,4 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
-#include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
@@ -18,7 +17,6 @@ struct VertexOut {
 };
 
 ConstantBuffer<ViewData> view_data;
-ConstantBuffer<ConstData> const_data;
 ByteAddressBuffer static_buffer;
 RWStructuredBuffer<uint> picked_count;
 RWStructuredBuffer<PickingData> picked_objects;
@@ -30,7 +28,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4x4 world = const_data.world;
+    float4x4 world = push_constant.custom_world;
     if (push_constant.world_offset != 0xFFFFFFFF)
     {
         EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
@@ -53,7 +51,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET
 {
     float2 proximity = vertex_out.picking_pos.xy - view_data.cursor_pos;
 
-    if (dot(proximity, proximity) < const_data.picking_distance)
+    if (dot(proximity, proximity) < push_constant.picking_distance)
     {
         uint write_index = 0;
         InterlockedAdd(picked_count[0], 1, write_index);

@@ -104,13 +104,14 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::{DefaultMeshId, DefaultMeshes},
+    resources::{DefaultMeshId, DefaultMeshes, MetaCubePlugin},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
+use lgn_tracing::span_fn;
 use lgn_transform::components::Transform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
@@ -128,13 +129,15 @@ use crate::{
 pub struct RendererPlugin {
     enable_egui: bool,
     runs_dynamic_systems: bool,
+    meta_cube_size: usize,
 }
 
 impl RendererPlugin {
-    pub fn new(enable_egui: bool, runs_dynamic_systems: bool) -> Self {
+    pub fn new(enable_egui: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
         Self {
             enable_egui,
             runs_dynamic_systems,
+            meta_cube_size,
         }
     }
 }
@@ -158,6 +161,9 @@ impl Plugin for RendererPlugin {
 
         app.add_plugin(EguiPlugin::new(self.enable_egui));
         app.add_plugin(PickingPlugin {});
+        if self.meta_cube_size != 0 {
+            app.add_plugin(MetaCubePlugin::new(self.meta_cube_size));
+        }
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_manipulation_manager);
@@ -295,6 +301,7 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
+#[span_fn]
 fn update_transform(
     mut renderer: ResMut<'_, Renderer>,
     mut query: Query<
@@ -309,7 +316,7 @@ fn update_transform(
         Changed<Transform>,
     >,
 ) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
     let mut gpu_data = renderer.acquire_transform_data();
 
     for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
@@ -328,6 +335,7 @@ fn update_transform(
     renderer.release_transform_data(gpu_data);
 }
 
+#[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,

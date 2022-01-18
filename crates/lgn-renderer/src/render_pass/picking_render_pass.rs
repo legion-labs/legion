@@ -237,21 +237,12 @@ impl PickingRenderPass {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn render_mesh(
+    fn bind_descriptor_table(
         &self,
         view_data: &cgen::cgen_type::ViewData,
-        custom_world: &Mat4,
-        custom_picking_id: Option<u32>,
-        picking_distance: f32,
-        static_mesh: &StaticMesh,
         cmd_buffer: &HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
-        let mut constant_data = cgen::cgen_type::ConstData::default();
-        constant_data.set_world((*custom_world).into());
-        constant_data.set_picking_distance(picking_distance.into());
-
         let transient_allocator = render_context.transient_buffer_allocator();
 
         let descriptor_set_layout = &self
@@ -271,20 +262,6 @@ impl PickingRenderPass {
             descriptor_set_writer
                 .set_descriptors_by_name(
                     "view_data",
-                    &[DescriptorRef::BufferView(&const_buffer_view)],
-                )
-                .unwrap();
-        }
-
-        {
-            let sub_allocation =
-                transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.const_buffer_view();
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "const_data",
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
@@ -321,8 +298,19 @@ impl PickingRenderPass {
             descriptor_set_layout.definition().frequency,
             descriptor_set_handle,
         );
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    fn render_mesh(
+        &self,
+        custom_world: &Mat4,
+        custom_picking_id: Option<u32>,
+        picking_distance: f32,
+        static_mesh: &StaticMesh,
+        cmd_buffer: &HLCommandBuffer<'_>,
+    ) {
         let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+        push_constant_data.set_custom_world((*custom_world).into());
         push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
         push_constant_data.set_world_offset(static_mesh.world_offset.into());
         push_constant_data.set_picking_id(
@@ -333,6 +321,7 @@ impl PickingRenderPass {
             }
             .into(),
         );
+        push_constant_data.set_picking_distance(picking_distance.into());
 
         cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
 
@@ -401,6 +390,8 @@ impl PickingRenderPass {
                 cursor_pos.y,
             );
 
+            self.bind_descriptor_table(&view_data, &cmd_buffer, render_context);
+
             for (_index, (static_mesh, transform, manipulator)) in
                 manipulator_meshes.iter().enumerate()
             {
@@ -414,13 +405,11 @@ impl PickingRenderPass {
                     );
 
                     self.render_mesh(
-                        &view_data,
                         &custom_world,
                         None,
                         picking_distance,
                         static_mesh,
                         &cmd_buffer,
-                        render_context,
                     );
                 }
             }
@@ -430,13 +419,11 @@ impl PickingRenderPass {
                 let custom_world = Mat4::IDENTITY;
 
                 self.render_mesh(
-                    &view_data,
                     &custom_world,
                     None,
                     picking_distance,
                     static_mesh,
                     &cmd_buffer,
-                    render_context,
                 );
             }
 
@@ -444,13 +431,11 @@ impl PickingRenderPass {
                 let picking_distance = 1.0;
                 let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
                 self.render_mesh(
-                    &view_data,
                     &custom_world,
                     Some(light.picking_id),
                     picking_distance,
                     light_picking_mesh,
                     &cmd_buffer,
-                    render_context,
                 );
             }
 
