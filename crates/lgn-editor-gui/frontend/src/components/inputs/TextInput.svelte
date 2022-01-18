@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
 
-  type Size = "default";
+  type Size = "default" | "sm";
 
   // Type are not preserved when using the `on:input` shortcut
   // so we must use dispatch and explicitely type it
@@ -45,15 +45,18 @@
 </script>
 
 <div
+  class="root"
   class:w-full={fullWidth}
   class:disabled
   class:default={size === "default"}
-  class:root-with-extension={$$slots.rightExtension || $$slots.leftExtension}
+  class:sm={size === "sm"}
+  class:with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
   {#if $$slots.leftExtension}
     <div
       class="extension left-extension"
       class:extension-default={size === "default"}
+      class:extension-sm={size === "sm"}
     >
       <slot name="leftExtension" />
     </div>
@@ -63,6 +66,8 @@
     class:disabled
     class:with-right-extension={$$slots.rightExtension}
     class:with-left-extension={$$slots.leftExtension}
+    class:default={size === "default"}
+    class:sm={size === "sm"}
     type="text"
     on:input={disabled ? null : onInput}
     on:focus={disabled ? null : onFocus}
@@ -74,6 +79,7 @@
     <div
       class="extension right-extension"
       class:extension-default={size === "default"}
+      class:extension-sm={size === "sm"}
     >
       <slot name="rightExtension" />
     </div>
@@ -81,20 +87,36 @@
 </div>
 
 <style lang="postcss">
-  .root-with-extension {
+  .root.with-extension {
     @apply flex flex-row;
   }
 
-  .disabled {
+  .root.disabled {
     @apply text-gray-400 cursor-not-allowed;
   }
 
+  .root.default {
+    @apply h-8;
+  }
+
+  .root.sm {
+    @apply h-6 text-sm;
+  }
+
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 py-1 rounded-sm outline-none w-full;
+    @apply bg-gray-800 border-gray-400 px-2 rounded-sm outline-none w-full;
   }
 
   .input.disabled {
     @apply cursor-not-allowed;
+  }
+
+  .input.default {
+    @apply py-1;
+  }
+
+  .input.sm {
+    @apply py-0.5;
   }
 
   .input.with-right-extension {
@@ -103,10 +125,6 @@
 
   .input.with-left-extension {
     @apply rounded-l-none;
-  }
-
-  .default {
-    @apply h-8;
   }
 
   .extension {
@@ -125,7 +143,7 @@
     @apply w-8 flex-shrink-0;
   }
 
-  .extension-default {
-    @apply w-8 flex-shrink-0;
+  .extension-sm {
+    @apply w-6 flex-shrink-0;
   }
 </style>

@@ -10,11 +10,16 @@
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/dist/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
-  import { fakeFileSystemEntries } from "@/data/fake";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";
+  import { unflatten } from "@/lib/hierarchyTree";
+  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
 
   const { data: currentResourceData } = currentResource;
+
+  const allResourcesStore = asyncStore<ResourceDescription[]>();
+
+  let allResourcesData = allResourcesStore.data;
 
   let currentResourceDescription: ResourceDescription | null = null;
 
@@ -22,7 +27,7 @@
 
   let editorActiveTab: ServerType;
 
-  let allResourcesPromise = getAllResources();
+  let allResourcesPromise = allResourcesStore.run(getAllResources);
 
   $: if (currentResourceDescription) {
     currentResource
@@ -43,7 +48,7 @@
   function tryAgain() {
     $currentResourceData = null;
     currentResourceDescription = null;
-    allResourcesPromise = getAllResources();
+    allResourcesPromise = allResourcesStore.run(getAllResources);
   }
 
   function setCurrentResourceDescription(
@@ -58,12 +63,12 @@
   <div class="content-wrapper">
     <div class="content">
       <div class="secondary-contents">
-        <div class="resources">
-          <Panel let:isFocused tabs={["Resources"]}>
+        <div class="scene-explorer">
+          <Panel let:isFocused tabs={["Scene Explorer"]}>
             <div slot="tab" let:tab>{tab}</div>
-            <div slot="content" class="resources-content">
+            <div slot="content" class="scene-explorer-content">
               {#await allResourcesPromise}
-                <div class="resources-loading">Loading...</div>
+                <div class="scene-explorer-loading">Loading...</div>
               {:then resources}
                 <PanelList
                   key="id"
@@ -80,11 +85,9 @@
                   </div>
                 </PanelList>
               {:catch}
-                <div class="resources-error">
-                  An error occured while fetching the resources <span
-                    class="resources-try-again"
-                    on:click={tryAgain}
-                  >
+                <div class="scene-explorer-error">
+                  An error occured while fetching the scene explorer
+                  <span class="scene-explorer-try-again" on:click={tryAgain}>
                     try again
                   </span>
                 </div>
@@ -93,11 +96,13 @@
           </Panel>
         </div>
         <div class="h-separator" />
-        <div class="file-system">
-          <Panel tabs={["File System"]}>
+        <div class="resource-browser">
+          <Panel tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
-            <div slot="content" class="file-system-content">
-              <HierarchyTree rootName="Root" entries={fakeFileSystemEntries} />
+            <div slot="content" class="resource-browser-content">
+              {#if $allResourcesData}
+                <HierarchyTree entries={unflatten($allResourcesData)} />
+              {/if}
             </div>
           </Panel>
         </div>
@@ -136,12 +141,12 @@
       </div>
       <div class="v-separator" />
       <div class="secondary-contents">
-        <div class="properties">
-          <Panel tabs={["Properties"]}>
+        <div class="property-grid">
+          <Panel tabs={["Property Grid"]}>
             <div slot="tab" let:tab>
               {tab}
             </div>
-            <div class="properties-content" slot="content">
+            <div class="property-grid-content" slot="content">
               <PropertyGrid />
             </div>
           </Panel>
@@ -185,39 +190,39 @@
     @apply flex flex-col flex-shrink-0 w-96 h-full;
   }
 
-  .resources {
+  .scene-explorer {
     @apply h-1/2;
   }
 
-  .resources-loading {
+  .scene-explorer-loading {
     @apply px-2 py-1;
   }
 
-  .resources-error {
+  .scene-explorer-error {
     @apply px-2 py-1;
   }
 
-  .resources-try-again {
+  .scene-explorer-try-again {
     @apply underline text-blue-300 cursor-pointer;
   }
 
-  .resources-content {
+  .scene-explorer-content {
     @apply h-full break-all;
   }
 
-  .file-system {
+  .resource-browser {
     @apply h-1/2;
   }
 
-  .file-system-content {
+  .resource-browser-content {
     @apply h-full;
   }
 
-  .properties {
+  .property-grid {
     @apply h-full;
   }
 
-  .properties-content {
+  .property-grid-content {
     @apply h-full;
   }
 </style>

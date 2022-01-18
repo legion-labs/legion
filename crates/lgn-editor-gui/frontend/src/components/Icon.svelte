@@ -5,7 +5,8 @@
     | "pdf"
     | "open-folder"
     | "closed-folder"
-    | "unknown-file-type";
+    | "unknown-file-type"
+    | "chevron-right";
 </script>
 
 <script lang="ts">
@@ -95,4 +96,19 @@
     <path
       d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"
     />
-  </svg>{/if}
+  </svg>
+{:else if name === "chevron-right"}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="12"
+    height="12"
+    fill="currentColor"
+    class="bi bi-chevron-right"
+    viewBox="0 0 16 16"
+  >
+    <path
+      fill-rule="evenodd"
+      d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
+    />
+  </svg>
+{/if}

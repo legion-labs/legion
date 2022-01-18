@@ -1,68 +1,52 @@
-<script context="module" lang="ts">
-  export type Entries<Item> = (
-    | { type: "file"; name: string; item: Item }
-    | { type: "directory"; name: string; entries: Entries<Item> }
-  )[];
-</script>
-
 <script lang="ts">
+  import { Entries, updateEntry } from "@/lib/hierarchyTree";
   import clickOutside from "@lgn/frontend/src/actions/clickOutside";
-
-  import Folder from "./Folder.svelte";
+  import { createEventDispatcher } from "svelte";
+  import Inner from "./Inner.svelte";
 
   type Item = $$Generic;
 
-  export let rootName: string;
+  const dispatch = createEventDispatcher<{ select: Item }>();
 
   export let entries: Entries<Item>;
 
   export let activeItem: Item | null = null;
 
-  function setActiveItem(event: CustomEvent<Item>) {
-    activeItem = event.detail;
-  }
+  /**
+   * This prop function is used to compare 2 items together and must retur
+   * `true` if the items are identical.
+   *
+   * By default `===` is used, so primitives are compared by value and
+   * object by reference.
+   */
+  export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
 
-  // TODO: Improve performance if needed
-  function updateEntries(
-    entries: Entries<Item>,
-    updatedItem: Item,
-    newName: string
-  ): Entries<Item> {
-    return entries.map((entry) => {
-      switch (entry.type) {
-        case "directory": {
-          return {
-            ...entry,
-            entries: updateEntries(entry.entries, updatedItem, newName),
-          };
-        }
+  function setActiveItem({ detail: item }: CustomEvent<Item>) {
+    activeItem = item;
 
-        case "file": {
-          if (entry.item === updatedItem) {
-            return { ...entry, name: newName };
-          } else {
-            return entry;
-          }
-        }
-      }
-    });
+    dispatch("select", item);
   }
 
   function setName({
     detail: { item, newName },
   }: CustomEvent<{ newName: string; item: Item }>) {
-    entries = updateEntries(entries, item, newName);
+    entries = updateEntry(entries, (_name, otherItem) =>
+      itemsAreIdentical(otherItem, item) ? { name: newName } : null
+    );
   }
 </script>
 
 <div class="root" use:clickOutside={() => (activeItem = null)}>
-  <Folder
-    name={rootName}
-    {entries}
-    {activeItem}
-    on:select={setActiveItem}
-    on:nameChange={setName}
-  />
+  {#each Object.entries(entries) as [name, entry] (name)}
+    <Inner
+      {entry}
+      {activeItem}
+      {itemsAreIdentical}
+      {name}
+      on:select={setActiveItem}
+      on:nameChange={setName}
+    />
+  {/each}
 </div>
 
 <style lang="postcss">
