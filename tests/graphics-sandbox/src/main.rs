@@ -59,7 +59,7 @@ struct Args {
     #[clap(long)]
     egui: bool,
     /// Dimensions of meta cube
-    #[clap(long)]
+    #[clap(long, default_value_t = 0)]
     meta_cube_size: usize,
 }
 
