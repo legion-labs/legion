@@ -30,6 +30,7 @@ smallvec = "1.7"
 static_assertions = "1.1.0"
 dolly = "0.2.0"
 paste = "1.0.6"
+png = "0.17"
 
 [build-dependencies]
 lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }

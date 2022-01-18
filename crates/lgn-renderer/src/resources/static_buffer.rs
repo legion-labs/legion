@@ -9,6 +9,7 @@ use lgn_graphics_api::{
     MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
     ResourceUsage, Semaphore,
 };
+use lgn_tracing::span_fn;
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::{cgen, RenderContext, RenderHandle};
@@ -133,6 +134,7 @@ impl UnifiedStaticBuffer {
         inner.job_blocks.append(job_blocks);
     }
 
+    #[span_fn]
     pub fn flush_updater(
         &self,
         prev_frame_semaphore: &Semaphore,
