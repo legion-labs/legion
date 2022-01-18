@@ -8,8 +8,19 @@ use crate::{context::Context, Error, Result};
 pub fn run(ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();
     let names_lints = name_rules(ctx)?;
+    let licenses_rules = license_rules(ctx)?;
+    let mut failed_edition_rule = 0;
     let mut failed_name_rules = 0;
+    let mut failed_license_rules = 0;
     for (path, package) in workspace.iter_by_path() {
+        if package.edition() != ctx.config().lints.crate_attributes.edition {
+            failed_edition_rule += 1;
+            eprintln!(
+                "{}: package edition match desired edition: {}",
+                package.name(),
+                ctx.config().lints.crate_attributes.edition
+            );
+        }
         if path.file_name().unwrap() != package.name() {
             eprintln!(
                 "{}: package name doesn't match parent dir name: {}",
@@ -28,11 +39,21 @@ pub fn run(ctx: &Context) -> Result<()> {
                 failed_name_rules += 1;
             }
         }
+
+        for (spdx, glob_set) in &licenses_rules {
+            let candidate = Candidate::new(path);
+            if glob_set.is_match_candidate(&candidate)
+                && (package.license().is_none() || package.license().unwrap() != spdx)
+            {
+                eprintln!("{}: license rule mismatch: {}", package.name(), spdx);
+                failed_license_rules += 1;
+            }
+        }
     }
-    if failed_name_rules > 0 {
+    if failed_edition_rule + failed_name_rules + failed_license_rules > 0 {
         return Err(Error::new(format!(
-            "{} names rules failed",
-            failed_name_rules,
+            "failed {} edition rule(s), failed {} name rule(s), failed {} license rule(s)",
+            failed_edition_rule, failed_name_rules, failed_license_rules
         )));
     }
     Ok(())
@@ -74,4 +95,23 @@ fn name_rules(ctx: &Context) -> Result<Vec<NameRule>> {
         names_lints.push((regex, negative_regex, glob_set, lint.help.clone()));
     }
     Ok(names_lints)
+}
+
+fn license_rules(ctx: &Context) -> Result<Vec<(String, GlobSet)>> {
+    let mut license_lints = vec![];
+    // build license lint rules
+    for lint in &ctx.config().lints.crate_attributes.license_rules {
+        let mut builder = GlobSetBuilder::new();
+        for glob in &lint.globs {
+            let glob = GlobBuilder::new(glob)
+                .build()
+                .map_err(|err| Error::new("").with_source(err))?;
+            builder.add(glob);
+        }
+        let glob_set = builder
+            .build()
+            .map_err(|err| Error::new("").with_source(err))?;
+        license_lints.push((lint.spdx.clone(), glob_set));
+    }
+    Ok(license_lints)
 }

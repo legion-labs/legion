@@ -30,7 +30,13 @@ bans = [
 
 # crate attributes lints
 [lints.crate-attributes]
-license-rules = [{ spdx = "MIT OR Apache-2.0", globs = ["crates/*"] }]
+license-rules = [
+    { spdx = "MIT OR Apache-2.0", globs = [
+        "crates/*",
+        "examples/*",
+        "tests/*",
+    ] },
+]
 edition = "2021"
 
 [[lints.crate-attributes.name-rules]]
