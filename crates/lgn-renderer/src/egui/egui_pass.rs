@@ -7,11 +7,12 @@ use crate::cgen;
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
 use crate::hl_gfx_api::HLCommandBuffer;
+
 use crate::RenderContext;
 use crate::Renderer;
 
 pub struct EguiPass {
-    pipeline: Pipeline,
+    pipelines: Vec<Pipeline>,
     texture_data: Option<(u64, Texture, TextureView)>,
     sampler: Sampler,
 }
@@ -87,7 +88,7 @@ impl EguiPass {
         let sampler = device_context.create_sampler(&sampler_def).unwrap();
 
         Self {
-            pipeline,
+            pipelines: vec![pipeline],
             texture_data: None,
             sampler,
         }
@@ -183,10 +184,14 @@ impl EguiPass {
         self.texture_data = Some((egui_font_image.version, texture, texture_view));
     }
 
+    pub fn fuck_it(&mut self) {
+        // self.pipelines.clear();
+    }
+
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &RenderSurface,
         egui: &Egui,
     ) {
@@ -200,11 +205,26 @@ impl EguiPass {
             &None,
         );
 
-        cmd_buffer.bind_pipeline(&self.pipeline);
+        let transient_allocator = render_context.transient_buffer_allocator();
+        let pipeline = &self.pipelines[0];        
+
+        cmd_buffer.bind_pipeline(&pipeline);
 
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 
-        let transient_allocator = render_context.transient_buffer_allocator();
+        let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
+        descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
+        descriptor_set.set_font_sampler(&self.sampler);
+
+        cmd_buffer.bind_descriptor_set_handle2(&descriptor_set);
+
+        // let handle = render_context.write_descriptor_set(&descriptor_set);
+        // cmd_buffer.bind_descriptor_set_handle(PipelineType::Graphics, root_signature, 0, handle);
+
+        // let mut pipeline =
+        //     crate::hl_gfx_api::GraphicsPipeline::<cgen::pipeline_layout::EguiPipelineLayout>::new();
+        // pipeline.set_pipeline(&self.pipelines[0]);
+        // pipeline.data_mut().set_descriptor_set(handle);
 
         for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
             if mesh.is_empty() {
@@ -250,18 +270,11 @@ impl EguiPass {
             );
 
             {
-                let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
-                descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
-                descriptor_set.set_font_sampler(&self.sampler);
-
-                let _handle = render_context.write_descriptor_set(&descriptor_set);
-
-                let mut pipeline_data =
-                    cgen::pipeline_layout::EguiPipelineLayout::new(&self.pipeline);
-                render_context.populate_pipeline_data(&mut pipeline_data);
-                pipeline_data.set_push_constant(&push_constant_data);
-                cmd_buffer.draw_indexed_with_data(&pipeline_data, mesh.indices.len() as u32, 0, 0);
+                // pipeline.data_mut().set_push_constant(&push_constant_data);
+                // pipeline.draw_indexed(cmd_buffer, mesh.indices.len() as u32, 0, 0);
             }
+            cmd_buffer.push_constant2(&push_constant_data);
+            cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
         }
     }
 }

@@ -126,6 +126,10 @@ impl<'a> Default for FrameDescriptorSet<'a> {
 }
 
 impl<'a> DescriptorSetDataProvider for FrameDescriptorSet<'a> {
+    fn frequency(&self) -> u32 {
+        Self::frequency()
+    }
+
     fn layout(&self) -> &'static DescriptorSetLayout {
         Self::descriptor_set_layout()
     }

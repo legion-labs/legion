@@ -492,7 +492,6 @@ impl Default for DescriptorSetLayoutDef {
 
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
-    pub used_in_shader_stages: ShaderStageFlags,
     pub size: u32,
 }
 

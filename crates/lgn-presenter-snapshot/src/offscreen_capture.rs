@@ -189,7 +189,7 @@ impl OffscreenHelper {
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
         let render_texture = &self.render_image;
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;

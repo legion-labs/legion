@@ -3,7 +3,7 @@
 use std::{mem, ptr};
 
 use lgn_graphics_api::{
-    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Pipeline, RootSignature,
+    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, RootSignature,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
@@ -21,13 +21,12 @@ static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
 
 static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
 
-pub struct EguiPipelineLayout<'a> {
-    pipeline: &'a Pipeline,
+pub struct EguiPipelineLayout {
     descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],
     push_constant: EguiPushConstantData,
 }
 
-impl<'a> EguiPipelineLayout<'a> {
+impl EguiPipelineLayout {
     #[allow(unsafe_code)]
     pub fn initialize(
         device_context: &DeviceContext,
@@ -60,13 +59,8 @@ impl<'a> EguiPipelineLayout<'a> {
         }
     }
 
-    pub fn new(pipeline: &'a Pipeline) -> Self {
-        assert_eq!(pipeline.root_signature(), Self::root_signature());
-        Self {
-            pipeline,
-            descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],
-            push_constant: EguiPushConstantData::default(),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn set_descriptor_set(&mut self, descriptor_set_handle: DescriptorSetHandle) {
@@ -77,9 +71,18 @@ impl<'a> EguiPipelineLayout<'a> {
     }
 }
 
-impl<'a> PipelineDataProvider for EguiPipelineLayout<'a> {
-    fn pipeline(&self) -> &Pipeline {
-        self.pipeline
+impl Default for EguiPipelineLayout {
+    fn default() -> Self {
+        Self {
+            descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],
+            push_constant: EguiPushConstantData::default(),
+        }
+    }
+}
+
+impl PipelineDataProvider for EguiPipelineLayout {
+    fn root_signature() -> &'static RootSignature {
+        EguiPipelineLayout::root_signature()
     }
 
     fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {
@@ -95,9 +98,5 @@ impl<'a> PipelineDataProvider for EguiPipelineLayout<'a> {
             )
         };
         Some(data_slice)
-    }
-
-    fn set_descriptor_set(&mut self, frequency: u32, descriptor_set: Option<DescriptorSetHandle>) {
-        self.descriptor_sets[frequency as usize] = descriptor_set;
     }
 }

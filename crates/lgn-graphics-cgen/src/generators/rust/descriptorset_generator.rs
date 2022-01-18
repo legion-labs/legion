@@ -315,6 +315,13 @@ fn generate_rust_descriptorset(
         ));
         writer.indent();
 
+        writer.add_line("fn frequency(&self) -> u32 {");
+        writer.indent();
+        writer.add_line("Self::frequency()");
+        writer.unindent();
+        writer.add_line("}");
+        writer.new_line();
+
         writer.add_line("fn layout(&self) -> &'static DescriptorSetLayout {");
         writer.indent();
         writer.add_line("Self::descriptor_set_layout()");

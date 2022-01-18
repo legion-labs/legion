@@ -323,7 +323,7 @@ impl PickingRenderPass {
         );
         push_constant_data.set_picking_distance(picking_distance.into());
 
-        cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
+        cmd_buffer.push_constant(self.pipeline.root_signature(), &push_constant_data);
 
         cmd_buffer.draw(static_mesh.num_verticies, 0);
     }
@@ -348,7 +348,7 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            let cmd_buffer = render_context.alloc_command_buffer();
+            let mut cmd_buffer = render_context.alloc_command_buffer();
 
             render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
 

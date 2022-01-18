@@ -426,8 +426,7 @@ impl Renderer {
             push_constant_def: shader_build_result
                 .pipeline_reflection
                 .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
+                .map(|x| PushConstantDef {                                        
                     size: x.size,
                 }),
         };

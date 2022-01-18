@@ -93,7 +93,7 @@ impl TmpRenderPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
         camera: &CameraComponent,
@@ -228,7 +228,7 @@ impl TmpRenderPass {
             push_constant_data.set_is_picked(if picked_component.is_some() { 1 } else { 0 }.into());
             push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
 
-            cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
+            cmd_buffer.push_constant(self.pipeline.root_signature(), &push_constant_data);
 
             cmd_buffer.draw(static_mesh.num_verticies, 0);
 

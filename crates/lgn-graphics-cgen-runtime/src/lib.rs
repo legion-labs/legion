@@ -58,8 +58,8 @@
 
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetLayoutDef,
-    DeviceContext, Pipeline, PushConstantDef, RootSignature, RootSignatureDef, Sampler,
-    ShaderResourceType, ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DeviceContext, PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
+    TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use half::prelude::*;
@@ -340,7 +340,7 @@ pub mod prelude {
 
 pub struct CGenTypeDef {
     pub name: &'static str,
-    pub id: u32,
+    pub id: u32,    
     pub size: usize,
 }
 
@@ -472,8 +472,7 @@ impl CGenPipelineLayoutDef {
         descriptor_set_layouts: &[&DescriptorSetLayout],
         push_constant_def: Option<&CGenTypeDef>,
     ) -> RootSignature {
-        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {
-            used_in_shader_stages: ShaderStageFlags::all(),
+        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {            
             size: u32::try_from(ty_def.size).unwrap(),
         });
 
@@ -501,8 +500,7 @@ pub trait CGenPipelineLayoutInfo {
 }
 
 pub trait PipelineDataProvider {
-    fn pipeline(&self) -> &Pipeline;
+    fn root_signature() -> &'static RootSignature;
     fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle>;
     fn push_constant(&self) -> Option<&[u8]>;
-    fn set_descriptor_set(&mut self, frequency: u32, descriptor_set: Option<DescriptorSetHandle>);
 }

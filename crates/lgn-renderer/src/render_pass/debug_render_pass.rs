@@ -2,7 +2,7 @@ use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DescriptorRef, FillMode, Format,
     GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, PrimitiveTopology, RasterizerState,
-    ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
+    ResourceUsage, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub struct DebugRenderPass {
-    root_signature: RootSignature,
+    // root_signature: RootSignature,
     _solid_pso_depth: Pipeline,
     wire_pso_depth: Pipeline,
     solid_pso_nodepth: Pipeline,
@@ -144,7 +144,6 @@ impl DebugRenderPass {
             .unwrap();
 
         Self {
-            root_signature,
             _solid_pso_depth: solid_pso_depth,
             wire_pso_depth,
             solid_pso_nodepth,
@@ -157,7 +156,7 @@ impl DebugRenderPass {
         pipeline: &Pipeline,
         view_data: &cgen::cgen_type::ViewData,
         constant_data: &cgen::cgen_type::ConstData,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
     ) {
         cmd_buffer.bind_pipeline(pipeline);
@@ -211,7 +210,7 @@ impl DebugRenderPass {
 
         cmd_buffer.bind_descriptor_set_handle(
             PipelineType::Graphics,
-            &self.root_signature,
+            pipeline.root_signature(),
             descriptor_set_layout.definition().frequency,
             descriptor_set_handle,
         );
@@ -219,6 +218,7 @@ impl DebugRenderPass {
 
     pub fn render_mesh(
         &self,
+        pipeline: &Pipeline,
         mesh_id: u32,
         cmd_buffer: &HLCommandBuffer<'_>,
         default_meshes: &DefaultMeshes,
@@ -227,7 +227,7 @@ impl DebugRenderPass {
 
         push_constant_data.set_vertex_offset(default_meshes.mesh_offset_from_id(mesh_id).into());
 
-        cmd_buffer.push_constants(&self.root_signature, &push_constant_data);
+        cmd_buffer.push_constant(pipeline.root_signature(), &push_constant_data);
 
         cmd_buffer.draw(
             default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
@@ -238,7 +238,7 @@ impl DebugRenderPass {
     pub fn render_ground_plane(
         &self,
         view_data: &cgen::cgen_type::ViewData,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
@@ -255,6 +255,7 @@ impl DebugRenderPass {
         );
 
         self.render_mesh(
+            &self.wire_pso_depth,
             DefaultMeshId::GroundPlane as u32,
             cmd_buffer,
             default_meshes,
@@ -267,7 +268,7 @@ impl DebugRenderPass {
         mesh_id: u32,
         transform: &Transform,
         view_data: &cgen::cgen_type::ViewData,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
@@ -310,6 +311,7 @@ impl DebugRenderPass {
         );
 
         self.render_mesh(
+            &self.wire_pso_depth,
             DefaultMeshId::WireframeCube as u32,
             cmd_buffer,
             default_meshes,
@@ -321,7 +323,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         view_data: &cgen::cgen_type::ViewData,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         debug_display: &mut DebugDisplay,
         default_meshes: &DefaultMeshes,
     ) {
@@ -344,7 +346,12 @@ impl DebugRenderPass {
                 render_context,
             );
 
-            self.render_mesh(mesh_id as u32, cmd_buffer, default_meshes);
+            self.render_mesh(
+                &self.wire_pso_depth,
+                mesh_id as u32,
+                cmd_buffer,
+                default_meshes,
+            );
         });
 
         debug_display.clear_display_lists();
@@ -354,7 +361,7 @@ impl DebugRenderPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
         manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
@@ -433,7 +440,12 @@ impl DebugRenderPass {
                     render_context,
                 );
 
-                self.render_mesh(static_mesh.mesh_id as u32, cmd_buffer, default_meshes);
+                self.render_mesh(
+                    &self.solid_pso_nodepth,
+                    static_mesh.mesh_id as u32,
+                    cmd_buffer,
+                    default_meshes,
+                );
             }
         }
 

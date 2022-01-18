@@ -11,6 +11,7 @@ use crate::{
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
+    hash: u64,
     set_index: u32,
     binding_mask: u64,
 
@@ -94,12 +95,16 @@ impl DescriptorSetLayout {
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
+        let mut hasher = fnv::FnvHasher::default();
+        definition.hash(&mut hasher);
+
         let result = Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
                     definition: definition.clone(),
+                    hash: hasher.finish(),
                     set_index: definition.frequency,
                     binding_mask,
                     #[cfg(any(feature = "vulkan"))]
@@ -116,5 +121,11 @@ impl DescriptorSetLayout {
 impl Hash for DescriptorSetLayout {
     fn hash<H: Hasher>(&self, mut state: &mut H) {
         self.inner.definition.hash(&mut state);
+    }
+}
+
+impl PartialEq for DescriptorSetLayout {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.hash == other.inner.hash
     }
 }

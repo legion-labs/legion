@@ -62,10 +62,6 @@ impl RootSignature {
         &self.inner.device_context
     }
 
-    // pub fn pipeline_type(&self) -> PipelineType {
-    //     self.inner.definition.pipeline_type
-    // }
-
     pub fn definition(&self) -> &RootSignatureDef {
         &self.inner.definition
     }

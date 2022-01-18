@@ -11,8 +11,9 @@ use crate::{
 // DescriptorSetDataProvider
 //
 
-pub trait DescriptorSetDataProvider {
+pub trait DescriptorSetDataProvider {    
     fn layout(&self) -> &'static DescriptorSetLayout;
+    fn frequency(&self) -> u32;
     fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'_>];
 }
 

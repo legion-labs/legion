@@ -1,10 +1,7 @@
-use std::cell::RefCell;
-
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, QueueType, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DescriptorSetWriter, QueueType,
 };
-use lgn_graphics_cgen_runtime::PipelineDataProvider;
 
 use crate::{
     hl_gfx_api::{HLCommandBuffer, HLQueue},
@@ -21,7 +18,6 @@ pub struct RenderContext<'frame> {
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
-    descriptor_sets: RefCell<[Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS]>,
 }
 
 impl<'frame> RenderContext<'frame> {
@@ -40,7 +36,6 @@ impl<'frame> RenderContext<'frame> {
                 ),
             ),
             bump_allocator: renderer.acquire_bump_allocator(),
-            descriptor_sets: RefCell::new([None; MAX_DESCRIPTOR_SET_LAYOUTS]),
         }
     }
 
@@ -56,7 +51,11 @@ impl<'frame> RenderContext<'frame> {
     }
 
     pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
-        HLCommandBuffer::new(&self.cmd_buffer_pool)
+        HLCommandBuffer::new(
+            &self.descriptor_pool,
+            &self.bump_allocator,
+            &self.cmd_buffer_pool,
+        )
     }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
@@ -68,7 +67,7 @@ impl<'frame> RenderContext<'frame> {
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
     ) -> DescriptorSetWriter<'_> {
-        let bump = self.bump_allocator().bumpalo();
+        let bump = self.bump_allocator.bumpalo();
         if let Ok(writer) = self
             .descriptor_pool
             .allocate_descriptor_set(descriptor_set_layout, bump)
@@ -84,23 +83,14 @@ impl<'frame> RenderContext<'frame> {
         &self,
         descriptor_set: &impl DescriptorSetDataProvider,
     ) -> DescriptorSetHandle {
-        let bump = self.bump_allocator().bumpalo();
+        let bump = self.bump_allocator.bumpalo();
         if let Ok(handle) = self
             .descriptor_pool
             .write_descriptor_set(descriptor_set, bump)
         {
-            let mut descriptor_sets = self.descriptor_sets.borrow_mut();
-            descriptor_sets[descriptor_set.layout().definition().frequency as usize] = Some(handle);
             handle
         } else {
             todo!("Descriptor OOM! ")
-        }
-    }
-
-    pub fn populate_pipeline_data(&self, pipeline_data: &mut impl PipelineDataProvider) {
-        let descriptor_sets = self.descriptor_sets.borrow();
-        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS as u32 {
-            pipeline_data.set_descriptor_set(i, descriptor_sets[i as usize]);
         }
     }
 

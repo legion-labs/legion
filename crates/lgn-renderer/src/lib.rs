@@ -428,7 +428,7 @@ fn render_update(
         }
         */
 
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
         picking_pass.render(
@@ -446,7 +446,7 @@ fn render_update(
         let render_pass = render_pass.write();
         render_pass.render(
             &render_context,
-            &cmd_buffer,
+            &mut cmd_buffer,
             render_surface.as_mut(),
             q_drawables.as_slice(),
             camera_component,
@@ -457,7 +457,7 @@ fn render_update(
         let debug_renderpass = debug_renderpass.write();
         debug_renderpass.render(
             &render_context,
-            &cmd_buffer,
+            &mut cmd_buffer,
             render_surface.as_mut(),
             q_debug_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
@@ -470,7 +470,12 @@ fn render_update(
         let mut egui_pass = egui_pass.write();
         egui_pass.update_font_texture(&render_context, &cmd_buffer, &egui.ctx);
         if egui.enable {
-            egui_pass.render(&render_context, &cmd_buffer, render_surface.as_mut(), &egui);
+            egui_pass.render(
+                &render_context,
+                &mut cmd_buffer,
+                render_surface.as_mut(),
+                &egui,
+            );            
         }
 
         // queue
