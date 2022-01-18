@@ -1,17 +1,11 @@
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use lgn_source_control::IndexBackend;
 
 #[cfg(not(target_os = "windows"))]
 mod filesystem;
-
-#[cfg(not(target_os = "windows"))]
-use filesystem::SourceControlFilesystem;
-#[cfg(not(target_os = "windows"))]
-use fuser::MountOption;
-use tokio::sync::Semaphore;
 
 /// Implements all the running logic, so that we can easily conditionally
 /// compile it for UNIX systems only.
@@ -19,6 +13,16 @@ use tokio::sync::Semaphore;
 /// # Errors
 ///
 /// This function will return an error if the filesystem cannot be mounted.
+///
+#[cfg_attr(
+    windows,
+    allow(
+        unused_variables,
+        unreachable_code,
+        clippy::unused_async,
+        clippy::unimplemented
+    )
+)]
 pub async fn run(
     index_backend: Box<dyn IndexBackend>,
     branch: String,
@@ -29,6 +33,11 @@ pub async fn run(
 
     #[cfg(not(target_os = "windows"))]
     {
+        use anyhow::Context;
+        use filesystem::SourceControlFilesystem;
+        use fuser::MountOption;
+        use tokio::sync::Semaphore;
+
         let fs = SourceControlFilesystem::new(index_backend, branch);
         let options = vec![MountOption::RO, MountOption::FSName("hello".to_string())];
 
