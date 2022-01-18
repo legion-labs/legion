@@ -2,6 +2,7 @@
   import { ServerType } from "@lgn/frontend/src/api";
   import { Resolution } from "@lgn/frontend/src/lib/types";
   import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
+  import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
   import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
   import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
   import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
@@ -14,6 +15,12 @@
   import log from "@lgn/frontend/src/lib/log";
   import { unflatten } from "@/lib/hierarchyTree";
   import asyncStore from "@lgn/frontend/src/stores/asyncStore";
+  import contextMenu from "@/actions/contextMenu";
+  import contextMenuStore from "@/stores/contextMenu";
+  import contextMenuEntries from "@/data/contextMenu";
+  import { fakeFileSystemEntries } from "@/data/fake";
+
+  contextMenuStore.register("resource", contextMenuEntries);
 
   const { data: currentResourceData } = currentResource;
 
@@ -58,6 +65,8 @@
   }
 </script>
 
+<ContextMenu {contextMenuStore} />
+
 <div class="root">
   <TopBar />
   <div class="content-wrapper">
@@ -101,8 +110,27 @@
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
-                <HierarchyTree entries={unflatten($allResourcesData)} />
+                <HierarchyTree entries={unflatten($allResourcesData)}>
+                  <div
+                    let:itemName
+                    use:contextMenu={{ name: "resource", payload: itemName }}
+                    class="h-full w-full"
+                    slot="itemName"
+                  >
+                    {itemName}
+                  </div>
+                </HierarchyTree>
               {/if}
+              <HierarchyTree entries={fakeFileSystemEntries}>
+                <div
+                  let:itemName
+                  use:contextMenu={{ name: "resource", payload: itemName }}
+                  class="h-full w-full"
+                  slot="itemName"
+                >
+                  {itemName}
+                </div>
+              </HierarchyTree>
             </div>
           </Panel>
         </div>

@@ -129,11 +129,11 @@
   }
 
   .menu-dropdown {
-    @apply absolute top-7 rounded-b-sm;
+    @apply absolute top-7 rounded-b-sm shadow-xl;
   }
 
   .menu-dropdown-items {
-    @apply bg-gray-800 py-1;
+    @apply bg-gray-800 py-1 rounded-b-sm;
   }
 
   .menu-dropdown-item {

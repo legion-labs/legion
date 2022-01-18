@@ -8,6 +8,10 @@
 
   type Item = $$Generic;
 
+  type $$Slots = {
+    itemName: { itemName: string };
+  };
+
   const dispatch = createEventDispatcher<{
     select: Item;
     nameChange: { item: Item; newName: string };
@@ -106,7 +110,7 @@
     {/if}
     <div class="name">
       {#if mode === "view"}
-        <div>{name}</div>
+        <slot name="itemName" itemName={name} />
       {:else}
         <form on:submit={renameFile} on:keydown={cancelEdition}>
           <TextInput autoFocus autoSelect size="sm" bind:value={nameValue} />
@@ -124,7 +128,10 @@
           {itemsAreIdentical}
           on:select
           on:nameChange
-        />
+          let:itemName
+        >
+          <slot name="itemName" slot="itemName" {itemName} />
+        </svelte:self>
       </div>
     {/each}
   {/if}
@@ -136,7 +143,7 @@
   }
 
   .name {
-    @apply flex items-center h-7 px-1 cursor-pointer border border-transparent;
+    @apply flex items-center h-7 w-full px-1 cursor-pointer border border-transparent;
   }
 
   .name.active-view {
