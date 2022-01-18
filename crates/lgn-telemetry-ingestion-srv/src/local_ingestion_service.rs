@@ -1,7 +1,7 @@
-use std::io::Write;
-use std::{fs::OpenOptions, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use lgn_blob_storage::{BlobStorage, LocalBlobStorage};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
 use lgn_telemetry_proto::ingestion::InsertReply;
 use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
@@ -15,14 +15,14 @@ use crate::local_telemetry_db::create_tables;
 
 pub struct LocalIngestionService {
     db_pool: sqlx::any::AnyPool,
-    blocks_dir: PathBuf,
+    blob_storage: LocalBlobStorage,
 }
 
 impl LocalIngestionService {
-    pub fn new(db_pool: sqlx::AnyPool, blocks_dir: PathBuf) -> Self {
+    pub fn new(db_pool: sqlx::AnyPool, blob_storage: LocalBlobStorage) -> Self {
         Self {
             db_pool,
-            blocks_dir,
+            blob_storage,
         }
     }
 }
@@ -56,10 +56,7 @@ async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
 
 pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<LocalIngestionService> {
     let blocks_folder = path.join("blobs");
-    if !blocks_folder.exists() {
-        std::fs::create_dir_all(&blocks_folder)
-            .with_context(|| format!("Error creating blocks folder {}", blocks_folder.display()))?;
-    }
+    let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
     let db_path = path.join("telemetry.db3");
     let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
     if !sqlx::Any::database_exists(&db_uri)
@@ -76,7 +73,7 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<LocalIngestionS
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     migrate_db(&mut connection).await?;
-    Ok(LocalIngestionService::new(pool, blocks_folder))
+    Ok(LocalIngestionService::new(pool, blob_storage))
 }
 
 #[tonic::async_trait]
@@ -195,24 +192,15 @@ impl TelemetryIngestion for LocalIngestionService {
 
         let encoded_payload = payload.encode_to_vec();
         if encoded_payload.len() >= 128 * 1024 {
-            let block_path = self.blocks_dir.join(&block.block_id);
-            //todo: use async-aware file I/O
-            match OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&block_path)
+            if let Err(e) = self
+                .blob_storage
+                .write_blob(&block.block_id, &encoded_payload)
+                .await
             {
-                Ok(mut file) => {
-                    if let Err(e) = file.write_all(&encoded_payload) {
-                        return Err(Status::internal(format!("Error writing block file: {}", e)));
-                    }
-                }
-                Err(e) => {
-                    return Err(Status::internal(format!(
-                        "Error creating block file: {}",
-                        e
-                    )));
-                }
+                return Err(Status::internal(format!(
+                    "Error writing block to blob storage: {}",
+                    e
+                )));
             }
         } else if let Err(e) = sqlx::query("INSERT INTO payloads values(?,?);")
             .bind(block.block_id.clone())

@@ -9,6 +9,7 @@ default-run = "telemetry-ingestion-srv"
 clap = { version = "3.0", features = ["derive"] }
 tonic = "0.6"
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }

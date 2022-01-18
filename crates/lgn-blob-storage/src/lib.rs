@@ -84,21 +84,21 @@ pub struct BlobStats {
 /// and writes.
 #[async_trait]
 pub trait StreamingBlobStorage: Send + Sync {
-    async fn blob_exists(&self, hash: &str) -> Result<bool> {
-        self.get_blob_info(hash).await.map(|info| info.is_some())
+    async fn blob_exists(&self, name: &str) -> Result<bool> {
+        self.get_blob_info(name).await.map(|info| info.is_some())
     }
 
     /// Read information about a blob.
     ///
     /// If the blob does not exist, Ok(None) is returned.
-    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>>;
+    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>>;
 
     /// Reads a blob from the storage.
     ///
     /// If no such blob exists, Error::NoSuchBlob is returned.
     ///
     /// In any other case, an error is returned.
-    async fn get_blob_reader(&self, hash: &str) -> Result<BoxedAsyncRead>;
+    async fn get_blob_reader(&self, name: &str) -> Result<BoxedAsyncRead>;
 
     /// Writes a blob to the storage.
     ///
@@ -106,58 +106,58 @@ pub trait StreamingBlobStorage: Send + Sync {
     /// required.
     ///
     /// In any other case, an error is returned.
-    async fn get_blob_writer(&self, hash: &str) -> Result<Option<BoxedAsyncWrite>>;
+    async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>>;
 }
 
 #[async_trait]
 pub trait BlobStorage: Send + Sync {
-    async fn blob_exists(&self, hash: &str) -> Result<bool> {
-        self.get_blob_info(hash).await.map(|info| info.is_some())
+    async fn blob_exists(&self, name: &str) -> Result<bool> {
+        self.get_blob_info(name).await.map(|info| info.is_some())
     }
 
     /// Read information about a blob.
     ///
     /// If the blob does not exist, Ok(None) is returned.
-    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>>;
+    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>>;
 
     /// Reads the the full contents of a blob from the storage.
-    async fn read_blob(&self, hash: &str) -> Result<Vec<u8>>;
+    async fn read_blob(&self, name: &str) -> Result<Vec<u8>>;
 
     /// Writes the full contents of a blob to the storage.
     /// warning: nothing prevents a reader from accessing a partially written blob.
-    async fn write_blob(&self, hash: &str, content: &[u8]) -> Result<()>;
+    async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()>;
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
-    async fn download_blob(&self, path: &Path, hash: &str) -> Result<()>;
+    async fn download_blob(&self, path: &Path, name: &str) -> Result<()>;
 }
 
 /// Blanket implementation for all blob streaming storage backends.
 #[async_trait]
 impl<T: StreamingBlobStorage> BlobStorage for T {
-    async fn get_blob_info(&self, hash: &str) -> Result<Option<BlobStats>> {
-        StreamingBlobStorage::get_blob_info(self, hash).await
+    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>> {
+        StreamingBlobStorage::get_blob_info(self, name).await
     }
 
     /// Reads the the full contents of a blob from the storage.
-    async fn read_blob(&self, hash: &str) -> Result<Vec<u8>> {
-        let mut reader = self.get_blob_reader(hash).await?;
+    async fn read_blob(&self, name: &str) -> Result<Vec<u8>> {
+        let mut reader = self.get_blob_reader(name).await?;
         let mut contents = Vec::new();
 
         reader.read_to_end(&mut contents).await.map_err(|e| {
-            Error::forward_with_context(e, format!("could not read blob: {}", hash))
+            Error::forward_with_context(e, format!("could not read blob: {}", name))
         })?;
 
         Ok(contents)
     }
 
     /// Writes the full contents of a blob to the storage.
-    async fn write_blob(&self, hash: &str, content: &[u8]) -> Result<()> {
-        let writer = self.get_blob_writer(hash).await?;
+    async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()> {
+        let writer = self.get_blob_writer(name).await?;
 
         if let Some(mut writer) = writer {
             writer.write_all(content).await.map_err(|e| {
-                Error::forward_with_context(e, format!("could not write blob: {}", hash))
+                Error::forward_with_context(e, format!("could not write blob: {}", name))
             })?;
         }
 
@@ -166,8 +166,8 @@ impl<T: StreamingBlobStorage> BlobStorage for T {
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
-    async fn download_blob(&self, path: &Path, hash: &str) -> Result<()> {
-        let mut reader = self.get_blob_reader(hash).await?;
+    async fn download_blob(&self, path: &Path, name: &str) -> Result<()> {
+        let mut reader = self.get_blob_reader(name).await?;
         let mut writer = tokio::fs::File::create(path).await.map_err(|e| {
             Error::forward_with_context(
                 e,
@@ -178,7 +178,7 @@ impl<T: StreamingBlobStorage> BlobStorage for T {
         tokio::io::copy(&mut reader, &mut writer)
             .await
             .map_err(|e| {
-                Error::forward_with_context(e, format!("could not copy blob data: {}", hash))
+                Error::forward_with_context(e, format!("could not copy blob data: {}", name))
             })?;
 
         Ok(())

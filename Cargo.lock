@@ -8412,6 +8412,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap 3.0.7",
+ "lgn-blob-storage",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
