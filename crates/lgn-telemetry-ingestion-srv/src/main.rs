@@ -10,8 +10,8 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-mod local_data_lake;
 mod ingestion_service;
+mod local_data_lake;
 mod local_telemetry_db;
 
 use std::path::PathBuf;

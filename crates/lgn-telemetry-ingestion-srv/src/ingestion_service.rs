@@ -6,12 +6,12 @@ use lgn_tracing::{error, info};
 use prost::Message;
 use tonic::{Request, Response, Status};
 
-pub struct LocalIngestionService {
+pub struct IngestionService {
     db_pool: sqlx::any::AnyPool,
     blob_storage: LocalBlobStorage,
 }
 
-impl LocalIngestionService {
+impl IngestionService {
     pub fn new(db_pool: sqlx::AnyPool, blob_storage: LocalBlobStorage) -> Self {
         Self {
             db_pool,
@@ -21,7 +21,7 @@ impl LocalIngestionService {
 }
 
 #[tonic::async_trait]
-impl TelemetryIngestion for LocalIngestionService {
+impl TelemetryIngestion for IngestionService {
     async fn insert_process(
         &self,
         request: Request<Process>,

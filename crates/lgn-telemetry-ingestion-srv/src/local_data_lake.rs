@@ -5,7 +5,7 @@ use sqlx::migrate::MigrateDatabase;
 use std::path::PathBuf;
 
 use crate::{
-    ingestion_service::LocalIngestionService,
+    ingestion_service::IngestionService,
     local_telemetry_db::{create_tables, read_schema_version},
 };
 
@@ -20,7 +20,7 @@ async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
     Ok(())
 }
 
-pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<LocalIngestionService> {
+pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionService> {
     let blocks_folder = path.join("blobs");
     let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
     let db_path = path.join("telemetry.db3");
@@ -39,5 +39,5 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<LocalIngestionS
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     migrate_db(&mut connection).await?;
-    Ok(LocalIngestionService::new(pool, blob_storage))
+    Ok(IngestionService::new(pool, blob_storage))
 }
