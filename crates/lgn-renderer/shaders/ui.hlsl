@@ -11,15 +11,6 @@ struct VertexOut {
     float2 uv : TEXCOORD;
     float4 color : COLOR;
 };
-/*
-[[vk::binding(0)]]
-Texture2D font_texture : register(t0);
-[[vk::binding(1)]]
-SamplerState font_sampler : register(s0);
-
-[[vk::push_constant]]
-ConstantBuffer<EguiPushConstantData> push_constant;
-*/
 
 // See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.
 float3 linear_from_srgb(float3 srgb) {
