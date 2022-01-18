@@ -11,8 +11,8 @@ lazy_static! {
         AsyncReverseSingleLock::new(&TERMINATION_RWLOCK);
 }
 
-/// `ReverseSingleLock` is a lock that is created locked and that can only be
-/// unlocked once.
+/// `AsyncTerminationHandler` registers itself as a Ctrl-C handler and is
+/// blocked until the signal is received.
 pub struct AsyncTerminationHandler {
     rwlock: &'static AsyncReverseSingleLock<'static, ()>,
 }
@@ -24,20 +24,20 @@ impl AsyncTerminationHandler {
 
     fn new_with_lock(rwlock: &'static AsyncReverseSingleLock<'static, ()>) -> anyhow::Result<Self> {
         ctrlc::set_handler(move || {
-            if rwlock.unlock().is_some() {
+            if rwlock.unlock() {
                 info!("the termination handler was just triggered");
             } else {
                 warn!("the termination handler was just re-triggered");
             }
         })
-        .context("setting up termination handler")?;
+        .context("failed to setup termination handler")?;
 
-        info!("a termination handler was setup successfully");
+        info!("A termination handler was setup successfully.");
 
         Ok(Self { rwlock })
     }
 
-    pub fn try_wait(&self) -> Option<()> {
+    pub fn try_wait(&self) -> bool {
         self.rwlock.try_wait()
     }
 
@@ -54,7 +54,7 @@ mod tests {
     async fn test_async_termination_handler() -> anyhow::Result<()> {
         let handler = AsyncTerminationHandler::new()?;
 
-        assert!(handler.try_wait().is_none());
+        assert!(!handler.try_wait());
 
         tokio::select! {
             biased;

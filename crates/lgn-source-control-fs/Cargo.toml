@@ -1,5 +1,5 @@
 [package]
-name = "vm-agent"
+name = "lgn-source-control-fs"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -8,9 +8,18 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0" }
+anyhow = "1"
+clap = { version = "3.0", features = ["derive"] }
+libc = "0.2"
+lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
-clap = { version = "3.0", features = ["derive"] }
-anyhow = "1.0.44"
+lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
+
+[target.'cfg(unix)'.dependencies]
+fuser = "0.10"
+users = "0.11"
+
+[dev-dependencies]
+lgn-test-utils = { path = "../lgn-test-utils", version = "0.1.0" }
