@@ -6,6 +6,8 @@ use lgn_ecs::{
     world::{FromWorld, World},
 };
 
+/// Holds a reference to the parent entity of this entity.
+/// This component should only be present on entities that actually have a parent entity.
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Parent(pub Entity);
 
@@ -16,7 +18,7 @@ pub struct Parent(pub Entity);
 // this.
 impl FromWorld for Parent {
     fn from_world(_world: &mut World) -> Self {
-        Self(Entity::new(u32::MAX))
+        Self(Entity::from_raw(u32::MAX))
     }
 }
 
@@ -41,6 +43,7 @@ impl DerefMut for Parent {
     }
 }
 
+/// Component that holds the [`Parent`] this entity had previously
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct PreviousParent(pub(crate) Entity);
 
@@ -54,6 +57,6 @@ impl MapEntities for PreviousParent {
 // TODO: Better handle this case see `impl FromWorld for Parent`
 impl FromWorld for PreviousParent {
     fn from_world(_world: &mut World) -> Self {
-        Self(Entity::new(u32::MAX))
+        Self(Entity::from_raw(u32::MAX))
     }
 }

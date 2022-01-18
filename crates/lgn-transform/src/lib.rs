@@ -1,6 +1,7 @@
 //! Legion Transform
 //!
 //! TODO: write documentation.
+#![doc = include_str!("../README.md")]
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -56,12 +57,16 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::needless_pass_by_value)]
+//#![allow()]
 
+/// The basic components of the transform crate
 pub mod components;
+/// Establishing and updating the transform hierarchy
 pub mod hierarchy;
+/// Propagating transform changes down the transform hierarchy
 pub mod transform_propagate_system;
 
+#[doc(hidden)]
 pub mod prelude {
     #[doc(hidden)]
     pub use crate::{components::*, hierarchy::*, TransformPlugin};
@@ -71,12 +76,16 @@ use lgn_app::prelude::*;
 use lgn_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
 use prelude::parent_update_system;
 
+/// The base plugin for handling [`Transform`] components
 #[derive(Default)]
 pub struct TransformPlugin;
 
+/// Label enum for the types of systems relating to transform
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
 pub enum TransformSystem {
+    /// Propagates changes in transform to childrens' [`GlobalTransform`]
     TransformPropagate,
+    /// Updates [`Parent`] when changes in the hierarchy occur
     ParentUpdate,
 }
 

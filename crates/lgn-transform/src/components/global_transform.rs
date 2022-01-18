@@ -40,8 +40,11 @@ use super::Transform;
 /// a 1 frame lag before the [`GlobalTransform`] is updated.
 #[derive(Component, Debug, PartialEq, Clone, Copy)]
 pub struct GlobalTransform {
+    /// The position of the global transform
     pub translation: Vec3,
+    /// The rotation of the global transform
     pub rotation: Quat,
+    /// The scale of the global transform
     pub scale: Vec3,
 }
 
@@ -143,13 +146,13 @@ impl GlobalTransform {
         self.rotation * Vec3::X
     }
 
-    /// Equivalent to `-local_x()`
+    /// Equivalent to [`-local_x()`][GlobalTransform::local_x]
     #[inline]
     pub fn left(&self) -> Vec3 {
         -self.local_x()
     }
 
-    /// Equivalent to `local_x()`
+    /// Equivalent to [`local_x()`][GlobalTransform::local_x]
     #[inline]
     pub fn right(&self) -> Vec3 {
         self.local_x()
@@ -161,13 +164,13 @@ impl GlobalTransform {
         self.rotation * Vec3::Y
     }
 
-    /// Equivalent to `local_y()`
+    /// Equivalent to [`local_y()`][GlobalTransform::local_y]
     #[inline]
     pub fn up(&self) -> Vec3 {
         self.local_y()
     }
 
-    /// Equivalent to `-local_y()`
+    /// Equivalent to [`-local_y()`][GlobalTransform::local_y]
     #[inline]
     pub fn down(&self) -> Vec3 {
         -self.local_y()
@@ -179,13 +182,13 @@ impl GlobalTransform {
         self.rotation * Vec3::Z
     }
 
-    /// Equivalent to `-local_z()`
+    /// Equivalent to [`-local_z()`][GlobalTransform::local_z]
     #[inline]
     pub fn forward(&self) -> Vec3 {
         -self.local_z()
     }
 
-    /// Equivalent to `local_z()`
+    /// Equivalent to [`local_z()`][GlobalTransform::local_z]
     #[inline]
     pub fn back(&self) -> Vec3 {
         self.local_z()

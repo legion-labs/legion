@@ -4,12 +4,9 @@ use std::{
     ops::Neg,
 };
 
-use crate::bytes_of;
-
-/// A wrapper type that enables ordering floats. This is a work around for the
-/// famous "rust float ordering" problem. By using it, you acknowledge that
-/// sorting NaN is undefined according to spec. This implementation treats NaN
-/// as the "smallest" float.
+/// A wrapper type that enables ordering floats. This is a work around for the famous "rust float
+/// ordering" problem. By using it, you acknowledge that sorting NaN is undefined according to spec.
+/// This implementation treats NaN as the "smallest" float.
 #[derive(Debug, Copy, Clone, PartialOrd)]
 pub struct FloatOrd(pub f32);
 
@@ -44,12 +41,12 @@ impl Hash for FloatOrd {
     fn hash<H: Hasher>(&self, state: &mut H) {
         if self.0.is_nan() {
             // Ensure all NaN representations hash to the same value
-            state.write(bytes_of(&f32::NAN));
+            state.write(bytemuck::bytes_of(&f32::NAN));
         } else if self.0 == 0.0 {
             // Ensure both zeroes hash to the same value
-            state.write(bytes_of(&0.0f32));
+            state.write(bytemuck::bytes_of(&0.0f32));
         } else {
-            state.write(bytes_of(&self.0));
+            state.write(bytemuck::bytes_of(&self.0));
         }
     }
 }

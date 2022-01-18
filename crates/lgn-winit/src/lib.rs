@@ -159,6 +159,10 @@ fn change_window(world: &mut World) {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_decorations(decorations);
                 }
+                lgn_window::WindowCommand::SetCursorIcon { icon } => {
+                    let window = winit_windows.get_window(id).unwrap();
+                    window.set_cursor_icon(converters::convert_cursor_icon(icon));
+                }
                 lgn_window::WindowCommand::SetCursorLockMode { locked } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window

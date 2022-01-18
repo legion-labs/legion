@@ -61,15 +61,18 @@
 extern crate proc_macro;
 
 mod attrs;
+mod shape;
 mod symbol;
 
 use std::{env, path::PathBuf};
 
 pub use attrs::*;
+pub use shape::*;
+pub use symbol::*;
+
 use cargo_manifest::{DepsSet, Manifest};
 use proc_macro::TokenStream;
 use quote::quote;
-pub use symbol::*;
 
 pub struct LegionManifest {
     manifest: Manifest,
@@ -90,22 +93,21 @@ impl Default for LegionManifest {
 }
 
 impl LegionManifest {
-    pub fn get_path(&self, name: &str) -> syn::Path {
+    pub fn maybe_get_path(&self, name: &str) -> Option<syn::Path> {
         const LEGION: &str = "legion";
-        const LEGION_INTERNAL: &str = "legion_internal";
 
         let find_in_deps = |deps: &DepsSet| -> Option<syn::Path> {
-            let package = if let Some(dep) = deps.get(LEGION) {
+            let package = if let Some(dep) = deps.get(name) {
+                return Some(Self::parse_str(dep.package().unwrap_or(name)));
+            } else if let Some(dep) = deps.get(LEGION) {
                 dep.package().unwrap_or(LEGION)
-            } else if let Some(dep) = deps.get(LEGION_INTERNAL) {
-                dep.package().unwrap_or(LEGION_INTERNAL)
             } else {
                 return None;
             };
 
-            let mut path = get_path(package);
-            if let Some(module) = name.strip_prefix("legion_") {
-                path.segments.push(parse_str(module));
+            let mut path = Self::parse_str::<syn::Path>(package);
+            if let Some(module) = name.strip_prefix("lgn_") {
+                path.segments.push(Self::parse_str(module));
             }
             Some(path)
         };
@@ -115,24 +117,22 @@ impl LegionManifest {
 
         deps.and_then(find_in_deps)
             .or_else(|| deps_dev.and_then(find_in_deps))
-            .unwrap_or_else(|| get_path(name))
     }
-}
+    pub fn get_path(&self, name: &str) -> syn::Path {
+        self.maybe_get_path(name)
+            .unwrap_or_else(|| Self::parse_str(name))
+    }
 
-fn get_path(path: &str) -> syn::Path {
-    parse_str(path)
-}
-
-fn parse_str<T: syn::parse::Parse>(path: &str) -> T {
-    syn::parse(path.parse::<TokenStream>().unwrap()).unwrap()
+    pub fn parse_str<T: syn::parse::Parse>(path: &str) -> T {
+        syn::parse(path.parse::<TokenStream>().unwrap()).unwrap()
+    }
 }
 
 /// Derive a label trait
 ///
 /// # Args
 ///
-/// - `input`: The [`syn::DeriveInput`] for struct that is deriving the label
-///   trait
+/// - `input`: The [`syn::DeriveInput`] for struct that is deriving the label trait
 /// - `trait_path`: The path [`syn::Path`] to the label trait
 #[allow(clippy::needless_pass_by_value)]
 pub fn derive_label(input: syn::DeriveInput, trait_path: syn::Path) -> TokenStream {
@@ -147,8 +147,8 @@ pub fn derive_label(input: syn::DeriveInput, trait_path: syn::Path) -> TokenStre
 
     (quote! {
         impl #impl_generics #trait_path for #ident #ty_generics #where_clause {
-            fn dyn_clone(&self) -> Box<dyn #trait_path> {
-                Box::new(Clone::clone(self))
+            fn dyn_clone(&self) -> std::boxed::Box<dyn #trait_path> {
+                std::boxed::Box::new(std::clone::Clone::clone(self))
             }
         }
     })

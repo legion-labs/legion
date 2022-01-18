@@ -9,6 +9,7 @@ use smallvec::SmallVec;
 
 use crate::components::{Children, Parent, PreviousParent};
 
+/// Updates parents when the hierarchy is changed
 pub fn parent_update_system(
     mut commands: Commands<'_, '_>,
     removed_parent_query: Query<'_, '_, (Entity, &PreviousParent), Without<Parent>>,
@@ -56,11 +57,10 @@ pub fn parent_update_system(
         // `children_additions`).
         if let Ok(mut new_parent_children) = children_query.get_mut(parent.0) {
             // This is the parent
-            debug_assert!(
-                !(*new_parent_children).0.contains(&entity),
-                "children already added"
-            );
-            (*new_parent_children).0.push(entity);
+            // PERF: Ideally we shouldn't need to check for duplicates
+            if !(*new_parent_children).0.contains(&entity) {
+                (*new_parent_children).0.push(entity);
+            }
         } else {
             // The parent doesn't have a children entity, lets add it
             children_additions
@@ -76,6 +76,8 @@ pub fn parent_update_system(
     for (e, v) in &children_additions {
         commands.entity(*e).insert(Children::with(v));
     }
+
+    drop(removed_parent_query);
 }
 #[cfg(test)]
 mod test {

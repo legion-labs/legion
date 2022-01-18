@@ -6,6 +6,7 @@ use lgn_ecs::{
 };
 use smallvec::SmallVec;
 
+/// Contains references to the child entities of this entity
 #[derive(Component, Default, Clone, Debug)]
 pub struct Children(pub(crate) SmallVec<[Entity; 8]>);
 
@@ -20,6 +21,7 @@ impl MapEntities for Children {
 }
 
 impl Children {
+    /// Builds and returns a [`Children`] component with the given entities
     pub fn with(entity: &[Entity]) -> Self {
         Self(SmallVec::from_slice(entity))
     }

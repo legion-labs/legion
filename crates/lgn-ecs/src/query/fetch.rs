@@ -26,7 +26,7 @@ use crate::{
 ///
 /// See [`Query`](crate::system::Query) for a primer on queries.
 ///
-/// # Basic `WorldQueries`
+/// # Basic [`WorldQuery`]'s
 ///
 /// Here is a small list of the most important world queries to know about where
 /// `C` stands for a [`Component`] and `WQ` stands for a [`WorldQuery`]:
@@ -687,7 +687,7 @@ pub struct OptionFetch<T> {
     matches: bool,
 }
 
-/// SAFETY: `OptionFetch` is read only because T is read only
+/// SAFETY: [`OptionFetch`] is read only because `T` is read only
 unsafe impl<T: ReadOnlyFetch> ReadOnlyFetch for OptionFetch<T> {}
 
 /// The [`FetchState`] of `Option<T>`.

@@ -12,11 +12,9 @@ use crate::{
 /// * Parallel, accepts non-exclusive systems.
 /// * At start, accepts exclusive systems; runs before parallel systems.
 /// * Before commands, accepts exclusive systems; runs after parallel systems,
-///   but before their
-/// command buffers are applied.
+///   but before their command buffers are applied.
 /// * At end, accepts exclusive systems; runs after parallel systems' command
-///   buffers have
-/// been applied.
+///   buffers have been applied.
 ///
 /// Systems can have one or more labels attached to them; other systems in the
 /// same group can then specify that they have to run before or after systems

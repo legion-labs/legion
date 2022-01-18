@@ -124,7 +124,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
             .clone();
         compute_pool.scope(|scope| {
             self.prepare_systems(scope, systems, world);
-            scope.spawn(async {
+            let parallel_executor = async {
                 // All systems have been ran if there are no queued or running systems.
                 while 0 != self.queued.count_ones(..) + self.running.count_ones(..) {
                     self.process_queued_systems().await;
@@ -146,7 +146,9 @@ impl ParallelSystemExecutor for ParallelExecutor {
                     }
                     self.update_counters_and_queue_systems();
                 }
-            });
+            };
+            span_scope!("parallel executor");
+            scope.spawn(parallel_executor);
         });
     }
 }
@@ -194,8 +196,9 @@ impl ParallelExecutor {
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
                 // TODO: add system name to async trace scope
-                // #[cfg(feature = "trace")] // NB: outside the task to get the TLS current span
+                // // NB: outside the task to get the TLS current span
                 // let system_span = info_span!("system", name = &*system.name());
+                // let overhead_span = info_span!("system overhead", name = &*system.name());
                 let task = async move {
                     start_receiver
                         .recv()
@@ -203,19 +206,19 @@ impl ParallelExecutor {
                         .unwrap_or_else(|error| unreachable!(error));
                     // TODO: add system name to async trace scope
                     // span_scope!();
-                    // #[cfg(feature = "trace")]
                     // let system_guard = system_span.enter();
                     {
                         span_scope!("prepare_systems::run_unsafe");
                         unsafe { system.run_unsafe((), world) };
                     }
-                    // #[cfg(feature = "trace")]
                     // drop(system_guard);
                     finish_sender
                         .send(index)
                         .await
                         .unwrap_or_else(|error| unreachable!(error));
                 };
+
+                // let task = task.instrument(overhead_span);
                 if system_data.is_send {
                     scope.spawn(task);
                 } else {

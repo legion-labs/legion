@@ -123,7 +123,7 @@ impl PickingManager {
                 picked_pos: Vec2::ZERO,
                 current_picking_data: Vec::new(),
                 current_type: ManipulatorType::Position,
-                manipulated_entity: Entity::new(u32::MAX),
+                manipulated_entity: Entity::from_raw(u32::MAX),
             })),
         }
     }
@@ -295,7 +295,7 @@ impl PickingManager {
 
         if inner.picking_state == PickingState::Processing {
             if inner.current_picking_data.is_empty() {
-                inner.manipulated_entity = Entity::new(u32::MAX);
+                inner.manipulated_entity = Entity::from_raw(u32::MAX);
             }
 
             let mut picked_entities = Vec::with_capacity(inner.current_picking_data.len());

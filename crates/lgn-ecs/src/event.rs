@@ -65,6 +65,10 @@ enum State {
 /// Each event can be consumed by multiple systems, in parallel,
 /// with consumption tracked by the [`EventReader`] on a per-system basis.
 ///
+/// If no [ordering](https://github.com/bevyengine/bevy/blob/main/examples/ecs/ecs_guide.rs)
+/// is applied between writing and reading systems, there is a risk of a race condition.
+/// This means that whether the events arrive before or after the next [`Events::update`] is unpredictable.
+///
 /// This collection is meant to be paired with a system that calls
 /// [`Events::update`] exactly once per update/frame.
 ///
