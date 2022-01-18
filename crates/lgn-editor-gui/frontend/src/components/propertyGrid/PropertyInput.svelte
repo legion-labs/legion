@@ -2,7 +2,6 @@
   import { PropertyUpdate } from "@/api";
   import {
     BagResourceProperty,
-    extractVecSubPropertyIndex,
     propertyIsBoolean,
     propertyIsColor,
     propertyIsNumber,
@@ -41,6 +40,9 @@
   /** The property path parts */
   export let pathParts: string[];
 
+  /** The property index (only used in vectors) */
+  export let index: number;
+
   function onInput({ value }: Pick<PropertyUpdate, "value">) {
     dispatch("input", {
       name: pathParts.join("."),
@@ -66,19 +68,12 @@
       return;
     }
 
-    const index = extractVecSubPropertyIndex(property.name);
-
-    if (!index) {
-      log.error(
-        `Vector sub property name didn't have the proper format: ${property.name}`
-      );
-
-      return;
-    }
-
     parentProperty.subProperties = parentProperty.subProperties
       .filter(({ name }) => property.name !== name)
-      .map((property, index) => ({ ...property, name: `[${index}]` }));
+      .map((property, index) => ({
+        ...property,
+        name: `[${index}]`,
+      }));
 
     dispatch("removeVectorSubProperty", {
       path: pathParts.slice(0, -1).join("."),
@@ -128,7 +123,7 @@
   {:else if propertyIsVec(property)}
     {property.ptype} not implemented
   {:else if propertyIsOption(property)}
-    <PropertyInputOption on:input {pathParts} {property} />
+    <PropertyInputOption on:input {pathParts} {property} {index} />
   {:else}
     <div class="unknown-property">
       Unknown property: {property.ptype}

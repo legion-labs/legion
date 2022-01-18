@@ -5,7 +5,6 @@ import {
   buildVecProperty,
   extractOptionPType,
   extractVecPType,
-  extractVecSubPropertyIndex,
   formatProperties,
   propertyIsBag,
   propertyIsBoolean,
@@ -384,20 +383,6 @@ describe("extractVecPType", () => {
         subProperties: [],
       })
     ).toBe(null);
-  });
-});
-
-describe("extractVecSubPropertyIndex", () => {
-  it("Extracts and return the inner index for Vector sub property", () => {
-    expect(extractVecSubPropertyIndex("[2]")).toBe(2);
-  });
-
-  it("Returns `null` when the name contains non numeric characters", () => {
-    expect(extractVecSubPropertyIndex("[a]")).toBe(null);
-  });
-
-  it("Returns `null` when the name is invalid", () => {
-    expect(extractVecSubPropertyIndex("2")).toBe(null);
   });
 });
 

@@ -18,7 +18,6 @@
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore from "@/stores/contextMenu";
   import contextMenuEntries from "@/data/contextMenu";
-  import { fakeFileSystemEntries } from "@/data/fake";
 
   contextMenuStore.register("resource", contextMenuEntries);
 
@@ -124,19 +123,6 @@
                   </div>
                 </HierarchyTree>
               {/if}
-              <HierarchyTree entries={fakeFileSystemEntries}>
-                <div
-                  let:itemName
-                  use:contextMenu={{
-                    name: "resource",
-                    payload: { itemName },
-                  }}
-                  class="h-full w-full"
-                  slot="itemName"
-                >
-                  {itemName}
-                </div>
-              </HierarchyTree>
             </div>
           </Panel>
         </div>
