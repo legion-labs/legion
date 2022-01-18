@@ -79,7 +79,7 @@ where
                     type_def: array_descriptor.inner_type,
                     suffix: Some(format!("[{}]", index).as_str()),
                     depth: item_info.depth + 1,
-                    field_descriptor: item_info.field_descriptor,
+                    field_descriptor: None,
                 })?;
                 T::add_child(&mut array_parent, child);
             }
