@@ -31,6 +31,7 @@ sample-data = { path = "../sample-data", version = "0.1.0", features = [
 ] }
 
 # other
+tokio = { version = "1.13", features = ["full"] }
 bincode = "1.3.3"
 clap = { version = "3.0", features = ["derive"] }
 ron = "0.7.0"

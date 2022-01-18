@@ -73,11 +73,11 @@ fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
                 ))
 }
 
-pub(crate) fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataManager>> {
+pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataManager>> {
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let project = Project::create_new(&project_dir).expect("failed to create a project");
+    let project = Project::create_new(&project_dir).await.expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
     sample_data::offline::register_resource_types(&mut resource_registry);
@@ -100,7 +100,7 @@ pub(crate) fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataMana
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).unwrap();
+    let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).await.unwrap();
     let project = Arc::new(Mutex::new(project));
 
     Arc::new(Mutex::new(DataManager::new(
@@ -119,7 +119,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
-        let data_manager = setup_project(&project_dir);
+        let data_manager = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             data_manager: data_manager.clone(),
         };

@@ -140,6 +140,13 @@ impl TokioAsyncRuntime {
         AsyncOperation::new(result, cancel_tx)
     }
 
+    pub fn block_on<F>(&self, future: F) -> F::Output
+    where
+        F: Future,
+    {
+        self.tokio_runtime.block_on(future)
+    }
+
     // Polls the runtime for potential completed futures, returning the number
     // of completed futures during the last call.
     pub fn poll(&mut self) -> u32 {

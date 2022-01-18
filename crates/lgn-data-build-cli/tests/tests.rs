@@ -13,8 +13,8 @@ use lgn_data_runtime::{AssetRegistryOptions, Resource};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
-#[test]
-fn build_device() {
+#[tokio::test]
+async fn build_device() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -28,7 +28,7 @@ fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let mut project = Project::create_new(project_dir).expect("new project");
+        let mut project = Project::create_new(project_dir).await.expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_registry();
@@ -72,6 +72,7 @@ fn build_device() {
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
     .create(project_dir)
+    .await
     .expect("new build index");
     build.source_pull().expect("successful pull");
 
@@ -127,7 +128,7 @@ fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir).expect("new project");
+        let mut project = Project::open(project_dir).await.expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_registry();
@@ -156,8 +157,8 @@ fn build_device() {
     assert_eq!(resource.content, changed_derived_content);
 }
 
-#[test]
-fn no_intermediate_resource() {
+#[tokio::test]
+async fn no_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -171,7 +172,7 @@ fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).expect("new project");
+            let mut project = Project::create_new(project_dir).await.expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
                 .create_registry();
@@ -194,6 +195,7 @@ fn no_intermediate_resource() {
         let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
+            .await
             .expect("new build index");
         build.source_pull().expect("successful pull");
 
@@ -238,8 +240,8 @@ fn no_intermediate_resource() {
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }
 
-#[test]
-fn with_intermediate_resource() {
+#[tokio::test]
+async fn with_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -253,7 +255,7 @@ fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).expect("new project");
+            let mut project = Project::create_new(project_dir).await.expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
                 .create_registry();
@@ -276,6 +278,7 @@ fn with_intermediate_resource() {
         let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
+            .await
             .expect("new build index");
         build.source_pull().expect("successful pull");
 

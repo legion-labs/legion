@@ -61,7 +61,9 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), String> {
+#[allow(clippy::too_many_lines)]
+#[tokio::main]
+async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
     match args.command {
@@ -72,6 +74,7 @@ fn main() -> Result<(), String> {
             let mut build = DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
                 .content_store(&ContentStoreAddr::from("."))
                 .create(project)
+                .await
                 .map_err(|e| format!("failed creating build index {}", e))?;
 
             if let Err(e) = build.source_pull() {
@@ -111,6 +114,7 @@ fn main() -> Result<(), String> {
             let mut build = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
                 .open()
+                .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
             let derived = {

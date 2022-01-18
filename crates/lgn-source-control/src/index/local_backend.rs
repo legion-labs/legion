@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lgn_tracing::info;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     utils::make_path_absolute, BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock,
@@ -13,7 +13,7 @@ pub struct LocalIndexBackend {
 }
 
 impl LocalIndexBackend {
-    pub fn new(directory: PathBuf) -> Result<Self> {
+    pub fn new(directory: impl AsRef<Path>) -> Result<Self> {
         let directory =
             make_path_absolute(directory).map_other_err("failed to make path absolute")?;
         let db_path = directory.join("repo.db3");

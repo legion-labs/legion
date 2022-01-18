@@ -136,7 +136,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     let build_dir = project_dir.path().join("temp");
     std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_new(&project_dir).unwrap();
+    let project = Project::create_new(&project_dir).await.unwrap();
     let resource_dir = project.resource_dir();
     let project = Arc::new(Mutex::new(project));
 
@@ -157,7 +157,9 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).unwrap();
+    let build_manager = BuildManager::new(options, &project_dir, Manifest::default())
+        .await
+        .unwrap();
 
     {
         let mut data_manager = DataManager::new(

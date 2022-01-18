@@ -15,7 +15,7 @@ pub struct BuildManager {
 
 impl BuildManager {
     /// New instance of `BuildManager`.
-    pub fn new(
+    pub async fn new(
         options: DataBuildOptions,
         project_dir: impl AsRef<Path>,
         manifest: Manifest,
@@ -26,7 +26,7 @@ impl BuildManager {
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create(project_dir)?;
+        let build = options.open_or_create(project_dir).await?;
         Ok(Self {
             build,
             compile_env: editor_env,

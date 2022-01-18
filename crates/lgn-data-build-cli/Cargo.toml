@@ -17,6 +17,7 @@ name = "data-scrape"
 path = "src/scrape/main.rs"
 
 [dependencies]
+tokio = { version = "1.13", features = ["full"] }
 byteorder = "1.4"
 clap = { version = "3.0", features = ["derive"] }
 proc-macro2 = "1.0"

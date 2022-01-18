@@ -35,7 +35,7 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     }
 }
 
-pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
+pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     let root_folder = root_folder.as_ref();
 
     let temp_dir = root_folder.join("temp");
@@ -53,6 +53,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
         DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
             .content_store(&asset_store_path)
             .open_or_create(project_dir)
+            .await
             .expect("new build index");
 
     build.source_pull().expect("successful pull");

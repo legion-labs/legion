@@ -67,8 +67,8 @@ impl DataBuildOptions {
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub fn open_or_create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
-        DataBuild::open_or_create(self, project_dir.as_ref())
+    pub async fn open_or_create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create(self, project_dir.as_ref()).await
     }
 
     /// Opens existing build index.
@@ -81,15 +81,15 @@ impl DataBuildOptions {
     ///   [`DataBuildOptions::new()`].
     /// * The build index must point to an existing
     ///   [`lgn_data_offline::resource::Project`].
-    pub fn open(self) -> Result<DataBuild, Error> {
-        DataBuild::open(self)
+    pub async fn open(self) -> Result<DataBuild, Error> {
+        DataBuild::open(self).await
     }
 
     /// Create new build index for a specified project.
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub fn create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
-        DataBuild::new(self, project_dir.as_ref())
+    pub async fn create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+        DataBuild::new(self, project_dir.as_ref()).await
     }
 }

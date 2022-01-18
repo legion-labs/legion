@@ -74,9 +74,10 @@ fn compute_context_hash(
 /// # use std::str::FromStr;
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
+/// # tokio_test::block_on(async {
 /// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
-///         .create(".").expect("new build index");
+///         .create(".").await.expect("new build index");
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
@@ -93,6 +94,7 @@ fn compute_context_hash(
 ///                         Some(manifest_file.to_path_buf()),
 ///                         &env,
 ///                      ).expect("compilation output");
+/// # })
 /// ```
 #[derive(Debug)]
 pub struct DataBuild {
@@ -121,12 +123,12 @@ impl DataBuild {
 
         Ok(options.create())
     }
-    pub(crate) fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
+    pub(crate) async fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
             BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
 
-        let project = Self::open_project(&corrected_path)?;
+        let project = Self::open_project(&corrected_path).await?;
 
         let build_index = BuildIndex::create_new(
             &config.buildindex_dir,
@@ -158,9 +160,9 @@ impl DataBuild {
         })
     }
 
-    pub(crate) fn open(config: DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) async fn open(config: DataBuildOptions) -> Result<Self, Error> {
         let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        let project = build_index.open_project()?;
+        let project = build_index.open_project().await?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -189,7 +191,7 @@ impl DataBuild {
     ///
     /// If the build index does not exist it creates one if a project is present
     /// in the directory.
-    pub(crate) fn open_or_create(
+    pub(crate) async fn open_or_create(
         config: DataBuildOptions,
         project_dir: &Path,
     ) -> Result<Self, Error> {
@@ -197,7 +199,7 @@ impl DataBuild {
             .ok_or(Error::InvalidContentStore)?;
         match BuildIndex::open(&config.buildindex_dir, Self::version()) {
             Ok(build_index) => {
-                let project = build_index.open_project()?;
+                let project = build_index.open_project().await?;
 
                 let compilers = config.compiler_options.create();
                 let registry = config.registry.map_or_else(
@@ -218,13 +220,13 @@ impl DataBuild {
                     compilers: CompilerNode::new(compilers, registry),
                 })
             }
-            Err(Error::NotFound) => Self::new(config, project_dir),
+            Err(Error::NotFound) => Self::new(config, project_dir).await,
             Err(e) => Err(e),
         }
     }
 
-    fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).map_err(Error::from)
+    async fn open_project(project_dir: &Path) -> Result<Project, Error> {
+        Project::open(project_dir).await.map_err(Error::from)
     }
 
     /// Accessor for the project associated with this builder.

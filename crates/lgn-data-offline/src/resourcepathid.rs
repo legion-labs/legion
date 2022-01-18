@@ -71,9 +71,10 @@ impl FromStr for Transform {
 /// use lgn_data_runtime::ResourceType;
 /// use lgn_data_offline::ResourcePathId;
 /// use std::path::PathBuf;
+/// # tokio_test::block_on(async {
 /// let resources = ResourceRegistryOptions::new().create_registry();
 /// let mut resources = resources.lock().unwrap();
-/// let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// let mut project = Project::create_new(&PathBuf::new()).await.unwrap();
 /// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
@@ -92,6 +93,7 @@ impl FromStr for Transform {
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
 /// let _target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
+/// # })
 /// ```
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {

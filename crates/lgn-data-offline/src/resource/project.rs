@@ -102,6 +102,9 @@ pub enum Error {
     /// IO error on the project index file.
     #[error("IO on '{0}' failed with {1}")]
     Io(PathBuf, #[source] std::io::Error),
+    /// Source Control related error.
+    #[error("Source Control Error: '{0}'")]
+    SourceControl(#[source] lgn_source_control::Error),
 }
 
 impl Project {
@@ -126,7 +129,7 @@ impl Project {
 
     /// Creates a new project index file turning the containing directory into a
     /// project.
-    pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
@@ -154,7 +157,7 @@ impl Project {
     }
 
     /// Opens the project index specified
-    pub fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
@@ -715,9 +718,10 @@ mod tests {
         }
     }
 
-    fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
+    #[allow(clippy::too_many_lines)]
+    async fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
         let index_path = Project::root_to_index_path(project_dir);
-        let mut project = Project::open(&index_path).unwrap();
+        let mut project = Project::open(&index_path).await.unwrap();
         let resources_arc = ResourceRegistryOptions::new()
             .add_type_processor(
                 ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
@@ -870,45 +874,49 @@ mod tests {
      *  - hero.skeleton // no refs
      */
 
-    #[test]
-    fn proj_create_delete() {
+    #[tokio::test]
+    async fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(root.path()).expect("failed to create project");
-        let same_project = Project::create_new(root.path());
+        let project = Project::create_new(root.path())
+            .await
+            .expect("failed to create project");
+        let same_project = Project::create_new(root.path()).await;
         assert!(same_project.is_err());
 
         project.delete();
 
-        let _project = Project::create_new(root.path()).expect("failed to re-create project");
-        let same_project = Project::create_new(root.path());
+        let _project = Project::create_new(root.path())
+            .await
+            .expect("failed to re-create project");
+        let same_project = Project::create_new(root.path()).await;
         assert!(same_project.is_err());
     }
 
-    #[test]
-    fn proj_open() {
+    #[tokio::test]
+    async fn proj_open() {
         let root = tempfile::tempdir().unwrap();
 
         let proj_path = root.path().join("project.index");
         let _fake_project = File::create(proj_path);
 
-        let project = Project::open(root.path());
+        let project = Project::open(root.path()).await;
         assert!(matches!(project.unwrap_err(), Error::Parse(_, _)));
     }
 
-    #[test]
-    fn local_changes() {
+    #[tokio::test]
+    async fn local_changes() {
         let proj_root_path = setup_test();
-        let (project, _) = create_actor(proj_root_path.path());
+        let (project, _) = create_actor(proj_root_path.path()).await;
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
     }
 
-    #[test]
-    fn commit() {
+    #[tokio::test]
+    async fn commit() {
         let proj_root_path = setup_test();
-        let (mut project, _) = create_actor(proj_root_path.path());
+        let (mut project, _) = create_actor(proj_root_path.path()).await;
 
         project.commit().unwrap();
 
@@ -916,10 +924,10 @@ mod tests {
         assert_eq!(project.db.remote_resources.len(), 5);
     }
 
-    #[test]
-    fn immediate_dependencies() {
+    #[tokio::test]
+    async fn immediate_dependencies() {
         let project_dir = setup_test();
-        let (project, _) = create_actor(project_dir.path());
+        let (project, _) = create_actor(project_dir.path()).await;
 
         let top_level_resource = project
             .find_resource(&ResourcePathName::new("hero.actor"))
@@ -930,8 +938,8 @@ mod tests {
         assert_eq!(dependencies.len(), 2);
     }
 
-    #[test]
-    fn rename() {
+    #[tokio::test]
+    async fn rename() {
         let rename_assert =
             |proj: &mut Project, old_name: ResourcePathName, new_name: ResourcePathName| {
                 let skeleton_id = proj.find_resource(&old_name);
@@ -948,7 +956,7 @@ mod tests {
             };
 
         let project_dir = setup_test();
-        let (mut project, resources) = create_actor(project_dir.path());
+        let (mut project, resources) = create_actor(project_dir.path()).await;
         assert!(project.commit().is_ok());
         create_sky_material(&mut project, &mut resources.lock().unwrap());
 

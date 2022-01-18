@@ -22,7 +22,7 @@ use serde::de::DeserializeOwned;
 
 use self::raw_to_offline::FromRaw;
 
-pub fn build_offline(root_folder: impl AsRef<Path>) {
+pub async fn build_offline(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
     if let Ok(entries) = root_folder.read_dir() {
         let mut raw_dir = entries
@@ -30,7 +30,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
         if let Some(raw_dir) = raw_dir.next() {
             let raw_dir = raw_dir.path();
-            let (mut project, resources) = setup_project(root_folder);
+            let (mut project, resources) = setup_project(root_folder).await;
             let mut resources = resources.lock().unwrap();
 
             let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
@@ -114,11 +114,11 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
     }
 }
 
-fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
+async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
-    let project = match Project::open(root_folder) {
+    let project = match Project::open(root_folder).await {
         Ok(project) => Ok(project),
-        Err(_) => Project::create_new(root_folder),
+        Err(_) => Project::create_new(root_folder).await,
     }
     .unwrap();
 
