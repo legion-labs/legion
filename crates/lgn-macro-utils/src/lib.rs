@@ -95,15 +95,12 @@ impl Default for LegionManifest {
 impl LegionManifest {
     pub fn maybe_get_path(&self, name: &str) -> Option<syn::Path> {
         const LEGION: &str = "legion";
-        const LEGION_INTERNAL: &str = "legion_internal";
 
         let find_in_deps = |deps: &DepsSet| -> Option<syn::Path> {
             let package = if let Some(dep) = deps.get(name) {
                 return Some(Self::parse_str(dep.package().unwrap_or(name)));
             } else if let Some(dep) = deps.get(LEGION) {
                 dep.package().unwrap_or(LEGION)
-            } else if let Some(dep) = deps.get(LEGION_INTERNAL) {
-                dep.package().unwrap_or(LEGION_INTERNAL)
             } else {
                 return None;
             };

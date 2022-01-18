@@ -15,10 +15,16 @@ use crate::{
     ManualEventReader,
 };
 
-/// Determines the method used to run an [App]'s `Schedule`
+/// Determines the method used to run an [App]'s  [`Schedule`](lgn_ecs::schedule::Schedule).
 #[derive(Copy, Clone, Debug)]
 pub enum RunMode {
-    Loop { wait: Option<Duration> },
+    /// Indicates that the [`App`]'s schedule should run repeatedly.
+    Loop {
+        /// Minimum duration to wait after a schedule has completed before repeating.
+        /// A value of [`None`] will not wait.
+        wait: Option<Duration>,
+    },
+    /// Indicates that the [`App`]'s schedule should run only once.
     Once,
 }
 
@@ -28,18 +34,22 @@ impl Default for RunMode {
     }
 }
 
+/// Configuration information for [`ScheduleRunnerPlugin`].
 #[derive(Copy, Clone, Default)]
 pub struct ScheduleRunnerSettings {
+    /// Determines whether the [`Schedule`](lgn_ecs::schedule::Schedule) is run once or repeatedly.
     pub run_mode: RunMode,
 }
 
 impl ScheduleRunnerSettings {
+    /// [`RunMode::Once`]
     pub fn run_once() -> Self {
         Self {
             run_mode: RunMode::Once,
         }
     }
 
+    /// [`RunMode::Loop`]    
     pub fn run_loop(wait_duration: Duration) -> Self {
         Self {
             run_mode: RunMode::Loop {

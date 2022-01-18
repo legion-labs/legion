@@ -21,10 +21,11 @@ lgn_utils::define_label!(AppLabel);
 #[allow(clippy::needless_doctest_main)]
 /// Containers of app logic and data
 ///
-/// Bundles together the necessary elements, like [`World`] and [`Schedule`], to
-/// create an ECS-based application. It also stores a pointer to a
-/// [runner function](App::set_runner), which by default executes the App
-/// schedule once. Apps are constructed with the builder pattern.
+/// Bundles together the necessary elements, like [`World`] and [`Schedule`], to create
+/// an ECS-based application. It also stores a pointer to a
+/// [runner function](Self::set_runner). The runner is responsible for managing the application's
+/// event loop and applying the [`Schedule`] to the [`World`] to drive application logic.
+/// Apps are constructed with the builder pattern.
 ///
 /// ## Example
 /// Here is a simple "Hello World" Legion app:
@@ -43,13 +44,23 @@ lgn_utils::define_label!(AppLabel);
 /// }
 /// ```
 pub struct App {
+    /// The main ECS [`World`] of the [`App`].
+    /// This stores and provides access to all the main data of the application.
+    /// The systems of the [`App`] will run using this [`World`].
+    /// If additional separate [`World`]-[`Schedule`] pairs are needed, you can use [`sub_app`][App::add_sub_app]s.
     pub world: World,
+    /// The [runner function](Self::set_runner) is primarily responsible for managing
+    /// the application's event loop and advancing the [`Schedule`].
+    /// Typically, it is not configured manually, but set by one of Bevy's built-in plugins.
+    /// See `legion::winit::WinitPlugin` and [`ScheduleRunnerPlugin`](crate::schedule_runner::ScheduleRunnerPlugin).
     pub runner: Box<dyn FnOnce(App)>,
+    /// A container of [`Stage`]s set to be run in a linear order.
     pub schedule: Schedule,
     sub_apps: HashMap<Box<dyn AppLabel>, SubApp>,
     telemetry_guard: Option<TelemetryGuard>,
 }
 
+/// Each [`SubApp`] has its own [`Schedule`] and [`World`], enabling a separation of concerns.
 struct SubApp {
     app: App,
     runner: Box<dyn Fn(&mut World, &mut App)>,
@@ -60,6 +71,7 @@ impl Default for App {
         let mut app = Self::empty();
         app.telemetry_guard =
             Some(TelemetryGuard::default().expect("telemetry guard should be initialized once"));
+
         app.add_default_stages()
             .add_event::<AppExit>()
             .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
@@ -74,10 +86,15 @@ impl Default for App {
 }
 
 impl App {
+    /// Creates a new [`App`] with some default structure to enable core engine features.
+    /// This is the preferred constructor for most use cases.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Creates a new empty [`App`] with minimal default configuration.
+    ///
+    /// This constructor should be used if you wish to provide a custom schedule, exit handling, cleanup, etc.
     pub fn empty() -> Self {
         Self {
             world: World::default(),
@@ -89,6 +106,8 @@ impl App {
     }
 
     /// Advances the execution of the [`Schedule`] by one cycle.
+    ///
+    /// This method also updates sub apps. See [`add_sub_app`](Self::add_sub_app) for more details.
     ///
     /// See [`Schedule::run_once`] for more details.
     #[span_fn]
@@ -789,7 +808,6 @@ impl App {
     /// ```
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummy created to avoid using legion_internal, which pulls in to many dependencies.
     /// # struct MinimalPlugins;
     /// # impl PluginGroup for MinimalPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){;}
@@ -816,7 +834,6 @@ impl App {
     /// ```ignore
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){
@@ -847,38 +864,60 @@ impl App {
         self
     }
 
+    /// Adds an `App` as a child of the current one.
+    ///
+    /// The provided function `f` is called by the [`update`](Self::update) method. The `World`
+    /// parameter represents the main app world, while the `App` parameter is just a mutable
+    /// reference to the sub app itself.
     pub fn add_sub_app(
         &mut self,
         label: impl AppLabel,
         app: Self,
-        f: impl Fn(&mut World, &mut Self) + 'static,
+        sub_app_runner: impl Fn(&mut World, &mut Self) + 'static,
     ) -> &mut Self {
         self.sub_apps.insert(
             Box::new(label),
             SubApp {
                 app,
-                runner: Box::new(f),
+                runner: Box::new(sub_app_runner),
             },
         );
         self
     }
 
-    /// Retrieves a "sub app" stored inside this [App]. This will panic if the
-    /// sub app does not exist.
-    pub fn sub_app(&mut self, label: impl AppLabel) -> &mut Self {
+    /// Retrieves a "sub app" stored inside this [App]. This will panic if the sub app does not exist.
+    pub fn sub_app_mut(&mut self, label: impl AppLabel) -> &mut Self {
+        match self.get_sub_app_mut(label) {
+            Ok(app) => app,
+            Err(label) => panic!("Sub-App with label '{:?}' does not exist", label),
+        }
+    }
+
+    /// Retrieves a "sub app" inside this [App] with the given label, if it exists. Otherwise returns
+    /// an [Err] containing the given label.
+    #[allow(clippy::missing_errors_doc)]
+    pub fn get_sub_app_mut(&mut self, label: impl AppLabel) -> Result<&mut Self, impl AppLabel> {
+        self.sub_apps
+            .get_mut((&label) as &dyn AppLabel)
+            .map(|sub_app| &mut sub_app.app)
+            .ok_or(label)
+    }
+
+    /// Retrieves a "sub app" stored inside this [App]. This will panic if the sub app does not exist.
+    pub fn sub_app(&self, label: impl AppLabel) -> &Self {
         match self.get_sub_app(label) {
             Ok(app) => app,
             Err(label) => panic!("Sub-App with label '{:?}' does not exist", label),
         }
     }
 
+    /// Retrieves a "sub app" inside this [App] with the given label, if it exists. Otherwise returns
+    /// an [Err] containing the given label.
     #[allow(clippy::missing_errors_doc)]
-    /// Retrieves a "sub app" inside this [App] with the given label, if it
-    /// exists. Otherwise returns an [Err] containing the given label.
-    pub fn get_sub_app(&mut self, label: impl AppLabel) -> Result<&mut Self, impl AppLabel> {
+    pub fn get_sub_app(&self, label: impl AppLabel) -> Result<&Self, impl AppLabel> {
         self.sub_apps
-            .get_mut((&label) as &dyn AppLabel)
-            .map(|sub_app| &mut sub_app.app)
+            .get((&label) as &dyn AppLabel)
+            .map(|sub_app| &sub_app.app)
             .ok_or(label)
     }
 }
