@@ -58,6 +58,9 @@ struct Args {
     /// Enable egui immediate mode GUI
     #[clap(long)]
     egui: bool,
+    /// Dimensions of meta cube
+    #[clap(long)]
+    meta_cube_size: usize,
 }
 
 fn main() {
@@ -65,7 +68,11 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, !args.snapshot))
+        .add_plugin(RendererPlugin::new(
+            args.egui,
+            !args.snapshot,
+            args.meta_cube_size,
+        ))
         .insert_resource(WindowDescriptor {
             width: args.width,
             height: args.height,
@@ -98,7 +105,7 @@ fn main() {
             .add_startup_system(register_asset_loaders);
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
-    } else {
+    } else if args.meta_cube_size == 0 {
         app.add_startup_system(init_scene);
     }
     app.run();

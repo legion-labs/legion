@@ -13,6 +13,9 @@ pub(crate) use descriptor_pool::*;
 mod gpu_pool;
 pub(crate) use gpu_pool::*;
 
+mod meta_cube_test;
+pub(crate) use meta_cube_test::*;
+
 mod pool_shared;
 pub(crate) use pool_shared::*;
 
