@@ -28,6 +28,7 @@ async-trait = "0.1"
 
 [dev-dependencies]
 lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "offline",
 ] }

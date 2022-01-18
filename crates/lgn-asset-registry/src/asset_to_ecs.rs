@@ -27,17 +27,25 @@ where
 {
     if asset_id.kind == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map, default_meshes);
+            let entity = T::create_in_ecs(
+                commands,
+                &asset,
+                asset_id,
+                asset_to_entity_map,
+                default_meshes,
+            );
 
             if let Some(entity_id) = entity {
                 if let Some(old_entity) = asset_to_entity_map.insert(*asset_id, entity_id) {
-                    commands.entity(old_entity).despawn();
+                    if entity_id.to_bits() != old_entity.to_bits() {
+                        commands.entity(old_entity).despawn();
+                    }
                 }
 
                 info!(
                     "Loaded {}: {} -> ECS id: {:?}",
                     T::TYPENAME,
-                    *asset_id,
+                    asset_id.id,
                     entity_id,
                 );
             } else {
@@ -55,6 +63,7 @@ pub(crate) trait AssetToECS {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
         _asset: &Self,
+        _asset_id: &ResourceTypeAndId,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -66,10 +75,15 @@ impl AssetToECS for runtime_data::Entity {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         runtime_entity: &Self,
+        asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
-        let mut entity = commands.spawn();
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
 
         let mut transform_inserted = false;
         for component in &runtime_entity.components {
@@ -139,11 +153,15 @@ impl AssetToECS for runtime_data::Instance {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         _instance: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_id: &ResourceTypeAndId,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
-        let entity = commands.spawn();
-
+        let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
         Some(entity.id())
     }
 }
@@ -158,10 +176,15 @@ impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         instance: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_id: &ResourceTypeAndId,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
-        let mut entity = commands.spawn();
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
 
         if !instance.name.is_empty() {
             entity.insert(Name::new(instance.name.clone()));
@@ -171,6 +194,8 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             rotation: instance.rotation,
             scale: instance.scale,
         });
+
+        entity.insert(GlobalTransform::default());
         entity.insert(StaticMesh {
             mesh_id: instance.mesh_id,
             color: instance.color,
@@ -191,6 +216,76 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         });
 
         Some(entity.id())
+    }
+}
+
+impl AssetToECS for generic_data::runtime::EntityDc {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        entity: &Self,
+        asset_id: &ResourceTypeAndId,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        default_meshes: &Res<'_, DefaultMeshes>,
+    ) -> Option<Entity> {
+        let mut ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let entity_id = ecs_entity.id();
+
+        for component in &entity.components {
+            if let Some(transform_component) =
+                component.downcast_ref::<generic_data::runtime::TransformComponent>()
+            {
+                ecs_entity.insert(Transform {
+                    translation: transform_component.position,
+                    rotation: transform_component.rotation,
+                    scale: transform_component.scale,
+                });
+                ecs_entity.insert(GlobalTransform::identity());
+            } else if let Some(static_mesh_component) =
+                component.downcast_ref::<generic_data::runtime::StaticMeshComponent>()
+            {
+                let mut mesh_id = static_mesh_component.mesh_id as u32;
+                if mesh_id > lgn_renderer::resources::DefaultMeshId::RotationRing as u32 {
+                    mesh_id = 0;
+                }
+
+                ecs_entity.insert(StaticMesh {
+                    mesh_id: static_mesh_component.mesh_id,
+                    color: static_mesh_component.color,
+                    vertex_offset: default_meshes.mesh_offset_from_id(mesh_id),
+                    num_vertices: default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
+                    world_offset: 0,
+                    picking_id: 0,
+                });
+            } else if let Some(light_component) =
+                component.downcast_ref::<generic_data::runtime::LightComponent>()
+            {
+                ecs_entity.insert(light_component.clone());
+            }
+        }
+
+        // try to hook the parent
+        if let Some(parent_id) = entity.parent.as_ref() {
+            if let Some(parent) = asset_to_entity_map.get(parent_id.id()) {
+                ecs_entity.insert(Parent(parent));
+                ecs_entity
+                    .commands()
+                    .entity(parent)
+                    .push_children(&[entity_id]);
+            }
+        }
+
+        // try to hook the children
+        for child_ref in &entity.children {
+            if let Some(child_entity) = asset_to_entity_map.get(child_ref.id()) {
+                ecs_entity.push_children(&[child_entity]);
+            }
+        }
+        Some(entity_id)
     }
 }
 

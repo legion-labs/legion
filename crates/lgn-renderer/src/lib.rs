@@ -62,7 +62,7 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
-use lgn_transform::components::Transform;
+use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
@@ -259,11 +259,11 @@ fn update_transform(
         '_,
         (
             Entity,
-            &Transform,
+            &GlobalTransform,
             &mut StaticMesh,
             Option<&ManipulatorComponent>,
         ),
-        Changed<Transform>,
+        Changed<GlobalTransform>,
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
@@ -305,12 +305,12 @@ fn render_update(
     q_debug_drawables: Query<
         '_,
         '_,
-        (&StaticMesh, &Transform, Option<&PickedComponent>),
+        (&StaticMesh, &GlobalTransform, Option<&PickedComponent>),
         Without<ManipulatorComponent>,
     >,
-    q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
+    q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &GlobalTransform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
-    q_lights: Query<'_, '_, (&LightComponent, &Transform)>,
+    q_lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
@@ -324,14 +324,14 @@ fn render_update(
     let q_debug_drawables =
         q_debug_drawables
             .iter()
-            .collect::<Vec<(&StaticMesh, &Transform, Option<&PickedComponent>)>>();
+            .collect::<Vec<(&StaticMesh, &GlobalTransform, Option<&PickedComponent>)>>();
     let q_manipulator_drawables =
         q_manipulator_drawables
             .iter()
-            .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
+            .collect::<Vec<(&StaticMesh, &GlobalTransform, &ManipulatorComponent)>>();
     let q_lights = q_lights
         .iter()
-        .collect::<Vec<(&LightComponent, &Transform)>>();
+        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();

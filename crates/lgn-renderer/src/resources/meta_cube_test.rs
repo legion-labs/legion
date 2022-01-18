@@ -4,7 +4,7 @@ use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Query, Res};
 use lgn_math::{EulerRot, Quat};
 use lgn_tracing::span_fn;
-use lgn_transform::components::Transform;
+use lgn_transform::components::{GlobalTransform, Transform};
 
 use crate::components::{RotationComponent, StaticMesh};
 
@@ -114,6 +114,7 @@ impl MetaCubeResource {
                             y as f32 * 2.0,
                             z as f32 * 2.0,
                         ))
+                        .insert(GlobalTransform::identity())
                         .insert(StaticMesh::from_default_meshes(
                             default_meshes,
                             DefaultMeshId::Cube as usize,

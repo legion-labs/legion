@@ -75,6 +75,16 @@ impl DataManager {
         }
     }
 
+    /// Build a resource by name
+    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> anyhow::Result<()> {
+        let mut ctx = LockContext::new(self).await;
+        let resource_id = ctx.project.find_resource(resource_path)?;
+        let (runtime_path_id, _results) = ctx.build.build_all_derived(resource_id)?;
+        ctx.asset_registry
+            .load_untyped(runtime_path_id.resource_id());
+        Ok(())
+    }
+
     /// Load all resources from a `Project`
     pub async fn load_all_resources(&mut self) {
         let project = self.project.lock().await;

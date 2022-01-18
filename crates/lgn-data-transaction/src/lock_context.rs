@@ -61,10 +61,8 @@ impl<'a> LockContext<'a> {
             .iter()
             .try_for_each(|resource_id| -> anyhow::Result<()> {
                 match self.build.build_all_derived(*resource_id) {
-                    Ok(built_resources) => {
-                        for resource in built_resources {
-                            self.asset_registry.reload(resource);
-                        }
+                    Ok((runtime_path_id, _built_resources)) => {
+                        self.asset_registry.reload(runtime_path_id.resource_id());
                     }
                     Err(e) => {
                         error!("Error building resource derivations {:?}", e);

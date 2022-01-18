@@ -423,6 +423,20 @@ impl Project {
     /// Returns the name of the resource from its `.meta` file.
     pub fn resource_name(&self, type_id: ResourceTypeAndId) -> Result<ResourcePathName, Error> {
         let meta = self.read_meta(type_id)?;
+        if let Some((resource_id, suffix)) = meta
+            .name
+            .as_str()
+            .strip_prefix("/!")
+            .and_then(|v| v.split_once('/'))
+        {
+            if let Ok(resource_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id)
+            {
+                if let Ok(mut parent_path) = self.resource_name(resource_id) {
+                    parent_path.push(suffix);
+                    return Ok(parent_path);
+                }
+            }
+        }
         Ok(meta.name)
     }
 

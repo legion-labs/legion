@@ -46,6 +46,11 @@ impl ResourcePathName {
         self.0.push(SEPARATOR);
         self.0.push_str(path.as_ref());
     }
+
+    /// Return the `ResourcePathName` as a str
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl fmt::Display for ResourcePathName {

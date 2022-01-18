@@ -20,7 +20,10 @@ use lgn_renderer::{
     resources::{DefaultMeshId, DefaultMeshes},
     {Renderer, RendererPlugin},
 };
-use lgn_transform::components::Transform;
+use lgn_transform::{
+    components::{GlobalTransform, Transform},
+    TransformPlugin,
+};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 
@@ -81,6 +84,7 @@ fn main() {
             ..WindowDescriptor::default()
         })
         .add_plugin(WindowPlugin::default())
+        .add_plugin(TransformPlugin::default())
         .add_plugin(InputPlugin::default());
 
     if args.snapshot {
@@ -179,6 +183,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
@@ -189,6 +194,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
@@ -199,6 +205,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Sphere as usize,
@@ -209,6 +216,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Directional,
             radiance: 40.0,
@@ -221,6 +229,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
@@ -233,6 +242,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
@@ -245,6 +255,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Spotlight {
                 cone_angle: std::f32::consts::PI / 4.0,
@@ -261,6 +272,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Plane as usize,
@@ -274,6 +286,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Cube as usize,
@@ -284,6 +297,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
             DefaultMeshId::Pyramid as usize,
@@ -294,6 +308,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
     commands
         .spawn()
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,

@@ -8,7 +8,7 @@ use lgn_graphics_api::{
     Pipeline, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
     SampleCount, StencilOp, StoreOp, VertexLayout,
 };
-use lgn_transform::components::Transform;
+use lgn_transform::components::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::PickingData},
@@ -244,8 +244,8 @@ impl PickingRenderPass {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
-        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
-        lights: &[(&LightComponent, &Transform)],
+        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
+        lights: &[(&LightComponent, &GlobalTransform)],
         light_picking_mesh: &StaticMesh,
         camera: &CameraComponent,
     ) {

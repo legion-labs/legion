@@ -1,6 +1,7 @@
 [editor_srv]
 project_dir = "tests/sample-data"
 server_addr = "[::1]:50051"
+default_scene = "/world/sample_1.ent"
 
 [runtime_srv]
 project_dir = "tests/sample-data"

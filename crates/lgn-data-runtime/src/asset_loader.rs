@@ -587,7 +587,8 @@ impl AssetLoaderIO {
 
         let loader = loaders
             .get_mut(&asset_type)
-            .unwrap_or_else(|| panic!("missing asset loader for type {}", asset_type));
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Interrupted, "Asset Loader not found"))?;
+
         let boxed_asset = loader.load(&mut &content[..])?;
 
         // todo: Do not load what was loaded in another primary-asset.

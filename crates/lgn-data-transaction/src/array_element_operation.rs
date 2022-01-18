@@ -28,12 +28,12 @@ impl ArrayOperation {
         resource_id: ResourceTypeAndId,
         array_path: &str,
         index: Option<usize>,
-        value_json: &str,
+        value_json: impl AsRef<str>,
     ) -> Box<Self> {
         Box::new(Self {
             resource_id,
             array_path: array_path.into(),
-            operation_type: ArrayOpType::InsertElement(index, value_json.into()),
+            operation_type: ArrayOpType::InsertElement(index, value_json.as_ref().into()),
         })
     }
 
@@ -54,12 +54,12 @@ impl ArrayOperation {
     pub fn delete_value(
         resource_id: ResourceTypeAndId,
         array_path: &str,
-        value_json: &str,
+        value_json: impl AsRef<str>,
     ) -> Box<Self> {
         Box::new(Self {
             resource_id,
             array_path: array_path.into(),
-            operation_type: ArrayOpType::DeleteValue(value_json.into(), None),
+            operation_type: ArrayOpType::DeleteValue(value_json.as_ref().into(), None),
         })
     }
 

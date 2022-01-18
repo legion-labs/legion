@@ -23,6 +23,7 @@ use lgn_data_runtime::{
 };
 use lgn_ecs::prelude::*;
 use lgn_renderer::resources::DefaultMeshes;
+use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
 
@@ -179,6 +180,13 @@ impl AssetRegistryPlugin {
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
+                        ) && !load_ecs_asset::<generic_data::runtime::EntityDc>(
+                            asset_id,
+                            handle,
+                            &registry,
+                            &mut commands,
+                            &mut asset_to_entity_map,
+                            &default_meshes,
                         )
                         /*&& !load_ecs_asset::<runtime_data::Script>(
                             asset_id,
@@ -189,7 +197,7 @@ impl AssetRegistryPlugin {
                             &default_meshes,
                         )*/
                         {
-                            eprintln!(
+                            error!(
                                 "Unhandled runtime type: {}, asset: {}",
                                 asset_id.kind, asset_id
                             );
@@ -197,7 +205,7 @@ impl AssetRegistryPlugin {
 
                         *loading_state = LoadingState::Loaded;
                     } else if handle.is_err(&registry) {
-                        eprintln!("Failed to load runtime asset {}", asset_id);
+                        error!("Failed to load runtime asset {}", asset_id);
                         *loading_state = LoadingState::Failed;
                     }
                 }
@@ -228,7 +236,7 @@ impl AssetRegistryPlugin {
                 }
                 ResourceLoadEvent::LoadError(asset_id, error_kind) => {
                     if asset_loading_states.get(asset_id).is_none() {
-                        eprintln!(
+                        error!(
                             "Failed to load runtime asset {}, error: {:?}",
                             asset_id, error_kind
                         );

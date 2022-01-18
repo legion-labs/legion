@@ -61,6 +61,9 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         #[derive(serde::Serialize,serde::Deserialize,PartialEq)]
         pub struct #runtime_reftype (lgn_data_runtime::Reference<#runtime_identifier>);
+        impl #runtime_reftype {
+            pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId { self.0.id() }
+        }
 
         lgn_data_model::implement_primitive_type_def!(#runtime_reftype);
 
