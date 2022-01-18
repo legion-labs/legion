@@ -4,7 +4,7 @@ use guppy::graph::{BuildTargetId, BuildTargetKind};
 use lgn_tracing::span_fn;
 use serde_json::{json, to_string_pretty};
 
-use crate::{context::Context, Error, Result};
+use crate::{config::HostConfig, context::Context, Error, Result};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -15,9 +15,8 @@ pub struct Args {
 #[allow(clippy::too_many_lines)]
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    let bin_packages: Vec<_> = ctx
-        .package_graph()?
-        .workspace()
+    let workspace = ctx.package_graph()?.workspace();
+    let bin_packages: Vec<_> = workspace
         .iter()
         .filter(|package| {
             package.build_targets().any(|bt| {
@@ -25,11 +24,26 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             })
         })
         .collect();
+    let debugger_type = ctx
+        .config()
+        .vscode
+        .debugger_type
+        .as_ref()
+        .map_or("lldb", HostConfig::as_str);
+
+    for package in ctx.config().vscode.overrides.keys() {
+        if !workspace.contains_name(package) {
+            return Err(Error::new(format!(
+                "override {} is not in the workspace",
+                package
+            )));
+        }
+    }
 
     let mut tasks = vec![];
     tasks.push(json!({
         "type": "cargo",
-        "command": "mclippy",
+        "command": "vsclippy",
         "args": [
             "--workspace",
         ],
@@ -63,10 +77,13 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                 }));
                 configurations.push(json!({
                     "name": name,
-                    "type": "cppvsdbg",
+                    "type": debugger_type,
                     "request": "launch",
                     "program": format!("${{workspaceFolder}}/target/debug/{}.exe", name),
-                    "args": [],
+                    "args": ctx.config().vscode.overrides.get(package.name()).map_or_else(
+                        std::vec::Vec::new,
+                        |dict| dict.get("args").unwrap_or(&vec![]).clone()
+                    ),
                     "stopAtEntry": false,
                     "cwd": "${workspaceFolder}",
                     "environment": [],
@@ -86,20 +103,18 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "version": "2.0.0",
         "tasks": &tasks,
     });
-
+    let mut compounds = vec![];
+    for (name, config) in &ctx.config().vscode.compounds {
+        compounds.push(json!({
+            "name": name,
+            "configurations": config,
+        }));
+    }
     let launch_file = ctx.workspace_root().join(".vscode").join("launch.json");
     // hardcoded for now
     let launch = json!({
         "version": "0.2.0",
-        "compounds": [
-            {
-                "name": "editor-compound",
-                "configurations": [
-                    "editor-client",
-                    "editor-srv",
-                ],
-            }
-        ],
+        "compounds": compounds,
         "configurations": configurations,
     });
     for (file, content) in &[(tasks_file, tasks), (launch_file, launch)] {

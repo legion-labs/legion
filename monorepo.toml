@@ -61,7 +61,7 @@ glob-literal-separator = true
 [vscode]
 debugger-type = { windows = "cppvsdbg", linux = "lldb", macos = "lldb" }
 compounds = { editor-compound = ["editor-client", "editor-srv"] }
-overrides = { graphics-sandbox = { args = ["editor-client", "editor-srv"] } }
+overrides = { lgn-graphics-sandbox = { args = ["--egui"] } }
 
 
 [rustdoc]
