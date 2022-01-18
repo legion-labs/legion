@@ -9,20 +9,19 @@ use crate::{Error, Result};
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct MonorepoConfig {
-    pub cargo_config: CargoConfig,
-    pub determinator: DeterminatorRules,
+    pub cargo: Cargo,
+    pub vscode: VsCode,
     pub clippy: Clippy,
     pub rustdoc: RustDoc,
-    pub cargo_installs: HashMap<String, CargoInstallation>,
-    pub dependencies: Dependencies,
-    pub crate_attributes: CrateAttributes,
-    pub vscode: VsCode,
+    pub lints: Lints,
+    pub determinator: DeterminatorRules,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct LocalMonorepoConfig {
     pub vscode: Option<VsCode>,
+    pub cargo: Option<Cargo>,
 }
 
 impl MonorepoConfig {
@@ -36,16 +35,17 @@ impl MonorepoConfig {
             let local_config = read_config(&local_monorepo_file, &mut contents)?;
             config.merge_with(&local_config);
         }
-        if let Some(sscache) = &config.cargo_config.sccache {
-            config
-                .cargo_installs
-                .insert("sccache".to_owned(), sscache.installer.clone());
-        }
         Ok(config)
     }
     pub fn merge_with(&mut self, other: &LocalMonorepoConfig) {
         if let Some(vs_code) = &other.vscode {
             self.vscode = vs_code.clone();
+        }
+        if let Some(cargo) = &other.cargo {
+            let installs = self.cargo.installs.clone();
+            self.cargo = cargo.clone();
+            // should probably invert this, overrides taking precedence ?
+            self.cargo.installs.extend(installs.into_iter());
         }
     }
 }
@@ -65,24 +65,19 @@ pub fn read_config<'de, T: Deserialize<'de>>(
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct CargoConfig {
+pub struct Cargo {
     pub sccache: Option<Sccache>,
+    pub user_sccache: Option<Sccache>,
+    pub installs: HashMap<String, CargoInstallation>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct CargoInstalls {
-    pub installer: CargoInstallation,
-}
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
 pub struct Sccache {
-    /// Sccache Url
-    pub installer: CargoInstallation,
     /// Where cargo home must reside for sccache to function properly.  Paths are embedded in binaries by rustc.
-    pub required_cargo_home: String,
+    pub required_cargo_home: HostConfig,
     /// Where the git repo for this project must reside.  Paths are embedded in binaries by rustc.
-    pub required_git_home: String,
+    pub required_git_home: HostConfig,
     /// s3 bucket location
     pub bucket: String,
     /// prefix to files uploaded in to s3
@@ -91,7 +86,7 @@ pub struct Sccache {
     pub endpoint: Option<String>,
     /// AWS region of the bucket if necessary.
     pub region: Option<String>,
-    /// Only used in stable, sscache delete when rusoto is merged in
+    /// Only used in stable, sccache delete when rusoto is merged in
     pub ssl: Option<bool>,
     /// If the bucket is public
     pub public: Option<bool>,
@@ -99,10 +94,17 @@ pub struct Sccache {
     pub envs: Option<Vec<(String, String)>>,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Lints {
+    pub direct_dependencies: DirectDependencies,
+    pub crate_attributes: CrateAttributes,
+}
+
 /// Dependencies lints configurations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct Dependencies {
+pub struct DirectDependencies {
     pub bans: Vec<DependencyBan>,
 }
 
@@ -120,25 +122,29 @@ pub struct DependencyBan {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct CrateAttributes {
-    pub name: NameAttribute,
-    pub license: LicenseAttribute,
+    pub name_rules: Vec<RegexRule>,
+    pub bins_rules: Vec<RegexRule>,
+    pub license_rules: Vec<LicenseAttribute>,
     pub edition: String,
 }
 
 /// Name attribute lint configurations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct NameAttribute {
-    name_pattern: String,
-    globs: Vec<String>,
+pub struct RegexRule {
+    pub help: String,
+    pub pattern: String,
+    pub negative_pattern: Option<String>,
+    pub globs: Vec<String>,
+    pub glob_literal_separator: Option<bool>,
 }
 
 /// License attribute lint configurations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct LicenseAttribute {
-    spdx: String,
-    globs: Vec<String>,
+    pub spdx: String,
+    pub globs: Vec<String>,
 }
 
 ///
@@ -182,5 +188,39 @@ pub struct RustDoc {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct VsCode {
-    pub target: Option<String>,
+    pub debugger_type: Option<HostConfig>,
+    pub compounds: HashMap<String, Vec<String>>,
+    pub overrides: HashMap<String, HashMap<String, Vec<String>>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case", untagged)]
+pub enum HostConfig {
+    Default(String),
+    Platform {
+        windows: String,
+        linux: String,
+        macos: String,
+    },
+}
+
+impl HostConfig {
+    pub fn as_str(&self) -> &str {
+        match self {
+            HostConfig::Default(s) => s.as_str(),
+            HostConfig::Platform {
+                windows,
+                linux,
+                macos,
+            } => {
+                if cfg!(windows) {
+                    windows.as_str()
+                } else if cfg!(target_os = "linux") {
+                    linux.as_str()
+                } else {
+                    macos.as_str()
+                }
+            }
+        }
+    }
 }

@@ -390,17 +390,17 @@ impl<'a> CargoCommand<'a> {
 /// but the `CARGO_HOME` or project root are not in the right locations.
 pub fn sccache_should_run(ctx: &Context, warn_if_not_correct_location: bool) -> bool {
     if var_os("SKIP_SCCACHE").is_none() {
-        if let Some(sccache_config) = &ctx.config().cargo_config.sccache {
+        if let Some(sccache_config) = &ctx.config().cargo.sccache {
             // Are we work on items in the right location:
             // See: https://github.com/mozilla/sccache#known-caveats
             let correct_location = var_os("CARGO_HOME").unwrap_or_default()
                 == sccache_config.required_cargo_home.as_str()
-                && sccache_config.required_git_home == ctx.workspace_root();
+                && sccache_config.required_git_home.as_str() == ctx.workspace_root();
             if !correct_location && warn_if_not_correct_location {
                 warn!("You will not benefit from sccache in this build!!!");
                 warn!(
                     "To get the best experience, please move your diem source code to {} and your set your CARGO_HOME to be {}, simply export it in your .profile or .bash_rc",
-                    &sccache_config.required_git_home, &sccache_config.required_cargo_home
+                    &sccache_config.required_git_home.as_str(), &sccache_config.required_cargo_home.as_str()
                 );
                 warn!(
                     "Current diem root is '{}',  and current CARGO_HOME is '{}'",
@@ -456,7 +456,7 @@ pub fn stop_sccache_server() {
 pub fn apply_sccache_if_possible(ctx: &Context) -> Result<Vec<(&str, Option<String>)>> {
     let mut envs = vec![];
     if sccache_should_run(ctx, true) {
-        if let Some(sccache_config) = &ctx.config().cargo_config.sccache {
+        if let Some(sccache_config) = &ctx.config().cargo.sccache {
             if !ctx.installer().install_via_cargo_if_needed(ctx, "sccache") {
                 return Err(Error::new("Failed to install sccache, bailing"));
             }

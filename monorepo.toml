@@ -1,14 +1,22 @@
-[cargo-config]
-
 # cargo tools installation
-[cargo-installs]
+[cargo.installs]
 cargo-deny = { version = "0.11.0" }
 grcov = { version = "0.8.4" }
 mdbook = { version = "0.4.14" }
 sccache = { version = "0.2.15" }
 
+#[cargo.sccache]
+#bucket = "ci-artifacts.legionlabs.com"
+#prefix = "sccache/legion/"
+#public = false
+#region = "ca-central-1"
+#endpoint = "https://s3-ca-central-1.amazonaws.com"
+#required-cargo-home = { windows = "C:\\cargo_home", linux = "/cargo_home", macos = "tbd" }
+#required-git-home = { windows = "C:\\git_home", linux = "/git_home", macos = "tbd" }
+#envs = []
+
 # dependencies lints
-[dependencies]
+[lints.direct-dependencies]
 bans = [
     { name = "clap", version = "2", suggestion = "use `clap` 3.0 or above" },
     { name = "structopts", version = "*", suggestion = "use `clap` 3.0 or above" },
@@ -21,10 +29,34 @@ bans = [
 ]
 
 # crate attributes lints
-[crate-attributes]
-name = { name-pattern = "lgn-*", globs = [] }
-license = { spdx = "MIT OR Apache-2.0", globs = [] }
+[lints.crate-attributes]
+license-rules = [{ spdx = "MIT OR Apache-2.0", globs = ["crates/*"] }]
 edition = "2021"
+
+[[lints.crate-attributes.name-rules]]
+help = "official crates names must start with lgn-, be lower kebab-case"
+pattern = "^(?:lgn-)[a-z0-9-]+$"
+globs = ["crates/*", "build/*"]
+glob-literal-separator = true
+
+[[lints.crate-attributes.name-rules]]
+help = "tests and examples must not start with lgn-, but have to be lower kebab-case"
+pattern = "^[a-z0-9-]+$"
+negative-pattern = "^(?:lgn-).*$"
+globs = ["examples/*", "tests/*"]
+glob-literal-separator = true
+
+[[lints.crate-attributes.bins-rules]]
+help = "official crates binaries must start with lgn-, be lower kebab-case"
+pattern = "^(?:lgn-)[a-z0-9-]+$"
+globs = ["crates/*", "build/*"]
+glob-literal-separator = true
+
+[vscode]
+debugger-type = { windows = "cppvsdbg", linux = "lldb", macos = "lldb" }
+compounds = { editor-compound = ["editor-client", "editor-srv"] }
+overrides = { graphics-sandbox = { args = ["editor-client", "editor-srv"] } }
+
 
 [rustdoc]
 entry-point = "lgn-app"
@@ -103,10 +135,5 @@ globs = [
     "npm-pkgs/**/*",
     "package.json",
     "trace-*",
-
-    # wasm
-    "lib/simple-wasm-logger/**/*",
 ]
 mark-changed = []
-
-[vscode]

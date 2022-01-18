@@ -8,13 +8,15 @@ pub fn run(ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();
     let bans: Vec<_> = ctx
         .config()
-        .dependencies
+        .lints
+        .direct_dependencies
         .bans
         .iter()
         .map(|dep| {
             (
                 dep.name.as_str(),
                 VersionReq::parse(&dep.version),
+                dep.suggestion.clone(),
                 dep.exceptions
                     .as_ref()
                     .map_or(&[] as &[String], Vec::as_slice),
@@ -22,7 +24,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         })
         .collect();
     // validate bans
-    for (name, version, exceptions) in &bans {
+    for (name, version, _, exceptions) in &bans {
         if version.is_err() {
             return Err(Error::new(format!(
                 "invalid version requirement for ban {}: {}",
@@ -41,17 +43,18 @@ pub fn run(ctx: &Context) -> Result<()> {
     }
     for package in workspace.iter() {
         for plink in package.direct_links() {
-            for (name, version, exceptions) in &bans {
+            for (name, version, suggestion, exceptions) in &bans {
                 let dep = plink.to();
                 if *name == dep.name()
                     && version.as_ref().unwrap().matches(dep.version())
                     && exceptions.iter().all(|s| s != package.name())
                 {
                     return Err(Error::new(format!(
-                        "package {} version {} is banned, but is depended on by {}",
+                        "package {}@{} is banned, but is depended on by {}, please use {}",
                         dep.name(),
                         dep.version(),
                         package.name(),
+                        suggestion,
                     )));
                 }
             }
