@@ -1,6 +1,7 @@
+import { ContextMenuEntryRecord } from "@/stores/contextMenu";
 import { Entry } from "@lgn/frontend/src/stores/contextMenu";
 
-const entries: Entry[] = [
+const entries: Entry<ContextMenuEntryRecord["resource"]>[] = [
   {
     type: "item",
     label: "Rename",

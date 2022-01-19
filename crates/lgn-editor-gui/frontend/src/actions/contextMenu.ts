@@ -1,4 +1,4 @@
 import buildContextMenu from "@lgn/frontend/src/actions/contextMenu";
-import { ContextMenuName } from "@/stores/contextMenu";
+import contextMenuStore, { ContextMenuEntryRecord } from "@/stores/contextMenu";
 
-export default buildContextMenu<ContextMenuName>();
+export default buildContextMenu<ContextMenuEntryRecord>(contextMenuStore);

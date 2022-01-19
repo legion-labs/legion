@@ -1,29 +1,26 @@
 <!--
 @Component
-Context menu meant to replace the default context menu in browsers.
+Context menu that replaces the default context menu in browsers and Tauri.
+
+_This component is expected to be mounted _once_ in the whole page._
 
 The component alone doesn't do much apart from replacing the context menu
-by a new, custom, one.
+by a new, custom, one, the so called "entries" are to be provided.
 
 In order to add more entries to the context menu, one must first use
 the `contextMenuStore` to register the new entries, and then, using
 the `contextMenu` action let this component know what custom menu
-the element must use.
+the component must display.
 
-Alongside the `type` and `label`, an `onClick` attribute must be
-provided. This function will be called with the `close` function
-that allows to close the context menu programmatically, and
-a `payload` if provided to the `contextMenu` action. Payloads
-will be stringified using `JSON.stringify` to be store in the _DOM_
-and parsed using `JSON.parse`, it's therefore strongly discouraged
-to pass a big object, or any non serializable object.
+Alongside the `type` and `label`, an `onClick` attribute must be provided.
+This function will be called with the `close` function that allows
+to close the context menu programmatically, and a `payload` (that can be
+`undefined` if needed) to the `contextMenu` action.
 
-_In the future the `payload` could be forced to be a `string`._
-
-_This component is expected to be mounted _once_ in the whole page._
-`contextMenuStore.register` can be called as many times as needed,
-and a `contextMenuStore.remove` function is also provided to cleanup unnecessary
-context menu entries.
+While the `ContextMenu` component itself should be mounted only once,
+the `contextMenuStore.register` can be called as many times as needed,
+and a `contextMenuStore.remove` function is also provided to cleanup
+unnecessary context menu entries.
 
 ## Example
 
@@ -32,18 +29,23 @@ context menu entries.
 ```typescript
 import buildContextMenuStore from "@lgn/frontend/src/stores/contextMenu";
 
-export type MyContextMenuName = "my-context-menu" | "my-other-context-menu";
+// We define our context menu entry record with a simple type:
+// keys represent the name of the entry set and values the payloads.
+export type ContextMenuEntryRecord = {
+  "my-context-menu": undefined;
+  "my-other-context-menu": string | null;
+};
 
-export default buildContextMenuStore<MyContextMenuName>();
+export default buildContextMenuStore<ContextMenuEntryRecord>();
 ```
 
 `./actions/myContextMenu.ts`
 
 ```typescript
 import buildContextMenu from "@lgn/frontend/src/actions/contextMenu";
-import { MyContextMenuName } from "../stores/myContextMenu";
+import myContextMenuStore, { ContextMenuEntryRecord } from "../stores/myContextMenu";
 
-export default buildContextMenu<MyContextMenuName>();
+export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 ```
 
 `./pages/MyPage.svelte`
@@ -52,20 +54,18 @@ export default buildContextMenu<MyContextMenuName>();
 <script>
   import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
 
-  import myContextMenu from "../actions/contextMenu";
-  import myContextMenuStore from "../stores/contextMenu";
+  import myContextMenu from "../actions/myContextMenu";
+  import myContextMenuStore from "../stores/myContextMenu";
 
-  // By default our context menu entry do nothing
-  // and immediately close the context menu.
+  // `onClick` doesn't do anything and closes the context menu
+  // right away. You can perform any kind of action in here
+  // (including asynchronous ones).
 
   contextMenuStore.register("my-context-menu", [
     {
       type: "item",
       label: "Do this",
-      onClick({ close, payload }) {
-        console.log(payload); // Will print "I am a payload"
-        close();
-      },
+      onClick({ close }) { close(); },
     },
     { type: "separator" },
     {
@@ -76,17 +76,27 @@ export default buildContextMenu<MyContextMenuName>();
     },
   ]);
 
+  // Since we properly defined our context entry record in our store,
+  // the `payload` variable has type `string | null` below:
+
   contextMenuStore.register("my-other-context-menu", [
     {
       type: "item",
       label: "Do this other thing",
-      onClick({ close }) { close(); },
+      onClick({ close, payload }) {
+        console.log(payload); // Will print `"I am a payload"`
+
+        close();
+      },
     },
     { type: "separator" },
     {
       type: "item",
       label: "Do that other thing",
-      onClick({ close }) { close(); },
+      onClick({ close, payload }) {
+        console.log(payload); // Will print `"I am a payload"` too
+
+        close(); },
     },
   ]);
 </script>
@@ -95,13 +105,13 @@ export default buildContextMenu<MyContextMenuName>();
 
 <div>
   <div>If you right click me, a default context menu is shown.</div>
-  <div use:myContextMenu={{
-    name: "my-context-menu",
-    payload: "I am a payload",
-  }}>
+  <div use:myContextMenu={{ name: "my-context-menu" }}>
     If you right click me "Do this" and "Do that" entries are displayed.
   </div>
-  <div use:myContextMenu={{ name: "my-other-context-menu" }}>
+  <div use:myContextMenu={{
+    name: "my-other-context-menu",
+    payload: "I am a payload",
+  }}>
     If you right click me "Do this other thing"
     and "Do that other thing" entries are displayed.
   </div>
@@ -109,14 +119,11 @@ export default buildContextMenu<MyContextMenuName>();
 ```
 -->
 <script lang="ts">
-  import { Readable } from "svelte/store";
-
   import clickOutside from "../actions/clickOutside";
   import { remToPx } from "../lib/html";
-  import log from "../lib/log";
   import { sleep } from "../lib/promises";
   import { Position } from "../lib/types";
-  import { Entry, StoreValue } from "../stores/contextMenu";
+  import { Entry, Store as ContextMenuStore } from "../stores/contextMenu";
 
   type State =
     | { type: "hidden" }
@@ -136,34 +143,26 @@ export default buildContextMenu<MyContextMenuName>();
 
   const widthPx = remToPx(widthRem) as number;
 
-  const defaultEntries: Entry[] = [
-    {
-      type: "item",
-      label: "Help",
-      onClick({ close }) {
-        close();
-      },
-    },
-    {
-      type: "item",
-      label: "About",
-      onClick({ close }) {
-        close();
-      },
-    },
+  const defaultEntries: Entry<unknown>[] = [
+    { type: "item", label: "Help", onClick: ({ close }) => close() },
+    { type: "item", label: "About", onClick: ({ close }) => close() },
   ];
 
-  export let contextMenuStore: Readable<StoreValue<string>>;
+  export let contextMenuStore: ContextMenuStore<any>;
+
+  $: entryRecord = contextMenuStore.entryRecord;
+
+  $: activeEntrySet = contextMenuStore.activeEntrySet;
 
   let state: State = { type: "hidden" };
 
-  let currentEntries: Entry[] = [];
+  let currentEntries: Entry<unknown>[] = [];
 
   let currentPayload: unknown;
 
   function computePositionFrom(
     { clientX, clientY, view }: MouseEvent,
-    entries: Entry[]
+    entries: Entry<unknown>[]
   ): Position {
     // Should not happen
     if (!view) {
@@ -202,47 +201,20 @@ export default buildContextMenu<MyContextMenuName>();
     event.preventDefault();
     event.stopPropagation();
 
-    // Recursively get the menu name, if any
-    const contextMenuData = (function rec(
-      element: HTMLElement
-    ): { name: string; payload?: unknown } | null {
-      if (element.dataset.contextMenu) {
-        return {
-          name: element.dataset.contextMenu,
-          payload: element.dataset.contextMenuPayload,
-        };
-      }
-
-      if (!element.parentElement) {
-        return null;
-      }
-
-      return rec(element.parentElement);
-    })(event.target as HTMLElement);
-
     const newCurrentEntries =
-      (contextMenuData &&
-        $contextMenuStore &&
-        $contextMenuStore[contextMenuData.name]) ||
+      ($activeEntrySet && $entryRecord && $entryRecord[$activeEntrySet.name]) ||
       defaultEntries;
 
     let position = computePositionFrom(event, newCurrentEntries);
 
     // First we "close" the current context menu if it's open
     if ("position" in state) {
-      state = { type: "disappearing", position: state.position };
-
-      await sleep(50).promise;
+      await close();
     }
 
     currentEntries = newCurrentEntries;
 
-    currentPayload =
-      (contextMenuData &&
-        contextMenuData.payload &&
-        typeof contextMenuData.payload === "string" &&
-        JSON.parse(contextMenuData.payload)) ||
-      null;
+    currentPayload = $activeEntrySet?.payload ?? null;
 
     state = {
       type: "appearing",
@@ -261,6 +233,8 @@ export default buildContextMenu<MyContextMenuName>();
     if (!("position" in state)) {
       return;
     }
+
+    contextMenuStore.removeActiveEntrySet();
 
     state = { type: "disappearing", position: state.position };
 

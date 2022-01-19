@@ -1,9 +1,7 @@
-/**
- * Exports a properly typed `contextMenu` store.
- */
-
 import buildContextMenuStore from "@lgn/frontend/src/stores/contextMenu";
 
-export type ContextMenuName = "resource";
+export type ContextMenuEntryRecord = {
+  resource: { itemName: string };
+};
 
-export default buildContextMenuStore<ContextMenuName>();
+export default buildContextMenuStore<ContextMenuEntryRecord>();

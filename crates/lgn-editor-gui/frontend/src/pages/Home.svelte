@@ -113,7 +113,10 @@
                 <HierarchyTree entries={unflatten($allResourcesData)}>
                   <div
                     let:itemName
-                    use:contextMenu={{ name: "resource", payload: itemName }}
+                    use:contextMenu={{
+                      name: "resource",
+                      payload: { itemName },
+                    }}
                     class="h-full w-full"
                     slot="itemName"
                   >
@@ -124,7 +127,10 @@
               <HierarchyTree entries={fakeFileSystemEntries}>
                 <div
                   let:itemName
-                  use:contextMenu={{ name: "resource", payload: itemName }}
+                  use:contextMenu={{
+                    name: "resource",
+                    payload: { itemName },
+                  }}
                   class="h-full w-full"
                   slot="itemName"
                 >
