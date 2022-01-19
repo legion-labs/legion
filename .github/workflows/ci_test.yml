@@ -18,61 +18,22 @@ jobs:
       - name: Run initial checks
         run: cargo ci check
 
-  check_needs_gpu_tests:
-    name: Check if graphics libs changed
-    runs-on: ubuntu-latest
-    outputs:
-      files_changed: ${{ steps.changed-files.outputs.any_changed }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Get specific changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            ^crates/lgn-graphics-*
-            ^crates/lgn-renderer
-            ^crates/lgn-presenter-*
-            ^tests/graphics-*
-
   test:
     name: Running tests
-    needs: lint
+    needs: [lint, runner_selection]
     strategy:
       matrix:
         os:
           [
-            [self-hosted, windows, common, build],
-            [self-hosted, linux, common, build],
+            "${{ needs.check_needs_gpu_tests.outputs.linux_machine }}",
+            "${{ needs.check_needs_gpu_tests.outputs.windows_machine }}",
           ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build tests
-        run: make test-build
-
       - name: Run tests
-        run: make test-run
-
-  test_gpu:
-    name: Running gpu tests
-    needs: [lint, check_needs_gpu_tests]
-    if: needs.check_needs_gpu_tests.outputs.files_changed == 'true'
-    strategy:
-      matrix:
-        os:
-          [[self-hosted, windows, gpu, build], [self-hosted, linux, gpu, build]]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Run tests
-        continue-on-error: true # experimental test
-        run: cargo test --test base_tests -- gpu_
+        run: cargo ci test
 
   build_docs:
     name: Building docs
@@ -82,7 +43,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build docs
-        run: make api-doc
+        run: cargo m doc
 
       - name: Upload docs
         uses: actions/upload-artifact@v2
@@ -114,3 +75,33 @@ jobs:
           publish_dir: ./doc
           force_orphan: true
           cname: api.legionengine.com
+
+  ###############################################################################
+
+  runner_selection:
+    name: Check if graphics libs changed
+    runs-on: ubuntu-latest
+    outputs:
+      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
+      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Test changed crates
+        id: changed-crates
+        run: |
+          crates=$(cargo m changed-since HEAD^ --matches-any renderer graphics-sandbox)
+          if [[ $? != 0 ]]; then
+            echo "failed to detect changed crates"
+            exit 1
+          fi
+          echo $crates
+          if [[ $crates ]]; then
+            echo "::set-output name=linux_runner::[\"self-hosted\",\"linux\",\"gpu\",\"build\"]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
+          else
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+          fi

@@ -143,8 +143,9 @@ mark-changed = "all"
 
 [[determinator.path-rule]]
 globs = [
+    ".github/images/*",
+    ".github/dependabot.yml",
     ".vscode/*",
-    "CREDITS.md",
     "docs/**/*",
     "build/env/**/*",
     "pnpm-*",
@@ -155,6 +156,11 @@ globs = [
     "package.json",
     "trace-*",
 ]
+mark-changed = []
+
+[[determinator.path-rule]]
+# Ignore *.md documentation
+globs = ["*.md"]
 mark-changed = []
 
 ################################################################################
