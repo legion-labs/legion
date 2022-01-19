@@ -11,7 +11,6 @@
         uint vertex_offset;
         uint world_offset;
         uint picking_id;
-        float picking_distance;
     };
 
 #endif

@@ -238,102 +238,6 @@ impl PickingRenderPass {
         }
     }
 
-    fn bind_descriptor_table(
-        &self,
-        cmd_buffer: &HLCommandBuffer<'_>,
-    ) {
-        // let mut constant_data = cgen::cgen_type::ConstData::default();
-        // constant_data.set_world((*custom_world).into());
-        // constant_data.set_picking_distance(picking_distance.into());
-
-        // let descriptor_set_layout = &self
-        //     .pipeline
-        //     .root_signature()
-        //     .definition()
-        //     .descriptor_set_layouts[0];
-
-        // let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-
-        // {
-        //     let sub_allocation =
-        //         transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
-
-        //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-        //     descriptor_set_writer
-        //         .set_descriptors_by_name(
-        //             "view_data",
-        //             &[DescriptorRef::BufferView(&const_buffer_view)],
-        //         )
-        //         .unwrap();
-        // }
-
-        // {
-        //     let sub_allocation =
-        //         transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-        //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-        //     descriptor_set_writer
-        //         .set_descriptors_by_name(
-        //             "const_data",
-        //             &[DescriptorRef::BufferView(&const_buffer_view)],
-        //         )
-        //         .unwrap();
-        // }
-
-        // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-        // descriptor_set_writer
-        //     .set_descriptors_by_name(
-        //         "static_buffer",
-        //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-        //     )
-        //     .unwrap();
-
-        // descriptor_set_writer
-        //     .set_descriptors_by_name(
-        //         "picked_count",
-        //         &[DescriptorRef::BufferView(&self.count_rw_view)],
-        //     )
-        //     .unwrap();
-
-        // descriptor_set_writer
-        //     .set_descriptors_by_name(
-        //         "picked_objects",
-        //         &[DescriptorRef::BufferView(&self.picked_rw_view)],
-        //     )
-        //     .unwrap();
-
-        // let descriptor_set_handle =
-        //     descriptor_set_writer.flush(render_context.renderer().device_context());
-
-        // cmd_buffer.bind_descriptor_set_handle(
-        //     PipelineType::Graphics,
-        //     &self.root_signature,
-        //     descriptor_set_layout.definition().frequency,
-        //     descriptor_set_handle,
-        // );
-
-        let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
-        push_constant_data.set_world((*custom_world).into());
-        push_constant_data.set_picking_distance(picking_distance.into());
-        push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
-        push_constant_data.set_world_offset(static_mesh.world_offset.into());
-        push_constant_data.set_picking_id(
-            if let Some(id) = custom_picking_id {
-                id
-            } else {
-                static_mesh.picking_id
-            }
-            .into(),
-        );
-        push_constant_data.set_picking_distance(picking_distance.into());
-
-        cmd_buffer.push_constant(self.pipeline.root_signature(), &push_constant_data);
-
-        cmd_buffer.draw(static_mesh.num_vertices, 0);
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
@@ -386,8 +290,6 @@ impl PickingRenderPass {
                 render_surface.extents().height() as f32,
             );
 
-            self.bind_descriptor_table(&view_data, &cmd_buffer, render_context);
-
             for (_index, (static_mesh, transform, manipulator)) in
                 manipulator_meshes.iter().enumerate()
             {
@@ -400,7 +302,7 @@ impl PickingRenderPass {
                         &projection_matrix,
                     );
 
-                    self.render_mesh(
+                    render_mesh(
                         &custom_world,
                         None,
                         picking_distance,
@@ -414,7 +316,7 @@ impl PickingRenderPass {
                 let picking_distance = 1.0;
                 let custom_world = Mat4::IDENTITY;
 
-                self.render_mesh(
+                render_mesh(
                     &custom_world,
                     None,
                     picking_distance,
@@ -426,7 +328,7 @@ impl PickingRenderPass {
             for (light, transform) in lights {
                 let picking_distance = 1.0;
                 let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
-                self.render_mesh(
+                render_mesh(
                     &custom_world,
                     Some(light.picking_id),
                     picking_distance,
@@ -528,4 +430,106 @@ impl PickingRenderPass {
             &[],
         );
     }
+}
+fn render_mesh(
+    custom_world: &Mat4,
+    picking_id: Option<u32>,
+    picking_distance: f32,
+    static_mesh: &StaticMesh,
+    // Some(light.picking_id),
+    // picking_distance,
+    // light_picking_mesh,
+    // &cmd_buffer,
+    cmd_buffer: &HLCommandBuffer<'_>,
+) {
+    // let mut constant_data = cgen::cgen_type::ConstData::default();
+    // constant_data.set_world((*custom_world).into());
+    // constant_data.set_picking_distance(picking_distance.into());
+
+    // let descriptor_set_layout = &self
+    //     .pipeline
+    //     .root_signature()
+    //     .definition()
+    //     .descriptor_set_layouts[0];
+
+    // let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
+
+    // {
+    //     let sub_allocation =
+    //         transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
+
+    //     let const_buffer_view = sub_allocation.const_buffer_view();
+
+    //     descriptor_set_writer
+    //         .set_descriptors_by_name(
+    //             "view_data",
+    //             &[DescriptorRef::BufferView(&const_buffer_view)],
+    //         )
+    //         .unwrap();
+    // }
+
+    // {
+    //     let sub_allocation =
+    //         transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+
+    //     let const_buffer_view = sub_allocation.const_buffer_view();
+
+    //     descriptor_set_writer
+    //         .set_descriptors_by_name(
+    //             "const_data",
+    //             &[DescriptorRef::BufferView(&const_buffer_view)],
+    //         )
+    //         .unwrap();
+    // }
+
+    // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
+    // descriptor_set_writer
+    //     .set_descriptors_by_name(
+    //         "static_buffer",
+    //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
+    //     )
+    //     .unwrap();
+
+    // descriptor_set_writer
+    //     .set_descriptors_by_name(
+    //         "picked_count",
+    //         &[DescriptorRef::BufferView(&self.count_rw_view)],
+    //     )
+    //     .unwrap();
+
+    // descriptor_set_writer
+    //     .set_descriptors_by_name(
+    //         "picked_objects",
+    //         &[DescriptorRef::BufferView(&self.picked_rw_view)],
+    //     )
+    //     .unwrap();
+
+    // let descriptor_set_handle =
+    //     descriptor_set_writer.flush(render_context.renderer().device_context());
+
+    // cmd_buffer.bind_descriptor_set_handle(
+    //     PipelineType::Graphics,
+    //     &self.root_signature,
+    //     descriptor_set_layout.definition().frequency,
+    //     descriptor_set_handle,
+    // );
+
+    let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+    push_constant_data.set_world((*custom_world).into());
+    push_constant_data.set_picking_distance(picking_distance.into());
+    push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
+    push_constant_data.set_world_offset(static_mesh.world_offset.into());
+    push_constant_data.set_picking_id(
+        if let Some(id) = picking_id {
+            id
+        } else {
+            static_mesh.picking_id
+        }
+        .into(),
+    );
+    push_constant_data.set_picking_distance(picking_distance.into());
+
+    cmd_buffer.push_constant2(&push_constant_data);
+
+    cmd_buffer.draw(static_mesh.num_vertices, 0);
 }

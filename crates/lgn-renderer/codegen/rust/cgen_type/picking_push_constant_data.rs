@@ -138,7 +138,6 @@ impl Default for PickingPushConstantData {
         ret.set_vertex_offset(Uint1::default());
         ret.set_world_offset(Uint1::default());
         ret.set_picking_id(Uint1::default());
-        ret.set_picking_distance(Float1::default());
         ret
     }
 }
