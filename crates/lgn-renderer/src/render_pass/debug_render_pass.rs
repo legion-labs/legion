@@ -5,6 +5,7 @@ use lgn_graphics_api::{
     LoadOp, Pipeline, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp,
     VertexLayout,
 };
+use lgn_graphics_data::Color;
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::GlobalTransform;
@@ -254,21 +255,17 @@ impl DebugRenderPass {
                 );
 
                 let mut color = if manipulator.selected {
-                    Vec4::new(1.0, 1.0, 0.0, 1.0)
+                    Color::YELLOW
                 } else {
-                    Vec4::new(
-                        f32::from(static_mesh.color.r) / 255.0f32,
-                        f32::from(static_mesh.color.g) / 255.0f32,
-                        f32::from(static_mesh.color.b) / 255.0f32,
-                        f32::from(static_mesh.color.a) / 255.0f32,
-                    )
+                    static_mesh.color
                 };
 
-                color.w = if manipulator.transparent { 0.9 } else { 1.0 };
+
+                color.set_a(if manipulator.transparent { 0.9 } else { 1.0 });
 
                 cmd_buffer.bind_pipeline(&self.solid_pso_nodepth);
                 cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-                cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+                constant_data.set_color(color.into());
 
                 render_mesh(
                     static_mesh.mesh_id as u32,

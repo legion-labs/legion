@@ -4521,6 +4521,7 @@ dependencies = [
  "glam",
  "half",
  "lgn-graphics-api",
+ "lgn-graphics-data",
  "serde",
 ]
 
@@ -4531,10 +4532,12 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
+ "hex",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
  "lgn-data-model",
+ "lgn-math",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",

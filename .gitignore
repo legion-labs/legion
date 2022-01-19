@@ -43,3 +43,6 @@ trace-*.json
 
 # Symlinks we use for debugging build scripts output
 **/out_dir
+
+# Monorepo
+monorepo.local.toml

@@ -10,6 +10,7 @@ use lgn_graphics_api::{
 };
 
 use half::prelude::*;
+use lgn_graphics_data::Color;
 
 macro_rules! impl_native_type_def {
     ( $x:ident ) => {
@@ -84,6 +85,12 @@ impl From<Float3> for glam::Vec3 {
     }
 }
 
+impl From<Color> for Float3 {
+    fn from(value: Color) -> Self {
+        Self([value.r(), value.g(), value.b()])
+    }
+}
+
 ///
 /// Float4
 ///
@@ -101,6 +108,12 @@ impl From<glam::Vec4> for Float4 {
 impl From<Float4> for glam::Vec4 {
     fn from(value: Float4) -> Self {
         Self::new(value.0[0], value.0[1], value.0[2], value.0[3])
+    }
+}
+
+impl From<Color> for Float4 {
+    fn from(value: Color) -> Self {
+        Self(value.as_rgba_f32())
     }
 }
 
