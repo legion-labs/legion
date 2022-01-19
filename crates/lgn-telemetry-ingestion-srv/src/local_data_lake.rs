@@ -39,5 +39,5 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionServic
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     migrate_db(&mut connection).await?;
-    Ok(IngestionService::new(pool, blob_storage))
+    Ok(IngestionService::new(pool, Box::new(blob_storage)))
 }

@@ -15,9 +15,8 @@ pub use error::{Error, Result};
 pub use local_blob_storage::LocalBlobStorage;
 pub use lz4_blob_storage_adapter::Lz4BlobStorageAdapter;
 
-use std::{path::Path, pin::Pin};
-
 use async_trait::async_trait;
+use std::{path::Path, pin::Pin};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub type BoxedAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
@@ -101,13 +100,14 @@ impl<T: StreamingBlobStorage> BlobStorage for T {
     /// Writes the full contents of a blob to the storage.
     async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()> {
         let writer = self.get_blob_writer(name).await?;
-
         if let Some(mut writer) = writer {
             writer.write_all(content).await.map_err(|e| {
                 Error::forward_with_context(e, format!("could not write blob: {}", name))
             })?;
+            writer.shutdown().await.map_err(|e| {
+                Error::forward_with_context(e, format!("could not shutdown writer: {}", name))
+            })?;
         }
-
         Ok(())
     }
 

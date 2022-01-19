@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
-use lgn_blob_storage::LocalBlobStorage;
+use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url};
 use lgn_tracing::info;
 use sqlx::migrate::MigrateDatabase;
-use std::path::PathBuf;
+use std::str::FromStr;
 
 use crate::{
     ingestion_service::IngestionService,
@@ -20,9 +20,8 @@ async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
     Ok(())
 }
 
-pub async fn connect_to_remote_data_lake(db_uri: &str) -> Result<IngestionService> {
-    let blocks_folder = PathBuf::from("d:\\temp\\blocks_hack");
-    let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
+pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<IngestionService> {
+    let blob_storage = AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await;
     if !sqlx::Any::database_exists(db_uri)
         .await
         .with_context(|| String::from("Searching for telemetry database"))?
@@ -37,5 +36,5 @@ pub async fn connect_to_remote_data_lake(db_uri: &str) -> Result<IngestionServic
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     migrate_db(&mut connection).await?;
-    Ok(IngestionService::new(pool, blob_storage))
+    Ok(IngestionService::new(pool, Box::new(blob_storage)))
 }

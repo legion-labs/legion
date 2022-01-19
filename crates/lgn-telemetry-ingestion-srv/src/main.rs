@@ -42,7 +42,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum DataLakeSpec {
     Local { path: PathBuf },
-    Remote { db_uri: String, bucket_uri: String },
+    Remote { db_uri: String, s3_url: String },
 }
 
 #[tokio::main]
@@ -51,10 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     let service = match args.spec {
         DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
-        DataLakeSpec::Remote {
-            db_uri,
-            bucket_uri: _,
-        } => connect_to_remote_data_lake(&db_uri).await?,
+        DataLakeSpec::Remote { db_uri, s3_url } => {
+            connect_to_remote_data_lake(&db_uri, &s3_url).await?
+        }
     };
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))

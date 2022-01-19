@@ -1,4 +1,4 @@
-use lgn_blob_storage::{BlobStorage, LocalBlobStorage};
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
 use lgn_telemetry_proto::ingestion::InsertReply;
 use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
@@ -8,11 +8,11 @@ use tonic::{Request, Response, Status};
 
 pub struct IngestionService {
     db_pool: sqlx::any::AnyPool,
-    blob_storage: LocalBlobStorage,
+    blob_storage: Box<dyn BlobStorage>,
 }
 
 impl IngestionService {
-    pub fn new(db_pool: sqlx::AnyPool, blob_storage: LocalBlobStorage) -> Self {
+    pub fn new(db_pool: sqlx::AnyPool, blob_storage: Box<dyn BlobStorage>) -> Self {
         Self {
             db_pool,
             blob_storage,
@@ -141,6 +141,7 @@ impl TelemetryIngestion for IngestionService {
                 .write_blob(&block.block_id, &encoded_payload)
                 .await
             {
+                error!("Error writing block to blob storage: {}", e);
                 return Err(Status::internal(format!(
                     "Error writing block to blob storage: {}",
                     e
