@@ -26,8 +26,8 @@ jobs:
       matrix:
         os:
           [
-            "${{ fromJSON(needs.runner_selection.outputs.linux_machine) }}",
-            "${{ fromJSON(needs.runner_selection.outputs.windows_machine) }}",
+            "${{ fromJSON(needs.runner_selection.outputs.linux_runner) }}",
+            "${{ fromJSON(needs.runner_selection.outputs.windows_runner) }}",
           ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -142,9 +142,9 @@ jobs:
           fi
           echo $crates
           if [[ $crates ]]; then
-            echo "::set-output name=linux_machine::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
-            echo "::set-output name=windows_machine::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
           else
-            echo "::set-output name=linux_machine::[\"self-hosted\",\"linux\",\"gpu\",\"build\"]"
-            echo "::set-output name=windows_machine::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
           fi
