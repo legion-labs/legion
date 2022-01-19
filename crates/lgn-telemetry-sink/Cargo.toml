@@ -23,9 +23,17 @@ prost = "0.9"
 simple_logger = "1.16"
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
+tracing = { version = "0.1", features = [
+    "release_max_level_info",
+], optional = true }
+tracing-subscriber = { version = "0.3.1", features = [
+    "registry",
+    "env-filter",
+], optional = true }
 uuid = { version = "0.8", features = ["v4"] }
 
 [features]
+default = ["tokio-tracing"]
 max_level_off = ["log/max_level_off", "lgn-tracing/max_level_off"]
 max_level_error = ["log/max_level_error", "lgn-tracing/max_level_error"]
 max_level_warn = ["log/max_level_warn", "lgn-tracing/max_level_warn"]
@@ -67,3 +75,5 @@ release_max_lod_off = ["lgn-tracing/release_max_lod_off"]
 release_max_lod_min = ["lgn-tracing/release_max_lod_min"]
 release_max_lod_med = ["lgn-tracing/release_max_lod_med"]
 release_max_lod_max = ["lgn-tracing/release_max_lod_max"]
+
+tokio-tracing = ["tracing", "tracing-subscriber"]
