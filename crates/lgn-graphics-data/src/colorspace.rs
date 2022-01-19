@@ -6,7 +6,7 @@ pub trait SrgbColorSpace {
 // source: https://entropymine.com/imageworsener/srgbformula/
 impl SrgbColorSpace for f32 {
     #[inline]
-    fn linear_to_nonlinear_srgb(self) -> f32 {
+    fn linear_to_nonlinear_srgb(self) -> Self {
         if self <= 0.0 {
             return self;
         }
@@ -19,7 +19,7 @@ impl SrgbColorSpace for f32 {
     }
 
     #[inline]
-    fn nonlinear_to_linear_srgb(self) -> f32 {
+    fn nonlinear_to_linear_srgb(self) -> Self {
         if self <= 0.0 {
             return self;
         }
@@ -96,9 +96,9 @@ mod test {
 
     #[test]
     fn srgb_linear_full_roundtrip() {
-        let u8max: f32 = u8::max_value() as f32;
+        let u8max: f32 = f32::from(u8::max_value());
         for color in 0..u8::max_value() {
-            let color01 = color as f32 / u8max;
+            let color01 = f32::from(color) / u8max;
             let color_roundtrip = color01
                 .linear_to_nonlinear_srgb()
                 .nonlinear_to_linear_srgb();
