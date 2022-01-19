@@ -7,6 +7,7 @@ use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
     resources::DefaultMeshes,
 };
+use lgn_scripting::components::ECSScriptComponent;
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data_runtime as runtime_data;
@@ -89,6 +90,15 @@ impl AssetToECS for runtime_data::Entity {
                         .num_vertices() as u32,
                     world_offset: 0,
                     picking_id: 0,
+                });
+            } else if let Some(script) = component.downcast_ref::<runtime_data::ScriptComponent>() {
+                if script.script.is_none() {
+                    continue;
+                }
+                entity.insert(ECSScriptComponent {
+                    input_values: script.input_values.clone(),
+                    entry_fn: script.entry_fn.clone(),
+                    lib_path: script.lib_path.clone(),
                 });
             }
             // } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
@@ -183,3 +193,16 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         Some(entity.id())
     }
 }
+
+/*impl AssetToECS for runtime_data::Script {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        _instance: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
+    ) -> Option<Entity> {
+        let entity = commands.spawn();
+
+        Some(entity.id())
+    }
+}*/

@@ -25,6 +25,7 @@ lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-winit = { path = "../lgn-winit", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0" }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "runtime",

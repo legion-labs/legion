@@ -1,0 +1,31 @@
+[package]
+name = "lgn-compiler-script2asm"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+doc = false
+
+[[bin]]
+name = "compiler-script2asm"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../lgn-graphics-runtime", version = "0.1.0" }
+lgn-graphics-offline = { path = "../lgn-graphics-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
+lgn-scripting = { path = "../lgn-scripting", version = "0.1.0" }
+# temp dependency on sample-data, until runtime data moved to plugins
+sample-data-offline = { path = "../../tests/sample-data-offline", version = "0.1.0" }
+sample-data-runtime = { path = "../../tests/sample-data-runtime", version = "0.1.0" }
+sample-data-compiler = { path = "../../tests/sample-data-compiler", version = "0.1.0" }
+
+zip = "0.5"
+curl = "0.4.42"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

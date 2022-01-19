@@ -20,7 +20,8 @@ pub fn register_resource_types(registry: &mut ResourceRegistryOptions) {
     registry
         .add_type_mut::<Entity>()
         .add_type_mut::<Instance>()
-        .add_type_mut::<Mesh>();
+        .add_type_mut::<Mesh>()
+        .add_type_mut::<Script>();
 }
 
 // ------------------ Entity -----------------------------------
@@ -244,6 +245,82 @@ pub struct StaticMesh {
 impl Component for StaticMesh {
     fn extract_build_deps(&self) -> Vec<ResourcePathId> {
         vec![]
+    }
+}
+
+// ------------------ Script -----------------------------------
+
+#[resource("offline_script")]
+#[derive(Serialize, Deserialize)]
+pub struct Script {
+    pub script: String,
+}
+
+impl Asset for Script {
+    type Loader = ScriptProcessor;
+}
+
+impl OfflineResource for Script {
+    type Processor = ScriptProcessor;
+}
+
+#[derive(Default)]
+pub struct ScriptProcessor {}
+
+impl AssetLoader for ScriptProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let mut script = String::new();
+        reader.read_to_string(&mut script)?;
+        Ok(Box::new(Script { script }))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
+
+impl ResourceProcessor for ScriptProcessor {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+        Box::new(Script {
+            script: String::new(),
+        })
+    }
+
+    fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<ResourcePathId> {
+        vec![]
+    }
+
+    fn write_resource(
+        &self,
+        resource: &dyn Any,
+        writer: &mut dyn std::io::Write,
+    ) -> std::io::Result<usize> {
+        let script = resource.downcast_ref::<Script>().unwrap();
+        writer.write_all(script.script.as_bytes())?;
+        Ok(1) // no bytes written exposed by serde.
+    }
+
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+        self.load(reader)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ScriptComponent {
+    pub input_values: Vec<String>,
+    pub entry_fn: String,
+    pub script: Option<ResourcePathId>,
+}
+
+#[typetag::serde]
+impl Component for ScriptComponent {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        if let Some(s) = &self.script {
+            vec![s.clone()]
+        } else {
+            vec![]
+        }
     }
 }
 

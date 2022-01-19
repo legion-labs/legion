@@ -23,6 +23,7 @@ use lgn_ecs::prelude::*;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
+use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
@@ -138,6 +139,7 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::new(args.egui, true, 0))
+        .add_plugin(ScriptingPlugin::default())
         .add_startup_system(register_asset_loaders);
 
     #[cfg(feature = "standalone")]

@@ -16,7 +16,9 @@ lgn-graphics-runtime = { path = "../../crates/lgn-graphics-runtime" }
 lgn-graphics-offline = { path = "../../crates/lgn-graphics-offline" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-utils = { path = "../../crates/lgn-utils", version = "0.1.0" }
-generic-data = { path = "..//generic-data", version = "0.1.0", features = [
+# lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0" }
+
+generic-data = { path = "../generic-data", version = "0.1.0", features = [
     "offline",
     "runtime",
 ] }
