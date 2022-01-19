@@ -13,7 +13,6 @@ lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
-sample-data-offline = { path = "../../tests/sample-data-offline", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 
 # other

@@ -1,5 +1,5 @@
 use lgn_data_offline::ResourcePathId;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct Script {
     pub script: String,
 }
@@ -57,7 +57,7 @@ impl lgn_data_runtime::Resource for Script {
 impl lgn_data_runtime::Asset for Script {
     type Loader = ScriptLoader;
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct ScriptReferenceType(lgn_data_runtime::Reference<Script>);
 lgn_data_model::implement_primitive_type_def!(ScriptReferenceType);
 #[derive(Default)]
@@ -74,7 +74,7 @@ impl lgn_data_runtime::AssetLoader for ScriptLoader {
     }
     fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct ScriptComponent {
     pub input_values: Vec<String>,
     pub entry_fn: String,
@@ -151,4 +151,10 @@ impl lgn_data_model::TypeReflection for ScriptComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __SCRIPTCOMPONENT_DEFAULT : ScriptComponent = ScriptComponent :: default () ; }
 #[typetag::serde(name = "Runtime_ScriptComponent")]
-impl lgn_data_runtime::Component for ScriptComponent {}
+impl lgn_data_runtime::Component for ScriptComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}

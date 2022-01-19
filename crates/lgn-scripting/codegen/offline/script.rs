@@ -1,5 +1,5 @@
 use lgn_data_offline::ResourcePathId;
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct Script {
     pub script: String,
 }
@@ -82,9 +82,13 @@ impl lgn_data_offline::resource::ResourceProcessor for ScriptProcessor {
     }
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn std::any::Any,
+        resource: &dyn std::any::Any,
     ) -> Vec<lgn_data_offline::ResourcePathId> {
-        vec![]
+        let instance = resource.downcast_ref::<Script>().unwrap();
+        lgn_data_offline::extract_resource_dependencies(instance)
+            .unwrap_or_default()
+            .into_iter()
+            .collect()
     }
     fn get_resource_type_name(&self) -> Option<&'static str> {
         Some(<Script as lgn_data_runtime::Resource>::TYPENAME)
@@ -130,7 +134,7 @@ impl lgn_data_offline::resource::ResourceProcessor for ScriptProcessor {
         None
     }
 }
-#[derive(serde :: Serialize, serde :: Deserialize)]
+#[derive(serde :: Serialize, serde :: Deserialize, PartialEq)]
 pub struct ScriptComponent {
     pub input_values: Vec<String>,
     pub entry_fn: String,
@@ -207,4 +211,10 @@ impl lgn_data_model::TypeReflection for ScriptComponent {
 }
 lazy_static::lazy_static! { # [allow (clippy :: needless_update)] static ref __SCRIPTCOMPONENT_DEFAULT : ScriptComponent = ScriptComponent :: default () ; }
 #[typetag::serde(name = "ScriptComponent")]
-impl lgn_data_runtime::Component for ScriptComponent {}
+impl lgn_data_runtime::Component for ScriptComponent {
+    fn eq(&self, other: &dyn lgn_data_runtime::Component) -> bool {
+        other
+            .downcast_ref::<Self>()
+            .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
+    }
+}
