@@ -3,9 +3,7 @@ use std::{hash::Hash, marker::PhantomData};
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    deferred_drop::Drc, DeviceContext, PipelineReflection, ShaderStageDef, ShaderStageFlags,
-};
+use crate::{deferred_drop::Drc, DeviceContext, ShaderStageDef, ShaderStageFlags};
 
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
 ///
@@ -42,7 +40,6 @@ pub enum ShaderModuleDef<'a> {
 pub(crate) struct ShaderInner {
     stage_flags: ShaderStageFlags,
     stages: Vec<ShaderStageDef>,
-    pipeline_reflection: PipelineReflection,
 }
 
 #[derive(Clone)]
@@ -51,11 +48,7 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn new(
-        device_context: &DeviceContext,
-        stages: Vec<ShaderStageDef>,
-        pipeline_reflection: &PipelineReflection,
-    ) -> Self {
+    pub fn new(device_context: &DeviceContext, stages: Vec<ShaderStageDef>) -> Self {
         // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
         let mut stage_flags = ShaderStageFlags::empty();
         for stage in &stages {
@@ -65,7 +58,6 @@ impl Shader {
         let inner = ShaderInner {
             stage_flags,
             stages,
-            pipeline_reflection: pipeline_reflection.clone(),
         };
 
         Self {
@@ -79,9 +71,5 @@ impl Shader {
 
     pub fn stage_flags(&self) -> ShaderStageFlags {
         self.inner.stage_flags
-    }
-
-    pub fn pipeline_reflection(&self) -> &PipelineReflection {
-        &self.inner.pipeline_reflection
     }
 }

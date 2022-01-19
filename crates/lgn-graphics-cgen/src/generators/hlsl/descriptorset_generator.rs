@@ -113,11 +113,16 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
         cur_folder.pop();
         let mut includes = deps
             .iter()
-            .map(|ty_ref| {
+            .filter_map(|ty_ref| {
                 let ty = ty_ref.get(ctx.model);
-                let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
-                let rel_path = cur_folder.relative(ty_path);
-                format!("#include \"{}\"", rel_path)
+                match ty {
+                    crate::db::CGenType::Native(_) => None,
+                    crate::db::CGenType::Struct(_) => {
+                        let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
+                        let rel_path = cur_folder.relative(ty_path);
+                        Some(format!("#include \"{}\"", rel_path))
+                    }
+                }
             })
             .collect::<Vec<_>>();
         includes.sort();

@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "Spotlight",
-    id: 15,
-    size: 64,
+    name: "OmniDirectionalLight",
+    id: 13,
+    size: 32,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<Spotlight>(), 64);
+static_assertions::const_assert_eq!(mem::size_of::<OmniDirectionalLight>(), 32);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct Spotlight {
-    data: [u8; 64],
+pub struct OmniDirectionalLight {
+    data: [u8; 32],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl Spotlight {
+impl OmniDirectionalLight {
     pub const fn id() -> u32 {
-        15
+        13
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -57,67 +57,29 @@ impl Spotlight {
     }
 
     //
-    // member : dir
+    // member : color
     // offset : 16
     // size : 12
     //
-    pub fn set_dir(&mut self, value: Float3) {
+    pub fn set_color(&mut self, value: Float3) {
         self.set(16, value);
     }
 
-    pub fn dir(&self) -> Float3 {
+    pub fn color(&self) -> Float3 {
         self.get(16)
     }
 
     //
-    // member : cone_angle
+    // member : pad
     // offset : 28
     // size : 4
     //
-    pub fn set_cone_angle(&mut self, value: Float1) {
+    pub fn set_pad(&mut self, value: Uint1) {
         self.set(28, value);
     }
 
-    pub fn cone_angle(&self) -> Float1 {
+    pub fn pad(&self) -> Uint1 {
         self.get(28)
-    }
-
-    //
-    // member : color
-    // offset : 32
-    // size : 12
-    //
-    pub fn set_color(&mut self, value: Float3) {
-        self.set(32, value);
-    }
-
-    pub fn color(&self) -> Float3 {
-        self.get(32)
-    }
-
-    //
-    // member : pad
-    // offset : 44
-    // size : 20
-    //
-    pub fn set_pad(&mut self, values: [Uint1; 5]) {
-        for i in 0..5 {
-            self.set_pad_element(i, values[i]);
-        }
-    }
-
-    pub fn set_pad_element(&mut self, index: usize, value: Uint1) {
-        assert!(index < 5);
-        self.set::<Uint1>(44 + index * 4, value);
-    }
-
-    pub fn pad(&self) -> [Uint1; 5] {
-        self.get(44)
-    }
-
-    pub fn pad_element(&self, index: usize) -> Uint1 {
-        assert!(index < 5);
-        self.get::<Uint1>(44 + index * 4)
     }
 
     #[allow(unsafe_code)]
@@ -141,15 +103,13 @@ impl Spotlight {
     }
 }
 
-impl Default for Spotlight {
+impl Default for OmniDirectionalLight {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 64] };
+        let mut ret = Self { data: [0; 32] };
         ret.set_pos(Float3::default());
         ret.set_radiance(Float1::default());
-        ret.set_dir(Float3::default());
-        ret.set_cone_angle(Float1::default());
         ret.set_color(Float3::default());
-        ret.set_pad([Uint1::default(); 5]);
+        ret.set_pad(Uint1::default());
         ret
     }
 }

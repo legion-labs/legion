@@ -1,10 +1,10 @@
 // This is generated file. Do not edit manually
 
-#ifndef TYPE_OMNIDIRECTIONAL_LIGHT
-#define TYPE_OMNIDIRECTIONAL_LIGHT
+#ifndef TYPE_OMNI_DIRECTIONAL_LIGHT
+#define TYPE_OMNI_DIRECTIONAL_LIGHT
 
 
-    struct OmnidirectionalLight {
+    struct OmniDirectionalLight {
         float3 pos;
         float radiance;
         float3 color;

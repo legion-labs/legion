@@ -205,7 +205,7 @@ impl UnifiedStaticBuffer {
 }
 
 pub struct UniformGPUData<T> {
-    static_baffer: UnifiedStaticBuffer,
+    static_buffer: UnifiedStaticBuffer,
     allocated_pages: Vec<PagedBufferAllocation>,
     page_size: u64,
     element_size: u64,
@@ -213,11 +213,11 @@ pub struct UniformGPUData<T> {
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(static_baffer: &UnifiedStaticBuffer, min_page_size: u64) -> Self {
-        let page = static_baffer.allocate_segment(min_page_size);
+    pub fn new(static_buffer: &UnifiedStaticBuffer, min_page_size: u64) -> Self {
+        let page = static_buffer.allocate_segment(min_page_size);
         let page_size = page.size();
         Self {
-            static_baffer: static_baffer.clone(),
+            static_buffer: static_buffer.clone(),
             allocated_pages: vec![page],
             page_size,
             element_size: std::mem::size_of::<T>() as u64,
@@ -232,7 +232,7 @@ impl<T> UniformGPUData<T> {
 
         while (self.allocated_pages.len() as u64) < required_pages {
             self.allocated_pages
-                .push(self.static_baffer.allocate_segment(self.page_size));
+                .push(self.static_buffer.allocate_segment(self.page_size));
         }
 
         let index_of_page = index_64 / elements_per_page;

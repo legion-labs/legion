@@ -8,22 +8,22 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "LightingData",
-    id: 24,
-    size: 36,
+    id: 17,
+    size: 48,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<LightingData>(), 36);
+static_assertions::const_assert_eq!(mem::size_of::<LightingData>(), 48);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct LightingData {
-    data: [u8; 36],
+    data: [u8; 48],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl LightingData {
     pub const fn id() -> u32 {
-        24
+        17
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -44,28 +44,28 @@ impl LightingData {
     }
 
     //
-    // member : num_omnidirectional_lights
+    // member : num_omni_directional_lights
     // offset : 4
     // size : 4
     //
-    pub fn set_num_omnidirectional_lights(&mut self, value: Uint1) {
+    pub fn set_num_omni_directional_lights(&mut self, value: Uint1) {
         self.set(4, value);
     }
 
-    pub fn num_omnidirectional_lights(&self) -> Uint1 {
+    pub fn num_omni_directional_lights(&self) -> Uint1 {
         self.get(4)
     }
 
     //
-    // member : num_spotlights
+    // member : num_spot_lights
     // offset : 8
     // size : 4
     //
-    pub fn set_num_spotlights(&mut self, value: Uint1) {
+    pub fn set_num_spot_lights(&mut self, value: Uint1) {
         self.set(8, value);
     }
 
-    pub fn num_spotlights(&self) -> Uint1 {
+    pub fn num_spot_lights(&self) -> Uint1 {
         self.get(8)
     }
 
@@ -147,6 +147,19 @@ impl LightingData {
         self.get(32)
     }
 
+    //
+    // member : pad_
+    // offset : 36
+    // size : 12
+    //
+    pub fn set_pad_(&mut self, value: Uint3) {
+        self.set(36, value);
+    }
+
+    pub fn pad_(&self) -> Uint3 {
+        self.get(36)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -170,16 +183,17 @@ impl LightingData {
 
 impl Default for LightingData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 36] };
+        let mut ret = Self { data: [0; 48] };
         ret.set_num_directional_lights(Uint1::default());
-        ret.set_num_omnidirectional_lights(Uint1::default());
-        ret.set_num_spotlights(Uint1::default());
+        ret.set_num_omni_directional_lights(Uint1::default());
+        ret.set_num_spot_lights(Uint1::default());
         ret.set_diffuse(Uint1::default());
         ret.set_specular(Uint1::default());
         ret.set_specular_reflection(Float1::default());
         ret.set_diffuse_reflection(Float1::default());
         ret.set_ambient_reflection(Float1::default());
         ret.set_shininess(Float1::default());
+        ret.set_pad_(Uint3::default());
         ret
     }
 }

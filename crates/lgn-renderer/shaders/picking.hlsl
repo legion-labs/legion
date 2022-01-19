@@ -1,6 +1,5 @@
-#include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
-#include "crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl"
-#include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
+
+#include "crate://renderer/codegen/hlsl/pipeline_layout/picking_pipeline_layout.hlsl"
 #include "crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
 
 struct VertexIn {
@@ -16,19 +15,11 @@ struct VertexOut {
     float3 picked_world_pos : COLOR;
 };
 
-ConstantBuffer<ViewData> view_data;
-ByteAddressBuffer static_buffer;
-RWStructuredBuffer<uint> picked_count;
-RWStructuredBuffer<PickingData> picked_objects;
-
-[[vk::push_constant]]
-ConstantBuffer<PickingPushConstantData> push_constant;
-
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;
 
-    float4x4 world = push_constant.custom_world;
+    float4x4 world = push_constant.world;
     if (push_constant.world_offset != 0xFFFFFFFF)
     {
         EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);

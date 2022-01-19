@@ -24,6 +24,7 @@ impl Drop for PipelineInner {
     }
 }
 
+#[derive(Clone)]
 pub struct Pipeline {
     pub(crate) inner: Drc<PipelineInner>,
 }

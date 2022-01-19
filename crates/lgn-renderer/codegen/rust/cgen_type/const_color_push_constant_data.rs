@@ -7,23 +7,23 @@ use lgn_graphics_cgen_runtime::CGenTypeDef;
 use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
-    name: "ConstData",
-    id: 17,
-    size: 80,
+    name: "ConstColorPushConstantData",
+    id: 20,
+    size: 84,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<ConstData>(), 80);
+static_assertions::const_assert_eq!(mem::size_of::<ConstColorPushConstantData>(), 84);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct ConstData {
-    data: [u8; 80],
+pub struct ConstColorPushConstantData {
+    data: [u8; 84],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-impl ConstData {
+impl ConstColorPushConstantData {
     pub const fn id() -> u32 {
-        17
+        20
     }
 
     pub fn def() -> &'static CGenTypeDef {
@@ -56,6 +56,19 @@ impl ConstData {
         self.get(64)
     }
 
+    //
+    // member : vertex_offset
+    // offset : 80
+    // size : 4
+    //
+    pub fn set_vertex_offset(&mut self, value: Uint1) {
+        self.set(80, value);
+    }
+
+    pub fn vertex_offset(&self) -> Uint1 {
+        self.get(80)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -77,11 +90,12 @@ impl ConstData {
     }
 }
 
-impl Default for ConstData {
+impl Default for ConstColorPushConstantData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 80] };
+        let mut ret = Self { data: [0; 84] };
         ret.set_world(Float4x4::default());
         ret.set_color(Float4::default());
+        ret.set_vertex_offset(Uint1::default());
         ret
     }
 }

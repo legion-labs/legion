@@ -3,7 +3,7 @@ use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 
 use crate::{
-    cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight},
+    cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight},
     debug_display::DebugDisplay,
     egui::egui_plugin::Egui,
     lighting::LightingManager,
@@ -20,7 +20,7 @@ pub enum LightType {
 #[derive(Component)]
 pub struct LightComponent {
     pub light_type: LightType,
-    pub color: (f32, f32, f32),
+    pub color: Vec3,
     pub radiance: f32,
     pub enabled: bool,
     pub picking_id: u32,
@@ -30,7 +30,7 @@ impl Default for LightComponent {
     fn default() -> Self {
         Self {
             light_type: LightType::Omnidirectional,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             radiance: 40.0,
             enabled: true,
             picking_id: 0,
@@ -80,11 +80,11 @@ pub(crate) fn ui_lights(
                     }
                 }
                 ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
-                let mut rgb = [light.color.0, light.color.1, light.color.2];
+                let mut rgb = [light.color.x, light.color.y, light.color.z];
                 if ui.color_edit_button_rgb(&mut rgb).changed() {
-                    light.color.0 = rgb[0];
-                    light.color.1 = rgb[1];
-                    light.color.2 = rgb[2];
+                    light.color.x = rgb[0];
+                    light.color.y = rgb[1];
+                    light.color.z = rgb[2];
                 }
             });
         }
@@ -160,10 +160,10 @@ pub(crate) fn update_lights(
         return;
     }
     let mut omnidirectional_lights_data =
-        Vec::<OmnidirectionalLight>::with_capacity(OmnidirectionalLight::NUM as usize);
+        Vec::<OmniDirectionalLight>::with_capacity(OmniDirectionalLight::NUM as usize);
     let mut directional_lights_data =
         Vec::<DirectionalLight>::with_capacity(DirectionalLight::NUM as usize);
-    let mut spotlights_data = Vec::<Spotlight>::with_capacity(Spotlight::NUM as usize);
+    let mut spotlights_data = Vec::<SpotLight>::with_capacity(SpotLight::NUM as usize);
 
     for (transform, light) in q_lights.iter() {
         if !light.enabled {
@@ -174,22 +174,22 @@ pub(crate) fn update_lights(
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
                 let mut dir_light = DirectionalLight::default();
                 dir_light.set_dir(direction.into());
-                dir_light.set_color(Vec3::new(light.color.0, light.color.1, light.color.2).into());
+                dir_light.set_color(light.color.into());
                 dir_light.set_radiance(light.radiance.into());
                 directional_lights_data.push(dir_light);
             }
             LightType::Omnidirectional => {
-                let mut omni_light = OmnidirectionalLight::default();
-                omni_light.set_color(Vec3::new(light.color.0, light.color.1, light.color.2).into());
+                let mut omni_light = OmniDirectionalLight::default();
+                omni_light.set_color(light.color.into());
                 omni_light.set_radiance(light.radiance.into());
                 omni_light.set_pos(transform.translation.into());
                 omnidirectional_lights_data.push(omni_light);
             }
             LightType::Spotlight { cone_angle } => {
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
-                let mut spotlight = Spotlight::default();
+                let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
-                spotlight.set_color(Vec3::new(light.color.0, light.color.1, light.color.2).into());
+                spotlight.set_color(light.color.into());
                 spotlight.set_radiance(light.radiance.into());
                 spotlight.set_pos(transform.translation.into());
                 spotlight.set_cone_angle(cone_angle.into());

@@ -60,7 +60,6 @@ fn generate_rust_pipeline_layout(
     writer.add_line("RootSignature,");
     writer.add_line("DescriptorSetLayout,");
     writer.add_line("DescriptorSetHandle,");
-    writer.add_line("Pipeline,");
     writer.add_line("MAX_DESCRIPTOR_SET_LAYOUTS,");
     writer.unindent();
     writer.add_line("};");
@@ -131,9 +130,8 @@ fn generate_rust_pipeline_layout(
 
     // struct
     {
-        writer.add_line(format!("pub struct {}<'a> {{", pipeline_layout.name));
+        writer.add_line(format!("pub struct {} {{", pipeline_layout.name));
         writer.indent();
-        writer.add_line("pipeline: &'a Pipeline,");
         writer.add_line(
             "descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],",
         );
@@ -148,7 +146,7 @@ fn generate_rust_pipeline_layout(
 
     // impl
     {
-        writer.add_line(format!("impl<'a> {}<'a> {{", pipeline_layout.name));
+        writer.add_line(format!("impl {} {{", pipeline_layout.name));
         writer.indent();
         writer.new_line();
 
@@ -196,19 +194,9 @@ fn generate_rust_pipeline_layout(
         writer.new_line();
 
         // fn new
-        writer.add_line("pub fn new(pipeline: &'a Pipeline) -> Self {");
+        writer.add_line("pub fn new() -> Self {");
         writer.indent();
-        writer.add_line("assert_eq!( pipeline.root_signature(), Self::root_signature());");
-        writer.add_line("Self {");
-        writer.indent();
-        writer.add_line("pipeline,");
-        writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
-            writer.add_line(format!("push_constant: {}::default(),", ty.name()));
-        }
-        writer.unindent();
-        writer.add_line("}");
+        writer.add_line("Self::default()");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -250,20 +238,41 @@ fn generate_rust_pipeline_layout(
         writer.add_line("}");
         writer.new_line();
     }
+    // trait: Default
+    writer.add_line(format!("impl Default for {} {{", pipeline_layout.name));
+    writer.indent();
+    writer.new_line();
+    writer.add_line("fn default() -> Self {");
+    writer.indent();
+    writer.add_line("Self {");
+    writer.indent();
+    writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
+    if let Some(ty_ref) = pipeline_layout.push_constant() {
+        let ty = ty_ref.get(ctx.model);
+        writer.add_line(format!("push_constant: {}::default(),", ty.name()));
+    }
+    writer.unindent();
+    writer.add_line("}");
+    writer.unindent();
+    writer.add_line("}");
+    writer.new_line();
+    writer.unindent();
+    writer.add_line("}");
+    writer.new_line();
 
     // trait: PipelineDataProvider
     {
         writer.add_line(format!(
-            "impl<'a> PipelineDataProvider for {}<'a> {{",
+            "impl PipelineDataProvider for {} {{",
             pipeline_layout.name
         ));
         writer.indent();
         writer.new_line();
 
-        // fn pipeline
-        writer.add_line("fn pipeline(&self) -> &Pipeline {");
+        // fn descriptor_set
+        writer.add_line("fn root_signature() -> &'static RootSignature {");
         writer.indent();
-        writer.add_line("self.pipeline");
+        writer.add_line("Self::root_signature()");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
@@ -293,13 +302,6 @@ fn generate_rust_pipeline_layout(
         writer.unindent();
         writer.add_line("}");
         writer.new_line();
-
-        // fn set_descriptor_set
-        writer.add_line("fn set_descriptor_set(&mut self, frequency: u32, descriptor_set: Option<DescriptorSetHandle>) {" );
-        writer.indent();
-        writer.add_line("self.descriptor_sets[frequency as usize] = descriptor_set;");
-        writer.unindent();
-        writer.add_line("}");
 
         // prolog
         writer.unindent();

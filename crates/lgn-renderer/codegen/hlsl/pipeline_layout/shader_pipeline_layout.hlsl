@@ -1,7 +1,7 @@
 // This is generated file. Do not edit manually
 
-#ifndef PIPELINELAYOUT_TMPPIPELINELAYOUT
-#define PIPELINELAYOUT_TMPPIPELINELAYOUT
+#ifndef PIPELINELAYOUT_SHADERPIPELINELAYOUT
+#define PIPELINELAYOUT_SHADERPIPELINELAYOUT
 
     // DescriptorSets
     // - name: frame_descriptor_set

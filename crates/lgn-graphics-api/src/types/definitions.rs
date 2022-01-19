@@ -214,12 +214,6 @@ impl Descriptor {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct DescriptorSetHandle {
-    #[cfg(feature = "vulkan")]
-    pub vk_type: ash::vk::DescriptorSet,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum ViewDimension {
     _2D,
@@ -492,11 +486,10 @@ impl Default for DescriptorSetLayoutDef {
 
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct PushConstantDef {
-    pub used_in_shader_stages: ShaderStageFlags,
     pub size: u32,
 }
 
-#[derive(Default, Debug, Hash)]
+#[derive(Default, Debug)]
 pub struct RootSignatureDef {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,

@@ -18,8 +18,8 @@ impl LightingManager {
         let mut lighting_data = LightingData::default();
 
         lighting_data.set_num_directional_lights(self.num_directional_lights.into());
-        lighting_data.set_num_omnidirectional_lights(self.num_omnidirectional_lights.into());
-        lighting_data.set_num_spotlights(self.num_spotlights.into());
+        lighting_data.set_num_omni_directional_lights(self.num_omnidirectional_lights.into());
+        lighting_data.set_num_spot_lights(self.num_spotlights.into());
         lighting_data.set_diffuse(if self.diffuse { 1 } else { 0 }.into());
         lighting_data.set_specular(if self.specular { 1 } else { 0 }.into());
         lighting_data.set_specular_reflection(self.specular_reflection.into());

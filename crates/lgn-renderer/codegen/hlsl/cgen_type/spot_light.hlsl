@@ -1,10 +1,10 @@
 // This is generated file. Do not edit manually
 
-#ifndef TYPE_SPOTLIGHT
-#define TYPE_SPOTLIGHT
+#ifndef TYPE_SPOT_LIGHT
+#define TYPE_SPOT_LIGHT
 
 
-    struct Spotlight {
+    struct SpotLight {
         float3 pos;
         float radiance;
         float3 dir;

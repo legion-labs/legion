@@ -3,10 +3,8 @@
 use anyhow::Result;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
-    ApiDef, BufferView, DescriptorDef, DescriptorHeap, DescriptorHeapDef, DescriptorSetLayoutDef,
-    DeviceContext, Fence, FenceStatus, GfxApi, PushConstantDef, QueueType, RootSignature,
-    RootSignatureDef, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    ApiDef, BufferView, DescriptorHeap, DescriptorHeapDef, DeviceContext, Fence, FenceStatus,
+    GfxApi, QueueType, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
 };
 use lgn_pso_compiler::{
     CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource, TargetProfile,
@@ -14,7 +12,7 @@ use lgn_pso_compiler::{
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight};
+use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
@@ -38,18 +36,18 @@ pub struct Renderer {
     transient_buffer: TransientPagedBuffer,
     static_buffer: UnifiedStaticBuffer,
     transforms_data: TransformStaticsBuffer,
-    omnidirectional_lights_data: OmnidirectionalLightsStaticBuffer,
+    omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
-    spotlights_data: SpotlightsStaticBuffer,
+    spotlights_data: SpotLightsStaticBuffer,
     bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
     shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
 
-pub type OmnidirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmnidirectionalLight>>;
+pub type OmniDirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmniDirectionalLight>>;
 pub type DirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<DirectionalLight>>;
-pub type SpotlightsStaticBuffer = RenderHandle<UniformGPUData<Spotlight>>;
+pub type SpotLightsStaticBuffer = RenderHandle<UniformGPUData<SpotLight>>;
 
 macro_rules! impl_static_buffer_accessor {
     ($name:ident, $buffer_type:ty, $type:ty) => {
@@ -92,9 +90,9 @@ impl Renderer {
         ));
 
         let omnidirectional_lights_data =
-            OmnidirectionalLightsStaticBuffer::new(UniformGPUData::<OmnidirectionalLight>::new(
+            OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
                 &static_buffer,
-                OmnidirectionalLight::PAGE_SIZE,
+                OmniDirectionalLight::PAGE_SIZE,
             ));
 
         let directional_lights_data =
@@ -103,9 +101,9 @@ impl Renderer {
                 DirectionalLight::PAGE_SIZE,
             ));
 
-        let spotlights_data = SpotlightsStaticBuffer::new(UniformGPUData::<Spotlight>::new(
+        let spotlights_data = SpotLightsStaticBuffer::new(UniformGPUData::<SpotLight>::new(
             &static_buffer,
-            Spotlight::PAGE_SIZE,
+            SpotLight::PAGE_SIZE,
         ));
 
         let descriptor_heap_def = DescriptorHeapDef {
@@ -190,8 +188,8 @@ impl Renderer {
 
     impl_static_buffer_accessor!(
         omnidirectional_lights_data,
-        OmnidirectionalLightsStaticBuffer,
-        OmnidirectionalLight
+        OmniDirectionalLightsStaticBuffer,
+        OmniDirectionalLight
     );
 
     impl_static_buffer_accessor!(
@@ -200,7 +198,7 @@ impl Renderer {
         DirectionalLight
     );
 
-    impl_static_buffer_accessor!(spotlights_data, SpotlightsStaticBuffer, Spotlight);
+    impl_static_buffer_accessor!(spotlights_data, SpotLightsStaticBuffer, SpotLight);
 
     pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
         &self.static_buffer
@@ -266,6 +264,7 @@ impl Renderer {
         let mut pool = self.bump_allocator_pool.lock();
         pool.release(handle);
     }
+
     #[span_fn]
     pub(crate) fn begin_frame(&mut self) {
         //
@@ -336,7 +335,7 @@ impl Renderer {
     }
 
     #[span_fn]
-    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> (Shader, RootSignature) {
+    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> Shader {
         let device_context = self.device_context();
 
         let shader_compiler = self.shader_compiler();
@@ -373,72 +372,18 @@ impl Renderer {
             )
             .unwrap();
 
-        let shader = device_context.create_shader(
-            vec![
-                ShaderStageDef {
-                    entry_point: "main_vs".to_owned(),
-                    shader_stage: ShaderStageFlags::VERTEX,
-                    shader_module: vert_shader_module,
-                },
-                ShaderStageDef {
-                    entry_point: "main_ps".to_owned(),
-                    shader_stage: ShaderStageFlags::FRAGMENT,
-                    shader_module: frag_shader_module,
-                },
-            ],
-            &shader_build_result.pipeline_reflection,
-        );
-
-        //
-        // Root signature
-        //
-
-        let mut descriptor_set_layouts = Vec::new();
-        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let shader_resources: Vec<_> = shader_build_result
-                .pipeline_reflection
-                .shader_resources
-                .iter()
-                .filter(|x| x.set_index as usize == set_index)
-                .collect();
-
-            if !shader_resources.is_empty() {
-                let descriptor_defs = shader_resources
-                    .iter()
-                    .map(|sr| DescriptorDef {
-                        name: sr.name.clone(),
-                        binding: sr.binding,
-                        shader_resource_type: sr.shader_resource_type,
-                        array_size: sr.element_count,
-                    })
-                    .collect();
-
-                let def = DescriptorSetLayoutDef {
-                    frequency: set_index as u32,
-                    descriptor_defs,
-                };
-                let descriptor_set_layout =
-                    device_context.create_descriptorset_layout(&def).unwrap();
-                descriptor_set_layouts.push(descriptor_set_layout);
-            }
-        }
-
-        let root_signature_def = RootSignatureDef {
-            descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: shader_build_result
-                .pipeline_reflection
-                .push_constant
-                .map(|x| PushConstantDef {
-                    used_in_shader_stages: x.used_in_shader_stages,
-                    size: x.size,
-                }),
-        };
-
-        let root_signature = device_context
-            .create_root_signature(&root_signature_def)
-            .unwrap();
-
-        (shader, root_signature)
+        device_context.create_shader(vec![
+            ShaderStageDef {
+                entry_point: "main_vs".to_owned(),
+                shader_stage: ShaderStageFlags::VERTEX,
+                shader_module: vert_shader_module,
+            },
+            ShaderStageDef {
+                entry_point: "main_ps".to_owned(),
+                shader_stage: ShaderStageFlags::FRAGMENT,
+                shader_module: frag_shader_module,
+            },
+        ])
     }
 }
 

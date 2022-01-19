@@ -46,7 +46,7 @@ impl TextureView {
         })
     }
 
-    pub(crate) fn definition(&self) -> &TextureViewDef {
+    pub fn definition(&self) -> &TextureViewDef {
         &self.inner.definition
     }
 

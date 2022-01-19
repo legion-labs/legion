@@ -6,14 +6,15 @@
 
     struct LightingData {
         uint num_directional_lights;
-        uint num_omnidirectional_lights;
-        uint num_spotlights;
+        uint num_omni_directional_lights;
+        uint num_spot_lights;
         uint diffuse;
         uint specular;
         float specular_reflection;
         float diffuse_reflection;
         float ambient_reflection;
         float shininess;
+        uint3 pad_;
     };
 
 #endif

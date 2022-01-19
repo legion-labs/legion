@@ -11,40 +11,45 @@ struct ViewData {
     cursor_pos: Float2,
 }
 
-struct ConstData {
-    world: Float4x4,
-    color: Float4,
+struct LightingData {
+    num_directional_lights: Uint1,
+    num_omni_directional_lights: Uint1,
+    num_spot_lights: Uint1,
+    diffuse: Uint1,
+    specular: Uint1,
+    specular_reflection: Float1,
+    diffuse_reflection: Float1,
+    ambient_reflection: Float1,
+    shininess: Float1,
+    pad_: Uint3,
 }
 
 struct EntityTransforms {
     world: Float4x4,
 }
 
-#[DescriptorSet(frequency = 0, transient)]
+#[DescriptorSet(frequency = 0)]
 struct FrameDescriptorSet {
-    omni_lights: StructuredBuffer<OmnidirectionalLight>,
-    dir_lights: StructuredBuffer<DirectionalLight>,
-    spot_lights: StructuredBuffer<Spotlight>,
+    lighting_data: ConstantBuffer<LightingData>,
+    directional_lights: StructuredBuffer<DirectionalLight>,
+    omni_directional_lights: StructuredBuffer<OmniDirectionalLight>,
+    spot_lights: StructuredBuffer<SpotLight>,
     static_buffer: ByteAddressBuffer,
 }
 
 #[DescriptorSet(frequency = 1)]
 struct ViewDescriptorSet {
-    camera: ConstantBuffer<ViewData>,
+    view_data: ConstantBuffer<ViewData>,
 }
 
-struct InstancePushConstantData {
-    vertex_offset: Uint1,
-    world_offset: Uint1,
-    is_picked: Uint1,
-    color: Float4,
-}
+//
+// Egui
+//
 
-#[PipelineLayout]
-struct TmpPipelineLayout {
-    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
-    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<InstancePushConstantData>,
+#[DescriptorSet(frequency = 0)]
+struct EguiDescriptorSet {
+    font_texture: Texture2D<Float4>,
+    font_sampler: Sampler,    
 }
 
 struct EguiPushConstantData {
@@ -54,31 +59,75 @@ struct EguiPushConstantData {
     height: Float1,
 }
 
-struct DebugPushConstantData {
+#[PipelineLayout]
+struct EguiPipelineLayout {
+    descriptor_set: DescriptorSet<EguiDescriptorSet>,    
+    push_constant: PushConstant<EguiPushConstantData>,
+}
+
+//
+// ConstColor
+//
+
+struct ConstColorPushConstantData {
+    world: Float4x4,
+    color: Float4,
     vertex_offset: Uint1,
 }
 
-struct PickingPushConstantData {
-    custom_world: Float4x4,
-    vertex_offset: Uint1,
-    world_offset: Uint1,
-    picking_id: Uint1,
-    picking_distance: Float1,
+#[PipelineLayout]
+struct ConstColorPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,    
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,    
+    push_constant: PushConstant<ConstColorPushConstantData>,
 }
+
+//
+// Picking
+//
 
 struct PickingData {
     picking_pos: Float3,
     picking_id: Uint1,
 }
 
-struct LightingData {
-    num_directional_lights: Uint1,
-    num_omnidirectional_lights: Uint1,
-    num_spotlights: Uint1,
-    diffuse: Uint1,
-    specular: Uint1,
-    specular_reflection: Float1,
-    diffuse_reflection: Float1,
-    ambient_reflection: Float1,
-    shininess: Float1,
+struct PickingPushConstantData {
+    world: Float4x4,
+    color: Float4,
+    picking_distance: Float1,
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    picking_id: Uint1,
+}
+
+#[DescriptorSet(frequency = 2)]
+struct PickingDescriptorSet {
+    picked_count: RWStructuredBuffer<Uint1>,
+    picked_objects: RWStructuredBuffer<PickingData>,
+}
+
+#[PipelineLayout]
+struct PickingPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    picking_descriptor_set: DescriptorSet<PickingDescriptorSet>,
+    push_constant: PushConstant<PickingPushConstantData>,
+}
+
+//
+// Shader
+//
+
+struct InstancePushConstantData {
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    is_picked: Uint1,
+    color: Float4,
+}
+
+#[PipelineLayout]
+struct ShaderPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    push_constant: PushConstant<InstancePushConstantData>,
 }

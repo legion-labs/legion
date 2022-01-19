@@ -1,4 +1,4 @@
-struct OmnidirectionalLight {
+struct OmniDirectionalLight {
     pos: Float3,
     radiance: Float1,
     color: Float3,
@@ -12,7 +12,7 @@ struct DirectionalLight {
     pad: Uint1,
 }
 
-struct Spotlight {
+struct SpotLight {
     pos: Float3,
     radiance: Float1,
     dir: Float3,

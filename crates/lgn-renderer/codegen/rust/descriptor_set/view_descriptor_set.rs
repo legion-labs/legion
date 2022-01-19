@@ -10,7 +10,7 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::{CGenDescriptorDef, CGenDescriptorSetDef, CGenDescriptorSetInfo};
 
 static DESCRIPTOR_DEFS: [CGenDescriptorDef; 1] = [CGenDescriptorDef {
-    name: "camera",
+    name: "view_data",
     shader_resource_type: ShaderResourceType::ConstantBuffer,
     flat_index_start: 0,
     flat_index_end: 1,
@@ -73,7 +73,7 @@ impl<'a> ViewDescriptorSet<'a> {
         Self::default()
     }
 
-    pub fn set_camera(&mut self, value: &'a BufferView) {
+    pub fn set_view_data(&mut self, value: &'a BufferView) {
         assert!(DESCRIPTOR_SET_DEF.descriptor_defs[0].validate(value));
         self.descriptor_refs[0] = DescriptorRef::BufferView(value);
     }
@@ -88,6 +88,10 @@ impl<'a> Default for ViewDescriptorSet<'a> {
 }
 
 impl<'a> DescriptorSetDataProvider for ViewDescriptorSet<'a> {
+    fn frequency(&self) -> u32 {
+        Self::frequency()
+    }
+
     fn layout(&self) -> &'static DescriptorSetLayout {
         Self::descriptor_set_layout()
     }

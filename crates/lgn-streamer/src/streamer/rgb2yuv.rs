@@ -120,15 +120,12 @@ impl RgbToYuvConverter {
                 .module_def(),
         )?;
 
-        let shader = device_context.create_shader(
-            vec![ShaderStageDef {
-                entry_point: "cs_main".to_owned(),
-                shader_stage: ShaderStageFlags::COMPUTE,
-                shader_module: compute_shader_module,
-                // reflection: shader_build_result.reflection_info.clone().unwrap(),
-            }],
-            &shader_build_result.pipeline_reflection,
-        );
+        let shader = device_context.create_shader(vec![ShaderStageDef {
+            entry_point: "cs_main".to_owned(),
+            shader_stage: ShaderStageFlags::COMPUTE,
+            shader_module: compute_shader_module,
+            // reflection: shader_build_result.reflection_info.clone().unwrap(),
+        }]);
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
@@ -211,7 +208,7 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
         render_surface.transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
@@ -284,7 +281,7 @@ impl RgbToYuvConverter {
             let device_context = render_context.renderer().device_context();
             let descriptor_set_handle = descriptor_set_writer.flush(device_context);
 
-            cmd_buffer.bind_descriptor_set_handle(
+            cmd_buffer.bind_descriptor_set_handle_deprecated(
                 PipelineType::Compute,
                 &self.root_signature,
                 descriptor_set_layout.definition().frequency,

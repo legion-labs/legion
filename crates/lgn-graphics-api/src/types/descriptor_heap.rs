@@ -3,9 +3,22 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanDescriptorHeap, VulkanDescriptorHeapPartition};
 use crate::{
-    deferred_drop::Drc, DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, DeviceContext, GfxResult,
+    deferred_drop::Drc, DescriptorHeapDef, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter,
+    DeviceContext, GfxResult,
 };
+
+//
+// DescriptorSetHandle
+//
+#[derive(Clone, Copy)]
+pub struct DescriptorSetHandle {
+    // minimal set of information to avoid
+    // referencing the descriptor set layout
+    pub layout_uid: u32,
+    pub frequency: u32,
+    #[cfg(feature = "vulkan")]
+    pub(crate) vk_type: ash::vk::DescriptorSet,
+}
 
 //
 // DescriptorSetDataProvider
@@ -13,6 +26,7 @@ use crate::{
 
 pub trait DescriptorSetDataProvider {
     fn layout(&self) -> &'static DescriptorSetLayout;
+    fn frequency(&self) -> u32;
     fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'_>];
 }
 
@@ -77,6 +91,7 @@ impl DescriptorHeap {
 
     #[allow(clippy::unused_self)]
     #[allow(clippy::needless_pass_by_value)]
+    #[allow(clippy::todo)]
     pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
         // todo(vdbdd): free
     }
