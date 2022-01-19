@@ -1,5 +1,9 @@
-use std::io::Write;
+use std::{
+    io::Write,
+    process::{Command, Stdio},
+};
 
+use camino::Utf8Path;
 use guppy::graph::{BuildTargetId, BuildTargetKind};
 use lgn_tracing::span_fn;
 use serde_json::{json, to_string_pretty};
@@ -56,6 +60,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "label": "Run Clippy",
     }));
     let mut configurations = vec![];
+    let toolchain = toolchain_location().unwrap_or_else(|_| "not_found".into());
     for package in bin_packages {
         for target in package.build_targets() {
             if let BuildTargetId::Binary(name) = target.id() {
@@ -96,10 +101,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     "environment": [],
                     "console": "internalConsole",
                     "sourceFileMap": {
-                        "/rustc/02072b482a8b5357f7fb5e5637444ae30e423c40": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.58.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
+                        "/rustc/02072b482a8b5357f7fb5e5637444ae30e423c40": toolchain
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
-                    "preLaunchTask": vscode_config.disable_prelaunch.as_ref().map_or_else(|| label.as_str(), |disable| if *disable { "" } else { label.as_str() } ) ,
+                    "preLaunchTask": vscode_config.disable_prelaunch.as_ref().map_or_else(
+                        || label.as_str(),
+                        |disable| if *disable { "" } else { label.as_str() } ) ,
                 }));
             }
         }
@@ -153,4 +160,29 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn toolchain_location() -> Result<String> {
+    let mut cmd = Command::new("rustc");
+    cmd.args(&["--print", "sysroot"]);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let output = cmd
+        .output()
+        .map_err(|err| Error::new("Failed to run `rustc`").with_source(err))?;
+    if output.status.success() {
+        let output = String::from_utf8_lossy(&output.stdout);
+        let path = Utf8Path::new(&output);
+        let mut components = path.components();
+        components.next();
+        let mut path = String::new();
+        for component in components {
+            let component = component.as_str();
+            path.push('/');
+            path.push_str(component);
+        }
+        path.push_str("/lib/rustlib/src/rust");
+        Ok(path)
+    } else {
+        Err(Error::new("description"))
+    }
 }
