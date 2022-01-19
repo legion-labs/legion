@@ -138,7 +138,7 @@ allow = [
 ################################################################################
 
 [[determinator.path-rule]]
-globs = [".github/**/*", "rust-toolchain.toml", "monorepo.toml"]
+globs = [".github/workflows/*", "rust-toolchain.toml", "monorepo.toml"]
 mark-changed = "all"
 
 [[determinator.path-rule]]

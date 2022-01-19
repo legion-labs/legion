@@ -12,6 +12,9 @@ use lgn_tracing::{span_fn, span_scope, trace};
 pub struct Args {
     /// List packages changed since this commit
     pub(crate) base: String,
+    /// list of packages to match
+    #[clap(long, multiple_values = true)]
+    pub(crate) matches_any: Vec<String>,
 }
 
 #[span_fn]
@@ -20,13 +23,21 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         err.with_explanation("changed-since` must be run within a project cloned from a git repo.")
     })?;
     let determinator_set = changed_since_impl(git_cli, ctx, &args.base)?;
+
     {
         span_scope!("print_packages");
         for package in determinator_set
             .affected_set
             .packages(DependencyDirection::Forward)
         {
-            println!("{}", package.name());
+            if args.matches_any.is_empty()
+                || args
+                    .matches_any
+                    .iter()
+                    .any(|candidate| package.name().contains(candidate))
+            {
+                println!("{}", package.name());
+            }
         }
     }
     Ok(())

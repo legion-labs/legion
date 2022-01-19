@@ -3,7 +3,7 @@ name: CI - Book
 on:
   push:
     paths:
-      - "doc/**"
+      - "docs/**"
       - ".github/workflows/ci_book.yml"
     branches:
       - main

@@ -3,7 +3,7 @@ name: CI - Test
 on:
   push:
     paths-ignore:
-      - "doc/**"
+      - "docs/**"
     branches:
       - main
   pull_request:
@@ -15,17 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run formatting check
-        run: make check-format
-
-      - name: Run build checks
-        run: make check-build
-
-      - name: Run clippy checks
-        run: make check-clippy
-
-      - name: Run dependencies checks
-        run: make check-deps
+      - name: Run initial checks
+        run: cargo ci check
 
   check_needs_gpu_tests:
     name: Check if graphics libs changed
