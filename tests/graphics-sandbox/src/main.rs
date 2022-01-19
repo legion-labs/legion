@@ -10,7 +10,6 @@ use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_input::InputPlugin;
-use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
@@ -228,8 +227,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Directional,
-            radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -241,8 +238,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
-            radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -254,8 +249,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
-            radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -269,8 +262,6 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             light_type: LightType::Spotlight {
                 cone_angle: std::f32::consts::PI / 4.0,
             },
-            radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: true,
             ..LightComponent::default()
         });
@@ -406,8 +397,6 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
-            radiance: 10.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
             enabled: true,
             ..LightComponent::default()
         });

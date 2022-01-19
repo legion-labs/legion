@@ -21,8 +21,7 @@ pub enum LightType {
 #[derive(Component)]
 pub struct LightComponent {
     pub light_type: LightType,
-    pub color: Vec3,
-    pub radiance: f32,
+    pub radiance: Vec3,
     pub enabled: bool,
     pub picking_id: u32,
 }
@@ -31,8 +30,7 @@ impl Default for LightComponent {
     fn default() -> Self {
         Self {
             light_type: LightType::Omnidirectional,
-            color: Vec3::new(1.0, 1.0, 1.0),
-            radiance: 40.0,
+            radiance: Vec3::new(1.0, 1.0, 1.0),
             enabled: true,
             picking_id: 0,
         }
@@ -80,13 +78,11 @@ pub(crate) fn ui_lights(
                         );
                     }
                 }
-                ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
-                let mut rgb = [light.color.x, light.color.y, light.color.z];
-                if ui.color_edit_button_rgb(&mut rgb).changed() {
-                    light.color.x = rgb[0];
-                    light.color.y = rgb[1];
-                    light.color.z = rgb[2];
-                }
+                ui.vertical(|ui| {
+                    ui.add(egui::Slider::new(&mut light.radiance.x, 0.0..=50.0).text("rad.x"));
+                    ui.add(egui::Slider::new(&mut light.radiance.y, 0.0..=50.0).text("rad.y"));
+                    ui.add(egui::Slider::new(&mut light.radiance.z, 0.0..=50.0).text("rad.z"));
+                });
             });
         }
     });
@@ -112,7 +108,7 @@ pub(crate) fn debug_display_lights(
                         .with_rotation(transform.rotation)
                         .compute_matrix(),
                     DefaultMeshType::Sphere as u32,
-                    light.color,
+                light.radiance.into(),
                 );
                 match light.light_type {
                     LightType::Directional => {
@@ -125,7 +121,7 @@ pub(crate) fn debug_display_lights(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Arrow as u32,
-                            light.color,
+                        light.radiance.into(),
                         );
                     }
                     LightType::Spotlight { cone_angle, .. } => {
@@ -140,7 +136,7 @@ pub(crate) fn debug_display_lights(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Cone as u32,
-                            light.color,
+                        light.radiance.into(),
                         );
                     }
                     LightType::Omnidirectional { .. } => (),
@@ -176,13 +172,11 @@ pub(crate) fn update_lights(
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
                 let mut dir_light = DirectionalLight::default();
                 dir_light.set_dir(direction.into());
-                dir_light.set_color(light.color.into());
                 dir_light.set_radiance(light.radiance.into());
                 directional_lights_data.push(dir_light);
             }
             LightType::Omnidirectional => {
                 let mut omni_light = OmniDirectionalLight::default();
-                omni_light.set_color(light.color.into());
                 omni_light.set_radiance(light.radiance.into());
                 omni_light.set_pos(transform.translation.into());
                 omnidirectional_lights_data.push(omni_light);
@@ -191,7 +185,6 @@ pub(crate) fn update_lights(
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
                 let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
-                spotlight.set_color(light.color.into());
                 spotlight.set_radiance(light.radiance.into());
                 spotlight.set_pos(transform.translation.into());
                 spotlight.set_cone_angle(cone_angle.into());

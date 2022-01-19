@@ -632,6 +632,12 @@ impl From<Vec4> for Color {
     }
 }
 
+impl From<Vec3> for Color {
+    fn from(vec4: Vec3) -> Self {
+        Self::rgb(vec4.x, vec4.y, vec4.z)
+    }
+}
+
 /*impl From<Color> for wgpu::Color {
     fn from(color: Color) -> Self {
         if let Color::RgbaLinear {

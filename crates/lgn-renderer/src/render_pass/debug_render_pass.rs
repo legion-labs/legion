@@ -167,7 +167,7 @@ impl DebugRenderPass {
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
             &Mat4::IDENTITY,
-            Vec4::ZERO,
+            Color::BLACK,
             cmd_buffer,
             default_meshes,
         );
@@ -223,7 +223,7 @@ impl DebugRenderPass {
             render_mesh(
                 mesh_id as u32,
                 &primitive.transform,
-                primitive.color.extend(1.0),
+                primitive.color,
                 cmd_buffer,
                 default_meshes,
             );
@@ -364,7 +364,7 @@ fn render_aabb_for_mesh(
     render_mesh(
         DefaultMeshType::WireframeCube as u32,
         &aabb_transform.compute_matrix(),
-        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        Color::YELLOW,
         cmd_buffer,
         default_meshes,
     );
