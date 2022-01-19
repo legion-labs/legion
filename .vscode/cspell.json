@@ -20,6 +20,8 @@
         "MSRV",
         "openh264",
         "perfetto",
+        "pnpm",
+        "protobuf",
         "proto",
         "Rustdoc",
         "rustfmt",
