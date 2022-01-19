@@ -224,7 +224,7 @@ impl GitCli {
                 .git_command()
                 .args(&["worktree", "add"])
                 .arg(&scratch_dir)
-                .args(&[&format!("{:x}", hash), "--detach"])
+                .args(&[&format!("{:x}", hash), "--detach", "-f"])
                 .output()
                 .map_err(|err| Error::new("running git worktree add").with_source(err))?;
             if !output.status.success() {
