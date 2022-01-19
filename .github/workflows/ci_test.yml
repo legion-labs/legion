@@ -26,8 +26,8 @@ jobs:
       matrix:
         os:
           [
-            "${{ toJSON(needs.runner_selection.outputs.linux_machine) }}",
-            "${{ toJSON(needs.runner_selection.outputs.windows_machine) }}",
+            "${{ fromJSON(needs.runner_selection.outputs.linux_machine) }}",
+            "${{ fromJSON(needs.runner_selection.outputs.windows_machine) }}",
           ]
     runs-on: ${{ matrix.os }}
     steps:
