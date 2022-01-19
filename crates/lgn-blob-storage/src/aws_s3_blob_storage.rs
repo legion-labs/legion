@@ -4,7 +4,6 @@ use pin_project::pin_project;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
 use std::task::{Context, Poll};
@@ -28,8 +27,8 @@ impl AwsS3BlobStorage {
         Self { url, client }
     }
 
-    fn blob_key(&self, hash: &str) -> String {
-        self.url.root.join(hash).to_str().unwrap().to_owned()
+    fn blob_key(&self, name: &str) -> String {
+        format!("{}/{}", self.url.root, name)
     }
 
     async fn get_object_size(&self, key: &str) -> Result<Option<u64>> {
@@ -199,16 +198,16 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl StreamingBlobStorage for AwsS3BlobStorage {
-    async fn get_blob_info(&self, hash: &str) -> super::Result<Option<BlobStats>> {
-        let key = self.blob_key(hash);
+    async fn get_blob_info(&self, name: &str) -> super::Result<Option<BlobStats>> {
+        let key = self.blob_key(name);
 
         let size = self.get_object_size(&key).await?;
 
         Ok(size.map(|size| BlobStats { size }))
     }
 
-    async fn get_blob_reader(&self, hash: &str) -> Result<BoxedAsyncRead> {
-        let key = self.blob_key(hash);
+    async fn get_blob_reader(&self, name: &str) -> Result<BoxedAsyncRead> {
+        let key = self.blob_key(name);
 
         let req = self
             .client
@@ -226,8 +225,8 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(Box::pin(stream))
     }
 
-    async fn get_blob_writer(&self, hash: &str) -> Result<Option<BoxedAsyncWrite>> {
-        let key = self.blob_key(hash);
+    async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>> {
+        let key = self.blob_key(name);
 
         if self.blob_exists(&key).await? {
             return Ok(None);
@@ -242,12 +241,12 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AwsS3Url {
     pub bucket_name: String,
-    pub root: PathBuf,
+    pub root: String,
 }
 
 impl Display for AwsS3Url {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "s3://{}/{}", self.bucket_name, self.root.display())
+        write!(f, "s3://{}/{}", self.bucket_name, self.root)
     }
 }
 
@@ -268,7 +267,7 @@ impl TryFrom<Url> for AwsS3Url {
                 .host_str()
                 .ok_or_else(|| anyhow::anyhow!("invalid S3 URL: missing bucket name"))?
                 .to_owned(),
-            root: PathBuf::from(value.path().trim_start_matches('/')),
+            root: value.path().trim_start_matches('/').to_string(),
         })
     }
 }

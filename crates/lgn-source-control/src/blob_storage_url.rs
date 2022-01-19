@@ -144,7 +144,7 @@ mod tests {
             BlobStorageUrl::from_str("s3://bucket/path").unwrap(),
             BlobStorageUrl::AwsS3(AwsS3Url {
                 bucket_name: "bucket".to_owned(),
-                root: PathBuf::from("path"),
+                root: String::from("path"),
             })
         );
     }
@@ -172,7 +172,7 @@ mod tests {
         assert_eq!(
             BlobStorageUrl::AwsS3(AwsS3Url {
                 bucket_name: "bucket".to_owned(),
-                root: PathBuf::from("path"),
+                root: String::from("path"),
             })
             .to_string(),
             "s3://bucket/path"
