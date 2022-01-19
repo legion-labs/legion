@@ -16,6 +16,8 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
+    #[error("the folder `{path}` is not a workspace")]
+    NotAWorkspace { path: PathBuf },
     #[error("branch `{branch_name}` was not found")]
     BranchNotFound { branch_name: String },
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
@@ -46,6 +48,10 @@ impl Error {
             url: url.into(),
             source: source.into(),
         }
+    }
+
+    pub fn not_a_workspace(path: impl Into<PathBuf>) -> Self {
+        Self::NotAWorkspace { path: path.into() }
     }
 
     pub fn branch_not_found(branch_name: String) -> Self {

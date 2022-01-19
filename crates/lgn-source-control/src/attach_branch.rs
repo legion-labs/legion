@@ -2,22 +2,17 @@ use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
 
-use crate::{
-    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
-    verify_empty_lock_domain, LocalWorkspaceConnection,
-};
+use crate::{verify_empty_lock_domain, Workspace};
 
 #[lgn_tracing::span_fn]
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let (current_branch_name, _current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
-    let mut repo_branch = query.read_branch(&current_branch_name).await?;
+    let workspace = Workspace::find_in_current_directory().await?;
+
+    let (current_branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let mut repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch_name)
+        .await?;
 
     if !repo_branch.parent.is_empty() {
         return Err(anyhow::format_err!(
@@ -28,10 +23,14 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
         ));
     }
 
-    let parent_branch = query.read_branch(parent_branch_name).await?;
+    let parent_branch = workspace
+        .index_backend
+        .read_branch(parent_branch_name)
+        .await?;
     let mut locks_parent_domain = BTreeSet::new();
 
-    for lock in query
+    for lock in workspace
+        .index_backend
         .find_locks_in_domain(&parent_branch.lock_domain_id)
         .await?
     {
@@ -39,7 +38,8 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
     }
 
     let mut conflicting_paths = Vec::new();
-    let locks_to_move = query
+    let locks_to_move = workspace
+        .index_backend
         .find_locks_in_domain(&repo_branch.lock_domain_id)
         .await?;
 
@@ -68,11 +68,12 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
         let mut new_lock = lock.clone();
         new_lock.lock_domain_id = parent_branch.lock_domain_id.clone();
 
-        if let Err(e) = query.insert_lock(&new_lock).await {
+        if let Err(e) = workspace.index_backend.insert_lock(&new_lock).await {
             failed_new_locks.push(format!("{}: {}", new_lock.relative_path, e));
         }
 
-        if let Err(e) = query
+        if let Err(e) = workspace
+            .index_backend
             .clear_lock(&lock.lock_domain_id, &lock.relative_path)
             .await
         {
@@ -84,12 +85,14 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
 
     repo_branch.parent = parent_branch.name;
 
-    query
+    workspace
+        .index_backend
         .update_branch(&repo_branch)
         .await
         .context(format!("error saving branch {}", repo_branch.name))?;
 
-    let branches = query
+    let branches = workspace
+        .index_backend
         .find_branches_in_lock_domain(&repo_branch.lock_domain_id)
         .await
         .context(format!(
@@ -100,7 +103,8 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
     for mut branch in branches {
         branch.lock_domain_id = parent_branch.lock_domain_id.clone();
 
-        query
+        workspace
+            .index_backend
             .update_branch(&branch)
             .await
             .context(format!("error saving branch {}", branch.name))?;
@@ -108,7 +112,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<()> {
         println!("Updated branch {}", branch.name);
     }
 
-    verify_empty_lock_domain(query, &repo_branch.lock_domain_id).await?;
+    verify_empty_lock_domain(&workspace, &repo_branch.lock_domain_id).await?;
 
     println!("Deleted lock domain {}", repo_branch.lock_domain_id);
 

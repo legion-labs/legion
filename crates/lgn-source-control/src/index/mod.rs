@@ -20,10 +20,6 @@ impl Index {
         Ok(Self(backend))
     }
 
-    pub(crate) fn backend(&self) -> &dyn IndexBackend {
-        &*self.0
-    }
-
     pub async fn create(&self) -> Result<BlobStorageUrl> {
         self.0.create_index().await
     }

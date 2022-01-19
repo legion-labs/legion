@@ -1,31 +1,25 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
-use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use lgn_tracing::span_fn;
 
-use crate::{
-    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
-    remove_dir_rec, sync_file, update_current_branch, LocalWorkspaceConnection,
-    RepositoryConnection,
-};
+use crate::{remove_dir_rec, sync_file, Workspace};
 
 #[async_recursion]
 pub async fn sync_tree_diff(
-    connection: Arc<RepositoryConnection>,
+    workspace: &'async_recursion Workspace,
     current_tree_hash: &str,
     new_tree_hash: &str,
     relative_path_tree: &Path,
-    workspace_root: &Path,
 ) -> Result<()> {
     let mut files_present: BTreeMap<String, String> = BTreeMap::new();
     let mut dirs_present: BTreeMap<String, String> = BTreeMap::new();
-    let query = connection.index_backend();
 
     if !current_tree_hash.is_empty() {
-        let current_tree = query.read_tree(current_tree_hash).await?;
+        let current_tree = workspace.index_backend.read_tree(current_tree_hash).await?;
         for file_node in &current_tree.file_nodes {
             files_present.insert(file_node.name.clone(), file_node.hash.clone());
         }
@@ -35,7 +29,7 @@ pub async fn sync_tree_diff(
         }
     }
 
-    let new_tree = query.read_tree(new_tree_hash).await?;
+    let new_tree = workspace.index_backend.read_tree(new_tree_hash).await?;
     for new_file_node in &new_tree.file_nodes {
         let present_hash = match files_present.get(&new_file_node.name) {
             Some(hash) => {
@@ -48,8 +42,9 @@ pub async fn sync_tree_diff(
 
         if new_file_node.hash != present_hash {
             match sync_file(
-                &connection,
-                workspace_root
+                workspace,
+                workspace
+                    .root
                     .join(relative_path_tree)
                     .join(&new_file_node.name),
                 &new_file_node.hash,
@@ -68,9 +63,9 @@ pub async fn sync_tree_diff(
 
     //those files were not matched, delete them
     for k in files_present.keys() {
-        let abs_path = workspace_root.join(relative_path_tree).join(&k);
+        let abs_path = workspace.root.join(relative_path_tree).join(&k);
 
-        match sync_file(&connection, abs_path, "").await {
+        match sync_file(workspace, abs_path, "").await {
             Ok(message) => {
                 println!("{}", message);
             }
@@ -91,7 +86,7 @@ pub async fn sync_tree_diff(
         };
 
         let relative_sub_dir = relative_path_tree.join(&new_dir_node.name);
-        let abs_dir = workspace_root.join(&relative_sub_dir);
+        let abs_dir = workspace.root.join(&relative_sub_dir);
 
         if !abs_dir.exists() {
             if let Err(e) = fs::create_dir(&abs_dir) {
@@ -101,11 +96,10 @@ pub async fn sync_tree_diff(
 
         if new_dir_node.hash != present_hash {
             if let Err(e) = sync_tree_diff(
-                Arc::clone(&connection),
+                workspace,
                 &present_hash,
                 &new_dir_node.hash,
                 &relative_sub_dir,
-                workspace_root,
             )
             .await
             {
@@ -115,8 +109,8 @@ pub async fn sync_tree_diff(
     }
     //delete the contents of the directories that were not matched
     for (name, hash) in dirs_present {
-        let path = workspace_root.join(relative_path_tree).join(name);
-        match remove_dir_rec(Arc::clone(&connection), &path, &hash).await {
+        let path = workspace.root.join(relative_path_tree).join(name);
+        match remove_dir_rec(workspace, &path, &hash).await {
             Ok(messages) => {
                 if !messages.is_empty() {
                     println!("{}", messages);
@@ -134,32 +128,25 @@ pub async fn sync_tree_diff(
 // not yet async because of sync_tree_diff
 #[span_fn]
 pub async fn switch_branch_command(name: &str) -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let (_current_branch_name, current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
-    let old_commit = query.read_commit(&current_commit).await?;
-    let query = connection.index_backend();
-    let new_branch = query.read_branch(name).await?;
-    let new_commit = query.read_commit(&new_branch.head).await?;
+    let workspace = Workspace::find_in_current_directory().await?;
+    let (_current_branch_name, current_commit) = workspace.backend.get_current_branch().await?;
+    let old_commit = workspace.index_backend.read_commit(&current_commit).await?;
+    let new_branch = workspace.index_backend.read_branch(name).await?;
+    let new_commit = workspace
+        .index_backend
+        .read_commit(&new_branch.head)
+        .await?;
 
-    update_current_branch(
-        workspace_connection.sql(),
-        &new_branch.name,
-        &new_branch.head,
-    )
-    .await?;
+    workspace
+        .backend
+        .set_current_branch(&new_branch.name, &new_branch.head)
+        .await?;
 
     sync_tree_diff(
-        connection,
+        &workspace,
         &old_commit.root_hash,
         &new_commit.root_hash,
         Path::new(""),
-        &workspace_root,
     )
     .await
 }

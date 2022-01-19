@@ -3,16 +3,15 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
 
-use crate::{
-    connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
-    read_workspace_spec, IndexBackend, LocalWorkspaceConnection, Lock,
-};
+use crate::{make_canonical_relative_path, Lock, Workspace};
 
-pub async fn verify_empty_lock_domain(
-    query: &dyn IndexBackend,
-    lock_domain_id: &str,
-) -> Result<()> {
-    if query.count_locks_in_domain(lock_domain_id).await? > 0 {
+pub async fn verify_empty_lock_domain(workspace: &Workspace, lock_domain_id: &str) -> Result<()> {
+    if workspace
+        .index_backend
+        .count_locks_in_domain(lock_domain_id)
+        .await?
+        > 0
+    {
         anyhow::bail!("lock domain not empty: {}", lock_domain_id);
     }
 
@@ -20,34 +19,31 @@ pub async fn verify_empty_lock_domain(
 }
 
 #[span_fn]
-pub async fn lock_file_command(path_specified: &Path) -> Result<()> {
-    let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let repo_branch = query.read_branch(&branch_name).await?;
+pub async fn lock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
+    let workspace = Workspace::find(path_specified.as_ref()).await?;
+    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
     let lock = Lock {
-        relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
+        relative_path: make_canonical_relative_path(&workspace.root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
-        workspace_id: workspace_spec.registration.id,
+        workspace_id: workspace.registration.id,
         branch_name: repo_branch.name,
     };
-    query.insert_lock(&lock).await.map_err(Into::into)
+    workspace
+        .index_backend
+        .insert_lock(&lock)
+        .await
+        .map_err(Into::into)
 }
 
 #[span_fn]
-pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
-    let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let repo_branch = query.read_branch(&branch_name).await?;
-    let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    query
+pub async fn unlock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
+    let workspace = Workspace::find(path_specified.as_ref()).await?;
+    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
+    let relative_path = make_canonical_relative_path(&workspace.root, path_specified)?;
+    workspace
+        .index_backend
         .clear_lock(&repo_branch.lock_domain_id, &relative_path)
         .await
         .map_err(Into::into)
@@ -55,15 +51,11 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<()> {
 
 #[span_fn]
 pub async fn list_locks_command() -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let repo_branch = query.read_branch(&branch_name).await?;
-    let locks = query
+    let workspace = Workspace::find_in_current_directory().await?;
+    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
+    let locks = workspace
+        .index_backend
         .find_locks_in_domain(&repo_branch.lock_domain_id)
         .await?;
     if locks.is_empty() {
@@ -79,18 +71,16 @@ pub async fn list_locks_command() -> Result<()> {
 }
 
 #[span_fn]
-pub async fn assert_not_locked(
-    query: &dyn IndexBackend,
-    workspace_root: &Path,
-    transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    path_specified: &Path,
-) -> Result<()> {
-    let workspace_spec = read_workspace_spec(workspace_root)?;
-    let (current_branch_name, _current_commit) = read_current_branch(transaction).await?;
-    let repo_branch = query.read_branch(&current_branch_name).await?;
-    let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
+pub async fn assert_not_locked(workspace: &Workspace, path_specified: &Path) -> Result<()> {
+    let (current_branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch_name)
+        .await?;
+    let relative_path = make_canonical_relative_path(&workspace.root, path_specified)?;
 
-    match query
+    match workspace
+        .index_backend
         .find_lock(&repo_branch.lock_domain_id, &relative_path)
         .await
         .context(format!(
@@ -99,7 +89,7 @@ pub async fn assert_not_locked(
         ))? {
         Some(lock) => {
             if lock.branch_name == current_branch_name
-                && lock.workspace_id == workspace_spec.registration.id
+                && lock.workspace_id == workspace.registration.id
             {
                 Ok(()) //locked by this workspace on this branch - all good
             } else {
