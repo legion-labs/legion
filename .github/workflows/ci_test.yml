@@ -81,7 +81,7 @@ jobs:
   base_ref_selection:
     name: Base ref selection
     runs-on: ubuntu-latest
-    output:
+    outputs:
       base_ref: ${{ steps.set-base-ref.outputs.base_ref }}
     steps:
       - uses: actions/checkout@v2
