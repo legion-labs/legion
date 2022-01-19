@@ -16,7 +16,7 @@ use super::super::descriptor_set::ViewDescriptorSet;
 
 static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
     name: "PickingPipelineLayout",
-    id: 3,
+    id: 2,
     descriptor_set_layout_ids: [
         Some(FrameDescriptorSet::id()),
         Some(ViewDescriptorSet::id()),

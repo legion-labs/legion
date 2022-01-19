@@ -11,11 +11,18 @@ struct ViewData {
     cursor_pos: Float2,
 }
 
-// struct ConstData {
-//     world: Float4x4,
-//     color: Float4,
-//     picking_distance: Float1,
-// }
+struct LightingData {
+    num_directional_lights: Uint1,
+    num_omni_directional_lights: Uint1,
+    num_spot_lights: Uint1,
+    diffuse: Uint1,
+    specular: Uint1,
+    specular_reflection: Float1,
+    diffuse_reflection: Float1,
+    ambient_reflection: Float1,
+    shininess: Float1,
+    pad_: Uint3,
+}
 
 struct EntityTransforms {
     world: Float4x4,
@@ -23,29 +30,16 @@ struct EntityTransforms {
 
 #[DescriptorSet(frequency = 0)]
 struct FrameDescriptorSet {
-    omni_lights: StructuredBuffer<OmnidirectionalLight>,
-    dir_lights: StructuredBuffer<DirectionalLight>,
-    spot_lights: StructuredBuffer<Spotlight>,
+    lighting_data: ConstantBuffer<LightingData>,
+    directional_lights: StructuredBuffer<DirectionalLight>,
+    omni_directional_lights: StructuredBuffer<OmniDirectionalLight>,
+    spot_lights: StructuredBuffer<SpotLight>,
     static_buffer: ByteAddressBuffer,
 }
 
 #[DescriptorSet(frequency = 1)]
 struct ViewDescriptorSet {
     view_data: ConstantBuffer<ViewData>,
-}
-
-struct InstancePushConstantData {
-    vertex_offset: Uint1,
-    world_offset: Uint1,
-    is_picked: Uint1,
-    color: Float4,
-}
-
-#[PipelineLayout]
-struct TmpPipelineLayout {
-    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
-    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<InstancePushConstantData>,
 }
 
 //
@@ -121,17 +115,19 @@ struct PickingPipelineLayout {
 }
 
 //
-//
+// Shader
 //
 
-struct LightingData {
-    num_directional_lights: Uint1,
-    num_omnidirectional_lights: Uint1,
-    num_spotlights: Uint1,
-    diffuse: Uint1,
-    specular: Uint1,
-    specular_reflection: Float1,
-    diffuse_reflection: Float1,
-    ambient_reflection: Float1,
-    shininess: Float1,
+struct InstancePushConstantData {
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    is_picked: Uint1,
+    color: Float4,
+}
+
+#[PipelineLayout]
+struct ShaderPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    push_constant: PushConstant<InstancePushConstantData>,
 }

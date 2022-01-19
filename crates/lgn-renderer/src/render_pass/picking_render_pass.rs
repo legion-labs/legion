@@ -331,7 +331,7 @@ impl PickingRenderPass {
 
         cmd_buffer.push_constant(self.pipeline.root_signature(), &push_constant_data);
 
-        cmd_buffer.draw(static_mesh.num_verticies, 0);
+        cmd_buffer.draw(static_mesh.num_vertices, 0);
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -21,10 +21,10 @@ pub fn initialize(device_context: &DeviceContext) {
         descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
     ];
 
-    pipeline_layout::TmpPipelineLayout::initialize(device_context, &descriptor_set_layouts);
     pipeline_layout::EguiPipelineLayout::initialize(device_context, &descriptor_set_layouts);
     pipeline_layout::ConstColorPipelineLayout::initialize(device_context, &descriptor_set_layouts);
     pipeline_layout::PickingPipelineLayout::initialize(device_context, &descriptor_set_layouts);
+    pipeline_layout::ShaderPipelineLayout::initialize(device_context, &descriptor_set_layouts);
 }
 
 pub fn shutdown() {
@@ -33,8 +33,8 @@ pub fn shutdown() {
     descriptor_set::EguiDescriptorSet::shutdown();
     descriptor_set::PickingDescriptorSet::shutdown();
 
-    pipeline_layout::TmpPipelineLayout::shutdown();
     pipeline_layout::EguiPipelineLayout::shutdown();
     pipeline_layout::ConstColorPipelineLayout::shutdown();
     pipeline_layout::PickingPipelineLayout::shutdown();
+    pipeline_layout::ShaderPipelineLayout::shutdown();
 }

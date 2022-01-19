@@ -15,15 +15,6 @@ struct VertexOut {
     float3 picked_world_pos : COLOR;
 };
 
-// ConstantBuffer<ViewData> view_data;
-// ConstantBuffer<ConstData> const_data;
-// ByteAddressBuffer static_buffer;
-// RWStructuredBuffer<uint> picked_count;
-// RWStructuredBuffer<PickingData> picked_objects;
-
-// [[vk::push_constant]]
-// ConstantBuffer<PickingPushConstantData> push_constant;
-
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
     VertexOut vertex_out;

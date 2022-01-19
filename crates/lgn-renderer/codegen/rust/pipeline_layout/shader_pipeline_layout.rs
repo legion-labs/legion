@@ -14,8 +14,8 @@ use super::super::descriptor_set::FrameDescriptorSet;
 use super::super::descriptor_set::ViewDescriptorSet;
 
 static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
-    name: "TmpPipelineLayout",
-    id: 0,
+    name: "ShaderPipelineLayout",
+    id: 3,
     descriptor_set_layout_ids: [
         Some(FrameDescriptorSet::id()),
         Some(ViewDescriptorSet::id()),
@@ -27,12 +27,12 @@ static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
 
 static mut PIPELINE_LAYOUT: Option<RootSignature> = None;
 
-pub struct TmpPipelineLayout {
+pub struct ShaderPipelineLayout {
     descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],
     push_constant: InstancePushConstantData,
 }
 
-impl TmpPipelineLayout {
+impl ShaderPipelineLayout {
     #[allow(unsafe_code)]
     pub fn initialize(
         device_context: &DeviceContext,
@@ -80,7 +80,7 @@ impl TmpPipelineLayout {
     }
 }
 
-impl Default for TmpPipelineLayout {
+impl Default for ShaderPipelineLayout {
     fn default() -> Self {
         Self {
             descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],
@@ -89,7 +89,7 @@ impl Default for TmpPipelineLayout {
     }
 }
 
-impl PipelineDataProvider for TmpPipelineLayout {
+impl PipelineDataProvider for ShaderPipelineLayout {
     fn root_signature() -> &'static RootSignature {
         Self::root_signature()
     }

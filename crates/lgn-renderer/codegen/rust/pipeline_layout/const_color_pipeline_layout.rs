@@ -15,7 +15,7 @@ use super::super::descriptor_set::ViewDescriptorSet;
 
 static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
     name: "ConstColorPipelineLayout",
-    id: 2,
+    id: 1,
     descriptor_set_layout_ids: [
         Some(FrameDescriptorSet::id()),
         Some(ViewDescriptorSet::id()),

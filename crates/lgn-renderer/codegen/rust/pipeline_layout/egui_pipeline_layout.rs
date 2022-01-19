@@ -14,7 +14,7 @@ use super::super::descriptor_set::EguiDescriptorSet;
 
 static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef {
     name: "EguiPipelineLayout",
-    id: 1,
+    id: 0,
     descriptor_set_layout_ids: [Some(EguiDescriptorSet::id()), None, None, None],
     push_constant_type: Some(EguiPushConstantData::id()),
 };

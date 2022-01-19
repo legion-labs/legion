@@ -406,11 +406,17 @@ fn render_update(
     // Frame descriptor set
     let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
+    let lighting_manager_view = render_context
+        .transient_buffer_allocator()
+        .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+        .const_buffer_view();
+    frame_descriptor_set.set_lighting_data(&lighting_manager_view);
+
     let omni_lights_buffer_view = renderer.omnidirectional_lights_data_structured_buffer_view();
-    frame_descriptor_set.set_omni_lights(&omni_lights_buffer_view);
+    frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
 
     let directionnal_lights_buffer_view = renderer.directional_lights_data_structured_buffer_view();
-    frame_descriptor_set.set_dir_lights(&directionnal_lights_buffer_view);
+    frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
 
     let spot_lights_buffer_view = renderer.spotlights_data_structured_buffer_view();
     frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
@@ -427,8 +433,6 @@ fn render_update(
         // View descriptor set
 
         {
-            let transient_allocator = render_context.transient_buffer_allocator();
-
             let mut screen_rect = picking_manager.screen_rect();
             if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
                 screen_rect = Vec2::new(
@@ -448,8 +452,9 @@ fn render_update(
                 cursor_pos.y,
             );
 
-            let sub_allocation =
-                transient_allocator.copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
+            let sub_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
             let const_buffer_view = sub_allocation.const_buffer_view();
 
@@ -483,8 +488,6 @@ fn render_update(
             &mut cmd_buffer,
             render_surface.as_mut(),
             q_drawables.as_slice(),
-            camera_component,
-            lighting_manager.as_ref(),
         );
 
         let debug_renderpass = render_surface.debug_renderpass();

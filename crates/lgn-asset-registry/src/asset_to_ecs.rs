@@ -84,7 +84,7 @@ impl AssetToECS for runtime_data::Entity {
                     mesh_id: static_mesh.mesh_id,
                     color: (255, 0, 0).into(),
                     vertex_offset: default_meshes.mesh_offset_from_id(static_mesh.mesh_id as u32),
-                    num_verticies: default_meshes
+                    num_vertices: default_meshes
                         .mesh_from_id(static_mesh.mesh_id as u32)
                         .num_vertices() as u32,
                     world_offset: 0,
@@ -165,7 +165,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             mesh_id: instance.mesh_id,
             color: instance.color,
             vertex_offset: default_meshes.mesh_offset_from_id(instance.mesh_id as u32),
-            num_verticies: default_meshes
+            num_vertices: default_meshes
                 .mesh_from_id(instance.mesh_id as u32)
                 .num_vertices() as u32,
             world_offset: 0,

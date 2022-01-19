@@ -3,7 +3,7 @@ use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 
 use crate::{
-    cgen::cgen_type::{DirectionalLight, OmnidirectionalLight, Spotlight},
+    cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight},
     debug_display::DebugDisplay,
     egui::egui_plugin::Egui,
     lighting::LightingManager,
@@ -160,10 +160,10 @@ pub(crate) fn update_lights(
         return;
     }
     let mut omnidirectional_lights_data =
-        Vec::<OmnidirectionalLight>::with_capacity(OmnidirectionalLight::NUM as usize);
+        Vec::<OmniDirectionalLight>::with_capacity(OmniDirectionalLight::NUM as usize);
     let mut directional_lights_data =
         Vec::<DirectionalLight>::with_capacity(DirectionalLight::NUM as usize);
-    let mut spotlights_data = Vec::<Spotlight>::with_capacity(Spotlight::NUM as usize);
+    let mut spotlights_data = Vec::<SpotLight>::with_capacity(SpotLight::NUM as usize);
 
     for (transform, light) in q_lights.iter() {
         if !light.enabled {
@@ -179,7 +179,7 @@ pub(crate) fn update_lights(
                 directional_lights_data.push(dir_light);
             }
             LightType::Omnidirectional => {
-                let mut omni_light = OmnidirectionalLight::default();
+                let mut omni_light = OmniDirectionalLight::default();
                 omni_light.set_color(light.color.into());
                 omni_light.set_radiance(light.radiance.into());
                 omni_light.set_pos(transform.translation.into());
@@ -187,7 +187,7 @@ pub(crate) fn update_lights(
             }
             LightType::Spotlight { cone_angle } => {
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
-                let mut spotlight = Spotlight::default();
+                let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
                 spotlight.set_color(light.color.into());
                 spotlight.set_radiance(light.radiance.into());

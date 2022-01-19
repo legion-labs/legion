@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "EntityTransforms",
-    id: 17,
+    id: 18,
     size: 64,
 };
 
@@ -23,7 +23,7 @@ pub struct EntityTransforms {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl EntityTransforms {
     pub const fn id() -> u32 {
-        17
+        18
     }
 
     pub fn def() -> &'static CGenTypeDef {
