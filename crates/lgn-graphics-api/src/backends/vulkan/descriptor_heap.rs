@@ -295,11 +295,12 @@ impl DescriptorHeapPartition {
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
         let mut writer = DescriptorSetWriter::new(
-            DescriptorSetHandle { 
+            DescriptorSetHandle {
                 layout_uid: descriptor_set_layout.uid(),
                 frequency: descriptor_set_layout.frequency(),
-                vk_type: result[0] },
-                descriptor_set_layout,
+                vk_type: result[0],
+            },
+            descriptor_set_layout,
             bump,
         )?;
 

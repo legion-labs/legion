@@ -33,7 +33,7 @@ impl DebugRenderPass {
         let device_context = renderer.device_context();
 
         let shader =
-            renderer.prepare_vs_ps_no_rs(String::from("crate://renderer/shaders/const_color.hlsl"));
+            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/const_color.hlsl"));
 
         //
         // Pipeline state
@@ -151,73 +151,6 @@ impl DebugRenderPass {
             _wire_pso_nodepth: wire_pso_nodepth,
         }
     }
-    /*
-        pub fn bind_pipeline_and_desc_set(
-            pipeline: &Pipeline,
-            // frame_descriptor_set_handle: DescriptorSetHandle,
-            // view_descriptor_set_handle: DescriptorSetHandle,
-            // view_data: &cgen::cgen_type::ViewData,
-            // constant_data: &cgen::cgen_type::ConstData,
-            cmd_buffer: &mut HLCommandBuffer<'_>,
-            render_context: &RenderContext<'_>,
-        ) {
-            cmd_buffer.bind_pipeline(pipeline);
-            cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-            cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
-
-            // let descriptor_set_layout = &pipeline
-            //     .root_signature()
-            //     .definition()
-            //     .descriptor_set_layouts[0];
-
-            // let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-
-            // {
-            //     let sub_allocation =
-            //         transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
-
-            //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-            //     descriptor_set_writer
-            //         .set_descriptors_by_name(
-            //             "view_data",
-            //             &[DescriptorRef::BufferView(&const_buffer_view)],
-            //         )
-            //         .unwrap();
-            // }
-            // {
-            //     let sub_allocation =
-            //         transient_allocator.copy_data(constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-            //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-            //     descriptor_set_writer
-            //         .set_descriptors_by_name(
-            //             "const_data",
-            //             &[DescriptorRef::BufferView(&const_buffer_view)],
-            //         )
-            //         .unwrap();
-            // }
-
-            // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "static_buffer",
-            //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-            //     )
-            //     .unwrap();
-
-            // let descriptor_set_handle =
-            //     descriptor_set_writer.flush(render_context.renderer().device_context());
-
-            // cmd_buffer.bind_descriptor_set_handle(
-            //     PipelineType::Graphics,
-            //     pipeline.root_signature(),
-            //     descriptor_set_layout.definition().frequency,
-            //     descriptor_set_handle,
-            // );
-        }
-    */
 
     pub fn render_ground_plane(
         &self,
@@ -225,21 +158,9 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         default_meshes: &DefaultMeshes,
     ) {
-        // let mut constant_data = cgen::cgen_type::ConstData::default();
-        // constant_data.set_world(Mat4::IDENTITY.into());
-        // constant_data.set_color(Vec4::ZERO.into());
-
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
-        cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
-
-        // self.bind_pipeline_and_desc_set(
-        //     &self.wire_pso_depth,
-        //     // view_data,
-        //     // &constant_data,
-        //     cmd_buffer,
-        //     render_context,
-        // );
+        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         render_mesh(
             DefaultMeshId::GroundPlane as u32,
@@ -258,8 +179,8 @@ impl DebugRenderPass {
         default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
-        cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         for (_index, (static_mesh_component, transform, picked)) in static_meshes.iter().enumerate()
         {
@@ -282,27 +203,13 @@ impl DebugRenderPass {
         default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
-        cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         debug_display.render_primitives(|primitive| {
             let mesh_id = match primitive.primitive_type {
                 DebugPrimitiveType::Mesh { mesh_id } => mesh_id,
             };
-
-            // let mut constant_data = cgen::cgen_type::ConstData::default();
-            // constant_data.set_world(primitive.transform.into());
-            // constant_data.set_color(
-            //     Vec4::new(primitive.color.0, primitive.color.1, primitive.color.2, 1.0).into(),
-            // );
-
-            // self.bind_pipeline_and_desc_set(
-            //     &self.wire_pso_depth,
-            //     // view_data,
-            //     // &constant_data,
-            //     cmd_buffer,
-            //     render_context,
-            // );
 
             render_mesh(
                 mesh_id as u32,
@@ -378,22 +285,10 @@ impl DebugRenderPass {
 
                 color.w = if manipulator.transparent { 0.9 } else { 1.0 };
 
-                // let mut constant_data = cgen::cgen_type::ConstData::default();
-                // constant_data.set_world(scaled_world_matrix.into());
-                // constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
-
                 cmd_buffer.bind_pipeline(&self.solid_pso_nodepth);
                 cmd_buffer
-                    .bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-                cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
-
-                // self.bind_pipeline_and_desc_set(
-                //     &self.solid_pso_nodepth,
-                //     // &view_data,
-                //     // &constant_data,
-                //     cmd_buffer,
-                //     render_context,
-                // );
+                    .bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+                cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
                 render_mesh(
                     static_mesh.mesh_id as u32,
@@ -446,18 +341,6 @@ fn render_aabb_for_mesh(
         .with_translation(mid_point)
         .with_scale(delta);
 
-    // let mut constant_data = cgen::cgen_type::ConstData::default();
-    // constant_data.set_world(aabb_transform.compute_matrix().into());
-    // constant_data.set_color(Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32).into());
-
-    // self.bind_pipeline_and_desc_set(
-    //     &self.wire_pso_depth,
-    //     // view_data,
-    //     // &constant_data,
-    //     cmd_buffer,
-    //     render_context,
-    // );
-
     render_mesh(
         DefaultMeshId::WireframeCube as u32,
         &aabb_transform.compute_matrix(),
@@ -480,7 +363,7 @@ fn render_mesh(
     push_constant_data.set_color(color.into());
     push_constant_data.set_vertex_offset(default_meshes.mesh_offset_from_id(mesh_id).into());
 
-    cmd_buffer.push_constant2(&push_constant_data);
+    cmd_buffer.push_constant(&push_constant_data);
 
     cmd_buffer.draw(
         default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,

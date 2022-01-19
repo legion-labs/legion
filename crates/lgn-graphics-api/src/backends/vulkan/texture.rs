@@ -8,6 +8,7 @@ use crate::{
     DeviceContext, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Texture,
     TextureDef, TextureSubResource,
 };
+
 static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 // This is used to allow the underlying image/allocation to be removed from a

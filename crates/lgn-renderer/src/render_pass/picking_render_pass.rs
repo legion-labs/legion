@@ -118,7 +118,6 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    // root_signature: RootSignature,
     pipeline: Pipeline,
 
     readback_buffer_pools: GpuSafePool<ReadbackBufferPool>,
@@ -138,8 +137,7 @@ impl PickingRenderPass {
         let device_context = renderer.device_context();
 
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader =
-            renderer.prepare_vs_ps_no_rs(String::from("crate://renderer/shaders/picking.hlsl"));
+        let shader = renderer.prepare_vs_ps(String::from("crate://renderer/shaders/picking.hlsl"));
 
         //
         // Pipeline state
@@ -226,7 +224,6 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
-            // root_signature,
             pipeline,
             readback_buffer_pools: GpuSafePool::new(3),
             count_buffer,
@@ -275,15 +272,15 @@ impl PickingRenderPass {
             );
 
             cmd_buffer.bind_pipeline(&self.pipeline);
-            cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-            cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
+            cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+            cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
             let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
             picking_descriptor_set.set_picked_count(&self.count_rw_view);
             picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
             let picking_descriptor_set_handle =
                 render_context.write_descriptor_set(&picking_descriptor_set);
-            cmd_buffer.bind_descriptor_set_handle3(picking_descriptor_set_handle);
+            cmd_buffer.bind_descriptor_set_handle(picking_descriptor_set_handle);
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
@@ -436,84 +433,8 @@ fn render_mesh(
     picking_id: Option<u32>,
     picking_distance: f32,
     static_mesh: &StaticMesh,
-    // Some(light.picking_id),
-    // picking_distance,
-    // light_picking_mesh,
-    // &cmd_buffer,
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
-    // let mut constant_data = cgen::cgen_type::ConstData::default();
-    // constant_data.set_world((*custom_world).into());
-    // constant_data.set_picking_distance(picking_distance.into());
-
-    // let descriptor_set_layout = &self
-    //     .pipeline
-    //     .root_signature()
-    //     .definition()
-    //     .descriptor_set_layouts[0];
-
-    // let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-
-    // {
-    //     let sub_allocation =
-    //         transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
-
-    //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-    //     descriptor_set_writer
-    //         .set_descriptors_by_name(
-    //             "view_data",
-    //             &[DescriptorRef::BufferView(&const_buffer_view)],
-    //         )
-    //         .unwrap();
-    // }
-
-    // {
-    //     let sub_allocation =
-    //         transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
-
-    //     let const_buffer_view = sub_allocation.const_buffer_view();
-
-    //     descriptor_set_writer
-    //         .set_descriptors_by_name(
-    //             "const_data",
-    //             &[DescriptorRef::BufferView(&const_buffer_view)],
-    //         )
-    //         .unwrap();
-    // }
-
-    // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-    // descriptor_set_writer
-    //     .set_descriptors_by_name(
-    //         "static_buffer",
-    //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-    //     )
-    //     .unwrap();
-
-    // descriptor_set_writer
-    //     .set_descriptors_by_name(
-    //         "picked_count",
-    //         &[DescriptorRef::BufferView(&self.count_rw_view)],
-    //     )
-    //     .unwrap();
-
-    // descriptor_set_writer
-    //     .set_descriptors_by_name(
-    //         "picked_objects",
-    //         &[DescriptorRef::BufferView(&self.picked_rw_view)],
-    //     )
-    //     .unwrap();
-
-    // let descriptor_set_handle =
-    //     descriptor_set_writer.flush(render_context.renderer().device_context());
-
-    // cmd_buffer.bind_descriptor_set_handle(
-    //     PipelineType::Graphics,
-    //     &self.root_signature,
-    //     descriptor_set_layout.definition().frequency,
-    //     descriptor_set_handle,
-    // );
-
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     push_constant_data.set_world((*custom_world).into());
     push_constant_data.set_picking_distance(picking_distance.into());
@@ -529,7 +450,7 @@ fn render_mesh(
     );
     push_constant_data.set_picking_distance(picking_distance.into());
 
-    cmd_buffer.push_constant2(&push_constant_data);
+    cmd_buffer.push_constant(&push_constant_data);
 
     cmd_buffer.draw(static_mesh.num_vertices, 0);
 }

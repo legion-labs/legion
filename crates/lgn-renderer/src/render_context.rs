@@ -56,11 +56,7 @@ impl<'frame> RenderContext<'frame> {
     }
 
     pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
-        HLCommandBuffer::new(
-            &self.descriptor_pool,
-            &self.bump_allocator,
-            &self.cmd_buffer_pool,
-        )
+        HLCommandBuffer::new(&self.cmd_buffer_pool)
     }
 
     pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
@@ -86,7 +82,7 @@ impl<'frame> RenderContext<'frame> {
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
+        descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
     ) -> DescriptorSetHandle {
         let bump = self.bump_allocator.bumpalo();
         if let Ok(handle) = self

@@ -214,16 +214,6 @@ impl Descriptor {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct DescriptorSetHandle {
-    // minimal set of information to avoid 
-    // referencing the descriptor set layout
-    pub layout_uid: u32,
-    pub frequency: u32,
-    #[cfg(feature = "vulkan")]
-    pub vk_type: ash::vk::DescriptorSet,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum ViewDimension {
     _2D,

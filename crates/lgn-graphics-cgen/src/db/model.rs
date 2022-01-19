@@ -161,13 +161,6 @@ where
         }
     }
 
-    // pub fn get_ref<'model>(&self, model: &'model Model) -> ModelRef<'model, T> {
-    //     ModelRef {
-    //         id: self.id,
-    //         object: model.get_from_id(self.id).unwrap(),
-    //     }
-    // }
-
     pub fn get<'model>(&self, model: &'model Model) -> &'model T {
         model.get_from_id(self.id).unwrap()
     }

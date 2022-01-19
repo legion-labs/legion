@@ -14,15 +14,6 @@ struct VertexOut {
     float3 pos : POSITION;
 };
 
-// ConstantBuffer<ViewData> view_data;
-// ConstantBuffer<LightingData> lighting_data;
-// ByteAddressBuffer static_buffer;
-// [[vk::push_constant]]
-// ConstantBuffer<InstancePushConstantData> instance_data;
-// StructuredBuffer<DirectionalLight> directional_lights;
-// StructuredBuffer<OmnidirectionalLight> omnidirectional_lights;
-// StructuredBuffer<Spotlight> spotlights;
-
 #define PI 3.141592
 
 struct Lighting {

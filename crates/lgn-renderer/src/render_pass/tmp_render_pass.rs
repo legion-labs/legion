@@ -29,8 +29,7 @@ impl TmpRenderPass {
 
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader =
-            renderer.prepare_vs_ps_no_rs(String::from("crate://renderer/shaders/shader.hlsl"));
+        let shader = renderer.prepare_vs_ps(String::from("crate://renderer/shaders/shader.hlsl"));
 
         //
         // Pipeline state
@@ -119,100 +118,8 @@ impl TmpRenderPass {
         );
 
         cmd_buffer.bind_pipeline(&self.pipeline);
-        cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
-
-        // let descriptor_set_layout = &self
-        //     .pipeline
-        //     .root_signature()
-        //     .definition()
-        //     .descriptor_set_layouts[0];
-
-        // let transient_allocator = render_context.transient_buffer_allocator();
-
-        // let view_data = camera.tmp_build_view_data(
-        //     render_surface.extents().width() as f32,
-        //     render_surface.extents().height() as f32,
-        //     0.0,
-        //     0.0,
-        //     0.0,
-        //     0.0,
-        // );
-
-        // let camera_buffer_view = transient_allocator
-        //     .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER)
-        //     .const_buffer_view();
-
-        // let lighting_manager_view = transient_allocator
-        //     .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-        //     .const_buffer_view();
-
-            // let mut descriptor_set_writer =
-            //  render_context.alloc_descriptor_set(descriptor_set_layout);
-
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "view_data",
-            //         &[DescriptorRef::BufferView(&camera_buffer_view)],
-            //     )
-            //     .unwrap();
-
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "lighting_data",
-            //         &[DescriptorRef::BufferView(&lighting_manager_view)],
-            //     )
-            //     .unwrap();
-
-            // let directional_lights_buffer_view = render_context
-            //     .renderer()
-            //     .directional_lights_data_structured_buffer_view();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "directional_lights",
-            //         &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
-            //     )
-            //     .unwrap();
-
-            // let omnidirectional_lights_buffer_view = render_context
-            //     .renderer()
-            //     .omnidirectional_lights_data_structured_buffer_view();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "omnidirectional_lights",
-            //         &[DescriptorRef::BufferView(
-            //             &omnidirectional_lights_buffer_view,
-            //         )],
-            //     )
-            //     .unwrap();
-
-            // let spotlights_buffer_view = render_context
-            //     .renderer()
-            //     .spotlights_data_structured_buffer_view();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "spotlights",
-            //         &[DescriptorRef::BufferView(&spotlights_buffer_view)],
-            //     )
-            //     .unwrap();
-
-            // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "static_buffer",
-            //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-            //     )
-            //     .unwrap();
-
-            // let descriptor_set_handle =
-            //  descriptor_set_writer.flush(render_context.renderer().device_context());
-
-            // cmd_buffer.bind_descriptor_set_handle(
-            //     PipelineType::Graphics,
-            //     &self.root_signature,
-            //     descriptor_set_layout.definition().frequency,
-            //     descriptor_set_handle,
-            // );
+        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
             let color: (f32, f32, f32, f32) = (
@@ -229,7 +136,7 @@ impl TmpRenderPass {
             push_constant_data.set_is_picked(if picked_component.is_some() { 1 } else { 0 }.into());
             push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
 
-            cmd_buffer.push_constant(self.pipeline.root_signature(), &push_constant_data);
+            cmd_buffer.push_constant(&push_constant_data);
 
             cmd_buffer.draw(static_mesh.num_vertices, 0);
         }

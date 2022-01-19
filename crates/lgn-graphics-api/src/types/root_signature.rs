@@ -60,9 +60,3 @@ impl RootSignature {
         &self.inner.definition
     }
 }
-
-// impl PartialEq for RootSignature {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.inner.hash == other.inner.hash
-//     }
-// }

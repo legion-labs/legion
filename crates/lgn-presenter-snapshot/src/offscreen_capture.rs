@@ -241,7 +241,7 @@ impl OffscreenHelper {
         let device_context = render_context.renderer().device_context();
         let descriptor_set_handle = descriptor_set_writer.flush(device_context);
 
-        cmd_buffer.bind_descriptor_set_handle(
+        cmd_buffer.bind_descriptor_set_handle_deprecated(
             PipelineType::Graphics,
             &self.root_signature,
             descriptor_set_layout.definition().frequency,

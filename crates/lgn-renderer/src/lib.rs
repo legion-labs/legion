@@ -404,34 +404,37 @@ fn render_update(
     renderer.flush_update_jobs(&render_context);
 
     // Frame descriptor set
-    let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
+    {
+        let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
-    let lighting_manager_view = render_context
-        .transient_buffer_allocator()
-        .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-        .const_buffer_view();
-    frame_descriptor_set.set_lighting_data(&lighting_manager_view);
+        let lighting_manager_view = render_context
+            .transient_buffer_allocator()
+            .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+            .const_buffer_view();
+        frame_descriptor_set.set_lighting_data(&lighting_manager_view);
 
-    let omni_lights_buffer_view = renderer.omnidirectional_lights_data_structured_buffer_view();
-    frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
+        let omni_lights_buffer_view = renderer.omnidirectional_lights_data_structured_buffer_view();
+        frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
 
-    let directionnal_lights_buffer_view = renderer.directional_lights_data_structured_buffer_view();
-    frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
+        let directionnal_lights_buffer_view =
+            renderer.directional_lights_data_structured_buffer_view();
+        frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
 
-    let spot_lights_buffer_view = renderer.spotlights_data_structured_buffer_view();
-    frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
+        let spot_lights_buffer_view = renderer.spotlights_data_structured_buffer_view();
+        frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
 
-    let static_buffer_ro_view = renderer.static_buffer_ro_view();
-    frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
+        let static_buffer_ro_view = renderer.static_buffer_ro_view();
+        frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
 
-    let frame_descriptor_set_handle = render_context.write_descriptor_set(&frame_descriptor_set);
+        let frame_descriptor_set_handle =
+            render_context.write_descriptor_set(&frame_descriptor_set);
 
-    render_context.set_frame_descriptor_set_handle(frame_descriptor_set_handle);
+        render_context.set_frame_descriptor_set_handle(frame_descriptor_set_handle);
+    }
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
         // View descriptor set
-
         {
             let mut screen_rect = picking_manager.screen_rect();
             if screen_rect.x == 0.0 || screen_rect.y == 0.0 {

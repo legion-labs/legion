@@ -335,7 +335,7 @@ impl Renderer {
     }
 
     #[span_fn]
-    pub(crate) fn prepare_vs_ps_no_rs(&self, shader_source: String) -> Shader {
+    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> Shader {
         let device_context = self.device_context();
 
         let shader_compiler = self.shader_compiler();
