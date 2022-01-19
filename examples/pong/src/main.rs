@@ -65,7 +65,6 @@ use lgn_ecs::prelude::*;
 use lgn_input::mouse::MouseMotion;
 use lgn_math::Vec3;
 use lgn_renderer::components::CameraComponent;
-use lgn_scripting::ScriptingPlugin;
 use lgn_transform::components::Transform;
 use runtime_srv::{build_runtime, start_runtime};
 
@@ -80,8 +79,7 @@ fn main() {
     app.insert_resource(GameState::default())
         .add_startup_system_to_stage(StartupStage::PostStartup, game_setup)
         .add_system(update_mouse)
-        .add_system(game_logic)
-        .add_plugin(ScriptingPlugin::default());
+        .add_system(game_logic);
 
     start_runtime(&mut app);
 }
