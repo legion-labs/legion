@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Set base ref for PRs
         if: github.event_name == 'pull_request'
-        run: echo "base_ref=$GITHUB_BASE_REF" >> $env:GITHUB_ENV
+        run: echo "base_ref=$GITHUB_BASE_REF" >> $GITHUB_ENV
 
       - name: Retrieve base ref for branch
         id: last-green-commit
@@ -114,7 +114,7 @@ jobs:
               })
       - name: Set base ref for PRs
         if: github.event_name != 'pull_request'
-        run: echo "base_ref=${{steps.last-green-commit.outputs.result}}" >> $env:GITHUB_ENV
+        run: echo "base_ref=${{steps.last-green-commit.outputs.result}}" >> $GITHUB_ENV
 
       - name: Set base ref
         id: set-base-ref
