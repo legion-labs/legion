@@ -265,7 +265,6 @@ impl DebugRenderPass {
 
                 cmd_buffer.bind_pipeline(&self.solid_pso_nodepth);
                 cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-                constant_data.set_color(color.into());
 
                 render_mesh(
                     static_mesh.mesh_id as u32,
@@ -374,7 +373,7 @@ fn render_aabb_for_mesh(
 fn render_mesh(
     mesh_id: u32,
     world_xform: &Mat4,
-    color: Vec4,
+    color: Color,
     cmd_buffer: &HLCommandBuffer<'_>,
     default_meshes: &DefaultMeshes,
 ) {
