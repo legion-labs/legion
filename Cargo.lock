@@ -2875,8 +2875,6 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
- "lgn-renderer",
- "lgn-transform",
  "lgn-utils",
  "memoffset 0.6.5",
  "serde",
@@ -3946,7 +3944,6 @@ name = "lgn-build-utils-proto"
 version = "0.1.0"
 dependencies = [
  "lgn-build-utils",
- "named-lock",
  "tonic-build",
  "which",
 ]
@@ -4188,7 +4185,6 @@ dependencies = [
  "lgn-app",
  "lgn-derive",
  "lgn-ecs",
- "lgn-math",
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
@@ -4826,7 +4822,6 @@ dependencies = [
  "lgn-cli-utils",
  "lgn-source-control",
  "lgn-telemetry-sink",
- "lgn-test-utils",
  "lgn-tracing",
  "libc",
  "tokio",
@@ -7792,7 +7787,6 @@ dependencies = [
  "anyhow",
  "bytes",
  "clap 3.0.7",
- "futures",
  "http",
  "hyper",
  "lgn-source-control",

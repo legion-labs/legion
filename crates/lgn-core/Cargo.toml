@@ -20,6 +20,3 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 # other
 bytemuck = "1.7"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
-
-[dev-dependencies]
-lgn-math = { path = "../lgn-math", version = "0.1.0" }

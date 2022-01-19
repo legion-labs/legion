@@ -16,8 +16,6 @@ lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
-lgn-renderer = { path = "../../crates/lgn-renderer", version = "0.1.0" }
-lgn-transform = { path = "../../crates/lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../../crates/lgn-utils", version = "0.1.0" }
 # other
 anyhow = "1.0"
