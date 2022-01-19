@@ -25,8 +25,8 @@ jobs:
       matrix:
         os:
           [
-            "${{ needs.check_needs_gpu_tests.outputs.linux_machine }}",
-            "${{ needs.check_needs_gpu_tests.outputs.windows_machine }}",
+            "${{ needs.runner_selection.outputs.linux_machine }}",
+            "${{ needs.runner_selection.outputs.windows_machine }}",
           ]
     runs-on: ${{ matrix.os }}
     steps:
