@@ -171,8 +171,10 @@ fn toolchain_location() -> Result<String> {
         .map_err(|err| Error::new("Failed to run `rustc`").with_source(err))?;
     if output.status.success() {
         let output = String::from_utf8_lossy(&output.stdout);
-        let path = Utf8Path::new(&output);
+        let path = Utf8Path::new(output.trim_end_matches('\n'));
         let mut components = path.components();
+        // removing the root
+        components.next();
         components.next();
         let mut path = String::new();
         for component in components {
