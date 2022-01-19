@@ -1,9 +1,0 @@
-################################################################################
-
-[vscode]
-debugger-type = { windows = "cppvsdbg", linux = "lldb", macos = "lldb" }
-compounds = { editor-compound = ["editor-client", "editor-srv"] }
-overrides = { lgn-graphics-sandbox = { args = ["--egui"] } }
-disable-prelaunch = true
-
-################################################################################
