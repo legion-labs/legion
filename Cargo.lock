@@ -4795,6 +4795,7 @@ name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
  "lgn-app",
+ "lgn-async",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",

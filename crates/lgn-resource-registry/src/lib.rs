@@ -8,13 +8,13 @@ mod settings;
 use std::sync::Arc;
 
 use lgn_app::prelude::*;
+use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, DataManager};
 use lgn_ecs::prelude::*;
-use lgn_tasks::IoTaskPool;
 pub use settings::ResourceRegistrySettings;
 use tokio::sync::Mutex;
 
@@ -81,14 +81,14 @@ impl ResourceRegistryPlugin {
         )));
 
         {
+            let async_rt = world
+                .get_resource::<TokioAsyncRuntime>()
+                .expect("async plugin did not provide tokio runtime");
             let data_manager = data_manager.clone();
-            let io_task_pool = world.get_resource::<IoTaskPool>().unwrap();
-            io_task_pool
-                .spawn(async move {
-                    let mut data_manager = data_manager.lock().await;
-                    data_manager.load_all_resources().await;
-                })
-                .detach();
+            async_rt.start_detached(async move {
+                let mut data_manager = data_manager.lock().await;
+                data_manager.load_all_resources().await;
+            });
         }
 
         world.insert_resource(data_manager);

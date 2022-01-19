@@ -1,5 +1,5 @@
 use lgn_ecs::world::World;
-use lgn_tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPoolBuilder};
+use lgn_tasks::{AsyncComputeTaskPool, ComputeTaskPool, TaskPoolBuilder};
 use lgn_tracing::trace;
 
 /// Defines a simple way to determine how many threads to use given the number of remaining cores
@@ -44,8 +44,6 @@ pub struct DefaultTaskPoolOptions {
     /// max_total_threads
     pub max_total_threads: usize,
 
-    /// Used to determine number of IO threads to allocate
-    pub io: TaskPoolThreadAssignmentPolicy,
     /// Used to determine number of async compute threads to allocate
     pub async_compute: TaskPoolThreadAssignmentPolicy,
     /// Used to determine number of compute threads to allocate
@@ -58,13 +56,6 @@ impl Default for DefaultTaskPoolOptions {
             // By default, use however many cores are available on the system
             min_total_threads: 1,
             max_total_threads: std::usize::MAX,
-
-            // Use 25% of cores for IO, at least 1, no more than 4
-            io: TaskPoolThreadAssignmentPolicy {
-                min_threads: 1,
-                max_threads: 4,
-                percent: 0.25,
-            },
 
             // Use 25% of cores for async compute, at least 1, no more than 4
             async_compute: TaskPoolThreadAssignmentPolicy {
@@ -100,23 +91,6 @@ impl DefaultTaskPoolOptions {
         trace!("Assigning {} cores to default task pools", total_threads);
 
         let mut remaining_threads = total_threads;
-
-        if !world.contains_resource::<IoTaskPool>() {
-            // Determine the number of IO threads we will use
-            let io_threads = self
-                .io
-                .get_number_of_threads(remaining_threads, total_threads);
-
-            trace!("IO Threads: {}", io_threads);
-            remaining_threads = remaining_threads.saturating_sub(io_threads);
-
-            world.insert_resource(IoTaskPool(
-                TaskPoolBuilder::default()
-                    .num_threads(io_threads)
-                    .thread_name("IO Task Pool".to_string())
-                    .build(),
-            ));
-        }
 
         if !world.contains_resource::<AsyncComputeTaskPool>() {
             // Determine the number of async compute threads we will use
