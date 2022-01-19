@@ -87,6 +87,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                         "clear": true
                       }
                 }));
+                // part of the source map is still hardcoded
                 configurations.push(json!({
                     "name": name,
                     "type": debugger_type,
