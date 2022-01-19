@@ -9,6 +9,7 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
+use lgn_math::Vec3;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
@@ -209,7 +210,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(LightComponent {
             light_type: LightType::Directional,
             radiance: 40.0,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -221,7 +222,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -233,7 +234,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: false,
             ..LightComponent::default()
         });
@@ -247,7 +248,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
                 cone_angle: std::f32::consts::PI / 4.0,
             },
             radiance: 40.0,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: true,
             ..LightComponent::default()
         });
@@ -294,7 +295,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: (1.0, 1.0, 1.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             enabled: true,
             ..LightComponent::default()
         });

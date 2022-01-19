@@ -184,10 +184,6 @@ impl EguiPass {
         self.texture_data = Some((egui_font_image.version, texture, texture_view));
     }
 
-    pub fn fuck_it(&mut self) {
-        // self.pipelines.clear();
-    }
-
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
@@ -206,9 +202,9 @@ impl EguiPass {
         );
 
         let transient_allocator = render_context.transient_buffer_allocator();
-        let pipeline = &self.pipelines[0];        
+        let pipeline = &self.pipelines[0];
 
-        cmd_buffer.bind_pipeline(&pipeline);
+        cmd_buffer.bind_pipeline(pipeline);
 
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 

@@ -24,9 +24,9 @@ pub(crate) use instance_push_constant_data::*;
 pub(crate) mod egui_push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use egui_push_constant_data::*;
-pub(crate) mod debug_push_constant_data;
+pub(crate) mod const_color_push_constant_data;
 #[allow(unused_imports)]
-pub(crate) use debug_push_constant_data::*;
+pub(crate) use const_color_push_constant_data::*;
 pub(crate) mod picking_push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use picking_push_constant_data::*;

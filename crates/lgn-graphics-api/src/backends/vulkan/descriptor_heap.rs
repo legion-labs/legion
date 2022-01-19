@@ -269,7 +269,11 @@ impl DescriptorHeapPartition {
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
         DescriptorSetWriter::new(
-            DescriptorSetHandle { vk_type: result[0] },
+            DescriptorSetHandle {
+                layout_uid: descriptor_set_layout.uid(),
+                frequency: descriptor_set_layout.frequency(),
+                vk_type: result[0],
+            },
             descriptor_set_layout,
             bump,
         )
@@ -282,16 +286,20 @@ impl DescriptorHeapPartition {
     ) -> GfxResult<DescriptorSetHandle> {
         let device_context = &self.inner.heap.inner.device_context;
         let device = device_context.vk_device();
+        let descriptor_set_layout = descriptor_set.layout();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set.layout().vk_layout()])
+            .set_layouts(&[descriptor_set_layout.vk_layout()])
             .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
         let mut writer = DescriptorSetWriter::new(
-            DescriptorSetHandle { vk_type: result[0] },
-            descriptor_set.layout(),
+            DescriptorSetHandle { 
+                layout_uid: descriptor_set_layout.uid(),
+                frequency: descriptor_set_layout.frequency(),
+                vk_type: result[0] },
+                descriptor_set_layout,
             bump,
         )?;
 

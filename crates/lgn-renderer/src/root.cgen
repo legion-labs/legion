@@ -30,7 +30,7 @@ struct FrameDescriptorSet {
 
 #[DescriptorSet(frequency = 1)]
 struct ViewDescriptorSet {
-    camera: ConstantBuffer<ViewData>,
+    view_data: ConstantBuffer<ViewData>,
 }
 
 struct InstancePushConstantData {
@@ -46,6 +46,10 @@ struct TmpPipelineLayout {
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
     push_constant: PushConstant<InstancePushConstantData>,
 }
+
+//
+// Egui
+//
 
 #[DescriptorSet(frequency = 0)]
 struct EguiDescriptorSet {
@@ -66,9 +70,26 @@ struct EguiPipelineLayout {
     push_constant: PushConstant<EguiPushConstantData>,
 }
 
-struct DebugPushConstantData {
+//
+// ConstColor
+//
+
+struct ConstColorPushConstantData {
+    world: Float4x4,
+    color: Float4,
     vertex_offset: Uint1,
 }
+
+#[PipelineLayout]
+struct ConstColorPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,    
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,    
+    push_constant: PushConstant<ConstColorPushConstantData>,
+}
+
+//
+//
+//
 
 struct PickingPushConstantData {
     custom_world: Float4x4,

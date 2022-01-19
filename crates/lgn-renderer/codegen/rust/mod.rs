@@ -21,6 +21,7 @@ pub fn initialize(device_context: &DeviceContext) {
 
     pipeline_layout::TmpPipelineLayout::initialize(device_context, &descriptor_set_layouts);
     pipeline_layout::EguiPipelineLayout::initialize(device_context, &descriptor_set_layouts);
+    pipeline_layout::ConstColorPipelineLayout::initialize(device_context, &descriptor_set_layouts);
 }
 
 pub fn shutdown() {
@@ -30,4 +31,5 @@ pub fn shutdown() {
 
     pipeline_layout::TmpPipelineLayout::shutdown();
     pipeline_layout::EguiPipelineLayout::shutdown();
+    pipeline_layout::ConstColorPipelineLayout::shutdown();
 }

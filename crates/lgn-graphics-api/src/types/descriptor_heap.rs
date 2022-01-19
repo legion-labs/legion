@@ -11,7 +11,7 @@ use crate::{
 // DescriptorSetDataProvider
 //
 
-pub trait DescriptorSetDataProvider {    
+pub trait DescriptorSetDataProvider {
     fn layout(&self) -> &'static DescriptorSetLayout;
     fn frequency(&self) -> u32;
     fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'_>];
@@ -78,8 +78,10 @@ impl DescriptorHeap {
 
     #[allow(clippy::unused_self)]
     #[allow(clippy::needless_pass_by_value)]
+    #[allow(clippy::todo)]
     pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
         // todo(vdbdd): free
+        
     }
 }
 

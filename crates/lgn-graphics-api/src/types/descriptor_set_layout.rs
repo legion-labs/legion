@@ -1,18 +1,22 @@
+use std::sync::atomic::Ordering;
+
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
-use std::hash::{Hash, Hasher};
 
 use crate::{
     deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult,
     MAX_DESCRIPTOR_BINDINGS,
 };
 
+static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
+    std::sync::atomic::AtomicU32::new(1);
+
 #[derive(Debug)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
-    hash: u64,
-    set_index: u32,
+    id: u32,
+    frequency: u32,
     binding_mask: u64,
 
     #[cfg(any(feature = "vulkan"))]
@@ -26,12 +30,6 @@ impl Drop for DescriptorSetLayoutInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_layout.destroy(&self.device_context);
-    }
-}
-
-impl Hash for DescriptorSetLayoutInner {
-    fn hash<H: Hasher>(&self, mut state: &mut H) {
-        self.definition.hash(&mut state);
     }
 }
 
@@ -49,8 +47,12 @@ impl DescriptorSetLayout {
         &self.inner.definition
     }
 
-    pub fn set_index(&self) -> u32 {
-        self.inner.set_index
+    pub fn uid(&self) -> u32 {
+        self.inner.id
+    }
+
+    pub fn frequency(&self) -> u32 {
+        self.inner.frequency
     }
 
     pub fn binding_mask(&self) -> u64 {
@@ -95,8 +97,8 @@ impl DescriptorSetLayout {
                 ash::vk::Result::ERROR_UNKNOWN
             })?;
 
-        let mut hasher = fnv::FnvHasher::default();
-        definition.hash(&mut hasher);
+        let descriptor_set_layout_id =
+            NEXT_DESCRIPTOR_SET_LAYOUT_ID.fetch_add(1, Ordering::Relaxed);
 
         let result = Self {
             inner: device_context
@@ -104,8 +106,8 @@ impl DescriptorSetLayout {
                 .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
                     definition: definition.clone(),
-                    hash: hasher.finish(),
-                    set_index: definition.frequency,
+                    id: descriptor_set_layout_id,
+                    frequency: definition.frequency,
                     binding_mask,
                     #[cfg(any(feature = "vulkan"))]
                     descriptors,
@@ -118,14 +120,8 @@ impl DescriptorSetLayout {
     }
 }
 
-impl Hash for DescriptorSetLayout {
-    fn hash<H: Hasher>(&self, mut state: &mut H) {
-        self.inner.definition.hash(&mut state);
-    }
-}
-
 impl PartialEq for DescriptorSetLayout {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.hash == other.inner.hash
+        self.inner.id == other.inner.id
     }
 }

@@ -216,6 +216,10 @@ impl Descriptor {
 
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
+    // minimal set of information to avoid 
+    // referencing the descriptor set layout
+    pub layout_uid: u32,
+    pub frequency: u32,
     #[cfg(feature = "vulkan")]
     pub vk_type: ash::vk::DescriptorSet,
 }
@@ -495,7 +499,7 @@ pub struct PushConstantDef {
     pub size: u32,
 }
 
-#[derive(Default, Debug, Hash)]
+#[derive(Default, Debug)]
 pub struct RootSignatureDef {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,

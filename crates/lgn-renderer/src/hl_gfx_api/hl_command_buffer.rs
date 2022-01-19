@@ -178,6 +178,27 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_push_constant(root_signature, constants);
     }
 
+    pub fn bind_descriptor_set_handle3(&self, handle: DescriptorSetHandle) {
+        assert!(self.cur_pipeline.is_some());
+
+        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
+        let pipeline_type = cur_pipeline.pipeline_type();
+        let root_signature = cur_pipeline.root_signature();
+        let set_index = handle.frequency;
+
+        assert_eq!(
+            root_signature.definition().descriptor_set_layouts[set_index as usize].uid(),
+            handle.layout_uid
+        );
+
+        self.cmd_buffer.cmd_bind_descriptor_set_handle(
+            pipeline_type,
+            root_signature,
+            set_index,
+            handle,
+        );
+    }
+
     pub fn bind_descriptor_set_handle2(&self, data_provider: &impl DescriptorSetDataProvider) {
         assert!(self.cur_pipeline.is_some());
 

@@ -82,7 +82,7 @@ impl Default for EguiPipelineLayout {
 
 impl PipelineDataProvider for EguiPipelineLayout {
     fn root_signature() -> &'static RootSignature {
-        EguiPipelineLayout::root_signature()
+        Self::root_signature()
     }
 
     fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {

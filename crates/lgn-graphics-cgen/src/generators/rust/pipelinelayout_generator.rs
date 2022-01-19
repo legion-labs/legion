@@ -272,7 +272,7 @@ fn generate_rust_pipeline_layout(
         // fn descriptor_set
         writer.add_line("fn root_signature() -> &'static RootSignature {");
         writer.indent();
-        writer.add_line(format!("{}::root_signature()", pipeline_layout.name));
+        writer.add_line("Self::root_signature()");
         writer.unindent();
         writer.add_line("}");
         writer.new_line();

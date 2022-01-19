@@ -18,6 +18,9 @@ pub struct RenderContext<'frame> {
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
+    // tmp
+    frame_descriptor_set_handle: Option<DescriptorSetHandle>,
+    view_descriptor_set_handle: Option<DescriptorSetHandle>,
 }
 
 impl<'frame> RenderContext<'frame> {
@@ -36,6 +39,8 @@ impl<'frame> RenderContext<'frame> {
                 ),
             ),
             bump_allocator: renderer.acquire_bump_allocator(),
+            frame_descriptor_set_handle: None,
+            view_descriptor_set_handle: None,
         }
     }
 
@@ -100,6 +105,22 @@ impl<'frame> RenderContext<'frame> {
 
     pub fn bump_allocator(&self) -> &BumpAllocatorHandle {
         &self.bump_allocator
+    }
+
+    pub fn frame_descriptor_set_handle(&self) -> DescriptorSetHandle {
+        self.frame_descriptor_set_handle.unwrap()
+    }
+
+    pub fn set_frame_descriptor_set_handle(&mut self, handle: DescriptorSetHandle) {
+        self.frame_descriptor_set_handle = Some(handle);
+    }
+
+    pub fn view_descriptor_set_handle(&self) -> DescriptorSetHandle {
+        self.view_descriptor_set_handle.unwrap()
+    }
+
+    pub fn set_view_descriptor_set_handle(&mut self, handle: DescriptorSetHandle) {
+        self.view_descriptor_set_handle = Some(handle);
     }
 }
 

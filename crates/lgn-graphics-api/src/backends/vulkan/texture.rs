@@ -8,6 +8,7 @@ use crate::{
     DeviceContext, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Texture,
     TextureDef, TextureSubResource,
 };
+static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 // This is used to allow the underlying image/allocation to be removed from a
 // VulkanTexture, or to init a VulkanTexture with an existing image/allocation.
@@ -341,7 +342,7 @@ impl VulkanTexture {
         // VIEWS >>>>>
 
         // Used for hashing framebuffers
-        let texture_id = crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
+        let texture_id = NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
         Ok((Self { image, aspect_mask }, texture_id))
     }
