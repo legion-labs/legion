@@ -49,6 +49,10 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         .exclude
         .push(env!("CARGO_PKG_NAME").into());
 
-    let packages = args.package_args.to_selected_packages(ctx)?;
+    let mut packages = args.package_args.to_selected_packages(ctx)?;
+    let bin = args.build_args.bin.first();
+    if let Some(bin) = bin {
+        packages.select_package_from_bin(bin.as_str(), ctx)?;
+    }
     cmd.run_on_packages(ctx, &packages)
 }
