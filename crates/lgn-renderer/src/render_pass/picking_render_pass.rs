@@ -2,10 +2,10 @@ use std::slice;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
-    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DescriptorRef,
-    DeviceContext, Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef,
-    MemoryUsage, Pipeline, PipelineType, PrimitiveTopology, RasterizerState, ResourceCreation,
-    ResourceState, ResourceUsage, RootSignature, SampleCount, StencilOp, StoreOp, VertexLayout,
+    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
+    Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage,
+    Pipeline, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_transform::components::Transform;
 
@@ -21,7 +21,7 @@ use crate::{
     RenderContext, RenderHandle, Renderer,
 };
 
-use lgn_math::{Mat4, Vec2};
+use lgn_math::Mat4;
 
 struct ReadbackBufferPool {
     device_context: DeviceContext,
@@ -118,7 +118,7 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    root_signature: RootSignature,
+    // root_signature: RootSignature,
     pipeline: Pipeline,
 
     readback_buffer_pools: GpuSafePool<ReadbackBufferPool>,
@@ -137,8 +137,9 @@ impl PickingRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
-        let (shader, root_signature) =
-            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/picking.hlsl"));
+        let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
+        let shader =
+            renderer.prepare_vs_ps_no_rs(String::from("crate://renderer/shaders/picking.hlsl"));
 
         //
         // Pipeline state
@@ -168,7 +169,7 @@ impl PickingRenderPass {
         let pipeline = device_context
             .create_graphics_pipeline(&GraphicsPipelineDef {
                 shader: &shader,
-                root_signature: &root_signature,
+                root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default_alpha_enabled(),
                 depth_state: &depth_state,
@@ -225,7 +226,7 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
-            root_signature,
+            // root_signature,
             pipeline,
             readback_buffer_pools: GpuSafePool::new(3),
             count_buffer,
@@ -239,78 +240,83 @@ impl PickingRenderPass {
 
     fn bind_descriptor_table(
         &self,
-        view_data: &cgen::cgen_type::ViewData,
-        cmd_buffer: &HLCommandBuffer<'_>,
-        render_context: &RenderContext<'_>,
-    ) {
-        let transient_allocator = render_context.transient_buffer_allocator();
-
-        let descriptor_set_layout = &self
-            .pipeline
-            .root_signature()
-            .definition()
-            .descriptor_set_layouts[0];
-
-        let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-
-        {
-            let sub_allocation =
-                transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.const_buffer_view();
-
-            descriptor_set_writer
-                .set_descriptors_by_name(
-                    "view_data",
-                    &[DescriptorRef::BufferView(&const_buffer_view)],
-                )
-                .unwrap();
-        }
-
-        let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "static_buffer",
-                &[DescriptorRef::BufferView(&static_buffer_ro_view)],
-            )
-            .unwrap();
-
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "picked_count",
-                &[DescriptorRef::BufferView(&self.count_rw_view)],
-            )
-            .unwrap();
-
-        descriptor_set_writer
-            .set_descriptors_by_name(
-                "picked_objects",
-                &[DescriptorRef::BufferView(&self.picked_rw_view)],
-            )
-            .unwrap();
-
-        let descriptor_set_handle =
-            descriptor_set_writer.flush(render_context.renderer().device_context());
-
-        cmd_buffer.bind_descriptor_set_handle(
-            PipelineType::Graphics,
-            &self.root_signature,
-            descriptor_set_layout.definition().frequency,
-            descriptor_set_handle,
-        );
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn render_mesh(
-        &self,
-        custom_world: &Mat4,
-        custom_picking_id: Option<u32>,
-        picking_distance: f32,
-        static_mesh: &StaticMesh,
         cmd_buffer: &HLCommandBuffer<'_>,
     ) {
+        // let mut constant_data = cgen::cgen_type::ConstData::default();
+        // constant_data.set_world((*custom_world).into());
+        // constant_data.set_picking_distance(picking_distance.into());
+
+        // let descriptor_set_layout = &self
+        //     .pipeline
+        //     .root_signature()
+        //     .definition()
+        //     .descriptor_set_layouts[0];
+
+        // let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
+
+        // {
+        //     let sub_allocation =
+        //         transient_allocator.copy_data(view_data, ResourceUsage::AS_CONST_BUFFER);
+
+        //     let const_buffer_view = sub_allocation.const_buffer_view();
+
+        //     descriptor_set_writer
+        //         .set_descriptors_by_name(
+        //             "view_data",
+        //             &[DescriptorRef::BufferView(&const_buffer_view)],
+        //         )
+        //         .unwrap();
+        // }
+
+        // {
+        //     let sub_allocation =
+        //         transient_allocator.copy_data(&constant_data, ResourceUsage::AS_CONST_BUFFER);
+
+        //     let const_buffer_view = sub_allocation.const_buffer_view();
+
+        //     descriptor_set_writer
+        //         .set_descriptors_by_name(
+        //             "const_data",
+        //             &[DescriptorRef::BufferView(&const_buffer_view)],
+        //         )
+        //         .unwrap();
+        // }
+
+        // let static_buffer_ro_view = render_context.renderer().static_buffer_ro_view();
+        // descriptor_set_writer
+        //     .set_descriptors_by_name(
+        //         "static_buffer",
+        //         &[DescriptorRef::BufferView(&static_buffer_ro_view)],
+        //     )
+        //     .unwrap();
+
+        // descriptor_set_writer
+        //     .set_descriptors_by_name(
+        //         "picked_count",
+        //         &[DescriptorRef::BufferView(&self.count_rw_view)],
+        //     )
+        //     .unwrap();
+
+        // descriptor_set_writer
+        //     .set_descriptors_by_name(
+        //         "picked_objects",
+        //         &[DescriptorRef::BufferView(&self.picked_rw_view)],
+        //     )
+        //     .unwrap();
+
+        // let descriptor_set_handle =
+        //     descriptor_set_writer.flush(render_context.renderer().device_context());
+
+        // cmd_buffer.bind_descriptor_set_handle(
+        //     PipelineType::Graphics,
+        //     &self.root_signature,
+        //     descriptor_set_layout.definition().frequency,
+        //     descriptor_set_handle,
+        // );
+
         let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
-        push_constant_data.set_custom_world((*custom_world).into());
+        push_constant_data.set_world((*custom_world).into());
+        push_constant_data.set_picking_distance(picking_distance.into());
         push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
         push_constant_data.set_world_offset(static_mesh.world_offset.into());
         push_constant_data.set_picking_id(
@@ -365,29 +371,19 @@ impl PickingRenderPass {
             );
 
             cmd_buffer.bind_pipeline(&self.pipeline);
+            cmd_buffer.bind_descriptor_set_handle3(render_context.frame_descriptor_set_handle());
+            cmd_buffer.bind_descriptor_set_handle3(render_context.view_descriptor_set_handle());
+
+            let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
+            picking_descriptor_set.set_picked_count(&self.count_rw_view);
+            picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
+            let picking_descriptor_set_handle =
+                render_context.write_descriptor_set(&picking_descriptor_set);
+            cmd_buffer.bind_descriptor_set_handle3(picking_descriptor_set_handle);
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
                 render_surface.extents().height() as f32,
-            );
-
-            let mut screen_rect = picking_manager.screen_rect();
-            if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
-                screen_rect = Vec2::new(
-                    render_surface.extents().width() as f32,
-                    render_surface.extents().height() as f32,
-                );
-            }
-
-            let cursor_pos = picking_manager.current_cursor_pos();
-
-            let view_data = camera.tmp_build_view_data(
-                render_surface.extents().width() as f32,
-                render_surface.extents().height() as f32,
-                screen_rect.x,
-                screen_rect.y,
-                cursor_pos.x,
-                cursor_pos.y,
             );
 
             self.bind_descriptor_table(&view_data, &cmd_buffer, render_context);

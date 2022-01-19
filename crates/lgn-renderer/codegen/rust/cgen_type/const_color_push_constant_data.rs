@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::prelude::*;
 
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "ConstColorPushConstantData",
-    id: 21,
+    id: 20,
     size: 84,
 };
 
@@ -23,7 +23,7 @@ pub struct ConstColorPushConstantData {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl ConstColorPushConstantData {
     pub const fn id() -> u32 {
-        21
+        20
     }
 
     pub fn def() -> &'static CGenTypeDef {

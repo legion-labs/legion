@@ -1,6 +1,3 @@
-// #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
-// #include "crate://renderer/codegen/hlsl/cgen_type/const_data.hlsl"
-// #include "crate://renderer/codegen/hlsl/cgen_type/debug_push_constant_data.hlsl"
 #include "crate://renderer/codegen/hlsl/pipeline_layout/const_color_pipeline_layout.hlsl"
 
 struct VertexIn {
@@ -15,14 +12,6 @@ struct VertexOut {
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
-
-
-// ConstantBuffer<ViewData> view_data;
-// ConstantBuffer<ConstData> const_data;
-// ByteAddressBuffer static_buffer;
-
-// [[vk::push_constant]]
-// ConstantBuffer<DebugPushConstantData> push_constant;
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);

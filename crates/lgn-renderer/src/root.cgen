@@ -11,10 +11,11 @@ struct ViewData {
     cursor_pos: Float2,
 }
 
-struct ConstData {
-    world: Float4x4,
-    color: Float4,
-}
+// struct ConstData {
+//     world: Float4x4,
+//     color: Float4,
+//     picking_distance: Float1,
+// }
 
 struct EntityTransforms {
     world: Float4x4,
@@ -88,21 +89,40 @@ struct ConstColorPipelineLayout {
 }
 
 //
+// Picking
 //
-//
-
-struct PickingPushConstantData {
-    custom_world: Float4x4,
-    vertex_offset: Uint1,
-    world_offset: Uint1,
-    picking_id: Uint1,
-    picking_distance: Float1,
-}
 
 struct PickingData {
     picking_pos: Float3,
     picking_id: Uint1,
 }
+
+struct PickingPushConstantData {
+    world: Float4x4,
+    color: Float4,
+    picking_distance: Float1,
+    vertex_offset: Uint1,
+    world_offset: Uint1,
+    picking_id: Uint1,
+}
+
+#[DescriptorSet(frequency = 2)]
+struct PickingDescriptorSet {
+    picked_count: RWStructuredBuffer<Uint1>,
+    picked_objects: RWStructuredBuffer<PickingData>,
+}
+
+#[PipelineLayout]
+struct PickingPipelineLayout {
+    frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
+    picking_descriptor_set: DescriptorSet<PickingDescriptorSet>,
+    push_constant: PushConstant<PickingPushConstantData>,
+}
+
+//
+//
+//
 
 struct LightingData {
     num_directional_lights: Uint1,

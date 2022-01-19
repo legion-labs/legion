@@ -5,7 +5,9 @@
 
 
     struct PickingPushConstantData {
-        float4x4 custom_world;
+        float4x4 world;
+        float4 color;
+        float picking_distance;
         uint vertex_offset;
         uint world_offset;
         uint picking_id;

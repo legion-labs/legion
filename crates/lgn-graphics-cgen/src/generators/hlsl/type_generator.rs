@@ -53,7 +53,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let deps = ty.get_type_dependencies();
     if !deps.is_empty() {
         for ty_ref in deps {
-            let ty = ty_ref.get(ctx.model);
+            let ty = ty_ref.get(ctx.model);            
             match ty {
                 CGenType::Native(_) => (),
                 CGenType::Struct(_) => {

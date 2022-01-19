@@ -9,15 +9,15 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "PickingPushConstantData",
     id: 22,
-    size: 80,
+    size: 96,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<PickingPushConstantData>(), 80);
+static_assertions::const_assert_eq!(mem::size_of::<PickingPushConstantData>(), 96);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct PickingPushConstantData {
-    data: [u8; 80],
+    data: [u8; 96],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -31,68 +31,81 @@ impl PickingPushConstantData {
     }
 
     //
-    // member : custom_world
+    // member : world
     // offset : 0
     // size : 64
     //
-    pub fn set_custom_world(&mut self, value: Float4x4) {
+    pub fn set_world(&mut self, value: Float4x4) {
         self.set(0, value);
     }
 
-    pub fn custom_world(&self) -> Float4x4 {
+    pub fn world(&self) -> Float4x4 {
         self.get(0)
     }
 
     //
-    // member : vertex_offset
+    // member : color
     // offset : 64
-    // size : 4
+    // size : 16
     //
-    pub fn set_vertex_offset(&mut self, value: Uint1) {
+    pub fn set_color(&mut self, value: Float4) {
         self.set(64, value);
     }
 
-    pub fn vertex_offset(&self) -> Uint1 {
+    pub fn color(&self) -> Float4 {
         self.get(64)
     }
 
     //
+    // member : picking_distance
+    // offset : 80
+    // size : 4
+    //
+    pub fn set_picking_distance(&mut self, value: Float1) {
+        self.set(80, value);
+    }
+
+    pub fn picking_distance(&self) -> Float1 {
+        self.get(80)
+    }
+
+    //
+    // member : vertex_offset
+    // offset : 84
+    // size : 4
+    //
+    pub fn set_vertex_offset(&mut self, value: Uint1) {
+        self.set(84, value);
+    }
+
+    pub fn vertex_offset(&self) -> Uint1 {
+        self.get(84)
+    }
+
+    //
     // member : world_offset
-    // offset : 68
+    // offset : 88
     // size : 4
     //
     pub fn set_world_offset(&mut self, value: Uint1) {
-        self.set(68, value);
+        self.set(88, value);
     }
 
     pub fn world_offset(&self) -> Uint1 {
-        self.get(68)
+        self.get(88)
     }
 
     //
     // member : picking_id
-    // offset : 72
+    // offset : 92
     // size : 4
     //
     pub fn set_picking_id(&mut self, value: Uint1) {
-        self.set(72, value);
+        self.set(92, value);
     }
 
     pub fn picking_id(&self) -> Uint1 {
-        self.get(72)
-    }
-
-    //
-    // member : picking_distance
-    // offset : 76
-    // size : 4
-    //
-    pub fn set_picking_distance(&mut self, value: Float1) {
-        self.set(76, value);
-    }
-
-    pub fn picking_distance(&self) -> Float1 {
-        self.get(76)
+        self.get(92)
     }
 
     #[allow(unsafe_code)]
@@ -118,8 +131,10 @@ impl PickingPushConstantData {
 
 impl Default for PickingPushConstantData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 80] };
-        ret.set_custom_world(Float4x4::default());
+        let mut ret = Self { data: [0; 96] };
+        ret.set_world(Float4x4::default());
+        ret.set_color(Float4::default());
+        ret.set_picking_distance(Float1::default());
         ret.set_vertex_offset(Uint1::default());
         ret.set_world_offset(Uint1::default());
         ret.set_picking_id(Uint1::default());
