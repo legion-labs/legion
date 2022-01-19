@@ -21,7 +21,6 @@ use anyhow::Result;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuard;
-use lgn_tracing::prelude::*;
 use local_data_lake::connect_to_local_data_lake;
 use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
