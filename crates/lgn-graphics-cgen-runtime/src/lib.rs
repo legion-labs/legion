@@ -340,7 +340,7 @@ pub mod prelude {
 
 pub struct CGenTypeDef {
     pub name: &'static str,
-    pub id: u32,    
+    pub id: u32,
     pub size: usize,
 }
 
@@ -472,7 +472,7 @@ impl CGenPipelineLayoutDef {
         descriptor_set_layouts: &[&DescriptorSetLayout],
         push_constant_def: Option<&CGenTypeDef>,
     ) -> RootSignature {
-        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {            
+        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {
             size: u32::try_from(ty_def.size).unwrap(),
         });
 

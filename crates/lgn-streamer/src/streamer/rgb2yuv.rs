@@ -120,14 +120,12 @@ impl RgbToYuvConverter {
                 .module_def(),
         )?;
 
-        let shader = device_context.create_shader(
-            vec![ShaderStageDef {
-                entry_point: "cs_main".to_owned(),
-                shader_stage: ShaderStageFlags::COMPUTE,
-                shader_module: compute_shader_module,
-                // reflection: shader_build_result.reflection_info.clone().unwrap(),
-            }]            
-        );
+        let shader = device_context.create_shader(vec![ShaderStageDef {
+            entry_point: "cs_main".to_owned(),
+            shader_stage: ShaderStageFlags::COMPUTE,
+            shader_module: compute_shader_module,
+            // reflection: shader_build_result.reflection_info.clone().unwrap(),
+        }]);
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {

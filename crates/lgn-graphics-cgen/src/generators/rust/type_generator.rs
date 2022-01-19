@@ -103,7 +103,7 @@ fn generate_rust_struct(
         writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
         writer.indent();
         writer.add_line(format!("name: \"{}\",", struct_ty.name));
-        writer.add_line(format!("id: {},", ty_id));        
+        writer.add_line(format!("id: {},", ty_id));
         writer.add_line(format!("size: {},", ty_layout.padded_size));
         writer.unindent();
         writer.add_line("}; ");

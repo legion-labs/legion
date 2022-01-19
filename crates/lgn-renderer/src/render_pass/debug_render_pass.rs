@@ -286,8 +286,7 @@ impl DebugRenderPass {
                 color.w = if manipulator.transparent { 0.9 } else { 1.0 };
 
                 cmd_buffer.bind_pipeline(&self.solid_pso_nodepth);
-                cmd_buffer
-                    .bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
+                cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
                 cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
                 render_mesh(
