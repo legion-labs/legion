@@ -11,6 +11,7 @@ on:
 jobs:
   lint:
     name: Running code checks
+    needs: base_ref_selection
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
@@ -84,10 +85,9 @@ jobs:
     outputs:
       base_ref: ${{ steps.set-base-ref.outputs.base_ref }}
     steps:
-      - uses: actions/checkout@v2
       - name: Set base ref for PRs
         if: github.event_name == 'pull_request'
-        run: echo "base_ref=$GITHUB_BASE_REF" >> $GITHUB_ENV
+        run: echo "base_ref=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
 
       - name: Retrieve base ref for branch
         id: last-green-commit
@@ -121,7 +121,7 @@ jobs:
         run: echo "::set-output name=base_ref::${{ env.base_ref }}"
 
   runner_selection:
-    name: Check if graphics libs changed
+    name: Runner selection
     needs: base_ref_selection
     runs-on: [self-hosted, linux, common, build]
     outputs:
