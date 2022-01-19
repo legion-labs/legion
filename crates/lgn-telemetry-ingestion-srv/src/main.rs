@@ -1,6 +1,6 @@
 //! Telemetry Ingestion Server
 //!
-//! Accepts telemetry data throough grpc, stores the metadata in sqlite and the
+//! Accepts telemetry data through grpc, stores the metadata in sqlite and the
 //! raw event payload in local binary files.
 //!
 //! Env variables:
