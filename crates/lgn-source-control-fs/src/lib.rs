@@ -1,3 +1,6 @@
+//! Implements a FUSE filesystem for the source control repository.
+//!
+
 use std::path::Path;
 
 use anyhow::Result;

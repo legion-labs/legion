@@ -75,16 +75,16 @@ use lgn_app::prelude::*;
 use lgn_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
 use prelude::parent_update_system;
 
-/// The base plugin for handling [`Transform`] components
+/// The base plugin for handling [`components::Transform`] components
 #[derive(Default)]
 pub struct TransformPlugin;
 
 /// Label enum for the types of systems relating to transform
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
 pub enum TransformSystem {
-    /// Propagates changes in transform to childrens' [`GlobalTransform`]
+    /// Propagates changes in transform to childrens' [`components::GlobalTransform`]
     TransformPropagate,
-    /// Updates [`Parent`] when changes in the hierarchy occur
+    /// Updates [`components::Parent`] when changes in the hierarchy occur
     ParentUpdate,
 }
 

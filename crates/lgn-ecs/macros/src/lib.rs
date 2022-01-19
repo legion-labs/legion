@@ -60,7 +60,7 @@
 
 mod component;
 
-use lgn_macro_utils::{derive_label, get_named_struct_fields, LegionManifest};
+use lgn_macro_utils::{derive_label, LegionManifest};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
@@ -143,7 +143,7 @@ pub fn derive_bundle(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let ecs_path = legion_ecs_path();
 
-    let named_fields = match get_named_struct_fields(&ast.data) {
+    let named_fields = match lgn_macro_utils::get_named_struct_fields(&ast.data) {
         Ok(fields) => &fields.named,
         Err(e) => return e.into_compile_error().into(),
     };
@@ -359,7 +359,7 @@ static SYSTEM_PARAM_ATTRIBUTE_NAME: &str = "system_param";
 #[allow(clippy::too_many_lines)]
 pub fn derive_system_param(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let fields = match get_named_struct_fields(&ast.data) {
+    let fields = match lgn_macro_utils::get_named_struct_fields(&ast.data) {
         Ok(fields) => &fields.named,
         Err(e) => return e.into_compile_error().into(),
     };

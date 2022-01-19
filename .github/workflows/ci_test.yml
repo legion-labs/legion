@@ -78,9 +78,52 @@ jobs:
 
   ###############################################################################
 
+  base_ref_selection:
+    name: Base ref selection
+    runs-on: ubuntu-latest
+    output:
+      base_ref: ${{ steps.set-base-ref.outputs.base_ref }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set base ref for PRs
+        if: github.event_name == 'pull_request'
+        run: echo "base_ref=$GITHUB_BASE_REF" >> $env:GITHUB_ENV
+
+      - name: Retrieve base ref for branch
+        id: last-green-commit
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v5
+        with:
+          result-encoding: string
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const { GITHUB_REF_NAME } = process.env
+            return github.rest.actions
+              .listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: "ci_test.yml",
+                status: "success",
+                branch: GITHUB_REF_NAME,
+                event: "push",
+              })
+              .then((res) => {
+                return res.data.workflow_runs.length > 0
+                    ? res.data.workflow_runs[0].head_commit.id
+                    : "HEAD";
+              })
+      - name: Set base ref for PRs
+        if: github.event_name != 'pull_request'
+        run: echo "base_ref=${{steps.last-green-commit.outputs.result}}" >> $env:GITHUB_ENV
+
+      - name: Set base ref
+        id: set-base-ref
+        run: echo "::set-output name=base_ref::${{ env.base_ref }}"
+
   runner_selection:
     name: Check if graphics libs changed
-    runs-on: ubuntu-latest
+    needs: base_ref_selection
+    runs-on: [self-hosted, linux, common, build]
     outputs:
       linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
       windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
@@ -92,7 +135,7 @@ jobs:
       - name: Test changed crates
         id: changed-crates
         run: |
-          crates=$(cargo m changed-since HEAD^ --matches-any renderer graphics-sandbox)
+          crates=$(cargo m changed-since "${{ needs.base_ref_selection.outputs.base_ref }}" --matches-any renderer graphics-sandbox)
           if [[ $? != 0 ]]; then
             echo "failed to detect changed crates"
             exit 1

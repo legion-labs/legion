@@ -57,7 +57,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 //! This crate is about everything concerning the highest-level, application layer of a Bevy
 //! app.
 

@@ -7,7 +7,7 @@ pub struct ItemInfo<'a> {
     pub type_def: TypeDefinition,
     /// Field Descriptor
     pub field_descriptor: Option<&'a FieldDescriptor>,
-    /// Name Suffix  (such as array '[0]')
+    /// Name Suffix  (such as array '`[`0`]`')
     pub suffix: Option<&'a str>,
     /// Depth of traveral
     pub depth: usize,
