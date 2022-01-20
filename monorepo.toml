@@ -155,12 +155,9 @@ globs = [
     "npm-pkgs/**/*",
     "package.json",
     "trace-*",
+    # Ignore *.md documentation
+    "*.md",
 ]
-mark-changed = []
-
-[[determinator.path-rule]]
-# Ignore *.md documentation
-globs = ["*.md"]
 mark-changed = []
 
 ################################################################################
