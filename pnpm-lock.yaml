@@ -127,6 +127,7 @@ importers:
       svelte-preprocess: ^4.10.2
       tailwindcss: ^3.0.15
       typescript: ^4.5.4
+      vite: ^2.7.12
     dependencies:
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.3
       '@lgn/proto-streaming': link:../../lgn-streaming-proto
@@ -161,6 +162,7 @@ importers:
       svelte-preprocess: 4.10.2_710b513d204acccb6fab5a2e92cd973a
       tailwindcss: 3.0.15_ef48b3b8837f8a23677bffe8f9cd866d
       typescript: 4.5.4
+      vite: 2.7.12
 
   crates/lgn-editor-gui/frontend:
     specifiers:

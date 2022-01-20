@@ -66,7 +66,7 @@
   }
 
   .tab-active {
-    @apply relative z-10 border-b-2 border-orange-700 shadow-lg;
+    @apply relative z-10 border-b-2 border-orange-700;
   }
 
   .tabs-filler-bg {

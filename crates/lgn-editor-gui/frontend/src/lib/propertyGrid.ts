@@ -6,13 +6,13 @@ import {
 import { filterMap } from "./array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
-const vecPTypeRegExp = /^Vec\<(.*)\>$/;
+const vecPTypeRegExp = /^Vec\<(.+)\>$/;
 
 /** Matches any `ptype` of format "Option<subPType>" */
-const optionPTypeRegExp = /^Option\<(.*)\>$/;
+const optionPTypeRegExp = /^Option\<(.+)\>$/;
 
 /** Matches any `name` of format "[index]", convenient for vector sub properties */
-const vecSubPropertyNameRegExp = /^\[(\d*)\]$/;
+const vecSubPropertyNameRegExp = /^\[(\d+)\]$/;
 
 /** Shared by all resource properties, be it a primitive, a vector, an option, or a component */
 type ResourcePropertyBase<Type extends string = string> = {
