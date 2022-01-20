@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build book
-        run: make book
+        run: mdbook build ./docs/
 
       - name: Upload book
         uses: actions/upload-artifact@v2
