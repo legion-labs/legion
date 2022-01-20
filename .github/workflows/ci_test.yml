@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Print changed crates
+        run: cargo m changed-since needs.base_ref_selection.outputs.base_ref
+
       - name: Run initial checks
         run: cargo ci check
 
@@ -141,11 +144,13 @@ jobs:
             echo "failed to detect changed crates"
             exit 1
           fi
-          echo $crates
           if [[ $crates ]]; then
+            echo "A change impacting a graphics crate was detected"
+            echo "Matched crates: $crates"
             echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
           else
+            echo "No change impacting a graphics crate was detected"
             echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
           fi
