@@ -34,7 +34,9 @@
 </script>
 
 <div class="root">
-  {#if propertyIsBag(property)}
+  {#if property.attributes.readonly}
+    {""}
+  {:else if propertyIsBag(property)}
     <PropertyBag
       on:input={(event) => dispatch("input", event.detail)}
       on:addVectorSubProperty={(event) =>
