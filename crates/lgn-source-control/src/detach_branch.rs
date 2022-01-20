@@ -2,19 +2,16 @@ use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
 
-use crate::{
-    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec, IndexBackend,
-    LocalWorkspaceConnection,
-};
+use crate::Workspace;
 
 // find_branch_descendants includes the branch itself
 async fn find_branch_descendants(
-    query: &dyn IndexBackend,
+    workspace: &Workspace,
     root_branch_name: &str,
 ) -> Result<BTreeSet<String>> {
     let mut set = BTreeSet::new();
     set.insert(String::from(root_branch_name));
-    let branches = query.read_branches().await?;
+    let branches = workspace.index_backend.read_branches().await?;
     let mut keep_going = true;
 
     while keep_going {
@@ -31,36 +28,38 @@ async fn find_branch_descendants(
 }
 
 pub async fn detach_branch_command() -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let (current_branch_name, _current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
-    let mut repo_branch = query.read_branch(&current_branch_name).await?;
+    let workspace = Workspace::find_in_current_directory().await?;
+    let (current_branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let mut repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch_name)
+        .await?;
     repo_branch.parent.clear();
 
-    let locks_in_old_domain = query
+    let locks_in_old_domain = workspace
+        .index_backend
         .find_locks_in_domain(&repo_branch.lock_domain_id)
         .await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
 
-    let descendants = find_branch_descendants(query, &current_branch_name).await?;
+    let descendants = find_branch_descendants(&workspace, &current_branch_name).await?;
 
-    query.update_branch(&repo_branch).await.context(format!(
-        "error saving branch `{}` to clear its parent",
-        repo_branch.name
-    ))?;
+    workspace
+        .index_backend
+        .update_branch(&repo_branch)
+        .await
+        .context(format!(
+            "error saving branch `{}` to clear its parent",
+            repo_branch.name
+        ))?;
 
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
-        match query.read_branch(branch_name).await {
+        match workspace.index_backend.read_branch(branch_name).await {
             Ok(mut branch) => {
                 branch.lock_domain_id = lock_domain_id.clone();
-                if let Err(e) = query.update_branch(&branch).await {
+                if let Err(e) = workspace.index_backend.update_branch(&branch).await {
                     errors.push(format!("Error updating branch {}: {}", branch_name, e));
                 } else {
                     println!("updated branch {}", branch_name);
@@ -77,13 +76,14 @@ pub async fn detach_branch_command() -> Result<()> {
             let mut new_lock = lock.clone();
             new_lock.lock_domain_id = lock_domain_id.clone();
             println!("moving lock for {}", lock.relative_path);
-            if let Err(e) = query.insert_lock(&new_lock).await {
+            if let Err(e) = workspace.index_backend.insert_lock(&new_lock).await {
                 errors.push(format!(
                     "Error writing lock in new domain for {}: {}",
                     lock.relative_path, e
                 ));
             }
-            if let Err(e) = query
+            if let Err(e) = workspace
+                .index_backend
                 .clear_lock(&lock.lock_domain_id, &lock.relative_path)
                 .await
             {

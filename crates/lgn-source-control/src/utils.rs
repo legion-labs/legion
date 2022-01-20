@@ -74,21 +74,23 @@ pub(crate) fn read_bin_file(path: &Path) -> Result<Vec<u8>> {
     Ok(contents)
 }
 
-pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> PathBuf {
+pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> Result<PathBuf> {
     //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
     let path = path.as_ref();
 
-    if path.is_absolute() {
-        PathBuf::from(path_clean::clean(path.to_str().unwrap()))
+    Ok(if path.is_absolute() {
+        PathBuf::from(path_clean::clean(
+            path.to_str().context("failed to convert path to string")?,
+        ))
     } else {
         PathBuf::from(path_clean::clean(
             std::env::current_dir()
-                .unwrap()
+                .context("failed to get current directory")?
                 .join(path)
                 .to_str()
-                .unwrap(),
+                .context("failed to convert path to string")?,
         ))
-    }
+    })
 }
 
 pub(crate) fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
@@ -101,9 +103,9 @@ pub(crate) fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
 
 pub(crate) fn make_canonical_relative_path(
     workspace_root: &Path,
-    path_specified: &Path,
+    path_specified: impl AsRef<Path>,
 ) -> Result<String> {
-    let abs_path = make_path_absolute(path_specified);
+    let abs_path = make_path_absolute(path_specified)?;
     let relative_path = path_relative_to(&abs_path, workspace_root)?;
     let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
     Ok(canonical_relative_path)

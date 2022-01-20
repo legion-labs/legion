@@ -3,7 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
@@ -55,31 +55,31 @@ enum Commands {
     #[clap(name = "add")]
     Add {
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Makes file writable and adds it to the set of pending changes
     #[clap(name = "edit")]
     Edit {
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Deletes the local file and records the pending change
     #[clap(name = "delete")]
     Delete {
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Prevent others from modifying the specified file. Locks apply throught all related branches
     #[clap(name = "lock")]
     Lock {
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Releases a lock, allowing others to modify or lock the file
     #[clap(name = "unlock")]
     Unlock {
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Prints all the locks in the current lock domain
     #[clap(name = "list-locks")]
@@ -91,7 +91,7 @@ enum Commands {
         #[clap(long)]
         notool: bool,
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
         /// reference version: a commit id, base or latest
         #[clap(default_value = "base")]
         reference: String,
@@ -103,7 +103,7 @@ enum Commands {
         #[clap(long)]
         notool: bool,
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Creates a new branch based on the state of the workspace
     #[clap(name = "create-branch")]
@@ -142,7 +142,7 @@ enum Commands {
         #[clap(long)]
         glob: bool,
         /// local path within a workspace
-        path: String,
+        path: PathBuf,
     },
     /// Lists changes in workspace lsc knows about
     #[clap(name = "local-changes")]
@@ -173,7 +173,7 @@ enum Commands {
     #[clap(name = "import-git-branch")]
     ImportGitBranch {
         /// Path to the root of a git repository. Should contain a .git subfolder
-        path: String,
+        path: PathBuf,
         /// Name of the branch to import
         branch: String,
     },
@@ -235,27 +235,29 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("init-workspace");
 
-            init_workspace_command(&workspace_directory, index_url).await
+            let config = WorkspaceConfig {
+                index_url: index_url.clone(),
+                registration: WorkspaceRegistration::new_with_current_user(),
+            };
+
+            Workspace::init(&workspace_directory, config)
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::Add { path } => {
-            info!("add {}", path);
-            track_new_file_command(Path::new(&path)).await
-        }
-        Commands::Edit { path } => {
-            info!("edit");
-            edit_file_command(Path::new(&path)).await
-        }
+        Commands::Add { path } => track_new_file_command(path).await,
+        Commands::Edit { path } => edit_file_command(path).await,
         Commands::Delete { path } => {
             info!("delete");
-            delete_file_command(Path::new(&path)).await
+            delete_file_command(path).await
         }
         Commands::Lock { path } => {
             info!("lock");
-            lock_file_command(Path::new(&path)).await
+            lock_file_command(path).await
         }
         Commands::Unlock { path } => {
             info!("unlock");
-            unlock_file_command(Path::new(&path)).await
+            unlock_file_command(path).await
         }
         Commands::ListLocks => {
             info!("list-locks");
@@ -267,11 +269,11 @@ async fn main() -> anyhow::Result<()> {
             reference,
         } => {
             info!("diff");
-            diff_file_command(Path::new(&path), &reference, !notool).await
+            diff_file_command(path, &reference, !notool).await
         }
         Commands::Resolve { notool, path } => {
             info!("resolve");
-            resolve_file_command(Path::new(&path), !notool).await
+            resolve_file_command(path, !notool).await
         }
         Commands::CreateBranch { name } => {
             info!("create-branch");
@@ -298,11 +300,10 @@ async fn main() -> anyhow::Result<()> {
             list_branches_command().await
         }
         Commands::Revert { glob, path } => {
-            info!("revert {}", path);
             if glob {
-                revert_glob_command(&path).await
+                revert_glob_command(path.to_str().unwrap()).await
             } else {
-                revert_file_command(Path::new(&path)).await
+                revert_file_command(path).await
             }
         }
         Commands::LocalChanges => {
@@ -362,8 +363,7 @@ async fn main() -> anyhow::Result<()> {
             print_config_command()
         }
         Commands::ImportGitBranch { path, branch } => {
-            info!("import-git-branch {} {} ", path, branch);
-            import_git_branch_command(Path::new(&path), &branch).await
+            import_git_branch_command(path, &branch).await
         }
     }
 }

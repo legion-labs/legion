@@ -14,7 +14,8 @@ pub struct LocalIndexBackend {
 
 impl LocalIndexBackend {
     pub fn new(directory: PathBuf) -> Result<Self> {
-        let directory = make_path_absolute(directory);
+        let directory =
+            make_path_absolute(directory).map_other_err("failed to make path absolute")?;
         let db_path = directory.join("repo.db3");
         let blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
 

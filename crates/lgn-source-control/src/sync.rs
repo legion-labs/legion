@@ -11,21 +11,20 @@ use lgn_tracing::span_fn;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    connect_to_server, find_file_hash_in_tree, find_workspace_root, make_file_read_only,
-    read_bin_file, read_current_branch, read_local_changes, read_workspace_spec,
-    save_resolve_pending, update_current_branch, Commit, LocalWorkspaceConnection,
-    RepositoryConnection, ResolvePending,
+    find_file_hash_in_tree, make_file_read_only, read_bin_file, Commit, ResolvePending, Workspace,
 };
 
 async fn find_commit_range(
-    connection: &RepositoryConnection,
+    workspace: &Workspace,
     branch_name: &str,
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>> {
-    let query = connection.index_backend();
-    let repo_branch = query.read_branch(branch_name).await?;
-    let mut current_commit = query.read_commit(&repo_branch.head).await?;
+    let repo_branch = workspace.index_backend.read_branch(branch_name).await?;
+    let mut current_commit = workspace
+        .index_backend
+        .read_commit(&repo_branch.head)
+        .await?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             anyhow::bail!(
@@ -35,13 +34,19 @@ async fn find_commit_range(
                 branch_name
             );
         }
-        current_commit = query.read_commit(&current_commit.parents[0]).await?;
+        current_commit = workspace
+            .index_backend
+            .read_commit(&current_commit.parents[0])
+            .await?;
     }
     let mut commits = vec![current_commit.clone()];
     if current_commit.id == start_commit_id && current_commit.id == end_commit_id {
         return Ok(commits);
     }
-    current_commit = query.read_commit(&current_commit.parents[0]).await?;
+    current_commit = workspace
+        .index_backend
+        .read_commit(&current_commit.parents[0])
+        .await?;
     commits.push(current_commit.clone());
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -52,7 +57,10 @@ async fn find_commit_range(
                 branch_name
             );
         }
-        current_commit = query.read_commit(&current_commit.parents[0]).await?;
+        current_commit = workspace
+            .index_backend
+            .read_commit(&current_commit.parents[0])
+            .await?;
         commits.push(current_commit.clone());
     }
     Ok(commits)
@@ -65,7 +73,7 @@ pub fn compute_file_hash(p: &Path) -> Result<String> {
 }
 
 pub async fn sync_file(
-    connection: &RepositoryConnection,
+    workspace: &Workspace,
     local_path: PathBuf,
     hash_to_sync: &str,
 ) -> Result<String> {
@@ -96,8 +104,8 @@ pub async fn sync_file(
 
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        connection
-            .blob_storage()
+        workspace
+            .blob_storage
             .download_blob(&local_path, hash_to_sync)
             .await
             .context(format!(
@@ -121,8 +129,8 @@ pub async fn sync_file(
         ))?;
     }
 
-    connection
-        .blob_storage()
+    workspace
+        .blob_storage
         .download_blob(&local_path, hash_to_sync)
         .await
         .context(format!(
@@ -137,15 +145,13 @@ pub async fn sync_file(
 }
 
 pub async fn sync_workspace(
-    workspace_root: &Path,
-    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    connection: &RepositoryConnection,
+    workspace: &Workspace,
     branch_name: &str,
     current_commit: &str,
     destination_commit: &str,
 ) -> Result<()> {
     let commits =
-        find_commit_range(connection, branch_name, current_commit, destination_commit).await?;
+        find_commit_range(workspace, branch_name, current_commit, destination_commit).await?;
 
     let mut to_download: BTreeMap<String, String> = BTreeMap::new();
     let (_last, commits_to_process) = commits.split_last().unwrap();
@@ -164,8 +170,8 @@ pub async fn sync_workspace(
         // in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == destination_commit);
-        let root_tree = connection
-            .index_backend()
+        let root_tree = workspace
+            .index_backend
             .read_tree(&ref_commit.root_hash)
             .await?;
 
@@ -182,7 +188,7 @@ pub async fn sync_workspace(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we
                 // should fail on error
-                match find_file_hash_in_tree(connection, Path::new(&path), &root_tree).await {
+                match find_file_hash_in_tree(workspace, Path::new(&path), &root_tree).await {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),
                     Err(e) => {
@@ -193,7 +199,9 @@ pub async fn sync_workspace(
         }
     }
 
-    let local_changes_map: HashMap<_, _> = read_local_changes(workspace_transaction)
+    let local_changes_map: HashMap<_, _> = workspace
+        .backend
+        .get_local_changes()
         .await
         .context("failed to read local changes")?
         .into_iter()
@@ -217,7 +225,7 @@ pub async fn sync_workspace(
                 String::from(destination_commit),
             );
 
-            if let Err(e) = save_resolve_pending(workspace_transaction, &merge_pending).await {
+            if let Err(e) = workspace.backend.save_resolve_pending(&merge_pending).await {
                 errors.push(format!(
                     "Error saving pending merge {}: {}",
                     relative_path, e
@@ -225,9 +233,9 @@ pub async fn sync_workspace(
             }
         } else {
             //no local change, ok to sync
-            let local_path = workspace_root.join(relative_path);
+            let local_path = workspace.root.join(relative_path);
 
-            match sync_file(connection, local_path, &latest_hash).await {
+            match sync_file(workspace, local_path, &latest_hash).await {
                 Ok(message) => {
                     println!("{}", message);
                 }
@@ -247,41 +255,23 @@ pub async fn sync_workspace(
 
 #[span_fn]
 pub async fn sync_to_command(commit_id: &str) -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let mut workspace_transaction = workspace_connection.begin().await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let (current_branch_name, current_commit) =
-        read_current_branch(&mut workspace_transaction).await?;
+    let workspace = Workspace::find_in_current_directory().await?;
+    let (current_branch_name, current_commit) = workspace.backend.get_current_branch().await?;
 
     let mut errors: Vec<String> = Vec::new();
 
-    if let Err(e) = sync_workspace(
-        &workspace_root,
-        &mut workspace_transaction,
-        &connection,
-        &current_branch_name,
-        &current_commit,
-        commit_id,
-    )
-    .await
-    {
-        errors.push(e.to_string());
-    }
-
     if let Err(e) =
-        update_current_branch(&mut workspace_transaction, &current_branch_name, commit_id).await
+        sync_workspace(&workspace, &current_branch_name, &current_commit, commit_id).await
     {
         errors.push(e.to_string());
     }
 
-    if let Err(e) = workspace_transaction.commit().await {
-        errors.push(format!(
-            "Error in transaction commit for sync_to_command: {}",
-            e
-        ));
+    if let Err(e) = workspace
+        .backend
+        .set_current_branch(&current_branch_name, commit_id)
+        .await
+    {
+        errors.push(e.to_string());
     }
 
     if !errors.is_empty() {
@@ -293,14 +283,9 @@ pub async fn sync_to_command(commit_id: &str) -> Result<()> {
 
 #[span_fn]
 pub async fn sync_command() -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
-    let connection = connect_to_server(&workspace_spec).await?;
-    let query = connection.index_backend();
-    let repo_branch = query.read_branch(&branch_name).await?;
+    let workspace = Workspace::find_in_current_directory().await?;
+    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
 
     sync_to_command(&repo_branch.head).await
 }

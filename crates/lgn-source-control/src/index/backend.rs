@@ -114,7 +114,7 @@ mod tests {
     fn test_index_new_backend_from_str_file_no_scheme_relative() {
         assert_eq!(
             new_index_backend("repo").unwrap().url(),
-            make_path_absolute("repo").to_str().unwrap()
+            make_path_absolute("repo").unwrap().to_str().unwrap()
         );
     }
 

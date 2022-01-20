@@ -24,10 +24,16 @@ impl From<lgn_source_control_proto::WorkspaceRegistration> for WorkspaceRegistra
 }
 
 impl WorkspaceRegistration {
-    pub(crate) fn new(owner: String) -> Self {
+    pub fn new(owner: String) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             owner,
         }
+    }
+
+    pub fn new_with_current_user() -> Self {
+        let owner = whoami::username();
+
+        Self::new(owner)
     }
 }

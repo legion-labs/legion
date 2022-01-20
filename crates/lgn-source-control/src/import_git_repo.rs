@@ -4,10 +4,8 @@ use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
 
 use crate::{
-    commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
-    find_workspace_root, make_canonical_relative_path, read_workspace_spec, revert_file,
-    track_new_file, write_file, ChangeType, IndexBackend, LocalWorkspaceConnection,
-    RepositoryConnection,
+    commit_local_changes, delete_local_file, edit_file, make_canonical_relative_path, revert_file,
+    track_new_file, write_file, ChangeType, Workspace,
 };
 
 fn format_commit(c: &git2::Commit<'_>) -> String {
@@ -32,17 +30,17 @@ fn copy_git_blob(
 }
 
 async fn add_file_from_git(
-    workspace_root: &Path,
-    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    repo_connection: &RepositoryConnection,
+    workspace: &Workspace,
     git_repo: &git2::Repository,
     new_file_path: impl AsRef<Path>,
     new_file_id: git2::Oid,
 ) -> Result<()> {
-    let local_path = workspace_root.join(new_file_path.as_ref());
-    let canonical_relative_path = make_canonical_relative_path(workspace_root, &local_path)?;
+    let local_path = workspace.root.join(new_file_path.as_ref());
+    let canonical_relative_path = make_canonical_relative_path(&workspace.root, &local_path)?;
 
-    if let Some(change) = find_local_change(workspace_transaction, &canonical_relative_path)
+    if let Some(change) = workspace
+        .backend
+        .find_local_change(&canonical_relative_path)
         .await
         .context("searching in local changes")?
     {
@@ -55,17 +53,9 @@ async fn add_file_from_git(
         }
 
         println!("adding of file being deleted - reverting change and editing");
-        revert_file(workspace_transaction, repo_connection, &local_path).await?;
+        revert_file(workspace, &local_path).await?;
 
-        return edit_file_from_git(
-            workspace_root,
-            workspace_transaction,
-            repo_connection.index_backend(),
-            git_repo,
-            new_file_path,
-            new_file_id,
-        )
-        .await;
+        return edit_file_from_git(workspace, git_repo, new_file_path, new_file_id).await;
     }
 
     if local_path.exists() {
@@ -78,26 +68,18 @@ async fn add_file_from_git(
         local_path.display()
     ))?;
 
-    track_new_file(
-        workspace_root,
-        workspace_transaction,
-        repo_connection,
-        &local_path,
-    )
-    .await
+    track_new_file(workspace, &local_path).await
 }
 
 async fn edit_file_from_git(
-    workspace_root: &Path,
-    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    query: &dyn IndexBackend,
+    workspace: &Workspace,
     git_repo: &git2::Repository,
     new_file_path: impl AsRef<Path>,
     new_file_id: git2::Oid,
 ) -> Result<()> {
-    let local_path = workspace_root.join(new_file_path.as_ref());
+    let local_path = workspace.root.join(new_file_path.as_ref());
 
-    edit_file(workspace_root, workspace_transaction, query, &local_path)
+    edit_file(workspace, &local_path)
         .await
         .context(format!("editing: {}", local_path.display()))?;
 
@@ -109,9 +91,7 @@ async fn edit_file_from_git(
 }
 
 async fn import_commit_diff(
-    workspace_root: &Path,
-    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    repo_connection: &RepositoryConnection,
+    workspace: &Workspace,
     diff: &git2::Diff<'_>,
     git_repo: &git2::Repository,
 ) -> Result<()> {
@@ -125,7 +105,7 @@ async fn import_commit_diff(
         &mut |delta, _progress| {
             if let git2::Delta::Deleted = delta.status() {
                 let old_file = delta.old_file();
-                let local_file = workspace_root.join(old_file.path().unwrap());
+                let local_file = workspace.root.join(old_file.path().unwrap());
                 files_to_delete.push(local_file);
             }
 
@@ -140,7 +120,7 @@ async fn import_commit_diff(
     for local_file in files_to_delete {
         println!("deleting {}", local_file.display());
 
-        delete_local_file(workspace_root, workspace_transaction, &local_file)
+        delete_local_file(workspace, &local_file)
             .await
             .context(format!("error deleting file: {}", local_file.display()))?;
     }
@@ -185,31 +165,17 @@ async fn import_commit_diff(
     for (new_file_path, new_file_id) in files_to_add {
         println!("adding {}", new_file_path.display());
 
-        add_file_from_git(
-            workspace_root,
-            workspace_transaction,
-            repo_connection,
-            git_repo,
-            &new_file_path,
-            new_file_id,
-        )
-        .await
-        .context(format!("error adding file: {}", new_file_path.display()))?;
+        add_file_from_git(workspace, git_repo, &new_file_path, new_file_id)
+            .await
+            .context(format!("error adding file: {}", new_file_path.display()))?;
     }
 
     for (new_file_path, new_file_id) in files_to_edit {
         println!("modifying {}", new_file_path.display());
 
-        edit_file_from_git(
-            workspace_root,
-            workspace_transaction,
-            repo_connection.index_backend(),
-            git_repo,
-            &new_file_path,
-            new_file_id,
-        )
-        .await
-        .context(format!("error modifying file: {}", new_file_path.display()))?;
+        edit_file_from_git(workspace, git_repo, &new_file_path, new_file_id)
+            .await
+            .context(format!("error modifying file: {}", new_file_path.display()))?;
     }
 
     Ok(())
@@ -222,20 +188,18 @@ async fn import_commit_diff(
 // One alternative would be to find the shortest path between the last
 // integrated commit and the top of the branch.
 async fn import_commit_sequence(
-    repo_connection: &RepositoryConnection,
-    workspace_connection: &mut LocalWorkspaceConnection,
+    workspace: &Workspace,
     git_repo: &git2::Repository,
     root_commit: &git2::Commit<'_>,
 ) -> Result<()> {
     let mut stack = vec![root_commit.clone()];
     let mut reference_index = git2::Index::new().unwrap();
-    let query = repo_connection.index_backend();
 
     loop {
         let commit = stack.pop().unwrap();
         let commit_id = commit.id().to_string();
 
-        if query.commit_exists(&commit_id).await? {
+        if workspace.index_backend.commit_exists(&commit_id).await? {
             let tree = commit.tree().context(format!(
                 "failed to get tree for commit {}",
                 format_commit(&commit)
@@ -258,8 +222,6 @@ async fn import_commit_sequence(
             stack.push(parent);
         }
     }
-
-    let workspace_root = workspace_connection.workspace_path().to_path_buf();
 
     while !stack.is_empty() {
         let commit = stack.pop().unwrap();
@@ -284,34 +246,16 @@ async fn import_commit_sequence(
                 format_commit(&commit)
             ))?;
 
-        let mut workspace_transaction = workspace_connection.begin().await?;
-
-        import_commit_diff(
-            &workspace_root,
-            &mut workspace_transaction,
-            repo_connection,
-            &diff,
-            git_repo,
-        )
-        .await
-        .context(format!("error importing commit {}", format_commit(&commit)))?;
+        import_commit_diff(workspace, &diff, git_repo)
+            .await
+            .context(format!("error importing commit {}", format_commit(&commit)))?;
 
         let commit_id = commit.id().to_string();
         println!("recording commit {}: {}", commit_id, message);
 
-        commit_local_changes(
-            &workspace_root,
-            &mut workspace_transaction,
-            &commit_id,
-            &message,
-        )
-        .await
-        .context(format!("error recording commit {}", format_commit(&commit)))?;
-
-        workspace_transaction
-            .commit()
+        commit_local_changes(workspace, &commit_id, &message)
             .await
-            .context("transaction commit for import_commit_diff")?;
+            .context(format!("error recording commit {}", format_commit(&commit)))?;
 
         reference_index = current_index;
     }
@@ -320,16 +264,15 @@ async fn import_commit_sequence(
 }
 
 async fn import_branch(
-    repo_connection: &RepositoryConnection,
-    workspace_connection: &mut LocalWorkspaceConnection,
+    workspace: &Workspace,
     git_repo: &git2::Repository,
     branch: &git2::Branch<'_>,
 ) -> Result<()> {
     let branch_name = branch.name().unwrap().unwrap();
     println!("importing branch {}", branch_name);
 
-    match repo_connection
-        .index_backend()
+    match workspace
+        .index_backend
         .find_branch(branch_name)
         .await
         .context(format!("error reading local branch {}", branch_name))?
@@ -347,19 +290,18 @@ async fn import_branch(
         .peel_to_commit()
         .context("branch reference is not a commit")?;
 
-    import_commit_sequence(repo_connection, workspace_connection, git_repo, &commit).await
+    import_commit_sequence(workspace, git_repo, &commit).await
 }
 
 #[span_fn]
-pub async fn import_git_branch_command(git_root_path: &Path, branch_name: &str) -> Result<()> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo_connection = connect_to_server(&workspace_spec).await?;
-    let git_repo = git2::Repository::open(git_root_path).context(format!(
+pub async fn import_git_branch_command(
+    git_root_path: impl AsRef<Path>,
+    branch_name: &str,
+) -> Result<()> {
+    let workspace = Workspace::find_in_current_directory().await?;
+    let git_repo = git2::Repository::open(git_root_path.as_ref()).context(format!(
         "failed to open git repo at {}",
-        git_root_path.display()
+        git_root_path.as_ref().display()
     ))?;
 
     println!("git repository state: {:?}", git_repo.state());
@@ -368,11 +310,5 @@ pub async fn import_git_branch_command(git_root_path: &Path, branch_name: &str) 
         .find_branch(branch_name, git2::BranchType::Local)
         .context(format!("error finding branch {}", branch_name))?;
 
-    import_branch(
-        &repo_connection,
-        &mut workspace_connection,
-        &git_repo,
-        &git_branch,
-    )
-    .await
+    import_branch(&workspace, &git_repo, &git_branch).await
 }
