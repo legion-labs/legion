@@ -162,6 +162,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
+ "clap 3.0.10",
  "lgn-analytics",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
