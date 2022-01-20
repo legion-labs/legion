@@ -1,19 +1,20 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::BlobStorage;
 use lgn_tracing_transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     editor_client_process_id: &str,
 ) -> Result<String> {
     let re = regex::Regex::new(r"received control message\. msg=(?P<msg>\{[^\}]*})")
         .with_context(|| "find_server_process_id")?;
     let process_id = find_process_log_entry(
         connection,
-        data_path,
+        blob_storage,
         editor_client_process_id,
         |_time, entry| {
             if let Some(Ok(msg)) = re
@@ -37,7 +38,7 @@ async fn find_server_process_id(
 
 async fn find_client_edition_commands(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     editor_client_process_id: &str,
 ) -> Result<Vec<(i64, String)>> {
     let re = regex::Regex::new(r"sending edition_command=(?P<cmd>\{[^\}]*})")
@@ -45,7 +46,7 @@ async fn find_client_edition_commands(
     let mut res = vec![];
     for_each_process_log_entry(
         connection,
-        data_path,
+        blob_storage,
         editor_client_process_id,
         |time, entry| {
             if let Some(Ok(cmd)) = re
@@ -65,7 +66,7 @@ async fn find_client_edition_commands(
 
 async fn find_server_edition_commands(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     editor_server_process_id: &str,
 ) -> Result<Vec<(i64, String)>> {
     let re = regex::Regex::new(r"received \w* command id=(?P<id>.*)")
@@ -73,7 +74,7 @@ async fn find_server_edition_commands(
     let mut res = vec![];
     for_each_process_log_entry(
         connection,
-        data_path,
+        blob_storage,
         editor_server_process_id,
         |time, entry| {
             if let Some(command_id) = re
@@ -91,14 +92,14 @@ async fn find_server_edition_commands(
 
 async fn find_process_metrics(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     editor_server_process_id: &str,
     metric_name: &str,
 ) -> Result<Vec<(i64, u64)>> {
     let mut res = vec![];
     for_each_process_metric(
         connection,
-        data_path,
+        blob_storage,
         editor_server_process_id,
         |metric_instance| {
             let metric_desc = metric_instance.get::<Object>("metric").unwrap();
@@ -130,16 +131,16 @@ where
 
 pub async fn print_edition_latency(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     editor_client_process_id: &str,
 ) -> Result<()> {
     let client_process_info = find_process(connection, editor_client_process_id).await?;
     let server_process_id =
-        find_server_process_id(connection, data_path, editor_client_process_id).await?;
+        find_server_process_id(connection, blob_storage.clone(), editor_client_process_id).await?;
     println!("server process id: {}", server_process_id);
 
     let server_commands =
-        find_server_edition_commands(connection, data_path, &server_process_id).await?;
+        find_server_edition_commands(connection, blob_storage.clone(), &server_process_id).await?;
     let mut server_command_timestamps = HashMap::new();
     for (time, uuid) in server_commands {
         server_command_timestamps.insert(uuid, time);
@@ -147,7 +148,7 @@ pub async fn print_edition_latency(
 
     let server_frames = find_process_metrics(
         connection,
-        data_path,
+        blob_storage.clone(),
         &server_process_id,
         "Frame ID begin render",
     )
@@ -155,7 +156,7 @@ pub async fn print_edition_latency(
 
     let client_frames = find_process_metrics(
         connection,
-        data_path,
+        blob_storage.clone(),
         editor_client_process_id,
         "Frame ID of chunk received",
     )
@@ -168,7 +169,8 @@ pub async fn print_edition_latency(
     let start_client_process = client_process_info.start_ticks;
     println!("{}", start_client_process);
     let edition_commands =
-        find_client_edition_commands(connection, data_path, editor_client_process_id).await?;
+        find_client_edition_commands(connection, blob_storage.clone(), editor_client_process_id)
+            .await?;
     println!("\nclient command latencies:");
     for (client_command_timestamp, command_id) in &edition_commands {
         if let Some(server_command_reception_time) = server_command_timestamps.get(command_id) {

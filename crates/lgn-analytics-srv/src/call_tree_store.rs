@@ -1,20 +1,21 @@
 use anyhow::Result;
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTree;
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::{cache::DiskCache, call_tree::compute_block_call_tree};
 
 pub struct CallTreeStore {
     pool: sqlx::any::AnyPool,
-    data_dir: PathBuf,
+    blob_storage: Arc<dyn BlobStorage>,
     cache: DiskCache,
 }
 
 impl CallTreeStore {
-    pub async fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
+    pub async fn new(pool: sqlx::AnyPool, blob_storage: Arc<dyn BlobStorage>) -> Result<Self> {
         Ok(Self {
             pool,
-            data_dir,
+            blob_storage,
             cache: DiskCache::new().await?,
         })
     }
@@ -29,8 +30,14 @@ impl CallTreeStore {
         self.cache
             .get_or_put(&cache_item_name, async {
                 let mut connection = self.pool.acquire().await?;
-                compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
-                    .await
+                compute_block_call_tree(
+                    &mut connection,
+                    self.blob_storage.clone(),
+                    process,
+                    stream,
+                    block_id,
+                )
+                .await
             })
             .await
     }

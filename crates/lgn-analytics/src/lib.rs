@@ -4,8 +4,10 @@
 #![allow(clippy::missing_errors_doc)]
 
 use std::path::Path;
+use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
     Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
@@ -449,28 +451,26 @@ pub async fn find_stream_blocks_in_range(
 
 pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
-    block_id: &str,
+    blob_storage: Arc<dyn BlobStorage>,
+    block_id: String,
 ) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
     let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
-        .bind(block_id)
+        .bind(&block_id)
         .fetch_optional(connection)
         .await
-        .with_context(|| format!("Fetching payload of block {}", block_id))?;
+        .with_context(|| format!("Fetching payload of block {}", &block_id))?;
 
-    let buffer = if let Some(row) = opt_row {
+    let buffer: Vec<u8> = if let Some(row) = opt_row {
         row.get("payload")
     } else {
-        let payload_path = data_path.join("blobs").join(block_id);
-        if !payload_path.exists() {
-            bail!("payload binary file not found: {}", payload_path.display());
-        }
-        std::fs::read(&payload_path)
-            .with_context(|| format!("reading payload file {}", payload_path.display()))?
+        blob_storage
+            .read_blob(&block_id)
+            .await
+            .with_context(|| "reading block payload from blob storage")?
     };
 
     let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
-        .with_context(|| format!("reading payload {}", block_id))?;
+        .with_context(|| format!("reading payload {}", &block_id))?;
     Ok(payload)
 }
 
@@ -571,14 +571,15 @@ fn log_entry_from_value(val: &Value) -> Option<(i64, String)> {
 // until pred returns Some(x)
 pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     mut pred: Predicate,
 ) -> Result<Option<Res>> {
     let mut found_entry = None;
     for stream in find_process_log_streams(connection, process_id).await? {
         for b in find_stream_blocks(connection, &stream.stream_id).await? {
-            let payload = fetch_block_payload(connection, data_path, &b.block_id).await?;
+            let payload =
+                fetch_block_payload(connection, blob_storage.clone(), b.block_id.clone()).await?;
             parse_block(&stream, &payload, |val| {
                 if let Some((time, msg)) = log_entry_from_value(&val) {
                     if let Some(x) = pred(time, msg) {
@@ -600,12 +601,12 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
 // entry until fun returns false mad
 pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     stream: &StreamInfo,
     block: &EncodedBlock,
     mut fun: Predicate,
 ) -> Result<()> {
-    let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+    let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
     parse_block(stream, &payload, |val| {
         if let Some((time, msg)) = log_entry_from_value(&val) {
             if !fun(time, msg) {
@@ -619,11 +620,11 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 
 pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     mut process_log_entry: ProcessLogEntry,
 ) -> Result<()> {
-    find_process_log_entry(connection, data_path, process_id, |time, entry| {
+    find_process_log_entry(connection, blob_storage, process_id, |time, entry| {
         process_log_entry(time, entry);
         let nothing: Option<()> = None;
         nothing //continue searching
@@ -634,13 +635,15 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
 
 pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_tracing_transit::Object)>(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     mut process_metric: ProcessMetric,
 ) -> Result<()> {
     for stream in find_process_metrics_streams(connection, process_id).await? {
         for block in find_stream_blocks(connection, &stream.stream_id).await? {
-            let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+            let payload =
+                fetch_block_payload(connection, blob_storage.clone(), block.block_id.clone())
+                    .await?;
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
                     process_metric(obj);

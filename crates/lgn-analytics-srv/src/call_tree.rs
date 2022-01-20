@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
@@ -19,12 +20,12 @@ trait ThreadBlockProcessor {
 
 async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     stream: &lgn_telemetry_sink::StreamInfo,
-    block_id: &str,
+    block_id: String,
     processor: &mut Proc,
 ) -> Result<()> {
-    let payload = fetch_block_payload(connection, data_path, block_id).await?;
+    let payload = fetch_block_payload(connection, blob_storage, block_id).await?;
     parse_block(stream, &payload, |val| {
         span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
@@ -167,7 +168,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 #[allow(clippy::cast_precision_loss)]
 pub(crate) async fn compute_block_call_tree(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process: &lgn_telemetry_sink::ProcessInfo,
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
@@ -181,7 +182,14 @@ pub(crate) async fn compute_block_call_tree(
         ts_offset,
         inv_tsc_frequency,
     );
-    parse_thread_block(connection, data_path, stream, block_id, &mut builder).await?;
+    parse_thread_block(
+        connection,
+        blob_storage,
+        stream,
+        block_id.to_owned(),
+        &mut builder,
+    )
+    .await?;
     Ok(builder.finish())
 }
 

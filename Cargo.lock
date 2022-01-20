@@ -2250,6 +2250,7 @@ dependencies = [
  "lgn-analytics",
  "lgn-app",
  "lgn-async",
+ "lgn-blob-storage",
  "lgn-browser",
  "lgn-build-utils",
  "lgn-build-utils-web",
@@ -3872,6 +3873,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
+ "lgn-blob-storage",
  "lgn-telemetry-proto",
  "lgn-tracing",
  "lgn-tracing-transit",
@@ -8615,6 +8617,7 @@ dependencies = [
  "fs_extra",
  "json",
  "lgn-analytics",
+ "lgn-blob-storage",
  "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-tracing",

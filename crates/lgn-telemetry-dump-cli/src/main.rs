@@ -9,10 +9,12 @@ mod process_search;
 mod process_thread_events;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_analytics::alloc_sql_pool;
+use lgn_blob_storage::LocalBlobStorage;
 use lgn_telemetry_sink::TelemetryGuard;
 use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
@@ -89,6 +91,8 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     let data_path = args.db;
+    let blocks_folder = data_path.join("blobs");
+    let blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
     let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
     match args.command {
@@ -102,19 +106,19 @@ async fn main() -> Result<()> {
             print_process_tree(&pool, &process_id).await?;
         }
         Commands::LogsByProcess => {
-            print_logs_by_process(&mut connection, &data_path).await?;
+            print_logs_by_process(&mut connection, blob_storage).await?;
         }
         Commands::ProcessLog { process_id } => {
-            print_process_log(&mut connection, &data_path, &process_id).await?;
+            print_process_log(&mut connection, blob_storage, &process_id).await?;
         }
         Commands::ProcessThreadEvents { process_id } => {
-            print_process_thread_events(&mut connection, &data_path, &process_id).await?;
+            print_process_thread_events(&mut connection, blob_storage, &process_id).await?;
         }
         Commands::PrintChromeTrace { process_id } => {
-            print_chrome_trace(&pool, &data_path, &process_id).await?;
+            print_chrome_trace(&pool, blob_storage, &process_id).await?;
         }
         Commands::ProcessMetrics { process_id } => {
-            print_process_metrics(&mut connection, &data_path, &process_id).await?;
+            print_process_metrics(&mut connection, blob_storage, &process_id).await?;
         }
     }
     Ok(())

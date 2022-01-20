@@ -3,10 +3,12 @@
 
 mod edition_latency;
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::LocalBlobStorage;
 
 /// Legion Editor Performance Report
 #[derive(Parser, Debug)]
@@ -34,11 +36,14 @@ enum Commands {
 async fn main() -> Result<()> {
     let args = Cli::parse();
     let data_path = Path::new(&args.db);
+    let blocks_folder = data_path.join("blobs");
+    let blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
     let pool = alloc_sql_pool(data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
     match args.command {
         Commands::EditorLatency { process_id } => {
-            edition_latency::print_edition_latency(&mut connection, data_path, &process_id).await?;
+            edition_latency::print_edition_latency(&mut connection, blob_storage, &process_id)
+                .await?;
         }
     }
 

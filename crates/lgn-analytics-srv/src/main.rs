@@ -18,11 +18,12 @@ mod call_tree_store;
 mod cumulative_call_graph;
 mod metrics;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use clap::{AppSettings, Parser, Subcommand};
+use lgn_blob_storage::LocalBlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
@@ -53,14 +54,14 @@ enum DataLakeSpec {
 /// block storage must exist and sqlite database must accept connections
 pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<AnalyticsService> {
     let blocks_folder = path.join("blobs");
-    // let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
+    let blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
     let db_path = path.join("telemetry.db3");
     let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
     let pool = sqlx::any::AnyPoolOptions::new()
         .connect(&db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    AnalyticsService::new(pool, blocks_folder).await
+    AnalyticsService::new(pool, blob_storage).await
 }
 
 #[tokio::main]
