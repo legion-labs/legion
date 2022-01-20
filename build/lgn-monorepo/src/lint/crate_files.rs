@@ -1,4 +1,4 @@
-use lgn_tracing::{error, span_fn};
+use lgn_tracing::span_fn;
 
 use crate::{action_step, context::Context, Error, Result};
 
@@ -12,7 +12,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         let mut path = path.to_path_buf();
         path.push("Cargo.lock");
         if path.exists() {
-            error!(
+            eprintln!(
                 "{}: should not have a local Cargo.lock file",
                 package.name()
             );
