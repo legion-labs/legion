@@ -16,6 +16,8 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Print changed crates
         run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
