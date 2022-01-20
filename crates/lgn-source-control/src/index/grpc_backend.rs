@@ -282,34 +282,33 @@ impl IndexBackend for GrpcIndexBackend {
         Ok(resp.exists)
     }
 
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree> {
+    async fn read_tree(&self, id: &str) -> Result<Tree> {
         let resp = self
             .client
             .lock()
             .await
             .read_tree(ReadTreeRequest {
                 repository_name: self.repository_name.clone(),
-                tree_hash: tree_hash.into(),
+                tree_id: id.into(),
             })
             .await
-            .map_other_err(format!("failed to read tree `{}`", tree_hash))?
+            .map_other_err(format!("failed to read tree `{}`", id))?
             .into_inner();
 
         Ok(resp.tree.unwrap_or_default().into())
     }
 
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()> {
+    async fn save_tree(&self, tree: &Tree) -> Result<String> {
         self.client
             .lock()
             .await
             .save_tree(SaveTreeRequest {
                 repository_name: self.repository_name.clone(),
                 tree: Some(tree.clone().into()),
-                hash: hash.into(),
             })
             .await
-            .map_other_err(format!("failed to save tree `{}`", hash))
-            .map(|_| ())
+            .map_other_err("failed to save tree")
+            .map(|resp| resp.into_inner().tree_id)
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<()> {

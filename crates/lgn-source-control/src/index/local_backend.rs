@@ -59,7 +59,9 @@ impl IndexBackend for LocalIndexBackend {
         match self.directory.read_dir() {
             Ok(mut entries) => {
                 if entries.next().is_some() {
-                    return Err(Error::directory_already_exists(self.directory.clone()));
+                    return Err(Error::index_already_exists(
+                        self.directory.display().to_string(),
+                    ));
                 }
             }
             Err(err) => {
@@ -156,12 +158,12 @@ impl IndexBackend for LocalIndexBackend {
         self.sql_repository_index.commit_exists(commit_id).await
     }
 
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree> {
-        self.sql_repository_index.read_tree(tree_hash).await
+    async fn read_tree(&self, id: &str) -> Result<Tree> {
+        self.sql_repository_index.read_tree(id).await
     }
 
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()> {
-        self.sql_repository_index.save_tree(tree, hash).await
+    async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        self.sql_repository_index.save_tree(tree).await
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<()> {

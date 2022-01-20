@@ -9,24 +9,9 @@ use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compute_file_hash, delete_local_file, edit_file, find_branch_commits, make_file_read_only,
-    sync_tree_diff, track_new_file, Branch, Commit, ResolvePending, Workspace,
+    compute_file_hash, delete_local_file, find_branch_commits, make_file_read_only, sync_tree_diff,
+    Branch, Commit, ResolvePending, Workspace,
 };
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PendingBranchMerge {
-    pub name: String,
-    pub head: String, //commit id
-}
-
-impl PendingBranchMerge {
-    pub fn new(branch: &Branch) -> Self {
-        Self {
-            name: branch.name.clone(),
-            head: branch.head.clone(),
-        }
-    }
-}
 
 fn find_latest_common_ancestor(
     sequence_branch_one: &[Commit],
@@ -56,7 +41,7 @@ async fn change_file_to(
             delete_local_file(workspace, &local_path).await?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file(workspace, &local_path).await?;
+        workspace.edit_files(&[&local_path]).await?;
 
         workspace
             .blob_storage
@@ -89,7 +74,7 @@ async fn change_file_to(
 
     make_file_read_only(&local_path, true)?;
 
-    track_new_file(workspace, &local_path).await?;
+    workspace.add_files(&[&local_path]).await?;
 
     Ok(format!("Added {}", local_path.display()))
 }
@@ -145,8 +130,8 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
 
         return sync_tree_diff(
             &workspace,
-            &old_commit.root_hash,
-            &new_commit.root_hash,
+            &old_commit.root_tree_id,
+            &new_commit.root_tree_id,
             Path::new(""),
         )
         .await;
@@ -171,7 +156,7 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
         }
         for change in &commit.changes {
             modified_in_current
-                .entry(change.relative_path.clone())
+                .entry(change.canonical_path.clone())
                 .or_insert_with(|| change.hash.clone());
         }
     }
@@ -184,7 +169,7 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
         }
         for change in &commit.changes {
             to_update
-                .entry(change.relative_path.clone())
+                .entry(change.canonical_path.clone())
                 .or_insert_with(|| change.hash.clone());
         }
     }
@@ -203,7 +188,7 @@ pub async fn merge_branch_command(name: &str) -> Result<()> {
 
             let full_path = workspace.root.join(path);
 
-            if let Err(e) = edit_file(&workspace, &full_path).await {
+            if let Err(e) = workspace.edit_files(&[&full_path]).await {
                 error_messages.push(format!("Error editing {}: {}", full_path.display(), e));
             }
 

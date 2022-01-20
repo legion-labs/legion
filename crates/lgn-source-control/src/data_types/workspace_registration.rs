@@ -37,3 +37,9 @@ impl WorkspaceRegistration {
         Self::new(owner)
     }
 }
+
+impl Default for WorkspaceRegistration {
+    fn default() -> Self {
+        Self::new_with_current_user()
+    }
+}

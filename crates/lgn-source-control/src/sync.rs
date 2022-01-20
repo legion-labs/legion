@@ -10,6 +10,7 @@ use anyhow::Result;
 use lgn_tracing::span_fn;
 use sha2::{Digest, Sha256};
 
+use crate::CanonicalPath;
 use crate::{
     find_file_hash_in_tree, make_file_read_only, read_bin_file, Commit, ResolvePending, Workspace,
 };
@@ -153,7 +154,7 @@ pub async fn sync_workspace(
     let commits =
         find_commit_range(workspace, branch_name, current_commit, destination_commit).await?;
 
-    let mut to_download: BTreeMap<String, String> = BTreeMap::new();
+    let mut to_download: BTreeMap<CanonicalPath, String> = BTreeMap::new();
     let (_last, commits_to_process) = commits.split_last().unwrap();
 
     if commits[0].id == destination_commit {
@@ -161,7 +162,7 @@ pub async fn sync_workspace(
         for commit in commits_to_process {
             for change in &commit.changes {
                 to_download
-                    .entry(change.relative_path.clone())
+                    .entry(CanonicalPath::File(change.canonical_path.clone()))
                     .or_insert_with(|| change.hash.clone());
             }
         }
@@ -172,23 +173,25 @@ pub async fn sync_workspace(
         assert!(ref_commit.id == destination_commit);
         let root_tree = workspace
             .index_backend
-            .read_tree(&ref_commit.root_hash)
+            .read_tree(&ref_commit.root_tree_id)
             .await?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
 
         for commit in commits_to_process {
             for change in &commit.changes {
-                to_update.insert(change.relative_path.clone());
+                to_update.insert(change.canonical_path.clone());
             }
         }
 
-        for path in to_update {
+        for canonical_path in to_update {
             to_download.insert(
-                path.clone(),
+                CanonicalPath::File(canonical_path.clone()),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we
                 // should fail on error
-                match find_file_hash_in_tree(workspace, Path::new(&path), &root_tree).await {
+                match find_file_hash_in_tree(workspace, Path::new(&canonical_path), &root_tree)
+                    .await
+                {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),
                     Err(e) => {
@@ -201,26 +204,26 @@ pub async fn sync_workspace(
 
     let local_changes_map: HashMap<_, _> = workspace
         .backend
-        .get_local_changes()
+        .get_staged_changes()
         .await
         .context("failed to read local changes")?
         .into_iter()
-        .map(|change| (change.relative_path.clone(), change))
+        .map(|change| (change.canonical_path().clone(), change))
         .collect();
 
     let mut errors: Vec<String> = Vec::new();
 
-    for (relative_path, latest_hash) in to_download {
-        if let Some(_change) = local_changes_map.get(&relative_path) {
+    for (canonical_path, latest_hash) in to_download {
+        if let Some(_change) = local_changes_map.get(&canonical_path) {
             println!(
                 "{} changed locally, recording pending merge and leaving the local file untouched",
-                relative_path
+                canonical_path
             );
 
             //todo: handle case where merge pending already exists
             //todo: validate how we want to deal with merge pending with syncing backwards
             let merge_pending = ResolvePending::new(
-                relative_path.clone(),
+                canonical_path.to_string(),
                 String::from(current_commit),
                 String::from(destination_commit),
             );
@@ -228,12 +231,12 @@ pub async fn sync_workspace(
             if let Err(e) = workspace.backend.save_resolve_pending(&merge_pending).await {
                 errors.push(format!(
                     "Error saving pending merge {}: {}",
-                    relative_path, e
+                    canonical_path, e
                 ));
             }
         } else {
             //no local change, ok to sync
-            let local_path = workspace.root.join(relative_path);
+            let local_path = workspace.root.join(canonical_path.as_str());
 
             match sync_file(workspace, local_path, &latest_hash).await {
                 Ok(message) => {

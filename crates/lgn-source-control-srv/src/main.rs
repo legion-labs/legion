@@ -9,10 +9,8 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::Result;
 use clap::Parser;
-use lgn_source_control::{new_index_backend, Error};
-use lgn_source_control::{BlobStorageUrl, Commit, IndexBackend};
+use lgn_source_control::{new_index_backend, BlobStorageUrl, Commit, Error, IndexBackend, Result};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
@@ -313,7 +311,7 @@ impl SourceControl for Service {
 
         let tree = Some(
             index_backend
-                .read_tree(&request.tree_hash)
+                .read_tree(&request.tree_id)
                 .await
                 .map_err(|e| tonic::Status::unknown(e.to_string()))?
                 .into(),
@@ -386,12 +384,12 @@ impl SourceControl for Service {
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        index_backend
-            .save_tree(&request.tree.unwrap_or_default().into(), &request.hash)
+        let tree_id = index_backend
+            .save_tree(&request.tree.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(SaveTreeResponse {}))
+        Ok(tonic::Response::new(SaveTreeResponse { tree_id }))
     }
 
     async fn insert_commit(

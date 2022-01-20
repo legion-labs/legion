@@ -4,8 +4,8 @@ use anyhow::{Context, Result};
 use lgn_tracing::span_fn;
 
 use crate::{
-    commit_local_changes, delete_local_file, edit_file, make_canonical_relative_path, revert_file,
-    track_new_file, write_file, ChangeType, Workspace,
+    commit_local_changes, delete_local_file, make_canonical_relative_path, revert_file, write_file,
+    ChangeType, Workspace,
 };
 
 fn format_commit(c: &git2::Commit<'_>) -> String {
@@ -44,11 +44,11 @@ async fn add_file_from_git(
         .await
         .context("searching in local changes")?
     {
-        if change.change_type != ChangeType::Delete {
+        if change.change_type() != ChangeType::Delete {
             anyhow::bail!(
                 "{} is already tracked for {:?}",
-                change.relative_path,
-                change.change_type
+                change.canonical_path(),
+                change.change_type()
             );
         }
 
@@ -68,7 +68,11 @@ async fn add_file_from_git(
         local_path.display()
     ))?;
 
-    track_new_file(workspace, &local_path).await
+    workspace
+        .add_files(&[&local_path])
+        .await
+        .map(|_| ())
+        .map_err(Into::into)
 }
 
 async fn edit_file_from_git(
@@ -79,9 +83,7 @@ async fn edit_file_from_git(
 ) -> Result<()> {
     let local_path = workspace.root.join(new_file_path.as_ref());
 
-    edit_file(workspace, &local_path)
-        .await
-        .context(format!("editing: {}", local_path.display()))?;
+    workspace.edit_files(&[&local_path]).await?;
 
     copy_git_blob(git_repo, new_file_id, &local_path).context(format!(
         "failed to copy git blob {} to {}",

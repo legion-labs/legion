@@ -9,8 +9,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    edit_file, find_local_changes, list_remote_files, revert_file, track_new_file, IndexBackend,
-    LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -169,10 +168,10 @@ impl Project {
 
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig {
-                index_url: "../remote/".to_string(),
-                registration: WorkspaceRegistration::new_with_current_user(),
-            },
+            WorkspaceConfig::new(
+                "../remote/".to_string(),
+                WorkspaceRegistration::new_with_current_user(),
+            ),
         )
         .await
         .map_err(|e| {
@@ -236,35 +235,36 @@ impl Project {
     }
 
     async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let local_changes = find_local_changes(&self.workspace).await.map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: e,
-                context: "local_resource_list".to_string(),
-            })
-        })?;
+        let local_changes = self
+            .workspace
+            .get_staged_changes()
+            .await
+            .map_err(Error::SourceControl)?;
+
         let changes = local_changes
             .iter()
-            .map(|change| PathBuf::from(&change.relative_path))
+            .map(|(path, _)| PathBuf::from(path.to_string()))
             .filter(|path| path.extension().is_none())
             .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
             .collect::<Vec<_>>();
+
         Ok(changes)
     }
 
     async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let files = list_remote_files(&self.workspace).await.map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: e,
-                context: "remote_resource_list".to_string(),
-            })
-        })?;
+        let tree = self
+            .workspace
+            .get_current_tree()
+            .await
+            .map_err(Error::SourceControl)?;
 
-        let files = files
-            .iter()
-            .map(|file| PathBuf::from(&file))
+        let files = tree
+            .files()
+            .map(|(path, _)| PathBuf::from(path.to_string()))
             .filter(|path| path.extension().is_none())
             .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
             .collect::<Vec<_>>();
+
         Ok(files)
     }
 
@@ -425,23 +425,10 @@ impl Project {
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         {
-            track_new_file(&self.workspace, &meta_path)
+            self.workspace
+                .add_files([meta_path.as_path(), resource_path.as_path()])
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "add resource".to_string(),
-                    })
-                })?;
-
-            track_new_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "add resource".to_string(),
-                    })
-                })?;
+                .map_err(Error::SourceControl)?;
         }
 
         self.db.local_resources.push(type_id);
@@ -456,23 +443,10 @@ impl Project {
         {
             // todo: for now this assumes the files are staged but not committed.
 
-            revert_file(&self.workspace, &metadata_path)
+            self.workspace
+                .revert_files([metadata_path.as_path(), resource_path.as_path()])
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "delete_resource".to_string(),
-                    })
-                })?;
-
-            revert_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "delete_resource".to_string(),
-                    })
-                })?;
+                .map_err(Error::SourceControl)?;
         }
 
         std::fs::remove_file(&resource_path).map_err(|e| Error::Io(resource_path, e))?;
@@ -532,22 +506,11 @@ impl Project {
         {
             // todo: editing a file just added for 'Add' will fail.
             // we still must handle other errors.
-            let _result = edit_file(&self.workspace, &metadata_path)
+            let _result = self
+                .workspace
+                .edit_files([metadata_path.as_path(), resource_path.as_path()])
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "save_resource".to_string(),
-                    })
-                });
-            let _result = edit_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "save_resource".to_string(),
-                    })
-                });
+                .map_err(Error::SourceControl);
         }
         Ok(())
     }
@@ -683,12 +646,11 @@ impl Project {
         {
             // todo: editing a file just added for 'Add' will fail.
             // we still must handle other errors.
-            let _result = edit_file(&self.workspace, &path).await.map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: e,
-                    context: "update_meta".to_string(),
-                })
-            });
+            let _result = self
+                .workspace
+                .edit_files([path.as_path()])
+                .await
+                .map_err(Error::SourceControl);
         }
     }
 

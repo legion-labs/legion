@@ -2,11 +2,14 @@ use async_trait::async_trait;
 use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 use sqlx::{Connection, Executor, Row};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::create_database, ChangeType, LocalChange, MapOtherError, PendingBranchMerge,
+    sql::create_database, CanonicalPath, Change, ChangeType, MapOtherError, PendingBranchMerge,
     ResolvePending, Result,
 };
 
@@ -71,7 +74,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_config_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(key VARCHAR(255), value VARCHAR(8192), unique(key));",
+            "CREATE TABLE `{}`(key VARCHAR(255) NOT NULL PRIMARY KEY, value VARCHAR(8192) NOT NULL, unique(key));",
             Self::TABLE_CONFIG
         );
 
@@ -87,7 +90,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_changes_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(relative_path TEXT NOT NULL PRIMARY KEY, change_type INTEGER);",
+            "CREATE TABLE `{}`(canonical_path TEXT NOT NULL PRIMARY KEY, old_hash VARCHAR(255), new_hash VARCHAR(255), unique(canonical_path));",
             Self::TABLE_CHANGES
         );
 
@@ -103,7 +106,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_resolves_pending_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(relative_path VARCHAR(512) NOT NULL PRIMARY KEY, base_commit_id VARCHAR(255), theirs_commit_id VARCHAR(255));",
+            "CREATE TABLE `{}`(canonical_path VARCHAR(512) NOT NULL PRIMARY KEY, base_commit_id VARCHAR(255), theirs_commit_id VARCHAR(255), unique(canonical_path));",
             Self::TABLE_RESOLVES_PENDING
         );
 
@@ -119,7 +122,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_branch_merges_pending_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(name VARCHAR(255) NOT NULL PRIMARY KEY, head VARCHAR(255));",
+            "CREATE TABLE `{}`(name VARCHAR(255) NOT NULL PRIMARY KEY, head VARCHAR(255), unique(name));",
             Self::TABLE_BRANCH_MERGES_PENDING,
         );
 
@@ -176,9 +179,10 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    async fn get_local_changes(&self) -> Result<Vec<LocalChange>> {
+    #[span_fn]
+    async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         let sql: &str = &format!(
-            "SELECT relative_path, change_type FROM {}",
+            "SELECT canonical_path, old_hash, new_hash FROM {}",
             Self::TABLE_CHANGES
         );
 
@@ -191,65 +195,59 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
 
         drop(conn);
 
-        let mut res = vec![];
+        let mut res = BTreeMap::new();
 
         for row in rows {
-            let change_type_int: i64 = row.get("change_type");
+            let old_hash = row.get("old_hash");
+            let new_hash = row.get("new_hash");
+            let canonical_path = CanonicalPath::new(row.get("canonical_path"))?;
 
-            res.push(LocalChange::new(
-                row.get("relative_path"),
-                ChangeType::from_int(change_type_int).unwrap(),
-            ));
+            if let Some(change_type) = ChangeType::new(old_hash, new_hash) {
+                res.insert(
+                    canonical_path.clone(),
+                    Change::new(canonical_path, change_type),
+                );
+            }
         }
 
         Ok(res)
     }
 
-    async fn find_local_change(
-        &self,
-        canonical_relative_path: &str,
-    ) -> Result<Option<LocalChange>> {
-        let path = &canonical_relative_path.to_lowercase();
-
+    #[span_fn]
+    async fn save_staged_changes(&self, changes: &[Change]) -> Result<()> {
         let sql: &str = &format!(
-            "SELECT change_type FROM {} WHERE relative_path = ?;",
+            "REPLACE INTO `{}` (canonical_path, old_hash, new_hash) VALUES(?, ?, ?);",
             Self::TABLE_CHANGES
         );
 
-        let sql = sqlx::query(sql).bind(path);
-
         let mut conn = self.sql_connection.lock().await;
-
-        Ok(conn
-            .fetch_optional(sql)
+        let mut transaction = conn
+            .begin()
             .await
-            .map_other_err("failed to fetch local change")?
-            .map(|row| {
-                let change_type_int: i64 = row.get("change_type");
+            .map_other_err("failed to start transaction")?;
 
-                LocalChange::new(path, ChangeType::from_int(change_type_int).unwrap())
-            }))
+        for change in changes {
+            let sql = sqlx::query(sql)
+                .bind(change.canonical_path().to_string())
+                .bind(change.change_type().old_hash().unwrap_or_default())
+                .bind(change.change_type().new_hash().unwrap_or_default());
+
+            transaction.execute(sql).await.map_other_err(format!(
+                "failed to save staged change `{}`",
+                change.canonical_path()
+            ))?;
+        }
+
+        transaction
+            .commit()
+            .await
+            .map_other_err("failed to commit transaction")?;
+
+        Ok(())
     }
 
-    async fn save_local_change(&self, change_spec: &LocalChange) -> Result<()> {
-        let sql: &str = &format!("REPLACE INTO {} VALUES(?, ?);", Self::TABLE_CHANGES);
-        let sql = sqlx::query(sql)
-            .bind(change_spec.relative_path.clone())
-            .bind(change_spec.change_type.clone() as i64);
-
-        let mut conn = self.sql_connection.lock().await;
-
-        conn.execute(sql)
-            .await
-            .map_other_err(format!(
-                "failed to save local change to: {}",
-                change_spec.relative_path,
-            ))
-            .map_other_err("failed to save local change")
-            .map(|_| ())
-    }
-
-    async fn clear_local_changes(&self, changes: &[LocalChange]) -> Result<()> {
+    #[span_fn]
+    async fn clear_staged_changes(&self, changes: &[Change]) -> Result<()> {
         let mut conn = self.sql_connection.lock().await;
         let mut transaction = conn
             .begin()
@@ -257,8 +255,11 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map_other_err("failed to begin transaction")?;
 
         for change in changes {
-            let sql: &str = &format!("DELETE from {} where relative_path=?;", Self::TABLE_CHANGES);
-            let sql = sqlx::query(sql).bind(&change.relative_path);
+            let sql: &str = &format!(
+                "DELETE from {} where canonical_path=?;",
+                Self::TABLE_CHANGES
+            );
+            let sql = sqlx::query(sql).bind(change.canonical_path().to_string());
 
             transaction
                 .execute(sql)
@@ -342,7 +343,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     async fn clear_resolve_pending(&self, resolve_pending: &ResolvePending) -> Result<()> {
         let sql: &str = &format!(
             "DELETE from {}
-             WHERE relative_path=?;",
+             WHERE canonical_path=?;",
             Self::TABLE_RESOLVES_PENDING
         );
         let sql = sqlx::query(sql).bind(resolve_pending.relative_path.clone());
@@ -355,17 +356,15 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    async fn find_resolve_pending(
-        &self,
-        canonical_relative_path: &str,
-    ) -> Result<Option<ResolvePending>> {
+    #[span_fn]
+    async fn find_resolve_pending(&self, canonical_path: &str) -> Result<Option<ResolvePending>> {
         let sql: &str = &format!(
             "SELECT base_commit_id, theirs_commit_id 
              FROM {}
-             WHERE relative_path = ?;",
+             WHERE canonical_path = ?;",
             Self::TABLE_RESOLVES_PENDING
         );
-        let sql = sqlx::query(sql).bind(canonical_relative_path);
+        let sql = sqlx::query(sql).bind(canonical_path);
 
         let mut conn = self.sql_connection.lock().await;
 
@@ -375,7 +374,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map_other_err("failed to find resolve pending")?
             .map(|row| {
                 ResolvePending::new(
-                    String::from(canonical_relative_path),
+                    String::from(canonical_path),
                     row.get("base_commit_id"),
                     row.get("theirs_commit_id"),
                 )
@@ -384,7 +383,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
 
     async fn read_resolves_pending(&self) -> Result<Vec<ResolvePending>> {
         let sql: &str = &format!(
-            "SELECT relative_path, base_commit_id, theirs_commit_id 
+            "SELECT canonical_path, base_commit_id, theirs_commit_id 
              FROM {};",
             Self::TABLE_RESOLVES_PENDING
         );
@@ -398,7 +397,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .into_iter()
             .map(|row| {
                 ResolvePending::new(
-                    row.get("relative_path"),
+                    row.get("canonical_path"),
                     row.get("base_commit_id"),
                     row.get("theirs_commit_id"),
                 )

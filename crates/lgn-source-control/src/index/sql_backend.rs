@@ -1,15 +1,17 @@
-use core::fmt;
-use std::sync::Arc;
-
+use async_recursion::async_recursion;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use reqwest::Url;
 use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::SqlConnectionPool, BlobStorageUrl, Branch, ChangeType, Commit, Error, HashedChange,
-    IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
+    sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
+    Error, IndexBackend, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -86,8 +88,8 @@ pub struct SqlIndexBackend {
     blob_storage_url: BlobStorageUrl,
 }
 
-impl fmt::Debug for SqlIndexBackend {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for SqlIndexBackend {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SqlIndexBackend")
             .field("driver", &self.driver)
             .field("blob_storage_url", &self.blob_storage_url)
@@ -100,6 +102,7 @@ impl SqlIndexBackend {
     const TABLE_COMMIT_PARENTS: &'static str = "commit_parents";
     const TABLE_COMMIT_CHANGES: &'static str = "commit_changes";
     const TABLE_FOREST: &'static str = "forest";
+    const TABLE_FOREST_LINKS: &'static str = "forest_links";
     const TABLE_BRANCHES: &'static str = "branches";
     const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
     const TABLE_LOCKS: &'static str = "locks";
@@ -197,10 +200,10 @@ impl SqlIndexBackend {
 
     async fn create_commits_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), unique (id));
+        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), UNIQUE (id));
          CREATE TABLE `{}` (id VARCHAR(255), parent_id TEXT);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
+         CREATE TABLE `{}` (commit_id VARCHAR(255) NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255));
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
          Self::TABLE_COMMIT_PARENTS,
@@ -216,11 +219,15 @@ impl SqlIndexBackend {
     }
 
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
-        let sql: &str=  &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255), hash CHAR(64), parent_tree_hash CHAR(64), node_type INTEGER);
-         CREATE INDEX tree on {}(parent_tree_hash);",
-         Self::TABLE_FOREST,
-         Self::TABLE_FOREST
+        let sql: &str = &format!(
+            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), hash VARCHAR(255));
+            CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id), FOREIGN KEY (child_id) REFERENCES `{}`(id));
+            CREATE INDEX forest_links_index on `{}`(id);",
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST_LINKS,
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST_LINKS,
         );
 
         conn.execute(sql)
@@ -231,7 +238,7 @@ impl SqlIndexBackend {
 
     async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64), unique (name));",
+        "CREATE TABLE `{}` (name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64), UNIQUE (name));",
         Self::TABLE_BRANCHES
         );
 
@@ -243,7 +250,7 @@ impl SqlIndexBackend {
 
     async fn create_workspace_registrations_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), unique (id));",
+            "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), UNIQUE (id));",
             Self::TABLE_WORKSPACE_REGISTRATIONS,
         );
 
@@ -255,7 +262,7 @@ impl SqlIndexBackend {
 
     async fn create_locks_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255), unique (relative_path, lock_domain_id));
+        "CREATE TABLE `{}` (relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (relative_path, lock_domain_id));
         ",
         Self::TABLE_LOCKS
         );
@@ -270,21 +277,16 @@ impl SqlIndexBackend {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     ) -> Result<()> {
         let lock_domain_id = uuid::Uuid::new_v4().to_string();
-        let root_tree = Tree::empty();
-        let root_hash = root_tree.hash();
+        let tree = Tree::empty();
 
-        Self::save_tree_transactional(transaction, &root_tree, &root_hash).await?;
+        let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
 
-        let id = uuid::Uuid::new_v4().to_string();
-        let timestamp = Utc::now();
-        let initial_commit = Commit::new(
-            id,
+        let initial_commit = Commit::new_unique_now(
             whoami::username(),
             String::from("initial commit"),
-            Vec::new(),
-            root_hash,
-            Vec::new(),
-            timestamp,
+            BTreeSet::new(),
+            tree_id,
+            BTreeSet::new(),
         );
 
         Self::insert_commit_transactional(transaction, &initial_commit).await?;
@@ -365,7 +367,7 @@ impl SqlIndexBackend {
         .bind(commit.id.clone())
         .bind(commit.owner.clone())
         .bind(commit.message.clone())
-        .bind(commit.root_hash.clone())
+        .bind(commit.root_tree_id.clone())
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await
@@ -392,9 +394,9 @@ impl SqlIndexBackend {
                 Self::TABLE_COMMIT_CHANGES
             ))
             .bind(commit.id.clone())
-            .bind(change.relative_path.clone())
-            .bind(change.hash.clone())
-            .bind(change.change_type.clone() as i64)
+            .bind(change.canonical_path().to_string())
+            .bind(change.change_type().old_hash())
+            .bind(change.change_type().new_hash())
             .execute(&mut *transaction)
             .await
             .map_other_err(format!(
@@ -429,89 +431,171 @@ impl SqlIndexBackend {
     async fn save_tree_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         tree: &Tree,
-        hash: &str,
-    ) -> Result<()> {
-        let tree_in_db = Self::read_tree_transactional(&mut *transaction, hash).await?;
+    ) -> Result<String> {
+        Self::save_tree_node_transactional(transaction, None, tree).await
+    }
 
-        if !tree.is_empty() && !tree_in_db.is_empty() {
-            return Ok(());
-        }
+    async fn tree_node_exists(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        id: &str,
+    ) -> Result<bool> {
+        Ok(sqlx::query(&format!(
+            "SELECT COUNT(1) FROM `{}` WHERE id = ?",
+            Self::TABLE_FOREST
+        ))
+        .bind(&id)
+        .fetch_one(&mut *transaction)
+        .await
+        .map_other_err(format!("failed to check for tree node `{}` existence", id))
+        .map(|row| row.get::<i32, _>(0))?
+            > 0)
+    }
 
-        for file_node in &tree.file_nodes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+    #[async_recursion]
+    async fn save_tree_node_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        parent_id: Option<&'async_recursion str>,
+        tree: &Tree,
+    ) -> Result<String> {
+        let id = tree.id();
+
+        // We only insert the tree node if it doesn't exist already.
+        if !Self::tree_node_exists(&mut *transaction, &id).await? {
+            let sql = &format!(
+                "INSERT INTO `{}` (id, name, hash) VALUES(?, ?, ?);",
                 Self::TABLE_FOREST,
-            ))
-            .bind(file_node.name.clone())
-            .bind(file_node.hash.clone())
-            .bind(hash)
-            .bind(TreeNodeType::File as i64)
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(&format!(
-                "failed to insert file node `{}` into tree `{}`",
-                file_node.name, hash
-            ))?;
+            );
+
+            match tree {
+                Tree::Directory { name, children } => {
+                    sqlx::query(sql)
+                        .bind(&id)
+                        .bind(name)
+                        .bind(Option::<String>::None)
+                        .execute(&mut *transaction)
+                        .await
+                        .map_other_err(&format!(
+                            "failed to insert tree directory node `{}`",
+                            &id
+                        ))?;
+
+                    for child in children.values() {
+                        Self::save_tree_node_transactional(transaction, Some(&id), child).await?;
+                    }
+                }
+                Tree::File { name, hash } => {
+                    sqlx::query(sql)
+                        .bind(&id)
+                        .bind(name)
+                        .bind(Some(hash))
+                        .execute(&mut *transaction)
+                        .await
+                        .map_other_err(&format!("failed to insert tree file node `{}`", &id))?;
+                }
+            }
         }
 
-        for dir_node in &tree.directory_nodes {
+        // Even if the tree node existed, the relationship should not exist already.
+        if let Some(parent_id) = parent_id {
             sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                Self::TABLE_FOREST
+                "INSERT INTO `{}` (id, child_id) VALUES(?, ?);",
+                Self::TABLE_FOREST_LINKS,
             ))
-            .bind(dir_node.name.clone())
-            .bind(dir_node.hash.clone())
-            .bind(hash)
-            .bind(TreeNodeType::Directory as i64)
+            .bind(parent_id)
+            .bind(&id)
             .execute(&mut *transaction)
             .await
-            .map_other_err(&format!(
-                "failed to insert directory node `{}` into tree `{}`",
-                dir_node.name, hash
+            .map_other_err(format!(
+                "failed to create link between node {} and its parent {}",
+                id, parent_id
             ))?;
         }
 
-        Ok(())
+        Ok(id)
     }
 
     async fn read_tree_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        tree_hash: &str,
+        id: &str,
     ) -> Result<Tree> {
-        let mut directory_nodes: Vec<TreeNode> = Vec::new();
-        let mut file_nodes: Vec<TreeNode> = Vec::new();
-
-        let rows = sqlx::query(&format!(
-            "SELECT name, hash, node_type
+        let row = sqlx::query(&format!(
+            "SELECT name, hash
              FROM `{}`
-             WHERE parent_tree_hash = ?
-             ORDER BY name;",
+             WHERE id = ?;",
             Self::TABLE_FOREST
         ))
-        .bind(tree_hash)
-        .fetch_all(transaction)
+        .bind(id)
+        .fetch_one(&mut *transaction)
         .await
-        .map_other_err(&format!(
-            "failed to fetch tree nodes for tree `{}`",
-            tree_hash
-        ))?;
+        .map_other_err(format!("failed to fetch tree node `{}`", id))?;
 
-        for row in rows {
-            let name: String = row.get("name");
-            let hash: String = row.get("hash");
-            let node_type: i64 = row.get("node_type");
-            let node = TreeNode { name, hash };
+        let name = row.get("name");
+        let hash = row.get("hash");
 
-            if node_type == TreeNodeType::Directory as i64 {
-                directory_nodes.push(node);
-            } else if node_type == TreeNodeType::File as i64 {
-                file_nodes.push(node);
+        let tree = Self::read_tree_node_transactional(transaction, id, name, hash).await?;
+
+        #[cfg(debug_assertions)]
+        assert!(
+            !(tree.id() != id),
+            "tree node `{}` was not saved correctly",
+            id
+        );
+
+        Ok(tree)
+    }
+
+    #[async_recursion]
+    async fn read_tree_node_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        id: &str,
+        name: String,
+        hash: Option<String>,
+    ) -> Result<Tree> {
+        Ok(if let Some(hash) = hash {
+            Tree::File { hash, name }
+        } else {
+            let child_ids = sqlx::query(&format!(
+                "SELECT child_id
+                 FROM `{}`
+                 WHERE id = ?;",
+                Self::TABLE_FOREST_LINKS
+            ))
+            .bind(&id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!("failed to fetch children for tree node `{}`", &id))?
+            .into_iter()
+            .map(|row| row.get::<String, _>("child_id"))
+            .collect::<Vec<String>>();
+
+            let mut children = BTreeMap::new();
+
+            for child_id in child_ids {
+                let row = sqlx::query(&format!(
+                    "SELECT name, hash
+                    FROM `{}`
+                    WHERE id = ?;",
+                    Self::TABLE_FOREST
+                ))
+                .bind(&child_id)
+                .fetch_one(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to fetch children for tree node data `{}`",
+                    &child_id
+                ))?;
+
+                let name: String = row.get("name");
+                let hash = row.get("hash");
+
+                let child =
+                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, hash)
+                        .await?;
+
+                children.insert(child.name().to_string(), child);
             }
-        }
 
-        Ok(Tree {
-            directory_nodes,
-            file_nodes,
+            Tree::Directory { name, children }
         })
     }
 
@@ -735,7 +819,7 @@ impl IndexBackend for SqlIndexBackend {
         let mut conn = self.get_conn().await?;
 
         let changes = sqlx::query(&format!(
-            "SELECT relative_path, hash, change_type
+            "SELECT canonical_path, old_hash, new_hash
              FROM `{}`
              WHERE commit_id = ?;",
             Self::TABLE_COMMIT_CHANGES,
@@ -748,15 +832,15 @@ impl IndexBackend for SqlIndexBackend {
             id
         ))?
         .into_iter()
-        .map(|row| {
-            let change_type_int: i64 = row.get("change_type");
-            HashedChange {
-                relative_path: row.get("relative_path"),
-                hash: row.get("hash"),
-                change_type: ChangeType::from_int(change_type_int).unwrap(),
+        .filter_map(|row| {
+            if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
+                ChangeType::new(row.get("old_hash"), row.get("new_hash"))
+                    .map(|change_type| Change::new(canonical_path, change_type))
+            } else {
+                None
             }
         })
-        .collect();
+        .collect::<BTreeSet<_>>();
 
         let parents = sqlx::query(&format!(
             "SELECT parent_id
@@ -850,54 +934,25 @@ impl IndexBackend for SqlIndexBackend {
         .map(|row| row.get::<i32, _>("count") > 0)
     }
 
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree> {
-        let mut conn = self.get_conn().await?;
-        let mut directory_nodes: Vec<TreeNode> = Vec::new();
-        let mut file_nodes: Vec<TreeNode> = Vec::new();
-
-        let rows = sqlx::query(&format!(
-            "SELECT name, hash, node_type
-             FROM `{}`
-             WHERE parent_tree_hash = ?
-             ORDER BY name;",
-            Self::TABLE_FOREST
-        ))
-        .bind(tree_hash)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "failed to fetch tree nodes for tree `{}`",
-            tree_hash
-        ))?;
-
-        for row in rows {
-            let name: String = row.get("name");
-            let hash: String = row.get("hash");
-            let node_type: i64 = row.get("node_type");
-            let node = TreeNode { name, hash };
-
-            if node_type == TreeNodeType::Directory as i64 {
-                directory_nodes.push(node);
-            } else if node_type == TreeNodeType::File as i64 {
-                file_nodes.push(node);
-            }
-        }
-
-        Ok(Tree {
-            directory_nodes,
-            file_nodes,
-        })
-    }
-
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()> {
+    async fn read_tree(&self, id: &str) -> Result<Tree> {
         let mut transaction = self.get_transaction().await?;
 
-        Self::save_tree_transactional(&mut transaction, tree, hash).await?;
+        Self::read_tree_transactional(&mut transaction, id).await
+    }
 
-        transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while saving tree `{}`",
-            hash
-        ))
+    async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        let mut transaction = self.get_transaction().await?;
+
+        let tree_id = Self::save_tree_transactional(&mut transaction, tree).await?;
+
+        transaction
+            .commit()
+            .await
+            .map_other_err(&format!(
+                "failed to commit transaction while saving tree `{}`",
+                &tree_id,
+            ))
+            .map(|_| tree_id)
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<()> {

@@ -54,32 +54,37 @@ enum Commands {
     /// Adds local file to the set of pending changes
     #[clap(name = "add")]
     Add {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to add.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Makes file writable and adds it to the set of pending changes
     #[clap(name = "edit")]
     Edit {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to edit.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Deletes the local file and records the pending change
     #[clap(name = "delete")]
     Delete {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to delete.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Prevent others from modifying the specified file. Locks apply throught all related branches
     #[clap(name = "lock")]
     Lock {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to lock.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Releases a lock, allowing others to modify or lock the file
     #[clap(name = "unlock")]
     Unlock {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to unlock.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Prints all the locks in the current lock domain
     #[clap(name = "list-locks")]
@@ -89,9 +94,11 @@ enum Commands {
     Diff {
         /// ignores diff tool config and prints a patch on stdout
         #[clap(long)]
-        notool: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        no_tool: bool,
+
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
+
         /// reference version: a commit id, base or latest
         #[clap(default_value = "base")]
         reference: String,
@@ -101,36 +108,37 @@ enum Commands {
     Resolve {
         /// ignores diff tool config and prints a patch on stdout
         #[clap(long)]
-        notool: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        no_tool: bool,
+
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Creates a new branch based on the state of the workspace
     #[clap(name = "create-branch")]
     CreateBranch {
         /// name of the new branch
-        name: String,
+        branch_name: String,
     },
     /// Merge the specified branch into the current one
-    #[clap(name = "merge-branch")]
-    MergeBranch {
+    #[clap(name = "merge")]
+    Merge {
         /// name of the branch to merge
-        name: String,
+        branch_name: String,
     },
-    /// Syncs workspace to specified branch
-    #[clap(name = "switch-branch")]
-    SwitchBranch {
+    /// Checkout another branch.
+    #[clap(name = "checkout")]
+    Checkout {
         /// name of the existing branch to sync to
-        name: String,
+        branch_name: String,
     },
     /// Move the current branch and its descendance to a new lock domain
-    #[clap(name = "detach-branch")]
-    DetachBranch,
+    #[clap(name = "detach")]
+    Detach,
     /// Merges the lock domains of the two branches
-    #[clap(name = "attach-branch")]
-    AttachBranches {
+    #[clap(name = "attach")]
+    Attach {
         /// name of the existing branch to set as parent
-        parent_branch_name: String,
+        branch_name: String,
     },
     /// Prints a list of all branches
     #[clap(name = "list-branches")]
@@ -138,15 +146,15 @@ enum Commands {
     /// Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.
     #[clap(name = "revert")]
     Revert {
-        /// revert all the local changes that match the specified pattern
-        #[clap(long)]
-        glob: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
-    /// Lists changes in workspace lsc knows about
-    #[clap(name = "local-changes")]
-    LocalChanges,
+    /// Lists staged changes in workspace.
+    #[clap(name = "list-staged-changes")]
+    ListStagedChanges,
+    /// Lists unstaged changes in workspace.
+    #[clap(name = "list-unstaged-changes")]
+    ListUnstagedChanges,
     /// Lists commits of the current branch
     #[clap(name = "log")]
     Log,
@@ -163,19 +171,8 @@ enum Commands {
     #[clap(name = "commit")]
     Commit {
         /// commit message
-        #[clap(short, value_delimiter = '\"')]
-        message: Vec<String>,
-    },
-    /// Prints the path to the configuration file and its content
-    #[clap(name = "config")]
-    Config,
-    /// Replicates branches and commits from a git repo
-    #[clap(name = "import-git-branch")]
-    ImportGitBranch {
-        /// Path to the root of a git repository. Should contain a .git subfolder
-        path: PathBuf,
-        /// Name of the branch to import
-        branch: String,
+        #[clap(short)]
+        message: String,
     },
 }
 
@@ -237,135 +234,157 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("init-workspace");
 
-            let config = WorkspaceConfig {
-                index_url: index_url.clone(),
-                registration: WorkspaceRegistration::new_with_current_user(),
-            };
+            let config =
+                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user());
 
             Workspace::init(&workspace_directory, config)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
         }
-        Commands::Add { path } => track_new_file_command(path).await,
-        Commands::Edit { path } => edit_file_command(path).await,
-        Commands::Delete { path } => {
-            info!("delete");
-            delete_file_command(path).await
+        Commands::Add { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .add_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::Lock { path } => {
-            info!("lock");
-            lock_file_command(path).await
+        Commands::Edit { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .edit_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::Unlock { path } => {
-            info!("unlock");
-            unlock_file_command(path).await
+        Commands::Delete { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .delete_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
+        }
+        Commands::Lock { paths } => {
+            info!("lock {:?}", paths);
+
+            Ok(())
+        }
+        Commands::Unlock { paths } => {
+            info!("unlock {:?}", paths);
+
+            Ok(())
         }
         Commands::ListLocks => {
             info!("list-locks");
-            list_locks_command().await
+
+            Ok(())
         }
         Commands::Diff {
-            notool,
-            path,
-            reference,
+            no_tool: _,
+            paths: _,
+            reference: _,
         } => {
             info!("diff");
-            diff_file_command(path, &reference, !notool).await
+
+            Ok(())
         }
-        Commands::Resolve { notool, path } => {
+        Commands::Resolve {
+            no_tool: _,
+            paths: _,
+        } => {
             info!("resolve");
-            resolve_file_command(path, !notool).await
+
+            Ok(())
         }
-        Commands::CreateBranch { name } => {
-            info!("create-branch");
-            create_branch_command(&name).await
+        Commands::CreateBranch { branch_name } => {
+            info!("create-branch: {}", branch_name);
+
+            Ok(())
         }
-        Commands::MergeBranch { name } => {
-            info!("merge-branch");
-            merge_branch_command(&name).await
+        Commands::Merge { branch_name } => {
+            info!("merge: {}", branch_name);
+
+            Ok(())
         }
-        Commands::SwitchBranch { name } => {
-            info!("switch-branch");
-            switch_branch_command(&name).await
+        Commands::Checkout { branch_name } => {
+            info!("checkout: {}", branch_name);
+
+            Ok(())
         }
-        Commands::DetachBranch => {
-            info!("detach-branch");
-            detach_branch_command().await
+        Commands::Detach => {
+            info!("detach");
+
+            Ok(())
         }
-        Commands::AttachBranches { parent_branch_name } => {
-            info!("attach-branch {}", parent_branch_name);
-            attach_branch_command(&parent_branch_name).await
+        Commands::Attach { branch_name } => {
+            info!("attach {}", branch_name);
+
+            Ok(())
         }
         Commands::ListBranches => {
             info!("list-branches");
-            list_branches_command().await
-        }
-        Commands::Revert { glob, path } => {
-            if glob {
-                revert_glob_command(path.to_str().unwrap()).await
-            } else {
-                revert_file_command(path).await
-            }
-        }
-        Commands::LocalChanges => {
-            info!("local-changes");
-            find_local_changes_command().await.map(|changes| {
-                if changes.is_empty() {
-                    println!("No local changes");
-                }
 
-                for change in changes {
-                    println!("{:?} {}", change.change_type, change.relative_path);
-                }
-            })
+            Ok(())
+        }
+        Commands::Revert { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .revert_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
+        }
+        Commands::ListStagedChanges => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let changes = workspace.get_staged_changes().await?;
+
+            for (path, change) in changes {
+                println!("{} {}", change.change_type(), path);
+            }
+
+            Ok(())
+        }
+        Commands::ListUnstagedChanges => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let changes = workspace.get_unstaged_changes().await?;
+
+            for (path, change) in changes {
+                println!("{} {}", change.change_type(), path);
+            }
+
+            Ok(())
         }
         Commands::Log => {
             info!("log");
 
-            log_command().await
+            Ok(())
         }
-        Commands::Sync { commit_id } => {
+        Commands::Sync { commit_id: _ } => {
             info!("sync");
-            match commit_id {
-                Some(commit_id) => sync_to_command(&commit_id).await,
-                None => sync_command().await,
-            }
+
+            Ok(())
         }
         Commands::ResolvesPending => {
             info!("resolves-pending");
 
-            find_resolves_pending_command()
-                .await
-                .map(|resolves_pending| {
-                    if resolves_pending.is_empty() {
-                        println!("No local changes need to be resolved");
-                    }
-
-                    for m in resolves_pending {
-                        println!(
-                            "{} {} {}",
-                            m.relative_path, &m.base_commit_id, &m.theirs_commit_id
-                        );
-                    }
-                })
+            Ok(())
         }
         Commands::Commit { message } => {
-            let mut aggregate_message = String::from("");
-            for item in message {
-                aggregate_message += &item;
-            }
-            info!("commit {:?}", aggregate_message);
+            let workspace = Workspace::find_in_current_directory().await?;
 
-            commit_command(&aggregate_message).await
-        }
-        Commands::Config => {
-            info!("config");
-
-            print_config_command()
-        }
-        Commands::ImportGitBranch { path, branch } => {
-            import_git_branch_command(path, &branch).await
+            workspace
+                .commit(&message)
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
     }
 }

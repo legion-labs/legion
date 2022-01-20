@@ -32,8 +32,8 @@ pub trait IndexBackend: Send + Sync {
     async fn insert_commit(&self, commit: &Commit) -> Result<()>;
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()>;
     async fn commit_exists(&self, commit_id: &str) -> Result<bool>;
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree>;
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()>;
+    async fn read_tree(&self, id: &str) -> Result<Tree>;
+    async fn save_tree(&self, tree: &Tree) -> Result<String>;
     async fn insert_lock(&self, lock: &Lock) -> Result<()>;
     async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>>;
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>>;

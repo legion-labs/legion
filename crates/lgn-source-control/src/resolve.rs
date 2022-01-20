@@ -10,27 +10,6 @@ use crate::{
     Config, Workspace,
 };
 
-#[derive(Debug)]
-pub struct ResolvePending {
-    pub relative_path: String,
-    pub base_commit_id: String,
-    pub theirs_commit_id: String,
-}
-
-impl ResolvePending {
-    pub fn new(
-        canonical_relative_path: String,
-        base_commit_id: String,
-        theirs_commit_id: String,
-    ) -> Self {
-        Self {
-            relative_path: canonical_relative_path,
-            base_commit_id,
-            theirs_commit_id,
-        }
-    }
-}
-
 #[span_fn]
 pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>> {
     let workspace = Workspace::find_in_current_directory().await?;
@@ -47,19 +26,24 @@ pub async fn find_file_hash_at_commit(
     commit_id: &str,
 ) -> Result<Option<String>> {
     let commit = workspace.index_backend.read_commit(commit_id).await?;
-    let root_tree = workspace.index_backend.read_tree(&commit.root_hash).await?;
+    let root_tree = workspace
+        .index_backend
+        .read_tree(&commit.root_tree_id)
+        .await?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(workspace, &root_tree, parent_dir).await?;
-    match dir_tree.find_file_node(
-        relative_path
-            .file_name()
-            .expect("no file name in path specified")
-            .to_str()
-            .expect("invalid file name"),
-    ) {
-        Some(file_node) => Ok(Some(file_node.hash.clone())),
-        None => Ok(None),
-    }
+    //TODO: Commented this out during refactoring.
+    //match dir_tree.find_file_node(
+    //    relative_path
+    //        .file_name()
+    //        .expect("no file name in path specified")
+    //        .to_str()
+    //        .expect("invalid file name"),
+    //) {
+    //    Some(file_node) => Ok(Some(file_node.hash.clone())),
+    //    None => Ok(None),
+    //}
+    Ok(None)
 }
 
 #[span_fn]
@@ -146,7 +130,7 @@ pub async fn resolve_file_command(p: impl AsRef<Path>, allow_tools: bool) -> Res
     )
     .await?
     .unwrap();
-    let base_temp_file = workspace.download_temp_file(&base_file_hash).await?;
+    let base_temp_file = workspace.download_temporary_file(&base_file_hash).await?;
     let theirs_file_hash = find_file_hash_at_commit(
         &workspace,
         Path::new(&relative_path),
@@ -154,7 +138,7 @@ pub async fn resolve_file_command(p: impl AsRef<Path>, allow_tools: bool) -> Res
     )
     .await?
     .unwrap();
-    let theirs_temp_file = workspace.download_temp_file(&theirs_file_hash).await?;
+    let theirs_temp_file = workspace.download_temporary_file(&theirs_file_hash).await?;
     let tmp_dir = workspace.root.join(".lsc/tmp");
     let output_temp_file = tempfile::NamedTempFile::new_in(&tmp_dir)?.into_temp_path();
 

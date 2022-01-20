@@ -61,7 +61,7 @@ pub async fn diff_file_command(
 
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
-            let ref_temp_file = workspace.download_temp_file(&ref_file_hash).await?;
+            let ref_temp_file = workspace.download_temporary_file(&ref_file_hash).await?;
             let ref_path_str = ref_temp_file.to_str().unwrap();
             let local_file = abs_path.to_str().unwrap();
             for item in &mut external_command_vec[..] {
