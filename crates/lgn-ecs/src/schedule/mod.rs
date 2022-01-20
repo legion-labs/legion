@@ -20,7 +20,6 @@ pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
-use lgn_tracing::span_scope;
 use lgn_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;
@@ -28,6 +27,7 @@ pub use state::*;
 pub use system_container::*;
 pub use system_descriptor::*;
 pub use system_set::*;
+use tracing::info_span;
 
 use crate::{system::System, world::World};
 
@@ -342,9 +342,10 @@ impl Schedule {
 
     /// Executes each [`Stage`] contained in the schedule, one at a time.
     pub fn run_once(&mut self, world: &mut World) {
+        tracing::warn!("this is a test {}", "abc");
         for label in &self.stage_order {
             // TODO: add stage name to trace scope
-            span_scope!("run_once::label");
+            info_span!("run_once::label");
             // let stage_span = info_span!("stage", name = ?label);
             // let _stage_guard = stage_span.enter();
             let stage = self.stages.get_mut(label).unwrap();

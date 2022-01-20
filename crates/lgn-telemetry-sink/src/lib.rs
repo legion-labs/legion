@@ -11,6 +11,8 @@ use std::{collections::HashMap, str::FromStr};
 mod grpc_event_sink;
 mod immediate_event_sink;
 mod stream;
+#[cfg(feature = "tokio-tracing")]
+mod tokio_tracing_sink;
 
 use grpc_event_sink::GRPCEventSink;
 use immediate_event_sink::ImmediateEventSink;
@@ -23,16 +25,9 @@ use lgn_tracing::event::NullEventSink;
 use lgn_tracing::{
     event::EventSink,
     guards::{TracingSystemGuard, TracingThreadGuard},
-    set_max_level, Level, LevelFilter,
+    set_max_level, LevelFilter,
 };
 use lgn_tracing::{info, set_max_lod, LodFilter};
-#[cfg(feature = "tokio-tracing")]
-use tracing::{
-    span::{Attributes, Record},
-    subscriber, Event, Id, Subscriber,
-};
-#[cfg(feature = "tokio-tracing")]
-use tracing_subscriber::{layer::Context, prelude::*, EnvFilter, Layer, Registry};
 
 pub struct Config {
     logs_buffer_size: usize,
@@ -125,26 +120,16 @@ impl TelemetryGuard {
 
     //todo: refac enable_console_printer, put in config?
     pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
-        #[cfg(feature = "tokio-tracing")]
-        {
-            let default_filter = format!("{}", ::tracing::Level::INFO);
-            let filter_layer = EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new(&default_filter))
-                .unwrap();
-            let subscriber = Registry::default().with(filter_layer);
-
-            let lgn_telemetry_layer = TelemetryLayer::default();
-            let subscriber = subscriber.with(lgn_telemetry_layer);
-
-            subscriber::set_global_default(subscriber)
-                .expect("Tokio default tracing subscriber already set");
-        }
-
         // order here is important
-        Ok(Self {
+        let result = Ok(Self {
             _guard: alloc_telemetry_system(config, enable_console_printer)?,
             _thread_guard: TracingThreadGuard::new(),
-        })
+        });
+
+        #[cfg(feature = "tokio-tracing")]
+        tokio_tracing_sink::TelemetryLayer::setup();
+
+        result
     }
 
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
@@ -163,36 +148,5 @@ impl TelemetryGuard {
         })
         .expect("Error setting Ctrl+C handler");
         self
-    }
-}
-
-#[cfg(feature = "tokio-tracing")]
-#[derive(Default)]
-struct TelemetryLayer {}
-
-#[cfg(feature = "tokio-tracing")]
-impl<S> Layer<S> for TelemetryLayer
-where
-    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
-{
-    fn on_new_span(&self, _attrs: &Attributes<'_>, _id: &Id, _ctx: Context<'_, S>) {
-        panic!("event on_new_span");
-    }
-
-    fn on_record(&self, _id: &Id, _values: &Record<'_>, _ctx: Context<'_, S>) {
-        panic!("event on_record");
-    }
-
-    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let meta = event.metadata();
-        let tracing_level = meta.level();
-        let level = match *tracing_level {
-            ::tracing::Level::TRACE => Level::Trace,
-            ::tracing::Level::DEBUG => Level::Debug,
-            ::tracing::Level::INFO => Level::Info,
-            ::tracing::Level::WARN => Level::Warn,
-            ::tracing::Level::ERROR => Level::Error,
-        };
-        panic!("event level {}", level);
     }
 }
