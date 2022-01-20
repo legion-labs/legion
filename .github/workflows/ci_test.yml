@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Print changed crates
-        run: cargo m changed-since needs.base_ref_selection.outputs.base_ref
+        run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
 
       - name: Run initial checks
         run: cargo ci check
