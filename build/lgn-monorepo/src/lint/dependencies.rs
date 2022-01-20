@@ -1,10 +1,11 @@
 use lgn_tracing::span_fn;
 use semver::VersionReq;
 
-use crate::{context::Context, Error, Result};
+use crate::{action_step, context::Context, Error, Result};
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
+    action_step!("Lint", "Running direct dependencies checks");
     let workspace = ctx.package_graph()?.workspace();
     let bans: Vec<_> = ctx
         .config()
