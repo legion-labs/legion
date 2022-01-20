@@ -26,16 +26,3 @@ impl Deref for ComputeTaskPool {
         &self.0
     }
 }
-
-/// A newtype for a task pool for CPU-intensive work that may span across
-/// multiple frames
-#[derive(Clone, Debug)]
-pub struct AsyncComputeTaskPool(pub TaskPool);
-
-impl Deref for AsyncComputeTaskPool {
-    type Target = TaskPool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}

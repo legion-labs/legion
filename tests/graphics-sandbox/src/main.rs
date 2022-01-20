@@ -4,7 +4,7 @@
 
 use clap::{AppSettings, Parser};
 
-use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
@@ -68,6 +68,7 @@ fn main() {
     let args = Args::parse();
 
     let mut app = App::new();
+
     app.add_plugin(CorePlugin::default())
         .add_plugin(RendererPlugin::new(
             args.egui,
@@ -88,7 +89,6 @@ fn main() {
             width: args.width,
             height: args.height,
         })
-        .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_system(presenter_snapshot_system)
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
@@ -99,6 +99,7 @@ fn main() {
         .add_plugin(WinitPlugin::default())
         .add_system(on_render_surface_created_for_window.exclusive_system());
     }
+
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default())
@@ -109,6 +110,7 @@ fn main() {
     } else if args.meta_cube_size == 0 {
         app.add_startup_system(init_scene);
     }
+
     app.run();
 }
 

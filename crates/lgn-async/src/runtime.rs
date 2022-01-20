@@ -45,7 +45,7 @@ impl Default for TokioAsyncRuntime {
                 let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
                 format!("Tokio Task Pool {}", id)
             })
-            .worker_threads(std::cmp::min(logical_core_count(), 4)) // take 4 thread max
+            .worker_threads(logical_core_count().min(4)) // take 4 thread max
             .on_thread_start(init_thread_stream)
             .on_thread_stop(flush_thread_buffer)
             .on_thread_park(|| {

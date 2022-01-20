@@ -17,7 +17,7 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
-use lgn_core::CorePlugin;
+use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::{AssetRegistryOptions, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
@@ -127,8 +127,9 @@ pub fn build_runtime(
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
-        .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
+        .insert_resource(DefaultTaskPoolOptions::new(1, 4))
+        .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
