@@ -18,12 +18,13 @@ mod call_tree_store;
 mod cumulative_call_graph;
 mod metrics;
 
+use std::str::FromStr;
 use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use clap::{AppSettings, Parser, Subcommand};
-use lgn_blob_storage::LocalBlobStorage;
+use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
@@ -64,6 +65,20 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<AnalyticsServic
     AnalyticsService::new(pool, blob_storage).await
 }
 
+/// ``connect_to_remote_data_lake`` serves a remote data lake through mysql and s3
+///
+/// # Errors
+/// block storage must exist and mysql database must accept connections
+pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<AnalyticsService> {
+    info!("connecting to blob storage");
+    let blob_storage = Arc::new(AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await);
+    let pool = sqlx::any::AnyPoolOptions::new()
+        .connect(db_uri)
+        .await
+        .with_context(|| String::from("Connecting to telemetry database"))?;
+    AnalyticsService::new(pool, blob_storage).await
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuard::default()
@@ -74,12 +89,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     let service = match args.spec {
         DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
-        DataLakeSpec::Remote {
-            db_uri: _,
-            s3_url: _,
-        } => {
-            panic!("remote");
-            // connect_to_remote_data_lake(&db_uri, &s3_url).await?
+        DataLakeSpec::Remote { db_uri, s3_url } => {
+            connect_to_remote_data_lake(&db_uri, &s3_url).await?
         }
     };
 
