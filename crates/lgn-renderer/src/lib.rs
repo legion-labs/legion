@@ -471,6 +471,8 @@ fn render_update(
 
         render_surface.present(&render_context);
     }
+
+    debug_display.clear_display_lists();
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {

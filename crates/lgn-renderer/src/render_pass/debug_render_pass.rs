@@ -218,8 +218,6 @@ impl DebugRenderPass {
                 default_meshes,
             );
         });
-
-        debug_display.clear_display_lists();
     }
 
     #[allow(clippy::too_many_arguments)]
