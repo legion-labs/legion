@@ -1,6 +1,5 @@
 <script lang="ts">
   import { PropertyUpdate } from "@/api";
-
   import { BagResourceProperty, ResourceProperty } from "@/lib/propertyGrid";
   import PropertyInput from "./PropertyInput.svelte";
   import { RemoveVectorSubPropertyEvent } from "./types";
@@ -16,6 +15,9 @@
 
   /** The property path parts */
   export let pathParts: string[];
+
+  /** The property index (only used in vectors) */
+  export let index: number;
 </script>
 
 <div class="root">
@@ -31,6 +33,7 @@
         on:removeVectorSubProperty
         pathParts={property.name ? [...pathParts, property.name] : pathParts}
         {property}
+        {index}
         bind:parentProperty
       />
     </div>

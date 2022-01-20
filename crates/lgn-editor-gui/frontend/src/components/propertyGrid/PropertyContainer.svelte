@@ -28,6 +28,9 @@
 
   /** The property path parts */
   export let pathParts: string[];
+
+  /** The property index (only used in vectors) */
+  export let index: number;
 </script>
 
 <div class="root">
@@ -50,6 +53,7 @@
       {property}
       bind:parentProperty
       {pathParts}
+      {index}
     />
   {/if}
 </div>

@@ -65,7 +65,7 @@
       {/if}
     </div>
   {/if}
-  {#each property.subProperties as subProperty (subProperty.name)}
+  {#each property.subProperties as subProperty, index (subProperty.name)}
     <PropertyContainer
       on:input
       on:addVectorSubProperty
@@ -76,6 +76,7 @@
       property={subProperty}
       bind:parentProperty={property}
       level={level + 1}
+      {index}
     />
   {/each}
 </div>

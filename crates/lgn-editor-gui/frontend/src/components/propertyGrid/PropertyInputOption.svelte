@@ -20,6 +20,9 @@
   /** The property path parts */
   export let pathParts: string[];
 
+  /** The property index (only used in vectors) */
+  export let index: number;
+
   function setOptionProperty({ detail: isSome }: CustomEvent<boolean>) {
     // TODO: Send an input event that be can sent to the server
 
@@ -54,9 +57,10 @@
   <div class="option-property">
     <PropertyInput
       on:input={(event) => dispatch("input", event.detail)}
-      {pathParts}
       property={property.subProperties[0]}
       parentProperty={property}
+      {pathParts}
+      {index}
     />
     <div class="option-property-checkbox">
       <Checkbox on:change={setOptionProperty} value={true} />
