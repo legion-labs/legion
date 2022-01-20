@@ -211,7 +211,7 @@
   }
 
   .scene-explorer {
-    @apply h-1/2;
+    @apply h-[calc(50%-theme("spacing[0.5]"))];
   }
 
   .scene-explorer-loading {
@@ -231,7 +231,7 @@
   }
 
   .resource-browser {
-    @apply h-1/2;
+    @apply h-[calc(50%-theme("spacing[0.5]"))];
   }
 
   .resource-browser-content {
