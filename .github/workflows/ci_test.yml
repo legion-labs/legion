@@ -4,6 +4,7 @@ on:
   push:
     paths-ignore:
       - "docs/**"
+      - ".github/workflows/ci_book.yml"
     branches:
       - main
   pull_request:
