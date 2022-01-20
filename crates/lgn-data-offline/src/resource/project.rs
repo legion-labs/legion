@@ -7,6 +7,7 @@ use std::{
 
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_source_control::{init_workspace_command, IndexBackend, LocalIndexBackend};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -88,6 +89,7 @@ pub struct Project {
     db: ResourceDb,
     project_dir: PathBuf,
     resource_dir: PathBuf,
+    remote: Option<LocalIndexBackend>,
 }
 
 #[derive(Error, Debug)]
@@ -148,11 +150,26 @@ impl Project {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
+        let remote_dir = project_dir.join("remote");
+        let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+        let res = remote.create_index().await.map_err(Error::SourceControl)?;
+
+        /*init_workspace_command(&resource_dir, index.url())
+        .await
+        .map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: e,
+                context: "".to_string(),
+            })
+        })?;
+        */
+
         Ok(Self {
             file,
             db,
             project_dir,
             resource_dir,
+            remote: Some(remote),
         })
     }
 
@@ -170,11 +187,15 @@ impl Project {
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
+
+        //
+
         Ok(Self {
             file,
             db,
             project_dir,
             resource_dir,
+            remote: None,
         })
     }
 
@@ -195,10 +216,16 @@ impl Project {
     }
 
     /// Deletes the project by deleting the index file.
-    pub fn delete(self) {
+    pub async fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
         let index_path = self.indexfile_path();
         let _res = fs::remove_file(index_path);
+
+        let remote_dir = self.project_dir.join("remote");
+
+        if let Some(remote) = &self.remote {
+            remote.destroy_index().await.unwrap();
+        }
     }
 
     /// Returns an iterator on the list of resources.
@@ -884,7 +911,7 @@ mod tests {
         let same_project = Project::create_new(root.path()).await;
         assert!(same_project.is_err());
 
-        project.delete();
+        project.delete().await;
 
         let _project = Project::create_new(root.path())
             .await

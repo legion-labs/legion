@@ -64,7 +64,7 @@ impl SqlDatabaseDriver {
         match &self {
             Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::drop_database(uri)
                 .await
-                .map_other_err("failed to create database"),
+                .map_other_err("failed to drop database"),
         }
     }
 
@@ -167,6 +167,7 @@ impl SqlIndexBackend {
             Ok(Arc::clone(pool))
         } else {
             let new_pool = Arc::new(self.driver.new_pool().await?);
+            println!("new pool");
 
             *pool = Some(Arc::clone(&new_pool));
 
@@ -531,6 +532,12 @@ impl SqlIndexBackend {
             branch_name: row.get("branch_name"),
         }))
     }
+
+    pub async fn close(&mut self) {
+        if let Some(pool) = self.pool.lock().await.take() {
+            pool.close().await;
+        }
+    }
 }
 
 #[async_trait]
@@ -569,6 +576,15 @@ impl IndexBackend for SqlIndexBackend {
         if !self.driver.check_if_database_exists().await? {
             return Err(Error::index_does_not_exist(self.url()));
         }
+
+        if let Some(pool) = self.pool.lock().await.take() {
+            pool.close().await;
+            println!("closed pool");
+        }
+
+        //if let Ok(pool) = self.get_pool().await {
+        //    pool.close().await;
+        //}
 
         self.driver.drop_database().await
     }

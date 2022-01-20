@@ -38,6 +38,10 @@ impl LocalIndexBackend {
             sql_repository_index: SqlIndexBackend::new(sqlite_url)?,
         })
     }
+
+    pub async fn close(&mut self) {
+        self.sql_repository_index.close().await;
+    }
 }
 
 #[async_trait]
@@ -189,5 +193,25 @@ impl IndexBackend for LocalIndexBackend {
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
         self.sql_repository_index.get_blob_storage_url().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{IndexBackend, LocalIndexBackend};
+
+    #[tokio::test]
+    async fn create_destroy() {
+        let root = tempfile::tempdir().unwrap();
+        {
+            let mut index = LocalIndexBackend::new(root.path()).unwrap();
+            index.create_index().await.unwrap();
+            index.close().await;
+            //}
+            //tokio::time::sleep(tokio::time::Duration::from_micros(1)).await;
+            //{
+            //let index = LocalIndexBackend::new(root.path()).unwrap();
+            index.destroy_index().await.unwrap();
+        }
     }
 }

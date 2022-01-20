@@ -37,6 +37,22 @@ pub struct SqlConnectionPool {
 impl SqlConnectionPool {
     pub async fn new(database_uri: &str) -> Result<Self> {
         let pool = sqlx::any::AnyPoolOptions::new()
+            .after_connect(|c| {
+                Box::pin(async move {
+                    println!("after_connect");
+                    Ok(())
+                })
+            })
+            .after_release(|c| {
+                println!("after_release");
+                true
+            })
+            .before_acquire(|c| {
+                Box::pin(async move {
+                    println!("before acquire");
+                    Ok(true)
+                })
+            })
             .connect(database_uri)
             .await
             .map_other_err("failed to allocate SQL connection pool")?;
@@ -56,5 +72,9 @@ impl SqlConnectionPool {
             .begin()
             .await
             .map_other_err("failed to start transaction")
+    }
+
+    pub async fn close(&self) {
+        self.pool.close().await;
     }
 }
