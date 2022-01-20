@@ -180,10 +180,10 @@
 <style lang="postcss">
   .root {
     @apply h-screen w-full;
-  }
 
-  .content-wrapper {
-    @apply h-[calc(100vh-4rem)] w-full overflow-auto;
+    .content-wrapper {
+      @apply h-[calc(100vh-4rem)] w-full overflow-auto;
+    }
   }
 
   .content {
