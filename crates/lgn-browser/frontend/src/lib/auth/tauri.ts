@@ -31,12 +31,10 @@ export async function startUserAuth() {
  */
 export async function getUserInfo({ forceAuth }: { forceAuth: boolean }) {
   try {
-    return await _getUserInfo();
+    await userInfoStore.run(_getUserInfo);
   } catch {
     if (forceAuth) {
-      startUserAuth();
+      await startUserAuth();
     }
-
-    return null;
   }
 }

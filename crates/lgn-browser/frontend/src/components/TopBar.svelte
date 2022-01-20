@@ -137,7 +137,7 @@
       {#if userInitials}
         {userInitials}
       {:else}
-        <Icon icon="mdi:account-reactivate-outline" />
+        <Icon icon="mdi:account-circle" />
       {/if}
     </div>
     {#if window.__TAURI__}
@@ -214,7 +214,7 @@
   }
 
   .authentication {
-    @apply flex justify-center items-center rounded-full mr-2 bg-orange-700 bg-opacity-80 h-6 w-6 text-xs text-white font-bold;
+    @apply flex justify-center items-center flex-shrink-0 rounded-full mr-2 bg-orange-700 bg-opacity-80 h-6 w-6 text-xs text-white font-bold;
   }
 
   .authentication :global(svg) {
