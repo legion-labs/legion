@@ -95,6 +95,7 @@ importers:
 
   crates/lgn-browser/frontend:
     specifiers:
+      '@iconify/svelte': ^2.1.1
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-streaming': ^0.1.0
       '@swc/core': ^1.2.130
@@ -129,6 +130,7 @@ importers:
       typescript: ^4.5.4
       vite: ^2.7.12
     dependencies:
+      '@iconify/svelte': 2.1.1
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.3
       '@lgn/proto-streaming': link:../../lgn-streaming-proto
       '@tauri-apps/api': 1.0.0-beta.8
@@ -166,6 +168,7 @@ importers:
 
   crates/lgn-editor-gui/frontend:
     specifiers:
+      '@iconify/svelte': ^2.1.1
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/frontend': ^0.1.0
       '@lgn/proto-editor': ^0.1.0
@@ -210,6 +213,7 @@ importers:
       vite-plugin-wasm: workspace:^0.1.0
       vite-tsconfig-paths: ^3.3.17
     dependencies:
+      '@iconify/svelte': 2.1.1
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.3
       '@lgn/frontend': link:../../lgn-browser/frontend
       '@lgn/proto-editor': link:../../lgn-editor-proto
@@ -866,6 +870,12 @@ packages:
   /@humanwhocodes/object-schema/1.2.1:
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
     dev: true
+
+  /@iconify/svelte/2.1.1:
+    resolution: {integrity: sha512-5fyFMvxDtmrWdRmaXFiSCe2PNDaBSmCnuMcEBVkPOV8ZxkZ67Lk4hskqqc0MafMoKHvRgefUneyf2NtFE63Zbw==}
+    dependencies:
+      cross-fetch: 3.1.4
+    dev: false
 
   /@improbable-eng/grpc-web/0.15.0_google-protobuf@3.19.3:
     resolution: {integrity: sha512-ERft9/0/8CmYalqOVnJnpdDry28q+j+nAlFFARdjyxXDJ+Mhgv9+F600QC8BR9ygOfrXRlAk6CvST2j+JCpQPg==}
@@ -2190,6 +2200,12 @@ packages:
       path-type: 4.0.0
       yaml: 1.10.2
     dev: true
+
+  /cross-fetch/3.1.4:
+    resolution: {integrity: sha512-1eAtFWdIubi6T4XPy6ei9iUFoKpUkIF971QLN8lIvvvwueI65+Nw5haMNKUwfJxabqlIIDODJKGrQ66gxC0PbQ==}
+    dependencies:
+      node-fetch: 2.6.1
+    dev: false
 
   /cross-spawn/7.0.3:
     resolution: {integrity: sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==}
@@ -4006,6 +4022,11 @@ packages:
     dependencies:
       lower-case: 2.0.2
       tslib: 2.3.1
+    dev: false
+
+  /node-fetch/2.6.1:
+    resolution: {integrity: sha512-V4aYg89jEoVRxRb2fJdAg8FHvI7cEyYdVAh94HH0UIK8oJxUfkjlDQN9RbMx+bEjP7+ggMiFRprSti032Oipxw==}
+    engines: {node: 4.x || >=6.0.0}
     dev: false
 
   /node-fetch/2.6.5:

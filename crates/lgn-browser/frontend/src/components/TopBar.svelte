@@ -10,6 +10,7 @@
   import { startUserAuth } from "../lib/auth";
   import BrandLogo from "./BrandLogo.svelte";
   import { onMount } from "svelte";
+  import Icon from "@iconify/svelte";
 
   const { data: userInfoData } = userInfo;
 
@@ -44,8 +45,7 @@
   $: userInitials =
     $userInfoData && $userInfoData.given_name && $userInfoData.family_name
       ? `${$userInfoData.given_name[0]}${$userInfoData.family_name[0]}`
-      : // TODO: Use an icon
-        "Me";
+      : null;
 
   function onMenuMouseEnter(id: TopBarMenuId) {
     // We set the topBarMenu value (and therefore open said menu dropdown)
@@ -134,18 +134,22 @@
         : "Authenticate"}
       on:click={$userInfoData ? null : authenticate}
     >
-      {userInitials}
+      {#if userInitials}
+        {userInitials}
+      {:else}
+        <Icon icon="mdi:account-reactivate-outline" />
+      {/if}
     </div>
     {#if window.__TAURI__}
       <div class="window-decorations">
         <div class="window-decoration" bind:this={topBarMinimize}>
-          <div class="minimize-icon" />
+          <Icon icon="mdi:window-minimize" />
         </div>
         <div class="window-decoration" bind:this={topBarMaximize}>
-          <div class="maximize-icon" />
+          <Icon icon="mdi:window-maximize" />
         </div>
         <div class="window-decoration danger" bind:this={topBarClose}>
-          <div class="close-icon" />
+          <Icon icon="mdi:window-close" />
         </div>
       </div>
     {/if}
@@ -213,6 +217,10 @@
     @apply flex justify-center items-center rounded-full mr-2 bg-orange-700 bg-opacity-80 h-6 w-6 text-xs text-white font-bold;
   }
 
+  .authentication :global(svg) {
+    @apply text-lg;
+  }
+
   .window-decorations {
     @apply flex flex-row h-full space-x-2;
   }
@@ -223,22 +231,5 @@
 
   .window-decoration.danger {
     @apply hover:bg-red-600;
-  }
-
-  .minimize-icon {
-    @apply h-full w-full bg-white;
-    mask: url(https://api.iconify.design/mdi:window-minimize.svg) no-repeat
-      center;
-  }
-
-  .maximize-icon {
-    @apply h-full w-full bg-white;
-    mask: url(https://api.iconify.design/mdi:window-maximize.svg) no-repeat
-      center;
-  }
-
-  .close-icon {
-    @apply h-full w-full bg-white;
-    mask: url(https://api.iconify.design/mdi:close.svg) no-repeat center;
   }
 </style>

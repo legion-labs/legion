@@ -53,6 +53,7 @@
     "vite-tsconfig-paths": "^3.3.17"
   },
   "dependencies": {
+    "@iconify/svelte": "^2.1.1",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@lgn/frontend": "^0.1.0",
     "@lgn/proto-editor": "^0.1.0",
