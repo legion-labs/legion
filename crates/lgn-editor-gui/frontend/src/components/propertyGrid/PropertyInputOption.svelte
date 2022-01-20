@@ -43,7 +43,7 @@
         );
       }
     } else {
-      delete property.subProperties[0];
+      property.subProperties = [];
 
       dispatch("input", {
         name: pathParts.join("."),
