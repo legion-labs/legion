@@ -194,7 +194,6 @@ async fn find_commit_ancestors(
     Ok(ancestors)
 }
 
-#[allow(clippy::too_many_lines)]
 #[span_fn]
 pub async fn merge_branch_command(name: &str) -> Result<()> {
     let current_dir = std::env::current_dir().unwrap();

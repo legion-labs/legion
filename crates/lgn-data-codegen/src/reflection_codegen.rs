@@ -106,7 +106,6 @@ fn generate_fields_descriptors(
         .collect()
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn generate_reflection(
     data_container_info: &DataContainerMetaInfo,
     gen_type: GenerationType,
@@ -151,7 +150,6 @@ pub fn generate_reflection(
 
             #[allow(unused_mut)]
             #[allow(clippy::let_and_return)]
-            #[allow(clippy::too_many_lines)]
             fn get_type_def() -> lgn_data_model::TypeDefinition {
                 lgn_data_model::implement_struct_descriptor!(#type_identifier, vec![
                     #(#fields_descriptors)*

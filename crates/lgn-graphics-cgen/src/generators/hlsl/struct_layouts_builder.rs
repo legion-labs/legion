@@ -77,7 +77,7 @@ impl TypeUsage {
 /// Will return `Err` if there is a cyclic dependency or if there are some type
 /// used with different incompatible layouts.
 ///
-#[allow(clippy::too_many_lines)]
+
 pub fn run(model: &Model) -> Result<StructLayouts> {
     // Compute type dependency graph
     let graph = build_type_graph(model);

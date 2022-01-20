@@ -101,7 +101,6 @@ pub struct BuildArgs {
 }
 
 impl BuildArgs {
-    #[allow(clippy::too_many_lines)]
     pub fn add_args(&self, direct_args: &mut Vec<OsString>) {
         if self.quiet {
             direct_args.push(OsString::from("--quiet"));

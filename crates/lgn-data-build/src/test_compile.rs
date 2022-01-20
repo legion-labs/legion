@@ -450,7 +450,6 @@ fn unnamed_cache_use() {
 }
 
 #[test]
-#[allow(clippy::too_many_lines)]
 fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);

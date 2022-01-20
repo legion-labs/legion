@@ -288,8 +288,7 @@ fn update_transform(
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::too_many_lines
+    clippy::type_complexity
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,

@@ -1412,7 +1412,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
+
     fn reserve_entities_across_worlds() {
         let mut world_a = World::default();
         let mut world_b = World::default();

@@ -303,7 +303,7 @@ static SYSTEM_PARAM_ATTRIBUTE_NAME: &str = "system_param";
 
 /// Implement `SystemParam` to use a struct as a parameter in a system
 #[proc_macro_derive(SystemParam, attributes(system_param))]
-#[allow(clippy::too_many_lines)]
+
 pub fn derive_system_param(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let fields = match lgn_macro_utils::get_named_struct_fields(&ast.data) {

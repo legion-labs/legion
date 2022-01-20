@@ -57,7 +57,6 @@ impl lgn_data_model::TypeReflection for TestEntity {
     }
     #[allow(unused_mut)]
     #[allow(clippy::let_and_return)]
-    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestEntity,
@@ -349,7 +348,6 @@ impl lgn_data_model::TypeReflection for TestComponent {
     }
     #[allow(unused_mut)]
     #[allow(clippy::let_and_return)]
-    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestComponent,
@@ -413,7 +411,6 @@ impl lgn_data_model::TypeReflection for TestSubType1 {
     }
     #[allow(unused_mut)]
     #[allow(clippy::let_and_return)]
-    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestSubType1,
@@ -486,7 +483,6 @@ impl lgn_data_model::TypeReflection for TestSubType2 {
     }
     #[allow(unused_mut)]
     #[allow(clippy::let_and_return)]
-    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             TestSubType2,

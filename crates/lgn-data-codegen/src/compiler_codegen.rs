@@ -3,7 +3,6 @@ use quote::{format_ident, quote};
 
 use crate::reflection::DataContainerMetaInfo;
 
-#[allow(clippy::too_many_lines)]
 pub fn generate(
     data_container_info: &DataContainerMetaInfo,
     crate_name: &syn::Ident,

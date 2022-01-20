@@ -27,7 +27,6 @@ impl lgn_data_model::TypeReflection for StaticMeshComponent {
     }
     #[allow(unused_mut)]
     #[allow(clippy::let_and_return)]
-    #[allow(clippy::too_many_lines)]
     fn get_type_def() -> lgn_data_model::TypeDefinition {
         lgn_data_model::implement_struct_descriptor!(
             StaticMeshComponent,

@@ -42,7 +42,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-#[allow(clippy::too_many_lines)]
 fn generate_rust_pipeline_layout(
     ctx: &GeneratorContext<'_>,
     pipeline_layout_id: u32,

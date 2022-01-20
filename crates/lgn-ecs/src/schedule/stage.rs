@@ -782,7 +782,6 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
 }
 
 impl Stage for SystemStage {
-    #[allow(clippy::too_many_lines)]
     fn run(&mut self, world: &mut World) {
         if let Some(world_id) = self.world_id {
             assert!(
@@ -1452,7 +1451,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
+
     fn parallel_run_criteria() {
         let mut world = World::new();
 
@@ -1632,7 +1631,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
+
     fn ambiguity_detection() {
         use super::{find_ambiguities, SystemContainer};
 

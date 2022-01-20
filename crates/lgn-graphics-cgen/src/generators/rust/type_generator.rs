@@ -51,7 +51,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-#[allow(clippy::too_many_lines)]
 fn generate_rust_struct(
     ctx: &GeneratorContext<'_>,
     ty_id: u32,

@@ -18,7 +18,6 @@ pub struct EguiPass {
 }
 
 impl EguiPass {
-    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();

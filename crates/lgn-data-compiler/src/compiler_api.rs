@@ -306,7 +306,6 @@ impl CompilerDescriptor {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerError> {
     match command {
         Commands::Info => {

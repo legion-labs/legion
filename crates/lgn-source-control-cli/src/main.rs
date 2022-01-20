@@ -1,7 +1,7 @@
 //! Source control CLI
 
 // crate-specific lint exceptions:
-#![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
+#![allow(clippy::exit, clippy::wildcard_imports)]
 
 use std::path::{Path, PathBuf};
 

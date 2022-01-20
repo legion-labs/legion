@@ -40,7 +40,6 @@ impl<'frame> VulkanDescriptorSetWriter<'frame> {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 impl<'frame> DescriptorSetWriter<'frame> {
     #[allow(clippy::todo)]
     pub fn set_descriptors_by_index_platform(

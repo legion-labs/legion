@@ -74,7 +74,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
 
         action_step!(
             "Coverage",
-            "Performing a seperate \"cargo build\" before running tests and collecting coverage"
+            "Performing a separate \"cargo build\" before running tests and collecting coverage"
         );
 
         let mut direct_args = Vec::new();

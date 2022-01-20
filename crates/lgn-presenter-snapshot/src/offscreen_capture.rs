@@ -1,5 +1,3 @@
-#![allow(clippy::too_many_lines)]
-
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_renderer::{

@@ -16,7 +16,6 @@ pub struct Args {
     force: bool,
 }
 
-#[allow(clippy::too_many_lines)]
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();

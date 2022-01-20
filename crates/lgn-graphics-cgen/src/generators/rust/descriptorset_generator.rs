@@ -37,7 +37,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-#[allow(clippy::too_many_lines)]
 fn generate_rust_descriptorset(
     _ctx: &GeneratorContext<'_>,
     descriptor_set_id: u32,

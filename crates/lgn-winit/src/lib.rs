@@ -1,7 +1,7 @@
 //! Winit plugin
 
 // crate-specific lint exceptions:
-#![allow(clippy::too_many_lines)]
+// #![allow()]
 
 mod converters;
 mod winit_config;

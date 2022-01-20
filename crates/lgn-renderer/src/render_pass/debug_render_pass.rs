@@ -28,7 +28,6 @@ pub struct DebugRenderPass {
 }
 
 impl DebugRenderPass {
-    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
