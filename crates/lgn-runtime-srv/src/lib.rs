@@ -128,7 +128,7 @@ pub fn build_runtime(
             1.0 / 60.0,
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
-        .insert_resource(DefaultTaskPoolOptions::new(1, 4))
+        .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
