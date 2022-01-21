@@ -22,12 +22,15 @@ sccache = { version = "0.2.15", features = ["s3"] }
 # dependencies lints
 [lints.direct-dependencies]
 bans = [
-    { name = "clap", version = "2", reason = "use `clap` 3.0 or above" },
-    { name = "structopts", version = "*", reason = "use `clap` 3.0 or above" },
-    { name = "winapi", version = "*", reason = "use `windows`" },
-    #{ name = "lazy_static", version = "*", reason = "use once_cell instead" },
-    { name = "log", version = "*", reason = "use `lgn-tracing` instead", exceptions = [
+    { name = "clap", version = "2", reason = "use `clap` 3.0 or above, it supports the a derive based api" },
+    { name = "structopts", version = "*", reason = "use `clap` 3.0 or above, it supports the a derive based api" },
+    { name = "winapi", version = "*", reason = "use `windows` instead, it's Microsoft supported" },
+    #{ name = "lazy_static", version = "*", reason = "use once_cell instead, it's gonna be standarized one day" },
+    { name = "log", version = "*", reason = "use `lgn-tracing` instead, our logging solution", exceptions = [
         "lgn-tracing",
+        "lgn-telemetry-sink",
+    ] },
+    { name = "tracing", version = "*", reason = "use `lgn-tracing` instead, our tracing solution", exceptions = [
         "lgn-telemetry-sink",
     ] },
 ]
