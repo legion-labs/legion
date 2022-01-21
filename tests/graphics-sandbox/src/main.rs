@@ -17,7 +17,7 @@ use lgn_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, RotationComponent, StaticMesh,
     },
-    resources::{DefaultMeshId, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::components::Transform;
@@ -179,8 +179,9 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Sphere as usize,
+            DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
+            DefaultMaterialType::Default,
         ));
 
     // sphere 2
@@ -189,8 +190,9 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Sphere as usize,
+            DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
+            DefaultMaterialType::Default,
         ));
 
     // sphere 3
@@ -199,8 +201,9 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Sphere as usize,
+            DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
+            DefaultMaterialType::Default,
         ));
 
     // directional light
@@ -261,8 +264,9 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Plane as usize,
+            DefaultMeshType::Plane as usize,
             (255, 0, 0).into(),
+            DefaultMaterialType::Default,
         ))
         .insert(RotationComponent {
             rotation_speed: (0.4, 0.0, 0.0),
@@ -274,8 +278,9 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Cube as usize,
+            DefaultMeshType::Cube as usize,
             (0, 255, 0).into(),
+            DefaultMaterialType::Default,
         ));
 
     // pyramid
@@ -284,8 +289,9 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshId::Pyramid as usize,
+            DefaultMeshType::Pyramid as usize,
             (0, 0, 255).into(),
+            DefaultMaterialType::Default,
         ));
 
     // omnidirectional light

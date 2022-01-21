@@ -16,7 +16,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshId, DefaultMeshes},
+    resources::{DefaultMeshType, DefaultMeshes},
     RenderContext, Renderer,
 };
 
@@ -163,7 +163,7 @@ impl DebugRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         render_mesh(
-            DefaultMeshId::GroundPlane as u32,
+            DefaultMeshType::GroundPlane as u32,
             &Mat4::IDENTITY,
             Vec4::ZERO,
             cmd_buffer,
@@ -341,7 +341,7 @@ fn render_aabb_for_mesh(
         .with_scale(delta);
 
     render_mesh(
-        DefaultMeshId::WireframeCube as u32,
+        DefaultMeshType::WireframeCube as u32,
         &aabb_transform.compute_matrix(),
         Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
         cmd_buffer,

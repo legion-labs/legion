@@ -57,16 +57,29 @@ impl InstancePushConstantData {
     }
 
     //
-    // member : is_picked
+    // member : material_offset
     // offset : 8
     // size : 4
     //
-    pub fn set_is_picked(&mut self, value: Uint1) {
+    pub fn set_material_offset(&mut self, value: Uint1) {
         self.set(8, value);
     }
 
-    pub fn is_picked(&self) -> Uint1 {
+    pub fn material_offset(&self) -> Uint1 {
         self.get(8)
+    }
+
+    //
+    // member : is_picked
+    // offset : 12
+    // size : 4
+    //
+    pub fn set_is_picked(&mut self, value: Uint1) {
+        self.set(12, value);
+    }
+
+    pub fn is_picked(&self) -> Uint1 {
+        self.get(12)
     }
 
     //
@@ -108,6 +121,7 @@ impl Default for InstancePushConstantData {
         let mut ret = Self { data: [0; 32] };
         ret.set_vertex_offset(Uint1::default());
         ret.set_world_offset(Uint1::default());
+        ret.set_material_offset(Uint1::default());
         ret.set_is_picked(Uint1::default());
         ret.set_color(Float4::default());
         ret

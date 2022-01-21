@@ -26,6 +26,7 @@ pub use render_handle::*;
 
 mod render_context;
 pub use render_context::*;
+use resources::{DefaultMaterials, MaterialManager};
 
 pub mod resources;
 
@@ -53,7 +54,7 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::{DefaultMeshId, DefaultMeshes, MetaCubePlugin},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, MetaCubePlugin},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -94,7 +95,7 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
-        let default_meshes = DefaultMeshes::new(&renderer);
+        let mut material_amanager = MaterialManager::new(renderer.static_buffer());
 
         app.add_stage_after(
             CoreStage::PostUpdate,
@@ -118,8 +119,11 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(init_manipulation_manager);
 
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(default_meshes);
+        app.insert_resource(DefaultMeshes::new(&renderer));
+        app.insert_resource(DefaultMaterials::new(&mut material_amanager));
+        app.insert_resource(material_amanager);
         app.insert_resource(renderer);
+
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightingManager>();
         app.add_startup_system(create_camera);
@@ -139,6 +143,7 @@ impl Plugin for RendererPlugin {
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_transform);
+        app.add_system_to_stage(RenderStage::Prepare, update_materials);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
 
@@ -280,8 +285,26 @@ fn update_transform(
         }
     }
 
-    renderer.test_add_update_jobs(updater.job_blocks());
+    renderer.add_update_job_block(updater.job_blocks());
     renderer.release_transform_data(gpu_data);
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_materials(
+    renderer: ResMut<'_, Renderer>,
+    material_manager: ResMut<'_, MaterialManager>,
+    default_materials: ResMut<'_, DefaultMaterials>,
+    mut query: Query<'_, '_, &mut StaticMesh, Changed<StaticMesh>>,
+) {
+    material_manager.update_gpu_data(&renderer);
+
+    for mut mesh in query.iter_mut() {
+        let material_id = default_materials.get_material_id(mesh.material_type);
+        if let Some(material) = material_manager.get_material(material_id) {
+            mesh.material_offset = material.gpu_offset();
+        }
+    }
 }
 
 #[span_fn]
@@ -343,8 +366,9 @@ fn render_update(
 
     let mut light_picking_mesh = StaticMesh::from_default_meshes(
         default_meshes.as_ref(),
-        DefaultMeshId::Sphere as usize,
+        DefaultMeshType::Sphere as usize,
         Color::default(),
+        DefaultMaterialType::Default,
     );
     light_picking_mesh.world_offset = 0xffffffff; // will force the shader to use custom made world matrix
 

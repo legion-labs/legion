@@ -7,6 +7,7 @@
     struct InstancePushConstantData {
         uint vertex_offset;
         uint world_offset;
+        uint material_offset;
         uint is_picked;
         float4 color;
     };

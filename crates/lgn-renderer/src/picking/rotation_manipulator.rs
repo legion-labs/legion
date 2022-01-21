@@ -4,7 +4,7 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::CameraComponent,
-    resources::{DefaultMeshId, DefaultMeshes},
+    resources::{DefaultMeshType, DefaultMeshes},
 };
 
 use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingManager};
@@ -62,7 +62,7 @@ impl RotationManipulator {
                 0,
                 false,
                 Transform::from_matrix(rotate_x_pointer),
-                DefaultMeshId::RotationRing,
+                DefaultMeshType::RotationRing,
                 commands,
                 &mut picking_block,
                 default_meshes,
@@ -73,7 +73,7 @@ impl RotationManipulator {
                 1,
                 false,
                 Transform::from_matrix(rotate_y_pointer),
-                DefaultMeshId::RotationRing,
+                DefaultMeshType::RotationRing,
                 commands,
                 &mut picking_block,
                 default_meshes,
@@ -84,7 +84,7 @@ impl RotationManipulator {
                 2,
                 false,
                 Transform::from_matrix(Mat4::IDENTITY),
-                DefaultMeshId::RotationRing,
+                DefaultMeshType::RotationRing,
                 commands,
                 &mut picking_block,
                 default_meshes,

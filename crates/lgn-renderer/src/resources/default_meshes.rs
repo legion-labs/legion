@@ -17,7 +17,7 @@ impl Drop for DefaultMeshes {
     }
 }
 
-pub enum DefaultMeshId {
+pub enum DefaultMeshType {
     Plane = 0,
     Cube,
     Pyramid,
@@ -66,7 +66,7 @@ impl DefaultMeshes {
             offset += mesh.vertices.len() as u64 * 4;
         }
 
-        renderer.test_add_update_jobs(updater.job_blocks());
+        renderer.add_update_job_block(updater.job_blocks());
 
         Self {
             static_buffer,

@@ -33,3 +33,6 @@ pub(crate) use picking_push_constant_data::*;
 pub(crate) mod instance_push_constant_data;
 #[allow(unused_imports)]
 pub(crate) use instance_push_constant_data::*;
+pub(crate) mod material_data;
+#[allow(unused_imports)]
+pub(crate) use material_data::*;

@@ -204,7 +204,7 @@ impl Renderer {
         &self.static_buffer
     }
 
-    pub fn test_add_update_jobs(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+    pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
         self.static_buffer.add_update_job_block(job_blocks);
     }
 

@@ -133,6 +133,7 @@ impl TmpRenderPass {
 
             push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
             push_constant_data.set_world_offset(static_mesh.world_offset.into());
+            push_constant_data.set_material_offset(static_mesh.material_offset.into());
             push_constant_data.set_is_picked(if picked_component.is_some() { 1 } else { 0 }.into());
             push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
 
