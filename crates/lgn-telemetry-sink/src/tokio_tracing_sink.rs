@@ -1,6 +1,14 @@
 use lgn_tracing::{dispatch::log_interop, logs::LogMetadata, Level};
-use tracing::{span::Attributes, subscriber, Event, Id, Subscriber};
+use std::fmt::Write;
+use tracing::{
+    field::Field,
+    span::{Attributes, Id, Record},
+    subscriber, Event, Subscriber,
+};
 use tracing_subscriber::{layer::Context, prelude::*, EnvFilter, Layer, Registry};
+
+// References:
+// * https://docs.rs/tracing/latest/tracing/subscriber/index.html
 
 #[derive(Default)]
 pub(crate) struct TelemetryLayer {}
@@ -25,11 +33,27 @@ impl<S> Layer<S> for TelemetryLayer
 where
     S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
-    fn on_new_span(&self, _attrs: &Attributes<'_>, _id: &Id, _ctx: Context<'_, S>) {
-        // panic!("event on_new_span");
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        let mut recorder = Recorder::default();
+        attrs.record(&mut recorder);
+
+        if let Some(span_ref) = ctx.span(id) {
+            span_ref.extensions_mut().insert(recorder);
+        }
+    }
+
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        if let Some(span_ref) = ctx.span(id) {
+            if let Some(recorder) = span_ref.extensions_mut().get_mut::<Recorder>() {
+                values.record(recorder);
+            }
+        }
     }
 
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+        let mut recorder = Recorder::default();
+        event.record(&mut recorder);
+
         let meta = event.metadata();
         let level = match *meta.level() {
             ::tracing::Level::TRACE => Level::Trace,
@@ -38,6 +62,8 @@ where
             ::tracing::Level::WARN => Level::Warn,
             ::tracing::Level::ERROR => Level::Error,
         };
+        let message = format!("{}\0", recorder);
+        eprintln!("{}", message);
         let args = format_args!("");
         // TODO extract fields
         // for field in event.fields() {
@@ -53,5 +79,42 @@ where
             line: meta.line().unwrap_or(0),
         };
         log_interop(&log_desc, &args);
+    }
+}
+
+#[derive(Default)]
+struct Recorder {
+    message: String,
+    first: bool,
+}
+
+impl tracing::field::Visit for Recorder {
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        if field.name() == "message" {
+            if !self.message.is_empty() {
+                self.message = format!("{:?}\n{}", value, self.message);
+            } else {
+                self.message = format!("{:?}", value);
+            }
+        } else {
+            if self.first {
+                // following args
+                write!(self.message, " ").unwrap();
+            } else {
+                // first arg
+                self.first = true;
+            }
+            write!(self.message, "{} = {:?};", field.name(), value).unwrap();
+        }
+    }
+}
+
+impl std::fmt::Display for Recorder {
+    fn fmt(&self, mut f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if !self.message.is_empty() {
+            write!(&mut f, " {}", self.message)
+        } else {
+            Ok(())
+        }
     }
 }
