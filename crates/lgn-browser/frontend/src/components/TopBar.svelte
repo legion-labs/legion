@@ -137,19 +137,19 @@
       {#if userInitials}
         {userInitials}
       {:else}
-        <Icon icon="mdi:account-circle" />
+        <Icon icon="ic:account-circle" />
       {/if}
     </div>
     {#if window.__TAURI__}
       <div class="window-decorations">
         <div class="window-decoration" bind:this={topBarMinimize}>
-          <Icon icon="mdi:window-minimize" />
+          <Icon icon="ic:baseline-minimize" />
         </div>
         <div class="window-decoration" bind:this={topBarMaximize}>
-          <Icon icon="mdi:window-maximize" />
+          <Icon icon="ic:outline-square" />
         </div>
         <div class="window-decoration danger" bind:this={topBarClose}>
-          <Icon icon="mdi:window-close" />
+          <Icon icon="ic:baseline-close" />
         </div>
       </div>
     {/if}
