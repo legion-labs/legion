@@ -258,41 +258,70 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
 }
 
 fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
-    // plane
     commands
         .spawn()
-        .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
+        .insert(Transform::from_xyz(-1.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshType::Plane as usize,
+            DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
-            DefaultMaterialType::Default,
+            DefaultMaterialType::Gold,
         ))
         .insert(RotationComponent {
             rotation_speed: (0.4, 0.0, 0.0),
         });
 
-    // cube
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshType::Cube as usize,
+            DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
-            DefaultMaterialType::Default,
+            DefaultMaterialType::Silver,
         ));
 
-    // pyramid
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(Transform::from_xyz(1.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshType::Pyramid as usize,
+            DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
-            DefaultMaterialType::Default,
+            DefaultMaterialType::Bronze,
         ));
+
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(2.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Sphere as usize,
+            (0, 0, 255).into(),
+            DefaultMaterialType::BluePlastic,
+        ));
+
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-2.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Sphere as usize,
+            (0, 0, 255).into(),
+            DefaultMaterialType::RoughMetal,
+        ));
+
+    // directional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Directional,
+            radiance: 10.0,
+            color: Vec3::new(0.5, 0.5, 0.5),
+            enabled: true,
+            ..LightComponent::default()
+        });
 
     // omnidirectional light
     commands
@@ -300,8 +329,8 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(1.0, 1.0, 0.0))
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
-            radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            radiance: 10.0,
+            color: Vec3::new(0.5, 0.5, 0.5),
             enabled: true,
             ..LightComponent::default()
         });

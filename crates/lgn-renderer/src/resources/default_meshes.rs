@@ -43,7 +43,7 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_torus(0.1, 32, 0.5, 128),
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
-            StaticMeshRenderData::new_sphere(0.25, 20, 20),
+            StaticMeshRenderData::new_sphere(0.25, 64, 64),
             StaticMeshRenderData::new_arrow(),
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];

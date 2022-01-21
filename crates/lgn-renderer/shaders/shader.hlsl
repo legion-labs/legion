@@ -83,7 +83,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
 
     MaterialData material = static_buffer.Load<MaterialData>(push_constant.material_offset);
 
-    float3 color = ambient_color;
+    float3 color = (float3)0.0; // ambient_color;
     for (uint i = 0; i < lighting_data.num_directional_lights; i++)
     {
         DirectionalLight light = directional_lights[i];
@@ -102,6 +102,8 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         color += CalculateIncidentSpotLight(light, vertex_out.pos, vertex_out.normal, vertex_out.tangent, cross(vertex_out.normal, vertex_out.tangent), material);
     }
 
+    //color = float3(pow(color.x, 1.0/2.2), pow(color.y, 1.0/2.2), pow(color.z, 1.0/2.2));
+    
     float4 result = float4(color, 1.0);
     float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
 

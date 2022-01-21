@@ -1,6 +1,6 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/material_data.hlsl"
 
-const float PI = 3.14159265358979323846;
+//const float PI = 3.14159265358979323846;
 
 float SchlickFresnel(float u)
 {
@@ -11,18 +11,18 @@ float SchlickFresnel(float u)
 
 float GTR1(float NdotH, float a)
 {
-    if (a >= 1) return 1 / PI;
+    if (a >= 1) return 1 / 3.14159265358979323846;
 
     float a2 = a * a;
     float t = 1 + (a2 - 1) * NdotH * NdotH;
-    return (a2 - 1) / (PI * log(a2) * t);
+    return (a2 - 1) / (3.14159265358979323846 * log(a2) * t);
 }
 
 float GTR2(float NdotH, float a)
 {
     float a2 = a * a;
     float t = 1 + (a2 - 1) * NdotH * NdotH;
-    return a2 / (PI * t * t);
+    return a2 / (3.14159265358979323846 * t * t);
 }
 
 float GTR2_aniso(float NdotH, float HdotX, float HdotY, float ax, float ay)
@@ -30,7 +30,7 @@ float GTR2_aniso(float NdotH, float HdotX, float HdotY, float ax, float ay)
     float x2 = (HdotX / ax) * (HdotX / ax);
     float y2 = (HdotY / ay) * (HdotY / ay);
 
-    return 1 / (PI * ax*ay * pow(x2 + y2 + NdotH*NdotH, 2));
+    return 1 / (3.14159265358979323846 * ax*ay * pow(x2 + y2 + NdotH*NdotH, 2));
 }
 
 float smithG_GGX(float NdotV, float alphaG)
@@ -45,7 +45,7 @@ float smithG_GGX_aniso(float NdotV, float VdotX, float VdotY, float ax, float ay
     float dotX2 = (VdotX * ax) * (VdotX * ax);
     float dotY2 = (VdotY * ay) * (VdotY * ay);
 
-    return 1 / (NdotV + pow(dotX2 + dotY2 + NdotV * NdotV, 2));
+    return 1 / (NdotV + sqrt(dotX2 + dotY2 + NdotV * NdotV));
 }
 
 float3 mon2lin(float3 x)
@@ -90,8 +90,7 @@ float3 BRDF(float3 L, float3 V, float3 N, float3 X, float3 Y, MaterialData mater
     float Ds = GTR2_aniso(NdotH, dot(H, X), dot(H, Y), ax, ay);
     float FH = SchlickFresnel(LdotH);
     float3 Fs = lerp(Cspec0, (float3)1.0, FH);
-    float Gs;
-    Gs  = smithG_GGX_aniso(NdotL, dot(L, X), dot(L, Y), ax, ay);
+    float Gs = smithG_GGX_aniso(NdotL, dot(L, X), dot(L, Y), ax, ay);
     Gs *= smithG_GGX_aniso(NdotV, dot(V, X), dot(V, Y), ax, ay);
 
     // sheen
@@ -102,8 +101,8 @@ float3 BRDF(float3 L, float3 V, float3 N, float3 X, float3 Y, MaterialData mater
     float Fr = lerp(0.04, 1.0, FH);
     float Gr = smithG_GGX(NdotL, 0.25) * smithG_GGX(NdotV, 0.25); 
 
-    return ((1.0/ PI) * lerp(Fd, ss, material.subsurface)*Cdlin + Fsheen)
+    return ((1.0/ 3.14159265358979323846) * lerp(Fd, ss, material.subsurface)*Cdlin + Fsheen)
         * (1.0 - material.metallic)
-        + Gs * Fs * Ds 
+        + Gs * Fs * Ds
         + 0.25 * material.clearcoat * Gr * Fr * Dr;
 }

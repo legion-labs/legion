@@ -8,6 +8,8 @@ pub enum DefaultMaterialType {
     Gold,
     Silver,
     Bronze,
+    BluePlastic,
+    RoughMetal,
 }
 
 pub struct DefaultMaterials {
@@ -31,11 +33,26 @@ impl DefaultMaterials {
         bronze.metallic = 1.0;
         bronze.roughness = 0.38;
 
+        let mut blue_plastic = Material::default();
+        blue_plastic.base_color = Color::from((20, 20, 150));
+        blue_plastic.metallic = 0.0;
+        blue_plastic.roughness = 0.15;
+
+        let mut rough_metal = Material::default();
+        rough_metal.base_color = Color::from((125, 60, 20));
+        rough_metal.metallic = 1.0;
+        rough_metal.specular = 0.2;
+        rough_metal.roughness = 0.5;
+
         let default_material_ids = vec![
             material_manager.new_material(None).material_id,
             material_manager.new_material(Some(gold)).material_id,
             material_manager.new_material(Some(silver)).material_id,
             material_manager.new_material(Some(bronze)).material_id,
+            material_manager
+                .new_material(Some(blue_plastic))
+                .material_id,
+            material_manager.new_material(Some(rough_metal)).material_id,
         ];
 
         Self {
