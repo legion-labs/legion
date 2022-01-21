@@ -314,20 +314,14 @@ export async function userAuth({ forceAuth }: { forceAuth: boolean }) {
   }
 
   try {
-    const userInfoSet = await getUserInfo();
-
-    userInfo.data.set(userInfoSet);
+    await userInfo.run(getUserInfo);
 
     // TODO: The returned timeout id can and should be freed.
     // Schedule refresh token.
-    scheduleRefreshClientTokenSet(awsCognitoTokenCache);
-
-    return userInfoSet;
+    await scheduleRefreshClientTokenSet(awsCognitoTokenCache);
   } catch {
     if (forceAuth) {
-      startUserAuth();
+      await startUserAuth();
     }
-
-    return null;
   }
 }
