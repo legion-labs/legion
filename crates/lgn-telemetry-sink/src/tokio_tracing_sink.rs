@@ -1,6 +1,8 @@
 use lgn_tracing::{dispatch::log_interop, logs::LogMetadata, Level};
+use once_cell::sync::Lazy;
 use std::fmt::Write;
 use tracing::{
+    dispatcher::SetGlobalDefaultError,
     field::Field,
     span::{Attributes, Id, Record},
     subscriber, Event, Subscriber,
@@ -15,17 +17,19 @@ pub(crate) struct TelemetryLayer {}
 
 impl TelemetryLayer {
     pub(crate) fn setup() {
-        let default_filter = format!("{}", ::tracing::Level::INFO);
-        let filter_layer = EnvFilter::try_from_default_env()
-            .or_else(|_| EnvFilter::try_new(&default_filter))
-            .unwrap();
-        let subscriber = Registry::default().with(filter_layer);
+        static INIT_RESULT: Lazy<Result<(), SetGlobalDefaultError>> = Lazy::new(|| {
+            let default_filter = format!("{}", ::tracing::Level::INFO);
+            let filter_layer = EnvFilter::try_from_default_env()
+                .or_else(|_| EnvFilter::try_new(&default_filter))
+                .unwrap();
+            let subscriber = Registry::default().with(filter_layer);
 
-        let lgn_telemetry_layer = Self::default();
-        let subscriber = subscriber.with(lgn_telemetry_layer);
+            let lgn_telemetry_layer = TelemetryLayer::default();
+            let subscriber = subscriber.with(lgn_telemetry_layer);
 
-        subscriber::set_global_default(subscriber)
-            .expect("Tokio default tracing subscriber already set");
+            subscriber::set_global_default(subscriber)
+        });
+        assert!(INIT_RESULT.is_ok());
     }
 }
 

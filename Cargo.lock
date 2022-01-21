@@ -5049,6 +5049,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-tracing-transit",
  "log",
+ "once_cell",
  "prost",
  "simple_logger",
  "tokio",
