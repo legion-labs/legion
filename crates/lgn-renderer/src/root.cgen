@@ -124,6 +124,7 @@ struct InstancePushConstantData {
     material_offset: Uint1,
     is_picked: Uint1,
     color: Float4,
+    color_blend: Float1,
 }
 
 #[PipelineLayout]

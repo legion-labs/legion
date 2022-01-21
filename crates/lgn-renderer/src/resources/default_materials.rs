@@ -39,7 +39,7 @@ impl DefaultMaterials {
         blue_plastic.roughness = 0.15;
 
         let mut rough_metal = Material::default();
-        rough_metal.base_color = Color::from((125, 60, 20));
+        rough_metal.base_color = Color::from((127, 64, 25));
         rough_metal.metallic = 1.0;
         rough_metal.specular = 0.2;
         rough_metal.roughness = 0.5;

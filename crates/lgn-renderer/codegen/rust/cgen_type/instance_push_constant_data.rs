@@ -9,15 +9,15 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "InstancePushConstantData",
     id: 23,
-    size: 32,
+    size: 36,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<InstancePushConstantData>(), 32);
+static_assertions::const_assert_eq!(mem::size_of::<InstancePushConstantData>(), 36);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct InstancePushConstantData {
-    data: [u8; 32],
+    data: [u8; 36],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -95,6 +95,19 @@ impl InstancePushConstantData {
         self.get(16)
     }
 
+    //
+    // member : color_blend
+    // offset : 32
+    // size : 4
+    //
+    pub fn set_color_blend(&mut self, value: Float1) {
+        self.set(32, value);
+    }
+
+    pub fn color_blend(&self) -> Float1 {
+        self.get(32)
+    }
+
     #[allow(unsafe_code)]
     fn set<T: Copy>(&mut self, offset: usize, value: T) {
         unsafe {
@@ -118,12 +131,13 @@ impl InstancePushConstantData {
 
 impl Default for InstancePushConstantData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 32] };
+        let mut ret = Self { data: [0; 36] };
         ret.set_vertex_offset(Uint1::default());
         ret.set_world_offset(Uint1::default());
         ret.set_material_offset(Uint1::default());
         ret.set_is_picked(Uint1::default());
         ret.set_color(Float4::default());
+        ret.set_color_blend(Float1::default());
         ret
     }
 }

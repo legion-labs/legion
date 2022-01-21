@@ -106,6 +106,8 @@ fn main() {
             .add_startup_system(register_asset_loaders);
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
+    } else if args.setup_name.eq("material_test") {
+        app.add_startup_system(init_material_scene);
     } else if args.meta_cube_size == 0 {
         app.add_startup_system(init_scene);
     }
@@ -257,7 +259,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(-1.0, 0.0, 0.0))
@@ -317,11 +319,58 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(0.0, 1.0, 0.0))
         .insert(LightComponent {
             light_type: LightType::Directional,
-            radiance: 10.0,
+            radiance: 20.0,
             color: Vec3::new(0.5, 0.5, 0.5),
             enabled: true,
             ..LightComponent::default()
         });
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 20.0,
+            color: Vec3::new(0.5, 0.5, 0.5),
+            enabled: true,
+            ..LightComponent::default()
+        });
+}
+
+fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Plane as usize,
+            (255, 0, 0).into(),
+            DefaultMaterialType::Default,
+        ))
+        .insert(RotationComponent {
+            rotation_speed: (0.4, 0.0, 0.0),
+        });
+
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Cube as usize,
+            (0, 255, 0).into(),
+            DefaultMaterialType::Default,
+        ));
+
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Pyramid as usize,
+            (0, 0, 255).into(),
+            DefaultMaterialType::Default,
+        ));
 
     // omnidirectional light
     commands
