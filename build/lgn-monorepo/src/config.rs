@@ -114,7 +114,7 @@ pub struct DirectDependencies {
 pub struct DependencyBan {
     pub name: String,
     pub version: String,
-    pub suggestion: String,
+    pub reason: String,
     pub exceptions: Option<Vec<String>>,
 }
 

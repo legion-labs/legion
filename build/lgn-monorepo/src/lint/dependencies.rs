@@ -17,7 +17,7 @@ pub fn run(ctx: &Context) -> Result<()> {
             (
                 dep.name.as_str(),
                 VersionReq::parse(&dep.version),
-                dep.suggestion.clone(),
+                dep.reason.clone(),
                 dep.exceptions
                     .as_ref()
                     .map_or(&[] as &[String], Vec::as_slice),
@@ -44,7 +44,7 @@ pub fn run(ctx: &Context) -> Result<()> {
     }
     for package in workspace.iter() {
         for plink in package.direct_links() {
-            for (name, version, suggestion, exceptions) in &bans {
+            for (name, version, reason, exceptions) in &bans {
                 let dep = plink.to();
                 if *name == dep.name()
                     && version.as_ref().unwrap().matches(dep.version())
@@ -55,7 +55,7 @@ pub fn run(ctx: &Context) -> Result<()> {
                         dep.name(),
                         dep.version(),
                         package.name(),
-                        suggestion,
+                        reason,
                     )));
                 }
             }
