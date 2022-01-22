@@ -3,7 +3,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &["./protos/runtime.proto"];
     tonic_build::configure()
         .out_dir(&out_dir)
-        .compile(protos, &["."])?;
+        .compile(protos, &["protos"])?;
 
     for proto in protos {
         println!("cargo:rerun-if-changed={}", proto);
