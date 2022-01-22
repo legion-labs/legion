@@ -3976,15 +3976,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-build-utils-proto"
-version = "0.1.0"
-dependencies = [
- "lgn-build-utils",
- "tonic-build",
- "which",
-]
-
-[[package]]
 name = "lgn-build-utils-web"
 version = "0.1.0"
 dependencies = [
