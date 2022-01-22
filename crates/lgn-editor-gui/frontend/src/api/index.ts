@@ -3,11 +3,11 @@ import {
   GrpcWebImpl as EditorResourceBrowserWebImpl,
   ResourceBrowserClientImpl,
   ResourceDescription,
-} from "@lgn/proto-editor/dist/protos/resource_browser";
+} from "@lgn/proto-editor/dist/resource_browser";
 import {
   GrpcWebImpl as EditorPropertyInspectorWebImpl,
   PropertyInspectorClientImpl,
-} from "@lgn/proto-editor/dist/protos/property_inspector";
+} from "@lgn/proto-editor/dist/property_inspector";
 import {
   formatProperties,
   ResourcePropertyWithValue,

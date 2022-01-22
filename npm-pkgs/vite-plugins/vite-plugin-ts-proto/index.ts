@@ -81,9 +81,10 @@ async function generateProtoForModule(
   }
 ) {
   const cwd = path.resolve(baseDir, "node_modules", module.name);
+  const protos = path.resolve(cwd, "protos");
 
   const globMatches = await new Promise<string[]>((resolve, reject) =>
-    glob(module.glob, { cwd }, (error, matches) =>
+    glob(module.glob, { cwd: protos }, (error, matches) =>
       error ? reject(error) : resolve(matches)
     )
   );
@@ -99,11 +100,11 @@ async function generateProtoForModule(
   const tsProtoOut = path.resolve(cwd, "dist");
 
   await mkdirp(tsProtoOut);
-
   const args = [
     `--plugin=${tsProtoPath}`,
     `--ts_proto_out=${tsProtoOut}`,
-    `--proto_path=${cwd}`,
+    //`--proto_path=${cwd}`,
+    `--proto_path=${protos}`,
     // TODO: All the options are hardcoded for now but it's easy to expose them via the `ModuleConfig` type
     "--ts_proto_opt=esModuleInterop=true",
     "--ts_proto_opt=outputClientImpl=grpc-web",

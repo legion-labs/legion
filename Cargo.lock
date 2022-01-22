@@ -5003,12 +5003,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "lgn-build-utils",
- "lgn-build-utils-proto",
  "lz4",
  "prost",
  "tokio",
  "tonic",
+ "tonic-build",
 ]
 
 [[package]]

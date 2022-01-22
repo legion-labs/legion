@@ -15,8 +15,8 @@ export default defineConfig({
     svelte(),
     viteTsProto({
       modules: [
-        { name: "@lgn/proto-editor", glob: "protos/*.proto" },
-        { name: "@lgn/proto-streaming", glob: "protos/*.proto" },
+        { name: "@lgn/proto-editor", glob: "*.proto" },
+        { name: "@lgn/proto-streaming", glob: "*.proto" },
       ],
     }),
     // viteWasmPack({
