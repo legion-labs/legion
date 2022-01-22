@@ -11,7 +11,7 @@
   "types": "index.d.ts",
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "postinstall": "tsc"
+    "postinstall": "tsc --build"
   },
   "devDependencies": {
     "@types/glob": "^7.2.0",
