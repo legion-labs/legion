@@ -1,8 +1,0 @@
-<CGen xmlns="cgen">
-
-    <StructDef Name="LayoutA" >
-        <Member Name="a" Type="float"/>
-        <Member Name="b" Type="float4"/>
-    </StructDef>
-
-</CGen>
