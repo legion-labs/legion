@@ -1,12 +1,7 @@
 //! Scripting library - currently using the MUN language
 
-#[path = "../codegen/offline/mod.rs"]
-#[cfg(feature = "offline")]
-pub mod offline;
-
-#[path = "../codegen/runtime/mod.rs"]
-#[cfg(feature = "runtime")]
-pub mod runtime;
+// generated from def\script.rs
+include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 pub mod components;
 

@@ -32,5 +32,3 @@ lgn-data-codegen = { path = "../lgn-data-codegen", version = "0.1.0" }
 [features]
 offline = []
 runtime = []
-run-codegen = []
-run-codegen-validation = ["run-codegen"]

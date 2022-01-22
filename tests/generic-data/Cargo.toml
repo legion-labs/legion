@@ -38,8 +38,6 @@ generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
 [features]
 offline = []
 runtime = []
-run-codegen = []
-run-codegen-validation = ["run-codegen"]
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["lgn-renderer", "lgn-transform"]
