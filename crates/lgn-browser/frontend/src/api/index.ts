@@ -1,7 +1,7 @@
 import {
   StreamerClientImpl,
   GrpcWebImpl as StreamingGrpcWebImpl,
-} from "@lgn/proto-streaming/dist/streaming";
+} from "@lgn/proto-streaming/dist/protos/streaming";
 import { bytesToJson, jsonToBytes } from "../lib/api";
 import log from "../lib/log";
 

@@ -15,7 +15,7 @@ export default defineConfig({
     viteTsProto({
       modules: [
         { name: "@lgn/proto-runtime", glob: "protos/*.proto" },
-        { name: "@lgn/proto-streaming", glob: "*.proto" },
+        { name: "@lgn/proto-streaming", glob: "protos/*.proto" },
       ],
     }),
   ],
