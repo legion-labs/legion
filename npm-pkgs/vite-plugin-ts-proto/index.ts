@@ -142,7 +142,7 @@ export default function vitePluginProtoPack({
   quiet = false,
 }: Config) {
   return {
-    name: "vite-plugin-ts-proto",
+    name: "@lgn/vite-plugin-ts-proto",
     async buildStart() {
       const baseDir = process.cwd();
 

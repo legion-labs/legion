@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-ts-proto",
+  "name": "@lgn/vite-plugin-ts-proto",
   "version": "0.1.0",
   "description": "Legion's monorepo",
   "repository": "https://github.com/legion-labs/legion",

@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-wasm",
+  "name": "@lgn/vite-plugin-wasm",
   "version": "0.1.0",
   "description": "Legion's monorepo",
   "repository": "https://github.com/legion-labs/legion",
