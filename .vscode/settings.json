@@ -9,6 +9,7 @@
   "rust-analyzer.diagnostics.disabled": [
     "unresolved-macro-call"
   ],
+  "rust-analyzer.cargo.runBuildScripts": true,
   "css.lint.unknownAtRules": "ignore",
   "[html]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"

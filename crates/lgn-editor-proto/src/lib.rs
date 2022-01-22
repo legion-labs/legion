@@ -7,16 +7,18 @@
     clippy::wildcard_imports,
     clippy::similar_names
 )]
+pub mod editor {
+    tonic::include_proto!("editor");
+}
 
-#[path = "../codegen/editor.rs"]
-mod editor;
-pub use editor::*;
+pub mod resource_browser {
+    tonic::include_proto!("resource_browser");
+}
 
-#[path = "../codegen/resource_browser.rs"]
-pub mod resource_browser;
+pub mod property_inspector {
+    tonic::include_proto!("property_inspector");
+}
 
-#[path = "../codegen/property_inspector.rs"]
-pub mod property_inspector;
-
-#[path = "../codegen/scene_explorer.rs"]
-pub mod scene_explorer;
+pub mod scene_explorer {
+    tonic::include_proto!("scene_explorer");
+}

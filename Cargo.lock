@@ -4464,11 +4464,10 @@ name = "lgn-editor-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "lgn-build-utils",
- "lgn-build-utils-proto",
  "prost",
  "tokio",
  "tonic",
+ "tonic-build",
 ]
 
 [[package]]

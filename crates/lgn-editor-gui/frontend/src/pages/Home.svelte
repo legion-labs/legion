@@ -9,7 +9,7 @@
   import { getAllResources, getResourceProperties } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
-  import { ResourceDescription } from "@lgn/proto-editor/dist/editor";
+  import { ResourceDescription } from "@lgn/proto-editor/dist/protos/editor";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";

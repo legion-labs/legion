@@ -6,7 +6,7 @@ use lgn_data_model::{
 };
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::{DataManager, LockContext, Transaction, UpdatePropertyOperation};
-use lgn_editor_proto::{
+use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
     RedoTransactionResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,
