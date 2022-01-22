@@ -14,7 +14,7 @@ export default defineConfig({
     svelte(),
     viteTsProto({
       modules: [
-        { name: "@lgn/proto-runtime", glob: "*.proto" },
+        { name: "@lgn/proto-runtime", glob: "protos/*.proto" },
         { name: "@lgn/proto-streaming", glob: "*.proto" },
       ],
     }),

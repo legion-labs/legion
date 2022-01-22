@@ -7,7 +7,6 @@
     clippy::wildcard_imports,
     clippy::similar_names
 )]
-
-#[path = "../codegen/runtime.rs"]
-mod runtime;
-pub use runtime::*;
+mod runtime {
+    tonic::include_proto!("runtime");
+}
