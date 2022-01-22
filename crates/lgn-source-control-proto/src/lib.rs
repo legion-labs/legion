@@ -9,6 +9,7 @@
     clippy::use_self
 )]
 
-#[path = "../codegen/source_control.rs"]
-mod source_control;
+mod source_control {
+    tonic::include_proto!("source_control");
+}
 pub use source_control::*;
