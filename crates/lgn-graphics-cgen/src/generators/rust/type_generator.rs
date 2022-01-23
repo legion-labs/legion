@@ -2,10 +2,7 @@ use heck::ToSnakeCase;
 
 use crate::{
     db::CGenType,
-    generators::{
-        file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
-        GeneratorContext,
-    },
+    generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
     struct_layout::StructLayout,
 };
 
@@ -64,11 +61,10 @@ fn generate_rust_struct(
     writer.add_line("use std::mem;");
     writer.new_line();
 
-    writer.add_line("use lgn_graphics_cgen_runtime::{");
-    writer.indent();
-    writer.add_line("CGenTypeDef,");
-    writer.unindent();
-    writer.add_line("};");
+    {
+        let mut writer = writer.new_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
+        writer.add_line("CGenTypeDef,");
+    }
     writer.new_line();
 
     // local dependencies
@@ -99,37 +95,46 @@ fn generate_rust_struct(
 
     // write type def
     {
-        writer.add_line("static TYPE_DEF: CGenTypeDef = CGenTypeDef{ ");
-        writer.indent();
-        writer.add_line(format!("name: \"{}\",", struct_ty.name));
-        writer.add_line(format!("id: {},", ty_id));
-        writer.add_line(format!("size: {},", ty_layout.padded_size));
-        writer.unindent();
-        writer.add_line("}; ");
-        writer.new_line();
-        writer.add_line(format!(
-            "static_assertions::const_assert_eq!(mem::size_of::<{}>(), {});",
-            struct_ty.name, ty_layout.padded_size
-        ));
-        writer.new_line();
+        let mut writer =
+            writer.new_block(&["static TYPE_DEF: CGenTypeDef = CGenTypeDef{"], &["};"]);
+        writer.add_lines(&[
+            format!("name: \"{}\",", struct_ty.name),
+            format!("id: {},", ty_id),
+            format!("size: {},", ty_layout.padded_size),
+        ]);
     }
 
+    writer.new_line();
+    writer.add_line(format!(
+        "static_assertions::const_assert_eq!(mem::size_of::<{}>(), {});",
+        struct_ty.name, ty_layout.padded_size
+    ));
+    writer.new_line();
+
     // struct
-    writer.add_line("#[derive(Clone, Copy)]");
-    writer.add_line("#[repr(C)]");
-    writer.add_line(format!("pub struct {} {{", struct_ty.name));
-    writer.indent();
-    writer.add_line(format!("data: [u8;{}]", ty_layout.padded_size));
-    writer.unindent();
-    writer.add_line("}");
+    {
+        let mut writer = writer.new_block(
+            &[
+                "#[derive(Clone, Copy)]".to_string(),
+                "#[repr(C)]".to_string(),
+                format!("pub struct {} {{", struct_ty.name),
+            ],
+            &["}"],
+        );
+        writer.add_line(format!("data: [u8;{}]", ty_layout.padded_size));
+    }
+
     writer.new_line();
 
     // impl
     {
-        writer.add_line("#[allow(clippy::trivially_copy_pass_by_ref)]");
-        writer.add_line(format!("impl {} {{", struct_ty.name));
-        writer.indent();
-
+        let mut writer = writer.new_block(
+            &[
+                "#[allow(clippy::trivially_copy_pass_by_ref)]".to_string(),
+                format!("impl {} {{", struct_ty.name),
+            ],
+            &["}"],
+        );
         // impl: id
         writer.add_line(format!("pub const fn id() -> u32 {{ {}  }}", ty_id));
         writer.new_line();
@@ -141,167 +146,197 @@ fn generate_rust_struct(
         // members
         let member_len = struct_ty.members.len();
         for i in 0..member_len {
-            let struct_m = &struct_ty.members[i];
-            let layout_m = &ty_layout.members[i];
-            let ty_m = struct_m.ty_handle.get(ctx.model);
-            let ty_string_m = get_rust_typestring(ty_m);
+            let struct_member = &struct_ty.members[i];
+            let struct_member_layout = &ty_layout.members[i];
+            let struct_member_type = struct_member.ty_handle.get(ctx.model);
+            let struct_member_type_name = struct_member_type.to_rust_name();
 
             writer.add_line("//");
-            writer.add_line(format!("// member : {}", struct_m.name));
-            writer.add_line(format!("// offset : {}", layout_m.offset));
-            writer.add_line(format!("// size : {}", layout_m.padded_size));
+            writer.add_line(format!("// member : {}", struct_member.name));
+            writer.add_line(format!("// offset : {}", struct_member_layout.offset));
+            writer.add_line(format!("// size : {}", struct_member_layout.padded_size));
             writer.add_line("//");
 
-            if let Some(array_len) = struct_m.array_len {
-                // set all elements
-                writer.add_line(format!(
-                    "pub fn set_{}(&mut self, values: [{};{}]) {{ ",
-                    struct_m.name, ty_string_m, array_len
-                ));
-                writer.indent();
-                writer.add_line(format!("for i in 0..{} {{", array_len));
-                writer.indent();
-                writer.add_line(format!("self.set_{}_element(i, values[i]);", struct_m.name,));
-                writer.unindent();
-                writer.add_line("}");
-                writer.unindent();
-                writer.add_line("}");
+            if let Some(array_len) = struct_member.array_len {
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn set_{}(&mut self, values: [{};{}]) {{ ",
+                            struct_member.name, struct_member_type_name, array_len
+                        )],
+                        &["}"],
+                    );
+
+                    {
+                        let mut writer =
+                            writer.new_block(&[format!("for i in 0..{} {{", array_len)], &["}"]);
+                        writer.add_line(format!(
+                            "self.set_{}_element(i, values[i]);",
+                            struct_member.name,
+                        ));
+                    }
+                }
+
                 writer.new_line();
+
                 // set element by index
-                writer.add_line(format!(
-                    "pub fn set_{}_element(&mut self, index: usize, value: {}) {{ ",
-                    struct_m.name, ty_string_m
-                ));
-                writer.indent();
-                writer.add_line(format!("assert!(index<{});", array_len));
-                writer.add_line(format!(
-                    "self.set::<{}>({} + index * {} , value);",
-                    ty_string_m, layout_m.offset, layout_m.array_stride
-                ));
-                writer.unindent();
-                writer.add_line("}");
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn set_{}_element(&mut self, index: usize, value: {}) {{ ",
+                            struct_member.name, struct_member_type_name
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line(format!("assert!(index<{});", array_len));
+                    writer.add_line(format!(
+                        "self.set::<{}>({} + index * {} , value);",
+                        struct_member_type_name,
+                        struct_member_layout.offset,
+                        struct_member_layout.array_stride
+                    ));
+                }
+
                 writer.new_line();
+
                 // get all elements
-                writer.add_line(format!(
-                    "pub fn {}(&self) ->  [{};{}] {{ ",
-                    struct_m.name, ty_string_m, array_len
-                ));
-                writer.indent();
-                writer.add_line(format!("self.get({})", layout_m.offset,));
-                writer.unindent();
-                writer.add_line("}");
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn {}(&self) ->  [{};{}] {{ ",
+                            struct_member.name, struct_member_type_name, array_len
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line(format!("self.get({})", struct_member_layout.offset,));
+                }
+
                 writer.new_line();
+
                 // get element by index
-                writer.add_line(format!(
-                    "pub fn {}_element(&self, index: usize) -> {} {{ ",
-                    struct_m.name, ty_string_m
-                ));
-                writer.indent();
-                writer.add_line(format!("assert!(index<{});", array_len));
-                writer.add_line(format!(
-                    "self.get::<{}>({} + index * {})",
-                    ty_string_m, layout_m.offset, layout_m.array_stride
-                ));
-                writer.unindent();
-                writer.add_line("}");
-                writer.new_line();
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn {}_element(&self, index: usize) -> {} {{ ",
+                            struct_member.name, struct_member_type_name
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line(format!("assert!(index<{});", array_len));
+                    writer.add_line(format!(
+                        "self.get::<{}>({} + index * {})",
+                        struct_member_type_name,
+                        struct_member_layout.offset,
+                        struct_member_layout.array_stride
+                    ));
+                }
             } else {
                 // set
-                writer.add_line(format!(
-                    "pub fn set_{}(&mut self, value: {}) {{ ",
-                    struct_m.name, ty_string_m
-                ));
-                writer.indent();
-                writer.add_line(format!("self.set({}, value);", layout_m.offset,));
-                writer.unindent();
-                writer.add_line("}");
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn set_{}(&mut self, value: {}) {{ ",
+                            struct_member.name, struct_member_type_name
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line(format!("self.set({}, value);", struct_member_layout.offset,));
+                }
+
                 writer.new_line();
+
                 // get
-                writer.add_line(format!(
-                    "pub fn {}(&self) -> {} {{ ",
-                    struct_m.name, ty_string_m
-                ));
-                writer.indent();
-                writer.add_line(format!("self.get({})", layout_m.offset,));
-                writer.unindent();
-                writer.add_line("}");
-                writer.new_line();
+                {
+                    let mut writer = writer.new_block(
+                        &[format!(
+                            "pub fn {}(&self) -> {} {{ ",
+                            struct_member.name, struct_member_type_name
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line(format!("self.get({})", struct_member_layout.offset,));
+                }
             }
+            writer.new_line();
         }
 
-        writer.add_line("#[allow(unsafe_code)]");
-        writer.add_line("fn set<T: Copy>(&mut self, offset: usize, value: T) {");
-        writer.indent();
-        writer.add_line("unsafe{");
-        writer.indent();
-        writer.add_line("let p = self.data.as_mut_ptr();");
-        writer.add_line("let p = p.add(offset as usize);");
-        writer.add_line("let p = p.cast::<T>();");
-        writer.add_line("p.write(value);");
-        writer.unindent();
-        writer.add_line("}");
-        writer.unindent();
-        writer.add_line("}");
+        {
+            let mut writer = writer.new_block(
+                &[
+                    "#[allow(unsafe_code)]",
+                    "fn set<T: Copy>(&mut self, offset: usize, value: T) {",
+                ],
+                &["}"],
+            );
+            {
+                let mut writer = writer.new_block(&["unsafe {"], &["}"]);
+                writer.add_lines(&[
+                    "let p = self.data.as_mut_ptr();",
+                    "let p = p.add(offset as usize);",
+                    "let p = p.cast::<T>();",
+                    "p.write(value);",
+                ]);
+            }
+        }
         writer.new_line();
 
-        writer.add_line("#[allow(unsafe_code)]");
-        writer.add_line("fn get<T: Copy>(&self, offset: usize) -> T {");
-        writer.indent();
-        writer.add_line("unsafe{");
-        writer.indent();
-        writer.add_line("let p = self.data.as_ptr();");
-        writer.add_line("let p = p.add(offset as usize);");
-        writer.add_line("let p = p.cast::<T>();");
-        writer.add_line("*p");
-        writer.unindent();
-        writer.add_line("}");
-        writer.unindent();
-        writer.add_line("}");
-
-        writer.unindent();
-        writer.add_line("}");
-        writer.new_line();
+        {
+            let mut writer = writer.new_block(
+                &[
+                    "#[allow(unsafe_code)]",
+                    "fn get<T: Copy>(&self, offset: usize) -> T {",
+                ],
+                &["}"],
+            );
+            {
+                let mut writer = writer.new_block(&["unsafe {"], &["}"]);
+                writer.add_lines(&[
+                    "let p = self.data.as_ptr();",
+                    "let p = p.add(offset as usize);",
+                    "let p = p.cast::<T>();",
+                    "*p",
+                ]);
+            }
+        }
     }
+
+    writer.new_line();
 
     // impl Default
     {
-        writer.add_line(format!("impl Default for {} {{", struct_ty.name));
-        writer.indent();
+        let mut writer =
+            writer.new_block(&[format!("impl Default for {} {{", struct_ty.name)], &["}"]);
 
-        writer.add_line("fn default() -> Self {");
-        writer.indent();
-        writer.add_line("let mut ret = Self {");
-        writer.add_line(format!("data: [0;{}]", ty_layout.padded_size));
-        writer.add_line("};");
+        {
+            let mut writer = writer.new_block(&["fn default() -> Self {"], &["}"]);
+            writer.add_line("let mut ret = Self {");
+            writer.add_line(format!("data: [0;{}]", ty_layout.padded_size));
+            writer.add_line("};");
 
-        let member_len = struct_ty.members.len();
-        for i in 0..member_len {
-            let struct_m = &struct_ty.members[i];
-            let ty_m = struct_m.ty_handle.get(ctx.model);
-            let ty_string_m = get_rust_typestring(ty_m);
+            let member_len = struct_ty.members.len();
+            for i in 0..member_len {
+                let struct_member = &struct_ty.members[i];
+                let struct_member_type = struct_member.ty_handle.get(ctx.model);
+                let struct_member_type_name = struct_member_type.to_rust_name();
 
-            if let Some(array_len) = struct_m.array_len {
-                writer.add_line(format!(
-                    "ret.set_{}([{}::default();{}]);",
-                    struct_m.name, ty_string_m, array_len
-                ));
-            } else {
-                writer.add_line(format!(
-                    "ret.set_{}({}::default());",
-                    struct_m.name, ty_string_m
-                ));
+                if let Some(array_len) = struct_member.array_len {
+                    writer.add_line(format!(
+                        "ret.set_{}([{}::default();{}]);",
+                        struct_member.name, struct_member_type_name, array_len
+                    ));
+                } else {
+                    writer.add_line(format!(
+                        "ret.set_{}({}::default());",
+                        struct_member.name, struct_member_type_name
+                    ));
+                }
             }
+
+            writer.add_line("ret");
         }
-
-        writer.add_line("ret");
-
-        writer.unindent();
-        writer.add_line("}");
-
-        writer.unindent();
-        writer.add_line("}");
-        writer.new_line();
     }
+
+    writer.new_line();
 
     // finalize
     writer.build()

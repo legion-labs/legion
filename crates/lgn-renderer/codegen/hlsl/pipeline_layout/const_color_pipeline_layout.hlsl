@@ -1,7 +1,7 @@
 // This is generated file. Do not edit manually
 
-#ifndef PIPELINELAYOUT_CONSTCOLORPIPELINELAYOUT
-#define PIPELINELAYOUT_CONSTCOLORPIPELINELAYOUT
+#ifndef PIPELINE_LAYOUT_CONSTCOLORPIPELINELAYOUT
+#define PIPELINE_LAYOUT_CONSTCOLORPIPELINELAYOUT
 
     // DescriptorSets
     // - name: frame_descriptor_set
@@ -18,6 +18,5 @@
 
     [[vk::push_constant]]
     ConstantBuffer<ConstColorPushConstantData> push_constant; 
-
 
 #endif

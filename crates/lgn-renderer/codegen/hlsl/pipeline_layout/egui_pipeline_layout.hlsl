@@ -1,7 +1,7 @@
 // This is generated file. Do not edit manually
 
-#ifndef PIPELINELAYOUT_EGUIPIPELINELAYOUT
-#define PIPELINELAYOUT_EGUIPIPELINELAYOUT
+#ifndef PIPELINE_LAYOUT_EGUIPIPELINELAYOUT
+#define PIPELINE_LAYOUT_EGUIPIPELINELAYOUT
 
     // DescriptorSets
     // - name: descriptor_set
@@ -14,6 +14,5 @@
 
     [[vk::push_constant]]
     ConstantBuffer<EguiPushConstantData> push_constant; 
-
 
 #endif

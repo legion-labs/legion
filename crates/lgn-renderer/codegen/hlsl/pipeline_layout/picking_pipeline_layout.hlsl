@@ -1,7 +1,7 @@
 // This is generated file. Do not edit manually
 
-#ifndef PIPELINELAYOUT_PICKINGPIPELINELAYOUT
-#define PIPELINELAYOUT_PICKINGPIPELINELAYOUT
+#ifndef PIPELINE_LAYOUT_PICKINGPIPELINELAYOUT
+#define PIPELINE_LAYOUT_PICKINGPIPELINELAYOUT
 
     // DescriptorSets
     // - name: frame_descriptor_set
@@ -22,6 +22,5 @@
 
     [[vk::push_constant]]
     ConstantBuffer<PickingPushConstantData> push_constant; 
-
 
 #endif

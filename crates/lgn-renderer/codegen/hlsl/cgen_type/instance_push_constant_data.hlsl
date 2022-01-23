@@ -3,7 +3,6 @@
 #ifndef TYPE_INSTANCE_PUSH_CONSTANT_DATA
 #define TYPE_INSTANCE_PUSH_CONSTANT_DATA
 
-
     struct InstancePushConstantData {
         uint vertex_offset;
         uint world_offset;

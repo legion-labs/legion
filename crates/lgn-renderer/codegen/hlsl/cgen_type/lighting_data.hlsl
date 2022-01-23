@@ -3,7 +3,6 @@
 #ifndef TYPE_LIGHTING_DATA
 #define TYPE_LIGHTING_DATA
 
-
     struct LightingData {
         uint num_directional_lights;
         uint num_omni_directional_lights;

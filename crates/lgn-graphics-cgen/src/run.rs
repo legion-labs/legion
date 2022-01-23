@@ -138,12 +138,12 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
 
     let generators = [
         generators::hlsl::type_generator::run,
-        generators::hlsl::descriptorset_generator::run,
-        generators::hlsl::pipelinelayout_generator::run,
+        generators::hlsl::descriptor_set_generator::run,
+        generators::hlsl::pipeline_layout_generator::run,
         generators::rust::base_mod_generator::run,
         generators::rust::type_generator::run,
-        generators::rust::descriptorset_generator::run,
-        generators::rust::pipelinelayout_generator::run,
+        generators::rust::descriptor_set_generator::run,
+        generators::rust::pipeline_layout_generator::run,
     ];
     let mut products = Vec::<Product>::new();
     for generator in generators {

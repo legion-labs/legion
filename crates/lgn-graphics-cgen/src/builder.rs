@@ -371,7 +371,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             return Err(anyhow!("PushConstant must be Struct types "));
         }
         // done
-        self.add_member(name, PipelineLayoutContent::Pushconstant(ty_ref))
+        self.add_member(name, PipelineLayoutContent::PushConstant(ty_ref))
     }
 
     fn add_member(mut self, name: &str, mb: PipelineLayoutContent) -> Result<Self> {

@@ -3,7 +3,6 @@
 #ifndef TYPE_OMNI_DIRECTIONAL_LIGHT
 #define TYPE_OMNI_DIRECTIONAL_LIGHT
 
-
     struct OmniDirectionalLight {
         float3 pos;
         float radiance;

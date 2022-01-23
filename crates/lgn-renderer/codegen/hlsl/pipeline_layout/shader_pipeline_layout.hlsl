@@ -1,7 +1,7 @@
 // This is generated file. Do not edit manually
 
-#ifndef PIPELINELAYOUT_SHADERPIPELINELAYOUT
-#define PIPELINELAYOUT_SHADERPIPELINELAYOUT
+#ifndef PIPELINE_LAYOUT_SHADERPIPELINELAYOUT
+#define PIPELINE_LAYOUT_SHADERPIPELINELAYOUT
 
     // DescriptorSets
     // - name: frame_descriptor_set
@@ -18,6 +18,5 @@
 
     [[vk::push_constant]]
     ConstantBuffer<InstancePushConstantData> push_constant; 
-
 
 #endif

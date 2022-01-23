@@ -3,7 +3,6 @@
 #ifndef TYPE_CONST_COLOR_PUSH_CONSTANT_DATA
 #define TYPE_CONST_COLOR_PUSH_CONSTANT_DATA
 
-
     struct ConstColorPushConstantData {
         float4x4 world;
         float4 color;

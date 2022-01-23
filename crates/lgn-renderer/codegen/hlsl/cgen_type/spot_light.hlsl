@@ -3,7 +3,6 @@
 #ifndef TYPE_SPOT_LIGHT
 #define TYPE_SPOT_LIGHT
 
-
     struct SpotLight {
         float3 pos;
         float radiance;

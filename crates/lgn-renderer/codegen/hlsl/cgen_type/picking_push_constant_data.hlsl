@@ -3,7 +3,6 @@
 #ifndef TYPE_PICKING_PUSH_CONSTANT_DATA
 #define TYPE_PICKING_PUSH_CONSTANT_DATA
 
-
     struct PickingPushConstantData {
         float4x4 world;
         float4 color;

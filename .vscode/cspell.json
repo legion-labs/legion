@@ -16,6 +16,7 @@
         "fmetric",
         "gentype",
         "Graphviz",
+        "hlsl",
         "imetric",
         "mlint",
         "MSRV",

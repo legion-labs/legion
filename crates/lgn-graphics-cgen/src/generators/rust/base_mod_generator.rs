@@ -27,7 +27,6 @@ where
     }
 }
 
-#[rustfmt::skip]
 fn generate(ctx: &GeneratorContext<'_>) -> String {
     let mut writer = FileWriter::new();
 
@@ -37,56 +36,68 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     writer.new_line();
 
     // write dependencies
-    let model = ctx.model;    
+    let model = ctx.model;
     writer.add_line("use lgn_graphics_api::DeviceContext;");
     write_mod::<CGenType>(model, &mut writer);
     write_mod::<DescriptorSet>(model, &mut writer);
     write_mod::<PipelineLayout>(model, &mut writer);
-    writer.new_line();    
+    writer.new_line();
 
     // fn initialize
     {
-        writer.add_line( "pub fn initialize(device_context: &DeviceContext) {" );
-        writer.indent();
-           
+        let mut writer = writer.new_block(
+            &["pub fn initialize(device_context: &DeviceContext) {"],
+            &["}"],
+        );
         for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::initialize(device_context);", descriptor_set_ref.object().name));            
+            writer.add_line(format!(
+                "descriptor_set::{}::initialize(device_context);",
+                descriptor_set_ref.object().name
+            ));
         }
-        
+
         writer.new_line();
-        writer.add_line("let descriptor_set_layouts = [");
-        writer.indent();
-        for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::descriptor_set_layout(),", descriptor_set_ref.object().name));            
+
+        {
+            let mut writer = writer.new_block(&["let descriptor_set_layouts = ["], &["];"]);
+            for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+                writer.add_line(format!(
+                    "descriptor_set::{}::descriptor_set_layout(),",
+                    descriptor_set_ref.object().name
+                ));
+            }
         }
-        writer.unindent();
-        writer.add_line("];");
-        
+
         writer.new_line();
         for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);", pipeline_layout_ref.object().name));    
-        }    
-        writer.unindent();
-        writer.add_line( "}" );
-        writer.new_line();
+            writer.add_line(format!(
+                "pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);",
+                pipeline_layout_ref.object().name
+            ));
+        }
     }
+
+    writer.new_line();
 
     // fn shutdown
     {
-        writer.add_line( "pub fn shutdown() {" );
-        writer.indent();
-    
+        let mut writer = writer.new_block(&["pub fn shutdown() {"], &["}"]);
+
         for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::shutdown();", descriptor_set_ref.object().name));            
+            writer.add_line(format!(
+                "descriptor_set::{}::shutdown();",
+                descriptor_set_ref.object().name
+            ));
         }
         writer.new_line();
-        
+
         for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::shutdown();", pipeline_layout_ref.object().name));    
-        }    
-        writer.unindent();
-        writer.add_line( "}" );   
+            writer.add_line(format!(
+                "pipeline_layout::{}::shutdown();",
+                pipeline_layout_ref.object().name
+            ));
+        }
     }
-    
+
     writer.build()
 }

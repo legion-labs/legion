@@ -5,7 +5,7 @@ use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
-use super::utils::get_member_declaration;
+use super::utils::member_declaration;
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
@@ -36,52 +36,48 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let struct_ty = ty.struct_type();
     let mut writer = FileWriter::new();
 
-    // header
-    writer.add_line(format!(
-        "#ifndef TYPE_{}",
-        struct_ty.name.to_snake_case().to_uppercase()
-    ));
-    writer.add_line(format!(
-        "#define TYPE_{}",
-        struct_ty.name.to_snake_case().to_uppercase()
-    ));
-    writer.new_line();
-
-    writer.indent();
-
-    // dependencies
-    let deps = ty.get_type_dependencies();
-    if !deps.is_empty() {
-        for ty_ref in deps {
-            let ty = ty_ref.get(ctx.model);
-            match ty {
-                CGenType::Native(_) => (),
-                CGenType::Struct(_) => {
-                    let dep_filename = GeneratorContext::get_object_filename(ty, CGenVariant::Hlsl);
-                    writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
+    {
+        // write guard scope
+        let mut writer = writer.new_block(
+            &[
+                format!(
+                    "#ifndef TYPE_{}",
+                    struct_ty.name.to_snake_case().to_uppercase()
+                ),
+                format!(
+                    "#define TYPE_{}",
+                    struct_ty.name.to_snake_case().to_uppercase()
+                ),
+            ],
+            &["#endif"],
+        );
+        // dependencies
+        let deps = ty.get_type_dependencies();
+        if !deps.is_empty() {
+            for ty_ref in deps {
+                let ty = ty_ref.get(ctx.model);
+                match ty {
+                    CGenType::Native(_) => (),
+                    CGenType::Struct(_) => {
+                        let dep_filename =
+                            GeneratorContext::get_object_filename(ty, CGenVariant::Hlsl);
+                        writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
+                    }
                 }
             }
+            writer.new_line();
         }
+
+        // struct
+        {
+            let mut writer = writer.new_block(&[format!("struct {} {{", struct_ty.name)], &["};"]);
+            for m in &struct_ty.members {
+                writer.add_line(member_declaration(ctx.model, m));
+            }
+        }
+
         writer.new_line();
     }
-
-    // struct
-    writer.add_line(format!("struct {} {{", struct_ty.name));
-
-    writer.indent();
-    for m in &struct_ty.members {
-        writer.add_line(get_member_declaration(ctx.model, m));
-    }
-    writer.unindent();
-
-    writer.add_line("};");
-
-    writer.new_line();
-
-    writer.unindent();
-
-    // footer
-    writer.add_line("#endif");
 
     // finalize
     writer.build()
