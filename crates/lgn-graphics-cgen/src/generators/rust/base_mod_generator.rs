@@ -22,7 +22,7 @@ where
     T: ModelObject,
 {
     if model.size::<T>() > 0 {
-        let folder = GeneratorContext::get_object_folder::<T>();
+        let folder = GeneratorContext::object_folder::<T>();
         writer.add_line(format!("pub mod {};", folder));
     }
 }
@@ -33,6 +33,28 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     // write lints disabling
     writer.add_line("#![allow(clippy::all)]");
     writer.add_line("#![allow(dead_code)]");
+    writer.new_line();
+
+    // add shader files
+    {
+        let mut writer = writer.new_block(&["pub mod shaders {"], &["}"]);
+        for cgen_type in ctx.model.object_iter::<CGenType>() {
+            if matches!(cgen_type.object(), CGenType::Native(_)) {
+                continue;
+            }
+            let path = ctx.embedded_fs_path(cgen_type.object(), CGenVariant::Hlsl);
+            writer.add_line(format!("// {}", path));
+        }
+        for pipeline_layout_ref in ctx.model.object_iter::<PipelineLayout>() {
+            let path = ctx.embedded_fs_path(pipeline_layout_ref.object(), CGenVariant::Hlsl);
+            writer.add_line(format!("// {}", path));
+        }
+        for descriptor_set in ctx.model.object_iter::<DescriptorSet>() {
+            let path = ctx.embedded_fs_path(descriptor_set.object(), CGenVariant::Hlsl);
+            writer.add_line(format!("// {}", path));
+        }
+    }
+
     writer.new_line();
 
     // write dependencies

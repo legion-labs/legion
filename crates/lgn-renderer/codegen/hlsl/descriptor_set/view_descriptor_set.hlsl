@@ -3,7 +3,7 @@
 #ifndef DESCRIPTOR_SET_VIEWDESCRIPTORSET
 #define DESCRIPTOR_SET_VIEWDESCRIPTORSET
 
-    #include "../cgen_type/view_data.hlsl"
+    #include "crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl"
 
     [[vk::binding(0, 1)]]
     ConstantBuffer<ViewData> view_data;

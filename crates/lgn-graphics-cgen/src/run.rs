@@ -25,11 +25,18 @@ impl CGenVariant {
             CGenVariant::Rust => "rs",
         }
     }
+    pub fn dir(self) -> &'static str {
+        match self {
+            CGenVariant::Hlsl => "hlsl",
+            CGenVariant::Rust => "rust",
+        }
+    }
 }
 
 pub struct CGenContext {
     pub(super) root_file: PathBuf,
     pub(super) outdir: PathBuf,
+    pub(super) crate_name: String,
 }
 
 impl Default for CGenContext {
@@ -38,16 +45,14 @@ impl Default for CGenContext {
         Self {
             root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
             outdir: RelativePath::new("cgen_out").to_path(&cur_dir),
+            crate_name: "".to_string(),
         }
     }
 }
 
 impl CGenContext {
     pub fn out_dir(&self, variant: CGenVariant) -> PathBuf {
-        match variant {
-            CGenVariant::Hlsl => RelativePath::new("hlsl").to_path(&self.outdir),
-            CGenVariant::Rust => RelativePath::new("rust").to_path(&self.outdir),
-        }
+        RelativePath::new(variant.dir()).to_path(&self.outdir)
     }
 }
 
@@ -81,6 +86,7 @@ impl CGenContextBuilder {
 
         Ok(())
     }
+
     /// Set output directory
     ///
     /// # Errors
@@ -89,6 +95,14 @@ impl CGenContextBuilder {
         self.context.outdir = to_abs_path(outdir)?;
 
         Ok(())
+    }
+
+    /// Set crate name
+    ///
+    /// # Errors
+    /// Invalid path.
+    pub fn set_crate_name(&mut self, crate_name: impl AsRef<str>) {
+        self.context.crate_name = crate_name.as_ref().to_owned();
     }
 
     pub fn build(self) -> CGenContext {
@@ -134,7 +148,7 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
     //
     // code generation step
     //
-    let gen_context = GeneratorContext::new(&parsing_result.model);
+    let gen_context = GeneratorContext::new(&context.crate_name, &parsing_result.model);
 
     let generators = [
         generators::hlsl::type_generator::run,

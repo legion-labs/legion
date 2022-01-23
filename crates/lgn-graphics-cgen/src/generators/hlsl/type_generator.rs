@@ -24,7 +24,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         } {
             products.push(Product::new(
                 CGenVariant::Hlsl,
-                GeneratorContext::get_object_rel_path(ty_ref.object(), CGenVariant::Hlsl),
+                GeneratorContext::object_rel_path(ty_ref.object(), CGenVariant::Hlsl),
                 content.into_bytes(),
             ));
         }
@@ -59,9 +59,10 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
                 match ty {
                     CGenType::Native(_) => (),
                     CGenType::Struct(_) => {
-                        let dep_filename =
-                            GeneratorContext::get_object_filename(ty, CGenVariant::Hlsl);
-                        writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
+                        writer.add_line(format!(
+                            "#include \"{}\"",
+                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                        ));
                     }
                 }
             }

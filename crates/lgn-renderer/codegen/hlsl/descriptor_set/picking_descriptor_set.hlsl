@@ -3,7 +3,7 @@
 #ifndef DESCRIPTOR_SET_PICKINGDESCRIPTORSET
 #define DESCRIPTOR_SET_PICKINGDESCRIPTORSET
 
-    #include "../cgen_type/picking_data.hlsl"
+    #include "crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl"
 
     [[vk::binding(0, 2)]]
     RWStructuredBuffer<uint> picked_count;

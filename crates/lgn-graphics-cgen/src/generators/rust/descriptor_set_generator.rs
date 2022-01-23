@@ -11,13 +11,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             generate_rust_descriptorset(ctx, descriptor_set_ref.id(), descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Rust),
+            GeneratorContext::object_rel_path(descriptor_set_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
 
     if !products.is_empty() {
-        let mut mod_path = GeneratorContext::get_object_folder::<DescriptorSet>();
+        let mut mod_path = GeneratorContext::object_folder::<DescriptorSet>();
         mod_path.push("mod.rs");
 
         let mut writer = FileWriter::new();

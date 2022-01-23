@@ -11,7 +11,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         let content = generate_hlsl_pipeline_layout(ctx, pipeline_layout_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
+            GeneratorContext::object_rel_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }
@@ -31,19 +31,18 @@ fn generate_hlsl_pipeline_layout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout
             &["#endif"],
         );
         writer.new_line();
-        let mut pl_folder = GeneratorContext::get_object_rel_path(pl, CGenVariant::Hlsl);
-        pl_folder.pop();
         writer.add_line("// DescriptorSets");
         for (name, ty) in &pl.members {
             match ty {
                 crate::db::PipelineLayoutContent::DescriptorSet(ds_handle) => {
                     let ds = ds_handle.get(ctx.model);
-                    let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
-                    let rel_path = pl_folder.relative(ds_path);
                     writer.add_lines(&[
                         format!("// - name: {}", name),
                         format!("// - freq: {}", ds.frequency),
-                        format!("#include \"{}\"", rel_path),
+                        format!(
+                            "#include \"{}\"",
+                            ctx.embedded_fs_path(ds, CGenVariant::Hlsl)
+                        ),
                     ]);
                 }
                 crate::db::PipelineLayoutContent::PushConstant(_) => (),
@@ -54,11 +53,12 @@ fn generate_hlsl_pipeline_layout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout
             match ty {
                 crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
-                    let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
-                    let rel_path = pl_folder.relative(ty_path);
                     writer.add_lines(&[
                         format!("// - name: {}", name),
-                        format!("#include \"{}\"", rel_path),
+                        format!(
+                            "#include \"{}\"",
+                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                        ),
                     ]);
                     writer.add_lines(&[
                         "[[vk::push_constant]]".to_string(),

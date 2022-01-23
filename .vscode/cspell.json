@@ -31,6 +31,7 @@
         "thiserror",
         "TIMERR_NOERROR",
         "unpark",
+        "vulkan",
         "webrtc",
         "xxhash"
     ]

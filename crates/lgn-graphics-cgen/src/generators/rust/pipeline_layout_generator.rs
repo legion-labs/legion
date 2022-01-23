@@ -16,13 +16,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         );
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::get_object_rel_path(pipeline_layout_ref.object(), CGenVariant::Rust),
+            GeneratorContext::object_rel_path(pipeline_layout_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
 
     if !products.is_empty() {
-        let mut mod_path = GeneratorContext::get_object_folder::<PipelineLayout>();
+        let mut mod_path = GeneratorContext::object_folder::<PipelineLayout>();
         mod_path.push("mod.rs");
 
         let mut writer = FileWriter::new();

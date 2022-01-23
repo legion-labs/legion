@@ -11,7 +11,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         let content = generate_hlsl_descriptor_set(ctx, descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::get_object_rel_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
+            GeneratorContext::object_rel_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }
@@ -89,20 +89,16 @@ fn generate_hlsl_descriptor_set(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) 
         writer.new_line();
         let deps = ds.get_type_dependencies();
         if !deps.is_empty() {
-            let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
-            cur_folder.pop();
             let mut includes = deps
                 .iter()
                 .filter_map(|ty_ref| {
                     let ty = ty_ref.get(ctx.model);
                     match ty {
                         crate::db::CGenType::Native(_) => None,
-                        crate::db::CGenType::Struct(_) => {
-                            let ty_path =
-                                GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
-                            let rel_path = cur_folder.relative(ty_path);
-                            Some(format!("#include \"{}\"", rel_path))
-                        }
+                        crate::db::CGenType::Struct(_) => Some(format!(
+                            "#include \"{}\"",
+                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                        )),
                     }
                 })
                 .collect::<Vec<_>>();

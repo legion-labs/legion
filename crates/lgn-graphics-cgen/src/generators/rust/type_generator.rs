@@ -21,14 +21,14 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         } {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(ty_ref.object(), CGenVariant::Rust),
+                GeneratorContext::object_rel_path(ty_ref.object(), CGenVariant::Rust),
                 content.into_bytes(),
             ));
         }
     }
 
     if !products.is_empty() {
-        let mut mod_path = GeneratorContext::get_object_folder::<CGenType>();
+        let mut mod_path = GeneratorContext::object_folder::<CGenType>();
         mod_path.push("mod.rs");
 
         let mut writer = FileWriter::new();

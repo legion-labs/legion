@@ -3,6 +3,28 @@
 #![allow(clippy::all)]
 #![allow(dead_code)]
 
+pub mod shaders {
+    // crate://renderer/codegen/hlsl/cgen_type/omni_directional_light.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/spot_light.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/view_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/lighting_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/egui_push_constant_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/const_color_push_constant_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/picking_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/picking_push_constant_data.hlsl
+    // crate://renderer/codegen/hlsl/cgen_type/instance_push_constant_data.hlsl
+    // crate://renderer/codegen/hlsl/pipeline_layout/egui_pipeline_layout.hlsl
+    // crate://renderer/codegen/hlsl/pipeline_layout/const_color_pipeline_layout.hlsl
+    // crate://renderer/codegen/hlsl/pipeline_layout/picking_pipeline_layout.hlsl
+    // crate://renderer/codegen/hlsl/pipeline_layout/shader_pipeline_layout.hlsl
+    // crate://renderer/codegen/hlsl/descriptor_set/frame_descriptor_set.hlsl
+    // crate://renderer/codegen/hlsl/descriptor_set/view_descriptor_set.hlsl
+    // crate://renderer/codegen/hlsl/descriptor_set/egui_descriptor_set.hlsl
+    // crate://renderer/codegen/hlsl/descriptor_set/picking_descriptor_set.hlsl
+}
+
 use lgn_graphics_api::DeviceContext;
 pub mod cgen_type;
 pub mod descriptor_set;
