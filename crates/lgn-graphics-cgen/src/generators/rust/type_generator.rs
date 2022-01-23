@@ -21,7 +21,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         } {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::object_rel_path(ty_ref.object(), CGenVariant::Rust),
+                GeneratorContext::object_relative_path(ty_ref.object(), CGenVariant::Rust),
                 content.into_bytes(),
             ));
         }

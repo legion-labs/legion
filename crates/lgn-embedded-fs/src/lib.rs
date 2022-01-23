@@ -33,40 +33,44 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bus::{Bus, BusReader};
+use linkme::distributed_slice;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 
+pub mod macros;
+
+#[distributed_slice]
+pub static EMBEDDED_FILES: [EmbeddedFile] = [..];
+
 pub struct EmbeddedFile {
-    pub content: &'static [u8],
-    pub path: &'static str,
-    pub original_path: Option<&'static str>,
+    path: &'static str,
+    content: &'static [u8],
+    original_path: Option<&'static str>,
 }
 
-#[macro_export]
-macro_rules! watched_file {
-    ( $file_path:literal ) => {
-        inventory::submit! {
-            embedded_fs::EmbeddedFile{
-                content: include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $file_path)),
-                path: concat!("crate://", env!("CARGO_PKG_NAME"), "/", $file_path),
-                original_path: Some(concat!(env!("CARGO_MANIFEST_DIR"), "/", $file_path)),
-            }
+impl EmbeddedFile {
+    pub const fn new(
+        path: &'static str,
+        content: &'static [u8],
+        original_path: Option<&'static str>,
+    ) -> Self {
+        Self {
+            path,
+            content,
+            original_path,
         }
-    };
-}
-#[macro_export]
-macro_rules! file {
-    ( $file_path:literal ) => {
-        inventory::submit! {
-            embedded_fs::EmbeddedFile{
-                content: include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $file_path)),
-                path: concat!(env!("CARGO_CRATE_NAME"), "/", $file_path),
-                original_path: None,
-            }
-        }
-    };
-}
+    }
+    pub const fn path(&'static self) -> &'static str {
+        self.path
+    }
 
-inventory::collect!(EmbeddedFile);
+    pub const fn content(&'static self) -> &'static [u8] {
+        self.content
+    }
+
+    pub const fn original_path(&'static self) -> Option<&'static str> {
+        self.original_path
+    }
+}
 
 pub struct EmbeddedFileSystem {
     path_to_content: HashMap<&'static str, &'static EmbeddedFile>,
@@ -74,6 +78,7 @@ pub struct EmbeddedFileSystem {
 }
 
 impl EmbeddedFileSystem {
+    /// Initializes the embedded file system.
     pub fn init() -> Self {
         // Create a channel to receive the events.
         let (tx, rx) = channel();
@@ -84,8 +89,8 @@ impl EmbeddedFileSystem {
 
         let mut path_to_content = HashMap::<&'static str, &'static EmbeddedFile>::new();
         let mut watched_to_path = HashMap::<PathBuf, &'static str>::new();
-        for file in inventory::iter::<EmbeddedFile>() {
-            println!("{}--{:?}", file.path, file.original_path);
+        for file in EMBEDDED_FILES {
+            println!("{} -- {:?}", file.path, file.original_path);
             path_to_content.insert(file.path, file);
             if let Some(watch_path) = file.original_path {
                 let watch_path = std::fs::canonicalize(watch_path).unwrap();
@@ -123,8 +128,32 @@ impl EmbeddedFileSystem {
         }
     }
 
-    #[allow(clippy::missing_errors_doc)]
-    pub fn read<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>, std::io::Error> {
+    /// Returns the origin path if available
+    ///
+    /// # Errors
+    /// If the file is not found
+    ///
+    pub fn original_path<P: AsRef<Path>>(&self, path: P) -> Result<Option<&Path>, std::io::Error> {
+        let path = path.as_ref();
+        if let Some(file) = self.path_to_content.get(path.to_str().unwrap()) {
+            Ok(file.original_path.map(Path::new))
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("File not found: {}", path.to_str().unwrap()),
+            ))
+        }
+    }
+
+    /// Returns the content of the file
+    ///
+    /// This content returns the most up to date content of the file meaning not necessarily
+    /// the content it was compiled with if an original path exists
+    ///
+    /// # Errors
+    /// If the file is not found
+    ///
+    pub fn read_all<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>, std::io::Error> {
         let path = path.as_ref();
         if let Some(file) = self.path_to_content.get(path.to_str().unwrap()) {
             if let Some(original_path) = file.original_path {
@@ -141,12 +170,17 @@ impl EmbeddedFileSystem {
         }
     }
 
-    #[allow(clippy::missing_errors_doc)]
-    pub fn read_as_string<P: AsRef<Path>>(&self, path: P) -> Result<String, std::io::Error> {
-        let content = self.read(path)?;
+    /// Returns the content of the file as a string
+    ///
+    /// # Errors
+    /// If the file is not found
+    ///
+    pub fn read_to_string<P: AsRef<Path>>(&self, path: P) -> Result<String, std::io::Error> {
+        let content = self.read_all(path)?;
         Ok(String::from_utf8_lossy(&content).to_string())
     }
 
+    /// Add a receiver to the watch bus
     pub fn add_receiver(&mut self) -> BusReader<&'static str> {
         self.bus.lock().unwrap().add_rx()
     }
@@ -154,9 +188,19 @@ impl EmbeddedFileSystem {
 
 #[cfg(test)]
 mod tests {
+    use crate::{embedded_file, EmbeddedFileSystem};
+
+    embedded_file!(FILE, "tests/data/test.txt");
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn test_embedded_file_macro() {
+        assert_eq!(FILE.path(), "crate://lgn-embedded-fs/tests/data/test.txt");
+        assert_eq!(FILE.content(), b"Hello World!");
+    }
+
+    #[test]
+    fn test_embedded_fs() {
+        let embedded_fs = EmbeddedFileSystem::init();
+        assert_eq!(FILE.content(), embedded_fs.read_all(FILE.path()).unwrap());
     }
 }

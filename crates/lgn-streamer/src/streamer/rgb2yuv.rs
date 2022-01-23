@@ -1,3 +1,4 @@
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_renderer::{components::RenderSurface, RenderContext};
@@ -93,18 +94,16 @@ pub struct RgbToYuvConverter {
     pipeline: Pipeline,
 }
 
+embedded_watched_file!(RGV_2_YUV_SHADER, "shaders/rgb2yuv.hlsl");
+
 impl RgbToYuvConverter {
     pub fn new(
         shader_compiler: &HlslCompiler,
         device_context: &DeviceContext,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
-        shader_compiler
-            .filesystem()
-            .add_mount_point("streamer", env!("CARGO_MANIFEST_DIR"))?;
-
         let shader_build_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Path("crate://streamer/shaders/rgb2yuv.hlsl".to_string()),
+            shader_source: ShaderSource::Path(RGV_2_YUV_SHADER.path().to_owned()),
             global_defines: Vec::new(),
             entry_points: vec![EntryPoint {
                 defines: Vec::new(),

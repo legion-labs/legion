@@ -3,10 +3,10 @@
 #ifndef DESCRIPTOR_SET_FRAMEDESCRIPTORSET
 #define DESCRIPTOR_SET_FRAMEDESCRIPTORSET
 
-    #include "crate://renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
-    #include "crate://renderer/codegen/hlsl/cgen_type/lighting_data.hlsl"
-    #include "crate://renderer/codegen/hlsl/cgen_type/omni_directional_light.hlsl"
-    #include "crate://renderer/codegen/hlsl/cgen_type/spot_light.hlsl"
+    #include "crate://lgn-renderer/codegen/hlsl/cgen_type/directional_light.hlsl"
+    #include "crate://lgn-renderer/codegen/hlsl/cgen_type/lighting_data.hlsl"
+    #include "crate://lgn-renderer/codegen/hlsl/cgen_type/omni_directional_light.hlsl"
+    #include "crate://lgn-renderer/codegen/hlsl/cgen_type/spot_light.hlsl"
 
     [[vk::binding(0, 0)]]
     ConstantBuffer<LightingData> lighting_data;

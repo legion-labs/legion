@@ -1,4 +1,4 @@
-#include "crate://renderer/codegen/hlsl/pipeline_layout/egui_pipeline_layout.hlsl"
+#include "crate://lgn-renderer/codegen/hlsl/pipeline_layout/egui_pipeline_layout.hlsl"
 
 struct VertexIn {
     float2 pos : POSITION;

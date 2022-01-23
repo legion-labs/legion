@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::prelude::*;
 use lgn_math::Vec2;
 
@@ -17,11 +18,13 @@ pub struct EguiPass {
     sampler: Sampler,
 }
 
+embedded_watched_file!(UI_SHADER, "shaders/ui.hlsl");
+
 impl EguiPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
-        let shader = renderer.prepare_vs_ps(String::from("crate://renderer/shaders/ui.hlsl"));
+        let shader = renderer.prepare_vs_ps(UI_SHADER.path().to_owned());
         //
         // Pipeline state
         //

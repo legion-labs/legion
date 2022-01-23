@@ -24,7 +24,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         } {
             products.push(Product::new(
                 CGenVariant::Hlsl,
-                GeneratorContext::object_rel_path(ty_ref.object(), CGenVariant::Hlsl),
+                GeneratorContext::object_relative_path(ty_ref.object(), CGenVariant::Hlsl),
                 content.into_bytes(),
             ));
         }

@@ -1,3 +1,4 @@
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_renderer::{
@@ -15,23 +16,19 @@ pub struct OffscreenHelper {
     bilinear_sampler: Sampler,
 }
 
+embedded_watched_file!(DISPLAY_MAPPER_SHADER, "shaders/display_mapper.hlsl");
+
 impl OffscreenHelper {
     pub fn new(
         shader_compiler: &HlslCompiler,
         device_context: &DeviceContext,
         resolution: RenderSurfaceExtents,
     ) -> anyhow::Result<Self> {
-        shader_compiler
-            .filesystem()
-            .add_mount_point("presenter-snapshot", env!("CARGO_MANIFEST_DIR"))?;
-
         //
         // Immutable resources
         //
         let shader_build_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Path(
-                "crate://presenter-snapshot/shaders/display_mapper.hlsl".to_string(),
-            ),
+            shader_source: ShaderSource::Path(DISPLAY_MAPPER_SHADER.path().to_owned()),
             global_defines: Vec::new(),
             entry_points: vec![
                 EntryPoint {

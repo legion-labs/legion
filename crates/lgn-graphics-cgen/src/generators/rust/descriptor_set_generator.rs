@@ -8,10 +8,10 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let model = ctx.model;
     for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
         let content =
-            generate_rust_descriptorset(ctx, descriptor_set_ref.id(), descriptor_set_ref.object());
+            generate_rust_descriptor_set(ctx, descriptor_set_ref.id(), descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Rust,
-            GeneratorContext::object_rel_path(descriptor_set_ref.object(), CGenVariant::Rust),
+            GeneratorContext::object_relative_path(descriptor_set_ref.object(), CGenVariant::Rust),
             content.into_bytes(),
         ));
     }
@@ -37,7 +37,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-fn generate_rust_descriptorset(
+fn generate_rust_descriptor_set(
     _ctx: &GeneratorContext<'_>,
     descriptor_set_id: u32,
     descriptor_set: &DescriptorSet,

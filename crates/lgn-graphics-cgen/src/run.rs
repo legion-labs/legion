@@ -35,7 +35,7 @@ impl CGenVariant {
 
 pub struct CGenContext {
     pub(super) root_file: PathBuf,
-    pub(super) outdir: PathBuf,
+    pub(super) out_dir: PathBuf,
     pub(super) crate_name: String,
 }
 
@@ -44,7 +44,7 @@ impl Default for CGenContext {
         let cur_dir = env::current_dir().unwrap();
         Self {
             root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
-            outdir: RelativePath::new("cgen_out").to_path(&cur_dir),
+            out_dir: RelativePath::new("cgen_out").to_path(&cur_dir),
             crate_name: "".to_string(),
         }
     }
@@ -52,7 +52,7 @@ impl Default for CGenContext {
 
 impl CGenContext {
     pub fn out_dir(&self, variant: CGenVariant) -> PathBuf {
-        RelativePath::new(variant.dir()).to_path(&self.outdir)
+        RelativePath::new(variant.dir()).to_path(&self.out_dir)
     }
 }
 
@@ -91,8 +91,8 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// Invalid path.
-    pub fn set_outdir(&mut self, outdir: &impl AsRef<Path>) -> Result<()> {
-        self.context.outdir = to_abs_path(outdir)?;
+    pub fn set_out_dir(&mut self, out_dir: &impl AsRef<Path>) -> Result<()> {
+        self.context.out_dir = to_abs_path(out_dir)?;
 
         Ok(())
     }

@@ -60,7 +60,7 @@ fn main_internal() -> Result<CGenBuildResult> {
     // initialize context
     let mut ctx_builder = CGenContextBuilder::new();
     ctx_builder.set_root_file(&args.input)?;
-    ctx_builder.set_outdir(&args.output)?;
+    ctx_builder.set_out_dir(&args.output)?;
 
     // run the generation
     run(&ctx_builder.build())

@@ -11,7 +11,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         let content = generate_hlsl_pipeline_layout(ctx, pipeline_layout_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::object_rel_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
+            GeneratorContext::object_relative_path(pipeline_layout_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }

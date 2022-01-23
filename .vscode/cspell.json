@@ -18,6 +18,7 @@
         "Graphviz",
         "hlsl",
         "imetric",
+        "linkme",
         "mlint",
         "MSRV",
         "openh264",

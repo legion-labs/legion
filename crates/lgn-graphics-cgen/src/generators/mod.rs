@@ -36,7 +36,7 @@ impl<'a> GeneratorContext<'a> {
         RelativePath::new(&T::typename().to_snake_case()).to_owned()
     }
 
-    fn object_rel_path<T>(typ: &T, cgen_variant: CGenVariant) -> RelativePathBuf
+    fn object_relative_path<T>(typ: &T, cgen_variant: CGenVariant) -> RelativePathBuf
     where
         T: ModelObject,
     {

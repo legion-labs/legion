@@ -4466,7 +4466,7 @@ name = "lgn-embedded-fs"
 version = "0.1.0"
 dependencies = [
  "bus",
- "inventory",
+ "linkme",
  "notify",
 ]
 
@@ -4714,11 +4714,13 @@ dependencies = [
  "instant",
  "lgn-app",
  "lgn-ecs",
+ "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-pso-compiler",
  "lgn-renderer",
  "lgn-tasks",
  "lgn-tracing",
+ "linkme",
  "png 0.17.2",
 ]
 
@@ -4743,8 +4745,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hassle-rs",
+ "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-tracing",
+ "linkme",
  "normpath",
  "spirv-reflect",
  "spirv-tools",
@@ -4763,6 +4767,7 @@ dependencies = [
  "lgn-build-utils",
  "lgn-core",
  "lgn-ecs",
+ "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
@@ -4775,6 +4780,7 @@ dependencies = [
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
+ "linkme",
  "parking_lot 0.11.2",
  "paste",
  "png 0.17.2",
@@ -4920,6 +4926,7 @@ dependencies = [
  "lgn-config",
  "lgn-core",
  "lgn-ecs",
+ "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-grpc",
  "lgn-input",
@@ -4932,6 +4939,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
+ "linkme",
  "serde",
  "serde_json",
  "tokio",
@@ -5235,6 +5243,26 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "linkme"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edd4ad156b9934dc21cad96fd17278a7cb6f30a5657a9d976cd7b71d6d49c02c"
+dependencies = [
+ "linkme-impl",
+]
+
+[[package]]
+name = "linkme-impl"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73fd9dc7072de7168cbdaba9125e8f742cd3a965aa12bde994b4611a174488d8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "lock_api"

@@ -11,9 +11,8 @@ fn build_graphics_cgen(
     let out_dir = PathBuf::from(&context.codegen_out_dir());
     let mut ctx_builder = lgn_graphics_cgen::run::CGenContextBuilder::new();
     ctx_builder.set_root_file(root_file).unwrap();
-    ctx_builder.set_outdir(&out_dir).unwrap();
-    //ctx_builder.set_crate_name(std::env::var("CARGO_PKG_NAME").unwrap());
-    ctx_builder.set_crate_name("renderer");
+    ctx_builder.set_out_dir(&out_dir).unwrap();
+    ctx_builder.set_crate_name(std::env::var("CARGO_PKG_NAME").unwrap());
 
     // run generation
     let result = lgn_graphics_cgen::run::run(&ctx_builder.build());

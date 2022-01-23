@@ -11,7 +11,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         let content = generate_hlsl_descriptor_set(ctx, descriptor_set_ref.object());
         products.push(Product::new(
             CGenVariant::Hlsl,
-            GeneratorContext::object_rel_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
+            GeneratorContext::object_relative_path(descriptor_set_ref.object(), CGenVariant::Hlsl),
             content.into_bytes(),
         ));
     }
