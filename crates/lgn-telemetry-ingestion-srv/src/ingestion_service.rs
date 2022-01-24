@@ -28,16 +28,16 @@ fn validate_auth<T>(request: &Request<T>) -> Result<(), Status> {
     {
         None => {
             error!("Auth: no token in request");
-            Err(Status::internal(String::from("Access denied")))
+            Err(Status::unauthenticated(String::from("Access denied")))
         }
         Some(Err(_)) => {
             error!("Auth: error parsing token");
-            Err(Status::internal(String::from("Access denied")))
+            Err(Status::unauthenticated(String::from("Access denied")))
         }
         Some(Ok(auth)) => {
             if auth != format!("Bearer {}", env!("LEGION_TELEMETRY_GRPC_API_KEY")) {
                 error!("Auth: wrong token");
-                Err(Status::internal(String::from("Access denied")))
+                Err(Status::unauthenticated(String::from("Access denied")))
             } else {
                 Ok(())
             }
