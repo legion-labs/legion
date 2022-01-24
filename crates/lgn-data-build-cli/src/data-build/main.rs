@@ -71,13 +71,14 @@ async fn main() -> Result<(), String> {
             build_index,
             project,
         } => {
-            let mut build = DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
-                .content_store(&ContentStoreAddr::from("."))
-                .create(project)
-                .await
-                .map_err(|e| format!("failed creating build index {}", e))?;
+            let (mut build, mut project) =
+                DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
+                    .content_store(&ContentStoreAddr::from("."))
+                    .create(project)
+                    .await
+                    .map_err(|e| format!("failed creating build index {}", e))?;
 
-            if let Err(e) = build.source_pull() {
+            if let Err(e) = build.source_pull(&mut project) {
                 eprintln!("Source Pull failed with '{}'", e);
                 let _res = std::fs::remove_file(build_index);
             }
@@ -111,7 +112,7 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let mut build = DataBuildOptions::new(build_index, compilers)
+            let (mut build, mut project) = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
                 .open()
                 .await
@@ -137,7 +138,7 @@ async fn main() -> Result<(), String> {
             // by doing a source_pull. this should most likely be executed only on demand.
             //
             build
-                .source_pull()
+                .source_pull(&mut project)
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
             let output = build

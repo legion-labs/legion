@@ -36,15 +36,13 @@ impl Config {
     }
 
     pub async fn open(&self) -> Result<(DataBuild, Project), String> {
-        let project = Project::open(self.project.clone())
-            .await
-            .map_err(|e| e.to_string())?;
         let buildindex = self.buildindex.clone();
-        let build = DataBuildOptions::new(buildindex, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from("."))
-            .open()
-            .await
-            .map_err(|e| e.to_string())?;
+        let (build, project) =
+            DataBuildOptions::new(buildindex, CompilerRegistryOptions::default())
+                .content_store(&ContentStoreAddr::from("."))
+                .open()
+                .await
+                .map_err(|e| e.to_string())?;
 
         Ok((build, project))
     }

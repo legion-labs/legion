@@ -7,6 +7,7 @@ use crate::{
     MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
+#[derive(Debug)]
 pub struct LocalIndexBackend {
     directory: PathBuf,
     sql_repository_index: SqlIndexBackend,
@@ -200,8 +201,10 @@ impl IndexBackend for LocalIndexBackend {
 mod tests {
     use crate::{IndexBackend, LocalIndexBackend};
 
-    #[tokio::test]
-    async fn create_destroy() {
+    //#[tracing::instrument]
+    async fn test() {
+        println!("Hello world");
+
         let root = tempfile::tempdir().unwrap();
         {
             let mut index = LocalIndexBackend::new(root.path()).unwrap();
@@ -213,5 +216,21 @@ mod tests {
             //let index = LocalIndexBackend::new(root.path()).unwrap();
             index.destroy_index().await.unwrap();
         }
+    }
+
+    #[test]
+    fn create_destroy() {
+        //tracing_subscriber::fmt::init();
+
+        //console_subscriber::ConsoleLayer::builder()
+        //    .with_default_env()
+        //    .recording_path("D://recording.txt")
+        //    .init();
+
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(test());
     }
 }

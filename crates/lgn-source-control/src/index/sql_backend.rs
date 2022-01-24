@@ -1,3 +1,4 @@
+use core::fmt;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -11,6 +12,7 @@ use crate::{
     IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
 };
 
+#[derive(Debug)]
 enum SqlDatabaseDriver {
     Sqlite(String),
     Mysql(String),
@@ -82,6 +84,15 @@ pub struct SqlIndexBackend {
     driver: SqlDatabaseDriver,
     pool: Mutex<Option<Arc<SqlConnectionPool>>>,
     blob_storage_url: BlobStorageUrl,
+}
+
+impl fmt::Debug for SqlIndexBackend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SqlIndexBackend")
+            .field("driver", &self.driver)
+            .field("blob_storage_url", &self.blob_storage_url)
+            .finish()
+    }
 }
 
 impl SqlIndexBackend {

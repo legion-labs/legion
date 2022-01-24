@@ -528,6 +528,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 update_entity_parenting(resource_id, Some(new_parent), old_parent, transaction);
         }
 
+        let project = Arc::new(Mutex::new(project));
         {
             let mut data_manager = self.data_manager.lock().await;
             data_manager

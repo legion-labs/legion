@@ -99,7 +99,8 @@ fn compute_context_hash(
 #[derive(Debug)]
 pub struct DataBuild {
     build_index: BuildIndex,
-    project: Project,
+    //project: Arc<Mutex<Project>>,
+    resource_dir: PathBuf,
     content_store: HddContentStore,
     compilers: CompilerNode,
 }
@@ -123,7 +124,12 @@ impl DataBuild {
 
         Ok(options.create())
     }
-    pub(crate) async fn new(config: DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
+
+    // todo: should not return the Project
+    pub(crate) async fn new(
+        config: DataBuildOptions,
+        project_dir: &Path,
+    ) -> Result<(Self, Project), Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
             BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
@@ -152,17 +158,34 @@ impl DataBuild {
             Ok,
         )?;
 
-        Ok(Self {
-            build_index,
+        Ok((
+            Self {
+                build_index,
+                //project: Arc::new(Mutex::new(project)),
+                resource_dir: project.resource_dir(),
+                content_store,
+                compilers: CompilerNode::new(compilers, registry),
+            },
             project,
-            content_store,
-            compilers: CompilerNode::new(compilers, registry),
-        })
+        ))
     }
 
-    pub(crate) async fn open(config: DataBuildOptions) -> Result<Self, Error> {
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        let project = build_index.open_project().await?;
+    pub(crate) async fn new_with_proj(
+        config: DataBuildOptions,
+        project: &Project,
+    ) -> Result<Self, Error> {
+        let project_dir = project.project_dir();
+
+        let projectindex_path = Project::root_to_index_path(project_dir);
+        let corrected_path =
+            BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
+
+        let build_index = BuildIndex::create_new(
+            &config.buildindex_dir,
+            &Project::root_to_index_path(project_dir),
+            Self::version(),
+        )
+        .map_err(|_e| Error::Io)?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -181,7 +204,69 @@ impl DataBuild {
 
         Ok(Self {
             build_index,
+            resource_dir: project.resource_dir(),
+            content_store,
+            compilers: CompilerNode::new(compilers, registry),
+        })
+    }
+
+    pub(crate) async fn open(config: DataBuildOptions) -> Result<(Self, Project), Error> {
+        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
+        let project = build_index.open_project().await?;
+
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
+
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
+        Ok((
+            Self {
+                build_index,
+                //project: Arc::new(Mutex::new(project)),
+                resource_dir: project.resource_dir(),
+                content_store,
+                compilers: CompilerNode::new(compilers, registry),
+            },
             project,
+        ))
+    }
+
+    pub(crate) async fn open_with_proj(
+        config: DataBuildOptions,
+        project: &Project,
+    ) -> Result<Self, Error> {
+        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
+        // todo: validate project path
+        //let project = build_index.open_project().await?;
+
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
+
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
+        Ok(Self {
+            build_index,
+            resource_dir: project.resource_dir(),
             content_store,
             compilers: CompilerNode::new(compilers, registry),
         })
@@ -194,7 +279,7 @@ impl DataBuild {
     pub(crate) async fn open_or_create(
         config: DataBuildOptions,
         project_dir: &Path,
-    ) -> Result<Self, Error> {
+    ) -> Result<(Self, Project), Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
         match BuildIndex::open(&config.buildindex_dir, Self::version()) {
@@ -213,25 +298,60 @@ impl DataBuild {
                     Ok,
                 )?;
 
-                Ok(Self {
-                    build_index,
+                Ok((
+                    Self {
+                        build_index,
+                        //project: Arc::new(Mutex::new(project)),
+                        resource_dir: project.resource_dir(),
+                        content_store,
+                        compilers: CompilerNode::new(compilers, registry),
+                    },
                     project,
-                    content_store,
-                    compilers: CompilerNode::new(compilers, registry),
-                })
+                ))
             }
             Err(Error::NotFound) => Self::new(config, project_dir).await,
             Err(e) => Err(e),
         }
     }
 
-    async fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).await.map_err(Error::from)
+    pub(crate) async fn open_or_create_with_proj(
+        config: DataBuildOptions,
+        project: &Project,
+    ) -> Result<Self, Error> {
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
+        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
+            Ok(build_index) => {
+                // todo: validate the two paths
+                //let p = build_index.project_path();
+                //let p2 = project.project_dir();
+
+                let compilers = config.compiler_options.create();
+                let registry = config.registry.map_or_else(
+                    || {
+                        Self::default_asset_registry(
+                            &project.resource_dir(),
+                            config.contentstore_path.clone(),
+                            &compilers,
+                        )
+                    },
+                    Ok,
+                )?;
+
+                Ok(Self {
+                    build_index,
+                    resource_dir: project.resource_dir(),
+                    content_store,
+                    compilers: CompilerNode::new(compilers, registry),
+                })
+            }
+            Err(Error::NotFound) => Self::new_with_proj(config, project).await,
+            Err(e) => Err(e),
+        }
     }
 
-    /// Accessor for the project associated with this builder.
-    pub fn project(&self) -> &Project {
-        &self.project
+    async fn open_project(project_dir: &Path) -> Result<Project, Error> {
+        Project::open(project_dir).await.map_err(Error::from)
     }
 
     /// Returns a source of a resource id.
@@ -243,11 +363,11 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub fn source_pull(&mut self) -> Result<i32, Error> {
+    pub fn source_pull(&mut self, project: &mut Project) -> Result<i32, Error> {
         let mut updated_resources = 0;
-        self.project.reload()?;
+        project.reload()?;
 
-        for resource_id in self.project.resource_list() {
+        for resource_id in project.resource_list() {
             let (kind, resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
 
             if self.build_index.update_resource(
@@ -297,9 +417,9 @@ impl DataBuild {
         env: &CompilationEnv,
     ) -> Result<Manifest, Error> {
         let source = compile_path.source_resource();
-        if !self.project.exists(source.id) {
-            return Err(Error::NotFound);
-        }
+        //if !self.project.lock().unwrap().exists(source) {
+        //    return Err(Error::NotFound);
+        //}
 
         let (mut manifest, file) = {
             if let Some(manifest_file) = manifest_file {
@@ -656,7 +776,7 @@ impl DataBuild {
                 let (resource_infos, resource_references, stats) = Self::compile_node(
                     &mut self.build_index,
                     self.content_store.address(),
-                    &self.project.resource_dir(),
+                    &self.resource_dir,
                     &compile_node,
                     context_hash,
                     source_hash,

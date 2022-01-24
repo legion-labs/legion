@@ -67,19 +67,17 @@ impl ResourceRegistryPlugin {
                 .await
                 .expect("unable to open project dir");
 
-            let project = Arc::new(Mutex::new(project));
-
             let compilers = lgn_ubercompiler::create();
 
             let build_options = DataBuildOptions::new(&build_dir, compilers)
                 .content_store(&ContentStoreAddr::from(build_dir.as_path())); //.asset_registry(asset_registry.clone());
 
-            let build_manager = BuildManager::new(build_options, &project_dir, manifest.clone())
+            let build_manager = BuildManager::new(build_options, &project, manifest.clone())
                 .await
                 .expect("the editor requires valid build manager");
 
             Arc::new(Mutex::new(DataManager::new(
-                project,
+                Arc::new(Mutex::new(project)),
                 registry,
                 asset_registry.clone(),
                 build_manager,

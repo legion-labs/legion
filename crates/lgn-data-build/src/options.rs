@@ -5,6 +5,7 @@ use std::{
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
@@ -67,7 +68,10 @@ impl DataBuildOptions {
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub async fn open_or_create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+    pub async fn open_or_create(
+        self,
+        project_dir: impl AsRef<Path>,
+    ) -> Result<(DataBuild, Project), Error> {
         DataBuild::open_or_create(self, project_dir.as_ref()).await
     }
 
@@ -81,7 +85,7 @@ impl DataBuildOptions {
     ///   [`DataBuildOptions::new()`].
     /// * The build index must point to an existing
     ///   [`lgn_data_offline::resource::Project`].
-    pub async fn open(self) -> Result<DataBuild, Error> {
+    pub async fn open(self) -> Result<(DataBuild, Project), Error> {
         DataBuild::open(self).await
     }
 
@@ -89,7 +93,22 @@ impl DataBuildOptions {
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub async fn create(self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+    pub async fn create(
+        self,
+        project_dir: impl AsRef<Path>,
+    ) -> Result<(DataBuild, Project), Error> {
         DataBuild::new(self, project_dir.as_ref()).await
+    }
+
+    pub async fn open_or_create_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create_with_proj(self, project).await
+    }
+
+    pub async fn open_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::open_with_proj(self, project).await
+    }
+
+    pub async fn create_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::new_with_proj(self, project).await
     }
 }

@@ -138,7 +138,6 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
     let project = Project::create_new(&project_dir).await.unwrap();
     let resource_dir = project.resource_dir();
-    let project = Arc::new(Mutex::new(project));
 
     let mut registry = ResourceRegistryOptions::new();
     generic_data::offline::register_resource_types(&mut registry);
@@ -157,10 +156,11 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project_dir, Manifest::default())
+    let build_manager = BuildManager::new(options, &project, Manifest::default())
         .await
         .unwrap();
 
+    let project = Arc::new(Mutex::new(project));
     {
         let mut data_manager = DataManager::new(
             project.clone(),

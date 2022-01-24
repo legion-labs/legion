@@ -7,7 +7,9 @@ use std::{
 
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_source_control::{init_workspace_command, IndexBackend, LocalIndexBackend};
+use lgn_source_control::{
+    init_workspace_command, IndexBackend, LocalIndexBackend, LocalWorkspaceConnection,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -90,6 +92,7 @@ pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
     remote: Option<LocalIndexBackend>,
+    workspace: LocalWorkspaceConnection,
 }
 
 #[derive(Error, Debug)]
@@ -129,6 +132,10 @@ impl Project {
         Self::root_to_index_path(&self.project_dir)
     }
 
+    pub fn project_dir(&self) -> &Path {
+        &self.project_dir
+    }
+
     /// Creates a new project index file turning the containing directory into a
     /// project.
     pub async fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
@@ -154,15 +161,23 @@ impl Project {
         let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
         let res = remote.create_index().await.map_err(Error::SourceControl)?;
 
-        /*init_workspace_command(&resource_dir, index.url())
-        .await
-        .map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: e,
-                context: "".to_string(),
-            })
-        })?;
-        */
+        init_workspace_command(&resource_dir, remote.url())
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: e,
+                    context: "".to_string(),
+                })
+            })?;
+
+        let workspace = LocalWorkspaceConnection::new(&resource_dir)
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: e,
+                    context: "Project::create_new".to_string(),
+                })
+            })?;
 
         Ok(Self {
             file,
@@ -170,6 +185,7 @@ impl Project {
             project_dir,
             resource_dir,
             remote: Some(remote),
+            workspace,
         })
     }
 
@@ -188,7 +204,17 @@ impl Project {
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
 
-        //
+        let remote_dir = project_dir.join("remote");
+        let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+
+        let workspace = LocalWorkspaceConnection::new(&resource_dir)
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: e,
+                    context: "Project::create_new".to_string(),
+                })
+            })?;
 
         Ok(Self {
             file,
@@ -196,6 +222,7 @@ impl Project {
             project_dir,
             resource_dir,
             remote: None,
+            workspace,
         })
     }
 
@@ -634,12 +661,10 @@ impl fmt::Debug for Project {
 mod tests {
     use std::any::Any;
     use std::sync::{Arc, Mutex};
-    use std::{fs::File, path::Path, str::FromStr};
+    use std::{fs::File, str::FromStr};
 
     use lgn_data_runtime::{resource, Resource, ResourceType};
-    use tempfile::TempDir;
 
-    use super::ResourceDb;
     use crate::resource::project::Project;
     use crate::resource::Error;
     use crate::{
@@ -648,17 +673,6 @@ mod tests {
         },
         ResourcePathId,
     };
-
-    fn setup_test() -> TempDir {
-        let root = tempfile::tempdir().unwrap();
-
-        let project_index_path = Project::root_to_index_path(root.path());
-        let project_index_file = File::create(project_index_path).unwrap();
-        std::fs::create_dir(root.path().join("offline")).unwrap();
-
-        serde_json::to_writer_pretty(project_index_file, &ResourceDb::default()).unwrap();
-        root
-    }
 
     const RESOURCE_TEXTURE: &str = "texture";
     const RESOURCE_MATERIAL: &str = "material";
@@ -746,9 +760,7 @@ mod tests {
     }
 
     #[allow(clippy::too_many_lines)]
-    async fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
-        let index_path = Project::root_to_index_path(project_dir);
-        let mut project = Project::open(&index_path).await.unwrap();
+    fn create_actor(project: &mut Project) -> Arc<Mutex<ResourceRegistry>> {
         let resources_arc = ResourceRegistryOptions::new()
             .add_type_processor(
                 ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
@@ -855,7 +867,7 @@ mod tests {
             .unwrap();
 
         drop(resources);
-        (project, resources_arc)
+        resources_arc
     }
 
     fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
@@ -933,8 +945,9 @@ mod tests {
 
     #[tokio::test]
     async fn local_changes() {
-        let proj_root_path = setup_test();
-        let (project, _) = create_actor(proj_root_path.path()).await;
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project);
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
@@ -942,8 +955,9 @@ mod tests {
 
     #[tokio::test]
     async fn commit() {
-        let proj_root_path = setup_test();
-        let (mut project, _) = create_actor(proj_root_path.path()).await;
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project);
 
         project.commit().unwrap();
 
@@ -953,8 +967,9 @@ mod tests {
 
     #[tokio::test]
     async fn immediate_dependencies() {
-        let project_dir = setup_test();
-        let (project, _) = create_actor(project_dir.path()).await;
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project);
 
         let top_level_resource = project
             .find_resource(&ResourcePathName::new("hero.actor"))
@@ -982,8 +997,9 @@ mod tests {
                 assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
             };
 
-        let project_dir = setup_test();
-        let (mut project, resources) = create_actor(project_dir.path()).await;
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let resources = create_actor(&mut project);
         assert!(project.commit().is_ok());
         create_sky_material(&mut project, &mut resources.lock().unwrap());
 

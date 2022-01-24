@@ -49,14 +49,14 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     exe_path.pop();
     let project_dir = PathBuf::from("..\\");
 
-    let mut build =
+    let (mut build, mut project) =
         DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
             .content_store(&asset_store_path)
             .open_or_create(project_dir)
             .await
             .expect("new build index");
 
-    build.source_pull().expect("successful pull");
+    build.source_pull(&mut project).expect("successful pull");
 
     let runtime_dir = root_folder.join("runtime");
     if !runtime_dir.exists() {
@@ -68,10 +68,9 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     let platform = Platform::Windows;
     let locale = Locale::new("en");
 
-    if let Ok(resource_id) = build.project().find_resource(resource_name) {
+    if let Ok(resource_id) = project.find_resource(resource_name) {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
-        let source_name = build
-            .project()
+        let source_name = project
             .resource_name(asset_path.source_resource().id)
             .ok()
             .unwrap();

@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 
@@ -17,7 +15,7 @@ impl BuildManager {
     /// New instance of `BuildManager`.
     pub async fn new(
         options: DataBuildOptions,
-        project_dir: impl AsRef<Path>,
+        project: &Project,
         manifest: Manifest,
     ) -> anyhow::Result<Self> {
         let editor_env = CompilationEnv {
@@ -26,7 +24,7 @@ impl BuildManager {
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create(project_dir).await?;
+        let build = options.open_or_create_with_proj(project).await?;
         Ok(Self {
             build,
             compile_env: editor_env,
@@ -38,6 +36,7 @@ impl BuildManager {
     pub fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
+project: &mut Project,
     ) -> anyhow::Result<(ResourcePathId, Vec<ResourceTypeAndId>)> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
@@ -61,11 +60,8 @@ impl BuildManager {
 
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
-        self.build.source_pull()?;
-        match self
-            .build
-            .compile(derived_id.clone(), None, &self.compile_env)
-        {
+        self.build.source_pull(project)?;
+        match self.build.compile(derived_id.clone(), None, &self.compile_env) {
             Ok(output) => {
                 info!(
                     "Data build {} Succeeded ({:?})",
