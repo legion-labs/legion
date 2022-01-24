@@ -30,14 +30,15 @@ impl TransactionOperation for RenameResourceOperation {
         if !ctx.project.exists(self.resource_id.id) {
             return Err(Error::InvalidResource(self.resource_id).into());
         }
-        if ctx.project.exists_named(&self.new_path) {
-            return Err(Error::ResourcePathAlreadyExist(self.new_path.clone()).into());
-        }
 
-        self.old_path = Some(
-            ctx.project
-                .rename_resource(self.resource_id, &self.new_path)?,
-        );
+        // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
+        let mut raw_name = ctx.project.raw_resource_name(self.resource_id.id)?;
+        raw_name.replace_parent_info(None, Some(self.new_path.clone()));
+
+        if ctx.project.exists_named(&raw_name) {
+            return Err(Error::ResourcePathAlreadyExist(raw_name).into());
+        }
+        self.old_path = Some(ctx.project.rename_resource(self.resource_id, &raw_name)?);
         Ok(())
     }
 

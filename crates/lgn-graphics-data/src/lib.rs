@@ -1,7 +1,34 @@
 //! Graphics Data Definition
 
 // crate-specific lint exceptions:
-#![warn(missing_docs)]
+
+//! Graphics
+
+// crate-specific lint exceptions:
+
+//! Generic data codegen test (offline)
+
+// crate-specific lint exceptions:
+// #![allow()]
+
+// generated from def\*.rs
+include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 pub mod color;
 pub use color::Color;
+
+/// Plugin module to register support types
+pub mod plugin;
+pub use plugin::*;
+
+#[cfg(feature = "runtime")]
+#[path = "runtime/texture.rs"]
+pub mod runtime_texture;
+
+#[cfg(feature = "offline")]
+#[path = "offline/psd.rs"]
+pub mod offline_psd;
+
+#[cfg(feature = "offline")]
+#[path = "offline/texture.rs"]
+pub mod offline_texture;

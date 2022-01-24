@@ -26,7 +26,7 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
     }
 }
 
-pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> TokenStream {
+pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let runtime_identifier = format_ident!("{}", data_container_info.name);
     let runtime_name = format!("runtime_{}", data_container_info.name).to_lowercase();
     let runtime_loader = format_ident!("{}Loader", data_container_info.name);
@@ -38,18 +38,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         quote! {}
     };
 
-    let use_quotes = if add_uses {
-        let imports = data_container_info.runtime_imports();
-        quote! {
-            #(use #imports;)*
-        }
-    } else {
-        quote! {}
-    };
-
     quote! {
-
-        #use_quotes
 
         impl #life_time lgn_data_runtime::Resource for #runtime_identifier #life_time {
             const TYPENAME: &'static str = #runtime_name;
@@ -59,7 +48,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
             type Loader = #runtime_loader;
         }
 
-        #[derive(serde::Serialize,serde::Deserialize,PartialEq)]
+        #[derive(serde::Serialize,serde::Deserialize, PartialEq, Clone)]
         pub struct #runtime_reftype (lgn_data_runtime::Reference<#runtime_identifier>);
         impl #runtime_reftype {
             pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId { self.0.id() }

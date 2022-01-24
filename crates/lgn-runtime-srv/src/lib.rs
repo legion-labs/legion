@@ -18,8 +18,8 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
-use lgn_data_runtime::{AssetRegistryOptions, ResourceTypeAndId};
-use lgn_ecs::prelude::*;
+use lgn_data_runtime::ResourceTypeAndId;
+use lgn_graphics_data::GraphicsPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
@@ -27,6 +27,7 @@ use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
+use sample_data::SampleDataPlugin;
 
 #[cfg(feature = "standalone")]
 mod standalone;
@@ -138,10 +139,11 @@ pub fn build_runtime(
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(GenericDataPlugin::default())
-        .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, true))
         .add_plugin(ScriptingPlugin::default())
-        .add_startup_system(register_asset_loaders);
+        .add_plugin(SampleDataPlugin::default())
+        .add_plugin(GraphicsPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::new(args.egui, true));
 
     #[cfg(feature = "standalone")]
     if standalone {
@@ -165,9 +167,4 @@ pub fn build_runtime(
 #[span_fn]
 pub fn start_runtime(app: &mut App) {
     app.run();
-}
-
-fn register_asset_loaders(mut registry: NonSendMut<'_, AssetRegistryOptions>) {
-    sample_data_runtime::add_loaders(&mut registry);
-    lgn_graphics_runtime::add_loaders(&mut registry);
 }

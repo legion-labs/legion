@@ -11,15 +11,15 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
-use lgn_data_offline::resource::ResourceRegistryOptions;
-use lgn_data_runtime::{AssetRegistryOptions, ResourceTypeAndId};
-use lgn_ecs::prelude::*;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_transform::TransformPlugin;
+use sample_data::SampleDataPlugin;
 
 mod grpc;
 mod plugin;
@@ -30,8 +30,13 @@ use property_inspector_plugin::PropertyInspectorPlugin;
 mod resource_browser_plugin;
 use resource_browser_plugin::ResourceBrowserPlugin;
 
-mod scene_explorer_plugin;
-use scene_explorer_plugin::SceneExplorerPlugin;
+#[cfg(test)]
+#[path = "tests/test_resource_browser.rs"]
+mod test_resource_browser;
+
+#[cfg(test)]
+#[path = "tests/test_property_inspector.rs"]
+mod test_property_inspector;
 
 use plugin::EditorPlugin;
 
@@ -109,24 +114,14 @@ fn main() {
         .add_plugin(EditorPlugin::default())
         .add_plugin(ResourceBrowserPlugin::default())
         .add_plugin(PropertyInspectorPlugin::default())
-        .add_plugin(SceneExplorerPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(GenericDataPlugin::default())
-        .add_startup_system(register_asset_loaders)
-        .add_startup_system(register_resource_types)
+        .add_plugin(ScriptingPlugin::default())
+        .add_plugin(SampleDataPlugin::default())
+        .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
         .add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
         })
         .run();
-}
-
-fn register_asset_loaders(mut registry: NonSendMut<'_, AssetRegistryOptions>) {
-    sample_data_runtime::add_loaders(&mut registry);
-    lgn_graphics_runtime::add_loaders(&mut registry);
-}
-
-fn register_resource_types(mut registry: ResMut<'_, ResourceRegistryOptions>) {
-    sample_data_offline::register_resource_types(&mut registry);
-    lgn_graphics_offline::register_resource_types(&mut registry);
 }

@@ -11,9 +11,29 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::Resource;
-use sample_data_runtime as runtime_data;
+use sample_data::offline as offline_data;
+use sample_data::runtime as runtime_data;
 
-use crate::offline_to_runtime::find_derived_path;
+//use crate::offline_to_runtime::find_derived_path;
+
+pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
+    let offline_type = path.content_type();
+    match offline_type {
+        offline_data::Entity::TYPE => path.push(runtime_data::Entity::TYPE),
+        offline_data::Instance::TYPE => path.push(runtime_data::Instance::TYPE),
+        offline_data::Mesh::TYPE => path.push(runtime_data::Mesh::TYPE),
+        lgn_graphics_data::offline_psd::PsdFile::TYPE => path
+            .push(lgn_graphics_data::offline_texture::Texture::TYPE)
+            .push(lgn_graphics_data::runtime_texture::Texture::TYPE),
+        lgn_graphics_data::offline::Material::TYPE => {
+            path.push(lgn_graphics_data::runtime::Material::TYPE)
+        }
+        generic_data::offline::DebugCube::TYPE => path.push(generic_data::runtime::DebugCube::TYPE),
+        _ => {
+            panic!("unrecognized offline type {}", offline_type);
+        }
+    }
+}
 
 pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     let root_folder = root_folder.as_ref();
@@ -87,8 +107,8 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
                 runtime_data::Entity::TYPE
                     | runtime_data::Instance::TYPE
                     | runtime_data::Mesh::TYPE
-                    | lgn_graphics_runtime::Texture::TYPE
-                    | lgn_graphics_runtime::Material::TYPE
+                    | lgn_graphics_data::runtime_texture::Texture::TYPE
+                    | lgn_graphics_data::runtime::Material::TYPE
                     | generic_data::runtime::DebugCube::TYPE
             )
         };

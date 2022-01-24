@@ -123,6 +123,15 @@ pub struct Handle<T: Any + Resource> {
     _pd: PhantomData<fn() -> T>,
 }
 
+impl<T: Any + Resource> Clone for Handle<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _pd: PhantomData,
+        }
+    }
+}
+
 impl<T: Any + Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
         self.inner.type_id == other.inner.type_id

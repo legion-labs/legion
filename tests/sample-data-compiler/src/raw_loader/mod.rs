@@ -16,8 +16,8 @@ use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_graphics_offline::PsdFile;
-use sample_data_offline as offline_data;
+use lgn_graphics_data::offline_psd::PsdFile;
+use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
 
 use self::raw_to_offline::FromRaw;
@@ -78,7 +78,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "mat" => {
-                        load_ron_resource::<raw_data::Material, lgn_graphics_offline::Material>(
+                        load_ron_resource::<raw_data::Material, lgn_graphics_data::offline::Material>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -124,7 +124,9 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
 
     let mut registry = ResourceRegistryOptions::new();
     offline_data::register_resource_types(&mut registry);
-    lgn_graphics_offline::register_resource_types(&mut registry);
+    lgn_graphics_data::offline::register_resource_types(&mut registry)
+        .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
+        .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>();
     generic_data::offline::register_resource_types(&mut registry);
     let registry = registry.create_registry();
 
@@ -139,13 +141,13 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
             offline_data::Instance::TYPE,
         ),
         "mat" => (
-            lgn_graphics_offline::Material::TYPENAME,
-            lgn_graphics_offline::Material::TYPE,
+            lgn_graphics_data::offline::Material::TYPENAME,
+            lgn_graphics_data::offline::Material::TYPE,
         ),
         "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
         "psd" => (
-            lgn_graphics_offline::PsdFile::TYPENAME,
-            lgn_graphics_offline::PsdFile::TYPE,
+            lgn_graphics_data::offline_psd::PsdFile::TYPENAME,
+            lgn_graphics_data::offline_psd::PsdFile::TYPE,
         ),
         _ => panic!(),
     }

@@ -17,6 +17,18 @@ where
     Active(Handle<T>),
 }
 
+impl<T> Clone for Reference<T>
+where
+    T: Any + Resource,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::Passive(resource_id) => Self::Passive(*resource_id),
+            Self::Active(handle) => Self::Active((*handle).clone()),
+        }
+    }
+}
+
 impl<T> Reference<T>
 where
     T: Any + Resource,

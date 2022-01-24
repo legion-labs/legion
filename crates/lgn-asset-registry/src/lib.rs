@@ -25,7 +25,7 @@ use lgn_ecs::prelude::*;
 use lgn_renderer::resources::DefaultMeshes;
 use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
-use sample_data_runtime as runtime_data;
+use sample_data::runtime as runtime_data;
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -152,7 +152,7 @@ impl AssetRegistryPlugin {
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
-                        ) && !load_ecs_asset::<lgn_graphics_runtime::Material>(
+                        ) && !load_ecs_asset::<lgn_graphics_data::runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
@@ -166,7 +166,7 @@ impl AssetRegistryPlugin {
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
-                        ) && !load_ecs_asset::<lgn_graphics_runtime::Texture>(
+                        ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
                             asset_id,
                             handle,
                             &registry,
@@ -180,23 +180,14 @@ impl AssetRegistryPlugin {
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
-                        ) && !load_ecs_asset::<generic_data::runtime::EntityDc>(
+                        ) && !load_ecs_asset::<lgn_scripting::runtime::Script>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                             &default_meshes,
-                        )
-                        /*&& !load_ecs_asset::<runtime_data::Script>(
-                            asset_id,
-                            handle,
-                            &registry,
-                            &mut commands,
-                            &mut asset_to_entity_map,
-                            &default_meshes,
-                        )*/
-                        {
+                        ) {
                             error!(
                                 "Unhandled runtime type: {}, asset: {}",
                                 asset_id.kind, asset_id

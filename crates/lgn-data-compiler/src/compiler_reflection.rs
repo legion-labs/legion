@@ -6,14 +6,13 @@ use lgn_data_offline::ResourcePathId;
 
 use bincode::{DefaultOptions, Options};
 use lgn_data_model::{TypeDefinition, TypeReflection};
-use std::collections::HashSet;
 use std::str::FromStr;
 
 /// Convert a reflected `OfflineType` to a `RuntimeType` using reflection.
 pub fn reflection_compile(
     offline_resource: &dyn TypeReflection,
     runtime_resource: &mut dyn TypeReflection,
-) -> Result<(Vec<u8>, Option<HashSet<ResourcePathId>>), CompilerError> {
+) -> Result<(Vec<u8>, Option<Vec<ResourcePathId>>), CompilerError> {
     // Read the Offline as a Serde_Json Value
 
     let mut buffer = Vec::new();
@@ -29,7 +28,12 @@ pub fn reflection_compile(
         .map_err(|_e| CompilerError::CompilationError("Invalid serde_json serialization"))?;
 
     // Process the Serde_Json value recursively and apply type conversion
-    convert_json_value_to_runtime(runtime_resource.get_type(), &mut values).unwrap();
+    convert_json_value_to_runtime(
+        (offline_resource as *const dyn TypeReflection).cast::<()>(),
+        offline_resource.get_type(),
+        &mut values,
+    )
+    .unwrap();
 
     // Apply Converted Values to Runtime instance
     let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(values);
@@ -57,25 +61,26 @@ pub fn reflection_compile(
 }
 
 fn convert_json_value_to_runtime(
-    runtime_type_def: TypeDefinition,
-    value: &mut serde_json::Value,
+    source: *const (),
+    offline_type_def: TypeDefinition,
+    json_value: &mut serde_json::Value,
 ) -> anyhow::Result<()> {
-    match runtime_type_def {
+    match offline_type_def {
         TypeDefinition::None => {
             return Err(anyhow::anyhow!("error"));
         }
-        TypeDefinition::BoxDyn(_box_dyn_descriptor) => {
-            if let serde_json::Value::Object(object) = value {
+        TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+            // For BoxDyn, pipe directly to the inner type
+            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(source) };
+            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(source) };
+
+            if let serde_json::Value::Object(object) = json_value {
                 if object.len() == 1 {
                     for (k, v) in object {
                         if let serde_json::Value::Object(_sub_obj) = v {
-                            let mut converted_value =
-                                serde_json::Map::<String, serde_json::Value>::new();
-
-                            let mut runtime_type = String::from("Runtime_");
-                            runtime_type.push_str(k);
-                            converted_value.insert(runtime_type, v.clone());
-                            *value = serde_json::Value::Object(converted_value);
+                            convert_json_value_to_runtime(sub_base, sub_type, v)?;
+                            *json_value =
+                                serde_json::json!({ format!("Runtime_{}", k): v.clone() });
                             return Ok(());
                         }
                     }
@@ -84,40 +89,49 @@ fn convert_json_value_to_runtime(
         }
 
         TypeDefinition::Array(array_descriptor) => {
-            if let serde_json::Value::Array(array) = value {
-                array.iter_mut().try_for_each(|property| {
-                    convert_json_value_to_runtime(array_descriptor.inner_type, property)
-                })?;
+            if let serde_json::Value::Array(array) = json_value {
+                for index in 0..unsafe { (array_descriptor.len)(source) } {
+                    let item_base = unsafe { (array_descriptor.get)(source, index) }?;
+                    let item_type_def = array_descriptor.inner_type;
+                    if let Some(element_value) = array.get_mut(index) {
+                        convert_json_value_to_runtime(item_base, item_type_def, element_value)?;
+                    }
+                }
             }
         }
 
         TypeDefinition::Primitive(primitive_descriptor) => {
             // Convert ResourcePathId to Runtime ReferenceType
-            if primitive_descriptor
-                .base_descriptor
-                .type_name
-                .ends_with("ReferenceType")
-            {
-                if let serde_json::Value::String(value_string) = value {
+            if primitive_descriptor.base_descriptor.type_name == "ResourcePathId" {
+                if let serde_json::Value::String(value_string) = json_value {
                     let res_path = ResourcePathId::from_str(value_string.as_str())
                         .map_err(|_e| anyhow::anyhow!("Invalid resourcePathId"))?;
-                    *value = serde_json::to_value(res_path.resource_id())?;
+                    *json_value = serde_json::to_value(res_path.resource_id())?;
                 }
             }
         }
         TypeDefinition::Option(offline_option_descriptor) => {
-            if !value.is_null() {
-                convert_json_value_to_runtime(offline_option_descriptor.inner_type, value)?;
+            if let Some(value_base) = unsafe { (offline_option_descriptor.get_inner)(source) } {
+                convert_json_value_to_runtime(
+                    value_base,
+                    offline_option_descriptor.inner_type,
+                    json_value,
+                )?;
             }
         }
         TypeDefinition::Struct(struct_descriptor) => {
-            if let serde_json::Value::Object(object) = value {
+            if let serde_json::Value::Object(object) = json_value {
                 struct_descriptor.fields.iter().try_for_each(
-                    |runtime_field| -> anyhow::Result<()> {
-                        if let Some(property_value) = object.get_mut(&runtime_field.field_name) {
+                    |offline_field| -> anyhow::Result<()> {
+                        if let Some(field_value) = object.get_mut(&offline_field.field_name) {
+                            let field_base = unsafe {
+                                source.cast::<u8>().add(offline_field.offset).cast::<()>()
+                            };
+
                             convert_json_value_to_runtime(
-                                runtime_field.field_type,
-                                property_value,
+                                field_base,
+                                offline_field.field_type,
+                                field_value,
                             )?;
                         }
                         Ok(())

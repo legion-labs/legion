@@ -18,7 +18,3 @@ pub mod resource_browser {
 pub mod property_inspector {
     tonic::include_proto!("property_inspector");
 }
-
-pub mod scene_explorer {
-    tonic::include_proto!("scene_explorer");
-}

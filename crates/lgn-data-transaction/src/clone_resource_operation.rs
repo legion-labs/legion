@@ -1,7 +1,6 @@
 //! Transaction Operation to Clone a Resource
 
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
@@ -10,7 +9,7 @@ use crate::{Error, LockContext, TransactionOperation};
 pub struct CloneResourceOperation {
     source_resource_id: ResourceTypeAndId,
     clone_resource_id: ResourceTypeAndId,
-    clone_path: ResourcePathName,
+    target_parent_id: Option<ResourceTypeAndId>,
 }
 
 impl CloneResourceOperation {
@@ -18,12 +17,12 @@ impl CloneResourceOperation {
     pub fn new(
         source_resource_id: ResourceTypeAndId,
         clone_resource_id: ResourceTypeAndId,
-        clone_path: ResourcePathName,
+        target_parent_id: Option<ResourceTypeAndId>,
     ) -> Box<Self> {
         Box::new(Self {
             source_resource_id,
             clone_resource_id,
-            clone_path,
+            target_parent_id,
         })
     }
 }
@@ -34,7 +33,7 @@ impl TransactionOperation for CloneResourceOperation {
         let source_handle = ctx
             .loaded_resource_handles
             .get(self.source_resource_id)
-            .ok_or(Error::InvalidTypeReflection(self.source_resource_id))?;
+            .ok_or(Error::InvalidResource(self.source_resource_id))?;
 
         let mut buffer = Vec::<u8>::new();
         ctx.resource_registry.serialize_resource(
@@ -47,21 +46,28 @@ impl TransactionOperation for CloneResourceOperation {
             .resource_registry
             .deserialize_resource(self.source_resource_id.kind, &mut buffer.as_slice())?;
 
-        if let Some(resource_type_name) = ctx
+        let resource_type_name = ctx
             .resource_registry
             .get_resource_type_name(self.source_resource_id.kind)
-        {
-            ctx.project.add_resource_with_id(
-                self.clone_path.clone(),
-                resource_type_name,
-                self.clone_resource_id.kind,
-                self.clone_resource_id,
-                &clone_handle,
-                &mut ctx.resource_registry,
-            )?;
-            ctx.loaded_resource_handles
-                .insert(self.clone_resource_id, clone_handle);
-        }
+            .ok_or(Error::InvalidResourceType(self.source_resource_id.kind))?;
+
+        // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
+        let mut source_raw_name = ctx.project.raw_resource_name(self.source_resource_id.id)?;
+        source_raw_name.replace_parent_info(self.target_parent_id, None);
+
+        source_raw_name = ctx.project.get_incremental_name(&source_raw_name);
+
+        ctx.project.add_resource_with_id(
+            source_raw_name,
+            resource_type_name,
+            self.clone_resource_id.kind,
+            self.clone_resource_id,
+            &clone_handle,
+            &mut ctx.resource_registry,
+        )?;
+
+        ctx.loaded_resource_handles
+            .insert(self.clone_resource_id, clone_handle);
         Ok(())
     }
 

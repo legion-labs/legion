@@ -118,7 +118,7 @@ pub fn generate_reflection(
     let signature_hash = data_container_info.calculate_hash();
     let fields_descriptors = generate_fields_descriptors(data_container_info, gen_type);
 
-    let component_derive =
+    let dynamic_derive =
         if data_container_info.is_component && gen_type == GenerationType::RuntimeFormat {
             quote! { #[derive(lgn_ecs::component::Component, Clone)] }
         } else {
@@ -127,7 +127,7 @@ pub fn generate_reflection(
 
     quote! {
         #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
-        #component_derive
+        #dynamic_derive
         pub struct #type_identifier {
             #(#fields)*
         }
