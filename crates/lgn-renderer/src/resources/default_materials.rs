@@ -1,6 +1,7 @@
+use lgn_ecs::prelude::{Commands, Entity};
 use lgn_graphics_data::Color;
 
-use super::{Material, MaterialId, MaterialManager};
+use crate::components::MaterialComponent;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DefaultMaterialType {
@@ -13,54 +14,56 @@ pub enum DefaultMaterialType {
 }
 
 pub struct DefaultMaterials {
-    default_material_ids: Vec<MaterialId>,
+    default_material_ids: Vec<Entity>,
 }
 
 impl DefaultMaterials {
-    pub fn new(material_manager: &mut MaterialManager) -> Self {
-        let mut gold = Material::default();
+    pub fn new() -> Self {
+        Self {
+            default_material_ids: Vec::new(),
+        }
+    }
+
+    pub fn initialize(&mut self, mut commands: Commands<'_, '_>) {
+        let default = MaterialComponent::default();
+
+        let mut gold = MaterialComponent::default();
         gold.base_color = Color::from((212, 175, 55));
         gold.metallic = 1.0;
         gold.roughness = 0.38;
 
-        let mut silver = Material::default();
+        let mut silver = MaterialComponent::default();
         silver.base_color = Color::from((168, 169, 173));
         silver.metallic = 1.0;
         silver.roughness = 0.38;
 
-        let mut bronze = Material::default();
+        let mut bronze = MaterialComponent::default();
         bronze.base_color = Color::from((205, 127, 50));
         bronze.metallic = 1.0;
         bronze.roughness = 0.38;
 
-        let mut blue_plastic = Material::default();
+        let mut blue_plastic = MaterialComponent::default();
         blue_plastic.base_color = Color::from((20, 20, 150));
         blue_plastic.metallic = 0.0;
         blue_plastic.roughness = 0.15;
 
-        let mut rough_metal = Material::default();
+        let mut rough_metal = MaterialComponent::default();
         rough_metal.base_color = Color::from((127, 64, 25));
         rough_metal.metallic = 1.0;
         rough_metal.specular = 0.2;
         rough_metal.roughness = 0.5;
 
-        let default_material_ids = vec![
-            material_manager.new_material(None).material_id,
-            material_manager.new_material(Some(gold)).material_id,
-            material_manager.new_material(Some(silver)).material_id,
-            material_manager.new_material(Some(bronze)).material_id,
-            material_manager
-                .new_material(Some(blue_plastic))
-                .material_id,
-            material_manager.new_material(Some(rough_metal)).material_id,
+        self.default_material_ids = vec![
+            commands.spawn().insert(default).id(),
+            commands.spawn().insert(gold).id(),
+            commands.spawn().insert(silver).id(),
+            commands.spawn().insert(bronze).id(),
+            commands.spawn().insert(blue_plastic).id(),
+            commands.spawn().insert(rough_metal).id(),
         ];
-
-        Self {
-            default_material_ids,
-        }
     }
 
-    pub fn get_material_id(&self, material_type: DefaultMaterialType) -> MaterialId {
+    pub fn get_material_id(&self, material_type: DefaultMaterialType) -> Entity {
         self.default_material_ids[material_type as usize]
     }
 }

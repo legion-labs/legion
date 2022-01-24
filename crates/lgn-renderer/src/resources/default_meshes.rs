@@ -77,7 +77,11 @@ impl DefaultMeshes {
     }
 
     pub fn mesh_offset_from_id(&self, mesh_id: u32) -> u32 {
-        self.static_mesh_offsets[mesh_id as usize]
+        if mesh_id < self.static_mesh_offsets.len() as u32 {
+            self.static_mesh_offsets[mesh_id as usize]
+        } else {
+            0
+        }
     }
 
     pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {

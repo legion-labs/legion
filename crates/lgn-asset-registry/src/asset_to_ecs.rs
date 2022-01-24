@@ -144,11 +144,33 @@ impl AssetToECS for runtime_data::Instance {
     }
 }
 
-impl AssetToECS for lgn_graphics_runtime::Material {}
+impl AssetToECS for lgn_graphics_runtime::Material {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        _instance: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
+    ) -> Option<Entity> {
+        let entity = commands.spawn();
+
+        Some(entity.id())
+    }
+}
 
 impl AssetToECS for runtime_data::Mesh {}
 
-impl AssetToECS for lgn_graphics_runtime::Texture {}
+impl AssetToECS for lgn_graphics_runtime::Texture {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        _instance: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
+    ) -> Option<Entity> {
+        let entity = commands.spawn();
+
+        Some(entity.id())
+    }
+}
 
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(

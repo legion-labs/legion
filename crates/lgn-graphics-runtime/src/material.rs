@@ -22,6 +22,14 @@ pub struct Material {
     pub roughness: Reference<Texture>,
     /// Metalness texture reference.
     pub metalness: Reference<Texture>,
+    /// Diffuse or metal surface color.
+    pub base_color: (f32, f32, f32, f32),
+    /// lends between a non-metallic and metallic material model
+    pub metallic: f32,
+    /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
+    pub specular: f32,
+    /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
+    pub roughness_value: f32,
 }
 
 impl Asset for Material {
@@ -46,6 +54,13 @@ where
     }))
 }
 
+fn read_with_default(reader: &mut dyn io::Read, default: f32) -> f32 {
+    reader
+        .read_f32::<LittleEndian>()
+        .or::<f32>(Ok(default))
+        .unwrap()
+}
+
 impl AssetLoader for MaterialLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let albedo = read_asset_id(reader)?;
@@ -53,11 +68,20 @@ impl AssetLoader for MaterialLoader {
         let roughness = read_asset_id(reader)?;
         let metalness = read_asset_id(reader)?;
 
+        let r = read_with_default(reader, 0.8);
+        let g = read_with_default(reader, 0.8);
+        let b = read_with_default(reader, 0.8);
+        let a = read_with_default(reader, 1.0);
+
         let output = Material {
             albedo,
             normal,
             roughness,
             metalness,
+            base_color: (r, g, b, a),
+            metallic: read_with_default(reader, 0.0),
+            specular: read_with_default(reader, 0.5),
+            roughness_value: read_with_default(reader, 0.4),
         };
 
         Ok(Box::new(output))

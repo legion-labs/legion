@@ -6,16 +6,9 @@
 
     struct MaterialData {
         float4 base_color;
-        float subsurface;
         float metallic;
         float specular;
-        float specular_tint;
         float roughness;
-        float anisotropic;
-        float sheen;
-        float sheen_tint;
-        float clearcoat;
-        float clearcoat_gloss;
     };
 
 #endif

@@ -140,14 +140,7 @@ struct ShaderPipelineLayout {
 
 struct MaterialData {
     base_color: Float4,
-    subsurface: Float1,
     metallic: Float1,
     specular: Float1,
-    specular_tint: Float1,
     roughness: Float1,
-    anisotropic: Float1,
-    sheen: Float1,
-    sheen_tint: Float1,
-    clearcoat: Float1,
-    clearcoat_gloss: Float1,
 }

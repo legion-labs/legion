@@ -14,6 +14,7 @@ mod cgen;
 use cgen::*;
 
 mod labels;
+use components::MaterialComponent;
 pub use labels::*;
 
 mod renderer;
@@ -95,7 +96,6 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
-        let mut material_amanager = MaterialManager::new(renderer.static_buffer());
 
         app.add_stage_after(
             CoreStage::PostUpdate,
@@ -117,11 +117,12 @@ impl Plugin for RendererPlugin {
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(init_default_materials);
 
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
-        app.insert_resource(DefaultMaterials::new(&mut material_amanager));
-        app.insert_resource(material_amanager);
+        app.insert_resource(DefaultMaterials::new());
+        app.insert_resource(MaterialManager::new(renderer.static_buffer()));
         app.insert_resource(renderer);
 
         app.init_resource::<DebugDisplay>();
@@ -143,7 +144,14 @@ impl Plugin for RendererPlugin {
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_transform);
-        app.add_system_to_stage(RenderStage::Prepare, update_materials);
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_materials.before(PrepareLabel::UpdateInstanceIds),
+        );
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_materials_ids.label(PrepareLabel::UpdateInstanceIds),
+        );
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
 
@@ -251,6 +259,13 @@ fn init_manipulation_manager(
     manipulation_manager.initialize(commands, default_meshes, picking_manager);
 }
 
+fn init_default_materials(
+    commands: Commands<'_, '_>,
+    mut default_materials: ResMut<'_, DefaultMaterials>,
+) {
+    default_materials.initialize(commands);
+}
+
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
@@ -294,14 +309,20 @@ fn update_transform(
 fn update_materials(
     renderer: ResMut<'_, Renderer>,
     material_manager: ResMut<'_, MaterialManager>,
+    updated_materials: Query<'_, '_, &mut MaterialComponent, Changed<MaterialComponent>>,
+) {
+    material_manager.update_gpu_data(&renderer, updated_materials);
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_materials_ids(
     default_materials: ResMut<'_, DefaultMaterials>,
+    materials: Query<'_, '_, &MaterialComponent>,
     mut query: Query<'_, '_, &mut StaticMesh, Changed<StaticMesh>>,
 ) {
-    material_manager.update_gpu_data(&renderer);
-
     for mut mesh in query.iter_mut() {
-        let material_id = default_materials.get_material_id(mesh.material_type);
-        if let Some(material) = material_manager.get_material(material_id) {
+        if let Ok(material) = materials.get(default_materials.get_material_id(mesh.material_type)) {
             mesh.material_offset = material.gpu_offset();
         }
     }

@@ -9,15 +9,15 @@ use lgn_graphics_cgen_runtime::prelude::*;
 static TYPE_DEF: CGenTypeDef = CGenTypeDef {
     name: "MaterialData",
     id: 24,
-    size: 56,
+    size: 28,
 };
 
-static_assertions::const_assert_eq!(mem::size_of::<MaterialData>(), 56);
+static_assertions::const_assert_eq!(mem::size_of::<MaterialData>(), 28);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct MaterialData {
-    data: [u8; 56],
+    data: [u8; 28],
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -44,133 +44,42 @@ impl MaterialData {
     }
 
     //
-    // member : subsurface
+    // member : metallic
     // offset : 16
     // size : 4
     //
-    pub fn set_subsurface(&mut self, value: Float1) {
+    pub fn set_metallic(&mut self, value: Float1) {
         self.set(16, value);
     }
 
-    pub fn subsurface(&self) -> Float1 {
+    pub fn metallic(&self) -> Float1 {
         self.get(16)
     }
 
     //
-    // member : metallic
+    // member : specular
     // offset : 20
     // size : 4
     //
-    pub fn set_metallic(&mut self, value: Float1) {
+    pub fn set_specular(&mut self, value: Float1) {
         self.set(20, value);
     }
 
-    pub fn metallic(&self) -> Float1 {
+    pub fn specular(&self) -> Float1 {
         self.get(20)
     }
 
     //
-    // member : specular
+    // member : roughness
     // offset : 24
     // size : 4
     //
-    pub fn set_specular(&mut self, value: Float1) {
+    pub fn set_roughness(&mut self, value: Float1) {
         self.set(24, value);
     }
 
-    pub fn specular(&self) -> Float1 {
-        self.get(24)
-    }
-
-    //
-    // member : specular_tint
-    // offset : 28
-    // size : 4
-    //
-    pub fn set_specular_tint(&mut self, value: Float1) {
-        self.set(28, value);
-    }
-
-    pub fn specular_tint(&self) -> Float1 {
-        self.get(28)
-    }
-
-    //
-    // member : roughness
-    // offset : 32
-    // size : 4
-    //
-    pub fn set_roughness(&mut self, value: Float1) {
-        self.set(32, value);
-    }
-
     pub fn roughness(&self) -> Float1 {
-        self.get(32)
-    }
-
-    //
-    // member : anisotropic
-    // offset : 36
-    // size : 4
-    //
-    pub fn set_anisotropic(&mut self, value: Float1) {
-        self.set(36, value);
-    }
-
-    pub fn anisotropic(&self) -> Float1 {
-        self.get(36)
-    }
-
-    //
-    // member : sheen
-    // offset : 40
-    // size : 4
-    //
-    pub fn set_sheen(&mut self, value: Float1) {
-        self.set(40, value);
-    }
-
-    pub fn sheen(&self) -> Float1 {
-        self.get(40)
-    }
-
-    //
-    // member : sheen_tint
-    // offset : 44
-    // size : 4
-    //
-    pub fn set_sheen_tint(&mut self, value: Float1) {
-        self.set(44, value);
-    }
-
-    pub fn sheen_tint(&self) -> Float1 {
-        self.get(44)
-    }
-
-    //
-    // member : clearcoat
-    // offset : 48
-    // size : 4
-    //
-    pub fn set_clearcoat(&mut self, value: Float1) {
-        self.set(48, value);
-    }
-
-    pub fn clearcoat(&self) -> Float1 {
-        self.get(48)
-    }
-
-    //
-    // member : clearcoat_gloss
-    // offset : 52
-    // size : 4
-    //
-    pub fn set_clearcoat_gloss(&mut self, value: Float1) {
-        self.set(52, value);
-    }
-
-    pub fn clearcoat_gloss(&self) -> Float1 {
-        self.get(52)
+        self.get(24)
     }
 
     #[allow(unsafe_code)]
@@ -196,18 +105,11 @@ impl MaterialData {
 
 impl Default for MaterialData {
     fn default() -> Self {
-        let mut ret = Self { data: [0; 56] };
+        let mut ret = Self { data: [0; 28] };
         ret.set_base_color(Float4::default());
-        ret.set_subsurface(Float1::default());
         ret.set_metallic(Float1::default());
         ret.set_specular(Float1::default());
-        ret.set_specular_tint(Float1::default());
         ret.set_roughness(Float1::default());
-        ret.set_anisotropic(Float1::default());
-        ret.set_sheen(Float1::default());
-        ret.set_sheen_tint(Float1::default());
-        ret.set_clearcoat(Float1::default());
-        ret.set_clearcoat_gloss(Float1::default());
         ret
     }
 }
