@@ -40,3 +40,6 @@ package-lock.json
 
 # Perfetto tracing files
 trace-*.json
+
+# Symlinks we use for debugging build scripts output
+**/out_dir
