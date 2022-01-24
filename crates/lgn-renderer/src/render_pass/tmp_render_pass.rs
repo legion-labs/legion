@@ -23,7 +23,7 @@ pub struct TmpRenderPass {
     pub speed: f32,
 }
 
-embedded_watched_file!(SHADER_SHADER, "shaders/shader.hlsl");
+embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
     pub fn new(renderer: &Renderer) -> Self {

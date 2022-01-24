@@ -28,7 +28,7 @@ pub struct DebugRenderPass {
     _wire_pso_nodepth: Pipeline,
 }
 
-embedded_watched_file!(CONST_COLOR_SHADER, "shaders/const_color.hlsl");
+embedded_watched_file!(CONST_COLOR_SHADER, "gpu/shaders/const_color.hlsl");
 
 impl DebugRenderPass {
     pub fn new(renderer: &Renderer) -> Self {

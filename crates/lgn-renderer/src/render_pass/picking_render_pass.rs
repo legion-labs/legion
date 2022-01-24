@@ -132,7 +132,7 @@ pub struct PickingRenderPass {
     picked_rw_view: BufferView,
 }
 
-embedded_watched_file!(PICKING_SHADER, "shaders/picking.hlsl");
+embedded_watched_file!(PICKING_SHADER, "gpu/shaders/picking.hlsl");
 
 impl PickingRenderPass {
     pub fn new(renderer: &Renderer) -> Self {

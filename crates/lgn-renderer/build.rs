@@ -29,7 +29,8 @@ fn build_graphics_cgen(root_file: &impl AsRef<Path>) -> Result<(), Box<dyn std::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // #[cfg(feature = "run-codegen")]
     let root_cgen = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
+        .join("gpu")
+        .join("codegen")
         .join("root.cgen");
     build_graphics_cgen(&root_cgen)?;
     Ok(())

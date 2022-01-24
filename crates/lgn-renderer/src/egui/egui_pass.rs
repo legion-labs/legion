@@ -18,7 +18,7 @@ pub struct EguiPass {
     sampler: Sampler,
 }
 
-embedded_watched_file!(UI_SHADER, "shaders/ui.hlsl");
+embedded_watched_file!(UI_SHADER, "gpu/shaders/ui.hlsl");
 
 impl EguiPass {
     pub fn new(renderer: &Renderer) -> Self {
