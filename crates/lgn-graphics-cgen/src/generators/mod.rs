@@ -4,7 +4,6 @@ pub mod product;
 pub mod rust;
 
 use heck::ToSnakeCase;
-use relative_path::{RelativePath, RelativePathBuf};
 
 use self::product::Product;
 use crate::{
@@ -29,38 +28,33 @@ impl<'a> GeneratorContext<'a> {
         }
     }
 
-    fn object_folder<T>() -> RelativePathBuf
+    fn object_folder<T>() -> String
     where
         T: ModelObject,
     {
-        RelativePath::new(&T::typename().to_snake_case()).to_owned()
+        T::typename().to_snake_case()
     }
 
-    fn object_relative_path<T>(typ: &T, cgen_variant: CGenVariant) -> RelativePathBuf
+    fn object_relative_path<T>(obj: &T, cgen_variant: CGenVariant) -> String
     where
         T: ModelObject,
     {
-        let file_name = Self::object_filename(typ, cgen_variant);
-        Self::object_folder::<T>().join(file_name)
-    }
-
-    fn object_filename<T>(obj: &T, cgen_variant: CGenVariant) -> RelativePathBuf
-    where
-        T: ModelObject,
-    {
-        let mut file_name = RelativePath::new(&obj.name().to_snake_case()).to_relative_path_buf();
-        file_name.set_extension(cgen_variant.get_file_ext());
-        file_name
+        format!(
+            "{}/{}.{}",
+            Self::object_folder::<T>(),
+            obj.name().to_snake_case(),
+            cgen_variant.get_file_ext()
+        )
     }
 
     fn embedded_fs_path<T>(&self, obj: &T, cgen_variant: CGenVariant) -> String
     where
         T: ModelObject,
     {
+        // convention here is to use the gpu folder
         format!(
-            "crate://{}/codegen/{}/{}/{}.{}",
+            "crate://{}/gpu/{}/{}.{}",
             &self.crate_name,
-            cgen_variant.dir(),
             T::typename().to_snake_case(),
             &obj.name().to_snake_case(),
             cgen_variant.get_file_ext()

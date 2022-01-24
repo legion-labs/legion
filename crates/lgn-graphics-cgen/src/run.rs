@@ -74,13 +74,11 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// File does not exists or invalid path..
-    pub fn set_root_file(&mut self, root_file: &impl AsRef<Path>) -> Result<()> {
+    pub fn set_root_file(&mut self, root_file: impl AsRef<Path>) -> Result<()> {
+        let root_file = root_file.as_ref();
         let abs_path = to_abs_path(root_file)?;
         if !abs_path.exists() || !abs_path.is_file() {
-            return Err(anyhow!(
-                "File {} does not exist ",
-                root_file.as_ref().display()
-            ));
+            return Err(anyhow!("File {} does not exist ", root_file.display()));
         }
         self.context.root_file = abs_path;
 
@@ -91,7 +89,7 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// Invalid path.
-    pub fn set_out_dir(&mut self, out_dir: &impl AsRef<Path>) -> Result<()> {
+    pub fn set_out_dir(&mut self, out_dir: impl AsRef<Path>) -> Result<()> {
         self.context.out_dir = to_abs_path(out_dir)?;
 
         Ok(())
@@ -119,7 +117,7 @@ pub fn run(context: &CGenContext) -> Result<CGenBuildResult> {
     run_internal(context)
 }
 
-fn to_abs_path(path: &impl AsRef<Path>) -> Result<PathBuf> {
+fn to_abs_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     let path = path.as_ref();
     Ok(if path.is_relative() {
         let cur_dir = env::current_dir()?;

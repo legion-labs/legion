@@ -9,7 +9,7 @@
 )]
 
 mod cgen {
-    include!(concat!(env!("OUT_DIR"), "/codegen/rust/mod.rs"));
+    include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 #[allow(unused_imports)]
 use cgen::*;

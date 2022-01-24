@@ -8,9 +8,11 @@ fn symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 // TODO: Put this in lgn_graphics_cgen or in it's own lib
-fn build_graphics_cgen(root_file: &impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
+fn build_graphics_cgen(
+    out_dir: impl AsRef<Path>,
+    root_file: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // build context
-    let out_dir = Path::new(&std::env::var("OUT_DIR").unwrap()).join("codegen");
     let mut ctx_builder = lgn_graphics_cgen::run::CGenContextBuilder::new();
     ctx_builder.set_root_file(root_file).unwrap();
     ctx_builder.set_out_dir(&out_dir).unwrap();
@@ -34,15 +36,15 @@ fn build_graphics_cgen(root_file: &impl AsRef<Path>) -> Result<(), Box<dyn std::
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // #[cfg(feature = "run-codegen")]
+    let out_dir = PathBuf::from(&std::env::var("OUT_DIR").unwrap());
     let root_cgen = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("gpu")
         .join("codegen")
         .join("root.cgen");
-    build_graphics_cgen(&root_cgen)?;
+
+    build_graphics_cgen(&out_dir, &root_cgen)?;
 
     if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
-        let out_dir = PathBuf::from(&std::env::var("OUT_DIR").unwrap());
         symlink(
             &out_dir,
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("out_dir"),

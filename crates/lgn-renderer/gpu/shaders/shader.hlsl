@@ -1,5 +1,5 @@
-#include "crate://lgn-renderer/codegen/hlsl/pipeline_layout/shader_pipeline_layout.hlsl"
-#include "crate://lgn-renderer/codegen/hlsl/cgen_type/entity_transforms.hlsl"
+#include "crate://lgn-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
+#include "crate://lgn-renderer/gpu/cgen_type/entity_transforms.hlsl"
 
 struct VertexIn {
     float4 pos : POSITION;

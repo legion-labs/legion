@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use anyhow::Result;
-use relative_path::{RelativePath, RelativePathBuf};
+use relative_path::RelativePath;
 
 use super::CGenVariant;
 use crate::run::CGenContext;
@@ -9,12 +9,12 @@ use crate::run::CGenContext;
 #[derive(Debug)]
 pub struct Product {
     variant: CGenVariant,
-    path: RelativePathBuf,
+    path: String,
     content: Vec<u8>,
 }
 
 impl Product {
-    pub fn new(variant: CGenVariant, path: RelativePathBuf, content: Vec<u8>) -> Self {
+    pub fn new(variant: CGenVariant, path: String, content: Vec<u8>) -> Self {
         Self {
             variant,
             path,
@@ -22,7 +22,7 @@ impl Product {
         }
     }
 
-    pub fn path(&self) -> &RelativePath {
+    pub fn path(&self) -> &String {
         &self.path
     }
 
@@ -36,7 +36,7 @@ impl Product {
     /// Todo.
     pub fn write_to_disk(&self, context: &CGenContext) -> Result<()> {
         // create output folder if needed
-        let final_path = self.path.to_path(context.out_dir(self.variant));
+        let final_path = RelativePath::new(&self.path).to_path(context.out_dir(self.variant));
         let mut dir_builder = std::fs::DirBuilder::new();
         dir_builder.recursive(true);
         dir_builder.create(final_path.parent().unwrap())?;

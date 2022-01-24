@@ -1,5 +1,4 @@
 use heck::{ToShoutySnakeCase, ToSnakeCase};
-use relative_path::RelativePath;
 
 use crate::{
     db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
@@ -11,7 +10,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let content = generate(ctx);
     products.push(Product::new(
         CGenVariant::Rust,
-        RelativePath::new("mod.rs").to_relative_path_buf(),
+        "mod.rs".to_string(),
         content.into_bytes(),
     ));
 
@@ -118,7 +117,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             );
             writer.add_line(format!("\"{}\",", crate_path));
             writer.add_line(format!(
-                "include_bytes!(concat!(env!(\"OUT_DIR\"), \"/codegen/hlsl/{}\")),",
+                "include_bytes!(concat!(env!(\"OUT_DIR\"), \"/hlsl/{}\")),",
                 rel_path
             ));
             writer.add_line("None".to_string());
@@ -171,7 +170,8 @@ where
             {
                 let mut writer = writer.new_block(&[format!("mod {} {{", mod_name)], &["}"]);
                 writer.add_line(format!(
-                    "include!(concat!(env!(\"OUT_DIR\"), \"/codegen/rust/{}\"));",
+                    "include!(concat!(env!(\"OUT_DIR\"), \"/{}/{}\"));",
+                    CGenVariant::Rust.dir(),
                     GeneratorContext::object_relative_path(obj_ref.object(), CGenVariant::Rust)
                 ));
             }
@@ -190,7 +190,7 @@ fn embedded_fs_info(
 ) -> (String, String, String) {
     (
         obj.name().to_shouty_snake_case(),
-        GeneratorContext::object_relative_path(obj, CGenVariant::Hlsl).to_string(),
+        GeneratorContext::object_relative_path(obj, CGenVariant::Hlsl),
         ctx.embedded_fs_path(obj, CGenVariant::Hlsl),
     )
 }
