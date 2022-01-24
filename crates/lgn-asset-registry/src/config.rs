@@ -66,7 +66,7 @@ impl Default for AssetRegistrySettings {
         let config = Config::new();
         let project_folder = config
             .get_absolute_path("editor_srv.project_dir")
-            .unwrap_or_else(|| PathBuf::from("test/sample-data"));
+            .unwrap_or_else(|| PathBuf::from("tests/sample-data"));
 
         let content_store_path = project_folder.join("temp");
 
