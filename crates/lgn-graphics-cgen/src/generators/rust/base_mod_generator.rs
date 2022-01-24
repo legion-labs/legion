@@ -26,7 +26,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     writer.new_line();
     // fn initialize
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &["pub fn initialize(device_context: &DeviceContext) {"],
             &["}"],
         );
@@ -40,7 +40,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         writer.new_line();
 
         {
-            let mut writer = writer.new_block(&["let descriptor_set_layouts = ["], &["];"]);
+            let mut writer = writer.add_block(&["let descriptor_set_layouts = ["], &["];"]);
             for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
                 writer.add_line(format!(
                     "descriptor_set::{}::descriptor_set_layout(),",
@@ -62,7 +62,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
 
     // fn shutdown
     {
-        let mut writer = writer.new_block(&["pub fn shutdown() {"], &["}"]);
+        let mut writer = writer.add_block(&["pub fn shutdown() {"], &["}"]);
 
         for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
             writer.add_line(format!(
@@ -105,10 +105,10 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
                     .map(|descriptor_set| embedded_fs_info(ctx, descriptor_set.object())),
             )
             .collect();
-        let mut writer = writer.new_block(&["#[rustfmt::skip]", "mod shader_files {"], &["}"]);
+        let mut writer = writer.add_block(&["#[rustfmt::skip]", "mod shader_files {"], &["}"]);
 
         for (var_name, rel_path, crate_path) in infos {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[linkme::distributed_slice(lgn_embedded_fs::EMBEDDED_FILES)]".to_string(),
                     format!("static {}: lgn_embedded_fs::EmbeddedFile = lgn_embedded_fs::EmbeddedFile::new(", var_name),
@@ -153,7 +153,7 @@ where
 {
     if model.size::<T>() > 0 {
         let folder = GeneratorContext::object_folder::<T>();
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 "#[allow(dead_code, clippy::needless_range_loop, clippy::derivable_impls)]"
                     .to_string(),
@@ -168,7 +168,7 @@ where
                 continue;
             }
             {
-                let mut writer = writer.new_block(&[format!("mod {} {{", mod_name)], &["}"]);
+                let mut writer = writer.add_block(&[format!("mod {} {{", mod_name)], &["}"]);
                 writer.add_line(format!(
                     "include!(concat!(env!(\"OUT_DIR\"), \"/{}/{}\"));",
                     CGenVariant::Rust.dir(),

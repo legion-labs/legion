@@ -23,7 +23,7 @@ fn generate_hlsl_pipeline_layout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout
 
     // header
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 format!("#ifndef PIPELINE_LAYOUT_{}", pl.name.to_uppercase()),
                 format!("#define PIPELINE_LAYOUT_{}", pl.name.to_uppercase()),

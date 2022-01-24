@@ -40,7 +40,7 @@ impl FileWriter {
         self.new_line();
     }
 
-    pub fn new_block<'w, 'b, 'e, Sb: AsRef<str>, Se: AsRef<str>>(
+    pub fn add_block<'w, 'b, 'e, Sb: AsRef<str>, Se: AsRef<str>>(
         &'w mut self,
         begin: &'b [Sb],
         end: &'e [Se],
@@ -83,7 +83,7 @@ pub struct FileWriterScope<'w, 'e, S: AsRef<str>> {
 }
 
 impl<'w, 'e, Se: AsRef<str>> FileWriterScope<'w, 'e, Se> {
-    pub fn new<'b, Sb: AsRef<str>>(
+    fn new<'b, Sb: AsRef<str>>(
         file_writer: &'w mut FileWriter,
         begin: &'b [Sb],
         end: &'e [Se],

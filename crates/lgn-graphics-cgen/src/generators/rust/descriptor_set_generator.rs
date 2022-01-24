@@ -28,7 +28,7 @@ fn generate_rust_descriptor_set(
 
     // global dependencies
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &["#[allow(unused_imports)]", "use lgn_graphics_api::{"],
             &["};"],
         );
@@ -45,7 +45,7 @@ fn generate_rust_descriptor_set(
     }
     writer.new_line();
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 "#[allow(unused_imports)]",
                 "use lgn_graphics_cgen_runtime::{",
@@ -62,7 +62,7 @@ fn generate_rust_descriptor_set(
 
     // write cgen descriptor def
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!(
                 "static DESCRIPTOR_DEFS: [CGenDescriptorDef; {}] = [",
                 descriptor_set.descriptors.len()
@@ -70,7 +70,7 @@ fn generate_rust_descriptor_set(
             &["];"],
         );
         for descriptor in &descriptor_set.descriptors {
-            let mut writer = writer.new_block(&["CGenDescriptorDef {"], &["},"]);
+            let mut writer = writer.add_block(&["CGenDescriptorDef {"], &["},"]);
             writer.add_line(format!("name: \"{}\",", descriptor.name));
             writer.add_line(format!(
                 "shader_resource_type: ShaderResourceType::{},",
@@ -91,7 +91,7 @@ fn generate_rust_descriptor_set(
 
     // write cgen descriptor set def
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &["static DESCRIPTOR_SET_DEF: CGenDescriptorSetDef = CGenDescriptorSetDef{"],
             &["};"],
         );
@@ -115,7 +115,7 @@ fn generate_rust_descriptor_set(
 
     // struct
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!("pub struct {}<'a> {{", descriptor_set.name)],
             &["}"],
         );
@@ -130,14 +130,14 @@ fn generate_rust_descriptor_set(
 
     // impl
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!("impl<'a> {}<'a> {{", descriptor_set.name)],
             &["}"],
         );
 
         // impl: initialize
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
                     "pub fn initialize(device_context: &DeviceContext) {",
@@ -152,7 +152,7 @@ fn generate_rust_descriptor_set(
         // impl: shutdown
         {
             let mut writer =
-                writer.new_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
+                writer.add_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
             writer.add_line("unsafe{ DESCRIPTOR_SET_LAYOUT = None; }");
         }
 
@@ -160,7 +160,7 @@ fn generate_rust_descriptor_set(
 
         // impl: descriptor_set_layout
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
                     "pub fn descriptor_set_layout() -> &'static DescriptorSetLayout {",
@@ -247,7 +247,7 @@ fn generate_rust_descriptor_set(
                 };
 
             {
-                let mut writer = writer.new_block(
+                let mut writer = writer.add_block(
                     &[format!(
                         "pub fn set_{}(&mut self, value:  {}) {{",
                         descriptor.name, descriptor_input_decl
@@ -261,7 +261,7 @@ fn generate_rust_descriptor_set(
                     ));
                     {
                         let mut writer =
-                            writer.new_block(&[format!("for i in 0..{} {{", n)], &["}"]);
+                            writer.add_block(&[format!("for i in 0..{} {{", n)], &["}"]);
                         writer.add_line(format!(
                             "self.descriptor_refs[{}+i] = DescriptorRef::{}(value[i]);",
                             descriptor.flat_index, descriptor_ref_type
@@ -287,7 +287,7 @@ fn generate_rust_descriptor_set(
 
     // trait: default
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!(
                 "impl<'a> Default for {}<'a> {{",
                 descriptor_set.name
@@ -296,7 +296,7 @@ fn generate_rust_descriptor_set(
         );
         writer.add_line("fn default() -> Self {");
         {
-            let _writer = writer.new_block(
+            let _writer = writer.add_block(
                 &[format!(
                     "Self {{descriptor_refs: [DescriptorRef::<'a>::default(); {}], }}",
                     descriptor_set.flat_descriptor_count
@@ -310,7 +310,7 @@ fn generate_rust_descriptor_set(
 
     // trait: DescriptorSetDataProvider
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!(
                 "impl<'a> DescriptorSetDataProvider for {}<'a> {{",
                 descriptor_set.name
@@ -319,14 +319,14 @@ fn generate_rust_descriptor_set(
         );
 
         {
-            let mut writer = writer.new_block(&["fn frequency(&self) -> u32 {"], &["}"]);
+            let mut writer = writer.add_block(&["fn frequency(&self) -> u32 {"], &["}"]);
             writer.add_line("Self::frequency()");
         }
 
         writer.new_line();
 
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &["fn layout(&self) -> &'static DescriptorSetLayout {"],
                 &["}"],
             );
@@ -335,7 +335,7 @@ fn generate_rust_descriptor_set(
         writer.new_line();
 
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &["fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'a>] {"],
                 &["}"],
             );

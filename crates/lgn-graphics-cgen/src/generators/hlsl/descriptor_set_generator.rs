@@ -79,7 +79,7 @@ fn generate_hlsl_descriptor_set(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) 
 
     // header
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 format!("#ifndef DESCRIPTOR_SET_{}", ds.name.to_uppercase()),
                 format!("#define DESCRIPTOR_SET_{}", ds.name.to_uppercase()),

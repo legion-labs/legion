@@ -44,7 +44,7 @@ fn generate_rust_struct(
     writer.new_line();
 
     {
-        let mut writer = writer.new_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
+        let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
         writer.add_line("CGenTypeDef,");
     }
     writer.new_line();
@@ -78,7 +78,7 @@ fn generate_rust_struct(
     // write type def
     {
         let mut writer =
-            writer.new_block(&["static TYPE_DEF: CGenTypeDef = CGenTypeDef{"], &["};"]);
+            writer.add_block(&["static TYPE_DEF: CGenTypeDef = CGenTypeDef{"], &["};"]);
         writer.add_lines(&[
             format!("name: \"{}\",", struct_ty.name),
             format!("id: {},", ty_id),
@@ -95,7 +95,7 @@ fn generate_rust_struct(
 
     // struct
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 "#[derive(Clone, Copy)]".to_string(),
                 "#[repr(C)]".to_string(),
@@ -110,7 +110,7 @@ fn generate_rust_struct(
 
     // impl
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 "#[allow(clippy::trivially_copy_pass_by_ref)]".to_string(),
                 format!("impl {} {{", struct_ty.name),
@@ -141,7 +141,7 @@ fn generate_rust_struct(
 
             if let Some(array_len) = struct_member.array_len {
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn set_{}(&mut self, values: [{};{}]) {{ ",
                             struct_member.name, struct_member_type_name, array_len
@@ -151,7 +151,7 @@ fn generate_rust_struct(
 
                     {
                         let mut writer =
-                            writer.new_block(&[format!("for i in 0..{} {{", array_len)], &["}"]);
+                            writer.add_block(&[format!("for i in 0..{} {{", array_len)], &["}"]);
                         writer.add_line(format!(
                             "self.set_{}_element(i, values[i]);",
                             struct_member.name,
@@ -163,7 +163,7 @@ fn generate_rust_struct(
 
                 // set element by index
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn set_{}_element(&mut self, index: usize, value: {}) {{ ",
                             struct_member.name, struct_member_type_name
@@ -183,7 +183,7 @@ fn generate_rust_struct(
 
                 // get all elements
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn {}(&self) ->  [{};{}] {{ ",
                             struct_member.name, struct_member_type_name, array_len
@@ -197,7 +197,7 @@ fn generate_rust_struct(
 
                 // get element by index
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn {}_element(&self, index: usize) -> {} {{ ",
                             struct_member.name, struct_member_type_name
@@ -215,7 +215,7 @@ fn generate_rust_struct(
             } else {
                 // set
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn set_{}(&mut self, value: {}) {{ ",
                             struct_member.name, struct_member_type_name
@@ -229,7 +229,7 @@ fn generate_rust_struct(
 
                 // get
                 {
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn {}(&self) -> {} {{ ",
                             struct_member.name, struct_member_type_name
@@ -243,7 +243,7 @@ fn generate_rust_struct(
         }
 
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
                     "fn set<T: Copy>(&mut self, offset: usize, value: T) {",
@@ -251,7 +251,7 @@ fn generate_rust_struct(
                 &["}"],
             );
             {
-                let mut writer = writer.new_block(&["unsafe {"], &["}"]);
+                let mut writer = writer.add_block(&["unsafe {"], &["}"]);
                 writer.add_lines(&[
                     "let p = self.data.as_mut_ptr();",
                     "let p = p.add(offset as usize);",
@@ -263,7 +263,7 @@ fn generate_rust_struct(
         writer.new_line();
 
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
                     "fn get<T: Copy>(&self, offset: usize) -> T {",
@@ -271,7 +271,7 @@ fn generate_rust_struct(
                 &["}"],
             );
             {
-                let mut writer = writer.new_block(&["unsafe {"], &["}"]);
+                let mut writer = writer.add_block(&["unsafe {"], &["}"]);
                 writer.add_lines(&[
                     "let p = self.data.as_ptr();",
                     "let p = p.add(offset as usize);",
@@ -287,10 +287,10 @@ fn generate_rust_struct(
     // impl Default
     {
         let mut writer =
-            writer.new_block(&[format!("impl Default for {} {{", struct_ty.name)], &["}"]);
+            writer.add_block(&[format!("impl Default for {} {{", struct_ty.name)], &["}"]);
 
         {
-            let mut writer = writer.new_block(&["fn default() -> Self {"], &["}"]);
+            let mut writer = writer.add_block(&["fn default() -> Self {"], &["}"]);
             writer.add_line("let mut ret = Self {");
             writer.add_line(format!("data: [0;{}]", ty_layout.padded_size));
             writer.add_line("};");

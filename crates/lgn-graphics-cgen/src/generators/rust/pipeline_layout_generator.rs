@@ -36,7 +36,7 @@ fn generate_rust_pipeline_layout(
     writer.new_line();
 
     {
-        let mut writer = writer.new_block(&["use lgn_graphics_api::{"], &["};"]);
+        let mut writer = writer.add_block(&["use lgn_graphics_api::{"], &["};"]);
         writer.add_lines(&[
             "DeviceContext,",
             "RootSignature,",
@@ -48,7 +48,7 @@ fn generate_rust_pipeline_layout(
     writer.new_line();
 
     {
-        let mut writer = writer.new_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
+        let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
         writer.add_lines(&["CGenPipelineLayoutDef,", "PipelineDataProvider,"]);
     }
     writer.new_line();
@@ -72,7 +72,7 @@ fn generate_rust_pipeline_layout(
 
     // write cgen pipeline layout def
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &["static PIPELINE_LAYOUT_DEF: CGenPipelineLayoutDef = CGenPipelineLayoutDef{"],
             &["};"],
         );
@@ -110,7 +110,7 @@ fn generate_rust_pipeline_layout(
     // struct
     {
         let mut writer =
-            writer.new_block(&[format!("pub struct {} {{", pipeline_layout.name)], &["}"]);
+            writer.add_block(&[format!("pub struct {} {{", pipeline_layout.name)], &["}"]);
 
         writer.add_line(
             "descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],",
@@ -125,10 +125,10 @@ fn generate_rust_pipeline_layout(
 
     // impl
     {
-        let mut writer = writer.new_block(&[format!("impl {} {{", pipeline_layout.name)], &["}"]);
+        let mut writer = writer.add_block(&[format!("impl {} {{", pipeline_layout.name)], &["}"]);
         // fn initialize
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &["#[allow(unsafe_code)]", "pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {"],
                 &["}"],
             );
@@ -149,14 +149,14 @@ fn generate_rust_pipeline_layout(
         // fn shutdown
         {
             let mut writer =
-                writer.new_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
+                writer.add_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
             writer.add_line("unsafe{ PIPELINE_LAYOUT = None; }");
         }
         writer.new_line();
 
         // fn root_signature
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
                     "pub fn root_signature() -> &'static RootSignature {",
@@ -164,7 +164,7 @@ fn generate_rust_pipeline_layout(
                 &["}"],
             );
             {
-                let mut writer = writer.new_block(&["unsafe{ match &PIPELINE_LAYOUT{"], &["}}"]);
+                let mut writer = writer.add_block(&["unsafe{ match &PIPELINE_LAYOUT{"], &["}}"]);
                 writer.add_line("Some(pl) => pl,");
                 writer.add_line("None => unreachable!(),");
             }
@@ -173,7 +173,7 @@ fn generate_rust_pipeline_layout(
 
         // fn new
         {
-            let mut writer = writer.new_block(&["pub fn new() -> Self {"], &["}"]);
+            let mut writer = writer.add_block(&["pub fn new() -> Self {"], &["}"]);
             writer.add_line("Self::default()");
         }
         writer.new_line();
@@ -183,7 +183,7 @@ fn generate_rust_pipeline_layout(
             match content {
                 crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
                     let ds = ds_ref.get(ctx.model);
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                         "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
                         name
@@ -198,7 +198,7 @@ fn generate_rust_pipeline_layout(
                 }
                 crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
                     let ty = ty_ref.get(ctx.model);
-                    let mut writer = writer.new_block(
+                    let mut writer = writer.add_block(
                         &[format!(
                             "pub fn set_{}(&mut self, data: &{}) {{",
                             name,
@@ -217,15 +217,15 @@ fn generate_rust_pipeline_layout(
 
     // trait: Default
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!("impl Default for {} {{", pipeline_layout.name)],
             &["}"],
         );
 
         {
-            let mut writer = writer.new_block(&["fn default() -> Self {"], &["}"]);
+            let mut writer = writer.add_block(&["fn default() -> Self {"], &["}"]);
             {
-                let mut writer = writer.new_block(&["Self {"], &["}"]);
+                let mut writer = writer.add_block(&["Self {"], &["}"]);
                 writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
                 if let Some(ty_ref) = pipeline_layout.push_constant() {
                     let ty = ty_ref.get(ctx.model);
@@ -239,7 +239,7 @@ fn generate_rust_pipeline_layout(
 
     // trait: PipelineDataProvider
     {
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[format!(
                 "impl PipelineDataProvider for {} {{",
                 pipeline_layout.name
@@ -251,14 +251,14 @@ fn generate_rust_pipeline_layout(
         // fn descriptor_set
         {
             let mut writer =
-                writer.new_block(&["fn root_signature() -> &'static RootSignature {"], &["}"]);
+                writer.add_block(&["fn root_signature() -> &'static RootSignature {"], &["}"]);
             writer.add_line("Self::root_signature()");
         }
         writer.new_line();
 
         // fn descriptor_set
         {
-            let mut writer = writer.new_block(
+            let mut writer = writer.add_block(
                 &["fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {"],
                 &["}"],
             );
@@ -269,7 +269,7 @@ fn generate_rust_pipeline_layout(
         // fn push_constant
         {
             let mut writer =
-                writer.new_block(&["fn push_constant(&self) -> Option<&[u8]> {"], &["}"]);
+                writer.add_block(&["fn push_constant(&self) -> Option<&[u8]> {"], &["}"]);
             if let Some(ty_handle) = pipeline_layout.push_constant() {
                 writer.add_line("#![allow(unsafe_code)]");
                 let ty = ty_handle.get(ctx.model);

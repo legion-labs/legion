@@ -38,7 +38,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
 
     {
         // write guard scope
-        let mut writer = writer.new_block(
+        let mut writer = writer.add_block(
             &[
                 format!("#ifndef TYPE_{}", struct_ty.name.to_shouty_snake_case()),
                 format!("#define TYPE_{}", struct_ty.name.to_shouty_snake_case()),
@@ -65,7 +65,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
 
         // struct
         {
-            let mut writer = writer.new_block(&[format!("struct {} {{", struct_ty.name)], &["};"]);
+            let mut writer = writer.add_block(&[format!("struct {} {{", struct_ty.name)], &["};"]);
             for m in &struct_ty.members {
                 writer.add_line(member_declaration(ctx.model, m));
             }
