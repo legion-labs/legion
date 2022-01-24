@@ -33,6 +33,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bus::{Bus, BusReader};
+use lgn_tracing::{error, info};
 use linkme::distributed_slice;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 
@@ -90,7 +91,7 @@ impl EmbeddedFileSystem {
         let mut path_to_content = HashMap::<&'static str, &'static EmbeddedFile>::new();
         let mut watched_to_path = HashMap::<PathBuf, &'static str>::new();
         for file in EMBEDDED_FILES {
-            println!("{} -- {:?}", file.path, file.original_path);
+            info!("{} -- {:?}", file.path, file.original_path);
             path_to_content.insert(file.path, file);
             if let Some(watch_path) = file.original_path {
                 let watch_path = std::fs::canonicalize(watch_path).unwrap();
@@ -108,16 +109,16 @@ impl EmbeddedFileSystem {
             loop {
                 match rx.recv() {
                     Ok(DebouncedEvent::Write(ref path)) => {
-                        println!("{:?}", path);
+                        info!("{:?}", path);
                         bus_clone
                             .lock()
                             .unwrap()
                             .broadcast(watched_to_path.get(path).unwrap());
                     }
                     Ok(event) => {
-                        println!("{:?}", event);
+                        info!("{:?}", event);
                     }
-                    Err(e) => println!("watch error: {:?}", e),
+                    Err(e) => error!("watch error: {:?}", e),
                 }
             }
         });

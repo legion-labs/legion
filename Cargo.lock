@@ -4466,6 +4466,7 @@ name = "lgn-embedded-fs"
 version = "0.1.0"
 dependencies = [
  "bus",
+ "lgn-tracing",
  "linkme",
  "notify",
 ]
