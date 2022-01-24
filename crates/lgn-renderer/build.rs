@@ -1,4 +1,11 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+fn symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    return std::os::windows::fs::symlink_dir(src, dst);
+    #[cfg(not(windows))]
+    return std::os::unix::fs::symlink(src, dst);
+}
 
 // TODO: Put this in lgn_graphics_cgen or in it's own lib
 fn build_graphics_cgen(root_file: &impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
@@ -33,5 +40,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .join("codegen")
         .join("root.cgen");
     build_graphics_cgen(&root_cgen)?;
+
+    if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
+        let out_dir = PathBuf::from(&std::env::var("OUT_DIR").unwrap());
+        symlink(
+            &out_dir,
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("out_dir"),
+        )?;
+    }
+
     Ok(())
 }
