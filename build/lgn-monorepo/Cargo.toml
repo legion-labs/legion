@@ -12,7 +12,7 @@ publish = false
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 ################################################################################
-anyhow = "1.0.0"
+anyhow = "1.0.53"
 atty = "0.2.14"
 camino = "1.0.7"
 clap = { version = "3.0", features = ["derive"] }

@@ -19,7 +19,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 
 # others
-anyhow = "1.0.44"
+anyhow = "1.0.53"
 clap = { version = "3.0", features = ["derive"] }
 directories = "4"
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
