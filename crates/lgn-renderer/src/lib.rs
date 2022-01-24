@@ -8,8 +8,9 @@
     clippy::uninit_vec
 )]
 
-#[path = "../codegen/rust/mod.rs"]
-mod cgen;
+mod cgen {
+    include!(concat!(env!("OUT_DIR"), "/codegen/rust/mod.rs"));
+}
 #[allow(unused_imports)]
 use cgen::*;
 

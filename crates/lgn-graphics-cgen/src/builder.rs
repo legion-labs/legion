@@ -82,7 +82,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         }
     }
 
-    /// Add descriptor.
+    /// Add Samplers.
     ///
     /// # Errors
     /// todo
@@ -90,11 +90,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(name, array_len, DescriptorDef::Sampler)
     }
 
-    /// Add descriptor.
+    /// Add `ConstantBuffers`.
     ///
     /// # Errors
     /// todo
-    pub fn add_constantbuffer(self, name: &str, inner_type: &str) -> Result<Self> {
+    pub fn add_constant_buffer(self, name: &str, inner_type: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl
@@ -112,11 +112,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         )
     }
 
-    /// Add descriptor.
+    /// Add `StructuredBuffers`.
     ///
     /// # Errors
     /// todo
-    pub fn add_structuredbuffer(
+    pub fn add_structured_buffer(
         self,
         name: &str,
         array_len: Option<u32>,
@@ -142,11 +142,11 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(name, array_len, def)
     }
 
-    /// Add descriptor.
+    /// Add `ByteAddressBuffer`.
     ///
     /// # Errors
     /// todo
-    pub fn add_byteaddressbuffer(
+    pub fn add_byte_address_buffer(
         self,
         name: &str,
         array_len: Option<u32>,
@@ -297,7 +297,7 @@ pub struct PipelineLayoutBuilder<'mdl> {
     product: PipelineLayout,
     names: HashSet<String>,
     freqs: HashSet<u32>,
-    has_pushconstant: bool,
+    has_push_constant: bool,
 }
 
 impl<'mdl> PipelineLayoutBuilder<'mdl> {
@@ -307,16 +307,16 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             product: PipelineLayout::new(name),
             names: HashSet::new(),
             freqs: HashSet::new(),
-            has_pushconstant: false,
+            has_push_constant: false,
         }
     }
 
-    /// Add descriptorset.
+    /// Add `DescriptorSet`.
     ///
     /// # Errors
     /// todo
-    pub fn add_descriptorset(mut self, name: &str, ty: &str) -> Result<Self> {
-        // check descriptorset exists
+    pub fn add_descriptor_set(mut self, name: &str, ty: &str) -> Result<Self> {
+        // check descriptor_set exists
         let ds_handle = self.mdl.get_object_handle::<DescriptorSet>(ty);
         if ds_handle.is_none() {
             return Err(anyhow!(
@@ -341,19 +341,19 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_handle))
     }
 
-    /// Add pushconstant
+    /// Add `PushConstant`.
     ///
     /// # Errors
     /// todo
-    pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
-        // only one pushconstant is allowed
-        if self.has_pushconstant {
+    pub fn add_push_constant(mut self, name: &str, typename: &str) -> Result<Self> {
+        // only one push_constant is allowed
+        if self.has_push_constant {
             return Err(anyhow!(
                 "Only one PushConstant allowed in PipelineLayout '{}'",
                 self.product.name
             ));
         }
-        self.has_pushconstant = true;
+        self.has_push_constant = true;
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl

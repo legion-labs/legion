@@ -1,4 +1,4 @@
-use heck::ToSnakeCase;
+use heck::ToShoutySnakeCase;
 
 use crate::{
     db::CGenType,
@@ -40,14 +40,8 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
         // write guard scope
         let mut writer = writer.new_block(
             &[
-                format!(
-                    "#ifndef TYPE_{}",
-                    struct_ty.name.to_snake_case().to_uppercase()
-                ),
-                format!(
-                    "#define TYPE_{}",
-                    struct_ty.name.to_snake_case().to_uppercase()
-                ),
+                format!("#ifndef TYPE_{}", struct_ty.name.to_shouty_snake_case()),
+                format!("#define TYPE_{}", struct_ty.name.to_shouty_snake_case()),
             ],
             &["#endif"],
         );

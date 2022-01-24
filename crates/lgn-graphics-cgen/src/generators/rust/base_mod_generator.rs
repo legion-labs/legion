@@ -1,4 +1,4 @@
-use heck::ToSnakeCase;
+use heck::{ToShoutySnakeCase, ToSnakeCase};
 use relative_path::RelativePath;
 
 use crate::{
@@ -18,32 +18,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-fn write_mod<T>(model: &Model, writer: &mut FileWriter)
-where
-    T: ModelObject,
-{
-    if model.size::<T>() > 0 {
-        let folder = GeneratorContext::object_folder::<T>();
-        writer.add_line(format!("pub mod {};", folder));
-    }
-}
-
 fn generate(ctx: &GeneratorContext<'_>) -> String {
     let mut writer = FileWriter::new();
-
-    // write lints disabling
-    writer.add_line("#![allow(clippy::all)]");
-    writer.add_line("#![allow(dead_code)]");
-    writer.new_line();
 
     // write dependencies
     let model = ctx.model;
     writer.add_line("use lgn_graphics_api::DeviceContext;");
-    write_mod::<CGenType>(model, &mut writer);
-    write_mod::<DescriptorSet>(model, &mut writer);
-    write_mod::<PipelineLayout>(model, &mut writer);
     writer.new_line();
-
     // fn initialize
     {
         let mut writer = writer.new_block(
@@ -144,7 +125,62 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         }
     }
 
+    writer.new_line();
+
+    write_mod::<CGenType>(model, &mut writer);
+    write_mod::<DescriptorSet>(model, &mut writer);
+    write_mod::<PipelineLayout>(model, &mut writer);
+
     writer.build()
+}
+
+trait SkipInclude: ModelObject {
+    fn skip_include(&self) -> bool {
+        false
+    }
+}
+
+impl SkipInclude for CGenType {
+    fn skip_include(&self) -> bool {
+        matches!(self, CGenType::Native(_))
+    }
+}
+impl SkipInclude for DescriptorSet {}
+impl SkipInclude for PipelineLayout {}
+
+fn write_mod<T>(model: &Model, writer: &mut FileWriter)
+where
+    T: ModelObject + SkipInclude,
+{
+    if model.size::<T>() > 0 {
+        let folder = GeneratorContext::object_folder::<T>();
+        let mut writer = writer.new_block(
+            &[
+                "#[allow(dead_code, clippy::all)]".to_string(),
+                format!("pub mod {} {{", folder),
+            ],
+            &["}"],
+        );
+
+        for obj_ref in model.object_iter::<T>() {
+            let mod_name = obj_ref.object().name().to_snake_case();
+            if obj_ref.object().skip_include() {
+                continue;
+            }
+            {
+                let mut writer = writer.new_block(&[format!("mod {} {{", mod_name)], &["}"]);
+                writer.add_line(format!(
+                    "include!(concat!(env!(\"OUT_DIR\"), \"/codegen/rust/{}\"));",
+                    GeneratorContext::object_relative_path(obj_ref.object(), CGenVariant::Rust)
+                ));
+            }
+            writer.add_lines(&[
+                "#[allow(unused_imports)]".to_string(),
+                format!("pub use {}::*;", mod_name),
+            ]);
+        }
+    }
+    writer.new_line();
 }
 
 fn embedded_fs_info(
@@ -152,7 +188,7 @@ fn embedded_fs_info(
     obj: &impl ModelObject,
 ) -> (String, String, String) {
     (
-        obj.name().to_snake_case().to_uppercase(),
+        obj.name().to_shouty_snake_case(),
         GeneratorContext::object_relative_path(obj, CGenVariant::Hlsl).to_string(),
         ctx.embedded_fs_path(obj, CGenVariant::Hlsl),
     )

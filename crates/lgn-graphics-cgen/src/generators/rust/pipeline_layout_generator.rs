@@ -21,24 +21,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         ));
     }
 
-    if !products.is_empty() {
-        let mut mod_path = GeneratorContext::object_folder::<PipelineLayout>();
-        mod_path.push("mod.rs");
-
-        let mut writer = FileWriter::new();
-        for product in &products {
-            let filename = product.path().file_stem().unwrap();
-            writer.add_line(format!("pub mod {};", &filename));
-            writer.add_line("#[allow(unused_imports)]");
-            writer.add_line(format!("pub use {}::*;", &filename));
-        }
-        products.push(Product::new(
-            CGenVariant::Rust,
-            mod_path,
-            writer.build().into_bytes(),
-        ));
-    }
-
     products
 }
 

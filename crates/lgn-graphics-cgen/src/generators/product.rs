@@ -52,10 +52,6 @@ impl Product {
         output.write_all(&self.content)?;
         output.flush()?;
 
-        std::process::Command::new("rustfmt")
-            .args(&[final_path])
-            .status()?;
-
         Ok(())
     }
 }
