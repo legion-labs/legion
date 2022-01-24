@@ -107,3 +107,6 @@ debug-assertions = false
 opt-level = 3
 debug = true
 debug-assertions = false
+
+[env]
+LEGION_TELEMETRY_GRPC_API_KEY = "296bb99c-6921-4233-a353-a29c1045b5f2"

@@ -20,12 +20,38 @@ impl IngestionService {
     }
 }
 
+fn validate_auth<T>(request: &Request<T>) -> Result<(), Status> {
+    match request
+        .metadata()
+        .get("Authorization")
+        .map(tonic::metadata::MetadataValue::to_str)
+    {
+        None => {
+            error!("Auth: no token in request");
+            Err(Status::internal(String::from("Access denied")))
+        }
+        Some(Err(_)) => {
+            error!("Auth: error parsing token");
+            Err(Status::internal(String::from("Access denied")))
+        }
+        Some(Ok(auth)) => {
+            if auth != format!("Bearer {}", env!("LEGION_TELEMETRY_GRPC_API_KEY")) {
+                error!("Auth: wrong token");
+                Err(Status::internal(String::from("Access denied")))
+            } else {
+                Ok(())
+            }
+        }
+    }
+}
+
 #[tonic::async_trait]
 impl TelemetryIngestion for IngestionService {
     async fn insert_process(
         &self,
         request: Request<Process>,
     ) -> Result<Response<InsertReply>, Status> {
+        validate_auth(&request)?;
         let process_info = request.into_inner();
         info!(
             "new process [{}] {}",
@@ -75,6 +101,7 @@ impl TelemetryIngestion for IngestionService {
         &self,
         request: Request<Stream>,
     ) -> Result<Response<InsertReply>, Status> {
+        validate_auth(&request)?;
         let stream_info = request.into_inner();
         match self.db_pool.acquire().await {
             Ok(mut connection) => {
@@ -118,6 +145,7 @@ impl TelemetryIngestion for IngestionService {
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
+        validate_auth(&request)?;
         let block = request.into_inner();
         info!("new block {}", block.block_id);
         let payload = match block.payload {

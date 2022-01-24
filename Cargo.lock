@@ -5014,11 +5014,13 @@ name = "lgn-telemetry-sink"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "ctrlc",
  "json",
  "lazy_static",
  "lgn-config",
+ "lgn-online",
  "lgn-telemetry-proto",
  "lgn-tracing",
  "lgn-tracing-transit",
