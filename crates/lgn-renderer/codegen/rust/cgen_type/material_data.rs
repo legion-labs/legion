@@ -57,15 +57,15 @@ impl MaterialData {
     }
 
     //
-    // member : specular
+    // member : reflectance
     // offset : 20
     // size : 4
     //
-    pub fn set_specular(&mut self, value: Float1) {
+    pub fn set_reflectance(&mut self, value: Float1) {
         self.set(20, value);
     }
 
-    pub fn specular(&self) -> Float1 {
+    pub fn reflectance(&self) -> Float1 {
         self.get(20)
     }
 
@@ -108,7 +108,7 @@ impl Default for MaterialData {
         let mut ret = Self { data: [0; 28] };
         ret.set_base_color(Float4::default());
         ret.set_metallic(Float1::default());
-        ret.set_specular(Float1::default());
+        ret.set_reflectance(Float1::default());
         ret.set_roughness(Float1::default());
         ret
     }

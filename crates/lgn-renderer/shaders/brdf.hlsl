@@ -1,93 +1,84 @@
 #include "crate://renderer/codegen/hlsl/cgen_type/material_data.hlsl"
 
-//const float PI = 3.14159265358979323846;
-
-struct BRDFContext
-{
-	float NoV;
-	float NoL;
-	float VoL;
-	float NoH;
-	float VoH;
-};
-
-void init(inout BRDFContext context, float3 N, float3 V, float3 L, float NoL)
-{
-	context.NoL = dot(N, L);
-	context.NoV = dot(N, V);
-	context.VoL = dot(V, L);
-	float invLenH = rsqrt(2 + 2 * context.VoL);
-	context.NoH = saturate((context.NoL + context.NoV ) * invLenH);
-	context.VoH = saturate(invLenH + invLenH * context.VoL);
+// Fresnel function
+// see https://google.github.io/filament/Filament.html#citation-schlick94
+// F_Schlick(v,h,f_0,f_90) = f_0 + (f_90 − f_0) (1 − v⋅h)^5
+float F_Schlick(float f0, float f90, float u) {
+    // not using mix to keep the vec3 and float versions identical
+    return f0 + (f90 - f0) * pow(1.0 - u, 5.0);
 }
 
-// Physically based shading model
-// parameterized with the below options
+float3 fresnel(float3 f0, float LoH) {
+    // f_90 suitable for ambient occlusion
+    // see https://google.github.io/filament/Filament.html#lighting/occlusion
+    float f90 = saturate(dot(f0, (float3)(50.0 * 0.33)));
 
-// Microfacet specular = D*G*F / (4*NoL*NoV) = D*Vis*F
-// Vis = G / (4*NoL*NoV)
-float3 diffuse_lambert(float3 albedo)
-{
-	return albedo * (1 / 3.14159265358979323846);
+    return f0 + (f90 - f0) * pow(1.0 - LoH, 5.0);
 }
 
-// [Burley 2012, "Physically-Based Shading at Disney"]
-float3 diffuse_burley(float3 albedo, float roughness, float NoV, float NoL, float VoH)
-{
-	float FD90 = 0.5 + 2 * VoH * VoH * roughness;
-	float FdV = 1 + (FD90 - 1) * pow(1 - NoV, 5);
-	float FdL = 1 + (FD90 - 1) * pow(1 - NoL, 5);
-	return albedo * ( (1 / 3.14159265358979323846) * FdV * FdL );
+// Diffuse BRDF
+// https://google.github.io/filament/Filament.html#materialsystem/diffusebrdf
+// fd(v,l) = σ/π * 1 / { |n⋅v||n⋅l| } ∫Ω D(m,α) G(v,l,m) (v⋅m) (l⋅m) dm
+//
+// simplest approximation
+float Fd_Lambert() {
+     return 1.0 / 3.14159265358979323846;
 }
 
-// GGX / Trowbridge-Reitz
-// [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
-float D_GGX(float a2, float NoH)
-{
-	float d = ( NoH * a2 - NoH ) * NoH + 1;	// 2 mad
-	return a2 / ( 3.14159265358979323846*d*d );					// 4 mul, 1 rcp
+// vec3 Fd = diffuseColor * Fd_Lambert();
+//
+// Disney approximation
+// See https://google.github.io/filament/Filament.html#citation-burley12
+// minimal quality difference
+float Fd_Burley(float roughness, float NoV, float NoL, float LoH) {
+    float f90 = 0.5 + 2.0 * roughness * LoH * LoH;
+    float lightScatter = F_Schlick(1.0, f90, NoL);
+    float viewScatter = F_Schlick(1.0, f90, NoV);
+    return lightScatter * viewScatter * (1.0 / 3.14159265358979323846);
 }
 
-// Appoximation of joint Smith term for GGX
-// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
-float vis_smith_joint_approx(float a2, float NoV, float NoL)
-{
-	float a = sqrt(a2);
-	float Vis_SmithV = NoL * ( NoV * ( 1 - a ) + a );
-	float Vis_SmithL = NoV * ( NoL * ( 1 - a ) + a );
-	return 0.5 * rcp( Vis_SmithV + Vis_SmithL );
+// Normal distribution function (specular D)
+// Based on https://google.github.io/filament/Filament.html#citation-walter07
+
+// D_GGX(h,α) = α^2 / { π ((n⋅h)^2 (α2−1) + 1)^2 }
+
+// Simple implementation, has precision problems when using fp16 instead of fp32
+// see https://google.github.io/filament/Filament.html#listing_speculardfp16
+float D_GGX(float linearRoughness , float NoH) {
+    float a = NoH * linearRoughness;
+    float k = linearRoughness  / (1.0 - NoH * NoH + a * a);
+    float d = k * k * (1.0 / 3.14159265358979323846);
+    return saturate(d);
 }
 
-// [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
-float3 f_schlick(float3 specular_color, float VoH)
-{
-	float Fc = pow(1 - VoH, 5);					// 1 sub, 3 mul
-	//return Fc + (1 - Fc) * SpecularColor;		// 1 add, 3 mad
-	
-	// Anything less than 2% is physically impossible and is instead considered to be shadowing
-	return saturate(50.0 * specular_color.g) * Fc + (1 - Fc) * specular_color;
+// Visibility function (Specular G)
+// V(v,l,a) = G(v,l,α) / { 4 (n⋅v) (n⋅l) }
+// such that f_r becomes
+// f_r(v,l) = D(h,α) V(v,l,α) F(v,h,f0)
+// where
+// V(v,l,α) = 0.5 / { n⋅l sqrt((n⋅v)^2 (1−α2) + α2) + n⋅v sqrt((n⋅l)^2 (1−α2) + α2) }
+// Note the two sqrt's, that may be slow on mobile, see https://google.github.io/filament/Filament.html#listing_approximatedspecularv
+float V_SmithGGXCorrelated(float linearRoughness, float NoV, float NoL) {
+    float a2 = linearRoughness * linearRoughness;
+    float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
+    float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
+    return saturate(0.5 / (GGXV + GGXL));
 }
 
-float3 specular_GGX(float roughness, float3 specular_color, BRDFContext context, float NoL)
+float3 specular(float roughness, float3 f0, float NoV, float NoL, float NoH, float LoH)
 {
-	float a2 = pow(roughness, 4);
-	
-	// Generalized microfacet specular
-	float D = D_GGX(a2, context.NoH);
-	float vis = vis_smith_joint_approx(a2, context.NoV, NoL);
-	float3 F = f_schlick(specular_color, context.VoH);
+	float D = D_GGX(roughness, NoH);
+	float V = V_SmithGGXCorrelated(roughness, NoV, NoL);
+    float3 F = fresnel(f0, LoH);
 
-	return (D * vis) * F;
+	return (D * V) * F;
 }
 
-float dielectric_specular_to_F0(float specular)
+// Remapping [0,1] reflectance to F0
+// See https://google.github.io/filament/Filament.html#materialsystem/parameterization/remapping
+float3 ComputeF0(float reflectance, float3 base_color, float metallic)
 {
-	return 0.08f * specular;
-}
-
-float3 ComputeF0(float specular, float3 base_color, float metallic)
-{
-	return lerp(dielectric_specular_to_F0(specular).xxx, base_color, metallic.xxx);
+ 	return 0.16 * reflectance * reflectance * (1.0 - metallic) + base_color.rgb * metallic;
 }
 
 struct Lighting {
@@ -97,13 +88,19 @@ struct Lighting {
 
 Lighting DefaultBRDF(float3 N, float3 V, float3 L, float NoL, MaterialData material, float3 albedo)
 {
-    BRDFContext context;
+    float3 H = normalize(L + V);
 
-	init(context, N, V, L, NoL);
+    float NoV = saturate(dot(N, V));
+    float NoH = saturate(dot(N, H));
+    float LoH = saturate(dot(L, H));
+    float VoH = saturate(dot(V, H));
+
+    float roughness = material.roughness * material.roughness;
+    float3 f0 = ComputeF0(material.reflectance, albedo, material.metallic);
 
     Lighting lighting;
-	lighting.diffuse  = NoL * diffuse_lambert(albedo) * (1.0 -material.metallic);
-    lighting.specular = NoL * specular_GGX(material.roughness, ComputeF0(material.specular, albedo, material.metallic), context, NoL);
+	lighting.diffuse  = NoL * albedo * Fd_Lambert() * (1.0 - material.metallic);
+    lighting.specular = NoL * specular(roughness, f0, NoV, NoL, NoH, LoH);
 
     return lighting;
 }

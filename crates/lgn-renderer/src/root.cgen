@@ -141,6 +141,6 @@ struct ShaderPipelineLayout {
 struct MaterialData {
     base_color: Float4,
     metallic: Float1,
-    specular: Float1,
+    reflectance: Float1,
     roughness: Float1,
 }

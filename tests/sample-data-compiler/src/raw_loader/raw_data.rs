@@ -99,7 +99,7 @@ pub struct Material {
     pub metalness: String,
     pub base_color: Vec4,
     pub metalness_value: f32,
-    pub specular: f32,
+    pub reflectance: f32,
     pub roughness_value: f32,
 }
 

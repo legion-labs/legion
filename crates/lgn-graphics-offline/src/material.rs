@@ -26,7 +26,7 @@ pub struct Material {
     /// lends between a non-metallic and metallic material model
     pub metallic: f32,
     /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
-    pub specular: f32,
+    pub reflectance: f32,
     /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
     pub roughness_value: f32,
 }

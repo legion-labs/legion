@@ -22,18 +22,10 @@ impl Default for AlphaMode {
 #[derive(Component, Debug, Copy, Clone)]
 pub struct MaterialComponent {
     pub base_color: Color,
-    pub subsurface: f32,
     pub metallic: f32,
     pub specular: f32,
-    pub specular_tint: f32,
     pub roughness: f32,
-    pub anisotropic: f32,
-    pub sheen: f32,
-    pub sheen_tint: f32,
-    pub clearcoat: f32,
-    pub clearcoat_gloss: f32,
     pub alpha: AlphaMode,
-
     gpu_index: u32,
     gpu_offset: u64,
 }
@@ -42,16 +34,9 @@ impl Default for MaterialComponent {
     fn default() -> Self {
         Self {
             base_color: Color::from((204, 204, 204)),
-            subsurface: 0.0,
             metallic: 0.0,
             specular: 0.5,
-            specular_tint: 0.0,
             roughness: 0.4,
-            anisotropic: 0.0,
-            sheen: 0.0,
-            sheen_tint: 0.5,
-            clearcoat: 0.0,
-            clearcoat_gloss: 1.0,
             alpha: AlphaMode::Opaque,
             gpu_index: u32::MAX,
             gpu_offset: u64::MAX,
@@ -87,7 +72,7 @@ impl MaterialComponent {
         );
         gpu_material.set_base_color(color.into());
         gpu_material.set_metallic(self.metallic.into());
-        gpu_material.set_specular(self.specular.into());
+        gpu_material.set_reflectance(self.specular.into());
         gpu_material.set_roughness(self.roughness.into());
         //gpu_material.set_alpha(self.alpha.into());
 

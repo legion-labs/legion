@@ -7,7 +7,7 @@
     struct MaterialData {
         float4 base_color;
         float metallic;
-        float specular;
+        float reflectance;
         float roughness;
     };
 

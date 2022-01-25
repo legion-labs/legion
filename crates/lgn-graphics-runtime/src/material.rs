@@ -27,7 +27,7 @@ pub struct Material {
     /// lends between a non-metallic and metallic material model
     pub metallic: f32,
     /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
-    pub specular: f32,
+    pub reflectance: f32,
     /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
     pub roughness_value: f32,
 }
@@ -80,7 +80,7 @@ impl AssetLoader for MaterialLoader {
             metalness,
             base_color: (r, g, b, a),
             metallic: read_with_default(reader, 0.0),
-            specular: read_with_default(reader, 0.5),
+            reflectance: read_with_default(reader, 0.5),
             roughness_value: read_with_default(reader, 0.4),
         };
 
