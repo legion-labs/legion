@@ -46,6 +46,7 @@ async fn no_dependencies() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
         ResourcePathId::from(id)
     };
@@ -95,6 +96,7 @@ async fn with_dependency() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = {
@@ -115,6 +117,7 @@ async fn with_dependency() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
         (
             ResourcePathId::from(child_id),
@@ -170,6 +173,7 @@ async fn with_derived_dependency() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = {
@@ -193,6 +197,7 @@ async fn with_derived_dependency() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
     }
 

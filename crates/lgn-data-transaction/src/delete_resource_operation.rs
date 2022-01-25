@@ -40,7 +40,7 @@ impl TransactionOperation for DeleteResourceOperation {
                 self.old_resource_name = Some(ctx.project.resource_name(self.resource_id.id)?);
                 self.old_resource_data = Some(old_resource_data);
             }
-            ctx.project.delete_resource(self.resource_id.id)?;
+            ctx.project.delete_resource(self.resource_id.id).await?;
         }
         Ok(())
     }
@@ -64,14 +64,16 @@ impl TransactionOperation for DeleteResourceOperation {
             .resource_registry
             .get_resource_type_name(self.resource_id.kind)
         {
-            ctx.project.add_resource_with_id(
-                old_resource_name.clone(),
-                resource_type_name,
-                self.resource_id.kind,
-                self.resource_id,
-                &handle,
-                &mut ctx.resource_registry,
-            )?;
+            ctx.project
+                .add_resource_with_id(
+                    old_resource_name.clone(),
+                    resource_type_name,
+                    self.resource_id.kind,
+                    self.resource_id,
+                    &handle,
+                    &mut ctx.resource_registry,
+                )
+                .await?;
             ctx.loaded_resource_handles.insert(self.resource_id, handle);
         }
         Ok(())

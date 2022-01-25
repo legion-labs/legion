@@ -211,7 +211,7 @@ mod tests {
             index.create_index().await.unwrap();
             index.close().await;
             //}
-            //tokio::time::sleep(tokio::time::Duration::from_micros(1)).await;
+            tokio::time::sleep(tokio::time::Duration::from_micros(1)).await;
             //{
             //let index = LocalIndexBackend::new(root.path()).unwrap();
             index.destroy_index().await.unwrap();

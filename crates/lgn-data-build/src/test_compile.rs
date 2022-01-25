@@ -44,7 +44,7 @@ fn target_dir() -> PathBuf {
     )
 }
 
-fn create_resource(
+async fn create_resource(
     name: ResourcePathName,
     deps: &[ResourcePathId],
     project: &mut Project,
@@ -68,6 +68,7 @@ fn create_resource(
             &resource_b,
             resources,
         )
+        .await
         .unwrap()
 }
 
@@ -129,6 +130,7 @@ async fn compile_change_no_deps() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
         (resource_id, resource_handle)
     };
@@ -236,19 +238,22 @@ async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] 
         &[],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_e = create_resource(
         ResourcePathName::new("E"),
         &[],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_d = create_resource(
         ResourcePathName::new("D"),
         &[ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE)],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_b = create_resource(
         ResourcePathName::new("B"),
         &[
@@ -257,7 +262,8 @@ async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] 
         ],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_a = create_resource(
         ResourcePathName::new("A"),
         &[
@@ -266,7 +272,8 @@ async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] 
         ],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     [res_a, res_b, res_c, res_d, res_e]
 }
 
@@ -297,6 +304,7 @@ async fn intermediate_resource() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
@@ -492,6 +500,7 @@ async fn named_path_cache_use() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
@@ -733,6 +742,7 @@ async fn link() {
                 &child_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = resources
@@ -752,6 +762,7 @@ async fn link() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
@@ -825,6 +836,7 @@ async fn verify_manifest() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let child_handle = resources
@@ -845,6 +857,7 @@ async fn verify_manifest() {
                 &child_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 

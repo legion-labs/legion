@@ -53,14 +53,16 @@ impl TransactionOperation for CreateResourceOperation {
             .resource_registry
             .get_resource_type_name(self.resource_id.kind)
         {
-            ctx.project.add_resource_with_id(
-                requested_resource_path,
-                resource_type_name,
-                self.resource_id.kind,
-                self.resource_id,
-                &handle,
-                &mut ctx.resource_registry,
-            )?;
+            ctx.project
+                .add_resource_with_id(
+                    requested_resource_path,
+                    resource_type_name,
+                    self.resource_id.kind,
+                    self.resource_id,
+                    &handle,
+                    &mut ctx.resource_registry,
+                )
+                .await?;
             ctx.loaded_resource_handles.insert(self.resource_id, handle);
         }
         Ok(())
@@ -68,7 +70,7 @@ impl TransactionOperation for CreateResourceOperation {
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
-            ctx.project.delete_resource(self.resource_id.id)?;
+            ctx.project.delete_resource(self.resource_id.id).await?;
         }
         Ok(())
     }

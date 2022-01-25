@@ -8,7 +8,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use generic_data::offline::{DebugCube, TestComponent, TestEntity};
@@ -19,6 +19,7 @@ use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::offline_psd::PsdFile;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
+use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 
@@ -31,7 +32,7 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
         if let Some(raw_dir) = raw_dir.next() {
             let raw_dir = raw_dir.path();
             let (mut project, resources) = setup_project(root_folder).await;
-            let mut resources = resources.lock().unwrap();
+            let mut resources = resources.lock().await;
 
             let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
 
@@ -51,7 +52,8 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                 .collect::<Vec<_>>();
 
             let resource_ids =
-                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources);
+                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources)
+                    .await;
 
             println!("Created resources: {:#?}", project);
 
@@ -128,7 +130,7 @@ async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegist
         .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
         .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>();
     generic_data::offline::register_resource_types(&mut registry);
-    let registry = registry.create_registry();
+    let registry = registry.create_async_registry();
 
     (project, registry)
 }
@@ -161,20 +163,20 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
 /// This is done because we need to assign `ResourceId` for all resources before
 /// we load them in order to resolve references from a `ResourcePathName`
 /// (/path/to/resource) to `ResourceId` (125463453).
-fn create_or_find_default(
+async fn create_or_find_default(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> HashMap<ResourcePathName, ResourceTypeAndId> {
     let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
-    build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids);
-    build_test_entity(project, resources, &mut ids);
-    build_debug_cubes(project, resources, &mut ids);
+    build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids).await;
+    build_test_entity(project, resources, &mut ids).await;
+    build_debug_cubes(project, resources, &mut ids).await;
     ids
 }
 
-fn build_resource_from_raw(
+async fn build_resource_from_raw(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
@@ -202,6 +204,7 @@ fn build_resource_from_raw(
                         resources.new_resource(kind.1).unwrap(),
                         resources,
                     )
+                    .await
                     .unwrap()
             }
         };
@@ -209,7 +212,7 @@ fn build_resource_from_raw(
     }
 }
 
-fn build_test_entity(
+async fn build_test_entity(
     project: &mut Project,
     resources: &mut ResourceRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -252,13 +255,14 @@ fn build_test_entity(
                     test_entity_handle,
                     resources,
                 )
+                .await
                 .unwrap()
         }
     };
     ids.insert(name, id);
 }
 
-fn build_debug_cubes(
+async fn build_debug_cubes(
     project: &mut Project,
     resources: &mut ResourceRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -270,9 +274,11 @@ fn build_debug_cubes(
     ];
 
     // Create DebugCube DataContainer
-    (0..3).for_each(|index| {
+    for (index, _) in cube_ids.iter().enumerate() {
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
-        let id = project.find_resource(&name).unwrap_or_else(|_err| {
+        let id = if let Ok(id) = project.find_resource(&name) {
+            id
+        } else {
             let kind = DebugCube::TYPE;
             let id = ResourceTypeAndId {
                 kind,
@@ -315,11 +321,11 @@ fn build_debug_cubes(
                     cube_entity_handle,
                     resources,
                 )
+                .await
                 .unwrap()
-        });
-
+        };
         ids.insert(name, id);
-    });
+    }
 }
 
 fn path_to_resource_name(path: &Path) -> ResourcePathName {

@@ -75,11 +75,11 @@ fn compute_context_hash(
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
-/// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
+/// let (mut build, project) = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create(".").await.expect("new build index");
 ///
-/// build.source_pull().expect("successful source pull");
+/// build.source_pull(&project).expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
@@ -363,12 +363,11 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub fn source_pull(&mut self, project: &mut Project) -> Result<i32, Error> {
+    pub fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
         let mut updated_resources = 0;
-        project.reload()?;
 
         for resource_id in project.resource_list() {
-            let (kind, resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
+            let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
 
             if self.build_index.update_resource(
                 ResourcePathId::from(ResourceTypeAndId {

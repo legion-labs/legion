@@ -178,7 +178,6 @@ impl SqlIndexBackend {
             Ok(Arc::clone(pool))
         } else {
             let new_pool = Arc::new(self.driver.new_pool().await?);
-            println!("new pool");
 
             *pool = Some(Arc::clone(&new_pool));
 

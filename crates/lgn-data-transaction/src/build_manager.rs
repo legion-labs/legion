@@ -36,7 +36,7 @@ impl BuildManager {
     pub fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
-project: &mut Project,
+        project: &Project,
     ) -> anyhow::Result<(ResourcePathId, Vec<ResourceTypeAndId>)> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
@@ -61,7 +61,10 @@ project: &mut Project,
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
         self.build.source_pull(project)?;
-        match self.build.compile(derived_id.clone(), None, &self.compile_env) {
+        match self
+            .build
+            .compile(derived_id.clone(), None, &self.compile_env)
+        {
             Ok(output) => {
                 info!(
                     "Data build {} Succeeded ({:?})",

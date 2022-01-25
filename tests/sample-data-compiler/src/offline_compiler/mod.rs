@@ -49,14 +49,14 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     exe_path.pop();
     let project_dir = PathBuf::from("..\\");
 
-    let (mut build, mut project) =
+    let (mut build, project) =
         DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
             .content_store(&asset_store_path)
             .open_or_create(project_dir)
             .await
             .expect("new build index");
 
-    build.source_pull(&mut project).expect("successful pull");
+    build.source_pull(&project).expect("successful pull");
 
     let runtime_dir = root_folder.join("runtime");
     if !runtime_dir.exists() {

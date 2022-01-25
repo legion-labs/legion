@@ -88,7 +88,7 @@ impl FromStr for Transform {
 ///         source_geometry_type,
 ///         &resource_handle,
 ///         &mut resources,
-///     )
+///     ).await
 ///     .unwrap();
 /// // create a resource path
 /// let source_path = ResourcePathId::from(resource_id);
