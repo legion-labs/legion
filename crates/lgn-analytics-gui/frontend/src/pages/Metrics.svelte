@@ -46,7 +46,7 @@
     return [minMs, maxMs];
   }
 
-  onMount(() => {
+  onMount(async () => {
     canvas = document.getElementById("canvas_plot") as HTMLCanvasElement;
     if (!canvas) {
       throw new Error("Canvas can't be found or is invalid");
@@ -58,7 +58,7 @@
     }
     renderingContext = ctx;
 
-    fetchProcessInfo();
+    await fetchProcessInfo();
     drawCanvas();
   });
 
