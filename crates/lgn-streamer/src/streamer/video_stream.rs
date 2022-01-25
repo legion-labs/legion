@@ -47,7 +47,7 @@ impl VideoStream {
         let device_context = renderer.device_context();
         let encoder = VideoStreamEncoder::new(resolution)?;
         let rgb_to_yuv =
-            RgbToYuvConverter::new(&renderer.shader_compiler(), device_context, resolution)?;
+            RgbToYuvConverter::new(renderer.shader_manager(), device_context, resolution)?;
 
         Ok(Self {
             async_rt,

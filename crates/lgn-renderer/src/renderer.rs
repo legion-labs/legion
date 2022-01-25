@@ -1,19 +1,18 @@
 #![allow(unsafe_code)]
 
-use anyhow::Result;
 use lgn_core::Handle;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
     ApiDef, BufferView, DescriptorHeap, DescriptorHeapDef, DeviceContext, Fence, FenceStatus,
-    GfxApi, QueueType, Semaphore, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    GfxApi, QueueType, Semaphore,
 };
-use lgn_pso_compiler::{
-    CompileParams, EntryPoint, FileSystem, HlslCompiler, ShaderSource, TargetProfile,
-};
+
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
+use crate::hl_gfx_api::ShaderManager;
+
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
     TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
@@ -37,7 +36,7 @@ pub struct Renderer {
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotLightsStaticBuffer,
-    shader_compiler: HlslCompiler,
+    shader_manager: ShaderManager,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -67,14 +66,11 @@ unsafe impl Send for Renderer {}
 unsafe impl Sync for Renderer {}
 
 impl Renderer {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Self {
         #![allow(unsafe_code)]
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
-        let filesystem = FileSystem::new(".")?;
-
-        let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
         cgen::initialize(device_context);
 
@@ -107,7 +103,7 @@ impl Renderer {
             rw_texture_count: 32 * 1024,
         };
 
-        Ok(Self {
+        Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
@@ -134,9 +130,9 @@ impl Renderer {
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
-            shader_compiler,
+            shader_manager: ShaderManager::new(device_context.clone()),
             api,
-        })
+    }
     }
 
     pub fn device_context(&self) -> &DeviceContext {
@@ -158,13 +154,13 @@ impl Renderer {
         }
     }
 
-    pub fn shader_compiler(&self) -> HlslCompiler {
-        self.shader_compiler.clone()
-    }
-
     // TMP: change that.
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
+    }
+
+	 pub fn shader_manager(&self) -> &ShaderManager {
+        &self.shader_manager
     }
 
     impl_static_buffer_accessor!(
@@ -295,58 +291,6 @@ impl Renderer {
             let mut pool = self.descriptor_pools.lock();
             pool.end_frame();
         }
-    }
-
-    #[span_fn]
-    pub(crate) fn prepare_vs_ps(&self, shader_source: String) -> Shader {
-        let device_context = self.device_context();
-
-        let shader_compiler = self.shader_compiler();
-        let shader_build_result = shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Path(shader_source),
-                global_defines: Vec::new(),
-                entry_points: vec![
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_vs".to_owned(),
-                        target_profile: TargetProfile::Vertex,
-                    },
-                    EntryPoint {
-                        defines: Vec::new(),
-                        name: "main_ps".to_owned(),
-                        target_profile: TargetProfile::Pixel,
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        device_context.create_shader(vec![
-            ShaderStageDef {
-                entry_point: "main_vs".to_owned(),
-                shader_stage: ShaderStageFlags::VERTEX,
-                shader_module: vert_shader_module,
-            },
-            ShaderStageDef {
-                entry_point: "main_ps".to_owned(),
-                shader_stage: ShaderStageFlags::FRAGMENT,
-                shader_module: frag_shader_module,
-            },
-        ])
     }
 }
 

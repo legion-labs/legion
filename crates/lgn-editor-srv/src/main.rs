@@ -51,8 +51,6 @@ struct Args {
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
-    #[clap(long)]
-    egui: bool,
 }
 
 fn main() {
@@ -104,7 +102,7 @@ fn main() {
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, false, 0))
+        .add_plugin(RendererPlugin::new(false, 0))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(ResourceBrowserPlugin::default())

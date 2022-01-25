@@ -65,10 +65,7 @@ float3 tonemap(float3 value) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture2D<float4> hdr_image;
-RWTexture2D<float> y_image;
-RWTexture2D<float> u_image;
-RWTexture2D<float> v_image;
+
 
 #define UV_TILE_SIZE 8
 

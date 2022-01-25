@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use hassle_rs::DxcIncludeHandler;
@@ -7,7 +7,6 @@ use normpath::BasePathBuf;
 
 struct FileSystemInner {
     embedded_fs: EmbeddedFileSystem,
-    root_path: BasePathBuf,
 }
 
 #[derive(Clone)]
@@ -21,29 +20,12 @@ impl FileSystem {
     /// # Errors
     /// fails if the root path does not exist.
     ///
-    pub fn new(root_folder: &str) -> Result<Self> {
-        let root_path = BasePathBuf::new(Path::new(root_folder)).unwrap();
-        let root_path = root_path.normalize().unwrap();
-        if !root_path.is_absolute() {
-            return Err(anyhow!(
-                "Root folder must refer to an absolute path ({})",
-                root_folder
-            ));
-        }
-
-        if !root_path.is_dir() {
-            return Err(anyhow!(
-                "Root folder must refer to a directory ({})",
-                root_folder
-            ));
-        }
-
-        Ok(Self {
+    pub(crate) fn new() -> Self {
+        Self {
             inner: Arc::new(FileSystemInner {
                 embedded_fs: EmbeddedFileSystem::init(),
-                root_path,
             }),
-        })
+        }
     }
 
     /// Removes a mount point from the file system.
@@ -51,18 +33,11 @@ impl FileSystem {
     /// # Errors
     /// fails if the mount point does not exist.
     ///
-    pub fn translate_path(&self, path: &str) -> Result<BasePathBuf> {
-        let protocol = "crate://";
-        if path.starts_with(protocol) {
-            return self.inner.embedded_fs.original_path(path)?.map_or_else(
-                || Err(anyhow!("No original path")),
-                |path| Ok(BasePathBuf::new(path).unwrap()),
-            );
-        }
-        // this is not tested
-        let path = self.inner.root_path.join(path);
-        path.normalize()
-            .map_err(|_err| anyhow!("Path is not valid"))
+    pub(crate) fn translate_path(&self, path: &str) -> Result<BasePathBuf> {
+        self.inner.embedded_fs.original_path(path)?.map_or_else(
+            || Err(anyhow!("No original path")),
+            |path| Ok(BasePathBuf::new(path).unwrap()),
+        )
     }
 
     /// Translates a path to a file name.
@@ -70,7 +45,7 @@ impl FileSystem {
     /// # Errors
     /// fails if the path does not exist.
     ///
-    pub fn read_to_string(&self, path: &str) -> Result<String> {
+    pub(crate) fn read_to_string(&self, path: &str) -> Result<String> {
         let protocol = "crate://";
         if path.starts_with(protocol) {
             self.inner

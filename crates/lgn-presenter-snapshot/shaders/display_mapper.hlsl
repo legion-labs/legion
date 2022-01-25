@@ -20,9 +20,6 @@ VertexOut main_vs(uint vertex_id: SV_VERTEXID) {
     return result;
 }
 
-Texture2D hdr_image;
-SamplerState hdr_sampler; 
-
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
 
     float4 value = hdr_image.Sample(hdr_sampler, vertex_out.uv );

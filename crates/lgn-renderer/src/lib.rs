@@ -79,15 +79,15 @@ use crate::{
 
 #[derive(Default)]
 pub struct RendererPlugin {
-    enable_egui: bool,
+    // tbd: remove
     runs_dynamic_systems: bool,
+    // tbd: remove
     meta_cube_size: usize,
 }
 
 impl RendererPlugin {
-    pub fn new(enable_egui: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
+    pub fn new(runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
         Self {
-            enable_egui,
             runs_dynamic_systems,
             meta_cube_size,
         }
@@ -96,7 +96,7 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        let renderer = Renderer::new().unwrap();
+        let renderer = Renderer::new();
 
         app.add_stage_after(
             CoreStage::PostUpdate,
@@ -110,7 +110,7 @@ impl Plugin for RendererPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_plugin(EguiPlugin::new(self.enable_egui));
+        app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
 
@@ -369,7 +369,7 @@ fn add_gpu_instances(
         while mesh.picking_id == u32::MAX {
             if let Some(picking_id) = picking_block.acquire_picking_id(entity) {
                 mesh.picking_id = picking_id;
-            } else {
+        } else {
                 picking_manager.release_picking_id_block(picking_block);
                 picking_block = picking_manager.acquire_picking_id_block();
             }
@@ -377,7 +377,7 @@ fn add_gpu_instances(
 
         mesh.picking_data_va = picking_data.ensure_index_allocated(mesh.gpu_instance_id) as u32;
         updater.add_update_jobs(&[mesh.picking_id], u64::from(mesh.picking_data_va));
-    }
+        }
 
     renderer.add_update_job_block(updater.job_blocks());
     picking_manager.release_picking_id_block(picking_block);
@@ -411,7 +411,7 @@ fn update_gpu_instance_ids(
 
             gpu_instance_va_table
                 .set_material_data_va(default_material.unwrap().gpu_offset().into());
-        }
+    }
 
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
 
@@ -622,11 +622,11 @@ fn render_update(
         // queue
         let sem = render_surface.acquire();
         {
-            let graphics_queue = render_context.graphics_queue();
-            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
+        let graphics_queue = render_context.graphics_queue();
+        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
-            render_surface.present(&render_context);
-        }
+        render_surface.present(&render_context);
+    }
     }
     debug_display.clear();
     render_context.release_bump_allocator(&bump_allocator_pool);

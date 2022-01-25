@@ -140,7 +140,7 @@ fn generate_rust_pipeline_layout(
                     ty.name()
                 ));
             } else {
-                writer.add_line("let push_constant_def = None");
+                writer.add_line("let push_constant_def = None;");
             };
             writer.add_lines(&["PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));", "}"]);
         }

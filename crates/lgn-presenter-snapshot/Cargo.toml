@@ -10,10 +10,10 @@ license = "MIT OR Apache-2.0"
 lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
 lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
 lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
 
 anyhow = "1.0"
@@ -21,6 +21,10 @@ crossbeam-channel = "0.5"
 instant = "0.1"
 linkme = "0.2"
 png = "0.17"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
 
 [features]
 default = []
