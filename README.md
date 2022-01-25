@@ -17,7 +17,7 @@
     <a href="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg" alt="CI - Test" style="max-width: 100%;"></a>
     <a href="https://github.com/legion-labs/legion/actions/workflows/release.yml"><img src="https://github.com/legion-labs/legion/actions/workflows/release.yml/badge.svg" alt="CI - Release" style="max-width: 100%;"></a>
     <a href="https://cov.legionengine.com/index.html" rel="nofollow"><img src="https://github.com/legion-labs/legion/raw/main/.github/images/coverage.svg" alt="Coverage"  style="max-width: 100%;"></a>
-    <a href="https://www.rust-lang.org/tools/install"><img src="https://img.shields.io/badge/msrv-1.58-green" alt="MSRV" style="max-width: 100%;"></a></p>
+    <a href="https://www.rust-lang.org/tools/install"><img src="https://img.shields.io/badge/msrv-1.58.1-green" alt="MSRV" style="max-width: 100%;"></a></p>
 </p>
 
 <p align="center">
