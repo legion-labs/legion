@@ -4463,7 +4463,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
