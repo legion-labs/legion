@@ -23,7 +23,7 @@ impl Default for AlphaMode {
 pub struct MaterialComponent {
     pub base_albedo: Color,
     pub base_metalness: f32,
-    pub specular: f32,
+    pub reflectance: f32,
     pub base_roughness: f32,
     pub alpha_mode: AlphaMode,
     gpu_index: u32,
@@ -35,7 +35,7 @@ impl Default for MaterialComponent {
         Self {
             base_albedo: Color::from((204, 204, 204)),
             base_metalness: 0.0,
-            specular: 0.5,
+            reflectance: 0.5,
             base_roughness: 0.4,
             alpha_mode: AlphaMode::Opaque,
             gpu_index: u32::MAX,
@@ -72,7 +72,7 @@ impl MaterialComponent {
         );
         gpu_material.set_base_albedo(color.into());
         gpu_material.set_base_metalness(self.base_metalness.into());
-        gpu_material.set_reflectance(self.specular.into());
+        gpu_material.set_reflectance(self.reflectance.into());
         gpu_material.set_base_roughness(self.base_roughness.into());
         //gpu_material.set_alpha(self.alpha.into());
 

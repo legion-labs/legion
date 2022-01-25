@@ -28,7 +28,7 @@ pub struct Material {
     /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
     pub reflectance: f32,
     /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
-    pub roughness_value: f32,
+    pub base_roughness: f32,
 }
 
 impl Asset for Material {

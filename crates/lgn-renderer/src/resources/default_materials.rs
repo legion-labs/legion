@@ -50,7 +50,7 @@ impl DefaultMaterials {
         let mut rough_metal = MaterialComponent::default();
         rough_metal.base_albedo = Color::from((127, 64, 25));
         rough_metal.base_metalness = 1.0;
-        rough_metal.specular = 0.2;
+        rough_metal.reflectance = 0.2;
         rough_metal.base_roughness = 0.5;
 
         self.default_material_ids = vec![

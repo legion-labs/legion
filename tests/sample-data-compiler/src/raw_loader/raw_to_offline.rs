@@ -294,7 +294,7 @@ impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
             base_albedo: raw.base_albedo.into(),
             base_metalness: raw.base_metalness,
             reflectance: raw.reflectance,
-            roughness_value: raw.base_roughness,
+            base_roughness: raw.base_roughness,
         }
     }
 }

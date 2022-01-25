@@ -3,4 +3,8 @@
     normal: "runtime_texture(offline_texture(image/ground.psd, 'normal'))",
     roughness: "runtime_texture(offline_texture(image/ground.psd, 'roughness'))",
     metalness: "runtime_texture(offline_texture(image/ground.psd, 'metalness'))",
+    base_albedo: (0.8, 0.8, 0.8, 1.0),
+    base_metalness: 0.0,
+    reflectance: 0.5,
+    base_roughness: 0.4,
 )
