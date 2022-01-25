@@ -103,7 +103,7 @@ async fn import_commit_diff(
 
     diff.foreach(
         &mut |delta, _progress| {
-            if let git2::Delta::Deleted = delta.status() {
+            if delta.status() == git2::Delta::Deleted {
                 let old_file = delta.old_file();
                 let local_file = workspace.root.join(old_file.path().unwrap());
                 files_to_delete.push(local_file);

@@ -669,8 +669,7 @@ impl SwapchainVulkanInstance {
             present_queue_family_index,
         ];
 
-        let mut dedicated_present_queue = None;
-        if device_context
+        let dedicated_present_queue = if device_context
             .vk_queue_family_indices()
             .graphics_queue_family_index
             != present_queue_family_index
@@ -679,12 +678,14 @@ impl SwapchainVulkanInstance {
                 .image_sharing_mode(vk::SharingMode::CONCURRENT)
                 .queue_family_indices(&queue_families);
 
-            dedicated_present_queue = Some(unsafe {
+            Some(unsafe {
                 device_context
                     .vk_device()
                     .get_device_queue(present_queue_family_index, 0)
-            });
-        }
+            })
+        } else {
+            None
+        };
 
         let swapchain = unsafe { swapchain_loader.create_swapchain(&swapchain_create_info, None)? };
 

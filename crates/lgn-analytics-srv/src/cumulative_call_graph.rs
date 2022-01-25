@@ -178,16 +178,17 @@ pub(crate) async fn compute_cumulative_call_graph(
         node_stats
             .durations_ms
             .sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let mut median = 0.0;
-        if !node_stats.durations_ms.is_empty() {
+        let median = if !node_stats.durations_ms.is_empty() {
             let index_median = min(
                 node_stats.durations_ms.len() / 2,
                 node_stats.durations_ms.len() - 1,
             );
             min_time = node_stats.durations_ms[0];
             max_time = node_stats.durations_ms[node_stats.durations_ms.len() - 1];
-            median = node_stats.durations_ms[index_median];
-        }
+            node_stats.durations_ms[index_median]
+        } else {
+            0.0
+        };
         for time_ms in &node_stats.durations_ms {
             sum += time_ms;
         }

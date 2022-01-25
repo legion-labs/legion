@@ -460,6 +460,7 @@ impl StaticMeshRenderData {
             let y0 = -radius + slice as f32 * slice_size;
             let y1 = -radius + (slice + 1) as f32 * slice_size;
             for sail in 0..sails {
+                #[allow(clippy::branches_sharing_code)]
                 if slice == 0 {
                     let pole = Vec3::new(0.0, y0, 0.0);
                     let lr = (radius * radius - y1 * y1).sqrt();

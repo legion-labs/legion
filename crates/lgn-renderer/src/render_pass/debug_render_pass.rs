@@ -271,16 +271,16 @@ impl DebugRenderPass {
                     &projection_matrix,
                 );
 
-                let mut color = Vec4::new(
-                    f32::from(static_mesh.color.r) / 255.0f32,
-                    f32::from(static_mesh.color.g) / 255.0f32,
-                    f32::from(static_mesh.color.b) / 255.0f32,
-                    f32::from(static_mesh.color.a) / 255.0f32,
-                );
-
-                if manipulator.selected {
-                    color = Vec4::new(1.0, 1.0, 0.0, 1.0);
-                }
+                let mut color = if manipulator.selected {
+                    Vec4::new(1.0, 1.0, 0.0, 1.0)
+                } else {
+                    Vec4::new(
+                        f32::from(static_mesh.color.r) / 255.0f32,
+                        f32::from(static_mesh.color.g) / 255.0f32,
+                        f32::from(static_mesh.color.b) / 255.0f32,
+                        f32::from(static_mesh.color.a) / 255.0f32,
+                    )
+                };
 
                 color.w = if manipulator.transparent { 0.9 } else { 1.0 };
 
