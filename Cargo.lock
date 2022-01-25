@@ -162,7 +162,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.0.11",
+ "clap 3.0.12",
  "lgn-analytics",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
@@ -183,7 +183,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -1187,9 +1187,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.11"
+version = "3.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7216c62891a806990b7b69ccd99f7ed011da4ff13529968fb1625abef7f3c6"
+checksum = "2afefa54b5c7dd40918dc1e09f213a171ab5937aadccab45e804780b238f9f43"
 dependencies = [
  "atty",
  "bitflags",
@@ -2270,7 +2270,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "clap 3.0.11",
+ "clap 3.0.12",
  "directories",
  "json",
  "lgn-analytics",
@@ -2303,7 +2303,7 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "erased-serde",
  "generic-data",
  "lgn-app",
@@ -4288,7 +4288,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.0.11",
+ "clap 3.0.12",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -4323,7 +4323,7 @@ dependencies = [
  "anyhow",
  "binary-resource",
  "bincode",
- "clap 3.0.11",
+ "clap 3.0.12",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -4519,7 +4519,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4581,7 +4581,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.0.11",
+ "clap 3.0.12",
  "generic-data",
  "lgn-app",
  "lgn-asset-registry",
@@ -4654,7 +4654,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "clap 3.0.11",
+ "clap 3.0.12",
  "determinator",
  "globset",
  "guppy",
@@ -4910,7 +4910,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "fuser",
  "lgn-cli-utils",
  "lgn-source-control",
@@ -5337,7 +5337,7 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-test-utils",
@@ -7318,7 +7318,7 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -7337,7 +7337,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.0.11",
+ "clap 3.0.12",
  "generic-data",
  "instant",
  "lgn-app",
@@ -7517,7 +7517,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.0.11",
+ "clap 3.0.12",
  "generic-data",
  "lgn-content-store",
  "lgn-data-build",
@@ -8021,7 +8021,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.0.11",
+ "clap 3.0.12",
  "http",
  "hyper",
  "lgn-source-control",
@@ -8664,7 +8664,7 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -8685,7 +8685,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.0.11",
+ "clap 3.0.12",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
@@ -9413,7 +9413,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.12",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",
