@@ -224,7 +224,7 @@ impl EventSink for GRPCEventSink {
         true
     }
 
-    fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: &fmt::Arguments<'_>) {}
+    fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: fmt::Arguments<'_>) {}
 
     fn on_init_log_stream(&self, log_stream: &LogStream) {
         self.send(SinkEvent::InitStream(get_stream_info(log_stream)));

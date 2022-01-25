@@ -50,7 +50,7 @@ impl EventSink for DebugEventSink {
         true
     }
 
-    fn on_log(&self, _desc: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
+    fn on_log(&self, _desc: &LogMetadata, _time: i64, args: fmt::Arguments<'_>) {
         *self.0.lock().unwrap() = Some(State::Log(args.to_string()));
     }
 
@@ -132,7 +132,7 @@ impl log::Log for LogDispatch {
             file: record.file_static().unwrap_or("unknown"),
             line: record.line().unwrap_or(0),
         };
-        log_interop(&log_desc, record.args());
+        log_interop(&log_desc, *record.args());
     }
     fn flush(&self) {
         flush_log_buffer();

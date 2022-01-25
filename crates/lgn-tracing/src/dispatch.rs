@@ -80,7 +80,7 @@ pub fn float_metric(metric_desc: &'static MetricMetadata, value: f64) {
 }
 
 #[inline(always)]
-pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
+pub fn log(desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log(desc, args);
@@ -89,7 +89,7 @@ pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
 }
 
 #[inline(always)]
-pub fn log_interop(desc: &LogMetadata, args: &fmt::Arguments<'_>) {
+pub fn log_interop(desc: &LogMetadata, args: fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log_interop(desc, args);
@@ -367,7 +367,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log(&mut self, desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
+    fn log(&mut self, desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
@@ -390,7 +390,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log_interop(&mut self, desc: &LogMetadata, args: &fmt::Arguments<'_>) {
+    fn log_interop(&mut self, desc: &LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
