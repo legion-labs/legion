@@ -8,7 +8,7 @@
   type Item = $$Generic;
 
   type $$Slots = {
-    itemName: { itemName: string };
+    name: { itemName: string };
   };
 
   const dispatch = createEventDispatcher<{
@@ -18,17 +18,17 @@
 
   // TODO: Temporary extension to icon name map, should be dynamic
   const iconNames: Record<string, string> = {
-    pdf: "mdi:file-pdf-box",
-    jpg: "mdi:file-image",
-    jpeg: "mdi:file-image",
-    png: "mdi:file-image",
-    zip: "mdi:file-cabinet",
-    rar: "mdi:file-cabinet",
+    pdf: "ic:baseline-picture-as-pdf",
+    jpg: "ic:baseline-image",
+    jpeg: "ic:baseline-image",
+    png: "ic:baseline-image",
+    zip: "ic:baseline-archive",
+    rar: "ic:baseline-archive",
   };
 
   export let entry: Entry<Item>;
 
-  export let activeItem: Item | null = null;
+  export let selectedItem: Item | null = null;
 
   export let name: string;
 
@@ -37,7 +37,10 @@
 
   export let itemsAreIdentical: (item1: Item, item2: Item) => boolean;
 
-  let mode: "view" | "edit" = "view";
+  // TODO: Should be in a store?
+  export let currentlyRenameItem: Item | null = null;
+
+  let mode: "view" | "edit";
 
   function toggleExpand() {
     expanded = !expanded;
@@ -47,16 +50,10 @@
     dispatch("select", entry.item);
   }
 
-  function edit() {
-    if (mode === "view") {
-      mode = "edit";
-    }
-  }
-
   function renameFile(event: Event) {
     event.preventDefault();
 
-    mode = "view";
+    currentlyRenameItem = null;
 
     if (nameValue.trim().length) {
       dispatch("nameChange", { item: entry.item, newName: nameValue.trim() });
@@ -75,32 +72,39 @@
     nameValue = name;
   }
 
-  $: isActive = activeItem ? itemsAreIdentical(entry.item, activeItem) : false;
+  $: isSelected = selectedItem
+    ? itemsAreIdentical(entry.item, selectedItem)
+    : false;
 
   $: nameValue = name;
 
   $: nameExtension = extension(name);
 
   $: iconName =
-    (nameExtension && iconNames[nameExtension]) || "mdi:file-outline";
+    (nameExtension && iconNames[nameExtension]) ||
+    "ic:outline-insert-drive-file";
 
-  $: if (!isActive) {
+  $: mode =
+    currentlyRenameItem && itemsAreIdentical(currentlyRenameItem, entry.item)
+      ? "edit"
+      : "view";
+
+  $: if (!isSelected) {
     cancelEdition();
   }
 </script>
 
-<div class="root">
+<div class="root" on:dblclick>
   <div
     class="name"
     class:font-semibold={entry.entries}
     class:lg-space={mode === "view"}
-    class:active-view={isActive && !entry.entries && mode === "view"}
-    on:click={select}
-    on:dblclick={edit}
+    class:selected-view={isSelected && !entry.entries && mode === "view"}
+    on:mousedown={select}
   >
     {#if entry.entries}
       <div class="icon" class:expanded on:click={toggleExpand}>
-        <Icon icon="mdi:chevron-right" />
+        <Icon icon="ic:chevron-right" />
       </div>
     {:else}
       <div class="icon">
@@ -109,7 +113,7 @@
     {/if}
     <div class="name">
       {#if mode === "view"}
-        <slot name="itemName" itemName={name} />
+        <slot name="name" itemName={name} />
       {:else}
         <form on:submit={renameFile} on:keydown={cancelEdition}>
           <TextInput autoFocus autoSelect size="sm" bind:value={nameValue} />
@@ -122,14 +126,15 @@
       <div class="files">
         <svelte:self
           {entry}
-          {activeItem}
+          {selectedItem}
           {name}
           {itemsAreIdentical}
+          bind:currentlyRenameItem
           on:select
           on:nameChange
           let:itemName
         >
-          <slot name="itemName" slot="itemName" {itemName} />
+          <slot name="name" slot="name" {itemName} />
         </svelte:self>
       </div>
     {/each}
@@ -145,7 +150,7 @@
     @apply flex items-center h-7 w-full px-1 cursor-pointer border border-transparent;
   }
 
-  .name.active-view {
+  .name.selected-view {
     @apply border border-dotted border-orange-700 bg-orange-700 bg-opacity-10;
   }
 

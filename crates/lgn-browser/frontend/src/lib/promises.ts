@@ -60,7 +60,7 @@ export async function retry<T>(
  *
  * Doesn't throw.
  */
-export function sleep(ms: number) {
+export function abortableSleep(ms: number) {
   let abort = () => {
     log.warn("`abort` function not implemented by the promise builder");
   };
@@ -83,4 +83,21 @@ export function sleep(ms: number) {
   });
 
   return { abort, promise };
+}
+
+/**
+ * Sleeps for n ms, this function uses `setTimeout` under the hood.
+ *
+ * Doesn't throw.
+ */
+export function sleep(ms: number) {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(undefined);
+    }, ms);
+  });
 }

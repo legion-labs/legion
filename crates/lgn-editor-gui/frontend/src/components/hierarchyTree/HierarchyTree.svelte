@@ -1,23 +1,22 @@
 <script lang="ts">
   import { Entries, updateEntry } from "@/lib/hierarchyTree";
-  import clickOutside from "@lgn/frontend/src/actions/clickOutside";
   import { createEventDispatcher } from "svelte";
   import Inner from "./Inner.svelte";
 
   type Item = $$Generic;
 
   type $$Slots = {
-    itemName: { itemName: string };
+    name: { itemName: string };
   };
 
   const dispatch = createEventDispatcher<{ select: Item }>();
 
   export let entries: Entries<Item>;
 
-  export let activeItem: Item | null = null;
+  export let selectedItem: Item | null = null;
 
   /**
-   * This prop function is used to compare 2 items together and must retur
+   * This prop function is used to compare 2 items together and must return
    * `true` if the items are identical.
    *
    * By default `===` is used, so primitives are compared by value and
@@ -25,8 +24,10 @@
    */
   export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
 
-  function setActiveItem({ detail: item }: CustomEvent<Item>) {
-    activeItem = item;
+  let currentlyRenameItem: Item | null = null;
+
+  function setSelectedItem({ detail: item }: CustomEvent<Item>) {
+    selectedItem = item;
 
     dispatch("select", item);
   }
@@ -38,20 +39,26 @@
       itemsAreIdentical(otherItem, item) ? { name: newName } : null
     );
   }
+
+  export function edit(item: Item) {
+    currentlyRenameItem = item;
+  }
 </script>
 
-<div class="root" use:clickOutside={() => (activeItem = null)}>
+<div class="root">
   {#each Object.entries(entries) as [name, entry] (name)}
     <Inner
       {entry}
-      {activeItem}
+      {selectedItem}
       {itemsAreIdentical}
       {name}
-      on:select={setActiveItem}
+      bind:currentlyRenameItem
+      on:dblclick
+      on:select={setSelectedItem}
       on:nameChange={setName}
       let:itemName
     >
-      <slot name="itemName" slot="itemName" {itemName} />
+      <slot name="name" slot="name" {itemName} />
     </Inner>
   {/each}
 </div>

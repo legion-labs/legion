@@ -16,8 +16,15 @@
   import { unflatten } from "@/lib/hierarchyTree";
   import asyncStore from "@lgn/frontend/src/stores/asyncStore";
   import contextMenu from "@/actions/contextMenu";
-  import contextMenuStore from "@/stores/contextMenu";
+  import contextMenuStore, {
+    ContextMenuEntryRecord,
+  } from "@/stores/contextMenu";
   import contextMenuEntries from "@/data/contextMenu";
+  import {
+    autoClose,
+    Event as ContextMenuActionEvent,
+    select,
+  } from "@lgn/frontend/src/types/contextMenu";
 
   contextMenuStore.register("resource", contextMenuEntries);
 
@@ -35,20 +42,26 @@
 
   let allResourcesPromise = allResourcesStore.run(getAllResources);
 
-  $: if (currentResourceDescription) {
-    currentResource
-      .run(() => {
-        if (currentResourceDescription) {
-          return getResourceProperties(currentResourceDescription);
-        } else {
+  let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
+
+  function fetchCurrentResourceDescription() {
+    if (!currentResourceDescription) {
+      return;
+    }
+
+    try {
+      currentResource.run(() => {
+        if (!currentResourceDescription) {
           throw new Error("Current resource description not found");
         }
-      })
-      .catch((error) =>
-        log.error(
-          log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`
-        )
+
+        return getResourceProperties(currentResourceDescription);
+      });
+    } catch (error) {
+      log.error(
+        log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`
       );
+    }
   }
 
   function tryAgain() {
@@ -57,14 +70,32 @@
     allResourcesPromise = allResourcesStore.run(getAllResources);
   }
 
-  function setCurrentResourceDescription(
-    resourceDescription: ResourceDescription
-  ) {
-    currentResourceDescription = resourceDescription;
+  function handleResourceRename({
+    detail: { action },
+  }: ContextMenuActionEvent<Pick<ContextMenuEntryRecord, "resource">>) {
+    switch (action) {
+      case "rename": {
+        if (!currentResourceDescription || !resourceHierarchyTree) {
+          return;
+        }
+
+        resourceHierarchyTree.edit(currentResourceDescription);
+
+        return;
+      }
+
+      default: {
+        return;
+      }
+    }
   }
 </script>
 
 <ContextMenu {contextMenuStore} />
+
+<svelte:window
+  on:contextmenu-action={autoClose(select(handleResourceRename, "resource"))}
+/>
 
 <div class="root">
   <TopBar />
@@ -81,12 +112,9 @@
                 <PanelList
                   key="id"
                   items={resources}
-                  activeItem={currentResourceDescription}
+                  bind:selectedItem={currentResourceDescription}
                   panelIsFocused={isFocused}
-                  on:click={({ detail: resource }) =>
-                    setCurrentResourceDescription(resource)}
-                  on:itemChange={({ detail: { newItem: resource } }) =>
-                    setCurrentResourceDescription(resource)}
+                  on:dblclick={fetchCurrentResourceDescription}
                 >
                   <div slot="default" let:item={resource}>
                     {resource.path}
@@ -109,15 +137,17 @@
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
-                <HierarchyTree entries={unflatten($allResourcesData)}>
+                <HierarchyTree
+                  entries={unflatten($allResourcesData)}
+                  on:dblclick={fetchCurrentResourceDescription}
+                  bind:selectedItem={currentResourceDescription}
+                  bind:this={resourceHierarchyTree}
+                >
                   <div
-                    let:itemName
-                    use:contextMenu={{
-                      name: "resource",
-                      payload: { itemName },
-                    }}
                     class="h-full w-full"
-                    slot="itemName"
+                    slot="name"
+                    use:contextMenu={"resource"}
+                    let:itemName
                   >
                     {itemName}
                   </div>
