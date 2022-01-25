@@ -46,12 +46,12 @@ export class TokenCache<A extends Authenticator> {
 }
 
 export class AwsCognitoClientAuthenticator implements Authenticator {
-  private domainName: string;
-  private region: string;
-  private clientId: string;
-  private scopes: string[];
-  private identityProvider: string | null;
-  private port: number;
+  #domainName: string;
+  #region: string;
+  #clientId: string;
+  #scopes: string[];
+  #identityProvider: string | null;
+  #port: number;
 
   constructor(authorizationUrl: URL) {
     if (authorizationUrl.pathname != "/oauth2/authorize") {
@@ -89,22 +89,24 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
 
     const port = +redirectUrl.port || 80;
 
-    this.clientId = clientId;
-    this.domainName = domainName;
-    this.port = port;
-    this.region = region;
-    this.scopes = scopes;
-    this.identityProvider = identityProvider;
+    this.#clientId = clientId;
+    this.#domainName = domainName;
+    this.#port = port;
+    this.#region = region;
+    this.#scopes = scopes;
+    this.#identityProvider = identityProvider;
   }
 
   private baseUrl(path: string) {
     return new URL(
-      `https://${this.domainName}.auth.${this.region}.amazoncognito.com/${path}`
+      `https://${this.#domainName}.auth.${
+        this.#region
+      }.amazoncognito.com/${path}`
     );
   }
 
   private get redirectUri() {
-    return `http://localhost:${this.port}/`;
+    return `http://localhost:${this.#port}/`;
   }
 
   private get accessTokenUrl() {
@@ -118,15 +120,15 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
   private get authorizationUrl() {
     const authorizationUrl = this.baseUrl("oauth2/authorize");
 
-    authorizationUrl.searchParams.set("client_id", this.clientId);
+    authorizationUrl.searchParams.set("client_id", this.#clientId);
     authorizationUrl.searchParams.set("response_type", "code");
-    authorizationUrl.searchParams.set("scope", this.scopes.join("+"));
+    authorizationUrl.searchParams.set("scope", this.#scopes.join("+"));
     authorizationUrl.searchParams.set("redirect_uri", this.redirectUri);
 
-    if (this.identityProvider) {
+    if (this.#identityProvider) {
       authorizationUrl.searchParams.set(
         "identity_provider",
-        this.identityProvider
+        this.#identityProvider
       );
     }
 
@@ -144,7 +146,7 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
       case "code": {
         body = new URLSearchParams({
           grant_type: "authorization_code",
-          client_id: this.clientId,
+          client_id: this.#clientId,
           code: request.code,
           redirect_uri: this.redirectUri,
         });
@@ -155,7 +157,7 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
       case "refreshToken": {
         body = new URLSearchParams({
           grant_type: "refresh_token",
-          client_id: this.clientId,
+          client_id: this.#clientId,
           refresh_token: request.refreshToken,
           redirect_uri: this.redirectUri,
         });
@@ -312,20 +314,14 @@ export async function userAuth({ forceAuth }: { forceAuth: boolean }) {
   }
 
   try {
-    const userInfoSet = await getUserInfo();
-
-    userInfo.data.set(userInfoSet);
+    await userInfo.run(getUserInfo);
 
     // TODO: The returned timeout id can and should be freed.
     // Schedule refresh token.
-    scheduleRefreshClientTokenSet(awsCognitoTokenCache);
-
-    return userInfoSet;
+    await scheduleRefreshClientTokenSet(awsCognitoTokenCache);
   } catch {
     if (forceAuth) {
-      startUserAuth();
+      await startUserAuth();
     }
-
-    return null;
   }
 }

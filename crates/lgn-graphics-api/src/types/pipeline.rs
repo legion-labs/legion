@@ -1,5 +1,3 @@
-#![allow(clippy::too_many_lines)]
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanPipeline;
 use crate::DeviceContext;

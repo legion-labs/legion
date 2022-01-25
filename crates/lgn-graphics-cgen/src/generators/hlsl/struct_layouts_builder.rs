@@ -7,7 +7,7 @@ use crate::{
     struct_layout::{StructLayout, StructLayouts, StructMemberLayout},
 };
 
-use super::utils::get_member_declaration;
+use super::utils::member_declaration;
 
 impl StructLayout {
     pub fn from_spirv_reflect(ty: &StructType, block_var: &ReflectBlockVariable) -> Self {
@@ -77,7 +77,7 @@ impl TypeUsage {
 /// Will return `Err` if there is a cyclic dependency or if there are some type
 /// used with different incompatible layouts.
 ///
-#[allow(clippy::too_many_lines)]
+
 pub fn run(model: &Model) -> Result<StructLayouts> {
     // Compute type dependency graph
     let graph = build_type_graph(model);
@@ -166,7 +166,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
             CGenType::Struct(struct_ty) => {
                 text.push_str(&format!("struct {} {{\n", struct_ty.name));
                 for m in &struct_ty.members {
-                    text.push_str(&get_member_declaration(model, m));
+                    text.push_str(&member_declaration(model, m));
                     text.push('\n');
                 }
                 text.push_str("};\n");

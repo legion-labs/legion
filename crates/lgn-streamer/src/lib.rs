@@ -1,11 +1,7 @@
 //! Crate doc
 
 // crate-specific lint exceptions:
-#![allow(
-    clippy::let_underscore_drop,
-    clippy::needless_pass_by_value,
-    clippy::too_many_lines
-)]
+#![allow(clippy::let_underscore_drop, clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
 
 use lgn_app::prelude::*;

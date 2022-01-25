@@ -1,18 +1,12 @@
 import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import {
-  ResourceProperty as RawResourceProperty,
-  ResourcePropertyUpdate,
-} from "@lgn/proto-editor/dist/property_inspector";
+import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
 import { filterMap } from "./array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
-const vecPTypeRegExp = /^Vec\<(.*)\>$/;
+const vecPTypeRegExp = /^Vec\<(.+)\>$/;
 
 /** Matches any `ptype` of format "Option<subPType>" */
-const optionPTypeRegExp = /^Option\<(.*)\>$/;
-
-/** Matches any `name` of format "[index]", convenient for vector sub properties */
-const vecSubPropertyNameRegExp = /^\[(\d*)\]$/;
+const optionPTypeRegExp = /^Option\<(.+)\>$/;
 
 /** Shared by all resource properties, be it a primitive, a vector, an option, or a component */
 type ResourcePropertyBase<Type extends string = string> = {
@@ -275,25 +269,6 @@ export function extractVecPType<
       | undefined) ?? null;
 
   return ptype;
-}
-
-/**
- * Extract the inner index from a vector sub property `name`:
- *
- * ```typescript
- * extractVecSubPropertyIndex("[0]"); // returns 0
- * extractVecSubPropertyIndex("[x]"); // return null
- * ```
- */
-export function extractVecSubPropertyIndex(name: string): number | null {
-  const index = name.match(vecSubPropertyNameRegExp)?.[1] ?? null;
-
-  if (!index) {
-    return null;
-  }
-
-  // The regexp should already guarantee that the underlying value is a number
-  return +index;
 }
 
 const primitivePTypes: PrimitiveResourceProperty["ptype"][] = [

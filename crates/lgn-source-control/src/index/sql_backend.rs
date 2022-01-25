@@ -487,9 +487,9 @@ impl SqlIndexBackend {
 
         for row in rows {
             let name: String = row.get("name");
-            let node_hash: String = row.get("hash");
+            let hash: String = row.get("hash");
             let node_type: i64 = row.get("node_type");
-            let node = TreeNode::new(name, node_hash);
+            let node = TreeNode { name, hash };
 
             if node_type == TreeNodeType::Directory as i64 {
                 directory_nodes.push(node);
@@ -851,9 +851,9 @@ impl IndexBackend for SqlIndexBackend {
 
         for row in rows {
             let name: String = row.get("name");
-            let node_hash: String = row.get("hash");
+            let hash: String = row.get("hash");
             let node_type: i64 = row.get("node_type");
-            let node = TreeNode::new(name, node_hash);
+            let node = TreeNode { name, hash };
 
             if node_type == TreeNodeType::Directory as i64 {
                 directory_nodes.push(node);

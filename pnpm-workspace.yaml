@@ -1,4 +1,4 @@
 packages:
   - "crates/*/frontend"
-  - "npm-pkgs/*/*"
+  - "npm-pkgs/*"
   - "crates/lgn-*-proto"

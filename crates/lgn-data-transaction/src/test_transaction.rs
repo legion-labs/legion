@@ -130,7 +130,6 @@ async fn test_array_reorder_operation(
     Ok(())
 }
 
-#[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_transaction_system() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();

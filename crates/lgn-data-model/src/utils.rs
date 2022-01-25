@@ -98,7 +98,7 @@ pub fn find_property_mut<'a>(
     })
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref, clippy::too_many_lines)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 fn internal_find_property<'a>(
     base: *const (),
     type_def: TypeDefinition,

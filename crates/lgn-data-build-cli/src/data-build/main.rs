@@ -61,7 +61,6 @@ enum Commands {
     },
 }
 
-#[allow(clippy::too_many_lines)]
 fn main() -> Result<(), String> {
     let args = Cli::parse();
 

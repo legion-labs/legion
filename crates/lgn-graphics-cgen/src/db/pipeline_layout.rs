@@ -3,13 +3,13 @@ use super::{CGenTypeHandle, DescriptorSetHandle, Model, ModelHandle, ModelObject
 #[derive(Debug, Clone)]
 pub struct PushConstant {
     pub name: String,
-    pub ty_handle: CGenTypeHandle,
+    pub type_handle: CGenTypeHandle,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum PipelineLayoutContent {
     DescriptorSet(DescriptorSetHandle),
-    Pushconstant(CGenTypeHandle),
+    PushConstant(CGenTypeHandle),
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -31,7 +31,7 @@ impl PipelineLayout {
     pub fn descriptor_sets(&self) -> impl Iterator<Item = DescriptorSetHandle> + '_ {
         let x = self.members.iter().filter_map(|m| match m.1 {
             PipelineLayoutContent::DescriptorSet(ds) => Some(ds),
-            PipelineLayoutContent::Pushconstant(_) => None,
+            PipelineLayoutContent::PushConstant(_) => None,
         });
         x
     }
@@ -41,7 +41,7 @@ impl PipelineLayout {
             .members
             .iter()
             .filter_map(|m| match m.1 {
-                PipelineLayoutContent::Pushconstant(ds) => Some(ds),
+                PipelineLayoutContent::PushConstant(ds) => Some(ds),
                 PipelineLayoutContent::DescriptorSet(_) => None,
             })
             .last();
@@ -61,7 +61,7 @@ impl PipelineLayout {
                         return Some(*ds_handle);
                     }
                 }
-                PipelineLayoutContent::Pushconstant(_) => (),
+                PipelineLayoutContent::PushConstant(_) => (),
             }
         }
         None

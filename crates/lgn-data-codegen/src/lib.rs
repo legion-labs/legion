@@ -10,10 +10,10 @@ mod reflection_codegen;
 mod resource_codegen;
 mod runtime_codegen;
 
-use std::error::Error;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
+use std::{error::Error, io::Cursor};
 
 use quote::{format_ident, ToTokens};
 use reflection::DataContainerMetaInfo;
@@ -27,29 +27,47 @@ pub enum GenerationType {
     RuntimeFormat,
 }
 
+impl GenerationType {
+    /// Returns the name of the generation type
+    pub fn name(self) -> &'static str {
+        match self {
+            GenerationType::OfflineFormat => "offline",
+            GenerationType::RuntimeFormat => "runtime",
+        }
+    }
+}
+
 /// Directory Code Generator (called from Build Scripts)
 /// # Errors
-pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn Error>> {
-    let codegen_dir = directory.parent().unwrap().join("codegen");
-    std::fs::create_dir_all(&codegen_dir)?;
-
+pub fn generate_for_directory(
+    src_dir: impl AsRef<Path>,
+    out_dir: impl AsRef<Path>,
+) -> Result<(), Box<dyn Error>> {
+    let src_dir = src_dir.as_ref();
+    let out_dir = out_dir.as_ref();
+    std::fs::create_dir_all(out_dir)?;
+    let codegen_file_path = out_dir.join("data_def.rs");
+    let mut codegen_file = std::fs::File::create(&codegen_file_path)?;
+    writeln!(codegen_file, "// File is auto generated\n")?;
     [GenerationType::OfflineFormat, GenerationType::RuntimeFormat]
         .into_iter()
         .try_for_each(|gen_type| -> Result<(), Box<dyn Error>> {
-            // Create a mod.rs per gentype
-            let mod_path = if gen_type == GenerationType::OfflineFormat {
-                codegen_dir.join("offline")
-            } else {
-                codegen_dir.join("runtime")
-            };
-            std::fs::create_dir_all(&mod_path)?;
-            let mut mod_file = std::fs::File::create(&mod_path.join("mod.rs"))?;
-            writeln!(mod_file, "#![allow(unused_imports)]")?;
-
+            // Beginning of gentype  module
+            writeln!(
+                codegen_file,
+                "\n///////////////////////////////////////////////////////////////////////////////"
+            )?;
+            writeln!(codegen_file, "// {} code generation", gen_type.name())?;
+            writeln!(
+                codegen_file,
+                "///////////////////////////////////////////////////////////////////////////////\n"
+            )?;
+            writeln!(codegen_file, "#[allow(unused_imports)]")?;
+            writeln!(codegen_file, "#[cfg(feature = \"{}\")]", gen_type.name())?;
+            writeln!(codegen_file, "pub mod {} {{", gen_type.name())?;
             let mut processed_types = Vec::<DataContainerMetaInfo>::new();
-
             // Process all the .rs inside the directory
-            let mut paths = std::fs::read_dir(directory)?
+            let mut paths = std::fs::read_dir(src_dir)?
                 .map(|result| result.map(|entry| entry.path()))
                 .collect::<Result<Vec<_>, std::io::Error>>()?;
             // Since the order in which read_dir returns entries is platform+filesystem
@@ -60,23 +78,13 @@ pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn
 
                 if let Some(ext) = path.extension() {
                     if ext.to_ascii_lowercase() == "rs" && filename != "build.rs" {
-                        let types = generate_data_container_code(&path, &mod_path, gen_type)?;
+                        let (content, types) = generate_data_container_code(&path, gen_type)?;
                         processed_types.extend(types);
-
-                        writeln!(
-                            mod_file,
-                            r#"#[path = "../{}/{}"]"#,
-                            if gen_type == GenerationType::OfflineFormat {
-                                "offline"
-                            } else {
-                                "runtime"
-                            },
-                            filename.to_str().unwrap()
-                        )?;
-
                         let sub_mod_name = filename.to_str().unwrap().strip_suffix(".rs").unwrap();
-                        writeln!(mod_file, "mod {};", sub_mod_name)?;
-                        writeln!(mod_file, "pub use {}::*;\n", sub_mod_name)?;
+                        writeln!(codegen_file, "mod {} {{", sub_mod_name)?;
+                        codegen_file.write_all(&content)?;
+                        writeln!(codegen_file, "}}")?;
+                        writeln!(codegen_file, "pub use {}::*;\n", sub_mod_name)?;
                     }
                 }
             }
@@ -87,15 +95,17 @@ pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn
             } else {
                 runtime_codegen::generate_registration_code(&processed_types)
             };
-            mod_file.write_all(out_token.to_string().as_bytes())?;
+            codegen_file.write_all(out_token.to_string().as_bytes())?;
 
-            mod_file.flush()?;
-            Command::new("rustfmt")
-                .args(&[mod_path.join("mod.rs").as_os_str()])
-                .status()?;
-
+            // End of the gentype module
+            writeln!(codegen_file, "}}")?;
             Ok(())
         })?;
+
+    codegen_file.flush()?;
+    Command::new("rustfmt")
+        .args(&[codegen_file_path.as_os_str()])
+        .status()?;
 
     Ok(())
 }
@@ -104,16 +114,12 @@ pub fn generate_for_directory(directory: &std::path::Path) -> Result<(), Box<dyn
 /// # Errors
 pub fn generate_data_container_code(
     source_path: &std::path::Path,
-    out_dir: &std::path::Path,
     gen_type: GenerationType,
-) -> Result<Vec<DataContainerMetaInfo>, Box<dyn Error>> {
+) -> Result<(Vec<u8>, Vec<DataContainerMetaInfo>), Box<dyn Error>> {
     let src = std::fs::read_to_string(source_path).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
 
-    let source_file_name = source_path.file_name().unwrap().to_ascii_lowercase();
-    let gen_path = out_dir.join(&source_file_name);
-
-    let mut gen_file = std::fs::File::create(&gen_path)?;
+    let mut cursor = Cursor::new(vec![]);
 
     // Write 'uses' from definition
     ast.items
@@ -122,7 +128,7 @@ pub fn generate_data_container_code(
             syn::Item::Use(uses) => Some(uses.to_token_stream()),
             _ => None,
         })
-        .try_for_each(|ts| gen_file.write_all(ts.to_string().as_bytes()))?;
+        .try_for_each(|ts| cursor.write_all(ts.to_string().as_bytes()))?;
 
     // Gather info about the structs
     let structs: Vec<DataContainerMetaInfo> = ast
@@ -140,11 +146,11 @@ pub fn generate_data_container_code(
         .enumerate()
         .try_for_each(|(index, meta_info)| {
             let out_token = reflection_codegen::generate_reflection(meta_info, gen_type);
-            gen_file.write_all(out_token.to_string().as_bytes())?;
+            cursor.write_all(out_token.to_string().as_bytes())?;
 
             // generate component traits
             if meta_info.is_component {
-                gen_file.write_all(
+                cursor.write_all(
                     component_codegen::generate_component(meta_info, gen_type)
                         .to_string()
                         .as_bytes(),
@@ -157,18 +163,14 @@ pub fn generate_data_container_code(
                 } else {
                     runtime_codegen::generate(meta_info, index == 0)
                 };
-                gen_file.write_all(token_stream.to_string().as_bytes())?;
+                cursor.write_all(token_stream.to_string().as_bytes())?;
             }
-            writeln!(gen_file)
+            writeln!(cursor)
         })?;
 
-    gen_file.flush()?;
+    cursor.flush()?;
 
-    Command::new("rustfmt")
-        .args(&[gen_path.as_os_str()])
-        .status()?;
-
-    Ok(structs)
+    Ok((cursor.into_inner(), structs))
 }
 
 fn extract_crate_name(path: &Path) -> syn::Ident {

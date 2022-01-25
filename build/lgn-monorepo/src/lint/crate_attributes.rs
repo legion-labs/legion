@@ -2,10 +2,11 @@ use globset::{Candidate, GlobBuilder, GlobSet, GlobSetBuilder};
 use lgn_tracing::span_fn;
 use regex::Regex;
 
-use crate::{context::Context, Error, Result};
+use crate::{action_step, context::Context, Error, Result};
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
+    action_step!("Lint", "Running crate attributes checks");
     let workspace = ctx.package_graph()?.workspace();
     let names_lints = name_rules(ctx)?;
     let licenses_rules = license_rules(ctx)?;

@@ -4,12 +4,12 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::doc_markdown,
-    clippy::too_many_lines,
     clippy::wildcard_imports,
     clippy::similar_names,
     clippy::use_self
 )]
 
-#[path = "../codegen/source_control.rs"]
-mod source_control;
+mod source_control {
+    tonic::include_proto!("source_control");
+}
 pub use source_control::*;

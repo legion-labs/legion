@@ -1,4 +1,4 @@
-use relative_path::RelativePath;
+use heck::{ToShoutySnakeCase, ToSnakeCase};
 
 use crate::{
     db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
@@ -10,83 +10,187 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let content = generate(ctx);
     products.push(Product::new(
         CGenVariant::Rust,
-        RelativePath::new("mod.rs").to_relative_path_buf(),
+        "mod.rs".to_string(),
         content.into_bytes(),
     ));
 
     products
 }
 
-fn write_mod<T>(model: &Model, writer: &mut FileWriter)
-where
-    T: ModelObject,
-{
-    if model.size::<T>() > 0 {
-        let folder = GeneratorContext::get_object_folder::<T>();
-        writer.add_line(format!("pub mod {};", folder));
-    }
-}
-
-#[rustfmt::skip]
 fn generate(ctx: &GeneratorContext<'_>) -> String {
     let mut writer = FileWriter::new();
 
-    // write lints disabling
-    writer.add_line("#![allow(clippy::all)]");
-    writer.add_line("#![allow(dead_code)]");
-    writer.new_line();
-
     // write dependencies
-    let model = ctx.model;    
+    let model = ctx.model;
     writer.add_line("use lgn_graphics_api::DeviceContext;");
-    write_mod::<CGenType>(model, &mut writer);
-    write_mod::<DescriptorSet>(model, &mut writer);
-    write_mod::<PipelineLayout>(model, &mut writer);
-    writer.new_line();    
-
+    writer.new_line();
     // fn initialize
     {
-        writer.add_line( "pub fn initialize(device_context: &DeviceContext) {" );
-        writer.indent();
-           
+        let mut writer = writer.add_block(
+            &["pub fn initialize(device_context: &DeviceContext) {"],
+            &["}"],
+        );
         for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::initialize(device_context);", descriptor_set_ref.object().name));            
+            writer.add_line(format!(
+                "descriptor_set::{}::initialize(device_context);",
+                descriptor_set_ref.object().name
+            ));
         }
-        
+
         writer.new_line();
-        writer.add_line("let descriptor_set_layouts = [");
-        writer.indent();
-        for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::descriptor_set_layout(),", descriptor_set_ref.object().name));            
+
+        {
+            let mut writer = writer.add_block(&["let descriptor_set_layouts = ["], &["];"]);
+            for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
+                writer.add_line(format!(
+                    "descriptor_set::{}::descriptor_set_layout(),",
+                    descriptor_set_ref.object().name
+                ));
+            }
         }
-        writer.unindent();
-        writer.add_line("];");
-        
+
         writer.new_line();
         for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);", pipeline_layout_ref.object().name));    
-        }    
-        writer.unindent();
-        writer.add_line( "}" );
-        writer.new_line();
+            writer.add_line(format!(
+                "pipeline_layout::{}::initialize(device_context, &descriptor_set_layouts);",
+                pipeline_layout_ref.object().name
+            ));
+        }
     }
+
+    writer.new_line();
 
     // fn shutdown
     {
-        writer.add_line( "pub fn shutdown() {" );
-        writer.indent();
-    
+        let mut writer = writer.add_block(&["pub fn shutdown() {"], &["}"]);
+
         for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
-            writer.add_line( format!("descriptor_set::{}::shutdown();", descriptor_set_ref.object().name));            
+            writer.add_line(format!(
+                "descriptor_set::{}::shutdown();",
+                descriptor_set_ref.object().name
+            ));
         }
         writer.new_line();
-        
+
         for pipeline_layout_ref in model.object_iter::<PipelineLayout>() {
-            writer.add_line( format!("pipeline_layout::{}::shutdown();", pipeline_layout_ref.object().name));    
-        }    
-        writer.unindent();
-        writer.add_line( "}" );   
+            writer.add_line(format!(
+                "pipeline_layout::{}::shutdown();",
+                pipeline_layout_ref.object().name
+            ));
+        }
     }
-    
+
+    writer.new_line();
+
+    // add shader files
+    {
+        let infos: Vec<_> = ctx
+            .model
+            .object_iter::<CGenType>()
+            .filter_map(|cgen_type| {
+                if matches!(cgen_type.object(), CGenType::Struct(_)) {
+                    Some(embedded_fs_info(ctx, cgen_type.object()))
+                } else {
+                    None
+                }
+            })
+            .chain(
+                ctx.model
+                    .object_iter::<PipelineLayout>()
+                    .map(|pipeline_layout| embedded_fs_info(ctx, pipeline_layout.object())),
+            )
+            .chain(
+                ctx.model
+                    .object_iter::<DescriptorSet>()
+                    .map(|descriptor_set| embedded_fs_info(ctx, descriptor_set.object())),
+            )
+            .collect();
+        let mut writer = writer.add_block(&["#[rustfmt::skip]", "mod shader_files {"], &["}"]);
+
+        for (var_name, rel_path, crate_path) in infos {
+            let mut writer = writer.add_block(
+                &[
+                    "#[linkme::distributed_slice(lgn_embedded_fs::EMBEDDED_FILES)]".to_string(),
+                    format!("static {}: lgn_embedded_fs::EmbeddedFile = lgn_embedded_fs::EmbeddedFile::new(", var_name),
+                ],
+                &[");"],
+            );
+            writer.add_line(format!("\"{}\",", crate_path));
+            writer.add_line(format!(
+                "include_bytes!(concat!(env!(\"OUT_DIR\"), \"/hlsl/{}\")),",
+                rel_path
+            ));
+            writer.add_line("None".to_string());
+        }
+    }
+
+    writer.new_line();
+
+    write_mod::<CGenType>(model, &mut writer);
+    write_mod::<DescriptorSet>(model, &mut writer);
+    write_mod::<PipelineLayout>(model, &mut writer);
+
     writer.build()
+}
+
+trait SkipInclude: ModelObject {
+    fn skip_include(&self) -> bool {
+        false
+    }
+}
+
+impl SkipInclude for CGenType {
+    fn skip_include(&self) -> bool {
+        matches!(self, CGenType::Native(_))
+    }
+}
+impl SkipInclude for DescriptorSet {}
+impl SkipInclude for PipelineLayout {}
+
+fn write_mod<T>(model: &Model, writer: &mut FileWriter)
+where
+    T: ModelObject + SkipInclude,
+{
+    if model.size::<T>() > 0 {
+        let folder = GeneratorContext::object_folder::<T>();
+        let mut writer = writer.add_block(
+            &[
+                "#[allow(dead_code, clippy::needless_range_loop, clippy::derivable_impls)]"
+                    .to_string(),
+                format!("pub mod {} {{", folder),
+            ],
+            &["}"],
+        );
+
+        for obj_ref in model.object_iter::<T>() {
+            let mod_name = obj_ref.object().name().to_snake_case();
+            if obj_ref.object().skip_include() {
+                continue;
+            }
+            {
+                let mut writer = writer.add_block(&[format!("mod {} {{", mod_name)], &["}"]);
+                writer.add_line(format!(
+                    "include!(concat!(env!(\"OUT_DIR\"), \"/{}/{}\"));",
+                    CGenVariant::Rust.dir(),
+                    GeneratorContext::object_relative_path(obj_ref.object(), CGenVariant::Rust)
+                ));
+            }
+            writer.add_lines(&[
+                "#[allow(unused_imports)]".to_string(),
+                format!("pub use {}::*;", mod_name),
+            ]);
+        }
+    }
+    writer.new_line();
+}
+
+fn embedded_fs_info(
+    ctx: &GeneratorContext<'_>,
+    obj: &impl ModelObject,
+) -> (String, String, String) {
+    (
+        obj.name().to_shouty_snake_case(),
+        GeneratorContext::object_relative_path(obj, CGenVariant::Hlsl),
+        ctx.embedded_fs_path(obj, CGenVariant::Hlsl),
+    )
 }

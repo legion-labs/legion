@@ -15,7 +15,6 @@ use lgn_renderer::components::CameraComponent;
 use lgn_transform::components::Transform;
 use runtime_srv::{build_runtime, start_runtime};
 
-#[allow(clippy::too_many_lines)]
 fn main() {
     let mut app = build_runtime(
         None,

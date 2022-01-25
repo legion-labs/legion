@@ -16,7 +16,6 @@ pub struct Args {
     force: bool,
 }
 
-#[allow(clippy::too_many_lines)]
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();
@@ -100,7 +99,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     "stopAtEntry": false,
                     "cwd": "${workspaceFolder}",
                     "environment": [],
-                    "console": "internalConsole",
+                    "console": "integratedTerminal",
                     "sourceFileMap": {
                         "/rustc/02072b482a8b5357f7fb5e5637444ae30e423c40": toolchain
                     },

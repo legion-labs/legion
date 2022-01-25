@@ -19,7 +19,8 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build release
-        run: make build-release
+        # This will be replace by cargo cd
+        run: cargo m build --release
 
       - name: Upload release artifacts
         if: github.ref == 'refs/heads/main'

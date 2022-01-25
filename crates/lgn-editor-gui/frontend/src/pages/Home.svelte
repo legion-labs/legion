@@ -2,6 +2,7 @@
   import { ServerType } from "@lgn/frontend/src/api";
   import { Resolution } from "@lgn/frontend/src/lib/types";
   import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
+  import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
   import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
   import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
   import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
@@ -14,6 +15,11 @@
   import log from "@lgn/frontend/src/lib/log";
   import { unflatten } from "@/lib/hierarchyTree";
   import asyncStore from "@lgn/frontend/src/stores/asyncStore";
+  import contextMenu from "@/actions/contextMenu";
+  import contextMenuStore from "@/stores/contextMenu";
+  import contextMenuEntries from "@/data/contextMenu";
+
+  contextMenuStore.register("resource", contextMenuEntries);
 
   const { data: currentResourceData } = currentResource;
 
@@ -58,6 +64,8 @@
   }
 </script>
 
+<ContextMenu {contextMenuStore} />
+
 <div class="root">
   <TopBar />
   <div class="content-wrapper">
@@ -101,7 +109,19 @@
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
-                <HierarchyTree entries={unflatten($allResourcesData)} />
+                <HierarchyTree entries={unflatten($allResourcesData)}>
+                  <div
+                    let:itemName
+                    use:contextMenu={{
+                      name: "resource",
+                      payload: { itemName },
+                    }}
+                    class="h-full w-full"
+                    slot="itemName"
+                  >
+                    {itemName}
+                  </div>
+                </HierarchyTree>
               {/if}
             </div>
           </Panel>
@@ -160,10 +180,10 @@
 <style lang="postcss">
   .root {
     @apply h-screen w-full;
-  }
 
-  .content-wrapper {
-    @apply h-[calc(100vh-3.5rem)] w-full overflow-auto;
+    .content-wrapper {
+      @apply h-[calc(100vh-4rem)] w-full overflow-auto;
+    }
   }
 
   .content {
@@ -191,7 +211,7 @@
   }
 
   .scene-explorer {
-    @apply h-1/2;
+    @apply h-[calc(50%-theme("spacing[0.5]"))];
   }
 
   .scene-explorer-loading {
@@ -211,7 +231,7 @@
   }
 
   .resource-browser {
-    @apply h-1/2;
+    @apply h-[calc(50%-theme("spacing[0.5]"))];
   }
 
   .resource-browser-content {

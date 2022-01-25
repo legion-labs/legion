@@ -4,6 +4,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use async_trait::async_trait;
+use lgn_online::authentication::{Authenticator, ClientTokenSet};
+use tonic::codegen::http::Uri;
+
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
     telemetry::{
@@ -29,6 +33,35 @@ enum SinkEvent {
     ProcessMetricsBlock(Arc<MetricsBlock>),
     ProcessThreadBlock(Arc<ThreadBlock>),
 }
+
+#[derive(Clone)]
+struct StaticApiKey {}
+
+#[async_trait]
+impl Authenticator for StaticApiKey {
+    async fn login(&self) -> lgn_online::authentication::Result<ClientTokenSet> {
+        Ok(ClientTokenSet {
+            access_token: env!("LEGION_TELEMETRY_GRPC_API_KEY").to_owned(),
+            refresh_token: None,
+            id_token: String::from(""),
+            token_type: String::from("Legion API Key"),
+            expires_in: 0,
+        })
+    }
+    async fn refresh_login(
+        &self,
+        _refresh_token: &str,
+    ) -> lgn_online::authentication::Result<ClientTokenSet> {
+        self.login().await
+    }
+    async fn logout(&self) -> lgn_online::authentication::Result<()> {
+        Ok(())
+    }
+}
+
+type AuthClientType = TelemetryIngestionClient<
+    lgn_online::grpc::AuthenticatedClient<lgn_online::grpc::GrpcClient, StaticApiKey>,
+>;
 
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
@@ -73,7 +106,7 @@ impl GRPCEventSink {
     }
 
     async fn push_block(
-        client: &mut TelemetryIngestionClient<tonic::transport::Channel>,
+        client: &mut AuthClientType,
         buffer: &dyn StreamBlock,
         current_queue_size: &AtomicIsize,
         max_queue_size: isize,
@@ -102,13 +135,14 @@ impl GRPCEventSink {
         queue_size: Arc<AtomicIsize>,
         max_queue_size: isize,
     ) {
-        let mut client = match TelemetryIngestionClient::connect(addr).await {
-            Ok(c) => c,
-            Err(e) => {
-                println!("Error connecting to telemetry server: {}", e);
-                return;
-            }
-        };
+        let uri = addr.parse::<Uri>();
+        if let Err(e) = uri {
+            println!("Error parsing telemetry uri {}: {}", addr, e);
+            return;
+        }
+        let grpc_client = lgn_online::grpc::GrpcClient::new(uri.unwrap());
+        let auth_client = lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {});
+        let mut client = TelemetryIngestionClient::new(auth_client);
         loop {
             match receiver.recv() {
                 Ok(message) => match message {

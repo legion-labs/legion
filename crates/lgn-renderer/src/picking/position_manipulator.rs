@@ -21,7 +21,7 @@ impl PositionManipulator {
         Self { parts: Vec::new() }
     }
 
-    #[allow(clippy::too_many_lines, clippy::needless_pass_by_value)]
+    #[allow(clippy::needless_pass_by_value)]
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,

@@ -471,7 +471,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
                 if !prop.ty.is_templated() || prop.ty.is_array() {
                     return Err(anyhow!("Invalid descriptor definition"));
                 }
-                builder = builder.add_constantbuffer(prop_name, prop.ty.template_name())?;
+                builder = builder.add_constant_buffer(prop_name, prop.ty.template_name())?;
             }
             "StructuredBuffer" | "RWStructuredBuffer" => {
                 if !prop.ty.is_templated() {
@@ -479,7 +479,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
                 }
                 let read_write = prop_ty_name.starts_with("RW");
 
-                builder = builder.add_structuredbuffer(
+                builder = builder.add_structured_buffer(
                     prop_name,
                     prop.ty.array_len,
                     prop.ty.template_name(),
@@ -493,7 +493,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> Resul
                 let read_write = prop_ty_name.starts_with("RW");
 
                 builder =
-                    builder.add_byteaddressbuffer(prop_name, prop.ty.array_len, read_write)?;
+                    builder.add_byte_address_buffer(prop_name, prop.ty.array_len, read_write)?;
             }
             "Texture2D" | "RWTexture2D" | "Texture3D" | "RWTexture3D" | "Texture2DArray"
             | "RWTexture2DArray" | "TextureCube" | "TextureCubeArray" => {
@@ -537,13 +537,14 @@ fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Resu
                 if !prop.ty.is_templated() {
                     return Err(anyhow!("#todo"));
                 }
-                builder = builder.add_descriptorset(prop.name.as_str(), prop.ty.template_name())?;
+                builder =
+                    builder.add_descriptor_set(prop.name.as_str(), prop.ty.template_name())?;
             }
             "PushConstant" => {
                 if !prop.ty.is_templated() {
                     return Err(anyhow!("#todo"));
                 }
-                builder = builder.add_pushconstant(prop.name.as_str(), prop.ty.template_name())?;
+                builder = builder.add_push_constant(prop.name.as_str(), prop.ty.template_name())?;
             }
             _ => {
                 todo!();

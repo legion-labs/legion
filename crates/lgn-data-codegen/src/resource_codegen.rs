@@ -36,7 +36,6 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
     }
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> TokenStream {
     let offline_identifier = format_ident!("{}", data_container_info.name);
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();

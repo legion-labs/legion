@@ -494,7 +494,6 @@ impl DataBuild {
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
     // contexts (platform, target, locale, etc).
-    #[allow(clippy::too_many_lines)]
     fn compile_path(
         &mut self,
         compile_path: ResourcePathId,

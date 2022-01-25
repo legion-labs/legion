@@ -55,3 +55,11 @@ You can build the application for production using this command:
 ```bash
 pnpm build
 ```
+
+## FAQ
+
+### Q. When using the right click I can't access the default context menu which I need for dev purpose, how can I fix that?
+
+A. In _dev mode only_ using `Ctrl + Right Click` will open the default context menu
+instead of the application one. This way you can both test the application's context
+menu and use the default one when developing.

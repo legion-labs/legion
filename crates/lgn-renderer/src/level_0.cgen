@@ -1,5 +1,0 @@
-mod internal;
-
-struct LayoutC {
-    a: Half1,
-}

@@ -49,11 +49,9 @@ use lgn_build_utils::{run_cmd, Result};
 pub fn build_web_app() -> Result<()> {
     if let Ok(pnpm_path) = which::which("pnpm") {
         let frontend_dir = "frontend";
-        {
-            let lock = named_lock::NamedLock::create("pnpm_install").unwrap();
-            let _guard = lock.lock().unwrap();
-            run_cmd(&pnpm_path, &["install", "--unsafe-perm"], frontend_dir)?;
-        }
+        let lock = named_lock::NamedLock::create("pnpm_processing").unwrap();
+        let _guard = lock.lock().unwrap();
+        run_cmd(&pnpm_path, &["install", "--unsafe-perm"], frontend_dir)?;
         run_cmd(&pnpm_path, &["build"], frontend_dir)?;
 
         // JS ecosystem forces us to have output files in our sources hierarchy

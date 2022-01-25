@@ -9,8 +9,8 @@ license = "MIT OR Apache-2.0"
 anyhow = "1"
 async-trait = "0.1"
 async-recursion = "1"
-aws-config = "0.4"
-aws-sdk-s3 = "0.4"
+aws-config = "0.5"
+aws-sdk-s3 = "0.5"
 bytes = "1"
 chrono = "0.4"
 diffy = "0.2"
@@ -24,6 +24,7 @@ lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lz4 = "1.23"
 path-clean = "0.1"
+path-slash = "0.1"
 pin-project = "1"
 reqwest = { version = "0.11", features = ["blocking"] }
 serde = { version = "1.0", features = ["derive"] }

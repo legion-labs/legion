@@ -1,0 +1,19 @@
+{
+  "name": "@lgn/vite-plugin-wasm",
+  "version": "0.1.0",
+  "description": "Legion's monorepo",
+  "repository": "https://github.com/legion-labs/legion",
+  "author": "devs@legionlabs.com",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "packageManager": "pnpm@6.24.1",
+  "scripts": {
+    "postinstall": "tsc --build"
+  },
+  "devDependencies": {
+    "typescript": "^4.5.4"
+  }
+}

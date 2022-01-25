@@ -667,7 +667,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();

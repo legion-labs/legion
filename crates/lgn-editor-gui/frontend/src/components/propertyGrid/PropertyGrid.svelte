@@ -106,7 +106,7 @@
   {:else if !$currentResourceData.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    {#each $currentResourceData.properties as property (property.name)}
+    {#each $currentResourceData.properties as property, index (property.name)}
       <PropertyContainer
         on:input={onInput}
         on:addVectorSubProperty={addVectorSubProperty}
@@ -115,6 +115,7 @@
           ? []
           : [property.name]}
         {property}
+        {index}
         parentProperty={null}
       />
     {/each}

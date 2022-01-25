@@ -1,4 +1,3 @@
-#![allow(clippy::too_many_lines)]
 use lgn_tracing::trace;
 
 use super::internal;

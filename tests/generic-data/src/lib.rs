@@ -1,13 +1,9 @@
 //! Generic data codegen test (offline)
 
 // crate-specific lint exceptions:
+// #![allow()]
 
-#[path = "../codegen/offline/mod.rs"]
-#[cfg(feature = "offline")]
-pub mod offline;
-
-#[path = "../codegen/runtime/mod.rs"]
-#[cfg(feature = "runtime")]
-pub mod runtime;
+// generated from def\*.rs
+include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 pub mod plugin;

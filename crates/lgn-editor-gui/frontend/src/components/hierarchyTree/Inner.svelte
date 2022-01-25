@@ -2,11 +2,14 @@
   import { Entry } from "@/lib/hierarchyTree";
   import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
-
+  import Icon from "@iconify/svelte";
   import TextInput from "../inputs/TextInput.svelte";
-  import Icon, { IconName } from "../Icon.svelte";
 
   type Item = $$Generic;
+
+  type $$Slots = {
+    itemName: { itemName: string };
+  };
 
   const dispatch = createEventDispatcher<{
     select: Item;
@@ -14,14 +17,14 @@
   }>();
 
   // TODO: Temporary extension to icon name map, should be dynamic
-  const iconNames = {
-    pdf: "pdf",
-    jpg: "image",
-    jpeg: "image",
-    png: "image",
-    zip: "archive",
-    rar: "archive",
-  } as Record<string, IconName>;
+  const iconNames: Record<string, string> = {
+    pdf: "mdi:file-pdf-box",
+    jpg: "mdi:file-image",
+    jpeg: "mdi:file-image",
+    png: "mdi:file-image",
+    zip: "mdi:file-cabinet",
+    rar: "mdi:file-cabinet",
+  };
 
   export let entry: Entry<Item>;
 
@@ -79,7 +82,7 @@
   $: nameExtension = extension(name);
 
   $: iconName =
-    (nameExtension && iconNames[nameExtension]) || "unknown-file-type";
+    (nameExtension && iconNames[nameExtension]) || "mdi:file-outline";
 
   $: if (!isActive) {
     cancelEdition();
@@ -97,16 +100,16 @@
   >
     {#if entry.entries}
       <div class="icon" class:expanded on:click={toggleExpand}>
-        <Icon name="chevron-right" />
+        <Icon icon="mdi:chevron-right" />
       </div>
     {:else}
       <div class="icon">
-        <Icon name={iconName} />
+        <Icon icon={iconName} />
       </div>
     {/if}
     <div class="name">
       {#if mode === "view"}
-        <div>{name}</div>
+        <slot name="itemName" itemName={name} />
       {:else}
         <form on:submit={renameFile} on:keydown={cancelEdition}>
           <TextInput autoFocus autoSelect size="sm" bind:value={nameValue} />
@@ -124,7 +127,10 @@
           {itemsAreIdentical}
           on:select
           on:nameChange
-        />
+          let:itemName
+        >
+          <slot name="itemName" slot="itemName" {itemName} />
+        </svelte:self>
       </div>
     {/each}
   {/if}
@@ -136,7 +142,7 @@
   }
 
   .name {
-    @apply flex items-center h-7 px-1 cursor-pointer border border-transparent;
+    @apply flex items-center h-7 w-full px-1 cursor-pointer border border-transparent;
   }
 
   .name.active-view {

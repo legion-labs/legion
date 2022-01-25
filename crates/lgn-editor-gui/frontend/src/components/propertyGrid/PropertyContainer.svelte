@@ -28,10 +28,15 @@
 
   /** The property path parts */
   export let pathParts: string[];
+
+  /** The property index (only used in vectors) */
+  export let index: number;
 </script>
 
 <div class="root">
-  {#if propertyIsBag(property)}
+  {#if property.attributes.readonly}
+    {""}
+  {:else if propertyIsBag(property)}
     <PropertyBag
       on:input={(event) => dispatch("input", event.detail)}
       on:addVectorSubProperty={(event) =>
@@ -50,6 +55,7 @@
       {property}
       bind:parentProperty
       {pathParts}
+      {index}
     />
   {/if}
 </div>

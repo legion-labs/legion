@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
@@ -23,14 +24,15 @@ pub struct TmpRenderPass {
     pub speed: f32,
 }
 
+embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
+
 impl TmpRenderPass {
-    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = renderer.prepare_vs_ps(String::from("crate://renderer/shaders/shader.hlsl"));
+        let shader = renderer.prepare_vs_ps(SHADER_SHADER.path().to_owned());
 
         //
         // Pipeline state

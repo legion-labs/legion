@@ -172,15 +172,15 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let workspace_spec = lgn_source_control::read_workspace_spec(&work1).unwrap();
-    let connection = tokio_runtime
-        .block_on(lgn_source_control::connect_to_server(&workspace_spec))
+    let workspace = tokio_runtime
+        .block_on(lgn_source_control::Workspace::load(&work1))
         .unwrap();
-    let query = connection.index_backend();
-    let main_branch = tokio_runtime.block_on(query.read_branch("main")).unwrap();
+    let main_branch = tokio_runtime
+        .block_on(workspace.index_backend.read_branch("main"))
+        .unwrap();
     let log_vec = tokio_runtime
         .block_on(lgn_source_control::find_branch_commits(
-            &connection,
+            &workspace,
             &main_branch,
         ))
         .unwrap();
@@ -368,9 +368,17 @@ fn test_locks() {
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
     write_file(&work1.join("dir/deep/file1.txt"), b"line1\n").unwrap();
 
-    lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
-    lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
-    lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
+    #[cfg(target_os = "windows")]
+    {
+        lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
+        lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
+        lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        lsc_cli_sys(&work1, &["lock", "dir/deep/file1.txt"]);
+        lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
+    }
     lsc_cli_sys(&work1, &["list-locks"]);
     lsc_cli_sys(&work1, &["add", "dir/deep/file1.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1 in task main""#]);

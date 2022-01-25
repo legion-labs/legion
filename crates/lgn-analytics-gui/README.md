@@ -28,7 +28,7 @@ pnpm analytics:dev
 
 ## Starting the analytics server
 
-The web app in only a client to the analytics gRPC server. You can execute `legion\server\analytics-srv\start-test-server.bat` to start the server using dummy validation data.
+The web app in only a client to the analytics gRPC server. You can execute `crates\lgn-analytics-srv\start-test-server.bat` to start the server using dummy validation data.
 
 ## validations: tsc && svelte-check
 

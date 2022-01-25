@@ -1,21 +1,19 @@
-#[allow(clippy::unnecessary_wraps)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(feature = "run-codegen")]
-    {
-        let context = lgn_build_utils::pre_codegen(cfg!(feature = "run-codegen-validation"))?;
+    let out_dir = std::env::var("OUT_DIR")?;
+    let protos = &[
+        "./protos/analytics.proto",
+        "./protos/block.proto",
+        "./protos/calltree.proto",
+        "./protos/ingestion.proto",
+        "./protos/process.proto",
+        "./protos/stream.proto",
+    ];
+    tonic_build::configure()
+        .out_dir(&out_dir)
+        .compile(protos, &["protos"])?;
 
-        let proto_filepaths = &[
-            "./analytics.proto",
-            "./block.proto",
-            "./calltree.proto",
-            "./ingestion.proto",
-            "./process.proto",
-            "./stream.proto",
-        ];
-
-        lgn_build_utils_proto::build_protos(&context, proto_filepaths, &["."])?;
-
-        lgn_build_utils::post_codegen(&context)?;
+    for proto in protos {
+        println!("cargo:rerun-if-changed={}", proto);
     }
     Ok(())
 }

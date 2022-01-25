@@ -1,5 +1,6 @@
 use std::slice;
 
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
     BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
@@ -131,13 +132,14 @@ pub struct PickingRenderPass {
     picked_rw_view: BufferView,
 }
 
+embedded_watched_file!(PICKING_SHADER, "gpu/shaders/picking.hlsl");
+
 impl PickingRenderPass {
-    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader = renderer.prepare_vs_ps(String::from("crate://renderer/shaders/picking.hlsl"));
+        let shader = renderer.prepare_vs_ps(PICKING_SHADER.path().to_owned());
 
         //
         // Pipeline state

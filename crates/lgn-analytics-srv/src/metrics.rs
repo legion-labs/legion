@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::MetricDataPoint;
 use lgn_telemetry_proto::analytics::MetricDesc;
 use lgn_tracing_transit::prelude::*;
@@ -32,11 +33,11 @@ pub async fn get_process_metrics_time_range(
 
 pub async fn list_process_metrics(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
 ) -> Result<Vec<MetricDesc>> {
     let mut metrics = HashMap::<String, MetricDesc>::new();
-    for_each_process_metric(connection, data_path, process_id, |metric_instance| {
+    for_each_process_metric(connection, blob_storage, process_id, |metric_instance| {
         let metric_desc = metric_instance.get::<Object>("desc").unwrap();
         let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
         let unit = metric_desc.get_ref("unit").unwrap().as_str().unwrap();
@@ -54,7 +55,7 @@ pub async fn list_process_metrics(
 #[allow(clippy::cast_precision_loss)]
 pub async fn fetch_process_metric(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     metric_name: &str,
     _unit: &str,
@@ -64,7 +65,7 @@ pub async fn fetch_process_metric(
     let mut points = vec![];
     let process = find_process(connection, process_id).await?;
     let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
-    for_each_process_metric(connection, data_path, process_id, |metric_instance| {
+    for_each_process_metric(connection, blob_storage, process_id, |metric_instance| {
         let metric_desc = metric_instance.get::<Object>("desc").unwrap();
         let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
         if name == metric_name {

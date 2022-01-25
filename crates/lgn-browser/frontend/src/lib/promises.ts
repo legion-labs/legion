@@ -1,3 +1,5 @@
+import log from "./log";
+
 /**
  * Takes a function a return a function that acts similarly but is debounced
  * @param f The debounced function
@@ -49,4 +51,36 @@ export async function retry<T>(
 
     return retry(f, n);
   }
+}
+
+/**
+ * Sleeps for n ms, this function uses `setTimeout` under the hood.
+ *
+ * Unlike traditional promises this one _can_ be aborted/cancelled.
+ *
+ * Doesn't throw.
+ */
+export function sleep(ms: number) {
+  let abort = () => {
+    log.warn("`abort` function not implemented by the promise builder");
+  };
+
+  if (ms <= 0) {
+    return {
+      abort() {
+        // No promise to abort
+      },
+      promise: Promise.resolve(),
+    };
+  }
+
+  const promise = new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      resolve(undefined);
+    }, ms);
+
+    abort = () => clearTimeout(timeoutId);
+  });
+
+  return { abort, promise };
 }

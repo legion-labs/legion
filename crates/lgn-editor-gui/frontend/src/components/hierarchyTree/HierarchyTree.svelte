@@ -6,6 +6,10 @@
 
   type Item = $$Generic;
 
+  type $$Slots = {
+    itemName: { itemName: string };
+  };
+
   const dispatch = createEventDispatcher<{ select: Item }>();
 
   export let entries: Entries<Item>;
@@ -45,7 +49,10 @@
       {name}
       on:select={setActiveItem}
       on:nameChange={setName}
-    />
+      let:itemName
+    >
+      <slot name="itemName" slot="itemName" {itemName} />
+    </Inner>
   {/each}
 </div>
 

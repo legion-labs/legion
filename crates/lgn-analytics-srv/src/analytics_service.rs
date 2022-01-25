@@ -1,9 +1,10 @@
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
@@ -67,18 +68,18 @@ impl Drop for RequestGuard {
 
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
-    data_dir: PathBuf,
+    blob_storage: Arc<dyn BlobStorage>,
     cache: DiskCache,
     call_trees: CallTreeStore,
 }
 
 impl AnalyticsService {
-    pub async fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Result<Self> {
+    pub async fn new(pool: sqlx::AnyPool, blob_storage: Arc<dyn BlobStorage>) -> Result<Self> {
         Ok(Self {
             pool: pool.clone(),
-            data_dir: data_dir.clone(),
+            blob_storage: blob_storage.clone(),
             cache: DiskCache::new().await?,
-            call_trees: CallTreeStore::new(pool, data_dir).await?,
+            call_trees: CallTreeStore::new(pool, blob_storage).await?,
         })
     }
 
@@ -191,7 +192,7 @@ impl AnalyticsService {
                 } else {
                     for_each_log_entry_in_block(
                         &mut connection,
-                        &self.data_dir,
+                        self.blob_storage.clone(),
                         &stream,
                         &block,
                         |ts, entry| {
@@ -246,7 +247,9 @@ impl AnalyticsService {
 
     async fn list_process_metrics_impl(&self, process_id: &str) -> Result<ProcessMetricsReply> {
         let mut connection = self.pool.acquire().await?;
-        let m = metrics::list_process_metrics(&mut connection, &self.data_dir, process_id).await?;
+        let m =
+            metrics::list_process_metrics(&mut connection, self.blob_storage.clone(), process_id)
+                .await?;
         let time_range =
             metrics::get_process_metrics_time_range(&mut connection, process_id).await?;
         Ok(ProcessMetricsReply {
@@ -268,7 +271,7 @@ impl AnalyticsService {
         Ok(ProcessMetricReply {
             points: metrics::fetch_process_metric(
                 &mut connection,
-                &self.data_dir,
+                self.blob_storage.clone(),
                 process_id,
                 metric_name,
                 unit,

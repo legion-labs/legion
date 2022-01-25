@@ -3,7 +3,6 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::doc_markdown,
-    clippy::too_many_lines,
     clippy::wildcard_imports,
     clippy::similar_names
 )]
@@ -12,14 +11,17 @@ use std::io::{Read, Write};
 
 use anyhow::{Context, Result};
 
-#[path = "../codegen/telemetry.rs"]
-pub mod telemetry;
+pub mod telemetry {
+    tonic::include_proto!("telemetry");
+}
 
-#[path = "../codegen/ingestion.rs"]
-pub mod ingestion;
+pub mod ingestion {
+    tonic::include_proto!("ingestion");
+}
 
-#[path = "../codegen/analytics.rs"]
-pub mod analytics;
+pub mod analytics {
+    tonic::include_proto!("analytics");
+}
 
 pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
     let mut compressed = Vec::new();

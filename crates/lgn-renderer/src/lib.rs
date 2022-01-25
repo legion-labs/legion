@@ -8,8 +8,9 @@
     clippy::uninit_vec
 )]
 
-#[path = "../codegen/rust/mod.rs"]
-mod cgen;
+mod cgen {
+    include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
+}
 #[allow(unused_imports)]
 use cgen::*;
 
@@ -332,8 +333,7 @@ fn update_materials_ids(
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::too_many_lines
+    clippy::type_complexity
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
@@ -517,6 +517,8 @@ fn render_update(
 
         render_surface.present(&render_context);
     }
+
+    debug_display.clear_display_lists();
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {

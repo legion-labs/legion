@@ -11,30 +11,24 @@ pub use sql_backend::*;
 use crate::{BlobStorageUrl, Result};
 
 /// Represents a source control index.
-pub struct Index {
-    backend: Box<dyn IndexBackend>,
-}
+pub struct Index(Box<dyn IndexBackend>);
 
 impl Index {
     pub fn new(url: &str) -> Result<Self> {
         let backend = new_index_backend(url)?;
 
-        Ok(Self { backend })
-    }
-
-    pub(crate) fn backend(&self) -> &dyn IndexBackend {
-        &*self.backend
+        Ok(Self(backend))
     }
 
     pub async fn create(&self) -> Result<BlobStorageUrl> {
-        self.backend.create_index().await
+        self.0.create_index().await
     }
 
     pub async fn destroy(&self) -> Result<()> {
-        self.backend.destroy_index().await
+        self.0.destroy_index().await
     }
 
     pub async fn exists(&self) -> Result<bool> {
-        self.backend.index_exists().await
+        self.0.index_exists().await
     }
 }

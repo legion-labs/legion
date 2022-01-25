@@ -10,8 +10,10 @@ license = "MIT OR Apache-2.0"
 lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 anyhow = "1.0"
+async-trait = "0.1"
 chrono = "0.4"
 ctrlc = "3.2.0"
 json = "0.12"

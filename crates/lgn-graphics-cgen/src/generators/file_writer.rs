@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 #[derive(Debug)]
 struct Line {
     indent: u32,
@@ -24,18 +26,33 @@ impl FileWriter {
         });
     }
 
-    pub fn add_line<S: Into<String>>(&mut self, line: S) {
+    pub fn add_line<S: AsRef<str>>(&mut self, line: S) {
         self.lines.push(Line {
             indent: self.indent,
-            content: Some(line.into()),
+            content: Some(line.as_ref().to_owned()),
         });
     }
 
-    pub fn indent(&mut self) {
+    pub fn add_lines<S: AsRef<str>>(&mut self, lines: &[S]) {
+        for line in lines {
+            self.add_line(line);
+        }
+        self.new_line();
+    }
+
+    pub fn add_block<'w, 'b, 'e, Sb: AsRef<str>, Se: AsRef<str>>(
+        &'w mut self,
+        begin: &'b [Sb],
+        end: &'e [Se],
+    ) -> FileWriterScope<'w, 'e, Se> {
+        FileWriterScope::new(self, begin, end)
+    }
+
+    fn indent(&mut self) {
         self.indent += 1;
     }
 
-    pub fn unindent(&mut self) {
+    fn unindent(&mut self) {
         assert!(self.indent > 0);
         self.indent -= 1;
     }
@@ -57,5 +74,47 @@ impl FileWriter {
         }
 
         result
+    }
+}
+
+pub struct FileWriterScope<'w, 'e, S: AsRef<str>> {
+    file_writer: &'w mut FileWriter,
+    end: &'e [S],
+}
+
+impl<'w, 'e, Se: AsRef<str>> FileWriterScope<'w, 'e, Se> {
+    fn new<'b, Sb: AsRef<str>>(
+        file_writer: &'w mut FileWriter,
+        begin: &'b [Sb],
+        end: &'e [Se],
+    ) -> Self {
+        for line in begin {
+            file_writer.add_line(line);
+        }
+        file_writer.indent();
+        Self { file_writer, end }
+    }
+}
+
+impl<'w, 'e, S: AsRef<str>> Drop for FileWriterScope<'w, 'e, S> {
+    fn drop(&mut self) {
+        self.file_writer.unindent();
+        for line in self.end {
+            self.file_writer.add_line(line);
+        }
+    }
+}
+
+impl<'w, 'e, S: AsRef<str>> Deref for FileWriterScope<'w, 'e, S> {
+    type Target = FileWriter;
+
+    fn deref(&self) -> &Self::Target {
+        self.file_writer
+    }
+}
+
+impl<'w, 'e, S: AsRef<str>> DerefMut for FileWriterScope<'w, 'e, S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.file_writer
     }
 }

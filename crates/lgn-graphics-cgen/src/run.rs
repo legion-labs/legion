@@ -25,11 +25,18 @@ impl CGenVariant {
             CGenVariant::Rust => "rs",
         }
     }
+    pub fn dir(self) -> &'static str {
+        match self {
+            CGenVariant::Hlsl => "hlsl",
+            CGenVariant::Rust => "rust",
+        }
+    }
 }
 
 pub struct CGenContext {
     pub(super) root_file: PathBuf,
-    pub(super) outdir: PathBuf,
+    pub(super) out_dir: PathBuf,
+    pub(super) crate_name: String,
 }
 
 impl Default for CGenContext {
@@ -37,17 +44,15 @@ impl Default for CGenContext {
         let cur_dir = env::current_dir().unwrap();
         Self {
             root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
-            outdir: RelativePath::new("cgen_out").to_path(&cur_dir),
+            out_dir: RelativePath::new("cgen_out").to_path(&cur_dir),
+            crate_name: "".to_string(),
         }
     }
 }
 
 impl CGenContext {
     pub fn out_dir(&self, variant: CGenVariant) -> PathBuf {
-        match variant {
-            CGenVariant::Hlsl => RelativePath::new("hlsl").to_path(&self.outdir),
-            CGenVariant::Rust => RelativePath::new("rust").to_path(&self.outdir),
-        }
+        RelativePath::new(variant.dir()).to_path(&self.out_dir)
     }
 }
 
@@ -69,26 +74,33 @@ impl CGenContextBuilder {
     ///
     /// # Errors
     /// File does not exists or invalid path..
-    pub fn set_root_file(&mut self, root_file: &impl AsRef<Path>) -> Result<()> {
+    pub fn set_root_file(&mut self, root_file: impl AsRef<Path>) -> Result<()> {
+        let root_file = root_file.as_ref();
         let abs_path = to_abs_path(root_file)?;
         if !abs_path.exists() || !abs_path.is_file() {
-            return Err(anyhow!(
-                "File {} does not exist ",
-                root_file.as_ref().display()
-            ));
+            return Err(anyhow!("File {} does not exist ", root_file.display()));
         }
         self.context.root_file = abs_path;
 
         Ok(())
     }
+
     /// Set output directory
     ///
     /// # Errors
     /// Invalid path.
-    pub fn set_outdir(&mut self, outdir: &impl AsRef<Path>) -> Result<()> {
-        self.context.outdir = to_abs_path(outdir)?;
+    pub fn set_out_dir(&mut self, out_dir: impl AsRef<Path>) -> Result<()> {
+        self.context.out_dir = to_abs_path(out_dir)?;
 
         Ok(())
+    }
+
+    /// Set crate name
+    ///
+    /// # Errors
+    /// Invalid path.
+    pub fn set_crate_name(&mut self, crate_name: impl AsRef<str>) {
+        self.context.crate_name = crate_name.as_ref().to_owned();
     }
 
     pub fn build(self) -> CGenContext {
@@ -105,7 +117,7 @@ pub fn run(context: &CGenContext) -> Result<CGenBuildResult> {
     run_internal(context)
 }
 
-fn to_abs_path(path: &impl AsRef<Path>) -> Result<PathBuf> {
+fn to_abs_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     let path = path.as_ref();
     Ok(if path.is_relative() {
         let cur_dir = env::current_dir()?;
@@ -134,16 +146,16 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
     //
     // code generation step
     //
-    let gen_context = GeneratorContext::new(&parsing_result.model);
+    let gen_context = GeneratorContext::new(&context.crate_name, &parsing_result.model);
 
     let generators = [
         generators::hlsl::type_generator::run,
-        generators::hlsl::descriptorset_generator::run,
-        generators::hlsl::pipelinelayout_generator::run,
+        generators::hlsl::descriptor_set_generator::run,
+        generators::hlsl::pipeline_layout_generator::run,
         generators::rust::base_mod_generator::run,
         generators::rust::type_generator::run,
-        generators::rust::descriptorset_generator::run,
-        generators::rust::pipelinelayout_generator::run,
+        generators::rust::descriptor_set_generator::run,
+        generators::rust::pipeline_layout_generator::run,
     ];
     let mut products = Vec::<Product>::new();
     for generator in generators {

@@ -18,22 +18,65 @@ mod call_tree_store;
 mod cumulative_call_graph;
 mod metrics;
 
-use std::path::PathBuf;
+use std::str::FromStr;
+use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
-use lgn_analytics::alloc_sql_pool;
+use clap::{AppSettings, Parser, Subcommand};
+use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
+use std::net::SocketAddr;
 use tonic::transport::Server;
 
-fn get_data_directory() -> Result<PathBuf> {
-    let folder =
-        std::env::var("LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY").with_context(|| {
-            String::from("Error reading env variable LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY")
-        })?;
-    Ok(PathBuf::from(folder))
+#[derive(Parser, Debug)]
+#[clap(name = "Legion Performance Analytics Server")]
+#[clap(about = "Legion Performance Analytics Server", version, author)]
+#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+struct Cli {
+    #[clap(long, default_value = "[::1]:9090")]
+    listen_endpoint: SocketAddr,
+
+    #[clap(subcommand)]
+    spec: DataLakeSpec,
+}
+
+#[derive(Subcommand, Debug)]
+enum DataLakeSpec {
+    Local { path: PathBuf },
+    Remote { db_uri: String, s3_url: String },
+}
+
+/// ``connect_to_local_data_lake`` serves a locally hosted data lake
+///
+/// # Errors
+/// block storage must exist and sqlite database must accept connections
+pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<AnalyticsService> {
+    let blocks_folder = path.join("blobs");
+    let blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
+    let db_path = path.join("telemetry.db3");
+    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+    let pool = sqlx::any::AnyPoolOptions::new()
+        .connect(&db_uri)
+        .await
+        .with_context(|| String::from("Connecting to telemetry database"))?;
+    AnalyticsService::new(pool, blob_storage).await
+}
+
+/// ``connect_to_remote_data_lake`` serves a remote data lake through mysql and s3
+///
+/// # Errors
+/// block storage must exist and mysql database must accept connections
+pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<AnalyticsService> {
+    info!("connecting to blob storage");
+    let blob_storage = Arc::new(AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await);
+    let pool = sqlx::any::AnyPoolOptions::new()
+        .connect(db_uri)
+        .await
+        .with_context(|| String::from("Connecting to telemetry database"))?;
+    AnalyticsService::new(pool, blob_storage).await
 }
 
 #[tokio::main]
@@ -43,17 +86,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_log_level(LevelFilter::Info)
         .with_ctrlc_handling();
     span_scope!("analytics-srv::main");
-    let addr = "127.0.0.1:9090".parse()?;
-    let data_dir = get_data_directory()?;
-    let pool = alloc_sql_pool(&data_dir).await?;
-    let service = AnalyticsService::new(pool, data_dir)
-        .await
-        .with_context(|| "allocating AnalyticsService")?;
-    info!("service allocated");
+    let args = Cli::parse();
+    let service = match args.spec {
+        DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
+        DataLakeSpec::Remote { db_uri, s3_url } => {
+            connect_to_remote_data_lake(&db_uri, &s3_url).await?
+        }
+    };
+
     Server::builder()
         .accept_http1(true)
         .add_service(tonic_web::enable(PerformanceAnalyticsServer::new(service)))
-        .serve(addr)
+        .serve(args.listen_endpoint)
         .await?;
     Ok(())
 }

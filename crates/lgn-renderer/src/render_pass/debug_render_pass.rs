@@ -1,3 +1,4 @@
+use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, FillMode, Format, GraphicsPipelineDef,
@@ -27,13 +28,13 @@ pub struct DebugRenderPass {
     _wire_pso_nodepth: Pipeline,
 }
 
+embedded_watched_file!(CONST_COLOR_SHADER, "gpu/shaders/const_color.hlsl");
+
 impl DebugRenderPass {
-    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
 
-        let shader =
-            renderer.prepare_vs_ps(String::from("crate://renderer/shaders/const_color.hlsl"));
+        let shader = renderer.prepare_vs_ps(CONST_COLOR_SHADER.path().to_owned());
 
         //
         // Pipeline state
@@ -219,8 +220,6 @@ impl DebugRenderPass {
                 default_meshes,
             );
         });
-
-        debug_display.clear_display_lists();
     }
 
     #[allow(clippy::too_many_arguments)]

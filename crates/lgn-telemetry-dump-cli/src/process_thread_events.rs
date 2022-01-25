@@ -1,19 +1,22 @@
-use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
+use lgn_blob_storage::BlobStorage;
 use lgn_tracing_transit::prelude::*;
 
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
 ) -> Result<()> {
     for stream in find_process_thread_streams(connection, process_id).await? {
         println!("stream {}", stream.stream_id);
         for block in find_stream_blocks(connection, &stream.stream_id).await? {
             println!("block {}", block.block_id);
-            let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+            let payload =
+                fetch_block_payload(connection, blob_storage.clone(), block.block_id.clone())
+                    .await?;
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
                     let time = obj.get::<u64>("time").unwrap();
@@ -35,7 +38,7 @@ pub async fn print_process_thread_events(
 #[allow(clippy::cast_precision_loss)]
 async fn extract_process_thread_events(
     connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_info: &lgn_telemetry_sink::ProcessInfo,
     ts_offset: i64,
     inv_tsc_frequency: f64,
@@ -45,7 +48,9 @@ async fn extract_process_thread_events(
     for stream in find_process_thread_streams(connection, process_id).await? {
         let system_thread_id = &stream.properties["thread-id"];
         for block in find_stream_blocks(connection, &stream.stream_id).await? {
-            let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+            let payload =
+                fetch_block_payload(connection, blob_storage.clone(), block.block_id.clone())
+                    .await?;
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
                     let phase = match obj.type_name.as_str() {
@@ -78,7 +83,7 @@ async fn extract_process_thread_events(
 #[allow(clippy::cast_precision_loss)]
 pub async fn print_chrome_trace(
     pool: &sqlx::AnyPool,
-    data_path: &Path,
+    blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
 ) -> Result<()> {
     let mut connection = pool.acquire().await?;
@@ -108,7 +113,7 @@ pub async fn print_chrome_trace(
         );
         let mut child_events = extract_process_thread_events(
             &mut connection,
-            data_path,
+            blob_storage.clone(),
             &child_process_info,
             root_process_start,
             inv_tsc_frequency,

@@ -20,11 +20,13 @@ lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
 
 anyhow = "1.0"
 bumpalo = "3.8"
 egui = "0.16.0"
 epaint = "0.16.0"
+linkme = "0.2"
 parking_lot = "0.11"
 smallvec = "1.7"
 static_assertions = "1.1.0"

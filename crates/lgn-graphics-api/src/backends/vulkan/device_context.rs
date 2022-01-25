@@ -402,7 +402,7 @@ fn query_physical_device_info(
 
 //TODO: Could improve this by looking at vendor/device ID, VRAM size, supported
 // feature set, etc.
-#[allow(clippy::too_many_lines)]
+
 fn find_queue_families(
     all_queue_families: &[ash::vk::QueueFamilyProperties],
 ) -> Option<VkQueueFamilyIndices> {

@@ -1,4 +1,3 @@
-#![allow(clippy::too_many_lines)]
 use std::ffi::CString;
 
 use ash::vk;
