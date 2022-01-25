@@ -21,6 +21,14 @@ pub struct Material {
     pub roughness: Option<ResourcePathId>,
     /// Metalness texture reference.
     pub metalness: Option<ResourcePathId>,
+    /// Diffuse or metal surface color.
+    pub base_color: (f32, f32, f32, f32),
+    /// lends between a non-metallic and metallic material model
+    pub metallic: f32,
+    /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
+    pub reflectance: f32,
+    /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
+    pub roughness_value: f32,
 }
 
 impl Asset for Material {

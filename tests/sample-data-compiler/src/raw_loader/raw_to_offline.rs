@@ -291,6 +291,10 @@ impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
             normal: lookup_asset_path(references, &raw.normal),
             roughness: lookup_asset_path(references, &raw.roughness),
             metalness: lookup_asset_path(references, &raw.metalness),
+            base_color: raw.base_color.into(),
+            metallic: raw.metalness_value,
+            reflectance: raw.reflectance,
+            roughness_value: raw.roughness_value,
         }
     }
 }

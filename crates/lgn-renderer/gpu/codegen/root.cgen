@@ -121,8 +121,10 @@ struct PickingPipelineLayout {
 struct InstancePushConstantData {
     vertex_offset: Uint1,
     world_offset: Uint1,
+    material_offset: Uint1,
     is_picked: Uint1,
     color: Float4,
+    color_blend: Float1,
 }
 
 #[PipelineLayout]
@@ -130,4 +132,15 @@ struct ShaderPipelineLayout {
     frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
     push_constant: PushConstant<InstancePushConstantData>,
+}
+
+//
+// Material
+//
+
+struct MaterialData {
+    base_color: Float4,
+    metallic: Float1,
+    reflectance: Float1,
+    roughness: Float1,
 }

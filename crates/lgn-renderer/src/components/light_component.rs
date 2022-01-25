@@ -7,7 +7,7 @@ use crate::{
     debug_display::DebugDisplay,
     egui::egui_plugin::Egui,
     lighting::LightingManager,
-    resources::{DefaultMeshId, UniformGPUDataUpdater},
+    resources::{DefaultMeshType, UniformGPUDataUpdater},
     Renderer,
 };
 
@@ -106,7 +106,7 @@ pub(crate) fn debug_display_lights(
                     .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                     .with_rotation(transform.rotation)
                     .compute_matrix(),
-                DefaultMeshId::Sphere as u32,
+                DefaultMeshType::Sphere as u32,
                 light.color,
                 bump.bump(),
             );
@@ -120,7 +120,7 @@ pub(crate) fn debug_display_lights(
                             )
                             .with_rotation(transform.rotation)
                             .compute_matrix(),
-                        DefaultMeshId::Arrow as u32,
+                        DefaultMeshType::Arrow as u32,
                         light.color,
                         bump.bump(),
                     );
@@ -136,7 +136,7 @@ pub(crate) fn debug_display_lights(
                             .with_scale(Vec3::new(factor, 1.0, factor))
                             .with_rotation(transform.rotation)
                             .compute_matrix(),
-                        DefaultMeshId::Cone as u32,
+                        DefaultMeshType::Cone as u32,
                         light.color,
                         bump.bump(),
                     );
@@ -219,5 +219,5 @@ pub(crate) fn update_lights(
         updater.add_update_jobs(&spotlights_data, gpu_data.offset());
         renderer.release_spotlights_data(gpu_data);
     }
-    renderer.test_add_update_jobs(updater.job_blocks());
+    renderer.add_update_job_block(updater.job_blocks());
 }
