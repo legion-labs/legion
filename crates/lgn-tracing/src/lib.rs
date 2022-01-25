@@ -3,12 +3,12 @@
 //! Provides logging, metrics, memory and performance profiling
 //!
 //! Have the lowest impact on the critical path of execution while providing great
-//! visibility, `lgn_tracing` focusses on providing predictable performance for hight
+//! visibility, `lgn_tracing` focusses on providing predictable performance for high
 //! performance applications. It's primary client is Legion Engine, which runs a
 //! distributed, highly compute demanding workloads.
 //!
 //! Contrary to other tracing crates, lgn-tracing, does not provide hooks for individual
-//! events but rather a stream of events, internally it leverages lgn-trancing-transit
+//! events but rather a stream of events, internally it leverages lgn-tracing-transit
 //! to serialize the events into a binary format. meant to be consumed later on in process
 //! but can also be sent efficiently to over the wire.
 //!

@@ -5048,10 +5048,13 @@ dependencies = [
  "lgn-tracing",
  "lgn-tracing-transit",
  "log",
+ "once_cell",
  "prost",
  "simple_logger",
  "tokio",
  "tonic",
+ "tracing",
+ "tracing-subscriber 0.3.6",
  "uuid",
 ]
 
