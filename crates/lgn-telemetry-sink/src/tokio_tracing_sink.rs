@@ -58,25 +58,20 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let mut recorder = Recorder::default();
-        event.record(&mut recorder);
-
         let meta = event.metadata();
-
-        //let args = ;
-        // if let Some(field) = event.fields().find(|field| field.name() == "message") {
-        //     args = format_args!("{}", field);
-        // }
         let log_desc = LogMetadata {
             level: tokio_tracing_level_to_level(*meta.level()),
             level_filter: std::sync::atomic::AtomicU32::new(0),
-            fmt_str: "",
+            fmt_str: "", // cannot extract static format str from field visitor :(
             target: meta.target(),
             module_path: meta.module_path().unwrap_or("unknown"),
             file: meta.file().unwrap_or("unknown"),
             line: meta.line().unwrap_or(0),
         };
-        log_interop(&log_desc, format_args!("{:?}", event));
+
+        let mut recorder = Recorder::default();
+        event.record(&mut recorder);
+        log_interop(&log_desc, format_args!("{}", recorder.message));
     }
 }
 
