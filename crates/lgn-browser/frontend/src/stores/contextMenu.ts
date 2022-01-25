@@ -3,12 +3,10 @@ import { Entry } from "../types/contextMenu";
 
 export type Store<EntryRecord extends Record<string, unknown>> = {
   [Name in keyof EntryRecord]: {
-    subscribe: Writable<
-      Partial<Record<Name, Entry<EntryRecord[Name]>[]>>
-    >["subscribe"];
+    subscribe: Writable<Partial<Record<Name, Entry[]>>>["subscribe"];
     register<Name extends keyof EntryRecord>(
       name: Name,
-      entries: Entry<EntryRecord[Name]>[]
+      entries: Entry[]
     ): void;
   };
 }[keyof EntryRecord];

@@ -1,14 +1,13 @@
-/* eslint-disable @typescript-eslint/no-namespace */
-import { Phantom } from "./phantom";
+export type ItemEntry = {
+  type: "item";
+  action: string;
+  label: string;
+  tag?: "danger";
+};
 
-export type ItemEntry<Payload> = Phantom<
-  { type: "item"; action: string; label: string; tag?: "danger" },
-  Payload
->;
+export type SeparatorEntry = { type: "separator" };
 
-export type SeparatorEntry<Payload> = Phantom<{ type: "separator" }, Payload>;
-
-export type Entry<Payload> = ItemEntry<Payload> | SeparatorEntry<Payload>;
+export type Entry = ItemEntry | SeparatorEntry;
 
 // The `as const` casting is not necessary in this case
 // but it prevents the type to be inferred as `string`
@@ -25,8 +24,6 @@ export type Detail<EntryRecord extends Record<string, unknown>> = {
     entrySetName: Name;
     /** The action of the entry in the context menu (e.g.: `"rename"`, `"new"`, etc...) */
     action: string;
-    /** The payload attached to the action */
-    payload: EntryRecord[Name];
   };
 }[keyof EntryRecord];
 
@@ -34,17 +31,13 @@ export type Event<EntryRecord extends Record<string, unknown>> = CustomEvent<
   Detail<EntryRecord>
 >;
 
-export function buildCustomEvent<
-  EntryRecord extends Record<string, unknown>,
-  Name extends keyof EntryRecord
->(
+export function buildCustomEvent<EntryRecord extends Record<string, unknown>>(
   close: () => void,
-  entrySetName: Name,
-  action: string,
-  payload: EntryRecord[Name]
+  entrySetName: keyof EntryRecord,
+  action: string
 ): Event<EntryRecord> {
   return new CustomEvent<Detail<EntryRecord>>(eventName, {
-    detail: { close, entrySetName, action, payload },
+    detail: { close, entrySetName, action },
   });
 }
 
