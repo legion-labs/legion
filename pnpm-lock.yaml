@@ -105,6 +105,7 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-streaming': ^0.1.0
+      '@lgn/simple-wasm-example': workspace:^1.0.0
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/vite-plugin-wasm': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
@@ -151,6 +152,7 @@ importers:
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
       '@lgn/proto-editor': link:../../lgn-editor-proto
       '@lgn/proto-streaming': link:../../lgn-streaming-proto
+      '@lgn/simple-wasm-example': link:../../lgn-simple-wasm-example
       '@lgn/web-client': link:../../lgn-web-client/frontend
       '@tauri-apps/api': 1.0.0-beta.8
       browser-headers: 0.4.1
@@ -331,6 +333,9 @@ importers:
       ts-proto: 1.104.0
       typescript: 4.5.5
 
+  crates/lgn-simple-wasm-example:
+    specifiers: {}
+
   crates/lgn-source-control-proto:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
@@ -502,8 +507,10 @@ importers:
   npm-pkgs/vite-plugin-wasm:
     specifiers:
       typescript: ^4.5.5
+      which: ^2.0.2
     devDependencies:
       typescript: 4.5.5
+      which: 2.0.2
 
 packages:
 
@@ -523,11 +530,6 @@ packages:
 
   /@babel/compat-data/7.16.4:
     resolution: {integrity: sha512-1o/jo7D+kC9ZjHX5v+EHrdjl3PhxMrLSOTGsOdHJ+KL8HCaEK6ehrVL2RS6oHDZp+L7xLirLrPmQtEng769J/Q==}
-    engines: {node: '>=6.9.0'}
-    dev: true
-
-  /@babel/compat-data/7.17.0:
-    resolution: {integrity: sha512-392byTlpGWXMv4FbyWw3sAZ/FrW/DrwqLGXpy0mbyNe9Taqv1mg9yON5/o0cnr8XYCkFTZbC1eV+c+LAROgrng==}
     engines: {node: '>=6.9.0'}
     dev: true
 
@@ -614,7 +616,7 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0
     dependencies:
-      '@babel/compat-data': 7.17.0
+      '@babel/compat-data': 7.16.4
       '@babel/core': 7.17.2
       '@babel/helper-validator-option': 7.16.7
       browserslist: 4.19.1

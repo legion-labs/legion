@@ -173,7 +173,7 @@ export default function vitePluginProtoPack({
 
       if (!tsProtoPath) {
         // eslint-disable-next-line no-console
-        console.error("ts-proto binary not found in node_modules");
+        console.error("`ts-proto` binary not found in node_modules");
 
         process.exit(3);
       }

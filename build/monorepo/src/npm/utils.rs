@@ -359,12 +359,14 @@ impl<'a> NpmWorkspace<'a> {
         &mut self,
         selected_packages: &SelectedPackages<'_>,
     ) -> Result<()> {
+        let root = self.root();
+
         let packages = selected_packages.get_all_packages_metadata::<Metadata>(self.ctx)?;
 
         self.packages = packages
             .into_iter()
             .filter_map(|(path, metadata)| {
-                let path = path.join(&metadata.npm.path);
+                let path = root.join(path).join(&metadata.npm.path);
 
                 let npm_package = NpmPackage::from_path(path).ok()?;
 

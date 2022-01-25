@@ -19,15 +19,10 @@ export default defineConfig({
         { name: "@lgn/proto-streaming", glob: "*.proto" },
       ],
     }),
-    // viteWasmPack({
-    //   crates: [
-    //     {
-    //       path: "../../../npm-pkgs/simple-wasm-logger",
-    //       packageName: "@lgn/simple-wasm-logger",
-    //     },
-    //   ],
-    //   outDir: "frontend",
-    //   quiet: true,
-    // }),
+    viteWasmPack({
+      root: "../../..",
+      crates: { "@lgn/simple-wasm-example": "lgn-simple-wasm-example" },
+      quiet: true,
+    }),
   ],
 });

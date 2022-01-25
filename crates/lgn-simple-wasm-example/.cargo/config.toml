@@ -1,0 +1,8 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+opt-level = "s"
+lto = true

@@ -1,119 +1,122 @@
 import { spawn } from "child_process";
 import path from "path";
-import { existsSync, readFile, writeFile } from "fs";
-import os from "os";
+import { stat } from "fs";
+import { promisify } from "util";
+import which from "which";
 
-/**
- * Change the `name` attribute inside a `package.json` file.
- */
-async function renamePackageJsonName({
-  baseDir,
-  cratePath,
-  cratePackageName,
-  outDir,
-}: {
-  baseDir: string;
-  cratePath: string;
-  cratePackageName: string;
-  outDir: string;
-}) {
-  const packagePath = path.join(baseDir, cratePath, outDir, "package.json");
+const targetFolder = "target";
 
-  const packageIn = await new Promise<string>((resolve, reject) =>
-    readFile(packagePath, { encoding: "utf-8" }, (error, data) =>
-      error ? reject(error) : resolve(data)
-    )
-  );
+const rustTarget = "wasm32-unknown-unknown";
 
-  await new Promise((resolve, reject) =>
-    writeFile(
-      packagePath,
-      JSON.stringify(
-        {
-          ...JSON.parse(packageIn),
-          name: cratePackageName,
-        },
-        null,
-        2
-      ),
-      (error) => (error ? reject(error) : resolve(null))
-    )
-  );
-}
-
-/**
- * Recursively searchs the wasm-pack binary path from a base directory
- */
-function resolveWasmPackPath(binName: string, baseDir: string) {
-  function search(pathParts: string[]): string | null {
-    if (!pathParts.length) {
-      return null;
-    }
-
-    const [head, ...tail] = pathParts;
-
-    const baseDir = [head, ...tail].reverse().join(path.sep);
-
-    const wasmPackPath = path.join(baseDir, "node_modules", ".bin", binName);
-
-    if (!existsSync(wasmPackPath)) {
-      return search(tail);
-    }
-
-    return wasmPackPath;
-  }
-
-  return search(baseDir.split(path.sep).reverse());
-}
-
-function resolveWasmPackBinName(): string | null {
-  switch (os.type().toLowerCase()) {
-    case "linux":
-    case "darwin": {
-      return "wasm-pack";
-    }
-
-    case "windows_nt": {
-      return "wasm-pack.CMD";
-    }
-
-    default: {
-      return null;
-    }
-  }
-}
-
-export type CrateConfig = {
-  path: string;
-  packageName?: string;
-};
-
-export type BuildCrateConfig = {
-  baseDir: string;
-  wasmPackPath: string;
-  crate: CrateConfig;
-  outDir: string;
-  outName: string;
+export type CompileConfig = {
+  name: string;
+  release: boolean;
   quiet: boolean;
+  cargoPath: string;
 };
 
 /**
- * Builds a crate
+ * Compiles the crates to wasm
  */
-function buildCrate({
-  baseDir,
-  wasmPackPath,
-  crate,
-  outDir,
-  outName,
+function compile({
+  name,
+  release,
   quiet,
-}: BuildCrateConfig) {
+  cargoPath,
+}: CompileConfig): Promise<void> {
   return new Promise((resolve, reject) => {
-    const cmd = spawn(
-      wasmPackPath,
-      ["build", "--out-dir", outDir, "--out-name", outName, "--target", "web"],
-      { cwd: path.join(baseDir, crate.path) }
+    const cmd = spawn(cargoPath, [
+      "build",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--package",
+      name,
+      ...(release ? ["--release"] : []),
+    ]);
+
+    cmd.stderr.setEncoding("utf-8");
+    cmd.stdout.setEncoding("utf-8");
+
+    if (!quiet) {
+      // eslint-disable-next-line no-console
+      cmd.stderr.on("data", console.error);
+      // eslint-disable-next-line no-console
+      cmd.stdout.on("data", console.log);
+    }
+
+    cmd.on("exit", async (code) => {
+      if (code !== 0) {
+        return reject(`Something went wrong, received code ${code} from cargo`);
+      }
+
+      resolve();
+    });
+
+    cmd.on("error", reject);
+  });
+}
+
+export type GenerateConfig = {
+  baseDir: string;
+  packageName: string;
+  name: string;
+  quiet: boolean;
+  release: boolean;
+  // TODO: The root can easily be cased by looking for the pnpm-workspace.toml file recursively
+  root: string;
+  wasmBindgenPath: string;
+};
+
+/**
+ * Generates js/ts code from a crate's wasm file
+ */
+async function generate({
+  baseDir,
+  packageName,
+  name,
+  quiet,
+  release,
+  root,
+  wasmBindgenPath,
+}: GenerateConfig) {
+  const outDir = path.join(baseDir, "node_modules", packageName, "dist");
+
+  const wasmPath = path.join(
+    root,
+    targetFolder,
+    rustTarget,
+    release ? "release" : "debug",
+    `${name.replaceAll("-", "_")}.wasm`
+  );
+
+  try {
+    await promisify(stat)(wasmPath);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Couldn't find "${wasmPath}", have you build the "${name}" crate in "${
+        release ? "release" : "debug"
+      }" mode?`
     );
+
+    process.exit(4);
+  }
+
+  if (!quiet) {
+    // eslint-disable-next-line no-console
+    console.log(`Generating bindings from "${wasmPath}"`);
+  }
+
+  console.log("running command", wasmPath, outDir);
+
+  return new Promise((resolve, reject) => {
+    const cmd = spawn(wasmBindgenPath, [
+      wasmPath,
+      "--out-dir",
+      outDir,
+      "--target",
+      "web",
+    ]);
 
     cmd.stderr.setEncoding("utf-8");
     cmd.stdout.setEncoding("utf-8");
@@ -128,17 +131,8 @@ function buildCrate({
     cmd.on("exit", async (code) => {
       if (code !== 0) {
         return reject(
-          `Something went wrong, received code ${code} from wasm-pack`
+          `Something went wrong, received code ${code} from wasm-bindgen`
         );
-      }
-
-      if (crate.packageName) {
-        await renamePackageJsonName({
-          baseDir,
-          cratePath: crate.path,
-          cratePackageName: crate.packageName,
-          outDir,
-        });
       }
 
       resolve(null);
@@ -149,40 +143,38 @@ function buildCrate({
 }
 
 export type Config = {
-  crates: CrateConfig[];
-  outDir?: string;
-  outName?: string;
+  crates: Record<string, string>;
   quiet?: boolean;
+  release?: boolean;
+  root: string;
 };
 
 /**
- * Automatically builds any crates before Vite build
+ * Automatically generates binding from any crates before Vite builds
  */
-export default function vitePluginWasmPack({
-  outName = "index",
-  outDir = "pkg",
+export default function vitePluginWasmBindgen({
   crates,
   quiet = false,
+  release = false,
+  root,
 }: Config) {
-  const baseDir = process.cwd();
-
   return {
-    name: "vite-plugin-wasm",
+    name: "@lgn/vite-plugin-wasm",
     async buildStart() {
-      const wasmPackBinName = resolveWasmPackBinName();
+      const baseDir = process.cwd();
 
-      if (!wasmPackBinName) {
+      let cargoPath: string;
+
+      let wasmBindgenPath: string;
+
+      try {
+        [cargoPath, wasmBindgenPath] = await Promise.all([
+          which("cargo"),
+          which("wasm-bindgen"),
+        ]);
+      } catch {
         // eslint-disable-next-line no-console
-        console.error(`Unknown os type: ${os.type()}`);
-
-        process.exit(1);
-      }
-
-      const wasmPackPath = resolveWasmPackPath(wasmPackBinName, baseDir);
-
-      if (!wasmPackPath) {
-        // eslint-disable-next-line no-console
-        console.error("wasm-pack binary not found");
+        console.error("`cargo` or `wasm-bindgen` binary not found");
 
         process.exit(2);
       }
@@ -190,8 +182,23 @@ export default function vitePluginWasmPack({
       // Build all crates concurrently
       try {
         await Promise.all(
-          crates.map((crate) =>
-            buildCrate({ baseDir, crate, outDir, outName, quiet, wasmPackPath })
+          Object.entries(crates).map(([packageName, name]) =>
+            compile({
+              name,
+              release,
+              quiet,
+              cargoPath,
+            }).then(() =>
+              generate({
+                baseDir,
+                packageName,
+                name,
+                quiet,
+                release,
+                root,
+                wasmBindgenPath,
+              })
+            )
           )
         );
       } catch (error) {
