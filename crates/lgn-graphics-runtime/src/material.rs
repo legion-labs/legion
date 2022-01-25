@@ -23,13 +23,13 @@ pub struct Material {
     /// Metalness texture reference.
     pub metalness: Reference<Texture>,
     /// Diffuse or metal surface color.
-    pub base_color: (f32, f32, f32, f32),
+    pub base_albedo: (f32, f32, f32, f32),
     /// lends between a non-metallic and metallic material model
-    pub metallic: f32,
+    pub base_metalness: f32,
     /// Amount of dielectric specular reflection. Specifies facing (along normal) reflectivity in the most common 0 - 8% range.
     pub reflectance: f32,
     /// Specifies microfacet roughness of the surface for diffuse and specular reflection.
-    pub roughness_value: f32,
+    pub base_roughness: f32,
 }
 
 impl Asset for Material {
@@ -78,10 +78,10 @@ impl AssetLoader for MaterialLoader {
             normal,
             roughness,
             metalness,
-            base_color: (r, g, b, a),
-            metallic: read_with_default(reader, 0.0),
+            base_albedo: (r, g, b, a),
+            base_metalness: read_with_default(reader, 0.0),
             reflectance: read_with_default(reader, 0.5),
-            roughness_value: read_with_default(reader, 0.4),
+            base_roughness: read_with_default(reader, 0.4),
         };
 
         Ok(Box::new(output))

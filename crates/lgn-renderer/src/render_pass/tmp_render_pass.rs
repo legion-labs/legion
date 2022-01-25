@@ -24,6 +24,7 @@ pub struct TmpRenderPass {
     pub speed: f32,
 }
 
+embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hlsl");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
