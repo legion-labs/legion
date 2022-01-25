@@ -13,7 +13,7 @@
   import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";
-  import { unflatten } from "@/lib/hierarchyTree";
+  import { Entries } from "@/lib/hierarchyTree";
   import asyncStore from "@lgn/frontend/src/stores/asyncStore";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
@@ -133,12 +133,13 @@
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
-          <Panel tabs={["Resource Browser"]}>
+          <Panel let:isFocused tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
                 <HierarchyTree
-                  entries={unflatten($allResourcesData)}
+                  entries={Entries.unflatten($allResourcesData, Symbol)}
+                  panelIsFocused={isFocused}
                   on:dblclick={fetchCurrentResourceDescription}
                   bind:selectedItem={currentResourceDescription}
                   bind:this={resourceHierarchyTree}

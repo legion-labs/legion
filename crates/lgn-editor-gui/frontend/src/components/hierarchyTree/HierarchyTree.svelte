@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { Entries, updateEntry } from "@/lib/hierarchyTree";
   import { createEventDispatcher } from "svelte";
+  import { writable } from "svelte/store";
+  import { Entry, Entries } from "@/lib/hierarchyTree";
+  import keyboardNavigation, {
+    Store as KeyboardNavigationStore,
+  } from "@lgn/frontend/src/actions/keyboardNavigation";
   import Inner from "./Inner.svelte";
 
   type Item = $$Generic;
@@ -9,52 +13,85 @@
     name: { itemName: string };
   };
 
-  const dispatch = createEventDispatcher<{ select: Item }>();
+  const dispatch = createEventDispatcher<{ select: Entry<Item> }>();
+
+  // Can be extracted if needed
+  const keyboardNavigationStore = writable<KeyboardNavigationStore>({
+    currentIndex: null,
+  });
 
   export let entries: Entries<Item>;
 
   export let selectedItem: Item | null = null;
 
-  /**
-   * This prop function is used to compare 2 items together and must return
-   * `true` if the items are identical.
-   *
-   * By default `===` is used, so primitives are compared by value and
-   * object by reference.
-   */
-  export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
+  export let panelIsFocused: boolean;
 
-  let currentlyRenameItem: Item | null = null;
+  let currentlyRenameEntry: Entry<Item> | null = null;
 
-  function setSelectedItem({ detail: item }: CustomEvent<Item>) {
-    selectedItem = item;
+  $: selectedEntry =
+    entries.find((entry) => entry.item === selectedItem) || null;
 
-    dispatch("select", item);
+  $: $keyboardNavigationStore.currentIndex = selectedItem
+    ? entries.findIndex((entry) =>
+        selectedEntry ? entry === selectedEntry : false
+      )
+    : null;
+
+  // TODO: Use props instead of the `edit` function?
+  export function edit(item: Item) {
+    const entry = entries.find((entry) => entry.item === item);
+
+    if (!entry) {
+      return;
+    }
+
+    currentlyRenameEntry = entry;
   }
 
   function setName({
-    detail: { item, newName },
-  }: CustomEvent<{ newName: string; item: Item }>) {
-    entries = updateEntry(entries, (_name, otherItem) =>
-      itemsAreIdentical(otherItem, item) ? { name: newName } : null
+    detail: { entry: updatedEntry, newName },
+  }: CustomEvent<{ entry: Entry<Item>; newName: string }>) {
+    entries = entries.update((entry) =>
+      updatedEntry === entry ? { ...entry, name: newName } : null
     );
   }
 
-  export function edit(item: Item) {
-    currentlyRenameItem = item;
+  function setSelectedEntry(entry: Entry<Item>) {
+    selectedItem = entry.item;
+
+    if (selectedEntry) {
+      dispatch("select", selectedEntry);
+    }
+  }
+
+  function setSelectEntryWithIndex(index: number) {
+    const entry = entries.find((entry) => entry.index === index);
+
+    if (!entry) {
+      return;
+    }
+
+    setSelectedEntry(entry);
   }
 </script>
 
-<div class="root">
-  {#each Object.entries(entries) as [name, entry] (name)}
+<div
+  class="root"
+  use:keyboardNavigation={{
+    disabled: !panelIsFocused,
+    listener: setSelectEntryWithIndex,
+    size: entries.size,
+    store: keyboardNavigationStore,
+  }}
+>
+  {#each entries.entries as entry (entry.name)}
     <Inner
       {entry}
-      {selectedItem}
-      {itemsAreIdentical}
-      {name}
-      bind:currentlyRenameItem
+      {selectedEntry}
+      {panelIsFocused}
+      bind:currentlyRenameEntry
       on:dblclick
-      on:select={setSelectedItem}
+      on:select={({ detail: entry }) => setSelectedEntry(entry)}
       on:nameChange={setName}
       let:itemName
     >
