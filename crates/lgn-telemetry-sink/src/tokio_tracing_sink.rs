@@ -63,9 +63,10 @@ where
 
         let meta = event.metadata();
 
-        //let msg = event.fields().find(|field| field.name() == "message");
-        // let args = format_args!("{}", recorder);
-        let args = format_args!("");
+        //let args = ;
+        // if let Some(field) = event.fields().find(|field| field.name() == "message") {
+        //     args = format_args!("{}", field);
+        // }
         let log_desc = LogMetadata {
             level: tokio_tracing_level_to_level(*meta.level()),
             level_filter: std::sync::atomic::AtomicU32::new(0),
@@ -75,7 +76,7 @@ where
             file: meta.file().unwrap_or("unknown"),
             line: meta.line().unwrap_or(0),
         };
-        log_interop(&log_desc, &args);
+        log_interop(&log_desc, format_args!("{:?}", event));
     }
 }
 
