@@ -65,17 +65,6 @@ impl Summer for Service {
     }
 }
 
-#[cfg(test)]
-static INIT: std::sync::Once = std::sync::Once::new();
-
-#[cfg(test)]
-fn setup_test_logger() {
-    INIT.call_once(|| {
-        let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default();
-        std::mem::forget(telemetry_guard);
-    });
-}
-
 #[derive(Default, Clone)]
 struct MockAuthenticator {}
 
@@ -103,8 +92,6 @@ impl Authenticator for MockAuthenticator {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
-    setup_test_logger();
-
     //let server = lgn_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
     let sum_service = SummerServer::new(Service {});
@@ -189,8 +176,6 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_http2_client_and_server() -> anyhow::Result<()> {
-    setup_test_logger();
-
     let echo_service = EchoerServer::new(Service {});
 
     let server = tonic::transport::Server::builder().add_service(echo_service);
@@ -244,8 +229,6 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_http1_client_and_server() -> anyhow::Result<()> {
-    setup_test_logger();
-
     let echo_service = EchoerServer::new(Service {});
 
     let server = tonic::transport::Server::builder()

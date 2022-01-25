@@ -4707,7 +4707,6 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lambda_http",
  "lambda_runtime",
- "lgn-telemetry-sink",
  "lgn-tracing",
  "pin-project",
  "prost",
