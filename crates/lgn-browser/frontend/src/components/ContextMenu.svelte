@@ -12,11 +12,6 @@ the `contextMenuStore` to register the new entries, and then, using
 the `contextMenu` action let this component know what custom menu
 the component must display.
 
-Alongside the `type` and `label`, an `onClick` attribute must be provided.
-This function will be called with the `close` function that allows
-to close the context menu programmatically, and a `payload` (that can be
-`undefined` if needed) to the `contextMenu` action.
-
 While the `ContextMenu` component itself should be mounted only once,
 the `contextMenuStore.register` can be called as many times as needed,
 and a `contextMenuStore.remove` function is also provided to cleanup
@@ -30,7 +25,7 @@ unnecessary context menu entries.
 import buildContextMenuStore from "@lgn/frontend/src/stores/contextMenu";
 
 // We define our context menu entry record with a simple type:
-// keys represent the name of the entry set and values the payloads.
+// keys represent the name of the entry set
 export type ContextMenuEntryRecord = {
   "my-context-menu": undefined;
   "my-other-context-menu": string | null;
@@ -125,7 +120,6 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   import { Position } from "../lib/types";
   import { Store as ContextMenuStore } from "../stores/contextMenu";
   import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
-  import { phantoms } from "../types/phantom";
 
   type State =
     | { type: "hidden" }
@@ -145,25 +139,23 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
   const widthPx = remToPx(widthRem) as number;
 
-  const defaultEntries: Entry<unknown>[] = phantoms([
+  const defaultEntries: Entry[] = [
     { action: "help", type: "item", label: "Help" },
     { action: "about", type: "item", label: "About" },
-  ]);
+  ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let contextMenuStore: ContextMenuStore<any>;
 
   let state: State = { type: "hidden" };
 
-  let currentEntries: Entry<unknown>[] = [];
+  let currentEntries: Entry[] = [];
 
   let entrySetName: string | null = null;
 
-  let entrySetPayload: unknown = null;
-
   function computePositionFrom(
     { clientX, clientY, view }: MouseEvent,
-    entries: Entry<unknown>[]
+    entries: Entry[]
   ): Position {
     // Should not happen
     if (!view) {
@@ -229,7 +221,6 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   async function handleCustomContextMenu(
     event: CustomEvent<{
       name: string;
-      payload: string;
       originalEvent: MouseEvent;
     }>
   ) {
@@ -285,14 +276,12 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
     state = { type: "hidden" };
   }
 
-  function dispatchContextMenuActionEvent(entry: ItemEntry<unknown>) {
+  function dispatchContextMenuActionEvent(entry: ItemEntry) {
     if (entrySetName == null) {
       return;
     }
 
-    window.dispatchEvent(
-      buildCustomEvent(close, entrySetName, entry.action, entrySetPayload)
-    );
+    window.dispatchEvent(buildCustomEvent(close, entrySetName, entry.action));
   }
 </script>
 
