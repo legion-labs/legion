@@ -120,16 +120,14 @@ impl TelemetryGuard {
 
     //todo: refac enable_console_printer, put in config?
     pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
-        // order here is important
-        let result = Ok(Self {
-            _guard: alloc_telemetry_system(config, enable_console_printer)?,
-            _thread_guard: TracingThreadGuard::new(),
-        });
-
         #[cfg(feature = "tokio-tracing")]
         tokio_tracing_sink::TelemetryLayer::setup();
 
-        result
+        // order here is important
+        Ok(Self {
+            _guard: alloc_telemetry_system(config, enable_console_printer)?,
+            _thread_guard: TracingThreadGuard::new(),
+        })
     }
 
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
