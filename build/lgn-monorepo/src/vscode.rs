@@ -101,7 +101,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     "environment": [],
                     "console": "integratedTerminal",
                     "sourceFileMap": {
-                        "/rustc/02072b482a8b5357f7fb5e5637444ae30e423c40": toolchain
+                        "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
                     "preLaunchTask": vscode_config.disable_prelaunch.as_ref().map_or_else(
