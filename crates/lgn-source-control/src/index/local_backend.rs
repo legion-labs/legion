@@ -3,8 +3,8 @@ use lgn_tracing::info;
 use std::path::{Path, PathBuf};
 
 use crate::{
-    utils::make_path_absolute, BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock,
-    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result,
+    SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -15,10 +15,14 @@ pub struct LocalIndexBackend {
 
 impl LocalIndexBackend {
     pub fn new(directory: impl AsRef<Path>) -> Result<Self> {
-        let directory =
-            make_path_absolute(directory).map_other_err("failed to make path absolute")?;
-        let db_path = directory.join("repo.db3");
-        let blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
+        if !directory.as_ref().is_absolute() {
+            return Err(Error::invalid_index_url(
+                directory.as_ref().to_str().unwrap(),
+                anyhow::anyhow!("expected absolute directory"),
+            ));
+        }
+        let db_path = directory.as_ref().join("repo.db3");
+        let blob_storage_url = &BlobStorageUrl::Local(directory.as_ref().join("blobs"));
 
         // Careful: here be dragons. You may be tempted to store the SQLite url
         // in a `Url` but this will break SQLite on Windows, as attempting to
@@ -35,7 +39,7 @@ impl LocalIndexBackend {
         );
 
         Ok(Self {
-            directory,
+            directory: directory.as_ref().to_owned(),
             sql_repository_index: SqlIndexBackend::new(sqlite_url)?,
         })
     }

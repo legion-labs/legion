@@ -159,14 +159,17 @@ impl Project {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
-        let remote_dir = project_dir.join("remote");
-        let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
-        let _res = remote.create_index().await.map_err(Error::SourceControl)?;
+        let remote = {
+            let remote_dir = project_dir.join("remote");
+            let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+            let _res = remote.create_index().await.map_err(Error::SourceControl)?;
+            remote
+        };
 
         let workspace = Workspace::init(
             &resource_dir,
             WorkspaceConfig {
-                index_url: remote.url().to_owned(),
+                index_url: "../remote/".to_string(),
                 registration: WorkspaceRegistration::new_with_current_user(),
             },
         )
@@ -203,8 +206,10 @@ impl Project {
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
 
-        let remote_dir = project_dir.join("remote");
-        let _remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+        {
+            let remote_dir = project_dir.join("remote");
+            let _remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+        }
 
         let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
             Error::SourceControl(lgn_source_control::Error::Other {

@@ -77,7 +77,7 @@ fn compute_context_hash(
 /// # tokio_test::block_on(async {
 /// let (mut build, project) = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
-///         .create(".").await.expect("new build index");
+///         .create_with_project(".").await.expect("new build index");
 ///
 /// build.source_pull(&project).expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();

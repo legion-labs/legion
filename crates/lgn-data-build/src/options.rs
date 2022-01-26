@@ -19,13 +19,17 @@ use crate::{DataBuild, Error};
 ///
 /// # Example Usage
 ///
-/// ```
+/// ```no_run
 /// # use lgn_data_build::DataBuildOptions;
 /// # use lgn_content_store::ContentStoreAddr;
+/// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-/// let mut build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./"))
+/// # tokio_test::block_on(async {
+/// let project = Project::open("project/").await.unwrap();
+/// let build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
-///         .create(".");
+///         .create(&project).await.unwrap();
+/// # })
 /// ```
 pub struct DataBuildOptions {
     pub(crate) buildindex_dir: PathBuf,
