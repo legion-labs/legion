@@ -99,7 +99,6 @@ warn = [
     # Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list below
     "clippy::pedantic",
     # Clippy nursery lints, still under development
-    "clippy::branches_sharing_code",
     "clippy::debug_assert_with_mut_call",
     "clippy::disallowed_method",
     "clippy::disallowed_type",
@@ -111,7 +110,6 @@ warn = [
     "clippy::nonstandard_macro_braces",
     "clippy::path_buf_push_overwrite",
     "clippy::string_lit_as_bytes",
-    "clippy::suspicious_operation_groupings",
     "clippy::trailing_empty_array",
     "clippy::trivial_regex",
     "clippy::use_self",

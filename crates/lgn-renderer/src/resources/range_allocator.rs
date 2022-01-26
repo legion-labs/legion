@@ -47,11 +47,8 @@ impl RangeAllocator {
             let mut next_range = &mut self.free_list[index];
 
             // Sanity check for overlapped bounds
-            #[allow(clippy::suspicious_operation_groupings)]
-            {
-                assert!(free_range.first < next_range.first || free_range.first >= next_range.last);
-                assert!(free_range.last <= next_range.first || free_range.last > next_range.last);
-            }
+            assert!(free_range.first < next_range.first || free_range.first >= next_range.last);
+            assert!(free_range.last <= next_range.first || free_range.last > next_range.last);
 
             if free_range.last == next_range.first {
                 next_range.first = free_range.first;
