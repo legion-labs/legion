@@ -7,7 +7,7 @@ use lgn_graphics_api::{
 };
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use lgn_transform::prelude::Transform;
+use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen,
@@ -176,7 +176,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        static_meshes: &[(&StaticMesh, &GlobalTransform, Option<&PickedComponent>)],
         default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
@@ -228,8 +228,8 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
-        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
+        static_meshes: &[(&StaticMesh, &GlobalTransform, Option<&PickedComponent>)],
+        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
         debug_display: &mut DebugDisplay,
@@ -309,7 +309,7 @@ impl DebugRenderPass {
 #[allow(clippy::too_many_arguments)]
 fn render_aabb_for_mesh(
     mesh_id: u32,
-    transform: &Transform,
+    transform: &GlobalTransform,
     cmd_buffer: &mut HLCommandBuffer<'_>,
     default_meshes: &DefaultMeshes,
 ) {
@@ -335,7 +335,7 @@ fn render_aabb_for_mesh(
     let delta = max_bound - min_bound;
     let mid_point = min_bound + delta * 0.5;
 
-    let aabb_transform = Transform::identity()
+    let aabb_transform = GlobalTransform::identity()
         .with_translation(mid_point)
         .with_scale(delta);
 

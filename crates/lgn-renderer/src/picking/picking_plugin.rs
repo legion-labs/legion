@@ -5,8 +5,9 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion},
 };
 use lgn_math::Vec2;
-use lgn_transform::prelude::Transform;
+use lgn_transform::prelude::{Parent, Transform};
 use lgn_window::WindowResized;
+use std::ops::Deref;
 
 use super::{ManipulatorManager, PickingManager};
 use crate::{
@@ -172,12 +173,12 @@ fn update_picked_entity(
     mut newly_picked_query: Query<
         '_,
         '_,
-        (Entity, &mut Transform),
+        (Entity, Option<&Parent>, &mut Transform),
         (Added<PickedComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    for (entity, transform) in newly_picked_query.iter_mut() {
-        picking_manager.set_manip_entity(entity, &transform);
+    for (entity, parent, transform) in newly_picked_query.iter_mut() {
+        picking_manager.set_manip_entity(entity, parent.map(|p| *p.deref()), &transform);
     }
 }
 
@@ -197,7 +198,12 @@ fn update_manipulator_component(
     mut picked_query: Query<
         '_,
         '_,
-        (Entity, &mut Transform, &mut PickedComponent),
+        (
+            Entity,
+            Option<&Parent>,
+            &mut Transform,
+            &mut PickedComponent,
+        ),
         Without<ManipulatorComponent>,
     >,
     mut manipulator_query: Query<
@@ -205,6 +211,7 @@ fn update_manipulator_component(
         '_,
         (
             Entity,
+            Option<&Parent>,
             &mut Transform,
             &mut ManipulatorComponent,
             Option<&mut PickedComponent>,
@@ -212,7 +219,7 @@ fn update_manipulator_component(
     >,
 ) {
     let mut selected_part = usize::MAX;
-    for (_entity, _transform, manipulator, picked_component) in manipulator_query.iter() {
+    for (_entity, _parent, _transform, manipulator, picked_component) in manipulator_query.iter() {
         if picked_component.is_some() && picking_manager.mouse_button_down() {
             selected_part = manipulator.part_num;
         }
@@ -220,7 +227,9 @@ fn update_manipulator_component(
 
     let mut update_manip_entity = false;
     let mut active_manipulator_part = false;
-    for (entity, _transform, mut manipulator, picked_component) in manipulator_query.iter_mut() {
+    for (entity, _parent, _transform, mut manipulator, picked_component) in
+        manipulator_query.iter_mut()
+    {
         manipulator.selected = false;
         if selected_part != usize::MAX
             && manipulator_manager.match_manipulator_parts(
@@ -238,7 +247,7 @@ fn update_manipulator_component(
     }
 
     let mut select_entity_transform = None;
-    for (entity, mut transform, picked) in picked_query.iter_mut() {
+    for (entity, parent, mut transform, picked) in picked_query.iter_mut() {
         if entity == picking_manager.manipulated_entity() {
             if active_manipulator_part {
                 let base_transform = picking_manager.base_picking_transform();
@@ -265,7 +274,7 @@ fn update_manipulator_component(
                     }
                 }
             } else if update_manip_entity {
-                picking_manager.set_manip_entity(entity, &transform);
+                picking_manager.set_manip_entity(entity, parent.map(|p| *p.deref()), &transform);
             }
             select_entity_transform = Some(*transform);
         } else if picked.is_empty() {
@@ -273,7 +282,8 @@ fn update_manipulator_component(
         }
     }
 
-    for (_entity, mut transform, mut manipulator, _picked_component) in manipulator_query.iter_mut()
+    for (entity, parent, mut transform, mut manipulator, _picked_component) in
+        manipulator_query.iter_mut()
     {
         manipulator.active = false;
 
@@ -281,6 +291,15 @@ fn update_manipulator_component(
             if manipulator.part_type == manipulator_manager.current_manipulator_type() {
                 manipulator_manager
                     .manipulator_transform_from_entity_transform(&entity_transform, &mut transform);
+
+                if parent.map(Parent::deref) != picking_manager.manipulated_entity_parent().as_ref()
+                {
+                    if let Some(parent) = picking_manager.manipulated_entity_parent() {
+                        commands.entity(entity).insert(Parent(parent));
+                    } else {
+                        commands.entity(entity).remove::<Parent>();
+                    }
+                }
                 manipulator.active = true;
             }
         }

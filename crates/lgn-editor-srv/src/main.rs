@@ -82,11 +82,7 @@ fn main() {
         .cas
         .map_or_else(|| project_folder.join("temp"), PathBuf::from);
 
-    let game_manifest_path = args.manifest.map_or_else(
-        || project_folder.join("runtime").join("game.manifest"),
-        PathBuf::from,
-    );
-
+    let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     App::new()

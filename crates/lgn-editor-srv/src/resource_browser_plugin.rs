@@ -126,6 +126,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let transaction = Transaction::new().add_operation(CreateResourceOperation::new(
             new_res_id,
             ResourcePathName::new(request.resource_path.as_str()),
+            true,
         ));
 
         let mut data_manager = self.data_manager.lock().await;
