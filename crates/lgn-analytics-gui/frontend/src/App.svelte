@@ -4,8 +4,8 @@
   import About from "@/pages/About.svelte";
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
-  import Metrics from "@/pages/Metrics.svelte";
   import Graph from "@/pages/Graph.svelte";
+  import MetricsChart from "./components/MetricsChart.svelte";
 
   const historyStore = { subscribe: globalHistory.listen };
 </script>
@@ -42,7 +42,7 @@
     </Route>
     <Route path="/metrics/:id" let:params primary={false}>
       {#key params.id}
-        <Metrics id={params.id} />
+        <MetricsChart processId={params.id} />
       {/key}
     </Route>
     <Route path="/cumulative-call-graph" primary={false}><Graph /></Route>
