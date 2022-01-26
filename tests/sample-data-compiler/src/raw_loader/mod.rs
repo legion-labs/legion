@@ -68,7 +68,8 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "ins" => {
                         load_ron_resource::<raw_data::Instance, offline_data::Instance>(
@@ -77,7 +78,8 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "mat" => {
                         load_ron_resource::<raw_data::Material, lgn_graphics_data::offline::Material>(
@@ -86,7 +88,8 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "mesh" => {
                         load_ron_resource::<raw_data::Mesh, offline_data::Mesh>(
@@ -95,10 +98,11 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "psd" => {
-                        load_psd_resource(resource_id, path, &mut project, &mut resources);
+                        load_psd_resource(resource_id, path, &mut project, &mut resources).await;
                     }
                     _ => panic!(),
                 }
@@ -372,7 +376,7 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
     files
 }
 
-fn load_ron_resource<RawType, OfflineType>(
+async fn load_ron_resource<RawType, OfflineType>(
     resource_id: ResourceTypeAndId,
     file: &Path,
     references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -398,6 +402,7 @@ where
 
         project
             .save_resource(resource_id, resource, resources)
+            .await
             .unwrap();
         Some(resource_id)
     } else {
@@ -405,7 +410,7 @@ where
     }
 }
 
-fn load_psd_resource(
+async fn load_psd_resource(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
@@ -424,6 +429,7 @@ fn load_psd_resource(
 
     project
         .save_resource(resource_id, resource, resources)
+        .await
         .unwrap();
     Some(resource_id)
 }

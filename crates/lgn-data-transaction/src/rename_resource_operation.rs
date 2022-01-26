@@ -44,7 +44,9 @@ impl TransactionOperation for RenameResourceOperation {
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(old_path) = &self.old_path {
-            ctx.project.rename_resource(self.resource_id, old_path)?;
+            ctx.project
+                .rename_resource(self.resource_id, old_path)
+                .await?;
         }
         Ok(())
     }

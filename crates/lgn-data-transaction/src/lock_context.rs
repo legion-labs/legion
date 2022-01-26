@@ -39,19 +39,14 @@ impl<'a> LockContext<'a> {
 
     pub(crate) async fn save_changed_resources(&mut self) -> anyhow::Result<()> {
         let mut need_flush = false;
-        self.changed_resources
-            .iter()
-            .try_for_each(|resource_id| -> anyhow::Result<()> {
-                if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
-                    self.project.save_resource(
-                        *resource_id,
-                        &handle,
-                        &mut self.resource_registry,
-                    )?;
-                    need_flush = true;
-                }
-                Ok(())
-            })?;
+        for resource_id in &self.changed_resources {
+            if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
+                self.project
+                    .save_resource(*resource_id, &handle, &mut self.resource_registry)
+                    .await?;
+                need_flush = true;
+            }
+        }
 
         if need_flush {
             self.project.flush()?;

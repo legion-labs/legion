@@ -8,8 +8,8 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    revert_file, track_new_file, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
-    WorkspaceRegistration,
+    edit_file, revert_file, track_new_file, IndexBackend, LocalIndexBackend, Workspace,
+    WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -455,7 +455,7 @@ impl Project {
 
     /// Writes the resource behind `handle` from memory to disk and updates the
     /// corresponding .meta file.
-    pub fn save_resource(
+    pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
@@ -469,8 +469,8 @@ impl Project {
             .write(true)
             .open(&metadata_path)
             .map_err(|e| Error::Io(metadata_path.clone(), e))?;
-        let mut metadata: Metadata =
-            serde_json::from_reader(&meta_file).map_err(|e| Error::Parse(metadata_path, e))?;
+        let mut metadata: Metadata = serde_json::from_reader(&meta_file)
+            .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
 
         let build_dependencies = {
             let mut resource_file = OpenOptions::new()
@@ -489,7 +489,7 @@ impl Project {
             let mut resource_file =
                 File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
             content_checksum_from_read(&mut resource_file)
-                .map_err(|e| Error::Io(resource_path, e))?
+                .map_err(|e| Error::Io(resource_path.clone(), e))?
         };
 
         metadata.content_checksum = content_checksum;
@@ -498,6 +498,27 @@ impl Project {
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+
+        {
+            // todo: editing a file just added for 'Add' will fail.
+            // we still must handle other errors.
+            let _result = edit_file(&self.workspace, &metadata_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "save_resource".to_string(),
+                    })
+                });
+            let _result = edit_file(&self.workspace, &resource_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "save_resource".to_string(),
+                    })
+                });
+        }
         Ok(())
     }
 
@@ -609,7 +630,7 @@ impl Project {
         Ok(result)
     }
 
-    fn update_meta<F>(&self, id: ResourceId, mut func: F)
+    async fn update_meta<F>(&self, id: ResourceId, mut func: F)
     where
         F: FnMut(&mut Metadata),
     {
@@ -618,7 +639,7 @@ impl Project {
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(path)
+            .open(&path)
             .unwrap(); // todo(kstasik): return a result and propagate an error
 
         let mut meta = serde_json::from_reader(&file).unwrap();
@@ -628,13 +649,24 @@ impl Project {
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&file, &meta).unwrap();
+
+        {
+            // todo: editing a file just added for 'Add' will fail.
+            // we still must handle other errors.
+            let _result = edit_file(&self.workspace, &path).await.map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: e,
+                    context: "update_meta".to_string(),
+                })
+            });
+        }
     }
 
     /// Change the name of the resource.
     ///
     /// Changing the name of the resource if `free`. It does not change its
     /// `ResourceId` nor it invalidates any build using that asset.
-    pub fn rename_resource(
+    pub async fn rename_resource(
         &mut self,
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
@@ -644,7 +676,8 @@ impl Project {
         let mut old_name: Option<ResourcePathName> = None;
         self.update_meta(type_id.id, |data| {
             old_name = Some(data.rename(new_name));
-        });
+        })
+        .await;
         Ok(old_name.unwrap())
     }
 
@@ -1009,23 +1042,26 @@ mod tests {
         assert_eq!(dependencies.len(), 2);
     }
 
+    async fn rename_assert(
+        proj: &mut Project,
+        old_name: ResourcePathName,
+        new_name: ResourcePathName,
+    ) {
+        let skeleton_id = proj.find_resource(&old_name);
+        assert!(skeleton_id.is_ok());
+        let skeleton_id = skeleton_id.unwrap();
+
+        let prev_name = proj.rename_resource(skeleton_id, &new_name).await;
+        assert!(prev_name.is_ok());
+        let prev_name = prev_name.unwrap();
+        assert_eq!(&prev_name, &old_name);
+
+        assert!(proj.find_resource(&old_name).is_err());
+        assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
+    }
+
     #[tokio::test]
     async fn rename() {
-        let rename_assert =
-            |proj: &mut Project, old_name: ResourcePathName, new_name: ResourcePathName| {
-                let skeleton_id = proj.find_resource(&old_name);
-                assert!(skeleton_id.is_ok());
-                let skeleton_id = skeleton_id.unwrap();
-
-                let prev_name = proj.rename_resource(skeleton_id, &new_name);
-                assert!(prev_name.is_ok());
-                let prev_name = prev_name.unwrap();
-                assert_eq!(&prev_name, &old_name);
-
-                assert!(proj.find_resource(&old_name).is_err());
-                assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
-            };
-
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1036,11 +1072,13 @@ mod tests {
             &mut project,
             ResourcePathName::new("hero.skeleton"),
             ResourcePathName::new("boss.skeleton"),
-        );
+        )
+        .await;
         rename_assert(
             &mut project,
             ResourcePathName::new("sky.material"),
             ResourcePathName::new("clouds.material"),
-        );
+        )
+        .await;
     }
 }

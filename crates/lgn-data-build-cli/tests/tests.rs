@@ -132,8 +132,8 @@ async fn build_device() {
         let mut project = Project::open(project_dir).await.expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
-            .create_registry();
-        let mut resources = resources.lock().unwrap();
+            .create_async_registry();
+        let mut resources = resources.lock().await;
 
         let resource = project
             .load_resource(source_id, &mut resources)
@@ -145,6 +145,7 @@ async fn build_device() {
 
         project
             .save_resource(source_id, resource, &mut resources)
+            .await
             .expect("successful save");
     }
 

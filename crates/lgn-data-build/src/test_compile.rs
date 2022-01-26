@@ -88,6 +88,7 @@ async fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
     resource.content.push_str(" more content");
     project
         .save_resource(resource_id, &handle, &mut resources)
+        .await
         .expect("successful save");
 }
 
@@ -182,6 +183,7 @@ async fn compile_change_no_deps() {
 
         project
             .save_resource(resource_id, &resource_handle, &mut resources)
+            .await
             .unwrap();
     }
 
@@ -626,6 +628,7 @@ async fn named_path_cache_use() {
         resource.text_list[1] = String::from("852");
         project
             .save_resource(source_id, &handle, &mut resources)
+            .await
             .expect("successful save");
 
         let pulled = build.source_pull(&project).expect("pulled change");
@@ -670,6 +673,7 @@ async fn named_path_cache_use() {
         resource.text_list[1] = String::from("1");
         project
             .save_resource(source_id, &handle, &mut resources)
+            .await
             .expect("successful save");
 
         let pulled = build.source_pull(&project).expect("pulled change");
