@@ -38,13 +38,6 @@ impl BumpAllocatorPool {
     }
 
     /// Implements RAII pattern for acquiring and releasing of an allocator
-    /// # Example
-    ///
-    /// ```
-    /// bump_allocator_pool.scoped_bump(|bump| {
-    ///     // use bump as needed
-    /// });
-    /// ```
     pub fn scoped_bump<F: FnOnce(&BumpAllocatorHandle)>(&self, f: F) {
         let bump = self.acquire_bump_allocator();
         f(&bump);
