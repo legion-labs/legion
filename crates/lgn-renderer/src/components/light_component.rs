@@ -124,7 +124,7 @@ pub(crate) fn debug_display_lights(
                                 )
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
-                                DefaultMeshType::Arrow as u32,
+                            DefaultMeshType::Arrow as u32,
                             light.color,
                         );
                     }
@@ -139,7 +139,7 @@ pub(crate) fn debug_display_lights(
                                 .with_scale(Vec3::new(factor, 1.0, factor))
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
-                                DefaultMeshType::Cone as u32,
+                            DefaultMeshType::Cone as u32,
                             light.color,
                         );
                     }

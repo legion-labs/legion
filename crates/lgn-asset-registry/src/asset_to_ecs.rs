@@ -190,9 +190,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             rotation: instance.rotation,
             scale: instance.scale,
         });
-
         entity.insert(GlobalTransform::default());
-
         entity.insert(StaticMesh::from_default_meshes(
             default_meshes,
             instance.mesh_id,
