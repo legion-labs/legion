@@ -65,6 +65,7 @@ pub struct ProcessInfo {
 }
 
 pub mod dispatch;
+pub mod errors;
 pub mod event;
 pub mod guards;
 pub mod logs;

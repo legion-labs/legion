@@ -5069,7 +5069,6 @@ dependencies = [
 name = "lgn-tracing"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "cfg-if 1.0.0",
  "chrono",
  "criterion",
@@ -5079,6 +5078,7 @@ dependencies = [
  "log",
  "memoffset 0.6.5",
  "raw-cpuid",
+ "thiserror",
  "thread-id",
  "uuid",
  "whoami",

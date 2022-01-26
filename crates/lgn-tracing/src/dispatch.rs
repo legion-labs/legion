@@ -7,6 +7,7 @@ use std::{
 
 use chrono::Utc;
 
+pub use crate::errors::{Error, Result};
 use crate::event::{EventSink, NullEventSink, TracingBlock};
 use crate::logs::{
     LogBlock, LogMetadata, LogStaticStrEvent, LogStaticStrInteropEvent, LogStream, LogStringEvent,
@@ -26,7 +27,7 @@ pub fn init_event_dispatch(
     metrics_buffer_size: usize,
     threads_buffer_size: usize,
     sink: Arc<dyn EventSink>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
     }
@@ -43,7 +44,7 @@ pub fn init_event_dispatch(
             Ok(())
         } else {
             info!("event dispatch already initialized");
-            Err(anyhow::anyhow!("event dispatch already initialized"))
+            Err(Error::AlreadyInitialized())
         }
     }
 }
