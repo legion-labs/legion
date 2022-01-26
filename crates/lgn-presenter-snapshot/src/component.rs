@@ -1,4 +1,4 @@
-#![allow(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
 
 use lgn_ecs::prelude::Component;
 use lgn_renderer::{
