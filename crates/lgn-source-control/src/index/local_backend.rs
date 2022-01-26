@@ -201,7 +201,7 @@ impl IndexBackend for LocalIndexBackend {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
     use crate::{IndexBackend, LocalIndexBackend};
 
@@ -237,4 +237,4 @@ mod tests {
             .unwrap()
             .block_on(test());
     }
-}
+}*/
