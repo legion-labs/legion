@@ -250,8 +250,7 @@ impl TaskPool {
     /// It can also be cancelled and "detached" allowing it to continue running without having
     /// to be polled by the end-user. Users should generally prefer to use [`TaskPool::spawn`]
     /// instead, unless the provided future is not `Send`.
-    #[allow(clippy::unused_self)]
-    pub fn spawn_local<T>(&self, future: impl Future<Output = T> + 'static) -> Task<T>
+    pub fn spawn_local<T>(future: impl Future<Output = T> + 'static) -> Task<T>
     where
         T: 'static,
     {

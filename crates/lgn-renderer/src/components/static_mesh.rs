@@ -2,9 +2,8 @@ use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 
-use crate::resources::{DefaultMaterialType, DefaultMeshes};
+use crate::resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes};
 #[derive(Component)]
-
 pub struct StaticMesh {
     pub mesh_id: usize,
     pub color: Color,
@@ -29,17 +28,21 @@ impl StaticMesh {
         color: Color,
         material_type: DefaultMaterialType,
     ) -> Self {
+        let mut clamped_mesh_id = mesh_id as u32;
+        if clamped_mesh_id > DefaultMeshType::RotationRing as u32 {
+            clamped_mesh_id = 0;
+        }
         Self {
             mesh_id,
             color,
-            num_vertices: default_meshes.mesh_from_id(mesh_id as u32).num_vertices() as u32,
+            num_vertices: default_meshes.mesh_from_id(clamped_mesh_id).num_vertices() as u32,
             picking_id: 0,
             material_type,
             gpu_instance_id: u32::MAX,
             va_table_address: u32::MAX,
             instance_color_va: u32::MAX,
             world_transform_va: u32::MAX,
-            vertex_buffer_va: default_meshes.mesh_offset_from_id(mesh_id as u32),
+            vertex_buffer_va: default_meshes.mesh_offset_from_id(clamped_mesh_id),
             picking_data_va: u32::MAX,
         }
     }

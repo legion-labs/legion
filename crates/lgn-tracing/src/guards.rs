@@ -5,6 +5,7 @@ use crate::{
         flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
         init_thread_stream, on_end_scope, shutdown_dispatch,
     },
+    errors::Result,
     event::EventSink,
     panic_hook::init_panic_hook,
     spans::ThreadSpanMetadata,
@@ -18,7 +19,7 @@ impl TracingSystemGuard {
         metrics_buffer_size: usize,
         threads_buffer_size: usize,
         sink: Arc<dyn EventSink>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         init_telemetry(
             logs_buffer_size,
             metrics_buffer_size,
@@ -40,7 +41,7 @@ pub fn init_telemetry(
     metrics_buffer_size: usize,
     threads_buffer_size: usize,
     sink: Arc<dyn EventSink>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     init_event_dispatch(
         logs_buffer_size,
         metrics_buffer_size,

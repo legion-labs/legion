@@ -3,12 +3,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
+use lgn_core::Handle;
 use lgn_graphics_api::{
     CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
     Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
 use lgn_renderer::hl_gfx_api::HLQueue;
-use lgn_renderer::RenderHandle;
 use lgn_tracing::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being
@@ -107,7 +107,7 @@ impl PresentableFrame {
         mut self,
         queue: &HLQueue<'_>,
         wait_sem: &Semaphore,
-        command_buffers: &mut [RenderHandle<CommandBuffer>],
+        command_buffers: &mut [Handle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
         trace!(
             "Calling PresentableFrame::present with {} command buffers",
@@ -127,7 +127,7 @@ impl PresentableFrame {
         &mut self,
         queue: &HLQueue<'_>,
         wait_sem: &Semaphore,
-        command_buffers: &mut [RenderHandle<CommandBuffer>],
+        command_buffers: &mut [Handle<CommandBuffer>],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous
         // acquire_next_image call

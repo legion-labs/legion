@@ -38,7 +38,7 @@ impl log::Log for LogDispatch {
             file: record.file_static().unwrap_or("unknown"),
             line: record.line().unwrap_or(0),
         };
-        log_interop(&log_desc, record.args());
+        log_interop(&log_desc, *record.args());
     }
     fn flush(&self) {
         flush_log_buffer();
@@ -152,7 +152,7 @@ impl EventSink for ImmediateEventSink {
         true
     }
 
-    fn on_log(&self, metadata: &LogMetadata, _time: i64, args: &fmt::Arguments<'_>) {
+    fn on_log(&self, metadata: &LogMetadata, _time: i64, args: fmt::Arguments<'_>) {
         const GENERATION: u16 = 1;
         // At this point we would have already tested the max level on the macro
         let level_filter = metadata.level_filter(GENERATION).unwrap_or_else(|| {
@@ -163,7 +163,7 @@ impl EventSink for ImmediateEventSink {
         if metadata.level <= level_filter {
             let lvl = tracing_level_to_log_level(metadata.level);
             let record = log::RecordBuilder::new()
-                .args(*args)
+                .args(args)
                 .target(metadata.target)
                 .level(lvl)
                 .file_static(Some(metadata.file))

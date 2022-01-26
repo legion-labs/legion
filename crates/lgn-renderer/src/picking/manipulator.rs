@@ -2,7 +2,7 @@ use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_input::keyboard::KeyCode;
 use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
-use lgn_transform::prelude::Transform;
+use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
     components::{CameraComponent, ManipulatorComponent, StaticMesh},
@@ -78,6 +78,7 @@ impl ManipulatorPart {
 
         let entity = entity_commands
             .insert(transform)
+            .insert(GlobalTransform::identity())
             .insert(ManipulatorComponent {
                 part_type,
                 part_num,
@@ -332,7 +333,7 @@ impl ManipulatorManager {
     }
 
     pub fn scale_manipulator_for_viewport(
-        entity_transform: &Transform,
+        entity_transform: &GlobalTransform,
         manipulator_transform: &Transform,
         view_matrix: &Mat4,
         projection_matrix: &Mat4,

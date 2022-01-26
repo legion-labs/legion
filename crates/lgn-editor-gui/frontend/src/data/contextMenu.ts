@@ -1,52 +1,14 @@
-import { ContextMenuEntryRecord } from "@/stores/contextMenu";
-import { Entry } from "@lgn/frontend/src/stores/contextMenu";
+import { Entry } from "@lgn/frontend/src/types/contextMenu";
 
-const entries: Entry<ContextMenuEntryRecord["resource"]>[] = [
-  {
-    type: "item",
-    label: "Rename",
-    onClick({ close }) {
-      close();
-    },
-  },
-  {
-    type: "item",
-    label: "Clone",
-    onClick({ close }) {
-      close();
-    },
-  },
-  {
-    type: "item",
-    label: "Delete",
-    tag: "danger",
-    onClick({ close }) {
-      close();
-    },
-  },
+const entries: Entry[] = [
+  { type: "item", action: "rename", label: "Rename" },
+  { type: "item", action: "clone", label: "Clone" },
+  { type: "item", action: "delete", label: "Delete", tag: "danger" },
   { type: "separator" },
-  {
-    type: "item",
-    label: "Create new...",
-    onClick({ close }) {
-      close();
-    },
-  },
-  {
-    type: "item",
-    label: "Import...",
-    onClick({ close }) {
-      close();
-    },
-  },
+  { type: "item", action: "create-new", label: "Create new..." },
+  { type: "item", action: "import", label: "Import..." },
   { type: "separator" },
-  {
-    type: "item",
-    label: "Help",
-    onClick({ close }) {
-      close();
-    },
-  },
+  { type: "item", action: "help", label: "Help" },
 ];
 
 export default entries;

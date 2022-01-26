@@ -1,3 +1,5 @@
+// @ts-check
+
 module.exports = {
   env: {
     browser: true,
@@ -17,7 +19,8 @@ module.exports = {
     "svelte3/ignore-styles": () => true,
   },
   rules: {
-    "no-console": "error",
+    "no-console": process.env.NODE_ENV === "production" ? "error" : "off",
+    "no-debugger": process.env.NODE_ENV === "production" ? "error" : "off",
     "@typescript-eslint/no-unused-vars": "off",
   },
 };

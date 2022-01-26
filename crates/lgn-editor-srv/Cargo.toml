@@ -26,6 +26,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-input = { path = "../lgn-input" }
+lgn-tasks = { path = "../lgn-tasks" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
@@ -51,8 +52,10 @@ tempfile = "3.2.0"
 lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-data-build = { path = "../lgn-data-build", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
+lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
 lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
 lgn-compiler-entitydc = { path = "../lgn-entitydc-compiler" }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [

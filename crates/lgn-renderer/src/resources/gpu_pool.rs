@@ -1,5 +1,6 @@
+use lgn_core::Handle;
+
 use super::OnFrameEventHandler;
-use crate::RenderHandle;
 
 pub(crate) struct GpuSafePool<T: OnFrameEventHandler> {
     num_cpu_frames: usize,
@@ -34,17 +35,17 @@ impl<T: OnFrameEventHandler> GpuSafePool<T> {
             .for_each(T::on_end_frame);
     }
 
-    pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RenderHandle<T> {
+    pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> Handle<T> {
         let result = if self.available.is_empty() {
             create_fn()
         } else {
             self.available.pop().unwrap()
         };
         self.acquired_count += 1;
-        RenderHandle::new(result)
+        Handle::new(result)
     }
 
-    pub(crate) fn release(&mut self, mut data: RenderHandle<T>) {
+    pub(crate) fn release(&mut self, mut data: Handle<T>) {
         assert!(self.acquired_count > 0);
         self.in_use[self.cur_cpu_frame].push(data.take());
         self.acquired_count -= 1;

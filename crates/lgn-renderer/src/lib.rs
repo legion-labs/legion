@@ -19,12 +19,10 @@ use components::MaterialComponent;
 pub use labels::*;
 
 mod renderer;
+use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
 use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
-
-mod render_handle;
-pub use render_handle::*;
 
 mod render_context;
 pub use render_context::*;
@@ -35,8 +33,6 @@ use resources::{
 };
 
 pub mod resources;
-
-mod memory;
 
 pub mod components;
 
@@ -68,7 +64,7 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
-use lgn_transform::components::Transform;
+use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
@@ -279,6 +275,7 @@ fn init_default_materials(
     default_materials.initialize(commands);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
@@ -293,11 +290,11 @@ fn update_transform(
         '_,
         (
             Entity,
-            &Transform,
+            &GlobalTransform,
             &mut StaticMesh,
             Option<&ManipulatorComponent>,
         ),
-        Changed<Transform>,
+        Changed<GlobalTransform>,
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
@@ -445,6 +442,7 @@ fn update_gpu_instance_ids(
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
     va_table_adresses: Res<'_, GpuVaTableForGpuInstance>,
@@ -453,30 +451,30 @@ fn render_update(
     q_picked_drawables: Query<
         '_,
         '_,
-        (&StaticMesh, &Transform),
+        (&StaticMesh, &GlobalTransform),
         (With<PickedComponent>, Without<ManipulatorComponent>),
     >,
-    q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &Transform, &ManipulatorComponent)>,
+    q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &GlobalTransform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
-    q_lights: Query<'_, '_, (&LightComponent, &Transform)>,
+    q_lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
     mut egui: ResMut<'_, Egui>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let q_drawables = q_drawables.iter().collect::<Vec<&StaticMesh>>();
     let q_picked_drawables = q_picked_drawables
         .iter()
-        .collect::<Vec<(&StaticMesh, &Transform)>>();
+        .collect::<Vec<(&StaticMesh, &GlobalTransform)>>();
     let q_manipulator_drawables =
         q_manipulator_drawables
             .iter()
-            .collect::<Vec<(&StaticMesh, &Transform, &ManipulatorComponent)>>();
+            .collect::<Vec<(&StaticMesh, &GlobalTransform, &ManipulatorComponent)>>();
     let q_lights = q_lights
         .iter()
-        .collect::<Vec<(&LightComponent, &Transform)>>();
+        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
     let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
     let default_camera = CameraComponent::default();
@@ -616,15 +614,18 @@ fn render_update(
 
         // queue
         let sem = render_surface.acquire();
-        let graphics_queue = render_context.graphics_queue();
-        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
+        {
+            let graphics_queue = render_context.graphics_queue();
+            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
-        render_surface.present(&render_context);
+            render_surface.present(&render_context);
+        }
     }
-
-    debug_display.clear_display_lists();
+    debug_display.clear();
+    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.end_frame();
 }

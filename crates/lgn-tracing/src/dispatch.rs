@@ -7,6 +7,7 @@ use std::{
 
 use chrono::Utc;
 
+pub use crate::errors::{Error, Result};
 use crate::event::{EventSink, NullEventSink, TracingBlock};
 use crate::logs::{
     LogBlock, LogMetadata, LogStaticStrEvent, LogStaticStrInteropEvent, LogStream, LogStringEvent,
@@ -26,7 +27,7 @@ pub fn init_event_dispatch(
     metrics_buffer_size: usize,
     threads_buffer_size: usize,
     sink: Arc<dyn EventSink>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
     }
@@ -43,7 +44,7 @@ pub fn init_event_dispatch(
             Ok(())
         } else {
             info!("event dispatch already initialized");
-            Err(anyhow::anyhow!("event dispatch already initialized"))
+            Err(Error::AlreadyInitialized())
         }
     }
 }
@@ -80,7 +81,7 @@ pub fn float_metric(metric_desc: &'static MetricMetadata, value: f64) {
 }
 
 #[inline(always)]
-pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
+pub fn log(desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log(desc, args);
@@ -89,7 +90,7 @@ pub fn log(desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
 }
 
 #[inline(always)]
-pub fn log_interop(desc: &LogMetadata, args: &fmt::Arguments<'_>) {
+pub fn log_interop(desc: &LogMetadata, args: fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.log_interop(desc, args);
@@ -367,7 +368,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log(&mut self, desc: &'static LogMetadata, args: &fmt::Arguments<'_>) {
+    fn log(&mut self, desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
@@ -390,7 +391,7 @@ impl Dispatch {
     }
 
     #[inline]
-    fn log_interop(&mut self, desc: &LogMetadata, args: &fmt::Arguments<'_>) {
+    fn log_interop(&mut self, desc: &LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
         self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();

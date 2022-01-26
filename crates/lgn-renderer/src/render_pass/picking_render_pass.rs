@@ -1,5 +1,6 @@
 use std::slice;
 
+use lgn_core::Handle;
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
@@ -10,7 +11,7 @@ use lgn_graphics_api::{
     VertexLayoutBuffer,
 };
 use lgn_math::Mat4;
-use lgn_transform::components::Transform;
+use lgn_transform::components::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::PickingData},
@@ -20,7 +21,7 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
-    RenderContext, RenderHandle, Renderer,
+    RenderContext, Renderer,
 };
 
 struct ReadbackBufferPool {
@@ -253,8 +254,8 @@ impl PickingRenderPass {
         render_surface: &mut RenderSurface,
         va_table_adresses: &GpuVaTableForGpuInstance,
         static_meshes: &[&StaticMesh],
-        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
-        lights: &[(&LightComponent, &Transform)],
+        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
+        lights: &[(&LightComponent, &GlobalTransform)],
         light_picking_mesh: &StaticMesh,
         camera: &CameraComponent,
     ) {
@@ -392,7 +393,7 @@ impl PickingRenderPass {
     fn copy_picking_results_to_readback(
         &mut self,
         cmd_buffer: &HLCommandBuffer<'_>,
-        readback: &RenderHandle<ReadbackBufferPool>,
+        readback: &Handle<ReadbackBufferPool>,
     ) {
         cmd_buffer.resource_barrier(
             &[

@@ -120,7 +120,7 @@ macro_rules! log {
             line: line!(),
         };
         if $lvl <= $crate::STATIC_MAX_LEVEL && $lvl <= $crate::max_level() {
-            $crate::dispatch::log(&LOG_DESC, &format_args!($($arg)+));
+            $crate::dispatch::log(&LOG_DESC, format_args!($($arg)+));
         }
     });
     ($lvl:expr, $($arg:tt)+) => ($crate::log!(target: $crate::__log_module_path!(), $lvl, $($arg)+))

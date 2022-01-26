@@ -359,6 +359,7 @@ mod test {
                 let transaction = Transaction::new().add_operation(CreateResourceOperation::new(
                     new_id,
                     ResourcePathName::new("test/root_entity.ent"),
+                    false,
                 ));
 
                 let mut data_manager = data_manager.lock().await;

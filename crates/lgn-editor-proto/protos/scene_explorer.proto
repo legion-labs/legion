@@ -4,12 +4,16 @@ package scene_explorer;
 //////////////////////////////////////////////////////////////////////////////////////
 
 service SceneExplorer {
+  rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityResponse);
   rpc DeleteEntities(DeleteEntitiesRequest) returns (DeleteEntitiesResponse);
 
   rpc GetEntityHierarchy(GetEntityHierarchyRequest)
       returns (GetEntityHierarchyResponse);
 }
+
+message OpenSceneRequest { string resource_path = 2; }
+message OpenSceneResponse {}
 
 message GetEntityHierarchyRequest {
   string filter = 1;
@@ -18,7 +22,6 @@ message GetEntityHierarchyRequest {
 
 message EntityInfo {
   string path = 1;
-  string entity_name = 2;
   string type = 3;
   string resource_id = 4;
   repeated EntityInfo children = 5;
@@ -28,7 +31,6 @@ message GetEntityHierarchyResponse { EntityInfo entity_info = 1; }
 message CreateEntityRequest {
   optional string entity_name = 1;
   optional string template_id = 2;
-  optional string scene_resource_id = 3;
   optional string parent_resource_id = 4;
   repeated InitPropertyValue init_values = 5;
 }

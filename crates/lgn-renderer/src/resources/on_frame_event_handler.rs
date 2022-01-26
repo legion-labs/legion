@@ -1,4 +1,4 @@
-pub(crate) trait OnFrameEventHandler {
+pub trait OnFrameEventHandler {
     fn on_begin_frame(&mut self);
     fn on_end_frame(&mut self);
 }

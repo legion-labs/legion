@@ -10,16 +10,7 @@
     default: { item: Item };
   }
 
-  type ItemChangeEventDetail = {
-    direction: "up" | "down";
-    newIndex: number;
-    newItem: Item;
-  };
-
-  const dispatch = createEventDispatcher<{
-    click: Item;
-    itemChange: ItemChangeEventDetail;
-  }>();
+  const dispatch = createEventDispatcher<{ select: Item }>();
 
   /**
    * The key attribute used to index the items during the iteration:
@@ -29,18 +20,33 @@
 
   export let items: Item[];
 
-  export let activeItem: Item | null;
+  export let selectedItem: Item | null;
 
   export let panelIsFocused: boolean;
 
-  let activeIndex = -1;
+  /**
+   * This prop function is used to compare 2 items together and must return
+   * `true` if the items are identical.
+   *
+   * By default `===` is used, so primitives are compared by value and
+   * object by reference.
+   */
+  export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
+
+  let selectedIndex: number | null = null;
 
   let rootElement: HTMLDivElement | undefined;
 
   let itemElements: HTMLDivElement[] = [];
 
-  $: if (panelIsFocused) {
-    activeIndex = activeItem ? items.indexOf(activeItem) : -1;
+  $: selectedIndex = selectedItem
+    ? items.findIndex((item) =>
+        selectedItem ? itemsAreIdentical(item, selectedItem) : false
+      )
+    : null;
+
+  function select(item: Item) {
+    selectedItem = item;
   }
 
   function handleWindowKeyword(event: KeyboardEvent) {
@@ -48,38 +54,31 @@
       return;
     }
 
-    let eventDetail: ItemChangeEventDetail | null = null;
+    let newIndex: number | undefined;
 
     switch (event.key) {
       case "ArrowUp": {
-        const newIndex = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
-
-        eventDetail = {
-          direction: "up",
-          newIndex,
-          newItem: items[newIndex],
-        };
+        // selectedIndex should never be lt 0
+        newIndex =
+          selectedIndex === null || selectedIndex <= 0
+            ? items.length - 1
+            : selectedIndex - 1;
 
         break;
       }
 
       case "ArrowDown": {
-        const newIndex =
-          activeIndex > -1 && activeIndex < items.length - 1
-            ? activeIndex + 1
-            : 0;
-
-        eventDetail = {
-          direction: "down",
-          newIndex,
-          newItem: items[newIndex],
-        };
+        // selectedIndex should never be gt `items.length - 1`
+        newIndex =
+          selectedIndex === null || selectedIndex >= items.length - 1
+            ? 0
+            : selectedIndex + 1;
 
         break;
       }
     }
 
-    if (!eventDetail) {
+    if (newIndex == null) {
       return;
     }
 
@@ -87,10 +86,12 @@
 
     if (rootElement) {
       // "Follows" the user focus when using the arrow keys
-      keepElementVisible(rootElement, itemElements[eventDetail.newIndex]);
+      keepElementVisible(rootElement, itemElements[newIndex]);
     }
 
-    dispatch("itemChange", eventDetail);
+    selectedItem = items[newIndex];
+
+    dispatch("select", selectedItem);
   }
 </script>
 
@@ -100,9 +101,10 @@
   {#each items as item, index (key ? item[key] : index)}
     <div
       class="item"
-      class:active-item={index === activeIndex}
+      class:selected-item={index === selectedIndex}
       class:item-panel-is-focused={panelIsFocused}
-      on:click={() => dispatch("click", item)}
+      on:mousedown={() => select(item)}
+      on:dblclick
       bind:this={itemElements[index]}
     >
       <slot {item} />
@@ -119,11 +121,11 @@
     @apply cursor-pointer hover:bg-gray-500 py-1 px-2 border border-transparent border-dotted;
   }
 
-  .active-item {
+  .selected-item {
     @apply bg-gray-500;
   }
 
-  .active-item.item-panel-is-focused {
+  .selected-item.item-panel-is-focused {
     @apply border-orange-700;
   }
 </style>

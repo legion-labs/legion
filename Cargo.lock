@@ -2323,14 +2323,17 @@ dependencies = [
  "lgn-data-transaction",
  "lgn-ecs",
  "lgn-editor-proto",
+ "lgn-graphics-data",
  "lgn-graphics-offline",
  "lgn-graphics-runtime",
  "lgn-grpc",
  "lgn-input",
+ "lgn-math",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-streamer",
+ "lgn-tasks",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-transform",
@@ -3935,6 +3938,7 @@ dependencies = [
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
+ "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-runtime",
@@ -4248,6 +4252,7 @@ dependencies = [
 name = "lgn-core"
 version = "0.1.0"
 dependencies = [
+ "bumpalo",
  "bytemuck",
  "instant",
  "lgn-app",
@@ -4420,6 +4425,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-math",
  "lgn-tracing",
  "lgn-utils",
  "serde",
@@ -4707,7 +4713,6 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lambda_http",
  "lambda_runtime",
- "lgn-telemetry-sink",
  "lgn-tracing",
  "pin-project",
  "prost",
@@ -4757,6 +4762,7 @@ dependencies = [
  "crossbeam-channel 0.5.2",
  "instant",
  "lgn-app",
+ "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-renderer",
@@ -4790,7 +4796,6 @@ dependencies = [
  "egui",
  "epaint",
  "lgn-app",
- "lgn-build-utils",
  "lgn-core",
  "lgn-ecs",
  "lgn-embedded-fs",
@@ -4888,7 +4893,6 @@ dependencies = [
  "lgn-tracing",
  "lz4",
  "path-clean",
- "path-slash",
  "pin-project",
  "reqwest",
  "serde",
@@ -5051,10 +5055,13 @@ dependencies = [
  "lgn-tracing",
  "lgn-tracing-transit",
  "log",
+ "once_cell",
  "prost",
  "simple_logger",
  "tokio",
  "tonic",
+ "tracing",
+ "tracing-subscriber 0.3.6",
  "uuid",
 ]
 
@@ -5069,7 +5076,6 @@ dependencies = [
 name = "lgn-tracing"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "cfg-if 1.0.0",
  "chrono",
  "criterion",
@@ -5079,6 +5085,7 @@ dependencies = [
  "log",
  "memoffset 0.6.5",
  "raw-cpuid",
+ "thiserror",
  "thread-id",
  "uuid",
  "whoami",
@@ -6426,12 +6433,6 @@ name = "path-clean"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecba01bf2678719532c5e3059e0b5f0811273d94b397088b82e3bd0a78c78fdd"
-
-[[package]]
-name = "path-slash"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cacbb3c4ff353b534a67fb8d7524d00229da4cb1dc8c79f4db96e375ab5b619"
 
 [[package]]
 name = "pathdiff"

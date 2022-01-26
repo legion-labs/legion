@@ -12,7 +12,7 @@ pub trait EventSink {
     fn on_shutdown(&self);
 
     fn on_log_enabled(&self, level: Level, target: &str) -> bool;
-    fn on_log(&self, desc: &LogMetadata, time: i64, args: &fmt::Arguments<'_>);
+    fn on_log(&self, desc: &LogMetadata, time: i64, args: fmt::Arguments<'_>);
     fn on_init_log_stream(&self, log_stream: &LogStream);
     fn on_process_log_block(&self, log_block: Arc<LogBlock>);
 
@@ -31,7 +31,7 @@ impl EventSink for NullEventSink {
     fn on_log_enabled(&self, _: Level, _: &str) -> bool {
         false
     }
-    fn on_log(&self, _: &LogMetadata, _: i64, _: &fmt::Arguments<'_>) {}
+    fn on_log(&self, _: &LogMetadata, _: i64, _: fmt::Arguments<'_>) {}
     fn on_init_log_stream(&self, _: &LogStream) {}
     fn on_process_log_block(&self, _: Arc<LogBlock>) {}
 

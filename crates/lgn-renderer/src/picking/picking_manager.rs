@@ -97,6 +97,7 @@ pub struct PickingManagerInner {
     current_picking_data: Vec<PickingData>,
     current_type: ManipulatorType,
     manipulated_entity: Entity,
+    manipulated_entity_parent: Option<Entity>,
 }
 
 #[derive(Clone)]
@@ -124,6 +125,7 @@ impl PickingManager {
                 current_picking_data: Vec::new(),
                 current_type: ManipulatorType::Position,
                 manipulated_entity: Entity::from_raw(u32::MAX),
+                manipulated_entity_parent: None,
             })),
         }
     }
@@ -377,11 +379,22 @@ impl PickingManager {
         inner.manipulated_entity
     }
 
-    pub fn set_manip_entity(&self, entity: Entity, base_transform: &Transform) {
+    pub fn manipulated_entity_parent(&self) -> Option<Entity> {
+        let inner = self.inner.lock().unwrap();
+        inner.manipulated_entity_parent
+    }
+
+    pub fn set_manip_entity(
+        &self,
+        entity: Entity,
+        parent: Option<Entity>,
+        base_transform: &Transform,
+    ) {
         let mut inner = self.inner.lock().unwrap();
 
         inner.manip_entity_base_transform = *base_transform;
         inner.manipulated_entity = entity;
+        inner.manipulated_entity_parent = parent;
     }
 
     pub fn base_picking_transform(&self) -> Transform {

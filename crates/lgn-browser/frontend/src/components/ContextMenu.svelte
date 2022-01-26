@@ -12,11 +12,6 @@ the `contextMenuStore` to register the new entries, and then, using
 the `contextMenu` action let this component know what custom menu
 the component must display.
 
-Alongside the `type` and `label`, an `onClick` attribute must be provided.
-This function will be called with the `close` function that allows
-to close the context menu programmatically, and a `payload` (that can be
-`undefined` if needed) to the `contextMenu` action.
-
 While the `ContextMenu` component itself should be mounted only once,
 the `contextMenuStore.register` can be called as many times as needed,
 and a `contextMenuStore.remove` function is also provided to cleanup
@@ -30,7 +25,7 @@ unnecessary context menu entries.
 import buildContextMenuStore from "@lgn/frontend/src/stores/contextMenu";
 
 // We define our context menu entry record with a simple type:
-// keys represent the name of the entry set and values the payloads.
+// keys represent the name of the entry set
 export type ContextMenuEntryRecord = {
   "my-context-menu": undefined;
   "my-other-context-menu": string | null;
@@ -55,63 +50,63 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
 
   import myContextMenu from "../actions/myContextMenu";
-  import myContextMenuStore from "../stores/myContextMenu";
-
-  // `onClick` doesn't do anything and closes the context menu
-  // right away. You can perform any kind of action in here
-  // (including asynchronous ones).
+  import myContextMenuStore, { ContextMenuEntryRecord } from "../stores/myContextMenu";
 
   contextMenuStore.register("my-context-menu", [
     {
       type: "item",
+      action: "do-this",
       label: "Do this",
-      onClick({ close }) { close(); },
     },
-    { type: "separator" },
     {
-      type:
-      "item",
+      type: "separator",
+    },
+    {
+      type: "item",
+      action: "do-that",
       label: "Do that",
-      onClick({ close }) { close(); },
     },
   ]);
-
-  // Since we properly defined our context entry record in our store,
-  // the `payload` variable has type `string | null` below:
 
   contextMenuStore.register("my-other-context-menu", [
     {
       type: "item",
+      action: "do-something-else",
       label: "Do this other thing",
-      onClick({ close, payload }) {
-        console.log(payload); // Will print `"I am a payload"`
-
-        close();
-      },
     },
-    { type: "separator" },
+    {
+      type: "separator",
+    },
     {
       type: "item",
+      action: "do-another-thing",
       label: "Do that other thing",
-      onClick({ close, payload }) {
-        console.log(payload); // Will print `"I am a payload"` too
-
-        close(); },
     },
   ]);
+
+  function handleContextMenuAction({
+    detail: { action }
+  }: ContextMenuActionEvent<ContextMenuEntryRecord>) {
+    switch (action) {
+      case "do-this": {
+        // ...
+      }
+
+      // ...
+    }
+  }
 </script>
+
+<svelte:window on:contextmenu-action={handleContextMenuAction} />
 
 <ContextMenu contextMenuStore={myContextMenuStore}
 
 <div>
-  <div>If you right click me, a default context menu is shown.</div>
-  <div use:myContextMenu={{ name: "my-context-menu" }}>
+  <div>If you right click me, the default context menu is shown.</div>
+  <div use:myContextMenu={"my-context-menu"}>
     If you right click me "Do this" and "Do that" entries are displayed.
   </div>
-  <div use:myContextMenu={{
-    name: "my-other-context-menu",
-    payload: "I am a payload",
-  }}>
+  <div use:myContextMenu={"my-other-context-menu"}>
     If you right click me "Do this other thing"
     and "Do that other thing" entries are displayed.
   </div>
@@ -123,7 +118,8 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
   import { Position } from "../lib/types";
-  import { Entry, Store as ContextMenuStore } from "../stores/contextMenu";
+  import { Store as ContextMenuStore } from "../stores/contextMenu";
+  import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
 
   type State =
     | { type: "hidden" }
@@ -143,26 +139,23 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
   const widthPx = remToPx(widthRem) as number;
 
-  const defaultEntries: Entry<unknown>[] = [
-    { type: "item", label: "Help", onClick: ({ close }) => close() },
-    { type: "item", label: "About", onClick: ({ close }) => close() },
+  const defaultEntries: Entry[] = [
+    { action: "help", type: "item", label: "Help" },
+    { action: "about", type: "item", label: "About" },
   ];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let contextMenuStore: ContextMenuStore<any>;
-
-  $: entryRecord = contextMenuStore.entryRecord;
-
-  $: activeEntrySet = contextMenuStore.activeEntrySet;
 
   let state: State = { type: "hidden" };
 
-  let currentEntries: Entry<unknown>[] = [];
+  let currentEntries: Entry[] = [];
 
-  let currentPayload: unknown;
+  let entrySetName: string | null = null;
 
   function computePositionFrom(
     { clientX, clientY, view }: MouseEvent,
-    entries: Entry<unknown>[]
+    entries: Entry[]
   ): Position {
     // Should not happen
     if (!view) {
@@ -191,7 +184,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
     return { x, y };
   }
 
-  async function handleContextMenu(event: MouseEvent) {
+  async function handleDefaultContextMenu(event: MouseEvent) {
     // In dev mode `Ctrl + Right Click` will open the default
     // context menu for dev purpose.
     if (import.meta.env.DEV && event.ctrlKey) {
@@ -201,11 +194,53 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
     event.preventDefault();
     event.stopPropagation();
 
+    let position = computePositionFrom(event, defaultEntries);
+
+    // First we "close" the current context menu if it's open
+    if ("position" in state) {
+      await close();
+    }
+
+    currentEntries = defaultEntries;
+
+    entrySetName = null;
+
+    state = {
+      type: "appearing",
+      position,
+    };
+
+    await sleep(50);
+
+    state = {
+      type: "shown",
+      position: state.position,
+    };
+  }
+
+  async function handleCustomContextMenu(
+    event: CustomEvent<{
+      name: string;
+      originalEvent: MouseEvent;
+    }>
+  ) {
+    // In dev mode `Ctrl + Right Click` will open the default
+    // context menu for dev purpose.
+    if (import.meta.env.DEV && event.detail.originalEvent.ctrlKey) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
     const newCurrentEntries =
-      ($activeEntrySet && $entryRecord && $entryRecord[$activeEntrySet.name]) ||
+      ($contextMenuStore && $contextMenuStore[event.detail.name]) ||
       defaultEntries;
 
-    let position = computePositionFrom(event, newCurrentEntries);
+    let position = computePositionFrom(
+      event.detail.originalEvent,
+      newCurrentEntries
+    );
 
     // First we "close" the current context menu if it's open
     if ("position" in state) {
@@ -214,14 +249,14 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
     currentEntries = newCurrentEntries;
 
-    currentPayload = $activeEntrySet?.payload ?? null;
+    entrySetName = event.detail.name;
 
     state = {
       type: "appearing",
       position,
     };
 
-    await sleep(50).promise;
+    await sleep(50);
 
     state = {
       type: "shown",
@@ -234,19 +269,29 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
       return;
     }
 
-    contextMenuStore.removeActiveEntrySet();
-
     state = { type: "disappearing", position: state.position };
 
-    await sleep(50).promise;
+    await sleep(50);
 
     state = { type: "hidden" };
   }
+
+  function dispatchContextMenuActionEvent(entry: ItemEntry) {
+    if (entrySetName == null) {
+      return;
+    }
+
+    window.dispatchEvent(buildCustomEvent(close, entrySetName, entry.action));
+  }
 </script>
 
-<svelte:window on:contextmenu={handleContextMenu} />
+<svelte:window
+  on:contextmenu={handleDefaultContextMenu}
+  on:custom-contextmenu={handleCustomContextMenu}
+/>
 
 <div
+  id="context-menu"
   class="root"
   class:opacity-100={state.type === "shown"}
   class:opacity-0={state.type === "disappearing" || state.type === "appearing"}
@@ -265,7 +310,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
         <div
           class="item"
           class:danger={entry.tag === "danger"}
-          on:click={() => entry.onClick({ close, payload: currentPayload })}
+          on:click={() => dispatchContextMenuActionEvent(entry)}
         >
           {entry.label}
         </div>

@@ -1,6 +1,7 @@
 #![allow(unsafe_code)]
 
 use anyhow::Result;
+use lgn_core::Handle;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
     ApiDef, BufferView, DescriptorHeap, DescriptorHeapDef, DeviceContext, Fence, FenceStatus,
@@ -13,13 +14,12 @@ use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
-use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
+    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
     GpuSafePool, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
     UniformGPUDataUploadJobBlock,
 };
-use crate::{cgen, RenderContext, RenderHandle};
+use crate::{cgen, RenderContext};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -38,15 +38,14 @@ pub struct Renderer {
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotLightsStaticBuffer,
-    bump_allocator_pool: Mutex<CpuPool<BumpAllocator>>,
     shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
 
-pub type OmniDirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<OmniDirectionalLight>>;
-pub type DirectionalLightsStaticBuffer = RenderHandle<UniformGPUData<DirectionalLight>>;
-pub type SpotLightsStaticBuffer = RenderHandle<UniformGPUData<SpotLight>>;
+pub type OmniDirectionalLightsStaticBuffer = Handle<UniformGPUData<OmniDirectionalLight>>;
+pub type DirectionalLightsStaticBuffer = Handle<UniformGPUData<DirectionalLight>>;
+pub type SpotLightsStaticBuffer = Handle<UniformGPUData<SpotLight>>;
 
 macro_rules! impl_static_buffer_accessor {
     ($name:ident, $buffer_type:ty, $type:ty) => {
@@ -136,7 +135,6 @@ impl Renderer {
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
-            bump_allocator_pool: Mutex::new(CpuPool::new()),
             shader_compiler,
             api,
         })
@@ -239,16 +237,6 @@ impl Renderer {
         pool.release(handle);
     }
 
-    pub(crate) fn acquire_bump_allocator(&self) -> BumpAllocatorHandle {
-        let mut pool = self.bump_allocator_pool.lock();
-        pool.acquire_or_create(BumpAllocator::new)
-    }
-
-    pub(crate) fn release_bump_allocator(&self, handle: BumpAllocatorHandle) {
-        let mut pool = self.bump_allocator_pool.lock();
-        pool.release(handle);
-    }
-
     #[span_fn]
     pub(crate) fn begin_frame(&mut self) {
         //
@@ -282,10 +270,6 @@ impl Renderer {
             let mut pool = self.descriptor_pools.lock();
             pool.begin_frame();
         }
-        {
-            let mut pool = self.bump_allocator_pool.lock();
-            pool.begin_frame();
-        }
 
         // TMP: todo
         self.transient_buffer.begin_frame();
@@ -310,10 +294,6 @@ impl Renderer {
         }
         {
             let mut pool = self.descriptor_pools.lock();
-            pool.end_frame();
-        }
-        {
-            let mut pool = self.bump_allocator_pool.lock();
             pool.end_frame();
         }
     }

@@ -1,5 +1,6 @@
 use lgn_app::prelude::*;
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_async::TokioAsyncRuntime;
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::{
@@ -10,9 +11,11 @@ use lgn_ecs::prelude::*;
 use lgn_editor_proto::scene_explorer::{
     scene_explorer_server::{SceneExplorer, SceneExplorerServer},
     CreateEntityRequest, CreateEntityResponse, DeleteEntitiesRequest, DeleteEntitiesResponse,
-    EntityInfo, GetEntityHierarchyRequest, GetEntityHierarchyResponse,
+    EntityInfo, GetEntityHierarchyRequest, GetEntityHierarchyResponse, OpenSceneRequest,
+    OpenSceneResponse,
 };
 
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
@@ -39,6 +42,7 @@ impl Plugin for SceneExplorerPlugin {
 impl SceneExplorerPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         data_manager: Res<'_, Arc<Mutex<DataManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
@@ -46,6 +50,25 @@ impl SceneExplorerPlugin {
             data_manager: data_manager.clone(),
         });
         grpc_settings.register_service(scene_explorer_service);
+
+        let default_scene = lgn_config::config_get_or!("editor_srv.default_scene", String::new());
+        if !default_scene.is_empty() {
+            lgn_tracing::info!("Opening default scene: {}", default_scene);
+            let data_manager = data_manager.clone();
+            tokio_runtime.start_detached(async move {
+                let data_manager = data_manager.lock().await;
+                if let Err(err) = data_manager
+                    .build_by_name(&default_scene.clone().into())
+                    .await
+                {
+                    lgn_tracing::warn!(
+                        "Failed to build default_scene '{}': {}",
+                        &default_scene,
+                        err.to_string()
+                    );
+                }
+            });
+        }
     }
 }
 
@@ -64,15 +87,14 @@ fn build_entity_info(
 ) -> Option<EntityInfo> {
     let path = project
         .resource_name(*resource_id)
-        .map_or_else(|_err| String::from("unnamed"), |v| v.to_string());
+        .unwrap_or_else(|_err| ResourcePathName::new("unnamed"));
 
     if let Some(entity_dc) = loaded_resources
         .get(*resource_id)
         .and_then(|handle| handle.get::<generic_data::offline::EntityDc>(resource_registry))
     {
         return Some(EntityInfo {
-            path,
-            entity_name: entity_dc.name.clone(),
+            path: path.to_string(),
             r#type: generic_data::offline::EntityDc::TYPENAME.into(),
             resource_id: resource_id.to_string(),
             children: entity_dc
@@ -94,6 +116,19 @@ fn build_entity_info(
 
 #[tonic::async_trait]
 impl SceneExplorer for SceneExplorerRPC {
+    async fn open_scene(
+        &self,
+        request: Request<OpenSceneRequest>,
+    ) -> Result<Response<OpenSceneResponse>, Status> {
+        let request = request.into_inner();
+        let data_manager = self.data_manager.lock().await;
+        data_manager
+            .build_by_name(&request.resource_path.into())
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
+        Ok(Response::new(OpenSceneResponse {}))
+    }
+
     async fn get_entity_hierarchy(
         &self,
         request: Request<GetEntityHierarchyRequest>,
@@ -131,33 +166,25 @@ impl SceneExplorer for SceneExplorerRPC {
             id: ResourceId::new(),
         };
 
-        if let Some(scene_resource_id) = &request.scene_resource_id {
-            let scene_resource_id = parse_resource_id(scene_resource_id)?;
-
-            let data_manager = self.data_manager.lock().await;
-            let ctx = LockContext::new(&data_manager).await;
-            let res_path = ctx
-                .project
-                .resource_name(scene_resource_id)
-                .map_err(|err| Status::internal(err.to_string()))?;
-
-            new_name.push_str(res_path.to_string().as_str());
-            new_name.push_str("/_children_/");
-            new_name.push_str(new_resource_id.id.to_string().as_str());
-        } else {
-            new_name.push('/');
-            new_name.push_str(&entity_name);
+        if let Some(parent_resource_id) = &request.parent_resource_id {
+            let parent_resource_id = parse_resource_id(parent_resource_id)?;
+            new_name.push_str(format!("/!{}", parent_resource_id).as_str());
         }
+        new_name.push('/');
+        new_name.push_str(&entity_name);
 
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(
             new_resource_id,
             new_name.into(),
+            true,
         ));
 
-        transaction = transaction.add_operation(UpdatePropertyOperation::new(
+        transaction = transaction.add_operation(ArrayOperation::insert_element(
             new_resource_id,
-            "name",
-            serde_json::Value::String(entity_name).to_string(),
+            "components",
+            None,
+            json!({ "TransformComponent": generic_data::offline::TransformComponent::default() })
+                .to_string(),
         ));
 
         if let Some(parent_resource_id) = &request.parent_resource_id {
@@ -168,18 +195,26 @@ impl SceneExplorer for SceneExplorerRPC {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 new_resource_id,
                 "parent",
-                serde_json::Value::String(parent_path.to_string()).to_string(),
+                json!(parent_path).to_string(),
             ));
 
             let mut child_path: ResourcePathId = new_resource_id.into();
             child_path = child_path.push(generic_data::runtime::EntityDc::TYPE);
-            let value_json = serde_json::Value::String(child_path.to_string()).to_string();
 
             transaction = transaction.add_operation(ArrayOperation::insert_element(
                 parent_resource_id,
                 "children",
                 None, // insert at end
-                value_json.as_str(),
+                json!(child_path).to_string(),
+            ));
+        }
+
+        // Add Init Values
+        for init_value in request.init_values {
+            transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                new_resource_id,
+                init_value.property_path,
+                init_value.json_value,
             ));
         }
 
@@ -246,13 +281,11 @@ impl SceneExplorer for SceneExplorerRPC {
                 if !to_delete.contains_key(parent_path_id) {
                     let mut child: ResourcePathId = (*resource_id).into();
                     child = child.push(generic_data::runtime::EntityDc::TYPE);
-                    let child_reference_value = serde_json::to_value(child.to_string())
-                        .map_err(|err| Status::internal(err.to_string()))?;
 
                     transaction = transaction.add_operation(ArrayOperation::delete_value(
                         *parent_path_id,
                         "children",
-                        child_reference_value.to_string().as_str(),
+                        json!(child).to_string(),
                     ));
                 }
             }
@@ -276,6 +309,9 @@ mod test {
         CreateEntityRequest, DataManager, DeleteEntitiesRequest, EntityInfo,
         GetEntityHierarchyRequest, SceneExplorer, SceneExplorerRPC,
     };
+    use lgn_editor_proto::scene_explorer::InitPropertyValue;
+    use lgn_math::Vec3;
+    use serde_json::json;
     use std::path::Path;
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -287,7 +323,7 @@ mod test {
     use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
     use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 
-    use lgn_data_transaction::BuildManager;
+    use lgn_data_transaction::{ArrayOperation, BuildManager, Transaction};
 
     fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataManager>> {
         let build_dir = project_dir.as_ref().join("temp");
@@ -316,7 +352,7 @@ mod test {
     }
 
     fn display_hierarchy(info: &EntityInfo, depth: usize) {
-        println!("{:indent$}{}", "", info.entity_name, indent = depth);
+        println!("{}", info.path);
         for child_info in &info.children {
             display_hierarchy(child_info, depth + 1);
         }
@@ -325,7 +361,8 @@ mod test {
     #[tokio::test]
     async fn test_scene_explorer() -> anyhow::Result<()> {
         //let project_dir = std::path::PathBuf::from("d:/local_db/");
-        //std::fs::remove_dir_all(&project_dir).ok();
+        //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
+        //std::fs::remove_file(project_dir.join("project.index")).ok();
         let project_dir = tempfile::tempdir().unwrap();
 
         {
@@ -338,43 +375,96 @@ mod test {
                 .create_entity(Request::new(CreateEntityRequest {
                     entity_name: Some("top".into()),
                     template_id: None,
-                    scene_resource_id: None,
                     parent_resource_id: None,
-                    init_values: Vec::new(),
+                    init_values: vec![InitPropertyValue {
+                        property_path: "components[0].position".into(),
+                        json_value: json!(Vec3::new(0.0, 0.0, 0.0)).to_string(),
+                    }],
                 }))
-                .await?
+                .await
+                .unwrap()
                 .into_inner()
                 .new_id;
 
             let mut child_ids = Vec::<String>::new();
 
-            for i in 0..2 {
+            let offsets: Vec<f32> = vec![-1.0, 1.0];
+            let mesh_ids: Vec<usize> = vec![1, 2, 5, 6, 7, 8, 9];
+            let colors: Vec<lgn_graphics_data::Color> = vec![
+                (255, 0, 0).into(),
+                (0, 255, 0).into(),
+                (0, 0, 255).into(),
+                (255, 255, 0).into(),
+                (0, 255, 255).into(),
+                (255, 0, 255).into(),
+            ];
+            let mut color_id = 0;
+            let mut mesh_id = 0;
+
+            #[allow(clippy::needless_range_loop)]
+            for i in 0..2u16 {
                 let child_id = scene_explorer
                     .create_entity(Request::new(CreateEntityRequest {
-                        entity_name: Some(format!("child{}", i)),
+                        entity_name: Some("child".into()),
                         template_id: None,
-                        scene_resource_id: Some(top_id.clone()),
                         parent_resource_id: Some(top_id.clone()),
-                        init_values: Vec::new(),
+                        init_values: vec![InitPropertyValue {
+                            property_path: "components[0].position".into(),
+                            json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,))
+                                .to_string(),
+                        }],
                     }))
-                    .await?
+                    .await
+                    .unwrap()
                     .into_inner()
                     .new_id;
                 child_ids.push(child_id.clone());
 
-                for j in 0..2 {
+                for j in 0..3u16 {
                     let sub_child_id = scene_explorer
                         .create_entity(Request::new(CreateEntityRequest {
-                            entity_name: Some(format!("subchild{}", j)),
+                            entity_name: Some("subchild".into()),
                             template_id: None,
-                            scene_resource_id: Some(top_id.clone()),
                             parent_resource_id: Some(child_id.clone()),
-                            init_values: Vec::new(),
+                            init_values: vec![InitPropertyValue {
+                                property_path: "components[0].position".into(),
+                                json_value: json!(Vec3::new(0.0, 0.0, f32::from(j))).to_string(),
+                            }],
                         }))
-                        .await?
+                        .await
+                        .unwrap()
                         .into_inner()
                         .new_id;
-                    child_ids.push(sub_child_id);
+
+                    {
+                        let sub_child_id = super::parse_resource_id(sub_child_id)?;
+
+                        let transaction = Transaction::new()
+                            .add_operation(ArrayOperation::insert_element(
+                                sub_child_id,
+                                "components",
+                                None,
+                                json!({ "LightComponent": generic_data::offline::LightComponent {
+                                    light_color: colors[color_id],
+                                }}).to_string()
+                            ))
+                            .add_operation(ArrayOperation::insert_element(
+                                sub_child_id,
+                                "components",
+                                None,
+                                json!({ "StaticMeshComponent": generic_data::offline::StaticMeshComponent {
+                                    mesh_id: mesh_ids[mesh_id],
+                                    color: colors[color_id],
+                                }})
+                                .to_string(),
+                            ));
+
+                        let mut guard = data_manager.lock().await;
+                        guard.commit_transaction(transaction).await.unwrap();
+
+                        color_id = (color_id + 1) % colors.len();
+                        mesh_id = (mesh_id + 1) % mesh_ids.len();
+                    }
                 }
             }
 
@@ -384,7 +474,8 @@ mod test {
                         filter: String::new(),
                         top_resource_id: top_id.clone(),
                     }))
-                    .await?
+                    .await
+                    .unwrap()
                     .into_inner();
 
                 display_hierarchy(&response.entity_info.unwrap(), 0);
@@ -395,12 +486,13 @@ mod test {
                 .delete_entities(Request::new(DeleteEntitiesRequest {
                     resource_ids: vec![child_ids[0].clone()],
                 }))
-                .await?;
+                .await
+                .unwrap();
 
             // Try Undo
             {
                 let mut guard = data_manager.lock().await;
-                guard.undo_transaction().await?;
+                guard.undo_transaction().await.unwrap();
             }
         }
         Ok(())

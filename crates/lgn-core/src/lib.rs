@@ -7,12 +7,14 @@
 #![warn(missing_docs)]
 
 mod float_ord;
+mod memory;
 mod name;
 mod task_pool_options;
 mod time;
 
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
 pub use float_ord::*;
+pub use memory::*;
 pub use name::*;
 pub use task_pool_options::DefaultTaskPoolOptions;
 pub use time::*;
@@ -50,13 +52,17 @@ impl Plugin for CorePlugin {
             .unwrap_or_default()
             .create_default_pools(&mut app.world);
 
+        let bump_allocator_pool = BumpAllocatorPool::new();
         app.init_resource::<Time>()
             .init_resource::<FixedTimesteps>()
+            .insert_resource(bump_allocator_pool)
             // time system is added as an "exclusive system" to ensure it runs before other systems
             // in CoreStage::First
             .add_system_to_stage(
                 CoreStage::First,
                 time_system.exclusive_system().label(CoreSystem::Time),
-            );
+            )
+            .add_system_to_stage(CoreStage::First, begin_frame)
+            .add_system_to_stage(CoreStage::Last, end_frame);
     }
 }

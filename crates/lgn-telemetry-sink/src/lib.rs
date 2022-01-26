@@ -11,6 +11,8 @@ use std::{collections::HashMap, str::FromStr};
 mod grpc_event_sink;
 mod immediate_event_sink;
 mod stream;
+#[cfg(feature = "tokio-tracing")]
+mod tokio_tracing_sink;
 
 use grpc_event_sink::GRPCEventSink;
 use immediate_event_sink::ImmediateEventSink;
@@ -118,12 +120,16 @@ impl TelemetryGuard {
 
     //todo: refac enable_console_printer, put in config?
     pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
+        #[cfg(feature = "tokio-tracing")]
+        tokio_tracing_sink::TelemetryLayer::setup();
+
         // order here is important
         Ok(Self {
             _guard: alloc_telemetry_system(config, enable_console_printer)?,
             _thread_guard: TracingThreadGuard::new(),
         })
     }
+
     pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
         set_max_level(level_filter);
         log::set_max_level(
@@ -131,6 +137,7 @@ impl TelemetryGuard {
         );
         self
     }
+
     pub fn with_ctrlc_handling(self) -> Self {
         ctrlc::set_handler(move || {
             info!("Ctrl+C was hit!");

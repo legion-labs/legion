@@ -185,10 +185,15 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
         // Create a new Resource, Edit some properties and Commit it
         let transaction = Transaction::new()
-            .add_operation(CreateResourceOperation::new(new_id, resource_path.clone()))
+            .add_operation(CreateResourceOperation::new(
+                new_id,
+                resource_path.clone(),
+                false,
+            ))
             .add_operation(CreateResourceOperation::new(
                 ref_new_id,
                 ref_resource_path.clone(),
+                false,
             ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
@@ -314,7 +319,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             id: ResourceId::new(),
         };
         let transaction = Transaction::new()
-            .add_operation(CreateResourceOperation::new(new_id, resource_path))
+            .add_operation(CreateResourceOperation::new(new_id, resource_path, false))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
                 "test_string",
@@ -332,6 +337,28 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         );
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&invalid_resource));
+
+        // Test CreateResource with auto Name Increment
+        for _ in 0..2 {
+            let transaction = Transaction::new().add_operation(CreateResourceOperation::new(
+                ResourceTypeAndId {
+                    kind: TestEntity::TYPE,
+                    id: ResourceId::new(),
+                },
+                "/entity/autoincrement1337".into(),
+                true,
+            ));
+            data_manager.commit_transaction(transaction).await?;
+        }
+        asset_registry.update();
+        assert!(project
+            .lock()
+            .await
+            .exists_named(&"/entity/autoincrement1337".into()));
+        assert!(project
+            .lock()
+            .await
+            .exists_named(&"/entity/autoincrement1338".into()));
 
         drop(data_manager);
     }

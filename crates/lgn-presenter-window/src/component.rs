@@ -1,4 +1,3 @@
-#![allow(clippy::pedantic)]
 use std::convert::TryFrom;
 
 use lgn_graphics_api::prelude::*;

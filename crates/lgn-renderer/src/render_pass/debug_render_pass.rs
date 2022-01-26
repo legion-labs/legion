@@ -7,7 +7,7 @@ use lgn_graphics_api::{
 };
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use lgn_transform::prelude::Transform;
+use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen,
@@ -174,7 +174,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        picked_meshes: &[(&StaticMesh, &Transform)],
+        picked_meshes: &[(&StaticMesh, &GlobalTransform)],
         default_meshes: &DefaultMeshes,
     ) {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
@@ -232,7 +232,7 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
+        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
         default_meshes: &DefaultMeshes,
         camera: &CameraComponent,
     ) {
@@ -251,16 +251,16 @@ impl DebugRenderPass {
                     &projection_matrix,
                 );
 
-                let mut color = Vec4::new(
-                    f32::from(static_mesh.color.r) / 255.0f32,
-                    f32::from(static_mesh.color.g) / 255.0f32,
-                    f32::from(static_mesh.color.b) / 255.0f32,
-                    f32::from(static_mesh.color.a) / 255.0f32,
-                );
-
-                if manipulator.selected {
-                    color = Vec4::new(1.0, 1.0, 0.0, 1.0);
-                }
+                let mut color = if manipulator.selected {
+                    Vec4::new(1.0, 1.0, 0.0, 1.0)
+                } else {
+                    Vec4::new(
+                        f32::from(static_mesh.color.r) / 255.0f32,
+                        f32::from(static_mesh.color.g) / 255.0f32,
+                        f32::from(static_mesh.color.b) / 255.0f32,
+                        f32::from(static_mesh.color.a) / 255.0f32,
+                    )
+                };
 
                 color.w = if manipulator.transparent { 0.9 } else { 1.0 };
 
@@ -285,8 +285,8 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        picked_meshes: &[(&StaticMesh, &Transform)],
-        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
+        picked_meshes: &[(&StaticMesh, &GlobalTransform)],
+        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
         debug_display: &mut DebugDisplay,
@@ -333,7 +333,7 @@ impl DebugRenderPass {
 #[allow(clippy::too_many_arguments)]
 fn render_aabb_for_mesh(
     mesh_id: u32,
-    transform: &Transform,
+    transform: &GlobalTransform,
     cmd_buffer: &mut HLCommandBuffer<'_>,
     default_meshes: &DefaultMeshes,
 ) {
@@ -359,7 +359,7 @@ fn render_aabb_for_mesh(
     let delta = max_bound - min_bound;
     let mid_point = min_bound + delta * 0.5;
 
-    let aabb_transform = Transform::identity()
+    let aabb_transform = GlobalTransform::identity()
         .with_translation(mid_point)
         .with_scale(delta);
 
