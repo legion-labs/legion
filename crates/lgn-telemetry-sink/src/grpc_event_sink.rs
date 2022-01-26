@@ -158,7 +158,7 @@ impl GRPCEventSink {
                         match client.insert_stream(stream_info).await {
                             Ok(_response) => {}
                             Err(e) => {
-                                println!("insert_process failed: {}", e);
+                                println!("insert_stream failed: {}", e);
                             }
                         }
                     }
