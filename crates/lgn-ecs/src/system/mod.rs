@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn simple_system() {
-        fn sys(query: Query<'_, '_, &A>) {
+        fn sys(query: &Query<'_, '_, &A>) {
             for a in query.iter() {
                 println!("{:?}", a);
             }
@@ -150,11 +150,11 @@ mod tests {
     #[test]
     fn query_system_gets() {
         fn query_system(
-            mut ran: ResMut<'_, bool>,
-            entity_query: Query<'_, '_, Entity, With<A>>,
-            b_query: Query<'_, '_, &B>,
-            a_c_query: Query<'_, '_, (&A, &C)>,
-            d_query: Query<'_, '_, &D>,
+            mut ran: &ResMut<'_, bool>,
+            entity_query: &Query<'_, '_, Entity, With<A>>,
+            b_query: &Query<'_, '_, &B>,
+            a_c_query: &Query<'_, '_, (&A, &C)>,
+            d_query: &Query<'_, '_, &D>,
         ) {
             let entities = entity_query.iter().collect::<Vec<Entity>>();
             assert!(
@@ -190,7 +190,7 @@ mod tests {
                 "entity 3 should have D"
             );
 
-            *ran = true;
+            **ran = true;
         }
 
         let mut world = World::default();
@@ -210,8 +210,8 @@ mod tests {
         // Regression test for issue #762
         #[allow(clippy::type_complexity)]
         fn query_system(
-            mut ran: ResMut<'_, bool>,
-            mut set: QuerySet<
+            mut ran: &ResMut<'_, bool>,
+            mut set: &QuerySet<
                 '_,
                 '_,
                 (
@@ -226,7 +226,7 @@ mod tests {
             assert_eq!(changed, 1);
             assert_eq!(added, 1);
 
-            *ran = true;
+            **ran = true;
         }
 
         let mut world = World::default();
@@ -243,9 +243,9 @@ mod tests {
         struct Added(usize);
         struct Changed(usize);
         fn incr_e_on_flip(
-            value: Res<'_, bool>,
-            mut changed: ResMut<'_, Changed>,
-            mut added: ResMut<'_, Added>,
+            value: &Res<'_, bool>,
+            mut changed: &ResMut<'_, Changed>,
+            mut added: &ResMut<'_, Added>,
         ) {
             if value.is_added() {
                 added.0 += 1;
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_mut_system() {
-        fn sys(_q1: Query<'_, '_, &mut A>, _q2: Query<'_, '_, &mut A>) {}
+        fn sys(_q1: &Query<'_, '_, &mut A>, _q2: &Query<'_, '_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_system() {
-        fn sys(_q1: Query<'_, '_, &mut A, With<B>>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
+        fn sys(_q1: &Query<'_, '_, &mut A, With<B>>, _q2: &Query<'_, '_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_read_component_system() {
-        fn sys(_q1: Query<'_, '_, (&mut A, &B)>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
+        fn sys(_q1: &Query<'_, '_, (&mut A, &B)>, _q2: &Query<'_, '_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -312,7 +312,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_immut_system() {
-        fn sys(_q1: Query<'_, '_, &A>, _q2: Query<'_, '_, &mut A>) {}
+        fn sys(_q1: &Query<'_, '_, &A>, _q2: &Query<'_, '_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn query_set_system() {
-        fn sys(mut _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&A>)>) {}
+        fn sys(mut _set: &QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&A>)>) {}
         let mut world = World::default();
         run_system(&mut world, sys);
     }
@@ -329,8 +329,8 @@ mod tests {
     #[should_panic]
     fn conflicting_query_with_query_set_system() {
         fn sys(
-            _query: Query<'_, '_, &mut A>,
-            _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
+            _query: &Query<'_, '_, &mut A>,
+            _set: &QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
         ) {
         }
 
@@ -342,8 +342,8 @@ mod tests {
     #[should_panic]
     fn conflicting_query_sets_system() {
         fn sys(
-            _set_1: QuerySet<'_, '_, (QueryState<&mut A>,)>,
-            _set_2: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
+            _set_1: &QuerySet<'_, '_, (QueryState<&mut A>,)>,
+            _set_2: &QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
         ) {
         }
 
@@ -367,31 +367,31 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_system_resources() {
-        fn sys(_: ResMut<'_, BufferRes>, _: Res<'_, BufferRes>) {}
+        fn sys(_: &ResMut<'_, BufferRes>, _: &Res<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_reverse_order() {
-        fn sys(_: Res<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        fn sys(_: &Res<'_, BufferRes>, _: &ResMut<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_multiple_mutable() {
-        fn sys(_: ResMut<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        fn sys(_: &ResMut<'_, BufferRes>, _: &ResMut<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     fn nonconflicting_system_resources() {
         fn sys(
-            _: Local<'_, BufferRes>,
-            _: ResMut<'_, BufferRes>,
-            _: Local<'_, A>,
-            _: ResMut<'_, A>,
+            _: &Local<'_, BufferRes>,
+            _: &ResMut<'_, BufferRes>,
+            _: &Local<'_, A>,
+            _: &ResMut<'_, A>,
         ) {
         }
         test_for_conflicting_resources(sys);
@@ -414,9 +414,9 @@ mod tests {
             }
         }
 
-        fn sys(local: Local<'_, Foo>, mut modified: ResMut<'_, bool>) {
+        fn sys(local: &Local<'_, Foo>, mut modified: &ResMut<'_, bool>) {
             assert_eq!(local.value, 2);
-            *modified = true;
+            **modified = true;
         }
 
         run_system(&mut world, sys);
@@ -435,12 +435,12 @@ mod tests {
         world.insert_non_send(NotSend1(std::rc::Rc::new(0)));
 
         fn sys(
-            op: Option<NonSend<'_, NotSend1>>,
-            mut _op2: Option<NonSendMut<'_, NotSend2>>,
-            mut run: ResMut<'_, bool>,
+            op: &Option<NonSend<'_, NotSend1>>,
+            mut _op2: &Option<NonSendMut<'_, NotSend2>>,
+            mut run: &ResMut<'_, bool>,
         ) {
             op.expect("NonSend should exist");
-            *run = true;
+            **run = true;
         }
 
         run_system(&mut world, sys);
@@ -460,11 +460,11 @@ mod tests {
         world.insert_non_send(NotSend2(std::rc::Rc::new(2)));
 
         fn sys(
-            _op: NonSend<'_, NotSend1>,
-            mut _op2: NonSendMut<'_, NotSend2>,
-            mut run: ResMut<'_, bool>,
+            _op: &NonSend<'_, NotSend1>,
+            mut _op2: &NonSendMut<'_, NotSend2>,
+            mut run: &ResMut<'_, bool>,
         ) {
-            *run = true;
+            **run = true;
         }
 
         run_system(&mut world, sys);
@@ -495,9 +495,9 @@ mod tests {
         world.entity_mut(spurious_entity).despawn();
 
         fn validate_despawn(
-            removed_i32: RemovedComponents<'_, W<i32>>,
-            despawned: Res<'_, Despawned>,
-            mut n_systems: ResMut<'_, NSystems>,
+            removed_i32: &RemovedComponents<'_, W<i32>>,
+            despawned: &Res<'_, Despawned>,
+            mut n_systems: &ResMut<'_, NSystems>,
         ) {
             assert_eq!(
                 removed_i32.iter().collect::<Vec<_>>(),
@@ -520,9 +520,9 @@ mod tests {
         world.entity_mut(entity_to_remove_w_from).remove::<W<i32>>();
 
         fn validate_remove(
-            removed_i32: RemovedComponents<'_, W<i32>>,
-            removed: Res<'_, Removed>,
-            mut n_systems: ResMut<'_, NSystems>,
+            removed_i32: &RemovedComponents<'_, W<i32>>,
+            removed: &Res<'_, Removed>,
+            mut n_systems: &ResMut<'_, NSystems>,
         ) {
             assert_eq!(
                 removed_i32.iter().collect::<Vec<_>>(),
@@ -543,9 +543,9 @@ mod tests {
     fn configure_system_local() {
         let mut world = World::default();
         world.insert_resource(false);
-        fn sys(local: Local<'_, usize>, mut modified: ResMut<'_, bool>) {
-            assert_eq!(*local, 42);
-            *modified = true;
+        fn sys(local: &Local<'_, usize>, mut modified: &ResMut<'_, bool>) {
+            assert_eq!(**local, 42);
+            **modified = true;
         }
 
         run_system(&mut world, sys.config(|config| config.0 = Some(42)));
@@ -564,8 +564,8 @@ mod tests {
             components: &Components,
             entities: &Entities,
             bundles: &Bundles,
-            query: Query<'_, '_, Entity, With<W<i32>>>,
-            mut modified: ResMut<'_, bool>,
+            query: &Query<'_, '_, Entity, With<W<i32>>>,
+            mut modified: &ResMut<'_, bool>,
         ) {
             assert_eq!(query.iter().count(), 1, "entity exists");
             for entity in query.iter() {
@@ -589,7 +589,7 @@ mod tests {
                     "entity's bundle components exactly match entity's archetype components"
                 );
             }
-            *modified = true;
+            **modified = true;
         }
 
         run_system(&mut world, sys);
@@ -600,9 +600,9 @@ mod tests {
 
     #[test]
     fn get_system_conflicts() {
-        fn sys_x(_: Res<'_, A>, _: Res<'_, B>, _: Query<'_, '_, (&C, &D)>) {}
+        fn sys_x(_: &Res<'_, A>, _: &Res<'_, B>, _: &Query<'_, '_, (&C, &D)>) {}
 
-        fn sys_y(_: Res<'_, A>, _: ResMut<'_, B>, _: Query<'_, '_, (&C, &mut D)>) {}
+        fn sys_y(_: &Res<'_, A>, _: &ResMut<'_, B>, _: &Query<'_, '_, (&C, &mut D)>) {}
 
         let mut world = World::default();
         let mut x = sys_x.system();
@@ -621,12 +621,12 @@ mod tests {
 
     #[test]
     fn query_is_empty() {
-        fn without_filter(not_empty: Query<'_, '_, &A>, empty: Query<'_, '_, &B>) {
+        fn without_filter(not_empty: &Query<'_, '_, &A>, empty: &Query<'_, '_, &B>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
 
-        fn with_filter(not_empty: Query<'_, '_, &A, With<C>>, empty: Query<'_, '_, &A, With<D>>) {
+        fn with_filter(not_empty: &Query<'_, '_, &A, With<C>>, empty: &Query<'_, '_, &A, With<D>>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
@@ -648,40 +648,40 @@ mod tests {
     #[allow(clippy::type_complexity)]
     fn can_have_16_parameters() {
         fn sys_x(
-            _: Res<'_, A>,
-            _: Res<'_, B>,
-            _: Res<'_, C>,
-            _: Res<'_, D>,
-            _: Res<'_, E>,
-            _: Res<'_, F>,
-            _: Query<'_, '_, &A>,
-            _: Query<'_, '_, &B>,
-            _: Query<'_, '_, &C>,
-            _: Query<'_, '_, &D>,
-            _: Query<'_, '_, &E>,
-            _: Query<'_, '_, &F>,
-            _: Query<'_, '_, (&A, &B)>,
-            _: Query<'_, '_, (&C, &D)>,
-            _: Query<'_, '_, (&E, &F)>,
+            _: &Res<'_, A>,
+            _: &Res<'_, B>,
+            _: &Res<'_, C>,
+            _: &Res<'_, D>,
+            _: &Res<'_, E>,
+            _: &Res<'_, F>,
+            _: &Query<'_, '_, &A>,
+            _: &Query<'_, '_, &B>,
+            _: &Query<'_, '_, &C>,
+            _: &Query<'_, '_, &D>,
+            _: &Query<'_, '_, &E>,
+            _: &Query<'_, '_, &F>,
+            _: &Query<'_, '_, (&A, &B)>,
+            _: &Query<'_, '_, (&C, &D)>,
+            _: &Query<'_, '_, (&E, &F)>,
         ) {
         }
         fn sys_y(
             _: (
-                Res<'_, A>,
-                Res<'_, B>,
-                Res<'_, C>,
-                Res<'_, D>,
-                Res<'_, E>,
-                Res<'_, F>,
-                Query<'_, '_, &A>,
-                Query<'_, '_, &B>,
-                Query<'_, '_, &C>,
-                Query<'_, '_, &D>,
-                Query<'_, '_, &E>,
-                Query<'_, '_, &F>,
-                Query<'_, '_, (&A, &B)>,
-                Query<'_, '_, (&C, &D)>,
-                Query<'_, '_, (&E, &F)>,
+                &Res<'_, A>,
+                &Res<'_, B>,
+                &Res<'_, C>,
+                &Res<'_, D>,
+                &Res<'_, E>,
+                &Res<'_, F>,
+                &Query<'_, '_, &A>,
+                &Query<'_, '_, &B>,
+                &Query<'_, '_, &C>,
+                &Query<'_, '_, &D>,
+                &Query<'_, '_, &E>,
+                &Query<'_, '_, &F>,
+                &Query<'_, '_, (&A, &B)>,
+                &Query<'_, '_, (&C, &D)>,
+                &Query<'_, '_, (&E, &F)>,
             ),
         ) {
         }

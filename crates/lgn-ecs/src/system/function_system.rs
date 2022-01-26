@@ -513,8 +513,8 @@ macro_rules! impl_system_function {
         impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<(), Out, ($($param,)*), ()> for Func
         where
         for <'a> &'a mut Func:
-                FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
+                FnMut($(&$param),*) -> Out +
+                FnMut($(&<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
         {
             #[inline]
             unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
@@ -522,13 +522,13 @@ macro_rules! impl_system_function {
                 // without using this function.
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Out, $($param,)*>(
-                    mut f: impl FnMut($($param,)*)->Out,
-                    $($param: $param,)*
+                    mut f: impl FnMut($(&$param,)*)->Out,
+                    $($param: &$param,)*
                 )->Out{
                     f($($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, $($param),*)
+                call_inner(self, $(&$param),*)
             }
         }
 
@@ -536,21 +536,21 @@ macro_rules! impl_system_function {
         impl<Input, Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
         where
         for <'a> &'a mut Func:
-                FnMut(In<Input>, $($param),*) -> Out +
-                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
+                FnMut(In<Input>, $(&$param),*) -> Out +
+                FnMut(In<Input>, $(&<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
         {
             #[inline]
             unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Input, Out, $($param,)*>(
-                    mut f: impl FnMut(In<Input>, $($param,)*)->Out,
+                    mut f: impl FnMut(In<Input>, $(&$param,)*)->Out,
                     input: In<Input>,
-                    $($param: $param,)*
+                    $($param: &$param,)*
                 )->Out{
                     f(input, $($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, In(input), $($param),*)
+                call_inner(self, In(input), $(&$param),*)
             }
         }
     };

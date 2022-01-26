@@ -380,8 +380,8 @@ mod tests {
     fn resources() {
         let mut world = World::new();
         world.insert_resource(0usize);
-        fn wants_mut(_: ResMut<'_, usize>) {}
-        fn wants_ref(_: Res<'_, usize>) {}
+        fn wants_mut(_: &ResMut<'_, usize>) {}
+        fn wants_ref(_: &Res<'_, usize>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -409,8 +409,8 @@ mod tests {
     fn queries() {
         let mut world = World::new();
         world.spawn().insert(W(0usize));
-        fn wants_mut(_: Query<'_, '_, &mut W<usize>>) {}
-        fn wants_ref(_: Query<'_, '_, &W<usize>>) {}
+        fn wants_mut(_: &Query<'_, '_, &mut W<usize>>) {}
+        fn wants_ref(_: &Query<'_, '_, &W<usize>>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -434,8 +434,8 @@ mod tests {
         assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
         let mut world = World::new();
         world.spawn().insert_bundle((W(0usize), W(0u32), W(0f32)));
-        fn wants_mut_usize(_: Query<'_, '_, (&mut W<usize>, &W<f32>)>) {}
-        fn wants_mut_u32(_: Query<'_, '_, (&mut W<u32>, &W<f32>)>) {}
+        fn wants_mut_usize(_: &Query<'_, '_, (&mut W<usize>, &W<f32>)>) {}
+        fn wants_mut_u32(_: &Query<'_, '_, (&mut W<u32>, &W<f32>)>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut_usize)
             .with_system(wants_mut_u32);
@@ -448,8 +448,8 @@ mod tests {
         use std::thread;
         let mut world = World::new();
         world.insert_non_send(thread::current().id());
-        fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
-            assert_eq!(thread::current().id(), *thread_id);
+        fn non_send(thread_id: &NonSend<'_, thread::ThreadId>) {
+            assert_eq!(thread::current().id(), **thread_id);
         }
         fn empty() {}
         let mut stage = SystemStage::parallel()

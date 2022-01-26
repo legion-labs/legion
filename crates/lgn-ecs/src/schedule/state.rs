@@ -99,7 +99,7 @@ where
     T: StateData,
 {
     pub fn on_update(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, pred: &Local<'_, Option<T>>| {
             state.stack.last().unwrap() == pred.as_ref().unwrap() && state.transition.is_none()
         })
         .config(|(_, pred)| *pred = Some(Some(s.clone())))
@@ -109,19 +109,19 @@ where
     }
 
     pub fn on_inactive_update(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, mut is_inactive: Local<'_, bool>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, mut is_inactive: &Local<'_, bool>, pred: &Local<'_, Option<T>>| {
             match &state.transition {
                 Some(
                     StateTransition::Pausing(ref relevant, _)
                     | StateTransition::Resuming(_, ref relevant),
                 ) => {
                     if relevant == pred.as_ref().unwrap() {
-                        *is_inactive = !*is_inactive;
+                        **is_inactive = !**is_inactive;
                     }
                     false
                 }
                 Some(_) => false,
-                None => *is_inactive,
+                None => **is_inactive,
             }
         })
         .config(|(_, _, pred)| *pred = Some(Some(s.clone())))
@@ -131,7 +131,7 @@ where
     }
 
     pub fn on_in_stack_update(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, mut is_in_stack: Local<'_, bool>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, mut is_in_stack: &Local<'_, bool>, pred: &Local<'_, Option<T>>| {
             match &state.transition {
                 Some(
                     StateTransition::Entering(ref relevant, _)
@@ -139,18 +139,18 @@ where
                     | StateTransition::ExitingFull(_, ref relevant),
                 ) => {
                     if relevant == pred.as_ref().unwrap() {
-                        *is_in_stack = !*is_in_stack;
+                        **is_in_stack = !**is_in_stack;
                     }
                     false
                 }
                 Some(StateTransition::Startup) => {
                     if state.stack.last().unwrap() == pred.as_ref().unwrap() {
-                        *is_in_stack = !*is_in_stack;
+                        **is_in_stack = !**is_in_stack;
                     }
                     false
                 }
                 Some(_) => false,
-                None => *is_in_stack,
+                None => **is_in_stack,
             }
         })
         .config(|(_, _, pred)| *pred = Some(Some(s.clone())))
@@ -160,7 +160,7 @@ where
     }
 
     pub fn on_enter(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, pred: &Local<'_, Option<T>>| {
             state
                 .transition
                 .as_ref()
@@ -179,7 +179,7 @@ where
     }
 
     pub fn on_exit(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, pred: &Local<'_, Option<T>>| {
             state
                 .transition
                 .as_ref()
@@ -196,7 +196,7 @@ where
     }
 
     pub fn on_pause(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, pred: &Local<'_, Option<T>>| {
             state
                 .transition
                 .as_ref()
@@ -212,7 +212,7 @@ where
     }
 
     pub fn on_resume(s: T) -> RunCriteriaDescriptor {
-        (|state: Res<'_, Self>, pred: Local<'_, Option<T>>| {
+        (|state: &Res<'_, Self>, pred: &Local<'_, Option<T>>| {
             state
                 .transition
                 .as_ref()
@@ -394,7 +394,7 @@ pub enum StateError {
 
 fn should_run_adapter<T: StateData>(
     In(cmp_result): In<bool>,
-    state: Res<'_, State<T>>,
+    state: &Res<'_, State<T>>,
 ) -> ShouldRun {
     if state.end_next_loop {
         return ShouldRun::No;
@@ -407,11 +407,11 @@ fn should_run_adapter<T: StateData>(
 }
 
 fn state_cleaner<T: StateData>(
-    mut state: ResMut<'_, State<T>>,
-    mut prep_exit: Local<'_, bool>,
+    mut state: &ResMut<'_, State<T>>,
+    mut prep_exit: &Local<'_, bool>,
 ) -> ShouldRun {
-    if *prep_exit {
-        *prep_exit = false;
+    if **prep_exit {
+        **prep_exit = false;
         if state.scheduled.is_none() {
             state.end_next_loop = true;
             return ShouldRun::YesAndCheckAgain;
@@ -479,7 +479,7 @@ fn state_cleaner<T: StateData>(
         },
     };
     if state.transition.is_none() {
-        *prep_exit = true;
+        **prep_exit = true;
     }
 
     ShouldRun::YesAndCheckAgain
@@ -515,7 +515,7 @@ mod test {
         stage
             .add_system_set(
                 State::on_enter_set(MyState::S1)
-                    .with_system(|mut r: ResMut<'_, Vec<&'static str>>| r.push("startup")),
+                    .with_system(|mut r: &ResMut<'_, Vec<&'static str>>| r.push("startup")),
             )
             .add_system_set(State::on_update_set(MyState::S1).with_system(
                 |mut r: ResMut<'_, Vec<&'static str>>, mut s: ResMut<'_, State<MyState>>| {
@@ -525,7 +525,7 @@ mod test {
             ))
             .add_system_set(
                 State::on_enter_set(MyState::S2)
-                    .with_system(|mut r: ResMut<'_, Vec<&'static str>>| r.push("enter S2")),
+                    .with_system(|mut r: &ResMut<'_, Vec<&'static str>>| r.push("enter S2")),
             )
             .add_system_set(State::on_update_set(MyState::S2).with_system(
                 |mut r: ResMut<'_, Vec<&'static str>>, mut s: ResMut<'_, State<MyState>>| {
@@ -535,21 +535,21 @@ mod test {
             ))
             .add_system_set(
                 State::on_exit_set(MyState::S2)
-                    .with_system(|mut r: ResMut<'_, Vec<&'static str>>| r.push("exit S2")),
+                    .with_system(|mut r: &ResMut<'_, Vec<&'static str>>| r.push("exit S2")),
             )
             .add_system_set(
                 State::on_enter_set(MyState::S3)
-                    .with_system(|mut r: ResMut<'_, Vec<&'static str>>| r.push("enter S3")),
+                    .with_system(|mut r: &ResMut<'_, Vec<&'static str>>| r.push("enter S3")),
             )
             .add_system_set(State::on_update_set(MyState::S3).with_system(
-                |mut r: ResMut<'_, Vec<&'static str>>, mut s: ResMut<'_, State<MyState>>| {
+                |mut r: &ResMut<'_, Vec<&'static str>>, mut s: &ResMut<'_, State<MyState>>| {
                     r.push("update S3");
                     s.overwrite_push(MyState::S4).unwrap();
                 },
             ))
             .add_system_set(
                 State::on_pause_set(MyState::S3)
-                    .with_system(|mut r: ResMut<'_, Vec<&'static str>>| r.push("pause S3")),
+                    .with_system(|mut r: &ResMut<'_, Vec<&'static str>>| r.push("pause S3")),
             )
             .add_system_set(State::on_update_set(MyState::S4).with_system(
                 |mut r: ResMut<'_, Vec<&'static str>>, mut s: ResMut<'_, State<MyState>>| {
@@ -557,12 +557,16 @@ mod test {
                     s.overwrite_push(MyState::S5).unwrap();
                 },
             ))
-            .add_system_set(State::on_inactive_update_set(MyState::S4).with_system(
-                (|mut r: ResMut<'_, Vec<&'static str>>| r.push("inactive S4")).label("inactive s4"),
-            ))
+            .add_system_set(
+                State::on_inactive_update_set(MyState::S4).with_system(
+                    (|mut r: &ResMut<'_, Vec<&'static str>>| r.push("inactive S4"))
+                        .label("inactive s4"),
+                ),
+            )
             .add_system_set(
                 State::on_update_set(MyState::S5).with_system(
-                    (|mut r: ResMut<'_, Vec<&'static str>>, mut s: ResMut<'_, State<MyState>>| {
+                    (|mut r: &ResMut<'_, Vec<&'static str>>,
+                      mut s: &ResMut<'_, State<MyState>>| {
                         r.push("update S5");
                         s.overwrite_push(MyState::S6).unwrap();
                     })

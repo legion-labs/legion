@@ -134,12 +134,12 @@ mod tests {
         let mut world = World::new();
 
         fn removal(
-            mut commands: Commands<'_, '_>,
-            query: Query<'_, '_, Entity, With<Foo>>,
-            mut counter: ResMut<'_, usize>,
+            mut commands: &Commands<'_, '_>,
+            query: &Query<'_, '_, Entity, With<Foo>>,
+            mut counter: &ResMut<'_, usize>,
         ) {
             for entity in query.iter() {
-                *counter += 1;
+                **counter += 1;
                 commands.entity(entity).remove::<Foo>();
             }
         }
@@ -161,11 +161,11 @@ mod tests {
 
     #[test]
     fn update_archetype_for_exclusive_system_coerced() {
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        fn spawn_entity(mut commands: &crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo(0.0));
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: &Query<'_, '_, &Foo>, mut res: &ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 

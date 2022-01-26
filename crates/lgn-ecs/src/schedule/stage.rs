@@ -985,8 +985,8 @@ mod tests {
         move |world| world.get_resource_mut::<Vec<usize>>().unwrap().push(tag)
     }
 
-    fn make_parallel(tag: usize) -> impl FnMut(ResMut<'_, Vec<usize>>) {
-        move |mut resource: ResMut<'_, Vec<usize>>| resource.push(tag)
+    fn make_parallel(tag: usize) -> impl FnMut(&ResMut<'_, Vec<usize>>) {
+        move |resource: &ResMut<'_, Vec<usize>>| (*resource).push(tag)
     }
 
     fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
@@ -1522,7 +1522,7 @@ mod tests {
 
         // Piping criteria.
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
-        fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
+        fn eot_piped(input: In<ShouldRun>, has_ran: &Local<'_, bool>) -> ShouldRun {
             if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = input.0 {
                 every_other_time(has_ran)
             } else {
