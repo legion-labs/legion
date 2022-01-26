@@ -6,23 +6,22 @@ use lgn_graphics_api::{
     BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
     Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage,
     Pipeline, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
-    SampleCount, StencilOp, StoreOp, VertexLayout,
+    SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
+    VertexLayoutBuffer,
 };
+use lgn_math::Mat4;
 use lgn_transform::components::Transform;
 
 use crate::{
     cgen::{self, cgen_type::PickingData},
     components::{
-        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
-        StaticMesh,
+        CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, StaticMesh,
     },
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{GpuSafePool, OnFrameEventHandler},
+    resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
     RenderContext, RenderHandle, Renderer,
 };
-
-use lgn_math::Mat4;
 
 struct ReadbackBufferPool {
     device_context: DeviceContext,
@@ -145,8 +144,17 @@ impl PickingRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![],
-            buffers: vec![],
+            attributes: vec![VertexLayoutAttribute {
+                format: Format::R32_UINT,
+                buffer_index: 0,
+                location: 0,
+                byte_offset: 0,
+                gl_attribute_name: None,
+            }],
+            buffers: vec![VertexLayoutBuffer {
+                stride: 4,
+                rate: VertexAttributeRate::Instance,
+            }],
         };
 
         let depth_state = DepthState {
@@ -238,12 +246,13 @@ impl PickingRenderPass {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn render(
+    pub(crate) fn render(
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        va_table_adresses: &GpuVaTableForGpuInstance,
+        static_meshes: &[&StaticMesh],
         manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
         lights: &[(&LightComponent, &Transform)],
         light_picking_mesh: &StaticMesh,
@@ -277,12 +286,29 @@ impl PickingRenderPass {
             cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
             cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
+            cmd_buffer.bind_vertex_buffers(0, &[va_table_adresses.vertex_buffer_binding()]);
+
             let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
             picking_descriptor_set.set_picked_count(&self.count_rw_view);
             picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
             let picking_descriptor_set_handle =
                 render_context.write_descriptor_set(&picking_descriptor_set);
             cmd_buffer.bind_descriptor_set_handle(picking_descriptor_set_handle);
+
+            let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+            push_constant_data.set_picking_distance(1.0.into());
+            push_constant_data.set_use_gpu_pipeline(1.into());
+
+            cmd_buffer.push_constant(&push_constant_data);
+
+            for (_index, static_mesh) in static_meshes.iter().enumerate() {
+                cmd_buffer.draw_instanced(
+                    static_mesh.num_vertices,
+                    0,
+                    1,
+                    static_mesh.gpu_instance_id,
+                );
+            }
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
@@ -309,19 +335,6 @@ impl PickingRenderPass {
                         &cmd_buffer,
                     );
                 }
-            }
-
-            for (_index, (static_mesh, _picked)) in static_meshes.iter().enumerate() {
-                let picking_distance = 1.0;
-                let custom_world = Mat4::IDENTITY;
-
-                render_mesh(
-                    &custom_world,
-                    None,
-                    picking_distance,
-                    static_mesh,
-                    &cmd_buffer,
-                );
             }
 
             for (light, transform) in lights {
@@ -439,9 +452,7 @@ fn render_mesh(
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data.set_picking_distance(picking_distance.into());
-    push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
-    push_constant_data.set_world_offset(static_mesh.world_offset.into());
+    push_constant_data.set_vertex_offset(static_mesh.vertex_buffer_va.into());
     push_constant_data.set_picking_id(
         if let Some(id) = picking_id {
             id
@@ -451,6 +462,7 @@ fn render_mesh(
         .into(),
     );
     push_constant_data.set_picking_distance(picking_distance.into());
+    push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 

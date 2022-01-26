@@ -11,9 +11,7 @@ use lgn_transform::prelude::Transform;
 
 use crate::{
     cgen,
-    components::{
-        CameraComponent, ManipulatorComponent, PickedComponent, RenderSurface, StaticMesh,
-    },
+    components::{CameraComponent, ManipulatorComponent, RenderSurface, StaticMesh},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
@@ -22,7 +20,7 @@ use crate::{
 };
 
 pub struct DebugRenderPass {
-    _solid_pso_depth: Pipeline,
+    solid_pso_depth: Pipeline,
     wire_pso_depth: Pipeline,
     solid_pso_nodepth: Pipeline,
     _wire_pso_nodepth: Pipeline,
@@ -47,7 +45,7 @@ impl DebugRenderPass {
         let depth_state_enabled = DepthState {
             depth_test_enable: true,
             depth_write_enable: true,
-            depth_compare_op: CompareOp::Less,
+            depth_compare_op: CompareOp::LessOrEqual,
             stencil_test_enable: false,
             stencil_read_mask: 0xFF,
             stencil_write_mask: 0xFF,
@@ -146,7 +144,7 @@ impl DebugRenderPass {
             .unwrap();
 
         Self {
-            _solid_pso_depth: solid_pso_depth,
+            solid_pso_depth,
             wire_pso_depth,
             solid_pso_nodepth,
             _wire_pso_nodepth: wire_pso_nodepth,
@@ -172,29 +170,36 @@ impl DebugRenderPass {
         );
     }
 
-    pub fn render_aabbs(
+    pub fn render_picked(
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
+        picked_meshes: &[(&StaticMesh, &Transform)],
         default_meshes: &DefaultMeshes,
     ) {
-        cmd_buffer.bind_pipeline(&self.wire_pso_depth);
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
-        for (_index, (static_mesh_component, transform, picked)) in static_meshes.iter().enumerate()
-        {
-            if picked.is_some() {
-                render_aabb_for_mesh(
-                    static_mesh_component.mesh_id as u32,
-                    transform,
-                    cmd_buffer,
-                    default_meshes,
-                );
-            }
+        for (_index, (static_mesh_component, transform)) in picked_meshes.iter().enumerate() {
+            cmd_buffer.bind_pipeline(&self.wire_pso_depth);
+            render_aabb_for_mesh(
+                static_mesh_component.mesh_id as u32,
+                transform,
+                cmd_buffer,
+                default_meshes,
+            );
+
+            cmd_buffer.bind_pipeline(&self.solid_pso_depth);
+            render_mesh(
+                static_mesh_component.mesh_id as u32,
+                &transform.compute_matrix(),
+                Vec4::new(0.0, 0.5, 0.5, 0.75),
+                cmd_buffer,
+                default_meshes,
+            );
         }
     }
+
     #[allow(clippy::too_many_arguments)]
     pub fn render_debug_display(
         &self,
@@ -222,44 +227,19 @@ impl DebugRenderPass {
         });
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn render(
+    fn render_manipulators(
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, &Transform, Option<&PickedComponent>)],
         manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
-        camera: &CameraComponent,
         default_meshes: &DefaultMeshes,
-        debug_display: &mut DebugDisplay,
+        camera: &CameraComponent,
     ) {
-        cmd_buffer.begin_render_pass(
-            &[ColorRenderTargetBinding {
-                texture_view: render_surface.render_target_view(),
-                load_op: LoadOp::Load,
-                store_op: StoreOp::Store,
-                clear_value: ColorClearValue::default(),
-            }],
-            &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_texture_view(),
-                depth_load_op: LoadOp::Load,
-                stencil_load_op: LoadOp::DontCare,
-                depth_store_op: StoreOp::Store,
-                stencil_store_op: StoreOp::DontCare,
-                clear_value: DepthStencilClearValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            }),
-        );
-
         let (view_matrix, projection_matrix) = camera.build_view_projection(
             render_surface.extents().width() as f32,
             render_surface.extents().height() as f32,
         );
-
-        self.render_ground_plane(cmd_buffer, render_context, default_meshes);
 
         for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
         {
@@ -297,10 +277,54 @@ impl DebugRenderPass {
                 );
             }
         }
+    }
 
-        self.render_aabbs(render_context, cmd_buffer, static_meshes, default_meshes);
+    #[allow(clippy::too_many_arguments)]
+    pub fn render(
+        &self,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_surface: &mut RenderSurface,
+        picked_meshes: &[(&StaticMesh, &Transform)],
+        manipulator_meshes: &[(&StaticMesh, &Transform, &ManipulatorComponent)],
+        camera: &CameraComponent,
+        default_meshes: &DefaultMeshes,
+        debug_display: &mut DebugDisplay,
+    ) {
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: render_surface.render_target_view(),
+                load_op: LoadOp::Load,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue::default(),
+            }],
+            &Some(DepthStencilRenderTargetBinding {
+                texture_view: render_surface.depth_stencil_texture_view(),
+                depth_load_op: LoadOp::Load,
+                stencil_load_op: LoadOp::DontCare,
+                depth_store_op: StoreOp::Store,
+                stencil_store_op: StoreOp::DontCare,
+                clear_value: DepthStencilClearValue {
+                    depth: 1.0,
+                    stencil: 0,
+                },
+            }),
+        );
+
+        self.render_ground_plane(cmd_buffer, render_context, default_meshes);
+
+        self.render_picked(render_context, cmd_buffer, picked_meshes, default_meshes);
 
         self.render_debug_display(render_context, cmd_buffer, debug_display, default_meshes);
+
+        self.render_manipulators(
+            render_context,
+            cmd_buffer,
+            render_surface,
+            manipulator_meshes,
+            default_meshes,
+            camera,
+        );
 
         cmd_buffer.end_render_pass();
     }

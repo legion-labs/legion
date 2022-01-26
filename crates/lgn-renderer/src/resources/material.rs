@@ -58,18 +58,14 @@ impl MaterialManager {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
         for mut material in updated_materials.iter_mut() {
             if material.gpu_offset() == u32::MAX {
-                let mut new_index = u32::MAX;
-                while new_index == u32::MAX {
-                    if let Some(index) = index_block.acquire_index() {
-                        new_index = index;
-                    } else {
-                        inner.material_indexes.release_index_block(index_block);
-                        index_block = inner.material_indexes.acquire_index_block();
-                    }
-                }
+                let (new_index_block, new_material_id) =
+                    inner.material_indexes.acquire_index(index_block);
+                index_block = new_index_block;
 
-                let new_offset = inner.static_material_data.ensure_index_allocated(new_index);
-                material.set_gpu_material_index_offset(new_index, new_offset);
+                let new_offset = inner
+                    .static_material_data
+                    .ensure_index_allocated(new_material_id);
+                material.set_gpu_material_index_offset(new_material_id, new_offset);
             }
             material.update_gpu_data(&mut updater);
         }

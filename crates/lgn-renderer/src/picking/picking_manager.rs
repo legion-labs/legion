@@ -306,6 +306,8 @@ impl PickingManager {
 
                 if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
                     picked_entities.push(block.entity_id_for_picking_id(picking_id));
+                } else {
+                    panic!();
                 }
             }
             let mut manipulator_picked = false;

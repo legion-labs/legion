@@ -1,7 +1,17 @@
 #include "crate://lgn-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/entity_transforms.hlsl"
+#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
+#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
+#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
+#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
-#include "crate://lgn-renderer/gpu/include/brdf.hlsl"
+#include "crate://lgn-renderer/gpu/include/brdf.hsh"
+
+struct GpuPipelineVertexIn
+{
+    uint vertexId: SV_VertexID;
+    uint instanceId: SV_InstanceID;
+    uint va_table_address: INSTANCE0;
+};
 
 struct VertexIn {
     float4 pos : POSITION;
@@ -14,20 +24,24 @@ struct VertexOut {
     float4 hpos : SV_POSITION;
     float3 normal : NORMAL;
     float3 pos : POSITION;
+    nointerpolation uint va_table_address: INSTANCE0;
 };
 
-VertexOut main_vs(uint vertexId: SV_VertexID) {
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
+VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
+    GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
+
+    VertexIn vertex_in = static_buffer.Load<VertexIn>(addresses.vertex_buffer_va + vertexIn.vertexId * 56);
     VertexOut vertex_out;
 
-    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.world_offset);
+    GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
     float4x4 world = transpose(transform.world);
 
     float4 pos_view_relative = mul(view_data.view, mul(world, vertex_in.pos));
+    
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-
     vertex_out.normal = mul(view_data.view, mul(world, vertex_in.normal)).xyz;
+    vertex_out.va_table_address = vertexIn.va_table_address;
 
     return vertex_out;
 }
@@ -92,9 +106,12 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    MaterialData material = static_buffer.Load<MaterialData>(push_constant.material_offset);
+    GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertex_out.va_table_address);
 
-    float3 albedo = lerp(material.base_albedo.xyz, push_constant.color.xyz, push_constant.color_blend); 
+    MaterialData material = static_buffer.Load<MaterialData>(addresses.material_data_va);
+    GpuInstanceColor instance_color = static_buffer.Load<GpuInstanceColor>(addresses.instance_color_va);
+
+    float3 albedo = lerp(material.base_albedo.xyz, instance_color.color.xyz, instance_color.color_blend); 
 
     float3 ambient_color = albedo * lighting_data.ambient_reflection;
     float3 diffuse_color = lighting_data.diffuse_reflection.xxx;
@@ -128,11 +145,5 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         color += spec_color * lighting.specular;
     }
 
-    float4 result = float4(color, 1.0);
-    float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
-
-    if (push_constant.is_picked != 0)
-        result = result * 0.25f + picking_color * 0.75f;
-
-    return result;
+    return float4(color, 1.0);
 }

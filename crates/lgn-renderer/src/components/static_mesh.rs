@@ -8,12 +8,17 @@ use crate::resources::{DefaultMaterialType, DefaultMeshes};
 pub struct StaticMesh {
     pub mesh_id: usize,
     pub color: Color,
-    pub vertex_offset: u32,
     pub num_vertices: u32,
-    pub world_offset: u32,
-    pub material_offset: u32,
     pub picking_id: u32,
     pub material_type: DefaultMaterialType,
+
+    // GPU instance data id and static buffer offsets
+    pub gpu_instance_id: u32,
+    pub va_table_address: u32,
+    pub instance_color_va: u32,
+    pub world_transform_va: u32,
+    pub vertex_buffer_va: u32,
+    pub picking_data_va: u32,
 }
 
 impl StaticMesh {
@@ -27,12 +32,15 @@ impl StaticMesh {
         Self {
             mesh_id,
             color,
-            vertex_offset: default_meshes.mesh_offset_from_id(mesh_id as u32),
             num_vertices: default_meshes.mesh_from_id(mesh_id as u32).num_vertices() as u32,
-            world_offset: 0,
-            material_offset: 0,
             picking_id: 0,
             material_type,
+            gpu_instance_id: u32::MAX,
+            va_table_address: u32::MAX,
+            instance_color_va: u32::MAX,
+            world_transform_va: u32::MAX,
+            vertex_buffer_va: default_meshes.mesh_offset_from_id(mesh_id as u32),
+            picking_data_va: u32::MAX,
         }
     }
 }

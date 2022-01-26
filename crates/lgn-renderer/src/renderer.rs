@@ -16,7 +16,7 @@ use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
-    GpuSafePool, TransformStaticsBuffer, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
+    GpuSafePool, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
     UniformGPUDataUploadJobBlock,
 };
 use crate::{cgen, RenderContext, RenderHandle};
@@ -35,7 +35,6 @@ pub struct Renderer {
     descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     static_buffer: UnifiedStaticBuffer,
-    transforms_data: TransformStaticsBuffer,
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotLightsStaticBuffer,
@@ -82,11 +81,6 @@ impl Renderer {
         cgen::initialize(device_context);
 
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
-        let test_transform_data = TransformStaticsBuffer::new(UniformGPUData::<
-            cgen::cgen_type::EntityTransforms,
-        >::new(
-            &static_buffer, 64 * 1024
-        ));
 
         let omnidirectional_lights_data =
             OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
@@ -139,7 +133,6 @@ impl Renderer {
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 512, 64 * 1024),
             static_buffer,
-            transforms_data: test_transform_data,
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
@@ -175,14 +168,6 @@ impl Renderer {
     // TMP: change that.
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
-    }
-
-    pub fn acquire_transform_data(&mut self) -> TransformStaticsBuffer {
-        self.transforms_data.transfer()
-    }
-
-    pub fn release_transform_data(&mut self, test: TransformStaticsBuffer) {
-        self.transforms_data = test;
     }
 
     impl_static_buffer_accessor!(
@@ -395,7 +380,6 @@ impl Drop for Renderer {
         std::mem::drop(self.spotlights_data.take());
         std::mem::drop(self.directional_lights_data.take());
         std::mem::drop(self.omnidirectional_lights_data.take());
-        std::mem::drop(self.transforms_data.take());
 
         cgen::shutdown();
     }

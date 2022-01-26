@@ -12,7 +12,6 @@ use super::{ManipulatorManager, PickingManager};
 use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
-        StaticMesh,
     },
     CommandBufferLabel, RenderStage,
 };
@@ -36,13 +35,12 @@ impl Plugin for PickingPlugin {
         app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
         app.add_system_to_stage(CoreStage::PostUpdate, gather_window_resize);
 
-        app.add_system_to_stage(CoreStage::PostUpdate, static_meshes_added);
         app.add_system_to_stage(CoreStage::PostUpdate, lights_added);
 
         app.add_system_to_stage(
             RenderStage::Render,
             update_picking_components
-                .before(CommandBufferLabel::Generate)
+                .after(CommandBufferLabel::Generate)
                 .label(PickingSystemLabel::PickedComponent),
         );
 
@@ -96,34 +94,6 @@ fn gather_window_resize(
             window_resized_event.height,
         ));
     }
-}
-
-#[allow(clippy::type_complexity)]
-#[allow(clippy::needless_pass_by_value)]
-fn static_meshes_added(
-    picking_manager: Res<'_, PickingManager>,
-    mut query: Query<
-        '_,
-        '_,
-        (Entity, &mut StaticMesh),
-        (Added<StaticMesh>, Without<ManipulatorComponent>),
-    >,
-) {
-    let mut picking_block = picking_manager.acquire_picking_id_block();
-
-    for (entity, mut mesh) in query.iter_mut() {
-        mesh.picking_id = u32::MAX;
-        while mesh.picking_id == u32::MAX {
-            if let Some(picking_id) = picking_block.acquire_picking_id(entity) {
-                mesh.picking_id = picking_id;
-            } else {
-                picking_manager.release_picking_id_block(picking_block);
-                picking_block = picking_manager.acquire_picking_id_block();
-            }
-        }
-    }
-
-    picking_manager.release_picking_id_block(picking_block);
 }
 
 #[allow(clippy::type_complexity)]

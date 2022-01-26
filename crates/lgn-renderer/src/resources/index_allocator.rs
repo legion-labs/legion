@@ -92,7 +92,7 @@ impl IndexAllocator {
         inner.index_blocks[block_id as usize] = Some(block);
     }
 
-    pub fn release_index_ids(&mut self, indexes: &[u32]) {
+    pub fn release_index_ids(&self, indexes: &[u32]) {
         let inner = &mut *self.inner.lock().unwrap();
 
         for index in indexes {
@@ -104,5 +104,18 @@ impl IndexAllocator {
                 panic!();
             }
         }
+    }
+
+    pub fn acquire_index(&self, mut index_block: IndexBlock) -> (IndexBlock, u32) {
+        let mut new_index = u32::MAX;
+        while new_index == u32::MAX {
+            if let Some(index) = index_block.acquire_index() {
+                new_index = index;
+            } else {
+                self.release_index_block(index_block);
+                index_block = self.acquire_index_block();
+            }
+        }
+        (index_block, new_index)
     }
 }
