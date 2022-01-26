@@ -40,7 +40,7 @@ impl Config {
         let (build, project) =
             DataBuildOptions::new(buildindex, CompilerRegistryOptions::default())
                 .content_store(&ContentStoreAddr::from("."))
-                .open()
+                .open_with_project()
                 .await
                 .map_err(|e| e.to_string())?;
 

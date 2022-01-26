@@ -29,7 +29,7 @@ async fn invalid_project() {
     {
         let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(&project_dir)
+            .create_with_project(&project_dir)
             .await;
 
         assert!(
@@ -46,7 +46,7 @@ async fn invalid_project() {
 
         let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(project_dir)
+            .create_with_project(project_dir)
             .await;
 
         assert!(matches!(build, Err(Error::Project(_))), "{:?}", build);
@@ -71,7 +71,7 @@ async fn create() {
     {
         let _build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(project_dir)
+            .create_with_project(project_dir)
             .await
             .expect("valid data build index");
     }

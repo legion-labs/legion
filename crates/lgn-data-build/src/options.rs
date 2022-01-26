@@ -68,7 +68,7 @@ impl DataBuildOptions {
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub async fn open_or_create(
+    pub async fn open_or_create_with_project(
         self,
         project_dir: impl AsRef<Path>,
     ) -> Result<(DataBuild, Project), Error> {
@@ -85,7 +85,7 @@ impl DataBuildOptions {
     ///   [`DataBuildOptions::new()`].
     /// * The build index must point to an existing
     ///   [`lgn_data_offline::resource::Project`].
-    pub async fn open(self) -> Result<(DataBuild, Project), Error> {
+    pub async fn open_with_project(self) -> Result<(DataBuild, Project), Error> {
         DataBuild::open(self).await
     }
 
@@ -93,22 +93,34 @@ impl DataBuildOptions {
     ///
     /// `project_dir` must be either an absolute path or path relative to
     /// `buildindex_dir`.
-    pub async fn create(
+    pub async fn create_with_project(
         self,
         project_dir: impl AsRef<Path>,
     ) -> Result<(DataBuild, Project), Error> {
         DataBuild::new(self, project_dir.as_ref()).await
     }
 
-    pub async fn open_or_create_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+    /// Opens the existing build index.
+    ///
+    /// If the build index does not exist it creates one.
+    pub async fn open_or_create(self, project: &Project) -> Result<DataBuild, Error> {
         DataBuild::open_or_create_with_proj(self, project).await
     }
 
-    pub async fn open_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+    /// Opens existing build index.
+    ///
+    /// The following conditions need to be met to successfully open a build
+    /// index:
+    /// * [`ContentStore`](`lgn_content_store::ContentStore`) must exist under
+    ///   address set by [`DataBuildOptions::content_store()`].
+    /// * Build index must exist and be of a supported version provided by
+    ///   [`DataBuildOptions::new()`].
+    pub async fn open(self, project: &Project) -> Result<DataBuild, Error> {
         DataBuild::open_with_proj(self, project).await
     }
 
-    pub async fn create_with_proj(self, project: &Project) -> Result<DataBuild, Error> {
+    /// Create new build index for a specified project.
+    pub async fn create(self, project: &Project) -> Result<DataBuild, Error> {
         DataBuild::new_with_proj(self, project).await
     }
 }

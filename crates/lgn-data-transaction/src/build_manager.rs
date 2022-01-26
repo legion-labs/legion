@@ -24,7 +24,7 @@ impl BuildManager {
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create_with_proj(project).await?;
+        let build = options.open_or_create(project).await?;
         Ok(Self {
             build,
             compile_env: editor_env,

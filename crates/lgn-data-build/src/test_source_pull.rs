@@ -51,17 +51,17 @@ async fn no_dependencies() {
         ResourcePathId::from(id)
     };
 
-    let (mut build, mut project) =
+    let (mut build, project) =
         DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create(project_dir)
+            .create_with_project(project_dir)
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 1);
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 0);
 
     assert!(build.build_index.find_dependencies(&resource).is_some());
@@ -125,14 +125,14 @@ async fn with_dependency() {
         )
     };
 
-    let (mut build, mut project) =
+    let (mut build, project) =
         DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create(project_dir)
+            .create_with_project(project_dir)
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 2);
 
     let child_deps = build
@@ -147,7 +147,7 @@ async fn with_dependency() {
     assert_eq!(child_deps.len(), 0);
     assert_eq!(parent_deps.len(), 1);
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 0);
 }
 
@@ -201,16 +201,16 @@ async fn with_derived_dependency() {
             .unwrap();
     }
 
-    let (mut build, mut project) =
+    let (mut build, project) =
         DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create(project_dir)
+            .create_with_project(project_dir)
             .await
             .expect("to create index");
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 3);
 
-    let updated_count = build.source_pull(&mut project).unwrap();
+    let updated_count = build.source_pull(&project).unwrap();
     assert_eq!(updated_count, 0);
 }

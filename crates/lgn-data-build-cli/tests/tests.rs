@@ -67,15 +67,15 @@ async fn build_device() {
     };
 
     // create build index.
-    let (mut build, mut project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new(
         &buildindex_dir,
         CompilerRegistryOptions::from_dir(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
-    .create(project_dir)
+    .create_with_project(project_dir)
     .await
     .expect("new build index");
-    build.source_pull(&mut project).expect("successful pull");
+    build.source_pull(&project).expect("successful pull");
 
     // the transformation below will reverse source resource's content.
     let derived = ResourcePathId::from(source_id).push(refs_asset::RefsAsset::TYPE);
@@ -194,13 +194,13 @@ async fn no_intermediate_resource() {
                 .await
                 .expect("adding the resource")
         };
-        let (mut build, mut project) =
+        let (mut build, project) =
             DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
                 .content_store(&ContentStoreAddr::from(cas.clone()))
-                .create(project_dir)
+                .create_with_project(project_dir)
                 .await
                 .expect("new build index");
-        build.source_pull(&mut project).expect("successful pull");
+        build.source_pull(&project).expect("successful pull");
 
         resource_id
     };
@@ -279,13 +279,13 @@ async fn with_intermediate_resource() {
                 .await
                 .expect("adding the resource")
         };
-        let (mut build, mut project) =
+        let (mut build, project) =
             DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
                 .content_store(&ContentStoreAddr::from(cas.clone()))
-                .create(project_dir)
+                .create_with_project(project_dir)
                 .await
                 .expect("new build index");
-        build.source_pull(&mut project).expect("successful pull");
+        build.source_pull(&project).expect("successful pull");
 
         resource_id
     };

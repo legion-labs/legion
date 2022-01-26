@@ -52,7 +52,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     let (mut build, project) =
         DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
             .content_store(&asset_store_path)
-            .open_or_create(project_dir)
+            .open_or_create_with_project(project_dir)
             .await
             .expect("new build index");
 

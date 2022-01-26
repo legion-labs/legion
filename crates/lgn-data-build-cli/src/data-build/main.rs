@@ -74,7 +74,7 @@ async fn main() -> Result<(), String> {
             let (mut build, project) =
                 DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
                     .content_store(&ContentStoreAddr::from("."))
-                    .create(project)
+                    .create_with_project(project)
                     .await
                     .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -114,7 +114,7 @@ async fn main() -> Result<(), String> {
 
             let (mut build, project) = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
-                .open()
+                .open_with_project()
                 .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 

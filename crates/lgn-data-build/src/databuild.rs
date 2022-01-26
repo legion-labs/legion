@@ -176,9 +176,9 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let project_dir = project.project_dir();
 
-        let projectindex_path = Project::root_to_index_path(project_dir);
-        let corrected_path =
-            BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
+        //let projectindex_path = Project::root_to_index_path(project_dir);
+        //let corrected_path =
+        //    BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
 
         let build_index = BuildIndex::create_new(
             &config.buildindex_dir,
@@ -415,11 +415,6 @@ impl DataBuild {
         manifest_file: Option<PathBuf>,
         env: &CompilationEnv,
     ) -> Result<Manifest, Error> {
-        let source = compile_path.source_resource();
-        //if !self.project.lock().unwrap().exists(source) {
-        //    return Err(Error::NotFound);
-        //}
-
         let (mut manifest, file) = {
             if let Some(manifest_file) = manifest_file {
                 if let Ok(file) = OpenOptions::new()

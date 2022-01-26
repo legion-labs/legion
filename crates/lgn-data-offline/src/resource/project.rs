@@ -3,7 +3,6 @@ use std::{
     fs::{self, File, OpenOptions},
     io::Seek,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use lgn_content_store::content_checksum_from_read;
