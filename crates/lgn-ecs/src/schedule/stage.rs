@@ -986,12 +986,12 @@ mod tests {
     }
 
     fn make_parallel(tag: usize) -> impl FnMut(&ResMut<'_, Vec<usize>>) {
-        move |resource: &ResMut<'_, Vec<usize>>| (*resource).push(tag)
+        move |resource: &ResMut<'_, Vec<usize>>| resource.push(tag)
     }
 
-    fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
-        *has_ran = !*has_ran;
-        if *has_ran {
+    fn every_other_time(mut has_ran: &Local<'_, bool>) -> ShouldRun {
+        **has_ran = !**has_ran;
+        if **has_ran {
             ShouldRun::Yes
         } else {
             ShouldRun::No
@@ -1650,8 +1650,8 @@ mod tests {
         }
 
         fn empty() {}
-        fn resource(_: ResMut<'_, usize>) {}
-        fn component(_: Query<'_, '_, &mut W<f32>>) {}
+        fn resource(_: &ResMut<'_, usize>) {}
+        fn component(_: &Query<'_, '_, &mut W<f32>>) {}
 
         let mut world = World::new();
 
@@ -2021,10 +2021,10 @@ mod tests {
     #[test]
     fn archetype_update_single_executor() {
         fn query_count_system(
-            mut entity_count: ResMut<'_, usize>,
-            query: Query<'_, '_, crate::entity::Entity>,
+            mut entity_count: &ResMut<'_, usize>,
+            query: &Query<'_, '_, crate::entity::Entity>,
         ) {
-            *entity_count = query.iter().count();
+            **entity_count = query.iter().count();
         }
 
         let mut world = World::new();
@@ -2043,10 +2043,10 @@ mod tests {
     #[test]
     fn archetype_update_parallel_executor() {
         fn query_count_system(
-            mut entity_count: ResMut<'_, usize>,
-            query: Query<'_, '_, crate::entity::Entity>,
+            mut entity_count: &ResMut<'_, usize>,
+            query: &Query<'_, '_, crate::entity::Entity>,
         ) {
-            *entity_count = query.iter().count();
+            **entity_count = query.iter().count();
         }
 
         let mut world = World::new();
@@ -2139,7 +2139,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        fn even_number_of_entities_critiera(query: &Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2147,11 +2147,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        fn spawn_entity(mut commands: &crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: &Query<'_, '_, &Foo>, mut res: &ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
@@ -2178,7 +2178,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        fn even_number_of_entities_criteria(query: &Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2186,11 +2186,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        fn spawn_entity(mut commands: &crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: &Query<'_, '_, &Foo>, mut res: &ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
@@ -2198,7 +2198,7 @@ mod tests {
         world.insert_resource(Vec::<usize>::new());
         let mut stage_spawn = SystemStage::parallel().with_system(spawn_entity);
         let mut stage_count = SystemStage::parallel()
-            .with_run_criteria(even_number_of_entities_critiera)
+            .with_run_criteria(even_number_of_entities_criteria)
             .with_system(count_entities);
         stage_count.run(&mut world);
         stage_spawn.run(&mut world);
