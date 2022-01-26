@@ -66,12 +66,11 @@ fn clean_folders(project_dir: &str) {
     } else {
         let mut delete = |sub_path, as_dir| {
             path.push(sub_path);
-            let remove: fn(_) -> std::result::Result<_, _>;
-            if as_dir {
-                remove = fs::remove_dir_all;
+            let remove = if as_dir {
+                fs::remove_dir_all
             } else {
-                remove = fs::remove_file;
-            }
+                fs::remove_file
+            };
             remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
             path.pop();
         };

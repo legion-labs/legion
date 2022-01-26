@@ -54,22 +54,23 @@ impl UnifiedStaticBuffer {
         let ro_view_def = BufferViewDef::as_byte_address_buffer(buffer.definition(), true);
         let read_only_view = BufferView::from_buffer(&buffer, &ro_view_def);
 
-        let mut allocation = None;
-        let mut binding_manager = None;
-        if sparse_binding {
-            binding_manager = Some(SparseBindingManager::new());
+        let (allocation, binding_manager) = if sparse_binding {
+            (None, Some(SparseBindingManager::new()))
         } else {
             let alloc_def = MemoryAllocationDef {
                 memory_usage: MemoryUsage::GpuOnly,
                 always_mapped: false,
             };
 
-            allocation = Some(MemoryAllocation::from_buffer(
-                device_context,
-                &buffer,
-                &alloc_def,
-            ));
-        }
+            (
+                Some(MemoryAllocation::from_buffer(
+                    device_context,
+                    &buffer,
+                    &alloc_def,
+                )),
+                None,
+            )
+        };
 
         Self {
             inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {

@@ -4,7 +4,6 @@ use lgn_tracing::span_fn;
 
 use crate::resources::DefaultMeshes;
 #[derive(Component)]
-
 pub struct StaticMesh {
     pub mesh_id: usize,
     pub color: Color,

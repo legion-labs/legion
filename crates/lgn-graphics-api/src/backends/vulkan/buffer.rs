@@ -11,17 +11,17 @@ pub(crate) struct VulkanBuffer {
 impl VulkanBuffer {
     pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
         buffer_def.verify();
-        let mut allocation_size = buffer_def.size;
-
-        if buffer_def
+        let allocation_size = if buffer_def
             .usage_flags
             .intersects(ResourceUsage::AS_CONST_BUFFER)
         {
-            allocation_size = lgn_utils::memory::round_size_up_to_alignment_u64(
+            lgn_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
                 device_context.limits().min_uniform_buffer_offset_alignment,
-            );
-        }
+            )
+        } else {
+            buffer_def.size
+        };
 
         let mut usage_flags =
             super::internal::resource_type_buffer_usage_flags(buffer_def.usage_flags);
