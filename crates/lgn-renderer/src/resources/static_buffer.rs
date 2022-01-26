@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use lgn_core::Handle;
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,

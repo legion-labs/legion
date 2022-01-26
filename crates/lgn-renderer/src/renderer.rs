@@ -15,9 +15,8 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
-    GpuSafePool, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
-    UniformGPUDataUploadJobBlock,
+    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
+    TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::{cgen, RenderContext};
 
