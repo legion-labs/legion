@@ -46,7 +46,7 @@ struct GpuInstanceVATable {
 }
 
 struct EmptyPushConstants {
-    dummy: Uint1,
+    dummy: Float4,
 }
 
 #[DescriptorSet(frequency = 0)]
