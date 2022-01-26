@@ -110,6 +110,7 @@ warn = [
     "clippy::nonstandard_macro_braces",
     "clippy::path_buf_push_overwrite",
     "clippy::string_lit_as_bytes",
+    "clippy::suspicious_operation_groupings",
     "clippy::trailing_empty_array",
     "clippy::trivial_regex",
     "clippy::use_self",
