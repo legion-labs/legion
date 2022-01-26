@@ -4248,6 +4248,7 @@ dependencies = [
 name = "lgn-core"
 version = "0.1.0"
 dependencies = [
+ "bumpalo",
  "bytemuck",
  "instant",
  "lgn-app",
@@ -4756,6 +4757,7 @@ dependencies = [
  "crossbeam-channel 0.5.2",
  "instant",
  "lgn-app",
+ "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
  "lgn-renderer",

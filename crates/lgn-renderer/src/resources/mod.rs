@@ -1,9 +1,6 @@
 mod command_buffer_pool;
 pub(crate) use command_buffer_pool::*;
 
-mod cpu_pool;
-pub(crate) use cpu_pool::*;
-
 mod default_meshes;
 pub use default_meshes::*;
 
@@ -16,8 +13,8 @@ pub(crate) use gpu_pool::*;
 mod meta_cube_test;
 pub(crate) use meta_cube_test::*;
 
-mod pool_shared;
-pub(crate) use pool_shared::*;
+mod on_frame_event_handler;
+pub(crate) use on_frame_event_handler::*;
 
 mod range_allocator;
 pub(crate) use range_allocator::*;

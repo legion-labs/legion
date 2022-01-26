@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use lgn_core::Handle;
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
@@ -12,7 +13,7 @@ use lgn_graphics_api::{
 use lgn_tracing::span_fn;
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
-use crate::{cgen, RenderContext, RenderHandle};
+use crate::{cgen, RenderContext};
 
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,
@@ -253,7 +254,7 @@ impl<T> UniformGPUData<T> {
     }
 }
 
-pub type TransformStaticsBuffer = RenderHandle<UniformGPUData<cgen::cgen_type::EntityTransforms>>;
+pub type TransformStaticsBuffer = Handle<UniformGPUData<cgen::cgen_type::EntityTransforms>>;
 
 pub struct UniformGPUDataUploadJobBlock {
     upload_allocation: BufferAllocation,

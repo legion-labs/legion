@@ -4,12 +4,13 @@ use lgn_graphics_api::{
     DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter, GfxResult,
 };
 
+use lgn_core::Handle;
+
 use super::OnFrameEventHandler;
-use crate::RenderHandle;
 
 pub struct DescriptorPool {
     descriptor_heap: DescriptorHeap,
-    descriptor_heap_partition: RenderHandle<DescriptorHeapPartition>,
+    descriptor_heap_partition: Handle<DescriptorHeapPartition>,
 }
 
 impl DescriptorPool {
@@ -17,7 +18,7 @@ impl DescriptorPool {
         descriptor_heap: DescriptorHeap,
         heap_partition_def: &DescriptorHeapDef,
     ) -> Self {
-        let descriptor_heap_partition = RenderHandle::new(
+        let descriptor_heap_partition = Handle::new(
             descriptor_heap
                 .alloc_partition(true, heap_partition_def)
                 .unwrap(),
@@ -69,4 +70,4 @@ impl OnFrameEventHandler for DescriptorPool {
     fn on_end_frame(&mut self) {}
 }
 
-pub type DescriptorPoolHandle = RenderHandle<DescriptorPool>;
+pub type DescriptorPoolHandle = Handle<DescriptorPool>;

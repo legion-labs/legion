@@ -18,19 +18,15 @@ mod labels;
 pub use labels::*;
 
 mod renderer;
+use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
 use lgn_math::Vec2;
 pub use renderer::*;
-
-mod render_handle;
-pub use render_handle::*;
 
 mod render_context;
 pub use render_context::*;
 
 pub mod resources;
-
-mod memory;
 
 pub mod components;
 
@@ -247,6 +243,7 @@ fn init_manipulation_manager(
     manipulation_manager.initialize(commands, default_meshes, picking_manager);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
@@ -293,6 +290,7 @@ fn update_transform(
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
@@ -317,7 +315,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
@@ -467,15 +465,18 @@ fn render_update(
 
         // queue
         let sem = render_surface.acquire();
-        let graphics_queue = render_context.graphics_queue();
-        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
+        {
+            let graphics_queue = render_context.graphics_queue();
+            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
-        render_surface.present(&render_context);
+            render_surface.present(&render_context);
+        }
     }
-
-    debug_display.clear_display_lists();
+    debug_display.clear();
+    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.end_frame();
 }
