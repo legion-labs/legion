@@ -471,8 +471,6 @@ fn render_update(
 
             render_surface.present(&render_context);
         }
-
-    debug_display.clear_display_lists();
     }
     debug_display.clear();
     render_context.release_bump_allocator(&bump_allocator_pool);
