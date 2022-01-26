@@ -1,5 +1,6 @@
 use std::slice;
 
+use lgn_core::Handle;
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
@@ -19,7 +20,7 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{GpuSafePool, OnFrameEventHandler},
-    RenderContext, RenderHandle, Renderer,
+    RenderContext, Renderer,
 };
 
 use lgn_math::Mat4;
@@ -379,7 +380,7 @@ impl PickingRenderPass {
     fn copy_picking_results_to_readback(
         &mut self,
         cmd_buffer: &HLCommandBuffer<'_>,
-        readback: &RenderHandle<ReadbackBufferPool>,
+        readback: &Handle<ReadbackBufferPool>,
     ) {
         cmd_buffer.resource_barrier(
             &[

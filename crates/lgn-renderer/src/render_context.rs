@@ -1,3 +1,4 @@
+use lgn_core::{BumpAllocatorHandle, BumpAllocatorPool, Handle};
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
     DescriptorSetWriter, QueueType,
@@ -5,12 +6,11 @@ use lgn_graphics_api::{
 
 use crate::{
     hl_gfx_api::{HLCommandBuffer, HLQueue},
-    memory::BumpAllocatorHandle,
     resources::{CommandBufferPoolHandle, DescriptorPoolHandle, TransientBufferAllocator},
-    RenderHandle, Renderer,
+    Renderer,
 };
 
-pub(crate) type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
+pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,
@@ -24,7 +24,7 @@ pub struct RenderContext<'frame> {
 }
 
 impl<'frame> RenderContext<'frame> {
-    pub fn new(renderer: &'frame Renderer) -> Self {
+    pub fn new(renderer: &'frame Renderer, bump_allocator_pool: &'frame BumpAllocatorPool) -> Self {
         let heap_def = default_descriptor_heap_size();
 
         Self {
@@ -38,7 +38,7 @@ impl<'frame> RenderContext<'frame> {
                     1000,
                 ),
             ),
-            bump_allocator: renderer.acquire_bump_allocator(),
+            bump_allocator: bump_allocator_pool.acquire_bump_allocator(),
             frame_descriptor_set_handle: None,
             view_descriptor_set_handle: None,
         }
@@ -68,10 +68,9 @@ impl<'frame> RenderContext<'frame> {
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
     ) -> DescriptorSetWriter<'_> {
-        let bump = self.bump_allocator.bumpalo();
         if let Ok(writer) = self
             .descriptor_pool
-            .allocate_descriptor_set(descriptor_set_layout, bump)
+            .allocate_descriptor_set(descriptor_set_layout, &self.bump_allocator)
         {
             writer
         } else {
@@ -84,10 +83,9 @@ impl<'frame> RenderContext<'frame> {
         &self,
         descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
     ) -> DescriptorSetHandle {
-        let bump = self.bump_allocator.bumpalo();
         if let Ok(handle) = self
             .descriptor_pool
-            .write_descriptor_set(descriptor_set, bump)
+            .write_descriptor_set(descriptor_set, &self.bump_allocator)
         {
             handle
         } else {
@@ -118,6 +116,10 @@ impl<'frame> RenderContext<'frame> {
     pub fn set_view_descriptor_set_handle(&mut self, handle: DescriptorSetHandle) {
         self.view_descriptor_set_handle = Some(handle);
     }
+
+    pub fn release_bump_allocator(&mut self, bump_allocator_pool: &BumpAllocatorPool) {
+        bump_allocator_pool.release_bump_allocator(self.bump_allocator.transfer());
+    }
 }
 
 impl<'frame> Drop for RenderContext<'frame> {
@@ -129,9 +131,6 @@ impl<'frame> Drop for RenderContext<'frame> {
             .release_descriptor_pool(self.descriptor_pool.transfer());
 
         self.transient_buffer_allocator.take();
-
-        self.renderer
-            .release_bump_allocator(self.bump_allocator.transfer());
     }
 }
 

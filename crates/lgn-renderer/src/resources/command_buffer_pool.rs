@@ -1,11 +1,11 @@
 use std::cell::{Cell, RefCell};
 
+use lgn_core::Handle;
 use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
-use super::OnFrameEventHandler;
-use crate::RenderHandle;
+use super::on_frame_event_handler::OnFrameEventHandler;
 
-pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
+pub type CommandBufferHandle = Handle<CommandBuffer>;
 
 pub struct CommandBufferPool {
     command_pool: CommandPool,
@@ -70,4 +70,4 @@ impl OnFrameEventHandler for CommandBufferPool {
     }
 }
 
-pub type CommandBufferPoolHandle = RenderHandle<CommandBufferPool>;
+pub type CommandBufferPoolHandle = Handle<CommandBufferPool>;
