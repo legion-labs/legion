@@ -21,9 +21,13 @@ impl TelemetryLayer {
     pub(crate) fn setup() {
         static INIT_RESULT: Lazy<Result<(), TryInitError>> = Lazy::new(|| {
             // get default filters
-            let default_filter = format!("{}", ::tracing::Level::INFO);
-            let filter_layer = EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new(&default_filter))
+            let env_filter_layer = EnvFilter::try_from_default_env()
+                .or_else(|_| {
+                    EnvFilter::try_new(format!(
+                        "{},tokio=trace,runtime=trace",
+                        ::tracing::Level::INFO
+                    ))
+                })
                 .unwrap();
 
             // spawn the console server in the background,
@@ -34,7 +38,7 @@ impl TelemetryLayer {
             let lgn_telemetry_layer = TelemetryLayer::default();
 
             tracing_subscriber::registry()
-                .with(filter_layer)
+                .with(env_filter_layer)
                 .with(console_layer)
                 .with(lgn_telemetry_layer)
                 .try_init()
