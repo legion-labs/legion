@@ -1,4 +1,5 @@
 use curl::easy::Easy;
+use offline_data::Script;
 use std::{
     env::temp_dir,
     ffi::OsString,
@@ -99,9 +100,16 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resources.load_sync::<offline_data::Script>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
-    let runtime_script = get_compiled_script(&context.source.resource_id(), &resource);
-
+    let runtime_script;
+    if resource.script.contains("Mun script") {
+        runtime_script = get_compiled_script(&context.source.resource_id(), &resource);
+    } else {
+        runtime_script = runtime_data::Script {
+			compiled_script: resource.script.as_bytes();
+		}
+    }
     let result_buffer = bincode::serialize(&runtime_script).unwrap();
+
     let asset = context.store(&result_buffer, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {

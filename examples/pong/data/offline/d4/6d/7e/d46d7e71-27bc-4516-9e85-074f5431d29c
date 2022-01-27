@@ -1,3 +1,4 @@
 {
+  "script_type": 2,
   "script": "pub fn entry() {\n            //print(\"Hello world!\");\n        }\n        \n        pub fn arg() -> i64 {\n            10\n        }\n        \n        pub fn fibonacci(n: i64) -> i64 {\n            if n <= 1 {\n                n\n            } else {\n                fibonacci(n - 1) + fibonacci(n - 2)\n            }\n        }"
 }

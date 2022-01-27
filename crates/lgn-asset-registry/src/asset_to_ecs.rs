@@ -16,7 +16,7 @@ use crate::asset_entities::AssetToEntityMap;
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceTypeAndId,
     handle: &HandleUntyped,
-    registry: &ResMut<'_, Arc<AssetRegistry>>,
+    registry: &Res<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
     default_meshes: &Res<'_, DefaultMeshes>,
@@ -30,6 +30,7 @@ where
                 commands,
                 &asset,
                 asset_id,
+                registry,
                 asset_to_entity_map,
                 default_meshes,
             );
@@ -63,6 +64,7 @@ pub(crate) trait AssetToECS {
         _commands: &mut Commands<'_, '_>,
         _asset: &Self,
         _asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -75,6 +77,7 @@ impl AssetToECS for runtime_data::Entity {
         commands: &mut Commands<'_, '_>,
         runtime_entity: &Self,
         asset_id: &ResourceTypeAndId,
+        registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -104,6 +107,32 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
                 entity.insert(script.clone());
+                /*if script.script.is_none() {
+                    continue;
+                }
+                let payload = match script.script_type {
+                    runtime_data::ScriptType::Mun => {
+                        ECSScriptPayload::LibPath(match &script.payload {
+                            runtime_data::ScriptPayload::LibPath(path) => path.clone(),
+                            _ => panic!("Bad payload for LibPath!"),
+                        })
+                    }
+                    runtime_data::ScriptType::Rune | runtime_data::ScriptType::Rhai => {
+                        let script_ref = registry
+                            .get::<runtime_data::Script>(script.script.as_ref().unwrap().id());
+                        ECSScriptPayload::ContainedScript(
+                            std::str::from_utf8(&script_ref.unwrap().data)
+                                .unwrap()
+                                .to_string(),
+                        )
+                    }
+                };
+                entity.insert(ECSScriptComponent {
+                    script_type: unsafe { std::mem::transmute(script.script_type.clone()) },
+                    input_values: script.input_values.clone(),
+                    entry_fn: script.entry_fn.clone(),
+                    payload,
+                });*/
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                 entity.insert(visual.clone());
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
@@ -150,6 +179,7 @@ impl AssetToECS for runtime_data::Instance {
         commands: &mut Commands<'_, '_>,
         _instance: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -168,12 +198,15 @@ impl AssetToECS for runtime_data::Mesh {}
 
 impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {}
 
+impl AssetToECS for runtime_data::Script {}
+
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         instance: &Self,
         asset_id: &ResourceTypeAndId,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
