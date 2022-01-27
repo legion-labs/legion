@@ -23,6 +23,10 @@ vsclippy = "run -q --message-format=json -p monorepo -- clippy"
 
 ################################################################################
 
+# enable support for tokio's console
+[build]
+rustflags = ["--cfg", "tokio_unstable"]
+
 # To be set if necesseary to enable sanitizers
 #[build]
 #rustflags = ["-C", "link-args=-fsanitize=address"]
