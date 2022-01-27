@@ -75,7 +75,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut app = App::new();
+    let mut app = App::default();
 
     app.add_plugin(CorePlugin::default())
         .add_plugin(RendererPlugin::new(args.egui, !args.snapshot))

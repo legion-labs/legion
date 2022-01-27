@@ -90,7 +90,9 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    App::new()
+    let enable_tokio_console_server = true;
+
+    App::new(enable_tokio_console_server)
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
