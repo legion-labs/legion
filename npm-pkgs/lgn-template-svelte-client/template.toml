@@ -1,0 +1,42 @@
+license = "MIT"
+
+[files]
+files = []
+directories = [
+    "src",
+    "src/actions",
+    "src/api",
+    "src/components",
+    "src/lib",
+    "src/stores",
+    "src/pages",
+    "tests",
+]
+templates = [
+    "package.json",
+    ".eslintignore",
+    ".eslintrc.cjs",
+    ".gitignore",
+    ".prettierignore",
+    ".prettierrc",
+    "jest.config.cjs",
+    "postcss.config.cjs",
+    "svelte.config.js",
+    "tailwind.config.cjs",
+    "tsconfig.json",
+    "src/index.ts",
+    "src/App.svelte",
+    "src/actions/.gitkeep",
+    "src/api/.gitkeep",
+    "src/components/.gitkeep",
+    "src/lib/.gitkeep",
+    "src/stores/.gitkeep",
+    "src/pages/Home.svelte",
+    "tests/index.test.ts",
+    "tests/setup.ts",
+    "index.html",
+    "vite.config.js",
+]
+
+[config]
+version = "0.1.0"

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "jsx": "preserve",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "lib": ["esnext", "dom"],
+    "types": ["svelte", "jest", "vite/client", "@lgn/frontend/src/types/tauri"],
+    "baseUrl": ".",
+    "paths": {
+      "@/resources/*": ["tests/resources/*"],
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [
+    // Source
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.svelte",
+    // Tests
+    "tests/**/*.ts"
+  ]
+}
