@@ -146,7 +146,10 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_transform.before(PrepareLabel::UpdateInstanceIds));
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_transform.before(PrepareLabel::UpdateInstanceIds),
+        );
         app.add_system_to_stage(
             RenderStage::Prepare,
             update_materials.before(PrepareLabel::UpdateInstanceIds),
