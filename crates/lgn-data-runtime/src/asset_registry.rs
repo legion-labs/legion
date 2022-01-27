@@ -345,7 +345,7 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Ref<'_, T>> {
+    pub(crate) fn get<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Ref<'_, T>> {
         let inner = self.read_inner();
 
         if let Some(asset) = inner.detach().assets.get(&id) {

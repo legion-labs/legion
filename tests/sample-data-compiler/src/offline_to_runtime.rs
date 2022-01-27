@@ -182,7 +182,7 @@ impl FromOffline<offline_data::ScriptComponent> for runtime_data::ScriptComponen
     fn from_offline(offline: &offline_data::ScriptComponent) -> Self {
         let payload;
         match offline.script_type {
-            ScriptType::Rune => {
+            ScriptType::Mun => {
                 // FIXME: This is a horrible hack to workaround Mun currently not supporting loading a .munlib from a memory buffer.
                 // We load instead from the temp folder where the Mun lib was built.
                 // Please note that the CAS still contains the Mun lib, but we don't know its path here.

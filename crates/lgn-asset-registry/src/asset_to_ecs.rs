@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lgn_core::Name;
-use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId, Handle};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
@@ -118,8 +118,11 @@ impl AssetToECS for runtime_data::Entity {
                         })
                     }
                     runtime_data::ScriptType::Rune | runtime_data::ScriptType::Rhai => {
-                        let script_ref = registry
-                            .get::<runtime_data::Script>(script.script.as_ref().unwrap().id());
+                        let script_handle: Handle<runtime_data::Script> = registry
+                            .get_untyped(script.script.as_ref().unwrap().id())
+                            .unwrap()
+                            .into();
+                        let script_ref = script_handle.get(registry);
                         ECSScriptPayload::ContainedScript(
                             std::str::from_utf8(&script_ref.unwrap().data)
                                 .unwrap()
@@ -206,7 +209,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         instance: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
@@ -247,6 +250,7 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         commands: &mut Commands<'_, '_>,
         entity: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {

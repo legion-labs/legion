@@ -147,7 +147,7 @@ impl ScriptingPlugin {
                 let arg = i64::from_str(&script.input_values[0]).unwrap();
 
                 let args = vec![arg.to_value().unwrap()];
-                let fn_name = &["fib"];
+                let fn_name = &[script.entry_fn.as_str()];
                 let hashed_fn_name = rune::Hash::type_hash(fn_name);
 
                 let output = runtimes
