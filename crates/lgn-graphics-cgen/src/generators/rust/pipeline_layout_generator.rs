@@ -129,20 +129,23 @@ fn generate_rust_pipeline_layout(
         // fn initialize
         {
             let mut writer = writer.add_block(
-                &["#[allow(unsafe_code)]", "pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {"],
+                &[
+                    "#[allow(unsafe_code)]",
+                    "pub fn initialize(pipeline_layout: &RootSignature) {",
+                ],
                 &["}"],
             );
-            writer.add_line("unsafe { ");
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line(format!(
-                    "let push_constant_def = Some({}::def());",
-                    ty.name()
-                ));
-            } else {
-                writer.add_line("let push_constant_def = None;");
-            };
-            writer.add_lines(&["PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));", "}"]);
+            // writer.add_line("unsafe { ");
+            // if let Some(ty_handle) = pipeline_layout.push_constant() {
+            //     let ty = ty_handle.get(ctx.model);
+            //     writer.add_line(format!(
+            //         "let push_constant_def = Some({}::def());",
+            //         ty.name()
+            //     ));
+            // } else {
+            //     writer.add_line("let push_constant_def = None;");
+            // };
+            writer.add_line("unsafe{ PIPELINE_LAYOUT = Some(pipeline_layout.clone()) };");
         }
         writer.new_line();
 
@@ -152,6 +155,10 @@ fn generate_rust_pipeline_layout(
                 writer.add_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
             writer.add_line("unsafe{ PIPELINE_LAYOUT = None; }");
         }
+        writer.new_line();
+
+        // impl: def
+        writer.add_line("pub fn def() -> &'static CGenPipelineLayoutDef { &PIPELINE_LAYOUT_DEF }");
         writer.new_line();
 
         // fn root_signature

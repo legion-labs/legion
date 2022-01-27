@@ -67,4 +67,34 @@ impl ShaderManager {
             },
         ])
     }
+
+    #[span_fn]
+    pub fn prepare_cs(&self, shader_path: &str) -> Shader {
+        let shader_build_result = self
+            .shader_compiler
+            .compile(&CompileParams {
+                shader_source: ShaderSource::Path(shader_path.to_string()),
+                global_defines: Vec::new(),
+                entry_points: vec![EntryPoint {
+                    defines: Vec::new(),
+                    name: "main_cs".to_owned(),
+                    target_profile: TargetProfile::Compute,
+                }],
+            })
+            .unwrap();
+
+        let compute_shader_module = self
+            .device_context
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
+
+        self.device_context.create_shader(vec![ShaderStageDef {
+            entry_point: "main_cs".to_owned(),
+            shader_stage: ShaderStageFlags::COMPUTE,
+            shader_module: compute_shader_module,
+        }])
+    }
 }

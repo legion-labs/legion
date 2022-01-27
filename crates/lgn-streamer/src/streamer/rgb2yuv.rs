@@ -102,7 +102,7 @@ impl RgbToYuvConverter {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader = shader_manager.prepare_vs_ps(RGV_2_YUV_SHADER.path());
+        let shader = shader_manager.prepare_cs(RGV_2_YUV_SHADER.path());
         //   (&CompileParams {
         //     shader_source: ShaderSource::Path(RGV_2_YUV_SHADER.path().to_owned()),
         //     global_defines: Vec::new(),
@@ -461,3 +461,4 @@ impl RgbToYuvConverter {
         Ok(())
     }
 }
+

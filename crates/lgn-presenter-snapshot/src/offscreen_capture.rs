@@ -26,8 +26,6 @@ impl OffscreenHelper {
         device_context: &DeviceContext,
         resolution: RenderSurfaceExtents,
     ) -> anyhow::Result<Self> {
-        cgen::initialize(device_context);
-
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
         let shader = shader_manager.prepare_vs_ps(DISPLAY_MAPPER_SHADER.path());

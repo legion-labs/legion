@@ -27,7 +27,7 @@ impl Plugin for StreamerPlugin {
         app.insert_resource(streamer)
             .init_resource::<Time>()
             .init_resource::<streamer::streamer_windows::StreamerWindows>()
-            .add_event::<streamer::VideoStreamEvent>()
+            .add_event::<streamer::VideoStreamEvent>()            
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams)
             .add_system(streamer::on_app_exit)

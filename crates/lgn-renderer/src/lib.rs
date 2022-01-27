@@ -21,6 +21,7 @@ pub use labels::*;
 mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
+use lgn_graphics_cgen_runtime::CGenRegistry;
 use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
 
@@ -78,6 +79,29 @@ use crate::{
 };
 
 #[derive(Default)]
+struct CGenRegistries {
+    registry_list: Vec<CGenRegistry>,
+}
+
+impl CGenRegistries {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn push(&mut self, registry: CGenRegistry) {
+        self.registry_list.push(registry);
+    }
+}
+
+impl Drop for CGenRegistries {
+    fn drop(&mut self) {
+        for registry in self.registry_list.drain(..) {
+            registry.shutdown();
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct RendererPlugin {
     // tbd: remove
     runs_dynamic_systems: bool,
@@ -119,9 +143,11 @@ impl Plugin for RendererPlugin {
         }
 
         app.insert_resource(ManipulatorManager::new());
+        app.add_startup_system(init_cgen);
         app.add_startup_system(init_manipulation_manager);
         app.add_startup_system(init_default_materials);
 
+        app.insert_resource(CGenRegistries::default());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
@@ -236,9 +262,9 @@ fn on_window_resized(
         }
     }
 
-    drop(wnd_list);
-    drop(renderer);
-    drop(render_surfaces);
+    // drop(wnd_list);
+    // drop(renderer);
+    // drop(render_surfaces);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -261,7 +287,12 @@ fn on_window_close_requested(
         render_surfaces.remove(ev.id);
     }
 
-    drop(query_render_surface);
+    // drop(query_render_surface);
+}
+
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
+    let cgen_registry = cgen::initialize(renderer.device_context());
+    cgen_registries.push(cgen_registry);
 }
 
 fn init_manipulation_manager(
@@ -411,7 +442,7 @@ fn update_gpu_instance_ids(
 
             gpu_instance_va_table
                 .set_material_data_va(default_material.unwrap().gpu_offset().into());
-    }
+        }
 
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
 
@@ -428,7 +459,7 @@ fn update_gpu_instance_ids(
                 1.0
             } else {
                 0.0
-            }
+    }
             .into(),
         );
         updater.add_update_jobs(&[instance_color], u64::from(mesh.instance_color_va));

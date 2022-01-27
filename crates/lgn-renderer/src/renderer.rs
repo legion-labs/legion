@@ -70,9 +70,7 @@ impl Renderer {
         #![allow(unsafe_code)]
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
-        let device_context = api.device_context();
-
-        cgen::initialize(device_context);
+        let device_context = api.device_context();        
 
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
 
@@ -304,6 +302,6 @@ impl Drop for Renderer {
         std::mem::drop(self.directional_lights_data.take());
         std::mem::drop(self.omnidirectional_lights_data.take());
 
-        cgen::shutdown();
+        // cgen::shutdown();
     }
 }
