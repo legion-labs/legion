@@ -450,7 +450,7 @@ export default function remoteWindowInputs(
 ) {
   element.style.touchAction = "none";
 
-  element.tabIndex = 0;
+  element.tabIndex = -1;
 
   const state: State = {
     mouseState: "Released",

@@ -1,46 +1,49 @@
-import { unflatten, updateEntry } from "@/lib/hierarchyTree";
+import { Entries } from "@/lib/hierarchyTree";
 import resources from "@/resources/resourcesResponse.json";
 
 describe("updateEntry", () => {
-  it("Updates no entry names when the provided function always returns null in the Entries", () => {
-    const entries = unflatten(resources);
+  it("updates no entry names when the provided function always returns null in the Entries", () => {
+    const entries = Entries.unflatten(resources, Symbol);
 
-    expect(updateEntry(entries, () => null)).toEqual(entries);
+    expect(entries.update(() => null)).toEqual(entries);
   });
 
-  it("Updates no entry names when the provided function always return an empty string in the Entries", () => {
-    const entries = unflatten(resources);
+  it("updates no entry names when the provided function always return an empty string in the Entries", () => {
+    const entries = Entries.unflatten(resources, Symbol);
 
     expect(
-      updateEntry(entries, () => ({
+      entries.update((entry) => ({
+        ...entry,
         name: "",
       }))
     ).toEqual(entries);
   });
 
-  it('Updates 1 entry name "leaf" when the provided function returns a non empty string for a "leaf" entry', () => {
-    const entries = unflatten(resources);
+  it('updates 1 entry name "leaf" when the provided function returns a non empty string for a "leaf" entry', () => {
+    const entries = Entries.unflatten(resources, Symbol);
 
     expect(
-      updateEntry(entries, (name) =>
-        name === "cube_group.ent" ? { name: "new_cube_group.ent" } : null
+      entries.update((entry) =>
+        entry.name === "cube_group.ent"
+          ? { ...entry, name: "new_cube_group.ent" }
+          : null
       )
     ).toMatchSnapshot();
   });
 
-  it('Updates 1 entry name "node" when the provided function returns a non empty string for a "node" entry', () => {
-    const entries = unflatten(resources);
+  it('updates 1 entry name "node" when the provided function returns a non empty string for a "node" entry', () => {
+    const entries = Entries.unflatten(resources, Symbol);
 
     expect(
-      updateEntry(entries, (name) =>
-        name === "world" ? { name: "monde" } : null
+      entries.update((entry) =>
+        entry.name === "world" ? { ...entry, name: "monde" } : null
       )
     ).toMatchSnapshot();
   });
 });
 
 describe("unflatten", () => {
-  it("Unflattens a `ResourceDescription` array into a hierarchical tree", () => {
-    expect(unflatten(resources)).toMatchSnapshot();
+  it("unflattens a `ResourceDescription` array into a hierarchical tree", () => {
+    expect(Entries.unflatten(resources, Symbol)).toMatchSnapshot();
   });
 });

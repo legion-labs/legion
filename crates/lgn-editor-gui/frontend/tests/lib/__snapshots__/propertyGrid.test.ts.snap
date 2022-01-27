@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Color\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`Color\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -10,7 +10,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Quat\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`Quat\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -25,7 +25,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Speed\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`Speed\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -35,7 +35,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`String\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`String\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -45,7 +45,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`Vec3\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`Vec3\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -59,7 +59,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`bool\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`bool\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -69,7 +69,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`f32\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`f32\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -79,7 +79,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`f64\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`f64\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -89,7 +89,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`i32\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`i32\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -99,7 +99,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`u8\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`u8\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -109,7 +109,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`u32\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`u32\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -119,7 +119,7 @@ Object {
 }
 `;
 
-exports[`buildDefaultPrimitiveProperty Builds a default primitive value from ptype \`usize\` 1`] = `
+exports[`buildDefaultPrimitiveProperty builds a default primitive value from ptype \`usize\` 1`] = `
 Object {
   "attributes": Object {},
   "name": "My resource property",
@@ -129,7 +129,7 @@ Object {
 }
 `;
 
-exports[`formatProperties It properly formats the properties received from the server 1`] = `
+exports[`formatProperties properly formats the properties received from the server 1`] = `
 Array [
   Object {
     "attributes": Object {},

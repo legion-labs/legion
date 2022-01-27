@@ -25,7 +25,7 @@ import {
 import propertiesResponse from "@/resources/propertiesResponse.json";
 
 describe("formatProperties", () => {
-  it("It properly formats the properties received from the server", () => {
+  it("properly formats the properties received from the server", () => {
     expect(
       formatProperties(propertiesResponse as unknown as ResourceProperty[])
     ).toMatchSnapshot();
@@ -33,73 +33,73 @@ describe("formatProperties", () => {
 });
 
 describe("buildDefaultPrimitiveProperty", () => {
-  it("Builds a default primitive value from ptype `bool`", () => {
+  it("builds a default primitive value from ptype `bool`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "bool")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `Speed`", () => {
+  it("builds a default primitive value from ptype `Speed`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "Speed")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `Color`", () => {
+  it("builds a default primitive value from ptype `Color`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "Color")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `String`", () => {
+  it("builds a default primitive value from ptype `String`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "String")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `i32`", () => {
+  it("builds a default primitive value from ptype `i32`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "i32")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `u32`", () => {
+  it("builds a default primitive value from ptype `u32`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "u32")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `f32`", () => {
+  it("builds a default primitive value from ptype `f32`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "f32")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `f64`", () => {
+  it("builds a default primitive value from ptype `f64`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "f64")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `usize`", () => {
+  it("builds a default primitive value from ptype `usize`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "usize")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `u8`", () => {
+  it("builds a default primitive value from ptype `u8`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "u8")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `Vec3`", () => {
+  it("builds a default primitive value from ptype `Vec3`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "Vec3")
     ).toMatchSnapshot();
   });
 
-  it("Builds a default primitive value from ptype `Quat`", () => {
+  it("builds a default primitive value from ptype `Quat`", () => {
     expect(
       buildDefaultPrimitiveProperty("My resource property", "Quat")
     ).toMatchSnapshot();
@@ -107,7 +107,7 @@ describe("buildDefaultPrimitiveProperty", () => {
 });
 
 describe("propertyIsBoolean", () => {
-  it("Returns `true` when the property's `ptype` === `bool`", () => {
+  it("returns `true` when the property's `ptype` === `bool`", () => {
     expect(
       propertyIsBoolean(
         buildDefaultPrimitiveProperty("My resource property", "bool")
@@ -115,7 +115,7 @@ describe("propertyIsBoolean", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `bool`", () => {
+  it("returns `false` when the property's `ptype` !== `bool`", () => {
     expect(
       propertyIsBoolean(
         buildDefaultPrimitiveProperty("My resource property", "Color")
@@ -125,7 +125,7 @@ describe("propertyIsBoolean", () => {
 });
 
 describe("propertyIsColor", () => {
-  it("Returns `true` when the property's `ptype` === `Color`", () => {
+  it("returns `true` when the property's `ptype` === `Color`", () => {
     expect(
       propertyIsColor(
         buildDefaultPrimitiveProperty("My resource property", "Color")
@@ -133,7 +133,7 @@ describe("propertyIsColor", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `Color`", () => {
+  it("returns `false` when the property's `ptype` !== `Color`", () => {
     expect(
       propertyIsColor(
         buildDefaultPrimitiveProperty("My resource property", "String")
@@ -143,7 +143,7 @@ describe("propertyIsColor", () => {
 });
 
 describe("propertyIsSpeed", () => {
-  it("Returns `true` when the property's `ptype` === `Speed`", () => {
+  it("returns `true` when the property's `ptype` === `Speed`", () => {
     expect(
       propertyIsSpeed(
         buildDefaultPrimitiveProperty("My resource property", "Speed")
@@ -151,7 +151,7 @@ describe("propertyIsSpeed", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `Speed`", () => {
+  it("returns `false` when the property's `ptype` !== `Speed`", () => {
     expect(
       propertyIsSpeed(
         buildDefaultPrimitiveProperty("My resource property", "String")
@@ -161,7 +161,7 @@ describe("propertyIsSpeed", () => {
 });
 
 describe("propertyIsString", () => {
-  it("Returns `true` when the property's `ptype` === `String`", () => {
+  it("returns `true` when the property's `ptype` === `String`", () => {
     expect(
       propertyIsString(
         buildDefaultPrimitiveProperty("My resource property", "String")
@@ -169,7 +169,7 @@ describe("propertyIsString", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `String`", () => {
+  it("returns `false` when the property's `ptype` !== `String`", () => {
     expect(
       propertyIsString(
         buildDefaultPrimitiveProperty("My resource property", "i32")
@@ -179,7 +179,7 @@ describe("propertyIsString", () => {
 });
 
 describe("propertyIsNumber", () => {
-  it("Returns `true` when the property's `ptype` === `i32`", () => {
+  it("returns `true` when the property's `ptype` === `i32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "i32")
@@ -187,7 +187,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `u32`", () => {
+  it("returns `true` when the property's `ptype` === `u32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "u32")
@@ -195,7 +195,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `f32`", () => {
+  it("returns `true` when the property's `ptype` === `f32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "f32")
@@ -203,7 +203,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `f64`", () => {
+  it("returns `true` when the property's `ptype` === `f64`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "f64")
@@ -211,7 +211,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `usize`", () => {
+  it("returns `true` when the property's `ptype` === `usize`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "usize")
@@ -219,7 +219,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `u8`", () => {
+  it("returns `true` when the property's `ptype` === `u8`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "u8")
@@ -227,7 +227,7 @@ describe("propertyIsNumber", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `i32`", () => {
+  it("returns `false` when the property's `ptype` !== `i32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -235,7 +235,7 @@ describe("propertyIsNumber", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property's `ptype` !== `u32`", () => {
+  it("returns `false` when the property's `ptype` !== `u32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -243,7 +243,7 @@ describe("propertyIsNumber", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property's `ptype` !== `f32`", () => {
+  it("returns `false` when the property's `ptype` !== `f32`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -251,7 +251,7 @@ describe("propertyIsNumber", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property's `ptype` !== `f64`", () => {
+  it("returns `false` when the property's `ptype` !== `f64`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -259,7 +259,7 @@ describe("propertyIsNumber", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property's `ptype` !== `usize`", () => {
+  it("returns `false` when the property's `ptype` !== `usize`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -267,7 +267,7 @@ describe("propertyIsNumber", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property's `ptype` !== `u8`", () => {
+  it("returns `false` when the property's `ptype` !== `u8`", () => {
     expect(
       propertyIsNumber(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -277,7 +277,7 @@ describe("propertyIsNumber", () => {
 });
 
 describe("propertyIsVec3", () => {
-  it("Returns `true` when the property's `ptype` === `Vec3`", () => {
+  it("returns `true` when the property's `ptype` === `Vec3`", () => {
     expect(
       propertyIsVec3(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -285,7 +285,7 @@ describe("propertyIsVec3", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `Vec3`", () => {
+  it("returns `false` when the property's `ptype` !== `Vec3`", () => {
     expect(
       propertyIsVec3(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -295,7 +295,7 @@ describe("propertyIsVec3", () => {
 });
 
 describe("propertyIsQuat", () => {
-  it("Returns `true` when the property's `ptype` === `Quat`", () => {
+  it("returns `true` when the property's `ptype` === `Quat`", () => {
     expect(
       propertyIsQuat(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -303,7 +303,7 @@ describe("propertyIsQuat", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `Quat`", () => {
+  it("returns `false` when the property's `ptype` !== `Quat`", () => {
     expect(
       propertyIsQuat(
         buildDefaultPrimitiveProperty("My resource property", "bool")
@@ -324,7 +324,7 @@ describe("extractOptionPType", () => {
     ).toBe("String");
   });
 
-  it("Returns `null` if the `ptype` doesn't belong to an Option property", () => {
+  it("returns `null` if the `ptype` doesn't belong to an Option property", () => {
     expect(
       extractOptionPType({
         attributes: {},
@@ -336,7 +336,7 @@ describe("extractOptionPType", () => {
     ).toBe(null);
   });
 
-  it("Returns `null` if the `ptype` is invalid", () => {
+  it("returns `null` if the `ptype` is invalid", () => {
     expect(
       extractOptionPType({
         attributes: {},
@@ -361,7 +361,7 @@ describe("extractVecPType", () => {
     ).toBe("String");
   });
 
-  it("Returns `null` if the `ptype` doesn't belong to a Vec property", () => {
+  it("returns `null` if the `ptype` doesn't belong to a Vec property", () => {
     expect(
       extractVecPType({
         attributes: {},
@@ -373,7 +373,7 @@ describe("extractVecPType", () => {
     ).toBe(null);
   });
 
-  it("Returns `null` if the `ptype` is invalid", () => {
+  it("returns `null` if the `ptype` is invalid", () => {
     expect(
       extractVecPType({
         attributes: {},
@@ -387,61 +387,61 @@ describe("extractVecPType", () => {
 });
 
 describe("ptypeBelongsToPrimitive", () => {
-  it("Returns `true` when the `ptype` === `bool`", () => {
+  it("returns `true` when the `ptype` === `bool`", () => {
     expect(ptypeBelongsToPrimitive("bool")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `Speed`", () => {
+  it("returns `true` when the `ptype` === `Speed`", () => {
     expect(ptypeBelongsToPrimitive("Speed")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `Color`", () => {
+  it("returns `true` when the `ptype` === `Color`", () => {
     expect(ptypeBelongsToPrimitive("Color")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `String`", () => {
+  it("returns `true` when the `ptype` === `String`", () => {
     expect(ptypeBelongsToPrimitive("String")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `i32`", () => {
+  it("returns `true` when the `ptype` === `i32`", () => {
     expect(ptypeBelongsToPrimitive("i32")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `u32`", () => {
+  it("returns `true` when the `ptype` === `u32`", () => {
     expect(ptypeBelongsToPrimitive("u32")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `f32`", () => {
+  it("returns `true` when the `ptype` === `f32`", () => {
     expect(ptypeBelongsToPrimitive("f32")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `f64`", () => {
+  it("returns `true` when the `ptype` === `f64`", () => {
     expect(ptypeBelongsToPrimitive("f64")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `usize`", () => {
+  it("returns `true` when the `ptype` === `usize`", () => {
     expect(ptypeBelongsToPrimitive("usize")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `u8`", () => {
+  it("returns `true` when the `ptype` === `u8`", () => {
     expect(ptypeBelongsToPrimitive("u8")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `Vec3`", () => {
+  it("returns `true` when the `ptype` === `Vec3`", () => {
     expect(ptypeBelongsToPrimitive("Vec3")).toBe(true);
   });
 
-  it("Returns `true` when the `ptype` === `Quat`", () => {
+  it("returns `true` when the `ptype` === `Quat`", () => {
     expect(ptypeBelongsToPrimitive("Quat")).toBe(true);
   });
 
-  it("Returns `false` when the `ptype` doesn't belong to a primitive", () => {
+  it("returns `false` when the `ptype` doesn't belong to a primitive", () => {
     expect(ptypeBelongsToPrimitive("Vec<String>")).toBe(false);
   });
 });
 
 describe("propertyIsPrimitive", () => {
-  it("Returns `true` when the property's `ptype` === `bool`", () => {
+  it("returns `true` when the property's `ptype` === `bool`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "bool")
@@ -449,7 +449,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `Speed`", () => {
+  it("returns `true` when the property's `ptype` === `Speed`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "Speed")
@@ -457,7 +457,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `Color`", () => {
+  it("returns `true` when the property's `ptype` === `Color`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "Color")
@@ -465,7 +465,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `String`", () => {
+  it("returns `true` when the property's `ptype` === `String`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "String")
@@ -473,7 +473,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `i32`", () => {
+  it("returns `true` when the property's `ptype` === `i32`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "i32")
@@ -481,7 +481,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `u32`", () => {
+  it("returns `true` when the property's `ptype` === `u32`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "u32")
@@ -489,7 +489,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `f32`", () => {
+  it("returns `true` when the property's `ptype` === `f32`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "f32")
@@ -497,7 +497,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `f64`", () => {
+  it("returns `true` when the property's `ptype` === `f64`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "f64")
@@ -505,7 +505,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `usize`", () => {
+  it("returns `true` when the property's `ptype` === `usize`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "usize")
@@ -513,7 +513,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `u8`", () => {
+  it("returns `true` when the property's `ptype` === `u8`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "u8")
@@ -521,7 +521,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `Vec3`", () => {
+  it("returns `true` when the property's `ptype` === `Vec3`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "Vec3")
@@ -529,7 +529,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the property's `ptype` === `Quat`", () => {
+  it("returns `true` when the property's `ptype` === `Quat`", () => {
     expect(
       propertyIsPrimitive(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -537,7 +537,7 @@ describe("propertyIsPrimitive", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` doesn't belong to a primitive", () => {
+  it("returns `false` when the property's `ptype` doesn't belong to a primitive", () => {
     expect(
       propertyIsPrimitive({
         attributes: {},
@@ -550,7 +550,7 @@ describe("propertyIsPrimitive", () => {
 });
 
 describe("propertyIsOption", () => {
-  it("Returns `true` when the property's `ptype` matches `Option<.*>`", () => {
+  it("returns `true` when the property's `ptype` matches `Option<.*>`", () => {
     expect(
       propertyIsOption(
         buildOptionProperty(
@@ -561,7 +561,7 @@ describe("propertyIsOption", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` doesn't match `Option<.*>`", () => {
+  it("returns `false` when the property's `ptype` doesn't match `Option<.*>`", () => {
     expect(
       propertyIsOption(
         buildVecProperty("My resource property", [
@@ -573,7 +573,7 @@ describe("propertyIsOption", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a primitive", () => {
+  it("returns `false` when the property is a primitive", () => {
     expect(
       propertyIsOption(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -583,7 +583,7 @@ describe("propertyIsOption", () => {
 });
 
 describe("propertyIsVec", () => {
-  it("Returns `true` when the property's `ptype` matches `Vec<.*>`", () => {
+  it("returns `true` when the property's `ptype` matches `Vec<.*>`", () => {
     expect(
       propertyIsVec(
         buildVecProperty("My resource property", [
@@ -595,7 +595,7 @@ describe("propertyIsVec", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` doesn't match `Vec<.*>`", () => {
+  it("returns `false` when the property's `ptype` doesn't match `Vec<.*>`", () => {
     expect(
       propertyIsVec(
         buildOptionProperty(
@@ -606,7 +606,7 @@ describe("propertyIsVec", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a primitive", () => {
+  it("returns `false` when the property is a primitive", () => {
     expect(
       propertyIsVec(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -616,7 +616,7 @@ describe("propertyIsVec", () => {
 });
 
 describe("propertyIsGroup", () => {
-  it("Returns `true` when the property's `ptype` === `group`", () => {
+  it("returns `true` when the property's `ptype` === `group`", () => {
     expect(
       propertyIsGroup(
         buildGroupProperty("My resource property", [
@@ -626,7 +626,7 @@ describe("propertyIsGroup", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property's `ptype` !== `group`", () => {
+  it("returns `false` when the property's `ptype` !== `group`", () => {
     expect(
       propertyIsGroup(
         buildOptionProperty(
@@ -637,7 +637,7 @@ describe("propertyIsGroup", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a primitive", () => {
+  it("returns `false` when the property is a primitive", () => {
     expect(
       propertyIsGroup(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -647,7 +647,7 @@ describe("propertyIsGroup", () => {
 });
 
 describe("propertyIsComponent", () => {
-  it("Returns `true` when the property has an unknown `ptype` and it's assumed to be a Component", () => {
+  it("returns `true` when the property has an unknown `ptype` and it's assumed to be a Component", () => {
     expect(
       propertyIsComponent({
         attributes: {},
@@ -658,7 +658,7 @@ describe("propertyIsComponent", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the property is a primitive", () => {
+  it("returns `false` when the property is a primitive", () => {
     expect(
       propertyIsComponent(
         buildDefaultPrimitiveProperty("My resource property", "Quat")
@@ -666,7 +666,7 @@ describe("propertyIsComponent", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is an Option", () => {
+  it("returns `false` when the property is an Option", () => {
     expect(
       propertyIsComponent(
         buildOptionProperty(
@@ -677,7 +677,7 @@ describe("propertyIsComponent", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a Vec", () => {
+  it("returns `false` when the property is a Vec", () => {
     expect(
       propertyIsComponent(
         buildVecProperty("My resource property", [
@@ -689,7 +689,7 @@ describe("propertyIsComponent", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a group", () => {
+  it("returns `false` when the property is a group", () => {
     expect(
       propertyIsComponent(
         buildGroupProperty("My resource property", [
@@ -701,7 +701,7 @@ describe("propertyIsComponent", () => {
 });
 
 describe("propertyIsBag", () => {
-  it("Returns `true` when the the property's `ptype` === `group`", () => {
+  it("returns `true` when the the property's `ptype` === `group`", () => {
     expect(
       propertyIsBag(
         buildGroupProperty("My resource property", [
@@ -711,7 +711,7 @@ describe("propertyIsBag", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the the property is a Component", () => {
+  it("returns `true` when the the property is a Component", () => {
     expect(
       propertyIsBag({
         attributes: {},
@@ -722,7 +722,7 @@ describe("propertyIsBag", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the the property's `ptype` matches `Vec<*>`", () => {
+  it("returns `true` when the the property's `ptype` matches `Vec<*>`", () => {
     expect(
       propertyIsBag(
         buildVecProperty("My resource property", [
@@ -732,7 +732,7 @@ describe("propertyIsBag", () => {
     ).toBe(true);
   });
 
-  it("Returns `true` when the the property's `ptype` matches `Option<*>` and the inner `ptype` is not a primitive's", () => {
+  it("returns `true` when the the property's `ptype` matches `Option<*>` and the inner `ptype` is not a primitive's", () => {
     expect(
       propertyIsBag(
         buildOptionProperty("My resource property", {
@@ -745,7 +745,7 @@ describe("propertyIsBag", () => {
     ).toBe(true);
   });
 
-  it("Returns `false` when the the property's `ptype` matches `Option<*>`and the inner `ptype` is a primitive's", () => {
+  it("returns `false` when the the property's `ptype` matches `Option<*>`and the inner `ptype` is a primitive's", () => {
     expect(
       propertyIsBag(
         buildOptionProperty(
@@ -756,7 +756,7 @@ describe("propertyIsBag", () => {
     ).toBe(false);
   });
 
-  it("Returns `false` when the property is a primitive", () => {
+  it("returns `false` when the property is a primitive", () => {
     expect(
       propertyIsBag(
         buildDefaultPrimitiveProperty("My resource property", "Quat")

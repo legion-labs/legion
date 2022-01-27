@@ -1,12 +1,14 @@
 /** Dummy alias for string */
 export type Path = string;
 
+export type MainSeparator = "/" | "\\";
+
 /**
  * Detects the main path separator / or \\
  * If both seperators are present in the string
  * the main separator will be assumed to be the first found
  */
-export function detectMainPathSeparator(path: Path): string | null {
+export function detectMainPathSeparator(path: Path): MainSeparator | null {
   for (const c of path) {
     if (c === "/") {
       return "/";
@@ -56,4 +58,18 @@ export function extension(path: Path): string | null {
   }
 
   return pathFileNameParts.reverse()[0];
+}
+
+/** Joins the path compenents into a `Path` using the provided main separator */
+export function absolute(
+  components: string[],
+  mainSeparator: MainSeparator
+): Path {
+  const cleanComponents = components.filter(Boolean);
+
+  if (!cleanComponents.length) {
+    return `${mainSeparator}`;
+  }
+
+  return `${mainSeparator}${cleanComponents.join(mainSeparator)}`;
 }

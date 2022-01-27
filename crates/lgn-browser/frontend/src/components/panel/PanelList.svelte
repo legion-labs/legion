@@ -1,6 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { keepElementVisible } from "../../lib/html";
+  import { writable } from "svelte/store";
+  import keyboardNavigation, {
+    Store as KeyboardNavigationStore,
+    keyboardNavigationItem,
+  } from "../../actions/keyboardNavigation";
 
   type Item = $$Generic;
 
@@ -11,6 +15,11 @@
   }
 
   const dispatch = createEventDispatcher<{ select: Item }>();
+
+  // Can be extracted if needed
+  const keyboardNavigationStore = writable<KeyboardNavigationStore>({
+    currentIndex: null,
+  });
 
   /**
    * The key attribute used to index the items during the iteration:
@@ -33,79 +42,40 @@
    */
   export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
 
-  let selectedIndex: number | null = null;
-
-  let rootElement: HTMLDivElement | undefined;
-
-  let itemElements: HTMLDivElement[] = [];
-
-  $: selectedIndex = selectedItem
+  $: $keyboardNavigationStore.currentIndex = selectedItem
     ? items.findIndex((item) =>
         selectedItem ? itemsAreIdentical(item, selectedItem) : false
       )
     : null;
 
-  function select(item: Item) {
+  function setSelectedItem(item: Item) {
     selectedItem = item;
-  }
-
-  function handleWindowKeyword(event: KeyboardEvent) {
-    if (!panelIsFocused) {
-      return;
-    }
-
-    let newIndex: number | undefined;
-
-    switch (event.key) {
-      case "ArrowUp": {
-        // selectedIndex should never be lt 0
-        newIndex =
-          selectedIndex === null || selectedIndex <= 0
-            ? items.length - 1
-            : selectedIndex - 1;
-
-        break;
-      }
-
-      case "ArrowDown": {
-        // selectedIndex should never be gt `items.length - 1`
-        newIndex =
-          selectedIndex === null || selectedIndex >= items.length - 1
-            ? 0
-            : selectedIndex + 1;
-
-        break;
-      }
-    }
-
-    if (newIndex == null) {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (rootElement) {
-      // "Follows" the user focus when using the arrow keys
-      keepElementVisible(rootElement, itemElements[newIndex]);
-    }
-
-    selectedItem = items[newIndex];
 
     dispatch("select", selectedItem);
   }
+
+  function selectItemWithIndex(index: number) {
+    setSelectedItem(items[index]);
+  }
 </script>
 
-<svelte:window on:keydown={handleWindowKeyword} />
-
-<div class="root" bind:this={rootElement}>
+<div
+  class="root"
+  use:keyboardNavigation={{
+    disabled: !panelIsFocused,
+    listener: selectItemWithIndex,
+    size: items.length,
+    store: keyboardNavigationStore,
+  }}
+>
   {#each items as item, index (key ? item[key] : index)}
     <div
       class="item"
-      class:selected-item={index === selectedIndex}
+      class:selected-item={index === $keyboardNavigationStore.currentIndex}
       class:item-panel-is-focused={panelIsFocused}
-      on:mousedown={() => select(item)}
+      use:keyboardNavigationItem={index}
+      on:mousedown={() => setSelectedItem(item)}
       on:dblclick
-      bind:this={itemElements[index]}
     >
       <slot {item} />
     </div>

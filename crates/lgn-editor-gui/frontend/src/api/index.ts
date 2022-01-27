@@ -45,7 +45,11 @@ export async function getAllResources() {
       : resourceDescriptions;
   }
 
-  return getMoreResources("");
+  const allResources = await getMoreResources("");
+
+  return allResources.sort((resource1, resource2) =>
+    resource1.path > resource2.path ? 1 : -1
+  );
 }
 
 /**
