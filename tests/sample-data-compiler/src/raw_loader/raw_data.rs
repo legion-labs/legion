@@ -97,10 +97,6 @@ pub struct Material {
     pub normal: String,
     pub roughness: String,
     pub metalness: String,
-    pub base_albedo: Vec4,
-    pub base_metalness: f32,
-    pub reflectance: f32,
-    pub base_roughness: f32,
 }
 
 #[derive(Serialize, Deserialize)]
