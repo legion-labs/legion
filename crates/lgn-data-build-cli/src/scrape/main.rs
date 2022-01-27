@@ -385,9 +385,9 @@ fn main() -> Result<(), String> {
                     }
                 }
                 SourceCommands::Name { id } => {
-                    let id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
-                    if let Ok(name) = project.resource_name(id) {
-                        println!("{} = {}", name, id);
+                    let type_id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
+                    if let Ok(name) = project.resource_name(type_id.id) {
+                        println!("{} = {}", name, type_id);
                     } else {
                         println!("None");
                     }
@@ -671,7 +671,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
 fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Config) -> String {
     let mut output_text = String::new();
 
-    if let Ok(source_name) = project.resource_name(rid.source_resource()) {
+    if let Ok(source_name) = project.resource_name(rid.source_resource().id) {
         output_text.push_str(&source_name.to_string());
     } else {
         output_text.push_str(&rid.source_resource().to_string());

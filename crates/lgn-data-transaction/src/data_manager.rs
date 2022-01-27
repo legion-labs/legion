@@ -92,13 +92,18 @@ impl DataManager {
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
         for resource_id in project.resource_list() {
+            let (kind, _, _) = project.resource_info(resource_id).unwrap();
+            let type_id = ResourceTypeAndId {
+                kind,
+                id: resource_id,
+            };
             project
-                .load_resource(resource_id, &mut resource_registry)
+                .load_resource(type_id, &mut resource_registry)
                 .map_or_else(
                     |err| {
-                        warn!("Failed to load {}: {}", resource_id, err);
+                        warn!("Failed to load {}: {}", type_id, err);
                     },
-                    |handle| resource_handles.insert(resource_id, handle),
+                    |handle| resource_handles.insert(type_id, handle),
                 );
         }
         info!(

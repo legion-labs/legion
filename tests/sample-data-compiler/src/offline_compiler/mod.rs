@@ -51,7 +51,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
         let source_name = build
             .project()
-            .resource_name(asset_path.source_resource())
+            .resource_name(asset_path.source_resource().id)
             .ok()
             .unwrap();
 

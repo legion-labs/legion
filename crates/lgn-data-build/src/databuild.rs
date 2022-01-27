@@ -246,10 +246,13 @@ impl DataBuild {
         self.project.reload()?;
 
         for resource_id in self.project.resource_list() {
-            let (resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
+            let (kind, resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
 
             if self.build_index.update_resource(
-                ResourcePathId::from(resource_id),
+                ResourcePathId::from(ResourceTypeAndId {
+                    id: resource_id,
+                    kind,
+                }),
                 Some(resource_hash),
                 resource_deps.clone(),
             ) {
@@ -292,7 +295,7 @@ impl DataBuild {
         env: &CompilationEnv,
     ) -> Result<Manifest, Error> {
         let source = compile_path.source_resource();
-        if !self.project.exists(source) {
+        if !self.project.exists(source.id) {
             return Err(Error::NotFound);
         }
 

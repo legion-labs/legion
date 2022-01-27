@@ -90,13 +90,18 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     .unwrap_or_else(|_err| "".into())
                     .to_string();
 
+                let (kind, _, _) = ctx.project.resource_info(resource_id).unwrap();
+
                 // Basic Filter
                 if !request.search_token.is_empty() {
                     path.find(&request.search_token)?;
                 }
 
                 Some(ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_id),
+                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                        kind,
+                        id: resource_id,
+                    }),
                     path,
                     version: 1,
                 })

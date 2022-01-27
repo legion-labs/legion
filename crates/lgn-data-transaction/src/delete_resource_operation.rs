@@ -37,10 +37,10 @@ impl TransactionOperation for DeleteResourceOperation {
                     &mut old_resource_data,
                 )?;
 
-                self.old_resource_name = Some(ctx.project.resource_name(self.resource_id)?);
+                self.old_resource_name = Some(ctx.project.resource_name(self.resource_id.id)?);
                 self.old_resource_data = Some(old_resource_data);
             }
-            ctx.project.delete_resource(self.resource_id)?;
+            ctx.project.delete_resource(self.resource_id.id)?;
         }
         Ok(())
     }
