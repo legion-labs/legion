@@ -55,10 +55,7 @@ impl<'a> LockContext<'a> {
         self.changed_resources
             .iter()
             .try_for_each(|resource_id| -> anyhow::Result<()> {
-                match self
-                    .build
-                    .build_all_derived(*resource_id, &mut self.project)
-                {
+                match self.build.build_all_derived(*resource_id, &self.project) {
                     Ok((runtime_path_id, _built_resources)) => {
                         self.asset_registry.reload(runtime_path_id.resource_id());
                     }
