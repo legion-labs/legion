@@ -27,7 +27,7 @@ impl RenameResourceOperation {
 #[async_trait]
 impl TransactionOperation for RenameResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
-        if !ctx.project.exists(self.resource_id) {
+        if !ctx.project.exists(self.resource_id.id) {
             return Err(Error::InvalidResource(self.resource_id).into());
         }
         if ctx.project.exists_named(&self.new_path) {

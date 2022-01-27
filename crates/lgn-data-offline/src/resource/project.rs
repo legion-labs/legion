@@ -201,12 +201,12 @@ impl Project {
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub fn resource_list(&self) -> impl Iterator<Item = ResourceTypeAndId> + '_ {
+    pub fn resource_list(&self) -> impl Iterator<Item = ResourceId> + '_ {
         self.db
             .remote_resources
             .iter()
             .chain(self.db.local_resources.iter())
-            .copied()
+            .map(|typeid| typeid.id)
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
@@ -217,7 +217,10 @@ impl Project {
             .find_map(|id| match self.read_meta(id) {
                 Ok(meta) => {
                     if &meta.name == name {
-                        Some(Ok(id))
+                        Some(Ok(ResourceTypeAndId {
+                            id,
+                            kind: meta.type_id,
+                        }))
                     } else {
                         None
                     }
@@ -237,7 +240,7 @@ impl Project {
     }
 
     /// Checks if a resource is part of the project.
-    pub fn exists(&self, id: ResourceTypeAndId) -> bool {
+    pub fn exists(&self, id: ResourceId) -> bool {
         self.resource_list().any(|v| v == id)
     }
 
@@ -281,8 +284,8 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(type_id);
-        let resource_path = self.resource_path(type_id);
+        let meta_path = self.metadata_path(type_id.id);
+        let resource_path = self.resource_path(type_id.id);
 
         let directory = {
             let mut directory = resource_path.clone();
@@ -328,15 +331,15 @@ impl Project {
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id);
-        let metadata_path = self.metadata_path(type_id);
+    pub fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
+        let resource_path = self.resource_path(id);
+        let metadata_path = self.metadata_path(id);
 
         std::fs::remove_file(&resource_path).map_err(|e| Error::Io(resource_path, e))?;
         std::fs::remove_file(&metadata_path).map_err(|e| Error::Io(metadata_path, e))?;
 
-        self.db.local_resources.retain(|x| *x != type_id);
-        self.db.remote_resources.retain(|x| *x != type_id);
+        self.db.local_resources.retain(|x| x.id != id);
+        self.db.remote_resources.retain(|x| x.id != id);
         Ok(())
     }
 
@@ -348,8 +351,8 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         resources: &mut ResourceRegistry,
     ) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id);
-        let metadata_path = self.metadata_path(type_id);
+        let resource_path = self.resource_path(type_id.id);
+        let metadata_path = self.metadata_path(type_id.id);
 
         let mut meta_file = OpenOptions::new()
             .read(true)
@@ -398,7 +401,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, Error> {
-        let resource_path = self.resource_path(type_id);
+        let resource_path = self.resource_path(type_id.id);
 
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
@@ -411,27 +414,26 @@ impl Project {
     /// Returns information about a given resource from its `.meta` file.
     pub fn resource_info(
         &self,
-        type_id: ResourceTypeAndId,
-    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(type_id)?;
+        id: ResourceId,
+    ) -> Result<(ResourceType, ResourceHash, Vec<ResourcePathId>), Error> {
+        let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
 
-        Ok((resource_hash, dependencies))
+        Ok((meta.type_id, resource_hash, dependencies))
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, type_id: ResourceTypeAndId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id)?;
+    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(id)?;
         if let Some((resource_id, suffix)) = meta
             .name
             .as_str()
             .strip_prefix("/!")
             .and_then(|v| v.split_once('/'))
         {
-            if let Ok(resource_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id)
-            {
-                if let Ok(mut parent_path) = self.resource_name(resource_id) {
+            if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
+                if let Ok(mut parent_path) = self.resource_name(type_id.id) {
                     parent_path.push(suffix);
                     return Ok(parent_path);
                 }
@@ -441,8 +443,8 @@ impl Project {
     }
 
     /// Returns the type name of the resource from its `.meta` file.
-    pub fn resource_type_name(&self, type_id: ResourceTypeAndId) -> Result<String, Error> {
-        let meta = self.read_meta(type_id)?;
+    pub fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
+        let meta = self.read_meta(id)?;
         Ok(meta.type_name)
     }
 
@@ -451,15 +453,15 @@ impl Project {
         self.resource_dir.clone()
     }
 
-    fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
+    fn metadata_path(&self, id: ResourceId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(type_id.id.resource_path());
+        path.push(id.resource_path());
         path.set_extension(METADATA_EXT);
         path
     }
 
-    fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(type_id.id.resource_path())
+    fn resource_path(&self, id: ResourceId) -> PathBuf {
+        self.resource_dir().join(id.resource_path())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
@@ -482,8 +484,8 @@ impl Project {
         Err(Error::NotFound)
     }
 
-    fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
-        let path = self.metadata_path(type_id);
+    fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
+        let path = self.metadata_path(id);
 
         let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
 
@@ -491,11 +493,11 @@ impl Project {
         Ok(result)
     }
 
-    fn update_meta<F>(&self, type_id: ResourceTypeAndId, mut func: F)
+    fn update_meta<F>(&self, id: ResourceId, mut func: F)
     where
         F: FnMut(&mut Metadata),
     {
-        let path = self.metadata_path(type_id);
+        let path = self.metadata_path(id);
 
         let mut file = OpenOptions::new()
             .read(true)
@@ -524,7 +526,7 @@ impl Project {
         self.checkout(type_id)?;
 
         let mut old_name: Option<ResourcePathName> = None;
-        self.update_meta(type_id, |data| {
+        self.update_meta(type_id.id, |data| {
             old_name = Some(data.rename(new_name));
         });
         Ok(old_name.unwrap())
@@ -891,7 +893,7 @@ mod tests {
             .find_resource(&ResourcePathName::new("hero.actor"))
             .unwrap();
 
-        let (_, dependencies) = project.resource_info(top_level_resource).unwrap();
+        let (_, _, dependencies) = project.resource_info(top_level_resource.id).unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }

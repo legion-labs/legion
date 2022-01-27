@@ -86,7 +86,7 @@ fn build_entity_info(
     loaded_resources: &ResourceHandles,
 ) -> Option<EntityInfo> {
     let path = project
-        .resource_name(*resource_id)
+        .resource_name(resource_id.id)
         .unwrap_or_else(|_err| ResourcePathName::new("unnamed"));
 
     if let Some(entity_dc) = loaded_resources

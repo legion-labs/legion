@@ -255,7 +255,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_name));
-        assert!(project.lock().await.exists(clone_id));
+        assert!(project.lock().await.exists(clone_id.id));
 
         // Rename the clone
         let clone_new_name: ResourcePathName = "/entity/test_clone_rename.dc".into();
@@ -278,38 +278,38 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         data_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&clone_name));
-        assert!(!project.lock().await.exists(clone_id));
+        assert!(!project.lock().await.exists(clone_id.id));
 
         // Delete the created Resource
         let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id));
+        assert!(!project.lock().await.exists(new_id.id));
 
         // Undo delete
         data_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path));
-        assert!(project.lock().await.exists(new_id));
+        assert!(project.lock().await.exists(new_id.id));
 
         // Undo Create
         data_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id));
+        assert!(!project.lock().await.exists(new_id.id));
 
         // Redo Create
         data_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path));
-        assert!(project.lock().await.exists(new_id));
+        assert!(project.lock().await.exists(new_id.id));
 
         // Redo Delete
         data_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id));
+        assert!(!project.lock().await.exists(new_id.id));
 
         // Create Transaction with invalid edit
         let invalid_resource: ResourcePathName = "/entity/create_invalid.dc".into();

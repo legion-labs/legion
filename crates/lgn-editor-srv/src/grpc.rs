@@ -49,9 +49,13 @@ impl Editor for GRPCServer {
                     .project
                     .resource_name(resource_id)
                     .unwrap_or_else(|_err| "".into());
+                let (kind, _, _) = ctx.project.resource_info(resource_id).unwrap();
 
                 ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_id),
+                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                        kind,
+                        id: resource_id,
+                    }),
                     path: name.to_string(),
                     version: 1,
                 }
@@ -118,7 +122,7 @@ impl Editor for GRPCServer {
                 id: ResourceTypeAndId::to_string(&resource_id),
                 path: ctx
                     .project
-                    .resource_name(resource_id)
+                    .resource_name(resource_id.id)
                     .unwrap_or_else(|_err| "".into())
                     .to_string(),
                 version: 1,

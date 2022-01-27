@@ -67,7 +67,7 @@ impl TransactionOperation for CloneResourceOperation {
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(_clone_handle) = ctx.loaded_resource_handles.remove(self.clone_resource_id) {
-            ctx.project.delete_resource(self.clone_resource_id)?;
+            ctx.project.delete_resource(self.clone_resource_id.id)?;
         }
         Ok(())
     }
