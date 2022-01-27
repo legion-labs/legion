@@ -15,16 +15,22 @@ mod cgen {
 use cgen::*;
 
 mod labels;
+use components::MaterialComponent;
 pub use labels::*;
 
 mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
-use lgn_math::Vec2;
+use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
 
 mod render_context;
 pub use render_context::*;
+use resources::{
+    DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
+    GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
+    MaterialManager,
+};
 
 pub mod resources;
 
@@ -50,7 +56,7 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::{DefaultMeshId, DefaultMeshes, MetaCubePlugin},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, MetaCubePlugin},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -91,7 +97,6 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new().unwrap();
-        let default_meshes = DefaultMeshes::new(&renderer);
 
         app.add_stage_after(
             CoreStage::PostUpdate,
@@ -107,16 +112,22 @@ impl Plugin for RendererPlugin {
 
         app.add_plugin(EguiPlugin::new(self.enable_egui));
         app.add_plugin(PickingPlugin {});
+        app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
+
         if self.meta_cube_size != 0 {
             app.add_plugin(MetaCubePlugin::new(self.meta_cube_size));
         }
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(init_default_materials);
 
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(default_meshes);
+        app.insert_resource(DefaultMeshes::new(&renderer));
+        app.insert_resource(DefaultMaterials::new());
+        app.insert_resource(MaterialManager::new(renderer.static_buffer()));
         app.insert_resource(renderer);
+
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightingManager>();
         app.add_startup_system(create_camera);
@@ -135,7 +146,24 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_transform);
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_transform.before(PrepareLabel::UpdateInstanceIds),
+        );
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_materials.before(PrepareLabel::UpdateInstanceIds),
+        );
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_gpu_instances.before(PrepareLabel::UpdateInstanceIds),
+        );
+
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_gpu_instance_ids.label(PrepareLabel::UpdateInstanceIds),
+        );
+
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
 
@@ -243,14 +271,23 @@ fn init_manipulation_manager(
     manipulation_manager.initialize(commands, default_meshes, picking_manager);
 }
 
+fn init_default_materials(
+    commands: Commands<'_, '_>,
+    mut default_materials: ResMut<'_, DefaultMaterials>,
+) {
+    default_materials.initialize(commands);
+}
+
 #[allow(clippy::needless_pass_by_value)]
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
 #[span_fn]
+#[allow(clippy::needless_pass_by_value)]
 fn update_transform(
-    mut renderer: ResMut<'_, Renderer>,
+    renderer: Res<'_, Renderer>,
+    mut instance_transforms: ResMut<'_, GpuInstanceTransform>,
     mut query: Query<
         '_,
         '_,
@@ -264,22 +301,140 @@ fn update_transform(
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
-    let mut gpu_data = renderer.acquire_transform_data();
 
     for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
         if manipulator.is_none() {
-            mesh.world_offset = gpu_data.ensure_index_allocated(entity.id()) as u32;
+            mesh.world_transform_va =
+                instance_transforms.ensure_index_allocated(entity.id()) as u32;
 
-            let mut world = cgen::cgen_type::EntityTransforms::default();
+            let mut world = cgen::cgen_type::GpuInstanceTransform::default();
             world.set_world(transform.compute_matrix().into());
-            updater.add_update_jobs(&[world], u64::from(mesh.world_offset));
+            updater.add_update_jobs(&[world], u64::from(mesh.world_transform_va));
         } else {
-            mesh.world_offset = u32::MAX;
+            mesh.world_transform_va = u32::MAX;
         }
     }
 
-    renderer.test_add_update_jobs(updater.job_blocks());
-    renderer.release_transform_data(gpu_data);
+    renderer.add_update_job_block(updater.job_blocks());
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_materials(
+    renderer: ResMut<'_, Renderer>,
+    material_manager: ResMut<'_, MaterialManager>,
+    updated_materials: Query<'_, '_, &mut MaterialComponent, Changed<MaterialComponent>>,
+) {
+    material_manager.update_gpu_data(&renderer, updated_materials);
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::too_many_arguments)]
+fn update_gpu_instances(
+    renderer: Res<'_, Renderer>,
+    picking_manager: Res<'_, PickingManager>,
+    instance_id_allocator: Res<'_, GpuInstanceIdAllocator>,
+    va_table_adresses: Res<'_, GpuVaTableForGpuInstance>,
+    mut instance_offsets: ResMut<'_, GpuInstanceVATable>,
+    mut instance_color: ResMut<'_, GpuInstanceColor>,
+    mut picking_data: ResMut<'_, GpuInstancePickingData>,
+    mut instance_query: Query<'_, '_, (Entity, &mut StaticMesh), Added<StaticMesh>>,
+) {
+    let mut index_block = instance_id_allocator.acquire_index_block();
+    let mut picking_block = picking_manager.acquire_picking_id_block();
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+
+    for (entity, mut mesh) in instance_query.iter_mut() {
+        let (new_index_block, new_instance_id) = instance_id_allocator.acquire_index(index_block);
+
+        index_block = new_index_block;
+        mesh.gpu_instance_id = new_instance_id;
+
+        mesh.va_table_address =
+            instance_offsets.ensure_index_allocated(mesh.gpu_instance_id) as u32;
+        mesh.instance_color_va = instance_color.ensure_index_allocated(mesh.gpu_instance_id) as u32;
+
+        va_table_adresses.set_va_table_address_for_gpu_instance(
+            &mut updater,
+            mesh.gpu_instance_id,
+            mesh.va_table_address,
+        );
+
+        mesh.picking_id = u32::MAX;
+        while mesh.picking_id == u32::MAX {
+            if let Some(picking_id) = picking_block.acquire_picking_id(entity) {
+                mesh.picking_id = picking_id;
+            } else {
+                picking_manager.release_picking_id_block(picking_block);
+                picking_block = picking_manager.acquire_picking_id_block();
+            }
+        }
+
+        mesh.picking_data_va = picking_data.ensure_index_allocated(mesh.gpu_instance_id) as u32;
+        updater.add_update_jobs(&[mesh.picking_id], u64::from(mesh.picking_data_va));
+    }
+
+    renderer.add_update_job_block(updater.job_blocks());
+    picking_manager.release_picking_id_block(picking_block);
+    instance_id_allocator.release_index_block(index_block);
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_gpu_instance_ids(
+    renderer: Res<'_, Renderer>,
+    default_materials: ResMut<'_, DefaultMaterials>,
+
+    material_query: Query<'_, '_, &MaterialComponent>,
+    mut instance_query: Query<'_, '_, &mut StaticMesh, Changed<StaticMesh>>,
+) {
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+
+    for mesh in instance_query.iter_mut() {
+        let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
+
+        gpu_instance_va_table.set_vertex_buffer_va(mesh.vertex_buffer_va.into());
+        gpu_instance_va_table.set_world_transform_va(mesh.world_transform_va.into());
+
+        if let Ok(material) =
+            material_query.get(default_materials.get_material_id(mesh.material_type))
+        {
+            gpu_instance_va_table.set_material_data_va(material.gpu_offset().into());
+        } else {
+            let default_material =
+                material_query.get(default_materials.get_material_id(DefaultMaterialType::Default));
+
+            gpu_instance_va_table
+                .set_material_data_va(default_material.unwrap().gpu_offset().into());
+        }
+
+        let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
+
+        let color: (f32, f32, f32, f32) = (
+            f32::from(mesh.color.r) / 255.0f32,
+            f32::from(mesh.color.g) / 255.0f32,
+            f32::from(mesh.color.b) / 255.0f32,
+            f32::from(mesh.color.a) / 255.0f32,
+        );
+
+        instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
+        instance_color.set_color_blend(
+            if mesh.material_type == DefaultMaterialType::Default {
+                1.0
+            } else {
+                0.0
+            }
+            .into(),
+        );
+        updater.add_update_jobs(&[instance_color], u64::from(mesh.instance_color_va));
+
+        gpu_instance_va_table.set_instance_color_va(mesh.instance_color_va.into());
+        gpu_instance_va_table.set_picking_data_va(mesh.picking_data_va.into());
+
+        updater.add_update_jobs(&[gpu_instance_va_table], u64::from(mesh.va_table_address));
+    }
+    renderer.add_update_job_block(updater.job_blocks());
 }
 
 #[span_fn]
@@ -293,18 +448,14 @@ fn render_update(
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
+    va_table_adresses: Res<'_, GpuVaTableForGpuInstance>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<
+    q_drawables: Query<'_, '_, &StaticMesh, Without<ManipulatorComponent>>,
+    q_picked_drawables: Query<
         '_,
         '_,
-        (&StaticMesh, Option<&PickedComponent>),
-        Without<ManipulatorComponent>,
-    >,
-    q_debug_drawables: Query<
-        '_,
-        '_,
-        (&StaticMesh, &GlobalTransform, Option<&PickedComponent>),
-        Without<ManipulatorComponent>,
+        (&StaticMesh, &GlobalTransform),
+        (With<PickedComponent>, Without<ManipulatorComponent>),
     >,
     q_manipulator_drawables: Query<'_, '_, (&StaticMesh, &GlobalTransform, &ManipulatorComponent)>,
     lighting_manager: Res<'_, LightingManager>,
@@ -316,13 +467,10 @@ fn render_update(
     crate::egui::egui_plugin::end_frame(&mut egui);
 
     let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
-    let q_drawables = q_drawables
+    let q_drawables = q_drawables.iter().collect::<Vec<&StaticMesh>>();
+    let q_picked_drawables = q_picked_drawables
         .iter()
-        .collect::<Vec<(&StaticMesh, Option<&PickedComponent>)>>();
-    let q_debug_drawables =
-        q_debug_drawables
-            .iter()
-            .collect::<Vec<(&StaticMesh, &GlobalTransform, Option<&PickedComponent>)>>();
+        .collect::<Vec<(&StaticMesh, &GlobalTransform)>>();
     let q_manipulator_drawables =
         q_manipulator_drawables
             .iter()
@@ -341,10 +489,11 @@ fn render_update(
 
     let mut light_picking_mesh = StaticMesh::from_default_meshes(
         default_meshes.as_ref(),
-        DefaultMeshId::Sphere as usize,
+        DefaultMeshType::Sphere as usize,
         Color::default(),
+        DefaultMaterialType::Default,
     );
-    light_picking_mesh.world_offset = 0xffffffff; // will force the shader to use custom made world matrix
+    light_picking_mesh.world_transform_va = 0xffffffff; // will force the shader to use custom made world matrix
 
     renderer.flush_update_jobs(&render_context);
 
@@ -416,12 +565,15 @@ fn render_update(
         }
 
         let mut cmd_buffer = render_context.alloc_command_buffer();
+        cmd_buffer.bind_vertex_buffers(0, &[va_table_adresses.vertex_buffer_binding()]);
+
         let picking_pass = render_surface.picking_renderpass();
         let mut picking_pass = picking_pass.write();
         picking_pass.render(
             &picking_manager,
             &render_context,
             render_surface.as_mut(),
+            &va_table_adresses,
             q_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
@@ -444,7 +596,7 @@ fn render_update(
             &render_context,
             &mut cmd_buffer,
             render_surface.as_mut(),
-            q_debug_drawables.as_slice(),
+            q_picked_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             camera_component,
             &default_meshes,

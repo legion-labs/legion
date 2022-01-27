@@ -5,14 +5,13 @@ use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
     Pipeline, PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
-    VertexLayout,
+    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
-use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
-    components::{PickedComponent, RenderSurface, StaticMesh},
+    components::{RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
@@ -23,6 +22,7 @@ pub struct TmpRenderPass {
     pub speed: f32,
 }
 
+embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
@@ -37,8 +37,17 @@ impl TmpRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![],
-            buffers: vec![],
+            attributes: vec![VertexLayoutAttribute {
+                format: Format::R32_UINT,
+                buffer_index: 0,
+                location: 0,
+                byte_offset: 0,
+                gl_attribute_name: None,
+            }],
+            buffers: vec![VertexLayoutBuffer {
+                stride: 4,
+                rate: VertexAttributeRate::Instance,
+            }],
         };
 
         let depth_state = DepthState {
@@ -95,7 +104,7 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        static_meshes: &[(&StaticMesh, Option<&PickedComponent>)],
+        static_meshes: &[&StaticMesh],
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -123,24 +132,10 @@ impl TmpRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
-        for (_index, (static_mesh, picked_component)) in static_meshes.iter().enumerate() {
-            let color: (f32, f32, f32, f32) = (
-                f32::from(static_mesh.color.r) / 255.0f32,
-                f32::from(static_mesh.color.g) / 255.0f32,
-                f32::from(static_mesh.color.b) / 255.0f32,
-                f32::from(static_mesh.color.a) / 255.0f32,
-            );
+        cmd_buffer.push_constant(&cgen::cgen_type::EmptyPushConstants::default());
 
-            let mut push_constant_data = cgen::cgen_type::InstancePushConstantData::default();
-
-            push_constant_data.set_vertex_offset(static_mesh.vertex_offset.into());
-            push_constant_data.set_world_offset(static_mesh.world_offset.into());
-            push_constant_data.set_is_picked(if picked_component.is_some() { 1 } else { 0 }.into());
-            push_constant_data.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
-
-            cmd_buffer.push_constant(&push_constant_data);
-
-            cmd_buffer.draw(static_mesh.num_vertices, 0);
+        for (_index, static_mesh) in static_meshes.iter().enumerate() {
+            cmd_buffer.draw_instanced(static_mesh.num_vertices, 0, 1, static_mesh.gpu_instance_id);
         }
 
         cmd_buffer.end_render_pass();

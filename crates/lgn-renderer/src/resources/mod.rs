@@ -1,14 +1,26 @@
 mod command_buffer_pool;
 pub(crate) use command_buffer_pool::*;
 
+mod default_materials;
+pub use default_materials::*;
+
 mod default_meshes;
 pub use default_meshes::*;
 
 mod descriptor_pool;
 pub(crate) use descriptor_pool::*;
 
+mod gpu_data;
+pub(crate) use gpu_data::*;
+
 mod gpu_pool;
 pub(crate) use gpu_pool::*;
+
+mod index_allocator;
+pub(crate) use index_allocator::*;
+
+mod material;
+pub use material::*;
 
 mod meta_cube_test;
 pub(crate) use meta_cube_test::*;

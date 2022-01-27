@@ -6,7 +6,7 @@ use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
     components::{CameraComponent, ManipulatorComponent, StaticMesh},
-    resources::{DefaultMeshId, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
 };
 
 use super::{
@@ -62,13 +62,17 @@ impl ManipulatorPart {
         part_num: usize,
         transparent: bool,
         transform: Transform,
-        mesh_id: DefaultMeshId,
+        mesh_id: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
         picking_block: &mut PickingIdBlock,
         default_meshes: &DefaultMeshes,
     ) -> Self {
-        let mut static_mesh =
-            StaticMesh::from_default_meshes(default_meshes, mesh_id as usize, color);
+        let mut static_mesh = StaticMesh::from_default_meshes(
+            default_meshes,
+            mesh_id as usize,
+            color,
+            DefaultMaterialType::Default,
+        );
 
         let mut entity_commands = commands.spawn();
 

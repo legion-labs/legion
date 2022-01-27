@@ -1,4 +1,6 @@
-use crate::{Buffer, BufferView, BufferViewDef};
+use crate::{
+    Buffer, BufferView, BufferViewDef, IndexBufferBinding, IndexType, VertexBufferBinding,
+};
 
 #[derive(Clone, Copy)]
 pub struct Range {
@@ -26,6 +28,21 @@ impl<AllocType> BufferSubAllocation<AllocType> {
 
     pub fn size(&self) -> u64 {
         self.range.last - self.range.first
+    }
+
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
+        VertexBufferBinding {
+            buffer: &self.buffer,
+            byte_offset: self.offset(),
+        }
+    }
+
+    pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding<'_> {
+        IndexBufferBinding {
+            buffer: &self.buffer,
+            byte_offset: self.offset(),
+            index_type,
+        }
     }
 
     pub fn const_buffer_view(&self) -> BufferView {

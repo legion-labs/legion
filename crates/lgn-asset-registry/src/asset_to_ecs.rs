@@ -5,7 +5,7 @@ use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
-    resources::DefaultMeshes,
+    resources::{DefaultMaterialType, DefaultMeshes},
 };
 use lgn_scripting::components::ECSScriptComponent;
 use lgn_tracing::info;
@@ -95,16 +95,12 @@ impl AssetToECS for runtime_data::Entity {
                 });
                 transform_inserted = true;
             } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
-                entity.insert(StaticMesh {
-                    mesh_id: static_mesh.mesh_id,
-                    color: (255, 0, 0).into(),
-                    vertex_offset: default_meshes.mesh_offset_from_id(static_mesh.mesh_id as u32),
-                    num_vertices: default_meshes
-                        .mesh_from_id(static_mesh.mesh_id as u32)
-                        .num_vertices() as u32,
-                    world_offset: 0,
-                    picking_id: 0,
-                });
+                entity.insert(StaticMesh::from_default_meshes(
+                    default_meshes,
+                    static_mesh.mesh_id,
+                    (255, 0, 0).into(),
+                    DefaultMaterialType::Default,
+                ));
             } else if let Some(script) = component.downcast_ref::<runtime_data::ScriptComponent>() {
                 if script.script.is_none() {
                     continue;
@@ -194,19 +190,13 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             rotation: instance.rotation,
             scale: instance.scale,
         });
-
         entity.insert(GlobalTransform::default());
-        entity.insert(StaticMesh {
-            mesh_id: instance.mesh_id,
-            color: instance.color,
-            vertex_offset: default_meshes.mesh_offset_from_id(instance.mesh_id as u32),
-            num_vertices: default_meshes
-                .mesh_from_id(instance.mesh_id as u32)
-                .num_vertices() as u32,
-            world_offset: 0,
-            picking_id: 0,
-        });
-
+        entity.insert(StaticMesh::from_default_meshes(
+            default_meshes,
+            instance.mesh_id,
+            instance.color,
+            DefaultMaterialType::Default,
+        ));
         entity.insert(RotationComponent {
             rotation_speed: (
                 instance.rotation_speed.x,
@@ -248,19 +238,12 @@ impl AssetToECS for generic_data::runtime::EntityDc {
             } else if let Some(static_mesh_component) =
                 component.downcast_ref::<generic_data::runtime::StaticMeshComponent>()
             {
-                let mut mesh_id = static_mesh_component.mesh_id as u32;
-                if mesh_id > lgn_renderer::resources::DefaultMeshId::RotationRing as u32 {
-                    mesh_id = 0;
-                }
-
-                ecs_entity.insert(StaticMesh {
-                    mesh_id: static_mesh_component.mesh_id,
-                    color: static_mesh_component.color,
-                    vertex_offset: default_meshes.mesh_offset_from_id(mesh_id),
-                    num_vertices: default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
-                    world_offset: 0,
-                    picking_id: 0,
-                });
+                ecs_entity.insert(StaticMesh::from_default_meshes(
+                    default_meshes,
+                    static_mesh_component.mesh_id,
+                    static_mesh_component.color,
+                    DefaultMaterialType::Default,
+                ));
             } else if let Some(light_component) =
                 component.downcast_ref::<generic_data::runtime::LightComponent>()
             {

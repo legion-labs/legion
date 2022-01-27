@@ -86,10 +86,10 @@ impl StaticMeshRenderData {
         let edge2 = Vec3::new(half_size, -half_size, half_size) - top_y_p;
         let edge3 = Vec3::new(-half_size, -half_size, half_size) - top_y_p;
         let edge4 = Vec3::new(-half_size, -half_size, -half_size) - top_y_p;
-        let normal1 = Vec3::cross(edge2, edge1);
-        let normal2 = Vec3::cross(edge3, edge2);
-        let normal3 = Vec3::cross(edge4, edge3);
-        let normal4 = Vec3::cross(edge1, edge4);
+        let normal1 = Vec3::cross(edge2, edge1).normalize();
+        let normal2 = Vec3::cross(edge3, edge2).normalize();
+        let normal3 = Vec3::cross(edge4, edge3).normalize();
+        let normal4 = Vec3::cross(edge1, edge4).normalize();
 
         #[rustfmt::skip]
         let vertex_data = [

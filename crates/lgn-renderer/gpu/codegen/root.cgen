@@ -24,8 +24,29 @@ struct LightingData {
     pad_: Uint3,
 }
 
-struct EntityTransforms {
+struct GpuInstanceTransform {
     world: Float4x4,
+}
+
+struct GpuInstanceColor {
+    color: Float4,
+    color_blend: Float1,
+}
+
+struct GpuInstancePickingData {
+    picking_id: Uint1,
+}
+
+struct GpuInstanceVATable {
+    vertex_buffer_va: Uint1,
+    world_transform_va: Uint1,
+    material_data_va: Uint1,
+    instance_color_va: Uint1,
+    picking_data_va: Uint1,
+}
+
+struct EmptyPushConstants {
+    dummy: Float4,
 }
 
 #[DescriptorSet(frequency = 0)]
@@ -93,11 +114,10 @@ struct PickingData {
 
 struct PickingPushConstantData {
     world: Float4x4,
-    color: Float4,
-    picking_distance: Float1,
     vertex_offset: Uint1,
-    world_offset: Uint1,
     picking_id: Uint1,
+    picking_distance: Float1,
+    use_gpu_pipeline: Uint1,
 }
 
 #[DescriptorSet(frequency = 2)]
@@ -118,16 +138,20 @@ struct PickingPipelineLayout {
 // Shader
 //
 
-struct InstancePushConstantData {
-    vertex_offset: Uint1,
-    world_offset: Uint1,
-    is_picked: Uint1,
-    color: Float4,
-}
-
 #[PipelineLayout]
 struct ShaderPipelineLayout {
     frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
     view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<InstancePushConstantData>,
+    push_constant: PushConstant<EmptyPushConstants>,
+}
+
+//
+// Material
+//
+
+struct MaterialData {
+    base_albedo: Float4,
+    base_metalness: Float1,
+    reflectance: Float1,
+    base_roughness: Float1,
 }

@@ -17,7 +17,7 @@ impl Drop for DefaultMeshes {
     }
 }
 
-pub enum DefaultMeshId {
+pub enum DefaultMeshType {
     Plane = 0,
     Cube,
     Pyramid,
@@ -43,7 +43,7 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_torus(0.1, 32, 0.5, 128),
             StaticMeshRenderData::new_cone(0.25, 1.0, 32),
             StaticMeshRenderData::new_cylinder(0.25, 1.0, 32),
-            StaticMeshRenderData::new_sphere(0.25, 20, 20),
+            StaticMeshRenderData::new_sphere(0.25, 64, 64),
             StaticMeshRenderData::new_arrow(),
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];
@@ -66,7 +66,7 @@ impl DefaultMeshes {
             offset += mesh.vertices.len() as u64 * 4;
         }
 
-        renderer.test_add_update_jobs(updater.job_blocks());
+        renderer.add_update_job_block(updater.job_blocks());
 
         Self {
             static_buffer,
@@ -77,7 +77,11 @@ impl DefaultMeshes {
     }
 
     pub fn mesh_offset_from_id(&self, mesh_id: u32) -> u32 {
-        self.static_mesh_offsets[mesh_id as usize]
+        if mesh_id < self.static_mesh_offsets.len() as u32 {
+            self.static_mesh_offsets[mesh_id as usize]
+        } else {
+            0
+        }
     }
 
     pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {

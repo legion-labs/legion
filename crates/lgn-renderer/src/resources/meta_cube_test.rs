@@ -8,7 +8,7 @@ use lgn_transform::components::{GlobalTransform, Transform};
 
 use crate::components::{RotationComponent, StaticMesh};
 
-use super::{DefaultMeshId, DefaultMeshes};
+use super::{DefaultMaterialType, DefaultMeshType, DefaultMeshes};
 
 #[derive(Default)]
 pub struct MetaCubePlugin {
@@ -117,8 +117,9 @@ impl MetaCubeResource {
                         .insert(GlobalTransform::identity())
                         .insert(StaticMesh::from_default_meshes(
                             default_meshes,
-                            DefaultMeshId::Cube as usize,
+                            DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
+                            DefaultMaterialType::Default,
                         ))
                         .insert(RotationComponent {
                             rotation_speed: (0.0, 0.1 * ((flattened_index % 10) + 1) as f32, 0.0),

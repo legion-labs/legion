@@ -5,7 +5,7 @@ use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::Transform;
 
-use crate::resources::DefaultMeshId;
+use crate::resources::DefaultMeshType;
 
 use super::DebugDisplay;
 
@@ -27,7 +27,7 @@ pub fn add_debug_things(
             for _i in 1..1000 {
                 builder.add_mesh(
                     Transform::identity().compute_matrix(),
-                    DefaultMeshId::Sphere as u32,
+                    DefaultMeshType::Sphere as u32,
                     Vec3::ZERO,
                 );
             }
