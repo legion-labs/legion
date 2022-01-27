@@ -8,7 +8,11 @@ default-run = "telemetry-ingestion-srv"
 [dependencies]
 clap = { version = "3.0", features = ["derive"] }
 tonic = "0.6"
-tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }
 lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }

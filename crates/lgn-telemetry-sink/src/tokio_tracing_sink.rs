@@ -3,13 +3,12 @@ use std::fmt::Write;
 use lgn_tracing::{dispatch::log_interop, logs::LogMetadata, Level};
 use once_cell::sync::Lazy;
 use tracing::{
-    dispatcher::SetGlobalDefaultError,
     field::Field,
     span::{Attributes, Id, Record},
-    subscriber, Event, Subscriber,
+    Event, Subscriber,
 };
 use tracing_subscriber::{
-    layer::Context, prelude::*, registry::LookupSpan, EnvFilter, Layer, Registry,
+    layer::Context, prelude::*, registry::LookupSpan, util::TryInitError, EnvFilter, Layer,
 };
 
 // References:
@@ -20,17 +19,25 @@ pub(crate) struct TelemetryLayer {}
 
 impl TelemetryLayer {
     pub(crate) fn setup() {
-        static INIT_RESULT: Lazy<Result<(), SetGlobalDefaultError>> = Lazy::new(|| {
+        static INIT_RESULT: Lazy<Result<(), TryInitError>> = Lazy::new(|| {
+            // get default filters
             let default_filter = format!("{}", ::tracing::Level::INFO);
             let filter_layer = EnvFilter::try_from_default_env()
                 .or_else(|_| EnvFilter::try_new(&default_filter))
                 .unwrap();
-            let subscriber = Registry::default().with(filter_layer);
 
+            // spawn the console server in the background,
+            // returning a `Layer`:
+            let console_layer = console_subscriber::spawn();
+
+            // redirect tokio tracing events and spans to telemetry
             let lgn_telemetry_layer = TelemetryLayer::default();
-            let subscriber = subscriber.with(lgn_telemetry_layer);
 
-            subscriber::set_global_default(subscriber)
+            tracing_subscriber::registry()
+                .with(filter_layer)
+                .with(console_layer)
+                .with(lgn_telemetry_layer)
+                .try_init()
         });
         assert!(INIT_RESULT.is_ok());
     }

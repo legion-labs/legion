@@ -11,7 +11,7 @@ lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
 lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
 clap = { version = "3.0", features = ["derive"] }
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",

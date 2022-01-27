@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 anyhow = "1"
 thiserror = "1"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 hyper = { version = "0.14", features = ["full"] }
 hyper-rustls = { version = "0.23", features = ["http2"] }
 tower = "0.4.8"

@@ -13,4 +13,4 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 clap = { version = "3.0", features = ["derive"] }
 anyhow = "1.0.44"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }

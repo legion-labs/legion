@@ -12,5 +12,9 @@ keywords = ["ecs", "game", "legion", "tauri"]
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-tauri-macros = { path = "./tauri-macros", version = "0.1.0" }
-tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }

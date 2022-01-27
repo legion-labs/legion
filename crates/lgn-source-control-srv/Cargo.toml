@@ -15,6 +15,6 @@ lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }
 serde_json = "1.0"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
 url = "2.2"
