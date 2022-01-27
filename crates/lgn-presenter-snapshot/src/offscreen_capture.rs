@@ -327,8 +327,3 @@ impl OffscreenHelper {
     }
 }
 
-impl Drop for OffscreenHelper {
-    fn drop(&mut self) {
-        cgen::shutdown();
-    }
-}

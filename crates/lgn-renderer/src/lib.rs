@@ -79,16 +79,12 @@ use crate::{
 };
 
 #[derive(Default)]
-struct CGenRegistries {
+pub struct CGenRegistries {
     registry_list: Vec<CGenRegistry>,
 }
 
 impl CGenRegistries {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn push(&mut self, registry: CGenRegistry) {
+    pub fn push(&mut self, registry: CGenRegistry) {
         self.registry_list.push(registry);
     }
 }

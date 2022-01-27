@@ -35,12 +35,6 @@ use video_stream::VideoStream;
 mod rgb2yuv;
 use rgb2yuv::RgbToYuvConverter;
 
-mod cgen {
-    include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
-}
-#[allow(unused_imports)]
-use cgen::*;
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Resolution {
     width: u32,

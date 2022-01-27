@@ -10,7 +10,7 @@ use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
 use lgn_math::Vec3;
-use lgn_presenter_snapshot::component::PresenterSnapshot;
+use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
@@ -90,6 +90,7 @@ fn main() {
             height: args.height,
         })
         .add_plugin(ScheduleRunnerPlugin::default())
+        .add_plugin(PresenterSnapshotPlugin::default())
         .add_system(presenter_snapshot_system)
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {

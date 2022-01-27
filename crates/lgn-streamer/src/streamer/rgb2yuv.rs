@@ -3,7 +3,9 @@ use lgn_graphics_api::prelude::*;
 use lgn_renderer::{components::RenderSurface, hl_gfx_api::ShaderManager, RenderContext};
 use lgn_tracing::span_fn;
 
-use super::{cgen, Resolution};
+use crate::cgen;
+
+use super::{Resolution};
 
 struct ResolutionDependentResources {
     resolution: Resolution,

@@ -1,3 +1,5 @@
+#include "crate://lgn-presenter-snapshot/gpu/pipeline_layout/display_mapper_pipeline_layout.hlsl"
+
 struct VertexOut {
     float4 pos: SV_POSITION;
     float2 uv: TEXCOORD0;

@@ -86,6 +86,9 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         }
         writer.new_line();
 
+        writer.add_line("shader_files::force_export();");
+        writer.new_line();
+
         // for descriptor_set_ref in model.object_iter::<DescriptorSet>() {
         //     writer.add_line(format!(
         //         "descriptor_set::{}::initialize(device_context);",
@@ -164,6 +167,9 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             )
             .collect();
         let mut writer = writer.add_block(&["#[rustfmt::skip]", "mod shader_files {"], &["}"]);
+
+        writer.add_line("pub(super) fn force_export() {} ");
+        writer.new_line();
 
         for (var_name, rel_path, crate_path) in infos {
             let mut writer = writer.add_block(

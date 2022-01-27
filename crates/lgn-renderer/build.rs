@@ -44,12 +44,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     build_graphics_cgen(&out_dir, &root_cgen)?;
 
-    // if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
-    //     symlink(
-    //         &out_dir,
-    //         &Path::new(env!("CARGO_MANIFEST_DIR")).join("out_dir"),
-    //     )?;
-    // }
+    if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
+        symlink(
+            &out_dir,
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("out_dir"),
+        )?;
+    }
 
     Ok(())
 }

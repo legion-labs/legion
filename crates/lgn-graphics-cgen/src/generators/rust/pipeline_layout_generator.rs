@@ -32,15 +32,10 @@ fn generate_rust_pipeline_layout(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    writer.add_line("use std::{mem, ptr};");
-    writer.new_line();
-
     {
         let mut writer = writer.add_block(&["use lgn_graphics_api::{"], &["};"]);
-        writer.add_lines(&[
-            "DeviceContext,",
-            "RootSignature,",
-            "DescriptorSetLayout,",
+        writer.add_lines(&[            
+            "RootSignature,",            
             "DescriptorSetHandle,",
             "MAX_DESCRIPTOR_SET_LAYOUTS,",
         ]);
@@ -281,7 +276,7 @@ fn generate_rust_pipeline_layout(
                 writer.add_line("#![allow(unsafe_code)]");
                 let ty = ty_handle.get(ctx.model);
                 writer.add_line("let data_slice = unsafe {");
-                writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
+                writer.add_line(format!("&*std::ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), std::mem::size_of::<{0}>())", ty.name()));
                 writer.add_line("};");
                 writer.add_line("Some(data_slice)");
             } else {
