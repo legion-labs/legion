@@ -501,7 +501,7 @@ pub struct CGenRegistry {
 impl CGenRegistry {
     pub fn new(shutdown_fn: fn()) -> Self {
         Self {
-            shutdown_fn: shutdown_fn,
+            shutdown_fn,
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),

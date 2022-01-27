@@ -286,6 +286,7 @@ fn on_window_close_requested(
     // drop(query_render_surface);
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
     let cgen_registry = cgen::initialize(renderer.device_context());
     cgen_registries.push(cgen_registry);
@@ -396,7 +397,7 @@ fn add_gpu_instances(
         while mesh.picking_id == u32::MAX {
             if let Some(picking_id) = picking_block.acquire_picking_id(entity) {
                 mesh.picking_id = picking_id;
-        } else {
+            } else {
                 picking_manager.release_picking_id_block(picking_block);
                 picking_block = picking_manager.acquire_picking_id_block();
             }
@@ -404,7 +405,7 @@ fn add_gpu_instances(
 
         mesh.picking_data_va = picking_data.ensure_index_allocated(mesh.gpu_instance_id) as u32;
         updater.add_update_jobs(&[mesh.picking_id], u64::from(mesh.picking_data_va));
-        }
+    }
 
     renderer.add_update_job_block(updater.job_blocks());
     picking_manager.release_picking_id_block(picking_block);
@@ -455,7 +456,7 @@ fn update_gpu_instance_ids(
                 1.0
             } else {
                 0.0
-    }
+            }
             .into(),
         );
         updater.add_update_jobs(&[instance_color], u64::from(mesh.instance_color_va));
@@ -649,11 +650,11 @@ fn render_update(
         // queue
         let sem = render_surface.acquire();
         {
-        let graphics_queue = render_context.graphics_queue();
-        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
+            let graphics_queue = render_context.graphics_queue();
+            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
 
-        render_surface.present(&render_context);
-    }
+            render_surface.present(&render_context);
+        }
     }
     debug_display.clear();
     render_context.release_bump_allocator(&bump_allocator_pool);

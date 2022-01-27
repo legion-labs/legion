@@ -17,7 +17,7 @@ use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
     TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
 };
-use crate::{cgen, RenderContext};
+use crate::RenderContext;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -70,7 +70,7 @@ impl Renderer {
         #![allow(unsafe_code)]
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
-        let device_context = api.device_context();        
+        let device_context = api.device_context();
 
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
 
@@ -130,7 +130,7 @@ impl Renderer {
             spotlights_data,
             shader_manager: ShaderManager::new(device_context.clone()),
             api,
-    }
+        }
     }
 
     pub fn device_context(&self) -> &DeviceContext {
@@ -157,7 +157,7 @@ impl Renderer {
         self.transient_buffer.clone()
     }
 
-	 pub fn shader_manager(&self) -> &ShaderManager {
+    pub fn shader_manager(&self) -> &ShaderManager {
         &self.shader_manager
     }
 
@@ -301,7 +301,5 @@ impl Drop for Renderer {
         std::mem::drop(self.spotlights_data.take());
         std::mem::drop(self.directional_lights_data.take());
         std::mem::drop(self.omnidirectional_lights_data.take());
-
-        // cgen::shutdown();
     }
 }

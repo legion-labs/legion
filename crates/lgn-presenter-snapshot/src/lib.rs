@@ -26,6 +26,7 @@ impl Plugin for PresenterSnapshotPlugin {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
     let cgen_registry = cgen::initialize(renderer.device_context());
     cgen_registries.push(cgen_registry);
