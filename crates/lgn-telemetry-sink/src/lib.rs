@@ -84,14 +84,16 @@ fn alloc_telemetry_system(
     let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
         Ok(url) => Arc::new(GRPCEventSink::new(&url, config.max_queue_size)),
         Err(_no_url_in_env) => {
+            let mut sink: Arc<dyn EventSink> = Arc::new(NullEventSink {});
             if enable_console_printer {
-                Arc::new(ImmediateEventSink::new(
+                if let Ok(immediate_sink) = ImmediateEventSink::new(
                     config.level_filters,
                     std::env::var("LGN_TRACE_FILE").ok(),
-                )?)
-            } else {
-                Arc::new(NullEventSink {})
+                ) {
+                    sink = Arc::new(immediate_sink);
+                }
             }
+            sink
         }
     };
 
