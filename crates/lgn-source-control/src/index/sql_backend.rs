@@ -589,12 +589,7 @@ impl IndexBackend for SqlIndexBackend {
 
         if let Some(pool) = self.pool.lock().await.take() {
             pool.close().await;
-            println!("closed pool");
         }
-
-        //if let Ok(pool) = self.get_pool().await {
-        //    pool.close().await;
-        //}
 
         self.driver.drop_database().await
     }

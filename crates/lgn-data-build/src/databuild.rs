@@ -176,10 +176,6 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let project_dir = project.project_dir();
 
-        //let projectindex_path = Project::root_to_index_path(project_dir);
-        //let corrected_path =
-        //    BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
-
         let build_index = BuildIndex::create_new(
             &config.buildindex_dir,
             &Project::root_to_index_path(project_dir),
@@ -232,7 +228,6 @@ impl DataBuild {
         Ok((
             Self {
                 build_index,
-                //project: Arc::new(Mutex::new(project)),
                 resource_dir: project.resource_dir(),
                 content_store,
                 compilers: CompilerNode::new(compilers, registry),
@@ -301,7 +296,6 @@ impl DataBuild {
                 Ok((
                     Self {
                         build_index,
-                        //project: Arc::new(Mutex::new(project)),
                         resource_dir: project.resource_dir(),
                         content_store,
                         compilers: CompilerNode::new(compilers, registry),
