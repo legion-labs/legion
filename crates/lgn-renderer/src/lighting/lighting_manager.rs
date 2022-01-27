@@ -42,7 +42,7 @@ impl Default for LightingManager {
             diffuse: true,
             specular_reflection: 1.0,
             diffuse_reflection: 1.0,
-            ambient_reflection: 0.0,
+            ambient_reflection: 0.2,
             shininess: 16.0,
         }
     }
