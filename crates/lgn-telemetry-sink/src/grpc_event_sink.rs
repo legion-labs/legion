@@ -1,4 +1,4 @@
-use log::debug;
+use lgn_tracing::debug;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::{
     fmt,
