@@ -36,7 +36,7 @@ impl FileWriter {
     pub fn add_lines<S: AsRef<str>>(&mut self, lines: &[S]) {
         for line in lines {
             self.add_line(line);
-        }        
+        }
     }
 
     pub fn add_block<'w, 'b, 'e, Sb: AsRef<str>, Se: AsRef<str>>(

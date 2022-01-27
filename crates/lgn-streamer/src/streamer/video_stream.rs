@@ -43,8 +43,7 @@ impl VideoStream {
         resolution: Resolution,
         video_data_channel: Arc<RTCDataChannel>,
         async_rt: TokioAsyncRuntimeHandle,
-    ) -> anyhow::Result<Self> {        
-
+    ) -> anyhow::Result<Self> {
         let encoder = VideoStreamEncoder::new(resolution)?;
         let rgb_to_yuv = RgbToYuvConverter::new(
             renderer.shader_manager(),

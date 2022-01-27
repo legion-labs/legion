@@ -144,7 +144,9 @@ fn generate_rust_descriptor_set(
                 ],
                 &["}"],
             );
-            writer.add_line( "unsafe { DESCRIPTOR_SET_LAYOUT = Some(descriptor_set_layout.clone()); }" );
+            writer.add_line(
+                "unsafe { DESCRIPTOR_SET_LAYOUT = Some(descriptor_set_layout.clone()); }",
+            );
         }
 
         writer.new_line();

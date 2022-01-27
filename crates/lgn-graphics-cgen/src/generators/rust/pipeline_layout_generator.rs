@@ -34,8 +34,8 @@ fn generate_rust_pipeline_layout(
     // global dependencies
     {
         let mut writer = writer.add_block(&["use lgn_graphics_api::{"], &["};"]);
-        writer.add_lines(&[            
-            "RootSignature,",            
+        writer.add_lines(&[
+            "RootSignature,",
             "DescriptorSetHandle,",
             "MAX_DESCRIPTOR_SET_LAYOUTS,",
         ]);

@@ -84,6 +84,11 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                       }
                 }));
                 // part of the source map is still hardcoded
+                let prelaunch_task = if vscode_config.disable_prelaunch {
+                    ""
+                } else {
+                    label.as_str()
+                };
                 configurations.push(json!({
                     "name": name,
                     "type": debugger_type,
@@ -101,8 +106,8 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                         "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
-                    "preLaunchTask": if vscode_config.disable_prelaunch { "" } else {label.as_str() } ,                    
-                    
+                    "preLaunchTask":  prelaunch_task,
+
                 }));
             }
         }

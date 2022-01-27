@@ -5,7 +5,7 @@ use lgn_tracing::span_fn;
 
 use crate::cgen;
 
-use super::{Resolution};
+use super::Resolution;
 
 struct ResolutionDependentResources {
     resolution: Resolution,
@@ -463,4 +463,3 @@ impl RgbToYuvConverter {
         Ok(())
     }
 }
-
