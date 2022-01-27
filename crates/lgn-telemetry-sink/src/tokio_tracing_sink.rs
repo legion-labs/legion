@@ -1,15 +1,15 @@
 use std::fmt::Write;
 
+use console_subscriber::ConsoleLayer;
 use lgn_tracing::{dispatch::log_interop, logs::LogMetadata, Level};
 use once_cell::sync::Lazy;
 use tracing::{
+    dispatcher::SetGlobalDefaultError,
     field::Field,
     span::{Attributes, Id, Record},
     Event, Subscriber,
 };
-use tracing_subscriber::{
-    layer::Context, prelude::*, registry::LookupSpan, util::TryInitError, EnvFilter, Layer,
-};
+use tracing_subscriber::{layer::Context, prelude::*, registry::LookupSpan, EnvFilter, Layer};
 
 // References:
 // * https://docs.rs/tracing/latest/tracing/subscriber/index.html
@@ -19,7 +19,7 @@ pub(crate) struct TelemetryLayer {}
 
 impl TelemetryLayer {
     pub(crate) fn setup() {
-        static INIT_RESULT: Lazy<Result<(), TryInitError>> = Lazy::new(|| {
+        static INIT_RESULT: Lazy<Result<(), SetGlobalDefaultError>> = Lazy::new(|| {
             // get default filters
             let env_filter_layer = EnvFilter::try_from_default_env()
                 .or_else(|_| {
@@ -30,18 +30,21 @@ impl TelemetryLayer {
                 })
                 .unwrap();
 
-            // spawn the console server in the background,
-            // returning a `Layer`:
-            let console_layer = console_subscriber::spawn();
+            // spawn the console server in the background, returning a `Layer`
+            let console_layer = ConsoleLayer::builder()
+                .with_default_env()
+                //.server_addr(([127, 0, 0, 1], 61234))
+                .spawn();
 
             // redirect tokio tracing events and spans to telemetry
             let lgn_telemetry_layer = TelemetryLayer::default();
 
-            tracing_subscriber::registry()
+            let subscriber = tracing_subscriber::registry()
                 .with(env_filter_layer)
                 .with(console_layer)
-                .with(lgn_telemetry_layer)
-                .try_init()
+                .with(lgn_telemetry_layer);
+
+            tracing::subscriber::set_global_default(subscriber)
         });
         assert!(INIT_RESULT.is_ok());
     }

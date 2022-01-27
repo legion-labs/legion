@@ -28,13 +28,8 @@ tonic = "0.6"
 tracing = { version = "0.1", features = [
     "release_max_level_info",
 ], optional = true }
-# note: for tracing-subscriber, using "no default" to disable "tracing-log"
-tracing-subscriber = { version = "0.3.1", default-features = false, features = [
-    "ansi",
+tracing-subscriber = { version = "0.3.1", features = [
     "env-filter",
-    "smallvec",
-    "std",
-    "fmt",
     "registry",
 ], optional = true }
 uuid = { version = "0.8", features = ["v4"] }
