@@ -6,8 +6,8 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
-    "checksum": "7228eea9f5899fb32391937766c7932a",
-    "size": 378
+    "checksum": "288ffdd0dcbbf81c76f4896f64283b09",
+    "size": 350
   },
   {
     "resource_id": "(e0d46a6b35b5717e,95114898-37a9-51c4-53ad-e7d62c10935b)",
@@ -30,8 +30,8 @@
     "size": 116
   },
   {
-    "resource_id": "(17bed132bc803773,2ee0de7f-4bb7-55b6-44e1-6834e842d96b)",
-    "checksum": "daf5fb7d7604080d543c110b0eb8a2fe",
-    "size": 120
+    "resource_id": "(17bed132bc803773,ba9bc0b1-2a7a-5dc8-6a48-cd20f7cdc437)",
+    "checksum": "9f9aaccc1fc1a17c574c40f55da23fa3",
+    "size": 111
   }
 ]

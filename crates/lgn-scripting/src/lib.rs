@@ -30,6 +30,7 @@ use components::ECSScriptType;
 use components::{ECSScriptComponent, ECSScriptPayload};
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
+use rhai::Scope;
 use rune::termcolor::ColorChoice;
 use rune::termcolor::StandardStream;
 use rune::FromValue;
@@ -190,11 +191,18 @@ impl ScriptingPlugin {
             }
         } else {
             for runtime in &runtimes.rhai_asts {
-                let output = runtimes
+                let mut scope = Scope::new();
+                let arg = i64::from_str(runtime.0.input_values[0].as_str()).unwrap();
+                let output: i64 = runtimes
                     .rhai_eng
                     .as_ref()
                     .unwrap()
-                    .eval_ast::<i64>(&runtime.1.borrow_mut())
+                    .call_fn(
+                        &mut scope,
+                        &runtime.1.borrow(),
+                        runtime.0.entry_fn.as_str(),
+                        (arg,),
+                    )
                     .unwrap();
                 println!("output: {}", output);
             }

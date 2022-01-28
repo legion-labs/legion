@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lgn_core::Name;
-use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId, Handle};
+use lgn_data_runtime::{AssetRegistry, Handle, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
