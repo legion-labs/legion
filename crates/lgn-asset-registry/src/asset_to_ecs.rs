@@ -130,6 +130,7 @@ impl AssetToECS for runtime_data::Entity {
                         )
                     }
                 };
+                #[allow(unsafe_code)]
                 entity.insert(ECSScriptComponent {
                     script_type: unsafe { std::mem::transmute(script.script_type.clone()) },
                     input_values: script.input_values.clone(),

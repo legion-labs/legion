@@ -207,6 +207,7 @@ impl FromOffline<offline_data::ScriptComponent> for runtime_data::ScriptComponen
             }
         }
 
+        #[allow(unsafe_code)]
         Self {
             script_type: unsafe { std::mem::transmute(offline.script_type.clone()) },
             input_values: offline.input_values.clone(),
