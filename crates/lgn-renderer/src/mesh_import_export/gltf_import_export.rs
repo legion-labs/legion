@@ -5,18 +5,21 @@ pub struct GltfWrapper {}
 
 impl GltfWrapper {
     #[allow(clippy::never_loop)]
-    pub fn new_mesh(path: String) -> (Vec<Vec3>, Vec<Vec3>, Vec<Vec2>, Vec<u32>) {
+    pub fn new_mesh(path: String) -> Vec<(Vec<Vec3>, Vec<Vec3>, Vec<Vec2>, Vec<u32>)> {
         let (gltf, buffers, _) = gltf::import(path).unwrap();
 
-        let mut positions = Vec::new();
-        let mut normals = Vec::new();
-        let mut uvs = Vec::new();
-        let mut indices = Vec::new();
+        let mut meshes = Vec::new();
         for mesh in gltf.meshes() {
             println!("Mesh #{:?}", mesh);
             for primitive in mesh.primitives() {
+                let mut positions = Vec::new();
+                let mut normals = Vec::new();
+                let mut uvs = Vec::new();
+                let mut indices = Vec::new();
+
                 println!("- Primitive #{}", primitive.index());
                 let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+                let mode = primitive.mode();
                 if let Some(iter) = reader.read_positions() {
                     for vertex_position in iter {
                         positions.push(vertex_position.into());
@@ -47,10 +50,9 @@ impl GltfWrapper {
                     }
                 }
 
-                return (positions, normals, uvs, indices);
+                meshes.push((positions, normals, uvs, indices));
             }
         }
-
-        unimplemented!()
+        meshes
     }
 }

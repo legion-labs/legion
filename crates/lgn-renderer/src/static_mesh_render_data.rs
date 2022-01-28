@@ -3,6 +3,10 @@ use std::ops::Mul;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
+use crate::{
+    mesh_import_export,
+    resources::{DefaultMeshId, UniformGPUDataUpdater},
+};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -11,6 +15,22 @@ pub struct StaticMeshRenderData {
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<Vec4>>,
+}
+
+impl Default for MeshFormat {
+    fn default() -> Self {
+        MeshFormat::empty()
+    }
+}
+
+#[derive(Default)]
+pub struct MeshInfo {
+    pub format: MeshFormat,
+    pub position_offset: u32,
+    pub normal_offset: u32,
+    pub tex_coord_offset: u32,
+    pub index_offset: u32,
+    pub color_offset: u32,
 }
 
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
@@ -587,7 +607,7 @@ impl StaticMeshRenderData {
 
     pub fn new_arrow() -> Self {
         let arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let cone = Self::new_cone(0.025, 0.1, 10);
+        let mut cone = Self::new_cone(0.025, 0.1, 10);
         let mut positions = arrow.positions.unwrap();
         positions.append(
             &mut cone
@@ -724,26 +744,34 @@ impl StaticMeshRenderData {
         Self::from_vertex_data(&vertex_data)
     }
 
-    pub fn new_gltf(path: String) -> Self {
-        let (positions, normals, tex_coords, indices) =
-            mesh_import_export::GltfWrapper::new_mesh(path);
-        Self {
-            positions: Some(
-                positions
-                    .into_iter()
-                    .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
-                    .collect(),
-            ),
-            normals: Some(
-                normals
-                    .into_iter()
-                    .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
-                    .collect(),
-            ),
-            tex_coords: Some(tex_coords),
-            indices: Some(indices),
-            colors: None,
+    pub fn new_gltf(path: String) -> Vec<Self> {
+        let mesh_components = mesh_import_export::GltfWrapper::new_mesh(path);
+        let mut meshes = Vec::new();
+        for mesh_component in mesh_components {
+            let (positions, normals, tex_coords, indices) = mesh_component;
+            meshes.push(Self {
+                positions: Some(
+                    positions
+                        .into_iter()
+                        .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
+                        .collect(),
+                ),
+                normals: Some(
+                    normals
+                        .into_iter()
+                        .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
+                        .collect(),
+                ),
+                tex_coords: if !tex_coords.is_empty() {
+                    Some(tex_coords)
+                } else {
+                    None
+                },
+                indices: Some(indices),
+                colors: None,
+            });
         }
+        meshes
     }
 }
 
