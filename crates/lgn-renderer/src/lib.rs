@@ -99,6 +99,8 @@ impl Drop for CGenRegistries {
 
 #[derive(Default)]
 pub struct RendererPlugin {
+    // tbd: move in RendererOptions
+    egui_enabled: bool,
     // tbd: remove
     runs_dynamic_systems: bool,
     // tbd: remove
@@ -106,8 +108,9 @@ pub struct RendererPlugin {
 }
 
 impl RendererPlugin {
-    pub fn new(runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
+    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
         Self {
+            egui_enabled,
             runs_dynamic_systems,
             meta_cube_size,
         }

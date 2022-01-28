@@ -326,7 +326,6 @@ pub mod prelude {
 
 pub struct CGenTypeDef {
     pub name: &'static str,
-    // pub id: u32,
     pub size: usize,
 }
 

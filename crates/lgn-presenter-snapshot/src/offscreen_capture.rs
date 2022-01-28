@@ -29,87 +29,7 @@ impl OffscreenHelper {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
         let shader = shader_manager.prepare_vs_ps(DISPLAY_MAPPER_SHADER.path());
-        //  &CompileParams {
-        //      shader_source: ShaderSource::Path(DISPLAY_MAPPER_SHADER.path().to_owned()),
-        //      global_defines: Vec::new(),
-        //      entry_points: vec![
-        //          EntryPoint {
-        //              defines: Vec::new(),
-        //              name: "main_vs".to_owned(),
-        //              target_profile: TargetProfile::Vertex,
-        //          },
-        //          EntryPoint {
-        //              defines: Vec::new(),
-        //              name: "main_ps".to_owned(),
-        //              target_profile: TargetProfile::Pixel,
-        //          },
-        //      ],
-        //  })?;
 
-        // let vert_shader_module = device_context.create_shader_module(
-        //     ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-        //         .module_def(),
-        // )?;
-
-        // let frag_shader_module = device_context.create_shader_module(
-        //     ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-        //         .module_def(),
-        // )?;
-
-        // let shader = device_context.create_shader(vec![
-        //     ShaderStageDef {
-        //         entry_point: "main_vs".to_owned(),
-        //         shader_stage: ShaderStageFlags::VERTEX,
-        //         shader_module: vert_shader_module,
-        //         // reflection: shader_build_result.reflection_info.clone().unwrap(),
-        //     },
-        //     ShaderStageDef {
-        //         entry_point: "main_ps".to_owned(),
-        //         shader_stage: ShaderStageFlags::FRAGMENT,
-        //         shader_module: frag_shader_module,
-        //         // reflection: shader_build_result.reflection_info.clone().unwrap(),
-        //     },
-        // ]);
-
-        // todo
-        /*
-                let mut descriptor_set_layouts = Vec::new();
-                for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-                    let shader_resources: Vec<_> = shader_build_result
-                        .pipeline_reflection
-                        .shader_resources
-                        .iter()
-                        .filter(|x| x.set_index as usize == set_index)
-                        .collect();
-
-                    if !shader_resources.is_empty() {
-                        let descriptor_defs = shader_resources
-                            .iter()
-                            .map(|sr| DescriptorDef {
-                                name: sr.name.clone(),
-                                binding: sr.binding,
-                                shader_resource_type: sr.shader_resource_type,
-                                array_size: sr.element_count,
-                            })
-                            .collect();
-
-                        let def = DescriptorSetLayoutDef {
-                            frequency: set_index as u32,
-                            descriptor_defs,
-                        };
-                        let descriptor_set_layout =
-                            device_context.create_descriptorset_layout(&def).unwrap();
-                        descriptor_set_layouts.push(descriptor_set_layout);
-                    }
-                }
-
-                let root_signature_def = RootSignatureDef {
-                    descriptor_set_layouts: descriptor_set_layouts.clone(),
-                    push_constant_def: None,
-                };
-
-                let root_signature = device_context.create_root_signature(&root_signature_def)?;
-        */
         let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
             shader: &shader,
             root_signature,
@@ -221,38 +141,6 @@ impl OffscreenHelper {
         let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
         cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
 
-        /*
-                let descriptor_set_layout = &self
-                    .pipeline
-                    .root_signature()
-                    .definition()
-                    .descriptor_set_layouts[0];
-                let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "hdr_image",
-                        &[DescriptorRef::TextureView(
-                            render_surface.shader_resource_view(),
-                        )],
-                    )
-                    .unwrap();
-                descriptor_set_writer
-                    .set_descriptors_by_name(
-                        "hdr_sampler",
-                        &[DescriptorRef::Sampler(&self.bilinear_sampler)],
-                    )
-                    .unwrap();
-
-                let device_context = render_context.renderer().device_context();
-                let descriptor_set_handle = descriptor_set_writer.flush(device_context);
-
-                cmd_buffer.bind_descriptor_set_handle_deprecated(
-                    PipelineType::Graphics,
-                    &self.root_signature,
-                    descriptor_set_layout.definition().frequency,
-                    descriptor_set_handle,
-                );
-        */
         cmd_buffer.draw(3, 0);
 
         cmd_buffer.end_render_pass();

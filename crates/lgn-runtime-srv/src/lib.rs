@@ -137,7 +137,7 @@ pub fn build_runtime(
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(true, 0))
+        .add_plugin(RendererPlugin::new(false, true, 0))
         .add_plugin(ScriptingPlugin::default())
         .add_startup_system(register_asset_loaders);
 

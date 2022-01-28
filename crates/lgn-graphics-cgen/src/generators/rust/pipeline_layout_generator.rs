@@ -130,16 +130,6 @@ fn generate_rust_pipeline_layout(
                 ],
                 &["}"],
             );
-            // writer.add_line("unsafe { ");
-            // if let Some(ty_handle) = pipeline_layout.push_constant() {
-            //     let ty = ty_handle.get(ctx.model);
-            //     writer.add_line(format!(
-            //         "let push_constant_def = Some({}::def());",
-            //         ty.name()
-            //     ));
-            // } else {
-            //     writer.add_line("let push_constant_def = None;");
-            // };
             writer.add_line("unsafe{ PIPELINE_LAYOUT = Some(pipeline_layout.clone()) };");
         }
         writer.new_line();
