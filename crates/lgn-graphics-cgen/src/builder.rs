@@ -331,7 +331,6 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         }
         self.product.descriptor_sets[ds.frequency as usize] = Some(ds_handle);
 
-        // self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_handle))
         Ok(self)
     }
 
@@ -362,27 +361,12 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         } else {
             return Err(anyhow!("PushConstant must be Struct types "));
         }
-        // done
-        // self.add_member(name, PipelineLayoutContent::PushConstant(ty_ref))
 
+        // done
         self.product.push_constant = Some(ty_handle);
 
         Ok(self)
     }
-
-    // fn add_member(mut self, name: &str, mb: PipelineLayoutContent) -> Result<Self> {
-    //     if self.names.contains(name) {
-    //         return Err(anyhow!(
-    //             "Member '{}' in PipelineLayout '{}' already exists",
-    //             name,
-    //             self.product.name
-    //         ));
-    //     }
-    //     self.names.insert(name.to_string());
-    //     self.product.members.push((name.to_string(), mb));
-
-    //     Ok(self)
-    // }
 
     /// build
     ///

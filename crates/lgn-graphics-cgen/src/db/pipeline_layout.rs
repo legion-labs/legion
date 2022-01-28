@@ -35,27 +35,6 @@ impl PipelineLayout {
             .take_while(|ds_opt| ds_opt.is_some())
             .map(|ds_opt| ds_opt.as_ref().unwrap())
     }
-
-    // pub fn find_descriptor_set_by_frequency(
-    //     &self,
-    //     model: &Model,
-    //     frequency: usize,
-    // ) -> &Option<DescriptorSetHandle> {
-    //     &self.descriptor_sets[frequency]
-
-    //     // for (_, content) in &self.members {
-    //     //     match content {
-    //     //         PipelineLayoutContent::DescriptorSet(ds_handle) => {
-    //     //             let ds = ds_handle.get(model);
-    //     //             if ds.frequency as usize == frequency {
-    //     //                 return Some(*ds_handle);
-    //     //             }
-    //     //         }
-    //     //         PipelineLayoutContent::PushConstant(_) => (),
-    //     //     }
-    //     // }
-    //     // None
-    // }
 }
 
 impl ModelObject for PipelineLayout {
