@@ -68,20 +68,18 @@ struct SubApp {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new(false)
+        Self::new(lgn_telemetry_sink::Config::default())
     }
 }
 
 impl App {
     /// Creates a new [`App`] with some default structure to enable core engine features.
     /// This is the preferred constructor for most use cases.
-    pub fn new(enable_tokio_console_server: bool) -> Self {
+    pub fn new(telemetry_config: lgn_telemetry_sink::Config) -> Self {
         let mut app = Self::empty();
 
-        let mut config = lgn_telemetry_sink::Config::default();
-        config.enable_tokio_console_server = enable_tokio_console_server;
         app.telemetry_guard =
-            Some(TelemetryGuard::new(config).expect("telemetry guard should be initialized once"));
+            Some(TelemetryGuard::new(telemetry_config).expect("telemetry guard should be initialized once"));
 
         app.add_default_stages()
             .add_event::<AppExit>()

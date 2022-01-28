@@ -90,9 +90,10 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    let enable_tokio_console_server = true;
+    let mut telemetry_config = lgn_telemetry_sink::Config::default();
+    telemetry_config.enable_tokio_console_server = true;
 
-    App::new(enable_tokio_console_server)
+    App::new(telemetry_config)
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))

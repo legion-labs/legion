@@ -35,7 +35,7 @@ tracing-subscriber = { version = "0.3.1", features = [
 uuid = { version = "0.8", features = ["v4"] }
 
 [features]
-default = ["tokio-tracing"]
+default = []
 
 max_level_off = ["log/max_level_off", "lgn-tracing/max_level_off"]
 max_level_error = ["log/max_level_error", "lgn-tracing/max_level_error"]

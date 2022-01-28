@@ -23,7 +23,7 @@ vsclippy = "run -q --message-format=json -p monorepo -- clippy"
 
 ################################################################################
 
-# enable support for tokio's console
+# enable support for tokio's tracing feature (currently unstable)
 [build]
 rustflags = ["--cfg", "tokio_unstable"]
 
