@@ -226,7 +226,7 @@ fn generate_rust_pipeline_layout(
             }
         }
     }
-    writer.new_line();   
+    writer.new_line();
 
     // finalize
     writer.build()
