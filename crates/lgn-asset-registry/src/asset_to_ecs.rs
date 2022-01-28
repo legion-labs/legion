@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lgn_core::Name;
-use lgn_data_runtime::{AssetRegistry, Handle, HandleUntyped, Resource, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
@@ -77,7 +77,7 @@ impl AssetToECS for runtime_data::Entity {
         commands: &mut Commands<'_, '_>,
         runtime_entity: &Self,
         asset_id: &ResourceTypeAndId,
-        registry: &Res<'_, Arc<AssetRegistry>>,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -201,8 +201,6 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {}
 impl AssetToECS for runtime_data::Mesh {}
 
 impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {}
-
-impl AssetToECS for runtime_data::Script {}
 
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(

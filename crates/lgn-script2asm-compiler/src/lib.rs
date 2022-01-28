@@ -1,5 +1,4 @@
 use curl::easy::Easy;
-use offline_data::Script;
 use std::{
     env::temp_dir,
     ffi::OsString,
@@ -105,7 +104,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         runtime_script = get_compiled_script(&context.source.resource_id(), &resource);
     } else {
         runtime_script = runtime_data::Script {
-			compiled_script: resource.script.as_bytes();
+			compiled_script: resource.script.as_bytes().to_vec(),
 		}
     }
     let result_buffer = bincode::serialize(&runtime_script).unwrap();
