@@ -105,64 +105,6 @@ impl RgbToYuvConverter {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
         let shader = shader_manager.prepare_cs(RGV_2_YUV_SHADER.path());
-        //   (&CompileParams {
-        //     shader_source: ShaderSource::Path(RGV_2_YUV_SHADER.path().to_owned()),
-        //     global_defines: Vec::new(),
-        //     entry_points: vec![EntryPoint {
-        //         defines: Vec::new(),
-        //         name: "cs_main".to_owned(),
-        //         target_profile: TargetProfile::Compute,
-        //     }],
-        // })?;
-
-        // let compute_shader_module = device_context.create_shader_module(
-        //     ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-        //         .module_def(),
-        // )?;
-
-        // let shader = device_context.create_shader(vec![ShaderStageDef {
-        //     entry_point: "cs_main".to_owned(),
-        //     shader_stage: ShaderStageFlags::COMPUTE,
-        //     shader_module: compute_shader_module,
-        //     // reflection: shader_build_result.reflection_info.clone().unwrap(),
-        // }]);
-
-        // let mut descriptor_set_layouts = Vec::new();
-        // for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-        //     let shader_resources: Vec<_> = shader_build_result
-        //         .pipeline_reflection
-        //         .shader_resources
-        //         .iter()
-        //         .filter(|x| x.set_index as usize == set_index)
-        //         .collect();
-
-        //     if !shader_resources.is_empty() {
-        //         let descriptor_defs = shader_resources
-        //             .iter()
-        //             .map(|sr| DescriptorDef {
-        //                 name: sr.name.clone(),
-        //                 binding: sr.binding,
-        //                 shader_resource_type: sr.shader_resource_type,
-        //                 array_size: sr.element_count,
-        //             })
-        //             .collect();
-
-        //         let def = DescriptorSetLayoutDef {
-        //             frequency: set_index as u32,
-        //             descriptor_defs,
-        //         };
-        //         let descriptor_set_layout =
-        //             device_context.create_descriptorset_layout(&def).unwrap();
-        //         descriptor_set_layouts.push(descriptor_set_layout);
-        //     }
-        // }
-
-        // let root_signature_def = RootSignatureDef {
-        //     descriptor_set_layouts: descriptor_set_layouts.clone(),
-        //     push_constant_def: None,
-        // };
-
-        // let root_signature = device_context.create_root_signature(&root_signature_def)?;
 
         let pipeline = device_context.create_compute_pipeline(&ComputePipelineDef {
             shader: &shader,
@@ -250,54 +192,6 @@ impl RgbToYuvConverter {
             let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
             cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
 
-            // let descriptor_set_layout = &self
-            //     .pipeline
-            //     .root_signature()
-            //     .definition()
-            //     .descriptor_set_layouts[0];
-            //
-            // let mut descriptor_set_writer =
-            //     render_context.alloc_descriptor_set(descriptor_set_layout);
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "hdr_image",
-            //         &[DescriptorRef::TextureView(
-            //             render_surface.shader_resource_view(),
-            //         )],
-            //     )
-            //     .unwrap();
-            //
-            // let yuv_images_views =
-            //     &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
-            //
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "y_image",
-            //         &[DescriptorRef::TextureView(&yuv_images_views.0)],
-            //     )
-            //     .unwrap();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "u_image",
-            //         &[DescriptorRef::TextureView(&yuv_images_views.1)],
-            //     )
-            //     .unwrap();
-            // descriptor_set_writer
-            //     .set_descriptors_by_name(
-            //         "v_image",
-            //         &[DescriptorRef::TextureView(&yuv_images_views.2)],
-            //     )
-            //     .unwrap();
-            //
-            // let device_context = render_context.renderer().device_context();
-            // let descriptor_set_handle = descriptor_set_writer.flush(device_context);
-
-            // cmd_buffer.bind_descriptor_set_handle_deprecated(
-            //     PipelineType::Compute,
-            //     &self.root_signature,
-            //     descriptor_set_layout.definition().frequency,
-            //     descriptor_set_handle,
-            // );
             cmd_buffer.dispatch(
                 ((self.resolution_dependent_resources.resolution.width + 7) / 8) as u32,
                 ((self.resolution_dependent_resources.resolution.height + 7) / 8) as u32,

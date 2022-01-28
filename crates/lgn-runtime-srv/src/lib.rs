@@ -57,6 +57,8 @@ struct Args {
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
+    #[clap(long)]
+    egui: bool,
 
     /// If supplied, starts with a window display, and collects input locally
     #[cfg(feature = "standalone")]
@@ -137,7 +139,7 @@ pub fn build_runtime(
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(false, true, 0))
+        .add_plugin(RendererPlugin::new(args.egui, true, 0))
         .add_plugin(ScriptingPlugin::default())
         .add_startup_system(register_asset_loaders);
 
