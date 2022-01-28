@@ -434,9 +434,7 @@ pub struct CGenPipelineLayoutDef {
 // CGenShaderDef
 //
 #[derive(Default, Debug, PartialEq)]
-pub struct CGenShaderDef {
-    
-}
+pub struct CGenShaderDef {}
 
 //
 // CGenRegistry
