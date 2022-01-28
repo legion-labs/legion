@@ -48,6 +48,17 @@
     currentlyRenameEntry = entry;
   }
 
+  // TODO: Use props instead of the `remove` function?
+  export function remove(item: Item) {
+    const entry = entries.find((entry) => entry.item === item);
+
+    if (!entry) {
+      return;
+    }
+
+    entries = entries.remove(entry);
+  }
+
   function setName({
     detail: { entry: updatedEntry, newName },
   }: CustomEvent<{ entry: Entry<Item>; newName: string }>) {
