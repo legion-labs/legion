@@ -382,15 +382,8 @@ fn render_aabb_for_mesh(
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
-    for i in 0..mesh.num_vertices() {
-        let position = Vec4::new(
-            mesh.vertices[i * 14],
-            mesh.vertices[i * 14 + 1],
-            mesh.vertices[i * 14 + 2],
-            1.0,
-        );
-
-        let world_pos = transform.compute_matrix().mul_vec4(position).xyz();
+    for position in mesh.positions.as_ref().unwrap() {
+        let world_pos = transform.compute_matrix().mul_vec4(*position).xyz();
 
         min_bound = min_bound.min(world_pos);
         max_bound = max_bound.max(world_pos);

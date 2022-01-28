@@ -2,8 +2,8 @@
 
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
-    BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
+    BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, CullMode, DepthState,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, FillMode, Format, FrontFace,
     PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
     VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
@@ -84,6 +84,16 @@ impl TmpRenderPass {
                         blend_state: &BlendState::default_alpha_enabled(),
                         depth_state: &depth_state,
                         rasterizer_state: &RasterizerState::default(),
+                    cull_mode: CullMode::default(),
+                    front_face: FrontFace::Clockwise,
+                    fill_mode: FillMode::default(),
+                    depth_bias: 0.0,
+                    depth_bias_slope_scaled: 0.0,
+                    depth_clamp_enable: false,
+                    multisample: false,
+                    scissor: false,
+                    line_width: 1.0,
+                },
                         color_formats: &[Format::R16G16B16A16_SFLOAT],
                         sample_count: SampleCount::SampleCount1,
                         depth_stencil_format: Some(Format::D32_SFLOAT),

@@ -52,6 +52,7 @@ pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
 pub(crate) mod tmp_shader_data;
+pub(crate) mod mesh_import_export;
 
 use crate::{
     components::{

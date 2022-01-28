@@ -2,7 +2,10 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::mesh_import_export;
+use crate::{
+    mesh_import_export,
+    resources::{DefaultMeshId, UniformGPUDataUpdater},
+};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -13,13 +16,29 @@ pub struct StaticMeshRenderData {
 }
 
 bitflags::bitflags! {
-    pub struct MeshFormat: u16 {
+    pub struct MeshFormat: u32 {
         const POSITION = 0x0001;
         const NORMAL = 0x0002;
         const TEX_COORD = 0x0004;
         const INDEX = 0x0008;
         const COLOR = 0x0010;
     }
+}
+
+impl Default for MeshFormat {
+    fn default() -> Self {
+        MeshFormat::empty()
+    }
+}
+
+#[derive(Default)]
+pub struct MeshInfo {
+    pub format: MeshFormat,
+    pub position_offset: u32,
+    pub normal_offset: u32,
+    pub tex_coord_offset: u32,
+    pub index_offset: u32,
+    pub color_offset: u32,
 }
 
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
@@ -53,11 +72,91 @@ impl StaticMeshRenderData {
         format
     }
 
+    pub fn make_gpu_update_job(
+        &self,
+        updater: &mut UniformGPUDataUpdater,
+        offset: u32,
+    ) -> (u32, MeshInfo) {
+        let mut mesh_info = MeshInfo::default();
+        mesh_info.format = self.get_mesh_format();
+        let mut offset = offset;
+
+        if let Some(positions) = &self.positions {
+            mesh_info.position_offset = offset;
+            updater.add_update_jobs(&positions, offset as u64);
+            offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
+        }
+        if let Some(normals) = &self.normals {
+            mesh_info.normal_offset = offset;
+            updater.add_update_jobs(&normals, offset as u64);
+            offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            mesh_info.tex_coord_offset = offset;
+            updater.add_update_jobs(&tex_coords, offset as u64);
+            offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
+        }
+        if let Some(indices) = &self.indices {
+            mesh_info.index_offset = offset;
+            updater.add_update_jobs(&indices, offset as u64);
+            offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
+        }
+        if let Some(colors) = &self.colors {
+            mesh_info.color_offset = offset;
+            updater.add_update_jobs(&colors, offset as u64);
+            offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+        }
+        (offset, mesh_info)
+    }
+
+    pub fn size_in_bytes(&self) -> u32 {
+        let mut size = 0;
+
+        if let Some(positions) = &self.positions {
+            size += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
+        }
+        if let Some(normals) = &self.normals {
+            size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
+        }
+        if let Some(indices) = &self.indices {
+            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
+        }
+        if let Some(colors) = &self.colors {
+            size += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+        }
+        size
+    }
+
     fn from_vertex_data(vertex_data: &[f32]) -> Self {
-        let positions = Vec::new();
-        let normals = Vec::new();
-        let colors = Vec::new();
-        let tex_coords = Vec::new();
+        let mut positions = Vec::new();
+        let mut normals = Vec::new();
+        let mut colors = Vec::new();
+        let mut tex_coords = Vec::new();
+        for i in 0..vertex_data.len() / 14 {
+            let idx = i * 14;
+            positions.push(Vec4::new(
+                vertex_data[idx + 0],
+                vertex_data[idx + 1],
+                vertex_data[idx + 2],
+                vertex_data[idx + 3],
+            ));
+            normals.push(Vec4::new(
+                vertex_data[idx + 4],
+                vertex_data[idx + 5],
+                vertex_data[idx + 6],
+                vertex_data[idx + 7],
+            ));
+            colors.push(Vec4::new(
+                vertex_data[idx + 8],
+                vertex_data[idx + 9],
+                vertex_data[idx + 10],
+                vertex_data[idx + 11],
+            ));
+            tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
+        }
         Self {
             positions: Some(positions),
             normals: Some(normals),
@@ -68,8 +167,10 @@ impl StaticMeshRenderData {
     }
 
     pub fn num_vertices(&self) -> usize {
-        assert!(self.indices.is_none());
-        if let Some(positions) = self.positions {
+        if let Some(indices) = &self.indices {
+            return indices.len();
+        }
+        if let Some(positions) = &self.positions {
             return positions.len();
         }
         unimplemented!()
@@ -489,8 +590,9 @@ impl StaticMeshRenderData {
 
     pub fn new_arrow() -> Self {
         let mut arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let cone = Self::new_cone(0.025, 0.1, 10);
-        arrow.positions.unwrap().append(
+        let mut cone = Self::new_cone(0.025, 0.1, 10);
+        let mut positions = arrow.positions.unwrap();
+        positions.append(
             &mut cone
                 .positions
                 .unwrap()
@@ -498,7 +600,8 @@ impl StaticMeshRenderData {
                 .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
                 .collect(),
         );
-        arrow.normals.unwrap().append(
+        let mut normals = arrow.normals.unwrap();
+        normals.append(
             &mut cone
                 .normals
                 .unwrap()
@@ -506,13 +609,18 @@ impl StaticMeshRenderData {
                 .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
                 .collect(),
         );
-        arrow
-            .tex_coords
-            .unwrap()
-            .append(&mut cone.tex_coords.unwrap());
-        arrow.colors.unwrap().append(&mut cone.colors.unwrap());
+        let mut tex_coords = arrow.tex_coords.unwrap();
+        tex_coords.append(&mut cone.tex_coords.unwrap());
+        let mut colors = arrow.colors.unwrap();
+        colors.append(&mut cone.colors.unwrap());
 
-        arrow
+        Self {
+            positions: Some(positions),
+            normals: Some(normals),
+            tex_coords: Some(tex_coords),
+            colors: Some(colors),
+            indices: None,
+        }
     }
 
     pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {
@@ -612,25 +720,33 @@ impl StaticMeshRenderData {
         Self::from_vertex_data(&vertex_data)
     }
 
-    pub fn new_gltf(path: String) -> Self {
-        let (positions, normals, tex_coords, indices) =
-            mesh_import_export::GltfWrapper::new_mesh(path);
-        Self {
-            positions: Some(
-                positions
-                    .into_iter()
-                    .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
-                    .collect(),
-            ),
-            normals: Some(
-                normals
-                    .into_iter()
-                    .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
-                    .collect(),
-            ),
-            tex_coords: Some(tex_coords),
-            indices: Some(indices),
-            colors: None,
+    pub fn new_gltf(path: String) -> Vec<Self> {
+        let mesh_components = mesh_import_export::GltfWrapper::new_mesh(path);
+        let mut meshes = Vec::new();
+        for mesh_component in mesh_components {
+            let (positions, normals, tex_coords, indices) = mesh_component;
+            meshes.push(Self {
+                positions: Some(
+                    positions
+                        .into_iter()
+                        .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
+                        .collect(),
+                ),
+                normals: Some(
+                    normals
+                        .into_iter()
+                        .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
+                        .collect(),
+                ),
+                tex_coords: if !tex_coords.is_empty() {
+                    Some(tex_coords)
+                } else {
+                    None
+                },
+                indices: Some(indices),
+                colors: None,
+            });
         }
+        meshes
     }
 }
