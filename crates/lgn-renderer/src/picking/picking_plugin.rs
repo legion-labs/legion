@@ -5,6 +5,7 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion},
 };
 use lgn_math::Vec2;
+use lgn_tracing::span_fn;
 use lgn_transform::prelude::{Parent, Transform};
 use lgn_window::WindowResized;
 use std::ops::Deref;
@@ -117,6 +118,7 @@ fn lights_added(
     picking_manager.release_picking_id_block(picking_block);
 }
 
+#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn update_picking_components(
     picking_manager: Res<'_, PickingManager>,
@@ -136,6 +138,7 @@ fn update_picking_components(
     picking_manager.update_picking_components(commands, query, manipulator_entities);
 }
 
+#[span_fn]
 #[allow(clippy::type_complexity)]
 #[allow(clippy::needless_pass_by_value)]
 fn update_picked_entity(
@@ -152,6 +155,7 @@ fn update_picked_entity(
     }
 }
 
+#[span_fn]
 #[allow(clippy::type_complexity)]
 #[allow(clippy::needless_pass_by_value)]
 fn update_manipulator_component(
