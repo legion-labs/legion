@@ -190,6 +190,33 @@ export class Entries<Item> {
 
   // TODO: Improve performance if needed
   /**
+   * Filters `Entries` based on a predicate.
+   */
+  filter(pred: (entry: Entry<Item>) => boolean): this {
+    function filter(entries: Entry<Item>[]): Entry<Item>[] {
+      return entries.reduce((acc, entry) => {
+        if (!pred(entry)) {
+          return acc;
+        }
+
+        if (entry.subEntries) {
+          return [...acc, { ...entry, subEntries: filter(entry.subEntries) }];
+        }
+
+        return [...acc, entry];
+      }, [] as Entry<Item>[]);
+    }
+
+    this.entries = filter(this.entries);
+
+    // Resets the size so it's computed again if needed
+    this.#size = null;
+
+    return this;
+  }
+
+  // TODO: Improve performance if needed
+  /**
    * Finds an entry index in an `Entries` array.
    *
    * Unlike `Array.prototype.findIndex`, this method returns `null` if the index is not found, not -1.
@@ -211,7 +238,7 @@ export class Entries<Item> {
     shouldUpdate: (
       entry: Entry<Item>
     ) => Pick<Entry<Item>, "item" | "name"> | null
-  ): Entries<Item> {
+  ): this {
     function update(entries: Entry<Item>[]): Entry<Item>[] {
       return entries.map((entry) => {
         const updatedEntry = shouldUpdate(entry);
@@ -240,5 +267,9 @@ export class Entries<Item> {
     this.entries = update(this.entries);
 
     return this;
+  }
+
+  remove(removedEntry: Entry<Item>): this {
+    return this.filter((entry) => entry !== removedEntry);
   }
 }

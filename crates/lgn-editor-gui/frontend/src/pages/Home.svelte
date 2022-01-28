@@ -75,13 +75,27 @@
   function handleResourceRename({
     detail: { action },
   }: ContextMenuActionEvent<Pick<ContextMenuEntryRecord, "resource">>) {
+    if (!currentResourceDescription) {
+      return;
+    }
+
     switch (action) {
       case "rename": {
-        if (!currentResourceDescription || !resourceHierarchyTree) {
+        if (!resourceHierarchyTree) {
           return;
         }
 
         resourceHierarchyTree.edit(currentResourceDescription);
+
+        return;
+      }
+
+      case "remove": {
+        if (!resourceHierarchyTree) {
+          return;
+        }
+
+        resourceHierarchyTree.remove(currentResourceDescription);
 
         return;
       }
