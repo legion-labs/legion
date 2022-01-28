@@ -13,7 +13,8 @@ mod cgen {
 #[allow(unused_imports)]
 use cgen::*;
 use lgn_ecs::prelude::{Res, ResMut};
-use lgn_renderer::{CGenRegistries, Renderer};
+use lgn_graphics_cgen_runtime::CGenRegistryList;
+use lgn_renderer::Renderer;
 
 mod grpc;
 mod streamer;
@@ -54,7 +55,7 @@ impl Plugin for StreamerPlugin {
     }
 }
 
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
     let cgen_registry = cgen::initialize(renderer.device_context());
     cgen_registries.push(cgen_registry);
 }

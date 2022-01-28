@@ -21,7 +21,7 @@ pub use labels::*;
 mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
-use lgn_graphics_cgen_runtime::CGenRegistry;
+use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
 
@@ -79,25 +79,6 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct CGenRegistries {
-    registry_list: Vec<CGenRegistry>,
-}
-
-impl CGenRegistries {
-    pub fn push(&mut self, registry: CGenRegistry) {
-        self.registry_list.push(registry);
-    }
-}
-
-impl Drop for CGenRegistries {
-    fn drop(&mut self) {
-        for registry in self.registry_list.drain(..) {
-            registry.shutdown();
-        }
-    }
-}
-
-#[derive(Default)]
 pub struct RendererPlugin {
     // tbd: move in RendererOptions
     egui_enabled: bool,
@@ -146,7 +127,7 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(init_manipulation_manager);
         app.add_startup_system(init_default_materials);
 
-        app.insert_resource(CGenRegistries::default());
+        app.insert_resource(CGenRegistryList::default());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
@@ -290,7 +271,7 @@ fn on_window_close_requested(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
     let cgen_registry = cgen::initialize(renderer.device_context());
     cgen_registries.push(cgen_registry);
 }

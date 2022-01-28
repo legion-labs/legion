@@ -14,7 +14,8 @@ pub mod component;
 mod offscreen_capture;
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Res, ResMut};
-use lgn_renderer::{CGenRegistries, Renderer};
+use lgn_graphics_cgen_runtime::CGenRegistryList;
+use lgn_renderer::Renderer;
 use offscreen_capture::OffscreenHelper;
 
 #[derive(Default)]
@@ -27,7 +28,7 @@ impl Plugin for PresenterSnapshotPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistries>) {
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
     let cgen_registry = cgen::initialize(renderer.device_context());
     cgen_registries.push(cgen_registry);
 }

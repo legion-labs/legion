@@ -44,7 +44,7 @@ fn generate_rust_pipeline_layout(
 
     {
         let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
-        writer.add_lines(&["CGenPipelineLayoutDef,", "PipelineDataProvider,"]);
+        writer.add_line("CGenPipelineLayoutDef");
     }
     writer.new_line();
 
@@ -226,55 +226,7 @@ fn generate_rust_pipeline_layout(
             }
         }
     }
-
-    writer.new_line();
-
-    // trait: PipelineDataProvider
-    {
-        let mut writer = writer.add_block(
-            &[format!(
-                "impl PipelineDataProvider for {} {{",
-                pipeline_layout.name
-            )],
-            &["}"],
-        );
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer =
-                writer.add_block(&["fn root_signature() -> &'static RootSignature {"], &["}"]);
-            writer.add_line("Self::root_signature()");
-        }
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer = writer.add_block(
-                &["fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {"],
-                &["}"],
-            );
-            writer.add_line("self.descriptor_sets[frequency as usize]");
-        }
-        writer.new_line();
-
-        // fn push_constant
-        {
-            let mut writer =
-                writer.add_block(&["fn push_constant(&self) -> Option<&[u8]> {"], &["}"]);
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                writer.add_line("#![allow(unsafe_code)]");
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line("let data_slice = unsafe {");
-                writer.add_line(format!("&*std::ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), std::mem::size_of::<{0}>())", ty.name()));
-                writer.add_line("};");
-                writer.add_line("Some(data_slice)");
-            } else {
-                writer.add_line("None");
-            }
-        }
-    }
-    writer.new_line();
+    writer.new_line();   
 
     // finalize
     writer.build()

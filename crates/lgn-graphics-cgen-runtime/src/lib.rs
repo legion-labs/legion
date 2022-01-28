@@ -4,9 +4,9 @@
 #![allow(unreachable_code)]
 
 use lgn_graphics_api::{
-    BufferView, DescriptorDef, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetLayoutDef,
-    DeviceContext, PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
-    TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
+    BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
+    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType, TextureView,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use half::prelude::*;
@@ -398,12 +398,18 @@ impl ValueWrapper for &[&TextureView] {
     }
 }
 
+//
+// CGenDescriptorDef
+//
 impl CGenDescriptorDef {
     pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
         wrapper.validate(self)
     }
 }
 
+//
+// CGenDescriptorSetDef
+//
 #[derive(Default, Debug, PartialEq)]
 pub struct CGenDescriptorSetDef {
     pub name: &'static str,
@@ -413,35 +419,9 @@ pub struct CGenDescriptorSetDef {
     pub descriptor_defs: &'static [CGenDescriptorDef],
 }
 
-impl CGenDescriptorSetDef {
-    pub fn create_descriptor_set_layout(
-        &self,
-        device_context: &DeviceContext,
-    ) -> DescriptorSetLayout {
-        let mut layout_def = DescriptorSetLayoutDef {
-            frequency: self.frequency,
-            ..DescriptorSetLayoutDef::default()
-        };
-
-        layout_def
-            .descriptor_defs
-            .reserve_exact(self.descriptor_defs.len());
-
-        for (i, cgen_descriptor_def) in self.descriptor_defs.iter().enumerate() {
-            let descriptor_def = DescriptorDef {
-                name: cgen_descriptor_def.name.to_string(),
-                binding: u32::try_from(i).unwrap(),
-                shader_resource_type: cgen_descriptor_def.shader_resource_type,
-                array_size: cgen_descriptor_def.array_size,
-            };
-            layout_def.descriptor_defs.push(descriptor_def);
-        }
-        device_context
-            .create_descriptorset_layout(&layout_def)
-            .unwrap()
-    }
-}
-
+//
+// CGenPipelineLayoutDef
+//
 #[derive(Default, Debug, PartialEq)]
 pub struct CGenPipelineLayoutDef {
     pub name: &'static str,
@@ -450,46 +430,9 @@ pub struct CGenPipelineLayoutDef {
     pub push_constant_type: Option<u32>,
 }
 
-impl CGenPipelineLayoutDef {
-    pub fn create_pipeline_layout(
-        &self,
-        device_context: &DeviceContext,
-        descriptor_set_layouts: &[&DescriptorSetLayout],
-        push_constant_def: Option<&CGenTypeDef>,
-    ) -> RootSignature {
-        let push_constant_def = push_constant_def.map(|ty_def| PushConstantDef {
-            size: u32::try_from(ty_def.size).unwrap(),
-        });
-
-        let signature_def = RootSignatureDef {
-            descriptor_set_layouts: self
-                .descriptor_set_layout_ids
-                .iter()
-                .filter_map(|opt_id| opt_id.map(|id| descriptor_set_layouts[id as usize].clone()))
-                .collect::<Vec<_>>(),
-            push_constant_def,
-        };
-
-        device_context
-            .create_root_signature(&signature_def)
-            .unwrap()
-    }
-}
-
-pub trait CGenDescriptorSetInfo {
-    fn id() -> u32;
-}
-
-pub trait CGenPipelineLayoutInfo {
-    fn id() -> u32;
-}
-
-pub trait PipelineDataProvider {
-    fn root_signature() -> &'static RootSignature;
-    fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle>;
-    fn push_constant(&self) -> Option<&[u8]>;
-}
-
+//
+// CGenRegistry
+//
 pub struct CGenRegistry {
     shutdown_fn: fn(),
     type_defs: Vec<&'static CGenTypeDef>,
@@ -579,5 +522,28 @@ impl CGenRegistry {
 
     pub fn pipeline_layout(&self, id: u32) -> &RootSignature {
         &self.pipeline_layouts[id as usize]
+    }
+}
+
+//
+// CGenRegistryList
+//
+
+#[derive(Default)]
+pub struct CGenRegistryList {
+    registry_list: Vec<CGenRegistry>,
+}
+
+impl CGenRegistryList {
+    pub fn push(&mut self, registry: CGenRegistry) {
+        self.registry_list.push(registry);
+    }
+}
+
+impl Drop for CGenRegistryList {
+    fn drop(&mut self) {
+        for registry in self.registry_list.drain(..) {
+            registry.shutdown();
+        }
     }
 }

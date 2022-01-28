@@ -52,8 +52,7 @@ fn generate_rust_descriptor_set(
             ],
             &["};"],
         );
-        writer.add_lines(&[
-            "CGenDescriptorSetInfo,",
+        writer.add_lines(&[            
             "CGenDescriptorDef,",
             "CGenDescriptorSetDef,",
         ]);
