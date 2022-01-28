@@ -396,6 +396,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             enabled: true,
+            intensity: 5.0,
             ..LightComponent::default()
         });
 }
