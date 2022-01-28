@@ -42,7 +42,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let mut tasks = vec![];
     tasks.push(json!({
         "type": "cargo",
-        "command": "vsclippy",
+        "command": "mclippy",
         "args": [
             "--workspace",
         ],
