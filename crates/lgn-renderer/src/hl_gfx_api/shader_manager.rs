@@ -1,5 +1,6 @@
 use lgn_graphics_api::{DeviceContext, Shader, ShaderPackage, ShaderStageDef, ShaderStageFlags};
 
+use lgn_graphics_cgen_runtime::CGenShaderDef;
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile};
 use lgn_tracing::span_fn;
 
@@ -14,6 +15,10 @@ impl ShaderManager {
             device_context,
             shader_compiler: HlslCompiler::new().unwrap(),
         }
+    }
+
+    pub fn load(&self, shader_def: &CGenShaderDef) {
+
     }
 
     #[span_fn]

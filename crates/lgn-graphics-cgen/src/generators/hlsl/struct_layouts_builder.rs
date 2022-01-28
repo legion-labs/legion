@@ -123,7 +123,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
 
     for pl in model.object_iter::<PipelineLayout>() {
         let pl = pl.object();
-        let pc = pl.push_constant();
+        let pc = &pl.push_constant;
         if let Some(pc) = pc {
             ty_requirements.set_used_as_sb(pc.id());
         }

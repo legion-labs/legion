@@ -134,8 +134,6 @@ impl TmpRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
-        cmd_buffer.push_constant(&cgen::cgen_type::EmptyPushConstants::default());
-
         for (_index, static_mesh) in static_meshes.iter().enumerate() {
             cmd_buffer.draw_instanced(static_mesh.num_vertices, 0, 1, static_mesh.gpu_instance_id);
         }

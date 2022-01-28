@@ -1,4 +1,4 @@
-use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
+use heck::ToSnakeCase;
 
 use crate::{
     db::PipelineLayout,
@@ -50,18 +50,28 @@ fn generate_rust_pipeline_layout(
 
     // local dependencies
     {
-        for (_, content) in &pipeline_layout.members {
-            match content {
-                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
-                    writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
-                }
-                crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
-                    let ty = ty_ref.get(ctx.model);
-                    writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
-                }
-            }
+        for ds_handle in pipeline_layout.descriptor_sets() {
+            let ds = ds_handle.get(ctx.model);
+            writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
         }
+
+        if let Some(pc_handle) = &pipeline_layout.push_constant {
+            let ty = pc_handle.get(ctx.model);
+            writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
+        }
+
+        // for (_, content) in &pipeline_layout.members {
+        //     match content {
+        //         crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+        //             let ds = ds_ref.get(ctx.model);
+        //             writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
+        //         }
+        //         crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
+        //             let ty = ty_ref.get(ctx.model);
+        //             writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
+        //         }
+        //     }
+        // }
     }
     writer.new_line();
 
@@ -74,18 +84,19 @@ fn generate_rust_pipeline_layout(
         writer.add_line(format!("name: \"{}\",", pipeline_layout.name));
         writer.add_line(format!("id: {},", pipeline_layout_id));
         writer.add_line("descriptor_set_layout_ids: [");
-        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let opt_ds_ref = pipeline_layout.find_descriptor_set_by_frequency(ctx.model, i);
-            match opt_ds_ref {
-                Some(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
+        // for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+        for ds_opt in &pipeline_layout.descriptor_sets {
+            // let opt_ds_ref = pipeline_layout.find_descriptor_set_by_frequency(ctx.model, i);
+            match ds_opt {
+                Some(ds_handle) => {
+                    let ds = ds_handle.get(ctx.model);
                     writer.add_line(format!("Some({}::id()),", ds.name));
                 }
                 None => writer.add_line("None,"),
             }
         }
         writer.add_line("],");
-        if let Some(ty_handle) = pipeline_layout.push_constant() {
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
             let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant_type: Some({}::id())", ty.name()));
         } else {
@@ -110,8 +121,8 @@ fn generate_rust_pipeline_layout(
         writer.add_line(
             "descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],",
         );
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant: {}", ty.name()));
         }
     }
@@ -171,38 +182,69 @@ fn generate_rust_pipeline_layout(
         writer.new_line();
 
         // fn setters
-        for (name, content) in &pipeline_layout.members {
-            match content {
-                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
-                    let mut writer = writer.add_block(
-                        &[format!(
-                        "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
-                        name
-                    )],
-                        &["}"],
-                    );
 
-                    writer.add_line(format!(
-                        "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
-                        ds.frequency
-                    ));
-                }
-                crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
-                    let ty = ty_ref.get(ctx.model);
-                    let mut writer = writer.add_block(
-                        &[format!(
-                            "pub fn set_{}(&mut self, data: &{}) {{",
-                            name,
-                            ty.name()
-                        )],
-                        &["}"],
-                    );
+        for ds_handle in pipeline_layout.descriptor_sets() {
+            let ds = ds_handle.get(ctx.model);
+            let mut writer = writer.add_block(
+                &[format!(
+                    "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
+                    ds.name.to_snake_case()
+                )],
+                &["}"],
+            );
 
-                    writer.add_line("self.push_constant = *data;");
-                }
-            }
+            writer.add_line(format!(
+                "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
+                ds.frequency
+            ));
         }
+
+        // match content {
+        //     crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
+        //         let ds = ds_ref.get(ctx.model);
+        //         let mut writer = writer.add_block(
+        //             &[format!(
+        //             "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
+        //             name
+        //         )],
+        //             &["}"],
+        //         );
+
+        //         writer.add_line(format!(
+        //             "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
+        //             ds.frequency
+        //         ));
+        //     }
+        // }
+
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
+            let ty = ty_handle.get(ctx.model);
+            let mut writer = writer.add_block(
+                &[format!(
+                    "pub fn set_push_constant(&mut self, data: &{}) {{",
+                    ty.name()
+                )],
+                &["}"],
+            );
+
+            writer.add_line("self.push_constant = *data;");
+        }
+
+        //         crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
+        //             let ty = ty_ref.get(ctx.model);
+        //             let mut writer = writer.add_block(
+        //                 &[format!(
+        //                     "pub fn set_{}(&mut self, data: &{}) {{",
+        //                     name,
+        //                     ty.name()
+        //                 )],
+        //                 &["}"],
+        //             );
+
+        //             writer.add_line("self.push_constant = *data;");
+        //         }
+        //     }
+        // }
     }
 
     writer.new_line();
@@ -210,7 +252,7 @@ fn generate_rust_pipeline_layout(
     // trait: Default
     {
         let mut writer = writer.add_block(
-            &[format!("impl Default for {} {{", pipeline_layout.name)],
+            &[format!("impl Default for {} {{", pipeline_layout.name())],
             &["}"],
         );
 
@@ -219,8 +261,8 @@ fn generate_rust_pipeline_layout(
             {
                 let mut writer = writer.add_block(&["Self {"], &["}"]);
                 writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
-                if let Some(ty_ref) = pipeline_layout.push_constant() {
-                    let ty = ty_ref.get(ctx.model);
+                if let Some(ty_handle) = &pipeline_layout.push_constant {
+                    let ty = ty_handle.get(ctx.model);
                     writer.add_line(format!("push_constant: {}::default(),", ty.name()));
                 }
             }

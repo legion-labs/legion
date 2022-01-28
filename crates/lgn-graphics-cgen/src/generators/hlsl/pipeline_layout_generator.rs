@@ -31,43 +31,56 @@ fn generate_hlsl_pipeline_layout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout
             &["#endif"],
         );
         writer.new_line();
+
         writer.add_line("// DescriptorSets");
-        for (name, ty) in &pl.members {
-            match ty {
-                crate::db::PipelineLayoutContent::DescriptorSet(ds_handle) => {
-                    let ds = ds_handle.get(ctx.model);
-                    writer.add_lines(&[
-                        format!("// - name: {}", name),
-                        format!("// - freq: {}", ds.frequency),
-                        format!(
-                            "#include \"{}\"",
-                            ctx.embedded_fs_path(ds, CGenVariant::Hlsl)
-                        ),
-                    ]);
-                }
-                crate::db::PipelineLayoutContent::PushConstant(_) => (),
-            }
+        for ds_handle in pl.descriptor_sets() {
+            let ds = ds_handle.get(ctx.model);
+            writer.add_lines(&[
+                format!("// - name: {}", ds.name),
+                format!("// - freq: {}", ds.frequency),
+                format!(
+                    "#include \"{}\"",
+                    ctx.embedded_fs_path(ds, CGenVariant::Hlsl)
+                ),
+            ]);
         }
-        writer.add_line("// PushConstant".to_string());
-        for (name, ty) in &pl.members {
-            match ty {
-                crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
-                    let ty = ty_ref.get(ctx.model);
-                    writer.add_lines(&[
-                        format!("// - name: {}", name),
-                        format!(
-                            "#include \"{}\"",
-                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
-                        ),
-                    ]);
-                    writer.add_lines(&[
-                        "[[vk::push_constant]]".to_string(),
-                        format!("ConstantBuffer<{}> {}; ", ty.name(), name),
-                    ]);
-                }
-                crate::db::PipelineLayoutContent::DescriptorSet(_) => (),
-            }
+        writer.new_line();
+
+        if let Some(pc_handle) = &pl.push_constant {
+            let ty = pc_handle.get(ctx.model);
+            writer.add_lines(&[
+                "// - push constant",
+                &format!(
+                    "#include \"{}\"",
+                    ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                ),
+            ]);
+            writer.add_lines(&[
+                "[[vk::push_constant]]".to_string(),
+                format!("ConstantBuffer<{}> push_constant;", ty.name()),
+            ]);
         }
+
+        // writer.add_line("// PushConstant".to_string());
+        // for (name, ty) in &pl.members {
+        //     match ty {
+        //         crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
+        //             let ty = ty_ref.get(ctx.model);
+        //             writer.add_lines(&[
+        //                 format!("// - name: {}", name),
+        //                 format!(
+        //                     "#include \"{}\"",
+        //                     ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+        //                 ),
+        //             ]);
+        //             writer.add_lines(&[
+        //                 "[[vk::push_constant]]".to_string(),
+        //                 format!("ConstantBuffer<{}> {}; ", ty.name(), name),
+        //             ]);
+        //         }
+        //         crate::db::PipelineLayoutContent::DescriptorSet(_) => (),
+        //     }
+        // }
     }
 
     // finalize

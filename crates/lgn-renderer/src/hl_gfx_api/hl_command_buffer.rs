@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, IndexBufferBinding, IndexType, Pipeline,
-    PipelineType, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    Texture, TextureBarrier, VertexBufferBinding,
 };
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
@@ -81,28 +81,6 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     //
-    // tmp? state less api . change that!
-    //
-    pub fn bind_descriptor_set_handle_deprecated(
-        &self,
-        pipeline_type: PipelineType,
-        root_signature: &RootSignature,
-        set_index: u32,
-        descriptor_set_handle: DescriptorSetHandle,
-    ) {
-        self.cmd_buffer.cmd_bind_descriptor_set_handle(
-            pipeline_type,
-            root_signature,
-            set_index,
-            descriptor_set_handle,
-        );
-    }
-
-    pub fn push_constants_deprecated(&self, root_signature: &RootSignature, constants: &[u8]) {
-        self.cmd_buffer.cmd_push_constant(root_signature, constants);
-    }
-
-    //
     // tmp? rely on a sort of cache. investigate!
     //
 
@@ -143,7 +121,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         let constants_ptr = (constants as *const T).cast::<u8>();
         #[allow(unsafe_code)]
         let data = unsafe { &*std::ptr::slice_from_raw_parts(constants_ptr, constants_size) };
-        self.push_constants_deprecated(root_signature, data);
+        self.cmd_buffer.cmd_push_constant(root_signature, data);
     }
 
     pub fn draw(&self, vertex_count: u32, first_vertex: u32) {

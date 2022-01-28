@@ -4,8 +4,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::db::{
     CGenType, ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, Model, NativeType,
-    PipelineLayout, PipelineLayoutContent, StructMember, StructType, StructuredBufferDef,
-    TextureDef,
+    PipelineLayout, StructMember, StructType, StructuredBufferDef, TextureDef,
 };
 
 pub struct StructBuilder<'mdl> {
@@ -295,9 +294,6 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
 pub struct PipelineLayoutBuilder<'mdl> {
     mdl: &'mdl Model,
     product: PipelineLayout,
-    names: HashSet<String>,
-    freqs: HashSet<u32>,
-    has_push_constant: bool,
 }
 
 impl<'mdl> PipelineLayoutBuilder<'mdl> {
@@ -305,9 +301,6 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         PipelineLayoutBuilder {
             mdl,
             product: PipelineLayout::new(name),
-            names: HashSet::new(),
-            freqs: HashSet::new(),
-            has_push_constant: false,
         }
     }
 
@@ -315,13 +308,13 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    pub fn add_descriptor_set(mut self, name: &str, ty: &str) -> Result<Self> {
+    pub fn add_descriptor_set(mut self, ds_ty: &str) -> Result<Self> {
         // check descriptor_set exists
-        let ds_handle = self.mdl.get_object_handle::<DescriptorSet>(ty);
+        let ds_handle = self.mdl.get_object_handle::<DescriptorSet>(ds_ty);
         if ds_handle.is_none() {
             return Err(anyhow!(
                 "Unknown DescriptorSet '{}' added to PipelineLayout '{}'",
-                ty,
+                ds_ty,
                 self.product.name
             ));
         }
@@ -329,64 +322,67 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         let ds = ds_handle.get(self.mdl);
 
         // check for frequency conflict
-        if self.freqs.contains(&ds.frequency) {
+        if self.product.descriptor_sets[ds.frequency as usize].is_some() {
             return Err(anyhow!(
                 "Frequency conflict for DescriptorSet '{}' in PipelineLayout '{}'",
-                ty,
+                ds_ty,
                 self.product.name
             ));
         }
-        self.freqs.insert(ds.frequency);
+        self.product.descriptor_sets[ds.frequency as usize] = Some(ds_handle);
 
-        self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_handle))
+        // self.add_member(name, PipelineLayoutContent::DescriptorSet(ds_handle))
+        Ok(self)
     }
 
     /// Add `PushConstant`.
     ///
     /// # Errors
     /// todo
-    pub fn add_push_constant(mut self, name: &str, typename: &str) -> Result<Self> {
+    pub fn add_push_constant(mut self, typename: &str) -> Result<Self> {
         // only one push_constant is allowed
-        if self.has_push_constant {
+        if self.product.push_constant.is_some() {
             return Err(anyhow!(
                 "Only one PushConstant allowed in PipelineLayout '{}'",
                 self.product.name
             ));
         }
-        self.has_push_constant = true;
         // get cgen type and check its existence if necessary
-        let ty_ref = self
+        let ty_handle = self
             .mdl
             .get_object_handle::<CGenType>(typename)
             .context(anyhow!(
-                "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
+                "Unknown type '{}' for PushConstant in PipelineLayout '{}'",
                 typename,
-                name,
                 self.product.name
             ))?;
-        let cgen_type = ty_ref.get(self.mdl);
+        let cgen_type = ty_handle.get(self.mdl);
         // Only struct types allowed for now
         if let CGenType::Struct(_def) = cgen_type {
         } else {
             return Err(anyhow!("PushConstant must be Struct types "));
         }
         // done
-        self.add_member(name, PipelineLayoutContent::PushConstant(ty_ref))
-    }
+        // self.add_member(name, PipelineLayoutContent::PushConstant(ty_ref))
 
-    fn add_member(mut self, name: &str, mb: PipelineLayoutContent) -> Result<Self> {
-        if self.names.contains(name) {
-            return Err(anyhow!(
-                "Member '{}' in PipelineLayout '{}' already exists",
-                name,
-                self.product.name
-            ));
-        }
-        self.names.insert(name.to_string());
-        self.product.members.push((name.to_string(), mb));
+        self.product.push_constant = Some(ty_handle);
 
         Ok(self)
     }
+
+    // fn add_member(mut self, name: &str, mb: PipelineLayoutContent) -> Result<Self> {
+    //     if self.names.contains(name) {
+    //         return Err(anyhow!(
+    //             "Member '{}' in PipelineLayout '{}' already exists",
+    //             name,
+    //             self.product.name
+    //         ));
+    //     }
+    //     self.names.insert(name.to_string());
+    //     self.product.members.push((name.to_string(), mb));
+
+    //     Ok(self)
+    // }
 
     /// build
     ///
@@ -394,6 +390,19 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     /// todo
     #[allow(clippy::unnecessary_wraps)]
     pub fn build(self) -> Result<PipelineLayout> {
+        let mut first_none = None;
+
+        for i in 0..self.product.descriptor_sets.len() {
+            if self.product.descriptor_sets[i].is_none() && first_none.is_none() {
+                first_none = Some(i);
+            } else if self.product.descriptor_sets[i].is_some() && first_none.is_some() {
+                return Err(anyhow!(
+                    "DescriptorSets in PipelineLayout '{}' must be contiguous",
+                    self.product.name
+                ));
+            }
+        }
+
         Ok(self.product)
     }
 }
