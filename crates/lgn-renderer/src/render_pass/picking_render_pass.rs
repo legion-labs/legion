@@ -139,7 +139,9 @@ impl PickingRenderPass {
         let device_context = renderer.device_context();
 
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader = renderer.prepare_vs_ps(PICKING_SHADER.path().to_owned());
+        let shader = renderer
+            .shader_manager()
+            .prepare_vs_ps(PICKING_SHADER.path());
 
         //
         // Pipeline state

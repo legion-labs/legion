@@ -1,0 +1,10 @@
+#[DescriptorSet(frequency = 0)]
+struct DisplayMapperDescriptorSet {
+    hdr_image: Texture2D<Float4>,
+    hdr_sampler: Sampler,
+}
+
+#[PipelineLayout]
+struct DisplayMapperPipelineLayout {
+    descriptor_set: DescriptorSet<DisplayMapperDescriptorSet>
+}

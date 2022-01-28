@@ -23,13 +23,11 @@ enum EguiLabels {
 }
 
 #[derive(Default)]
-pub struct EguiPlugin {
-    enable: bool,
-}
+pub struct EguiPlugin;
 
 impl EguiPlugin {
-    pub fn new(enable: bool) -> Self {
-        Self { enable }
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -37,10 +35,7 @@ impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(on_window_created);
 
-        let egui = Egui {
-            enable: self.enable,
-            ..Egui::default()
-        };
+        let egui = Egui { ..Egui::default() };
         //egui.ctx.style().visuals.window_shadow.extrusion = 0.0;
         app.insert_resource(egui);
         app.insert_resource(RawInput::default());

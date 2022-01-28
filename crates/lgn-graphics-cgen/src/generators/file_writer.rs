@@ -37,7 +37,6 @@ impl FileWriter {
         for line in lines {
             self.add_line(line);
         }
-        self.new_line();
     }
 
     pub fn add_block<'w, 'b, 'e, Sb: AsRef<str>, Se: AsRef<str>>(

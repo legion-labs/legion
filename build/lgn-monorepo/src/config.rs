@@ -185,13 +185,14 @@ pub struct RustDoc {
     pub deny: Vec<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct VsCode {
-    pub debugger_type: Option<HostConfig>,
+    pub debugger_type: HostConfig,
     pub compounds: HashMap<String, Vec<String>>,
     pub overrides: HashMap<String, HashMap<String, Vec<String>>>,
-    pub disable_prelaunch: Option<bool>,
+    pub disable_prelaunch: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -223,5 +224,11 @@ impl HostConfig {
                 }
             }
         }
+    }
+}
+
+impl Default for HostConfig {
+    fn default() -> Self {
+        Self::Default("lldb".to_string())
     }
 }

@@ -8,7 +8,7 @@ use guppy::graph::{BuildTargetId, BuildTargetKind};
 use lgn_tracing::span_fn;
 use serde_json::{json, to_string_pretty};
 
-use crate::{config::HostConfig, context::Context, Error, Result};
+use crate::{context::Context, Error, Result};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -28,10 +28,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         })
         .collect();
     let vscode_config = &ctx.config().vscode;
-    let debugger_type = vscode_config
-        .debugger_type
-        .as_ref()
-        .map_or("lldb", HostConfig::as_str);
+    let debugger_type = vscode_config.debugger_type.as_str();
 
     for package in vscode_config.overrides.keys() {
         if !workspace.contains_name(package) {
@@ -87,6 +84,11 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                       }
                 }));
                 // part of the source map is still hardcoded
+                let prelaunch_task = if vscode_config.disable_prelaunch {
+                    ""
+                } else {
+                    label.as_str()
+                };
                 configurations.push(json!({
                     "name": name,
                     "type": debugger_type,
@@ -104,9 +106,8 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                         "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
-                    "preLaunchTask": vscode_config.disable_prelaunch.as_ref().map_or_else(
-                        || label.as_str(),
-                        |disable| if *disable { "" } else { label.as_str() } ) ,
+                    "preLaunchTask":  prelaunch_task,
+
                 }));
             }
         }

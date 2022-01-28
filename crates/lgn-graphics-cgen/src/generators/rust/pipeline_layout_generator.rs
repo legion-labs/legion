@@ -32,15 +32,10 @@ fn generate_rust_pipeline_layout(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    writer.add_line("use std::{mem, ptr};");
-    writer.new_line();
-
     {
         let mut writer = writer.add_block(&["use lgn_graphics_api::{"], &["};"]);
         writer.add_lines(&[
-            "DeviceContext,",
             "RootSignature,",
-            "DescriptorSetLayout,",
             "DescriptorSetHandle,",
             "MAX_DESCRIPTOR_SET_LAYOUTS,",
         ]);
@@ -49,7 +44,7 @@ fn generate_rust_pipeline_layout(
 
     {
         let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
-        writer.add_lines(&["CGenPipelineLayoutDef,", "PipelineDataProvider,"]);
+        writer.add_line("CGenPipelineLayoutDef");
     }
     writer.new_line();
 
@@ -129,20 +124,13 @@ fn generate_rust_pipeline_layout(
         // fn initialize
         {
             let mut writer = writer.add_block(
-                &["#[allow(unsafe_code)]", "pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {"],
+                &[
+                    "#[allow(unsafe_code)]",
+                    "pub fn initialize(pipeline_layout: &RootSignature) {",
+                ],
                 &["}"],
             );
-            writer.add_line("unsafe { ");
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line(format!(
-                    "let push_constant_def = Some({}::def());",
-                    ty.name()
-                ));
-            } else {
-                writer.add_line("let push_constant_def = None");
-            };
-            writer.add_lines(&["PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));", "}"]);
+            writer.add_line("unsafe{ PIPELINE_LAYOUT = Some(pipeline_layout.clone()) };");
         }
         writer.new_line();
 
@@ -152,6 +140,10 @@ fn generate_rust_pipeline_layout(
                 writer.add_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
             writer.add_line("unsafe{ PIPELINE_LAYOUT = None; }");
         }
+        writer.new_line();
+
+        // impl: def
+        writer.add_line("pub fn def() -> &'static CGenPipelineLayoutDef { &PIPELINE_LAYOUT_DEF }");
         writer.new_line();
 
         // fn root_signature
@@ -231,54 +223,6 @@ fn generate_rust_pipeline_layout(
                     let ty = ty_ref.get(ctx.model);
                     writer.add_line(format!("push_constant: {}::default(),", ty.name()));
                 }
-            }
-        }
-    }
-
-    writer.new_line();
-
-    // trait: PipelineDataProvider
-    {
-        let mut writer = writer.add_block(
-            &[format!(
-                "impl PipelineDataProvider for {} {{",
-                pipeline_layout.name
-            )],
-            &["}"],
-        );
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer =
-                writer.add_block(&["fn root_signature() -> &'static RootSignature {"], &["}"]);
-            writer.add_line("Self::root_signature()");
-        }
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer = writer.add_block(
-                &["fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {"],
-                &["}"],
-            );
-            writer.add_line("self.descriptor_sets[frequency as usize]");
-        }
-        writer.new_line();
-
-        // fn push_constant
-        {
-            let mut writer =
-                writer.add_block(&["fn push_constant(&self) -> Option<&[u8]> {"], &["}"]);
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                writer.add_line("#![allow(unsafe_code)]");
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line("let data_slice = unsafe {");
-                writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
-                writer.add_line("};");
-                writer.add_line("Some(data_slice)");
-            } else {
-                writer.add_line("None");
             }
         }
     }

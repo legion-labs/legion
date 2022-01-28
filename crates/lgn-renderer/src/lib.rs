@@ -21,6 +21,7 @@ pub use labels::*;
 mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
+use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
 
@@ -79,15 +80,18 @@ use crate::{
 
 #[derive(Default)]
 pub struct RendererPlugin {
-    enable_egui: bool,
+    // tbd: move in RendererOptions
+    _egui_enabled: bool,
+    // tbd: remove
     runs_dynamic_systems: bool,
+    // tbd: remove
     meta_cube_size: usize,
 }
 
 impl RendererPlugin {
-    pub fn new(enable_egui: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
+    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
         Self {
-            enable_egui,
+            _egui_enabled: egui_enabled,
             runs_dynamic_systems,
             meta_cube_size,
         }
@@ -96,7 +100,7 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        let renderer = Renderer::new().unwrap();
+        let renderer = Renderer::new();
 
         app.add_stage_after(
             CoreStage::PostUpdate,
@@ -110,7 +114,7 @@ impl Plugin for RendererPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_plugin(EguiPlugin::new(self.enable_egui));
+        app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
 
@@ -119,9 +123,11 @@ impl Plugin for RendererPlugin {
         }
 
         app.insert_resource(ManipulatorManager::new());
+        app.add_startup_system(init_cgen);
         app.add_startup_system(init_manipulation_manager);
         app.add_startup_system(init_default_materials);
 
+        app.insert_resource(CGenRegistryList::default());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
@@ -236,9 +242,9 @@ fn on_window_resized(
         }
     }
 
-    drop(wnd_list);
-    drop(renderer);
-    drop(render_surfaces);
+    // drop(wnd_list);
+    // drop(renderer);
+    // drop(render_surfaces);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -261,7 +267,13 @@ fn on_window_close_requested(
         render_surfaces.remove(ev.id);
     }
 
-    drop(query_render_surface);
+    // drop(query_render_surface);
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
+    let cgen_registry = cgen::initialize(renderer.device_context());
+    cgen_registries.push(cgen_registry);
 }
 
 fn init_manipulation_manager(

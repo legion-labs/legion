@@ -24,7 +24,8 @@ impl EguiPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
-        let shader = renderer.prepare_vs_ps(UI_SHADER.path().to_owned());
+        let shader = renderer.shader_manager().prepare_vs_ps(UI_SHADER.path());
+
         //
         // Pipeline state
         //

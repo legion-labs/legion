@@ -31,7 +31,9 @@ impl TmpRenderPass {
 
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = renderer.prepare_vs_ps(SHADER_SHADER.path().to_owned());
+        let shader = renderer
+            .shader_manager()
+            .prepare_vs_ps(SHADER_SHADER.path());
 
         //
         // Pipeline state

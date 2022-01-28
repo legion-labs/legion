@@ -19,7 +19,7 @@ lgn-input = { path = "../lgn-input", version = "0.1.0", features = [
 ] }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
-lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
+lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
 lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
 lgn-streaming-proto = { path = "../lgn-streaming-proto", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
@@ -41,6 +41,10 @@ serde_json = "1.0"
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 webrtc = "0.3"
+
+[build-dependencies]
+lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
+lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
 
 [features]
 default = []
