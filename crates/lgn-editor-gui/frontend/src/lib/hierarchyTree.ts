@@ -9,13 +9,13 @@ export type Entry<Item, WithIndex extends boolean = true> = {
   // eslint-disable-next-line @typescript-eslint/ban-types
 } & (WithIndex extends true ? { index: number } : {});
 
+// TODO: Improve performance if needed, and stop using recursion
 /** A wrapper class around the `Entry<Item>[]` type. */
 export class Entries<Item> {
   entries: Entry<Item>[];
 
   #size: number | null = null;
 
-  // TODO: Improve performance if needed
   /**
    * Build an `Entries` object from any flat arrays of object.
    * Objects must contain a `path` attribute.
@@ -162,7 +162,6 @@ export class Entries<Item> {
     return this.#size;
   }
 
-  // TODO: Improve performance if needed
   /**
    * Finds an entry in an `Entries` array.
    */
@@ -188,7 +187,6 @@ export class Entries<Item> {
     return find(this.entries);
   }
 
-  // TODO: Improve performance if needed
   /**
    * Filters `Entries` based on a predicate.
    */
@@ -215,7 +213,6 @@ export class Entries<Item> {
     return this;
   }
 
-  // TODO: Improve performance if needed
   /**
    * Finds an entry index in an `Entries` array.
    *
@@ -227,7 +224,6 @@ export class Entries<Item> {
     return entry?.index ?? null;
   }
 
-  // TODO: Improve performance if needed
   /**
    * Takes a whole `Entries` object and a function called for each entry in this object.
    *

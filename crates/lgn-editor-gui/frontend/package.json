@@ -20,7 +20,7 @@
     "clean": "rimraf node_modules dist",
     "test": "jest",
     "test:watch": "jest --watch",
-    "benchmark": "vite build -c benchmarks/vite.config.js && node dist/benchmarks/index.js"
+    "benchmark": "vite build --mode development -c benchmarks/vite.config.js && node dist/benchmarks/index.js"
   },
   "devDependencies": {
     "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
@@ -35,7 +35,6 @@
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
     "autoprefixer": "^10.4.2",
-    "benny": "^3.7.1",
     "eslint": "^8.7.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-svelte3": "^3.4.0",

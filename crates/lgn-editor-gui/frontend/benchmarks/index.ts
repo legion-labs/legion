@@ -1,3 +1,6 @@
-// Import a .bench file here so it can be executed by the `pnpm benchmark` command
+import { run } from "./benchmark";
 
-import "./lib/hierarchyTree.bench";
+// Import a .bench file here so it can be executed by the `pnpm benchmark` command
+import { bigResourcesSuite, resourcesSuite } from "./lib/hierarchyTree.bench";
+
+run([bigResourcesSuite, resourcesSuite]);
