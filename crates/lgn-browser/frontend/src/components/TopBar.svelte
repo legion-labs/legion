@@ -50,12 +50,12 @@
   function onMenuMouseEnter(id: TopBarMenuId) {
     // We set the topBarMenu value (and therefore open said menu dropdown)
     // only when a menu is open
-    $topBarMenu && topBarMenu.set(id);
+    $topBarMenu && ($topBarMenu = id);
   }
 
   function onMenuClick(id: TopBarMenuId) {
     // Simple menu dropdown display toggle
-    $topBarMenu ? topBarMenu.close() : topBarMenu.set(id);
+    $topBarMenu ? topBarMenu.close() : ($topBarMenu = id);
   }
 
   function onMenuItemClick(title: string) {

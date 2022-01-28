@@ -1,4 +1,4 @@
-import { Store as ContextMenuStore } from "../stores/contextMenu";
+import ContextMenuStore from "../stores/contextMenu";
 
 /**
  * Builds a type safe `contextMenu` action that automatically uses

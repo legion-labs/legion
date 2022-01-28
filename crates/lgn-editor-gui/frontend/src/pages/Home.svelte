@@ -14,7 +14,7 @@
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";
   import { Entries } from "@/lib/hierarchyTree";
-  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
+  import { AsyncStoreOrchestratorList } from "@lgn/frontend/src/stores/asyncStore";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
     ContextMenuEntryRecord,
@@ -30,7 +30,9 @@
 
   const { data: currentResourceData } = currentResource;
 
-  const allResourcesStore = asyncStore<ResourceDescription[]>();
+  const allResourcesStore = new AsyncStoreOrchestratorList<
+    ResourceDescription[]
+  >();
 
   let allResourcesData = allResourcesStore.data;
 

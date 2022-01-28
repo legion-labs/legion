@@ -118,7 +118,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
   import { Position } from "../lib/types";
-  import { Store as ContextMenuStore } from "../stores/contextMenu";
+  import ContextMenuStore from "../stores/contextMenu";
   import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
 
   type State =
