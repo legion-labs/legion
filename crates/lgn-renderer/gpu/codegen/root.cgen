@@ -45,10 +45,6 @@ struct GpuInstanceVATable {
     picking_data_va: Uint1,
 }
 
-struct EmptyPushConstants {
-    dummy: Float4,
-}
-
 #[DescriptorSet(frequency = 0)]
 struct FrameDescriptorSet {
     lighting_data: ConstantBuffer<LightingData>,
@@ -141,8 +137,7 @@ struct PickingPipelineLayout {
 #[PipelineLayout]
 struct ShaderPipelineLayout {
     frame_descriptor_set: DescriptorSet<FrameDescriptorSet>,
-    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,
-    push_constant: PushConstant<EmptyPushConstants>,
+    view_descriptor_set: DescriptorSet<ViewDescriptorSet>,     
 }
 
 //

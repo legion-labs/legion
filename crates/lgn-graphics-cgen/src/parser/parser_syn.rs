@@ -537,14 +537,13 @@ fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> Resu
                 if !prop.ty.is_templated() {
                     return Err(anyhow!("#todo"));
                 }
-                builder =
-                    builder.add_descriptor_set(prop.name.as_str(), prop.ty.template_name())?;
+                builder = builder.add_descriptor_set(prop.ty.template_name())?;
             }
             "PushConstant" => {
                 if !prop.ty.is_templated() {
                     return Err(anyhow!("#todo"));
                 }
-                builder = builder.add_push_constant(prop.name.as_str(), prop.ty.template_name())?;
+                builder = builder.add_push_constant(prop.ty.template_name())?;
             }
             _ => {
                 todo!();

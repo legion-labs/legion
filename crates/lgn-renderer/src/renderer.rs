@@ -61,10 +61,6 @@ macro_rules! impl_static_buffer_accessor {
     };
 }
 
-unsafe impl Send for Renderer {}
-
-unsafe impl Sync for Renderer {}
-
 impl Renderer {
     pub fn new() -> Self {
         #![allow(unsafe_code)]
