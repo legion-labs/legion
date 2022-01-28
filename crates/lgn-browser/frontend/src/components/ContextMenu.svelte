@@ -153,6 +153,8 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
   let entrySetName: string | null = null;
 
+  let contextMenu: HTMLElement | undefined;
+
   function computePositionFrom(
     { clientX, clientY, view }: MouseEvent,
     entries: Entry[]
@@ -185,6 +187,19 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   }
 
   async function handleDefaultContextMenu(event: MouseEvent) {
+    // Do not do anything when right clicking inside a context menu element
+    if (
+      state.type !== "hidden" &&
+      contextMenu &&
+      event.target instanceof Node &&
+      contextMenu.contains(event.target)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      return;
+    }
+
     // In dev mode `Ctrl + Right Click` will open the default
     // context menu for dev purpose.
     if (import.meta.env.DEV && event.ctrlKey) {
@@ -291,7 +306,6 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 />
 
 <div
-  id="context-menu"
   class="root"
   class:opacity-100={state.type === "shown"}
   class:opacity-0={state.type === "disappearing" || state.type === "appearing"}
@@ -299,10 +313,12 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
     state.type === "shown" ||
     state.type === "disappearing"}
   class:hidden={state.type === "hidden"}
-  use:clickOutside={close}
   style={"position" in state
     ? `width: ${widthRem}rem; top: ${state.position.y}px; left: ${state.position.x}px;`
     : `width: ${widthRem}rem;`}
+  on:click-outside={close}
+  use:clickOutside={contextMenu && [contextMenu]}
+  bind:this={contextMenu}
 >
   <div class="entries">
     {#each currentEntries as entry, index (index)}
@@ -310,7 +326,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
         <div
           class="item"
           class:danger={entry.tag === "danger"}
-          on:click={() => dispatchContextMenuActionEvent(entry)}
+          on:mouseup={() => dispatchContextMenuActionEvent(entry)}
         >
           {entry.label}
         </div>
@@ -323,7 +339,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
 <style lang="postcss">
   .root {
-    @apply absolute bg-gray-800 z-50 rounded-sm transition-opacity ease-in duration-[50ms] shadow-xl;
+    @apply absolute bg-gray-800 z-50 rounded-sm transition-opacity ease-in duration-[50ms] shadow-lg shadow-gray-800;
   }
 
   .entries {

@@ -21,6 +21,8 @@
         "bradlc.vscode-tailwindcss",
         // Svelte extension
         "svelte.svelte-vscode",
+        // Iconify autocompletion
+        "antfu.iconify",
         // Spell check extension
         "streetsidesoftware.code-spell-checker"
     ]

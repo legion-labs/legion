@@ -63,15 +63,17 @@
   class:w-full={fullWidth}
   class:no-arrow={noArrow}
   class:text-right={align === "right"}
-  on:focus={onFocus}
+  autocomplete="none"
+  aria-autocomplete="none"
   type="number"
   {min}
   {max}
   {step}
+  {disabled}
+  bind:this={input}
   bind:value
   on:input={disabled ? null : onInput}
-  bind:this={input}
-  {disabled}
+  on:focus={onFocus}
 />
 
 <style lang="postcss">
