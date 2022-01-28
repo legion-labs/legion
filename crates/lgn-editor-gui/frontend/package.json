@@ -19,9 +19,12 @@
     "svelte:check": "tsc && svelte-check",
     "clean": "rimraf node_modules dist",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "benchmark": "vite build --mode development -c benchmarks/vite.config.js && node dist/benchmarks/index.js"
   },
   "devDependencies": {
+    "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
+    "@lgn/vite-plugin-wasm": "workspace:^0.1.0",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.34",
     "@swc/core": "^1.2.130",
     "@swc/jest": "^0.2.17",
@@ -48,8 +51,6 @@
     "ts-proto": "^1.101.0",
     "typescript": "^4.5.4",
     "vite": "^2.7.12",
-    "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
-    "@lgn/vite-plugin-wasm": "workspace:^0.1.0",
     "vite-tsconfig-paths": "^3.3.17"
   },
   "dependencies": {
