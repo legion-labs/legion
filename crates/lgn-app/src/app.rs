@@ -78,8 +78,10 @@ impl App {
     pub fn new(telemetry_config: lgn_telemetry_sink::Config) -> Self {
         let mut app = Self::empty();
 
-        app.telemetry_guard =
-            Some(TelemetryGuard::new(telemetry_config).expect("telemetry guard should be initialized once"));
+        app.telemetry_guard = Some(
+            TelemetryGuard::new(telemetry_config)
+                .expect("telemetry guard should be initialized once"),
+        );
 
         app.add_default_stages()
             .add_event::<AppExit>()
