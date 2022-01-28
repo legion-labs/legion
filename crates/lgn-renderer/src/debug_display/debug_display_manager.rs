@@ -2,8 +2,8 @@
 
 use lgn_core::BumpAllocatorHandle;
 use lgn_graphics_data::Color;
-use lgn_tracing::span_fn;
 use lgn_math::Mat4;
+use lgn_tracing::span_fn;
 use std::sync::Mutex;
 
 pub struct DebugDisplay {
