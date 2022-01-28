@@ -49,6 +49,8 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
+pub(crate) mod mesh_import_export;
+
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
