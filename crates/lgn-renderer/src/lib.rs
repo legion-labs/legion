@@ -146,9 +146,14 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
+
         app.add_system_to_stage(
             RenderStage::Prepare,
-            update_transform.before(PrepareLabel::UpdateInstanceIds),
+            add_gpu_instances.label(PrepareLabel::AddedStaticMeshes),
+        );
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_transform.after(PrepareLabel::AddedStaticMeshes),
         );
         app.add_system_to_stage(
             RenderStage::Prepare,
@@ -156,12 +161,9 @@ impl Plugin for RendererPlugin {
         );
         app.add_system_to_stage(
             RenderStage::Prepare,
-            update_gpu_instances.before(PrepareLabel::UpdateInstanceIds),
-        );
-
-        app.add_system_to_stage(
-            RenderStage::Prepare,
-            update_gpu_instance_ids.label(PrepareLabel::UpdateInstanceIds),
+            update_gpu_instance_ids
+                .label(PrepareLabel::UpdateInstanceIds)
+                .after(PrepareLabel::AddedStaticMeshes),
         );
 
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
@@ -287,31 +289,20 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
 #[allow(clippy::needless_pass_by_value)]
 fn update_transform(
     renderer: Res<'_, Renderer>,
-    mut instance_transforms: ResMut<'_, GpuInstanceTransform>,
-    mut query: Query<
+    query: Query<
         '_,
         '_,
-        (
-            Entity,
-            &GlobalTransform,
-            &mut StaticMesh,
-            Option<&ManipulatorComponent>,
-        ),
+        (&GlobalTransform, &StaticMesh, Option<&ManipulatorComponent>),
         Changed<GlobalTransform>,
     >,
 ) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-    for (entity, transform, mut mesh, manipulator) in query.iter_mut() {
+    for (transform, mesh, manipulator) in query.iter() {
         if manipulator.is_none() {
-            mesh.world_transform_va =
-                instance_transforms.ensure_index_allocated(entity.id()) as u32;
-
             let mut world = cgen::cgen_type::GpuInstanceTransform::default();
             world.set_world(transform.compute_matrix().into());
             updater.add_update_jobs(&[world], u64::from(mesh.world_transform_va));
-        } else {
-            mesh.world_transform_va = u32::MAX;
         }
     }
 
@@ -331,21 +322,27 @@ fn update_materials(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 #[allow(clippy::too_many_arguments)]
-fn update_gpu_instances(
+fn add_gpu_instances(
     renderer: Res<'_, Renderer>,
     picking_manager: Res<'_, PickingManager>,
     instance_id_allocator: Res<'_, GpuInstanceIdAllocator>,
     va_table_adresses: Res<'_, GpuVaTableForGpuInstance>,
+    mut instance_transforms: ResMut<'_, GpuInstanceTransform>,
     mut instance_offsets: ResMut<'_, GpuInstanceVATable>,
     mut instance_color: ResMut<'_, GpuInstanceColor>,
     mut picking_data: ResMut<'_, GpuInstancePickingData>,
-    mut instance_query: Query<'_, '_, (Entity, &mut StaticMesh), Added<StaticMesh>>,
+    mut instance_query: Query<
+        '_,
+        '_,
+        (Entity, &mut StaticMesh, Option<&ManipulatorComponent>),
+        Added<StaticMesh>,
+    >,
 ) {
     let mut index_block = instance_id_allocator.acquire_index_block();
     let mut picking_block = picking_manager.acquire_picking_id_block();
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-    for (entity, mut mesh) in instance_query.iter_mut() {
+    for (entity, mut mesh, manipulator) in instance_query.iter_mut() {
         let (new_index_block, new_instance_id) = instance_id_allocator.acquire_index(index_block);
 
         index_block = new_index_block;
@@ -354,6 +351,13 @@ fn update_gpu_instances(
         mesh.va_table_address =
             instance_offsets.ensure_index_allocated(mesh.gpu_instance_id) as u32;
         mesh.instance_color_va = instance_color.ensure_index_allocated(mesh.gpu_instance_id) as u32;
+
+        if manipulator.is_none() {
+            mesh.world_transform_va =
+                instance_transforms.ensure_index_allocated(mesh.gpu_instance_id) as u32;
+        } else {
+            mesh.world_transform_va = u32::MAX;
+        }
 
         va_table_adresses.set_va_table_address_for_gpu_instance(
             &mut updater,
@@ -387,11 +391,11 @@ fn update_gpu_instance_ids(
     default_materials: ResMut<'_, DefaultMaterials>,
 
     material_query: Query<'_, '_, &MaterialComponent>,
-    mut instance_query: Query<'_, '_, &mut StaticMesh, Changed<StaticMesh>>,
+    instance_query: Query<'_, '_, &StaticMesh, Changed<StaticMesh>>,
 ) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-    for mesh in instance_query.iter_mut() {
+    for mesh in instance_query.iter() {
         let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
 
         gpu_instance_va_table.set_vertex_buffer_va(mesh.vertex_buffer_va.into());

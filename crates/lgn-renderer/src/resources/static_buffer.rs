@@ -323,6 +323,7 @@ impl UniformGPUDataUpdater {
 
     pub fn add_update_jobs<T>(&mut self, data: &[T], dst_offset: u64) {
         let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
+        assert!(dst_offset != u64::from(u32::MAX));
 
         while self.job_blocks.is_empty()
             || !self

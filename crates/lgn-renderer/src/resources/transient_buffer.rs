@@ -109,9 +109,12 @@ impl PageHeap {
 }
 
 pub(crate) struct TransientPagedBufferInner {
+    device_context: DeviceContext,
     page_heaps: Vec<PageHeap>,
     current_cpu_frame: u64,
     last_complete_gpu_frame: u64,
+    num_pages: u64,
+    page_size: u64,
 }
 
 #[derive(Clone)]
@@ -123,23 +126,32 @@ impl TransientPagedBuffer {
     pub fn new(device_context: &DeviceContext, num_pages: u64, page_size: u64) -> Self {
         Self {
             inner: Arc::new(Mutex::new(TransientPagedBufferInner {
+                device_context: device_context.clone(),
                 page_heaps: vec![PageHeap::new(device_context, num_pages, page_size)],
                 current_cpu_frame: 3,
                 last_complete_gpu_frame: 0,
+                num_pages,
+                page_size,
             })),
         }
     }
 
     pub fn allocate_page(&self, layout: Layout) -> BufferAllocation {
-        let mut inner = self.inner.lock().unwrap();
+        let inner = &mut *self.inner.lock().unwrap();
 
-        for page_heap in &mut inner.page_heaps {
-            if let Some(allocation) = page_heap.allocate_page(layout) {
-                return allocation;
+        while !inner.page_heaps.is_empty() {
+            for page_heap in &mut inner.page_heaps {
+                if let Some(allocation) = page_heap.allocate_page(layout) {
+                    return allocation;
+                }
             }
+            inner.page_heaps.push(PageHeap::new(
+                &inner.device_context,
+                inner.num_pages,
+                inner.page_size,
+            ));
         }
-
-        panic!();
+        unreachable!();
     }
 
     pub fn begin_frame(&self) {
