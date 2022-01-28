@@ -17,7 +17,7 @@ impl ShaderManager {
         }
     }
 
-    pub fn load(&self, shader_def: &CGenShaderDef) {}
+    pub fn load(&self, _shader_def: &CGenShaderDef) {}
 
     #[span_fn]
     pub fn prepare_vs_ps(&self, shader_path: &str) -> Shader {
