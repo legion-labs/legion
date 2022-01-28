@@ -1,6 +1,5 @@
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
-use lgn_math::Vec4;
 
 use crate::{cgen, resources::UniformGPUDataUpdater};
 
@@ -64,12 +63,7 @@ impl MaterialComponent {
     pub(crate) fn update_gpu_data(&self, updater: &mut UniformGPUDataUpdater) {
         let mut gpu_material = cgen::cgen_type::MaterialData::default();
 
-        let color = Vec4::new(
-            f32::from(self.base_albedo.r) / 255.0f32,
-            f32::from(self.base_albedo.g) / 255.0f32,
-            f32::from(self.base_albedo.b) / 255.0f32,
-            f32::from(self.base_albedo.a) / 255.0f32,
-        );
+        let color = self.base_albedo;
         gpu_material.set_base_albedo(color.into());
         gpu_material.set_base_metalness(self.base_metalness.into());
         gpu_material.set_reflectance(self.reflectance.into());

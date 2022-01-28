@@ -333,8 +333,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Directional,
-            radiance: 20.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
+            intensity: 20.0,
             enabled: true,
             ..LightComponent::default()
         });
@@ -346,8 +345,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(GlobalTransform::identity())
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
-            radiance: 20.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
+            intensity: 20.0,
             enabled: true,
             ..LightComponent::default()
         });

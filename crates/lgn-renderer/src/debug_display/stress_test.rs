@@ -1,7 +1,7 @@
 use lgn_app::{App, CoreStage};
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::Res;
-use lgn_math::Vec3;
+use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 use lgn_transform::components::Transform;
 
@@ -28,7 +28,7 @@ pub fn add_debug_things(
                 builder.add_mesh(
                     Transform::identity().compute_matrix(),
                     DefaultMeshType::Sphere as u32,
-                    Vec3::ZERO,
+                    Color::WHITE,
                 );
             }
         });

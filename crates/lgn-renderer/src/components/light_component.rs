@@ -1,5 +1,6 @@
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::Color;
 use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 
@@ -21,16 +22,25 @@ pub enum LightType {
 #[derive(Component)]
 pub struct LightComponent {
     pub light_type: LightType,
-    pub radiance: Vec3,
+    pub color: Color,
+    pub intensity: f32,
     pub enabled: bool,
     pub picking_id: u32,
+}
+
+impl LightComponent {
+    fn radiance(&self) -> Vec3 {
+        let radiance = self.color * self.intensity;
+        Vec3::new(radiance.r(), radiance.g(), radiance.b())
+    }
 }
 
 impl Default for LightComponent {
     fn default() -> Self {
         Self {
             light_type: LightType::Omnidirectional,
-            radiance: Vec3::new(1.0, 1.0, 1.0),
+            color: Color::WHITE,
+            intensity: 1.0,
             enabled: true,
             picking_id: 0,
         }
@@ -78,11 +88,11 @@ pub(crate) fn ui_lights(
                         );
                     }
                 }
-                ui.vertical(|ui| {
-                    ui.add(egui::Slider::new(&mut light.radiance.x, 0.0..=50.0).text("rad.x"));
-                    ui.add(egui::Slider::new(&mut light.radiance.y, 0.0..=50.0).text("rad.y"));
-                    ui.add(egui::Slider::new(&mut light.radiance.z, 0.0..=50.0).text("rad.z"));
-                });
+                ui.add(egui::Slider::new(&mut light.intensity, 0.0..=50.0).text("intensity"));
+                let mut rgb = [light.color.r(), light.color.g(), light.color.b()];
+                if ui.color_edit_button_rgb(&mut rgb).changed() {
+                    light.color = Color::rgb(rgb[0], rgb[1], rgb[2]);
+                }
             });
         }
     });
@@ -108,7 +118,7 @@ pub(crate) fn debug_display_lights(
                         .with_rotation(transform.rotation)
                         .compute_matrix(),
                     DefaultMeshType::Sphere as u32,
-                light.radiance.into(),
+                    light.color,
                 );
                 match light.light_type {
                     LightType::Directional => {
@@ -121,7 +131,7 @@ pub(crate) fn debug_display_lights(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Arrow as u32,
-                        light.radiance.into(),
+                            light.color,
                         );
                     }
                     LightType::Spotlight { cone_angle, .. } => {
@@ -136,7 +146,7 @@ pub(crate) fn debug_display_lights(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Cone as u32,
-                        light.radiance.into(),
+                            light.color,
                         );
                     }
                     LightType::Omnidirectional { .. } => (),
@@ -172,12 +182,12 @@ pub(crate) fn update_lights(
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
                 let mut dir_light = DirectionalLight::default();
                 dir_light.set_dir(direction.into());
-                dir_light.set_radiance(light.radiance.into());
+                dir_light.set_radiance(light.radiance().into());
                 directional_lights_data.push(dir_light);
             }
             LightType::Omnidirectional => {
                 let mut omni_light = OmniDirectionalLight::default();
-                omni_light.set_radiance(light.radiance.into());
+                omni_light.set_radiance(light.radiance().into());
                 omni_light.set_pos(transform.translation.into());
                 omnidirectional_lights_data.push(omni_light);
             }
@@ -185,7 +195,7 @@ pub(crate) fn update_lights(
                 let direction = transform.rotation.mul_vec3(Vec3::Y);
                 let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
-                spotlight.set_radiance(light.radiance.into());
+                spotlight.set_radiance(light.radiance().into());
                 spotlight.set_pos(transform.translation.into());
                 spotlight.set_cone_angle(cone_angle.into());
                 spotlights_data.push(spotlight);

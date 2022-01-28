@@ -22,7 +22,7 @@ mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::ResourceUsage;
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_math::{Vec2, Vec4};
+use lgn_math::Vec2;
 pub use renderer::*;
 
 mod render_context;
@@ -420,14 +420,7 @@ fn update_gpu_instance_ids(
 
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
 
-        let color: (f32, f32, f32, f32) = (
-            f32::from(mesh.color.r) / 255.0f32,
-            f32::from(mesh.color.g) / 255.0f32,
-            f32::from(mesh.color.b) / 255.0f32,
-            f32::from(mesh.color.a) / 255.0f32,
-        );
-
-        instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
+        instance_color.set_color(mesh.color.into());
         instance_color.set_color_blend(
             if mesh.material_type == DefaultMaterialType::Default {
                 1.0

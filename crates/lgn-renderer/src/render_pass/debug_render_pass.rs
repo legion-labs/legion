@@ -196,7 +196,7 @@ impl DebugRenderPass {
             render_mesh(
                 static_mesh_component.mesh_id as u32,
                 &transform.compute_matrix(),
-                Vec4::new(0.0, 0.5, 0.5, 0.75),
+                Color::rgba(0.0, 0.5, 0.5, 0.75),
                 cmd_buffer,
                 default_meshes,
             );
@@ -259,7 +259,6 @@ impl DebugRenderPass {
                 } else {
                     static_mesh.color
                 };
-
 
                 color.set_a(if manipulator.transparent { 0.9 } else { 1.0 });
 

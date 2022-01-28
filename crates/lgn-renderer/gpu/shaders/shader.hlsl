@@ -56,8 +56,8 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, f
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material, albedo);
     }
 
-    lighting.diffuse *= light.color * light.radiance;
-    lighting.specular *= light.color * light.radiance;
+    lighting.diffuse *= light.radiance;
+    lighting.specular *= light.radiance;
 
     return lighting;
 }
@@ -75,8 +75,8 @@ Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material, albedo);
     }
 
-    lighting.diffuse *= light.color * light.radiance / distance;
-    lighting.specular *= light.color * light.radiance / distance;
+    lighting.diffuse *= light.radiance / distance;
+    lighting.specular *= light.radiance / distance;
 
     return lighting;
 }
@@ -99,8 +99,8 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
 
-    lighting.diffuse *= factor * light.color * light.radiance / distance;
-    lighting.specular *= factor * light.color * light.radiance / distance;
+    lighting.diffuse *= factor * light.radiance / distance;
+    lighting.specular *= factor * light.radiance / distance;
 
     return lighting;
 }
