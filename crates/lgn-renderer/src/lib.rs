@@ -57,7 +57,7 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, MetaCubePlugin},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -84,16 +84,13 @@ pub struct RendererPlugin {
     _egui_enabled: bool,
     // tbd: remove
     runs_dynamic_systems: bool,
-    // tbd: remove
-    meta_cube_size: usize,
 }
 
 impl RendererPlugin {
-    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool, meta_cube_size: usize) -> Self {
+    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool) -> Self {
         Self {
             _egui_enabled: egui_enabled,
             runs_dynamic_systems,
-            meta_cube_size,
         }
     }
 }
@@ -117,10 +114,6 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
-
-        if self.meta_cube_size != 0 {
-            app.add_plugin(MetaCubePlugin::new(self.meta_cube_size));
-        }
 
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_cgen);

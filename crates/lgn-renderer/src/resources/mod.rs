@@ -22,9 +22,6 @@ pub(crate) use index_allocator::*;
 mod material;
 pub use material::*;
 
-mod meta_cube_test;
-pub(crate) use meta_cube_test::*;
-
 mod on_frame_event_handler;
 pub(crate) use on_frame_event_handler::*;
 
