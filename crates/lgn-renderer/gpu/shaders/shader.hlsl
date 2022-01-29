@@ -5,6 +5,7 @@
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
 #include "crate://lgn-renderer/gpu/include/brdf.hsh"
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
 
 struct GpuPipelineVertexIn
 {
@@ -29,20 +30,41 @@ struct VertexOut {
 
 VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.vertex_buffer_va);
 
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(addresses.vertex_buffer_va + vertexIn.vertexId * 56);
+    uint vertexId = vertexIn.vertexId;
+    if (HasIndex(mesh_desc.format))
+    {
+        vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
+    }
+    VertexIn vertex_in;
+    if (HasPosition(mesh_desc.format))
+    {
+        vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
+    }
+    if (HasNormal(mesh_desc.format))
+    {
+        vertex_in.normal = static_buffer.Load<float4>(mesh_desc.normal_offset + vertexId * 16);
+    }
+    if (HasColor(mesh_desc.format))
+    {
+        vertex_in.color = static_buffer.Load<float4>(mesh_desc.color_offset + vertexId * 16);
+    }
+    if (HasTexCoord(mesh_desc.format))
+    {
+        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc.tex_coord_offset + vertexId * 8);
+    }
+    
     VertexOut vertex_out;
 
     GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
     float4x4 world = transpose(transform.world);
 
     float4 pos_view_relative = mul(view_data.view, mul(world, vertex_in.pos));
-    
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
     vertex_out.normal = mul(view_data.view, mul(world, vertex_in.normal)).xyz;
     vertex_out.va_table_address = vertexIn.va_table_address;
-
     return vertex_out;
 }
 
