@@ -27,6 +27,9 @@ use lgn_transform::{
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 
+mod meta_cube_test;
+pub(crate) use meta_cube_test::*;
+
 struct SnapshotDescriptor {
     setup_name: String,
     width: f32,
@@ -76,7 +79,6 @@ fn main() {
         .add_plugin(RendererPlugin::new(
             args.egui,
             !args.snapshot,
-            args.meta_cube_size,
         ))
         .insert_resource(WindowDescriptor {
             width: args.width,
@@ -114,7 +116,9 @@ fn main() {
         app.add_startup_system(init_light_test);
     } else if args.setup_name.eq("material_test") {
         app.add_startup_system(init_material_scene);
-    } else if args.meta_cube_size == 0 {
+    } else if args.meta_cube_size != 0 {
+        app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
+    } else {
         app.add_startup_system(init_scene);
     }
 

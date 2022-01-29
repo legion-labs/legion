@@ -4816,7 +4816,6 @@ dependencies = [
  "linkme",
  "parking_lot 0.11.2",
  "paste",
- "png 0.17.2",
  "smallvec",
  "static_assertions",
  "uuid",

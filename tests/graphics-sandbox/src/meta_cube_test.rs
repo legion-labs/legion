@@ -3,10 +3,9 @@ use std::{fs::File, io, path::Path};
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Query, Res};
 use lgn_math::{EulerRot, Quat};
+use lgn_renderer::components::{RotationComponent, StaticMesh};
 use lgn_tracing::span_fn;
 use lgn_transform::components::{GlobalTransform, Transform};
-
-use crate::components::{RotationComponent, StaticMesh};
 
 use super::{DefaultMaterialType, DefaultMeshType, DefaultMeshes};
 
@@ -88,9 +87,12 @@ impl MetaCubeResource {
         Self { meta_cube_size }
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn initialize(&self, mut commands: Commands<'_, '_>, default_meshes: &DefaultMeshes) {
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test_data")
+            .join("tests")
+            .join("refs")
+            .join("stress-test")
             .join("random_color")
             .with_extension("png");
 
