@@ -374,16 +374,16 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             rotation_speed: (0.4, 0.0, 0.0),
         });
 
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
-            DefaultMeshType::Cube as usize,
-            (0, 255, 0).into(),
-            DefaultMaterialType::Default,
-        ));
+    //commands
+    //    .spawn()
+    //    .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+    //    .insert(GlobalTransform::identity())
+    //    .insert(StaticMesh::from_default_meshes(
+    //        default_meshes.as_ref(),
+    //        DefaultMeshType::Cube as usize,
+    //        (0, 255, 0).into(),
+    //        DefaultMaterialType::Default,
+    //    ));
 
     commands
         .spawn()

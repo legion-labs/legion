@@ -42,6 +42,13 @@ jobs:
       - name: Run tests
         run: cargo ci test
 
+      - name: Upload GPU-test diffs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2.3.1
+        with:
+          name: GPU test diffs
+          path: *_diff.png
+
   build_docs:
     name: Building docs
     needs: lint
