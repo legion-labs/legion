@@ -47,7 +47,7 @@ jobs:
         uses: actions/upload-artifact@v2.3.1
         with:
           name: GPU test diffs
-          path: ./tests/graphics-sandbox/simple-scene_diff.png
+          path: *_diff.png
 
   build_docs:
     name: Building docs
