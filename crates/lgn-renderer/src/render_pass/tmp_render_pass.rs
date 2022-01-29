@@ -29,6 +29,7 @@ pub struct TmpRenderPass {
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
+embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
     pub fn new(pipeline_manager: &PipelineManager) -> Self {

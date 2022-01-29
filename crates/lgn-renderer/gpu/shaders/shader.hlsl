@@ -35,6 +35,29 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
     MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
 
+    uint vertexId = vertexIn.vertexId;
+    if (HasIndex(mesh_desc.format))
+    {
+        vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
+    }
+    VertexIn vertex_in;
+    if (HasPosition(mesh_desc.format))
+    {
+        vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
+    }
+    if (HasNormal(mesh_desc.format))
+    {
+        vertex_in.normal = static_buffer.Load<float4>(mesh_desc.normal_offset + vertexId * 16);
+    }
+    if (HasColor(mesh_desc.format))
+    {
+        vertex_in.color = static_buffer.Load<float4>(mesh_desc.color_offset + vertexId * 16);
+    }
+    if (HasTexCoord(mesh_desc.format))
+    {
+        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc.tex_coord_offset + vertexId * 8);
+    }
+    
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
