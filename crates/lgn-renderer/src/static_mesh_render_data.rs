@@ -4,7 +4,7 @@ use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{
     mesh_import_export,
-    resources::{DefaultMeshId, UniformGPUDataUpdater},
+    resources::{DefaultMeshType, UniformGPUDataUpdater},
 };
 
 pub struct StaticMeshRenderData {
