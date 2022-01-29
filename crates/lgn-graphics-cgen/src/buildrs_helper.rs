@@ -17,11 +17,11 @@ macro_rules! build_graphics_cgen {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use lgn_graphics_cgen::buildrs_helper::build_graphics_cgen;
 ///
 /// let result = build_graphics_cgen(crate_name, out_dir, root_file);
-/// assert_eq!(result, );
+/// assert_eq!(result, OK(()));
 /// ```
 ///
 /// # Panics
