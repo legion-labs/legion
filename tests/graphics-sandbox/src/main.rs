@@ -76,10 +76,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(
-            args.egui,
-            !args.snapshot,
-        ))
+        .add_plugin(RendererPlugin::new(args.egui, !args.snapshot))
         .insert_resource(WindowDescriptor {
             width: args.width,
             height: args.height,
