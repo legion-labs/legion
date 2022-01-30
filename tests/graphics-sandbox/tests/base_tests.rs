@@ -61,6 +61,8 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
 
 /// Save the image using `png`
 fn save_image(path: &Path, data: &[u8], width: u32, height: u32) {
+    let prefix = path.parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
     let mut encoder = png::Encoder::new(File::create(path).unwrap(), width, height);
     encoder.set_color(png::ColorType::Rgba);
     let mut writer = encoder.write_header().unwrap();
@@ -96,7 +98,7 @@ fn gpu_simple_scene() {
         snapshot.height,
     );
     if diff_coeff >= DIFF_THREASHOLD {
-        let diff_image_path = format!("{}_diff.png", setup_name);
+        let diff_image_path = format!("diffs/{}_diff.png", setup_name);
         println!("Path to diff: {}", diff_image_path);
         save_image(
             Path::new(&diff_image_path),
