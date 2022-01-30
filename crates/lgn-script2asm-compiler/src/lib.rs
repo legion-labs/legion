@@ -112,7 +112,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
 
 // mun.exe is big, download it locally to avoid packaging it in the repo.
 // This is a temporary situation until we decide what to do with the scripting language.
-#[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn make_mun_available() -> OsString {
     let mut mun_local_exe = temp_dir();
     mun_local_exe.push("mun.exe");
