@@ -96,8 +96,10 @@ fn gpu_simple_scene() {
         snapshot.height,
     );
     if diff_coeff >= DIFF_THREASHOLD {
+        let diff_image_path = format!("{}_diff.png", setup_name);
+        println!("Path to diff: {}", diff_image_path);
         save_image(
-            Path::new(&format!("{}_diff.png", setup_name)),
+            Path::new(&diff_image_path),
             &rgba_per_pixel_image_diff(
                 &snapshot.data,
                 &ref_snapshot.data,
