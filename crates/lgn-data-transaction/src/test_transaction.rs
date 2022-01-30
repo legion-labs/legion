@@ -166,14 +166,14 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             asset_registry.clone(),
             build_manager,
         );
-        let resource_path: ResourcePathName = "/entity/create_test.dc".into();
+        let resource_path: ResourcePathName = "/entity/create_test77".into();
 
         let new_id = ResourceTypeAndId {
             kind: TestEntity::TYPE,
             id: ResourceId::new(),
         };
 
-        let ref_resource_path: ResourcePathName = "/entity/create_reference.dc".into();
+        let ref_resource_path: ResourcePathName = "/entity/create_reference".into();
         let ref_new_id = ResourceTypeAndId {
             kind: TestEntity::TYPE,
             id: ResourceId::new(),
@@ -241,37 +241,34 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         test_array_reorder_operation(new_id, &mut data_manager).await?;
         asset_registry.update();
 
-        // Clone the created Resource
-        let clone_name: ResourcePathName = "/entity/test_clone.dc".into();
+        // Expected clone name
+        let clone_name: ResourcePathName = "/entity/create_test78".into();
         let clone_id = ResourceTypeAndId {
             kind: TestEntity::TYPE,
             id: ResourceId::new(),
         };
-        let transaction = Transaction::new().add_operation(CloneResourceOperation::new(
-            new_id,
-            clone_id,
-            clone_name.clone(),
-        ));
+        let transaction =
+            Transaction::new().add_operation(CloneResourceOperation::new(new_id, clone_id, None));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_name));
         assert!(project.lock().await.exists(clone_id.id));
 
         // Rename the clone
-        let clone_new_name: ResourcePathName = "/entity/test_clone_rename.dc".into();
+        let rename_new_name: ResourcePathName = "/entity/test_clone_rename".into();
         let transaction = Transaction::new().add_operation(RenameResourceOperation::new(
             clone_id,
-            clone_new_name.clone(),
+            rename_new_name.clone(),
         ));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
-        assert!(project.lock().await.exists_named(&clone_new_name));
+        assert!(project.lock().await.exists_named(&rename_new_name));
         assert!(!project.lock().await.exists_named(&clone_name));
 
         // Undo Rename
         data_manager.undo_transaction().await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&clone_new_name));
+        assert!(!project.lock().await.exists_named(&rename_new_name));
         assert!(project.lock().await.exists_named(&clone_name));
 
         // Undo Clone

@@ -4,7 +4,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "./protos/editor.proto",
         "./protos/resource_browser.proto",
         "./protos/property_inspector.proto",
-        "./protos/scene_explorer.proto",
     ];
     tonic_build::configure()
         .out_dir(&out_dir)

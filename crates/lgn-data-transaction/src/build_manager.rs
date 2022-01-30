@@ -45,13 +45,17 @@ impl BuildManager {
             ResourceType::new(b"runtime_debugcube")
         } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
             ResourceType::new(b"runtime_testentity")
-        } else if resource_id.kind == ResourceType::new(b"offline_entitydc") {
-            ResourceType::new(b"runtime_entitydc")
         } else if resource_id.kind == ResourceType::new(b"offline_entity") {
             ResourceType::new(b"runtime_entity")
         } else if resource_id.kind == ResourceType::new(b"offline_material") {
             ResourceType::new(b"runtime_material")
+        } else if resource_id.kind == ResourceType::new(b"offline_script") {
+            ResourceType::new(b"runtime_script")
         } else {
+            error!(
+                "Data Build {} Failed: Cannot find runtime type mapping",
+                resource_id
+            );
             resource_id.kind
         };
 

@@ -13,7 +13,9 @@ lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
-lgn-graphics-runtime = { path = "../lgn-graphics-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
+    "runtime",
+] }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-input = { path = "../lgn-input" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0" }
@@ -25,13 +27,16 @@ lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-winit = { path = "../lgn-winit", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0" }
+lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
+    "runtime",
+] }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "runtime",
 ] }
-sample-data-runtime = { path = "../../tests/sample-data-runtime", version = "0.1.0" }
-
+sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
+    "runtime",
+] }
 # other
 clap = { version = "3.0", features = ["derive"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }

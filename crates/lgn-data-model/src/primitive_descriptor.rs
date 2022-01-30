@@ -49,6 +49,7 @@ implement_primitive_type_def!(bool);
 implement_primitive_type_def!(usize);
 implement_primitive_type_def!(u8);
 implement_primitive_type_def!(i8);
+implement_primitive_type_def!(u16);
 implement_primitive_type_def!(u32);
 implement_primitive_type_def!(i32);
 implement_primitive_type_def!(f32);
@@ -58,5 +59,6 @@ implement_primitive_type_def!(f64);
 implement_primitive_type_def!(String);
 
 use lgn_math::prelude::*;
+implement_primitive_type_def!(Vec2);
 implement_primitive_type_def!(Vec3);
 implement_primitive_type_def!(Quat);

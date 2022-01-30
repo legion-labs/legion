@@ -244,6 +244,32 @@ impl Project {
         self.resource_list().any(|v| v == id)
     }
 
+    /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
+    /// or increment the suffix number until resource name is not used
+    /// Ex: /world/sample => /world/sample1
+    /// Ex: /world/instance1099 => /world/instance1100
+    pub fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
+        let mut name: String = resource_path.to_string();
+
+        // extract the current suffix number if avaiable
+        let mut suffix = String::new();
+        name.chars()
+            .rev()
+            .take_while(|c| c.is_digit(10))
+            .for_each(|c| suffix.insert(0, c));
+
+        name = name.trim_end_matches(suffix.as_str()).into();
+        let mut index = suffix.parse::<u32>().unwrap_or(1);
+        loop {
+            // Check if the resource_name exists, if not increment index
+            let new_path: ResourcePathName = format!("{}{}", name, index).into();
+            if !self.exists_named(&new_path) {
+                return new_path;
+            }
+            index += 1;
+        }
+    }
+
     /// Add a given resource of a given type with an associated `.meta`.
     ///
     /// The created `.meta` file contains a checksum of the resource content.
@@ -439,6 +465,12 @@ impl Project {
                 }
             }
         }
+        Ok(meta.name)
+    }
+
+    /// Returns the raw name of the resource from its `.meta` file.
+    pub fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(type_id)?;
         Ok(meta.name)
     }
 

@@ -5,8 +5,6 @@ pub fn create() -> compiler_node::CompilerRegistryOptions {
     registry
         .add_compiler(&lgn_compiler_material::COMPILER_INFO)
         .add_compiler(&lgn_compiler_debugcube::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_entitydc::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_instancedc::COMPILER_INFO)
         .add_compiler(&lgn_compiler_material::COMPILER_INFO)
         .add_compiler(&lgn_compiler_psd2tex::COMPILER_INFO)
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
@@ -19,4 +17,5 @@ pub fn create() -> compiler_node::CompilerRegistryOptions {
         .add_compiler(&lgn_compiler_test_split::COMPILER_INFO)
         .add_compiler(&lgn_compiler_testentity::COMPILER_INFO)
         .add_compiler(&lgn_compiler_tex2bin::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO)
 }

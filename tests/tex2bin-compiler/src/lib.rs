@@ -18,8 +18,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_offline::Texture::TYPE,
-        lgn_graphics_runtime::Texture::TYPE,
+        lgn_graphics_data::offline_texture::Texture::TYPE,
+        lgn_graphics_data::runtime_texture::Texture::TYPE,
     ),
     init_func: init,
     compiler_hash_func: hash_code_and_data,
@@ -27,14 +27,14 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<lgn_graphics_offline::Texture>()
+    registry.add_loader::<lgn_graphics_data::offline_texture::Texture>()
 }
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context.registry();
 
-    let resource =
-        resources.load_sync::<lgn_graphics_offline::Texture>(context.source.resource_id());
+    let resource = resources
+        .load_sync::<lgn_graphics_data::offline_texture::Texture>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = resource.rgba.clone();

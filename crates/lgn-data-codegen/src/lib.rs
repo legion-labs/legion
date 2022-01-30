@@ -140,33 +140,47 @@ pub fn generate_data_container_code(
         })
         .collect();
 
-    // Generate struct code
-    structs
+    // Write auto-added imports
+    let imports = structs
         .iter()
-        .enumerate()
-        .try_for_each(|(index, meta_info)| {
-            let out_token = reflection_codegen::generate_reflection(meta_info, gen_type);
-            cursor.write_all(out_token.to_string().as_bytes())?;
+        .flat_map(|s| {
+            if gen_type == GenerationType::RuntimeFormat {
+                s.runtime_imports()
+            } else {
+                s.offline_imports()
+            }
+        })
+        .collect::<Vec<_>>();
 
-            // generate component traits
-            if meta_info.is_component {
-                cursor.write_all(
-                    component_codegen::generate_component(meta_info, gen_type)
-                        .to_string()
-                        .as_bytes(),
-                )?;
-            }
-            // generate resources traits
-            if meta_info.is_resource {
-                let token_stream = if gen_type == GenerationType::OfflineFormat {
-                    resource_codegen::generate(meta_info, index == 0)
-                } else {
-                    runtime_codegen::generate(meta_info, index == 0)
-                };
-                cursor.write_all(token_stream.to_string().as_bytes())?;
-            }
-            writeln!(cursor)
-        })?;
+    let imports = quote::quote! {
+            #(use #imports;)*
+    };
+    cursor.write_all(imports.to_string().as_bytes())?;
+
+    // Generate struct code
+    structs.iter().try_for_each(|meta_info| {
+        let out_token = reflection_codegen::generate_reflection(meta_info, gen_type);
+        cursor.write_all(out_token.to_string().as_bytes())?;
+
+        // generate component traits
+        if meta_info.is_component {
+            cursor.write_all(
+                component_codegen::generate_component(meta_info, gen_type)
+                    .to_string()
+                    .as_bytes(),
+            )?;
+        }
+        // generate resources traits
+        if meta_info.is_resource {
+            let token_stream = if gen_type == GenerationType::OfflineFormat {
+                resource_codegen::generate(meta_info)
+            } else {
+                runtime_codegen::generate(meta_info)
+            };
+            cursor.write_all(token_stream.to_string().as_bytes())?;
+        }
+        writeln!(cursor)
+    })?;
 
     cursor.flush()?;
 

@@ -9,7 +9,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{resource::ResourceProcessor, Transform};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_offline::{texture::TextureProcessor, PsdFile};
+use lgn_graphics_data::{offline_psd::PsdFile, offline_texture::TextureProcessor};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,8 +17,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_offline::PsdFile::TYPE,
-        lgn_graphics_offline::Texture::TYPE,
+        lgn_graphics_data::offline_psd::PsdFile::TYPE,
+        lgn_graphics_data::offline_texture::Texture::TYPE,
     ),
     init_func: init,
     compiler_hash_func: hash_code_and_data,
@@ -26,14 +26,14 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn init(options: AssetRegistryOptions) -> AssetRegistryOptions {
-    options.add_loader::<lgn_graphics_offline::PsdFile>()
+    options.add_loader::<lgn_graphics_data::offline_psd::PsdFile>()
 }
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context.registry();
 
-    let resource =
-        resources.load_sync::<lgn_graphics_offline::PsdFile>(context.source.resource_id());
+    let resource = resources
+        .load_sync::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id());
 
     let resource = resource.get(&resources).unwrap();
 

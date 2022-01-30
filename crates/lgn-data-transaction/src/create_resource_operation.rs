@@ -28,35 +28,6 @@ impl CreateResourceOperation {
     }
 }
 
-// From a specific resource_path, validate that the resource doesn't already exists
-// or increment the suffix number until resource name is not used
-// Ex: /world/sample => /world/sample1
-// Ex: /world/instance1099 => /world/instance1100
-fn assign_resource_path(
-    resource_path: &ResourcePathName,
-    project: &lgn_data_offline::resource::Project,
-) -> ResourcePathName {
-    let mut name: String = resource_path.to_string();
-
-    // extract the current suffix number if avaiable
-    let mut suffix = String::new();
-    name.chars()
-        .rev()
-        .take_while(|c| c.is_digit(10))
-        .for_each(|c| suffix.insert(0, c));
-
-    name = name.trim_end_matches(suffix.as_str()).into();
-    let mut index = suffix.parse::<u32>().unwrap_or(1);
-    loop {
-        // Check if the resource_name exists, if not increment index
-        let new_path: ResourcePathName = format!("{}{}", name, index).into();
-        if !project.exists_named(&new_path) {
-            return new_path;
-        }
-        index += 1;
-    }
-}
-
 #[async_trait]
 impl TransactionOperation for CreateResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
@@ -75,7 +46,7 @@ impl TransactionOperation for CreateResourceOperation {
             if !self.auto_increment_name {
                 return Err(Error::ResourcePathAlreadyExist(self.resource_path.clone()).into());
             }
-            requested_resource_path = assign_resource_path(&requested_resource_path, &ctx.project);
+            requested_resource_path = ctx.project.get_incremental_name(&requested_resource_path);
         }
 
         if let Some(resource_type_name) = ctx

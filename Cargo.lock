@@ -2310,8 +2310,8 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-codec-api",
- "lgn-compiler-entitydc",
- "lgn-compiler-testentity",
+ "lgn-compiler-runtime-entity",
+ "lgn-compiler-script2asm",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -2324,22 +2324,20 @@ dependencies = [
  "lgn-ecs",
  "lgn-editor-proto",
  "lgn-graphics-data",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
  "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
+ "lgn-scripting",
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
  "serde_json",
  "tempfile",
  "tokio",
@@ -2927,6 +2925,7 @@ dependencies = [
  "bincode",
  "erased-serde",
  "generic-data",
+ "inventory",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -3941,12 +3940,12 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-renderer",
  "lgn-scripting",
  "lgn-tracing",
  "lgn-transform",
- "sample-data-runtime",
+ "sample-data",
  "serde_json",
 ]
 
@@ -4047,38 +4046,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-entitydc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "lgn-compiler-instancedc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
 ]
 
 [[package]]
@@ -4088,7 +4063,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
+ "lgn-graphics-data",
  "serde",
  "serde_json",
 ]
@@ -4098,12 +4073,11 @@ name = "lgn-compiler-runtime-entity"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4111,12 +4085,11 @@ name = "lgn-compiler-runtime-instance"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4124,25 +4097,24 @@ name = "lgn-compiler-runtime-mesh"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "sample-data",
  "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
 ]
 
 [[package]]
 name = "lgn-compiler-script2asm"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "curl",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-runtime",
- "sample-data-offline",
- "sample-data-runtime",
+ "lgn-scripting",
  "serde",
  "serde_json",
  "zip",
@@ -4223,8 +4195,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "serde",
  "serde_json",
 ]
@@ -4352,6 +4323,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
+ "inventory",
  "lazy_static",
  "lgn-math",
  "serde",
@@ -4388,6 +4360,7 @@ dependencies = [
  "erased-serde",
  "flurry",
  "hex",
+ "inventory",
  "lazy_static",
  "lgn-content-store",
  "lgn-data-model",
@@ -4555,32 +4528,21 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bincode",
  "erased-serde",
  "lazy_static",
+ "lgn-app",
+ "lgn-data-codegen",
  "lgn-data-model",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "lgn-graphics-offline"
-version = "0.1.0"
-dependencies = [
- "bincode",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-ecs",
+ "memoffset 0.6.5",
  "psd",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "lgn-graphics-runtime"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "lgn-data-runtime",
- "lgn-tracing",
+ "typetag",
 ]
 
 [[package]]
@@ -4588,14 +4550,13 @@ name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "clap 3.0.11",
- "generic-data",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-api",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
  "lgn-presenter-snapshot",
@@ -4608,7 +4569,7 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "png 0.17.2",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4834,10 +4795,8 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
- "lgn-graphics-offline",
  "lgn-tasks",
  "lgn-ubercompiler",
- "sample-data-offline",
  "tokio",
 ]
 
@@ -4858,6 +4817,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
+ "inventory",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -5130,13 +5090,12 @@ name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
  "lgn-compiler-debugcube",
- "lgn-compiler-entitydc",
- "lgn-compiler-instancedc",
  "lgn-compiler-material",
  "lgn-compiler-psd2tex",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-instance",
  "lgn-compiler-runtime-mesh",
+ "lgn-compiler-script2asm",
  "lgn-compiler-test-atoi",
  "lgn-compiler-test-base64",
  "lgn-compiler-test-refs",
@@ -7359,7 +7318,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-grpc",
  "lgn-input",
  "lgn-presenter-window",
@@ -7371,7 +7330,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -7517,11 +7476,27 @@ dependencies = [
 name = "sample-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bincode",
+ "erased-serde",
  "insta",
+ "inventory",
  "json",
+ "lazy_static",
+ "lgn-app",
+ "lgn-data-codegen",
  "lgn-data-compiler",
+ "lgn-data-model",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-math",
+ "memoffset 0.6.5",
+ "serde",
  "serde_json",
  "tempfile",
+ "typetag",
 ]
 
 [[package]]
@@ -7536,40 +7511,13 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
  "ron",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
  "serde",
  "serde_json",
- "typetag",
-]
-
-[[package]]
-name = "sample-data-offline"
-version = "0.1.0"
-dependencies = [
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-math",
- "serde",
- "serde_json",
- "typetag",
-]
-
-[[package]]
-name = "sample-data-runtime"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "lgn-data-runtime",
- "lgn-graphics-runtime",
- "lgn-math",
- "lgn-tracing",
- "serde",
  "typetag",
 ]
 

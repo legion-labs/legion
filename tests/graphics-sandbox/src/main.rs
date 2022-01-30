@@ -8,6 +8,7 @@ use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::GraphicsPlugin;
 use lgn_input::InputPlugin;
 use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
@@ -26,6 +27,7 @@ use lgn_transform::{
 };
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
+use sample_data::SampleDataPlugin;
 
 mod meta_cube_test;
 pub(crate) use meta_cube_test::*;
@@ -107,8 +109,8 @@ fn main() {
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default())
-            .add_plugin(generic_data::plugin::GenericDataPlugin::default())
-            .add_startup_system(register_asset_loaders);
+            .add_plugin(GraphicsPlugin::default())
+            .add_plugin(SampleDataPlugin::default());
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else if args.setup_name.eq("material_test") {
@@ -421,9 +423,4 @@ fn on_snapshot_app_exit(
             commands.entity(entity).despawn();
         }
     }
-}
-
-fn register_asset_loaders(mut registry: NonSendMut<'_, lgn_data_runtime::AssetRegistryOptions>) {
-    sample_data_runtime::add_loaders(&mut registry);
-    lgn_graphics_runtime::add_loaders(&mut registry);
 }

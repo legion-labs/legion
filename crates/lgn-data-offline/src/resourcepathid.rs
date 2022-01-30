@@ -384,7 +384,7 @@ use std::collections::HashSet;
 /// Extract the build dependencies using reflection
 pub fn extract_resource_dependencies(
     object: &dyn lgn_data_model::TypeReflection,
-) -> Option<HashSet<ResourcePathId>> {
+) -> Option<Vec<ResourcePathId>> {
     struct ExtractResourcePathId {
         output: HashSet<ResourcePathId>,
     }
@@ -439,7 +439,9 @@ pub fn extract_resource_dependencies(
     if let Ok(Some(total)) =
         lgn_data_model::collector::collect_properties::<ExtractResourcePathId>(object)
     {
-        return Some(total.output);
+        let mut result = total.output.into_iter().collect::<Vec<_>>();
+        result.sort();
+        return Some(result);
     }
     None
 }

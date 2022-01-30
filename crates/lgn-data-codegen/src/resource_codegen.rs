@@ -36,23 +36,12 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
     }
 }
 
-pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> TokenStream {
+pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let offline_identifier = format_ident!("{}", data_container_info.name);
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
 
-    let use_quotes = if add_uses {
-        let imports = data_container_info.offline_imports();
-        quote! {
-            #(use #imports;)*
-        }
-    } else {
-        quote! {}
-    };
-
     quote! {
-
-        #use_quotes
 
         impl lgn_data_runtime::Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;

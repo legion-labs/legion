@@ -23,7 +23,7 @@ use sample_data_compiler::{offline_compiler, raw_loader};
 #[clap(setting(AppSettings::ArgRequiredElseHelp))]
 struct Args {
     /// Folder containing raw/ directory
-    #[clap(long, default_value = "test/sample-data")]
+    #[clap(long, default_value = "tests/sample-data")]
     root: String,
     /// Path name of the resource to compile
     #[clap(long, default_value = "/world/sample_1.ent")]

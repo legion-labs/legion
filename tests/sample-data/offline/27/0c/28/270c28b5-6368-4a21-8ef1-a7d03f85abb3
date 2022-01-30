@@ -1,10 +1,8 @@
 {
-  "name": "Cube",
-  "children": [],
-  "parent": null,
   "components": [
     {
       "Transform": {
+        "apply_to_children": true,
         "position": [
           0.0,
           0.0,
@@ -20,28 +18,29 @@
           1.0,
           1.0,
           1.0
-        ],
-        "apply_to_children": true
+        ]
       }
     },
     {
       "Visual": {
+        "gi_contribution": 0,
         "renderable_geometry": null,
-        "shadow_receiver": true,
-        "shadow_caster_sun": true,
         "shadow_caster_local": true,
-        "gi_contribution": "Default"
+        "shadow_caster_sun": true,
+        "shadow_receiver": true
       }
     },
     {
       "StaticMesh": {
+        "color": 520028415,
+        "mesh": null,
         "mesh_id": 1
       }
     },
     {
       "Physics": {
-        "dynamic": false,
-        "collision_geometry": null
+        "collision_geometry": null,
+        "dynamic": false
       }
     }
   ]
