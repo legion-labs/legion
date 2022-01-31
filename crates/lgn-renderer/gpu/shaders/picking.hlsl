@@ -4,6 +4,8 @@
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
+
 struct GpuPipelineVertexIn
 {
     uint vertexId: SV_VertexID;

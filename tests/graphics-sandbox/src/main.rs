@@ -224,7 +224,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         ));
 
     // helmet
-    commands
+    /*commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
@@ -288,7 +288,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             DefaultMeshType::Helmet_Lenses as usize,
             (255, 0, 255).into(),
             DefaultMaterialType::Silver,
-        ));
+        ));*/
 
     // directional light
     commands
