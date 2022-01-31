@@ -56,9 +56,9 @@ impl DefaultMeshes {
             StaticMeshRenderData::new_arrow(),
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];
-        static_meshes.append(&mut StaticMeshRenderData::new_gltf(String::from(
-            "C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
-        )));
+        //static_meshes.append(&mut StaticMeshRenderData::new_gltf(String::from(
+        //    "C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
+        //)));
 
         let mut vertex_data_size_in_bytes = 0;
         for mesh in &static_meshes {

@@ -1,5 +1,7 @@
 #include "crate://lgn-renderer/gpu/pipeline_layout/const_color_pipeline_layout.hlsl"
 
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
@@ -14,7 +16,29 @@ struct VertexOut {
 };
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.vertex_offset);
+
+    if (HasIndex(mesh_desc.format))
+    {
+        vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
+    }
+    VertexIn vertex_in;
+    if (HasPosition(mesh_desc.format))
+    {
+        vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
+    }
+    if (HasNormal(mesh_desc.format))
+    {
+        vertex_in.normal = static_buffer.Load<float4>(mesh_desc.normal_offset + vertexId * 16);
+    }
+    if (HasColor(mesh_desc.format))
+    {
+        vertex_in.color = static_buffer.Load<float4>(mesh_desc.color_offset + vertexId * 16);
+    }
+    if (HasTexCoord(mesh_desc.format))
+    {
+        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc.tex_coord_offset + vertexId * 8);
+    }
     VertexOut vertex_out;
 
     float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, vertex_in.pos));
