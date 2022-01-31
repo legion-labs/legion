@@ -34,7 +34,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     if (push_constant.use_gpu_pipeline) {
         GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
-        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.vertex_buffer_va);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
         
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
 
@@ -43,7 +43,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     }
     else
     {
-        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.vertex_offset);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     }
 

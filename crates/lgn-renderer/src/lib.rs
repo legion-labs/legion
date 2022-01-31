@@ -433,7 +433,7 @@ fn update_gpu_instance_ids(
     for mesh in instance_query.iter() {
         let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
 
-        gpu_instance_va_table.set_vertex_buffer_va(mesh.vertex_buffer_va.into());
+        gpu_instance_va_table.set_mesh_description_va(mesh.mesh_description_va.into());
         gpu_instance_va_table.set_world_transform_va(mesh.world_transform_va.into());
 
         if let Ok(material) =
