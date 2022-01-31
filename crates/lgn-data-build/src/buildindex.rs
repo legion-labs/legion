@@ -75,12 +75,15 @@ impl CompiledResourceReference {
     }
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 struct SourceContent {
     version: String,
     /// Path can be either absolute or relative to build index.
     project_index: PathBuf,
     resources: Vec<ResourceInfo>,
+    #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
+    pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
 
 impl SourceContent {
@@ -99,8 +102,6 @@ struct OutputContent {
     version: String,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
-    #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
-    pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
 
 impl OutputContent {
@@ -133,6 +134,16 @@ pub(crate) struct SourceIndex {
 }
 
 impl SourceIndex {
+    pub fn record_pathid(&mut self, id: &ResourcePathId) {
+        self.source_content
+            .pathid_mapping
+            .insert(id.resource_id(), id.clone());
+    }
+
+    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
+        self.source_content.pathid_mapping.get(&id).cloned()
+    }
+
     /// Returns a combined hash of:
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
@@ -190,6 +201,10 @@ impl SourceIndex {
         resource_hash: Option<ResourceHash>,
         mut deps: Vec<ResourcePathId>,
     ) -> bool {
+        self.record_pathid(&id);
+        for id in &deps {
+            self.record_pathid(id);
+        }
         if let Some(existing_res) = self
             .source_content
             .resources
@@ -301,15 +316,6 @@ pub(crate) struct OutputIndex {
 }
 
 impl OutputIndex {
-    pub fn record_pathid(&mut self, id: &ResourcePathId) {
-        self.output_content
-            .pathid_mapping
-            .insert(id.resource_id(), id.clone());
-    }
-
-    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.output_content.pathid_mapping.get(&id).cloned()
-    }
 
     pub(crate) fn insert_compiled(
         &mut self,
@@ -445,13 +451,13 @@ impl BuildIndex {
             version: String::from(version),
             project_index: projectindex_path.to_owned(),
             resources: vec![],
+            pathid_mapping: BTreeMap::new(),
         };
 
         let output_content = OutputContent {
             version: String::from(version),
             compiled_resources: vec![],
             compiled_resource_references: vec![],
-            pathid_mapping: BTreeMap::new(),
         };
 
         // todo: write the output file
@@ -553,20 +559,6 @@ impl BuildIndex {
         )
     }
 
-    pub(crate) fn update_resource(
-        &mut self,
-        id: ResourcePathId,
-        resource_hash: Option<ResourceHash>,
-        deps: Vec<ResourcePathId>,
-    ) -> bool {
-        // todo: move this to source_index.
-        self.output_index.record_pathid(&id);
-        for id in &deps {
-            self.output_index.record_pathid(id);
-        }
-        self.source_index.update_resource(id, resource_hash, deps)
-    }
-
     fn pre_serialize(&mut self) {
         self.source_index.source_content.pre_serialize();
         self.output_index.output_content.pre_serialize();
@@ -654,35 +646,35 @@ mod tests {
 
             let resource_hash = Some(0.into()); // this is irrelevant to the test
 
-            db.update_resource(
+            db.source_index.update_resource(
                 intermediate_resource.clone(),
                 resource_hash,
                 intermediate_deps.clone(),
             );
-            db.update_resource(source_resource.clone(), resource_hash, vec![]);
-            db.update_resource(
+            db.source_index.update_resource(source_resource.clone(), resource_hash, vec![]);
+            db.source_index.update_resource(
                 intermediate_resource.clone(),
                 resource_hash,
                 intermediate_deps,
             );
-            db.update_resource(output_resource.clone(), resource_hash, output_deps);
+            db.source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
 
             db.flush().unwrap();
         }
 
         let db = BuildIndex::open(buildindex_dir, "0.0.1").unwrap();
         assert_eq!(
-            db.output_index.lookup_pathid(source_id).unwrap(),
+            db.source_index.lookup_pathid(source_id).unwrap(),
             source_resource
         );
         assert_eq!(
-            db.output_index
+            db.source_index
                 .lookup_pathid(intermediate_resource.resource_id())
                 .unwrap(),
             intermediate_resource
         );
         assert_eq!(
-            db.output_index
+            db.source_index
                 .lookup_pathid(output_resource.resource_id())
                 .unwrap(),
             output_resource
@@ -716,7 +708,7 @@ mod tests {
 
         let resource_hash = Some(0.into()); // this is irrelevant to the test
 
-        db.update_resource(
+        db.source_index.update_resource(
             intermediate_resource.clone(),
             resource_hash,
             intermediate_deps.clone(),
@@ -729,7 +721,7 @@ mod tests {
             1
         );
 
-        db.update_resource(source_resource, resource_hash, vec![]);
+        db.source_index.update_resource(source_resource, resource_hash, vec![]);
         assert_eq!(db.source_index.source_content.resources.len(), 2);
         assert_eq!(
             db.source_index.source_content.resources[1]
@@ -738,7 +730,7 @@ mod tests {
             0
         );
 
-        db.update_resource(intermediate_resource, resource_hash, intermediate_deps);
+        db.source_index.update_resource(intermediate_resource, resource_hash, intermediate_deps);
         assert_eq!(db.source_index.source_content.resources.len(), 2);
         assert_eq!(
             db.source_index.source_content.resources[0]
@@ -747,7 +739,7 @@ mod tests {
             1
         );
 
-        db.update_resource(output_resources, resource_hash, output_deps);
+        db.source_index.update_resource(output_resources, resource_hash, output_deps);
         assert_eq!(db.source_index.source_content.resources.len(), 3);
         assert_eq!(
             db.source_index.source_content.resources[2]

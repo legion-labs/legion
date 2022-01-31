@@ -347,7 +347,7 @@ impl DataBuild {
     ///
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.build_index.output_index.lookup_pathid(id)
+        self.build_index.source_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from
@@ -358,7 +358,7 @@ impl DataBuild {
         for resource_id in project.resource_list().await {
             let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
 
-            if self.build_index.update_resource(
+            if self.build_index.source_index.update_resource(
                 ResourcePathId::from(ResourceTypeAndId {
                     id: resource_id,
                     kind,
@@ -374,7 +374,7 @@ impl DataBuild {
                 if let Some(direct_dependency) = dependency.direct_dependency() {
                     if self
                         .build_index
-                        .update_resource(dependency, None, vec![direct_dependency])
+                        .source_index.update_resource(dependency, None, vec![direct_dependency])
                     {
                         updated_resources += 1;
                     }
@@ -612,7 +612,7 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompileOutput, Error> {
-        self.build_index.output_index.record_pathid(&compile_path);
+        self.build_index.source_index.record_pathid(&compile_path);
 
         let build_graph = self
             .build_index
