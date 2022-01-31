@@ -193,92 +193,30 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         ));
 
     // sphere 2
-    //commands
-    //    .spawn()
-    //    .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-    //    .insert(StaticMesh::from_default_meshes(
-    //        default_meshes.as_ref(),
-    //        DefaultMeshType::Sphere as usize,
-    //        (0, 255, 0).into(),
-    //        DefaultMaterialType::Default,
-    //    ));
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.5, 0.0, 0.0,
+        )))
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh::from_default_meshes(
+            default_meshes.as_ref(),
+            DefaultMeshType::Sphere as usize,
+            (0, 255, 0).into(),
+        ));
 
     // sphere 3
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            0.5, 0.0, 0.0,
-        )))
-        .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
-            (0, 0, 255).into(),
-            DefaultMaterialType::Default,
-        ));
-
-    // helmet
-    /*commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
-            DefaultMeshType::Helmet_Hose as usize,
-            (255, 0, 0).into(),
-            DefaultMaterialType::BluePlastic,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
-            DefaultMeshType::Helmet_RubberWood as usize,
-            (255, 255, 0).into(),
-            DefaultMaterialType::Gold,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
-            DefaultMeshType::Helmet_GlassPlactic as usize,
-            (0, 255, 0).into(),
-        ));
-
-    commands
-        .spawn()
-        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new(
-            DefaultMeshType::Helmet_MetalParts as usize,
-            (0, 255, 255).into(),
-            DefaultMaterialType::RoughMetal,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             default_meshes.as_ref(),
-            DefaultMeshType::Helmet_LeatherParts as usize,
+            DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
         ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
-            DefaultMeshType::Helmet_Lenses as usize,
-            (255, 0, 255).into(),
-            DefaultMaterialType::Silver,
-        ));*/
 
     // directional light
     commands

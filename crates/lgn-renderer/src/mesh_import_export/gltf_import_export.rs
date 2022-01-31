@@ -1,11 +1,10 @@
-use gltf::{mesh::util::ReadIndices, Gltf};
+use gltf::mesh::util::ReadIndices;
 use lgn_math::{Vec2, Vec3};
 
 pub struct GltfWrapper {}
 
 impl GltfWrapper {
-    #[allow(clippy::never_loop)]
-    pub fn new_mesh(path: String) -> Vec<(Vec<Vec3>, Vec<Vec3>, Vec<Vec2>, Vec<u32>)> {
+    pub fn new_mesh(path: String) -> Vec<StaticMeshRenderData> {
         let (gltf, buffers, _) = gltf::import(path).unwrap();
 
         let mut meshes = Vec::new();
@@ -34,12 +33,12 @@ impl GltfWrapper {
                     match indices_option {
                         ReadIndices::U8(iter) => {
                             for idx in iter {
-                                indices.push(idx as u32);
+                                indices.push(u32::from(idx));
                             }
                         }
                         ReadIndices::U16(iter) => {
                             for idx in iter {
-                                indices.push(idx as u32);
+                                indices.push(u32::from(idx));
                             }
                         }
                         ReadIndices::U32(iter) => {
@@ -50,8 +49,33 @@ impl GltfWrapper {
                     }
                 }
 
-                meshes.push((positions, normals, uvs, indices));
+                meshes.push(StaticMeshRenderData {
+                    positions: Some(
+                        positions
+                            .into_iter()
+                            .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
+                            .collect(),
+                    ),
+                    normals: Some(
+                        normals
+                            .into_iter()
+                            .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
+                            .collect(),
+                    ),
+                    tex_coords: if !tex_coords.is_empty() {
+                        Some(tex_coords)
+                    } else {
+                        None
+                    },
+                    indices: Some(indices),
+                    colors: None,
+                });
             }
+        }
+
+        let mut meshes = Vec::new();
+        for mesh_component in mesh_components {
+            let (positions, normals, tex_coords, indices) = mesh_component;
         }
         meshes
     }

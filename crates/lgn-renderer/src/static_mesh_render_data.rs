@@ -3,10 +3,7 @@ use std::ops::Mul;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
-use crate::{
-    mesh_import_export,
-    resources::{DefaultMeshType, UniformGPUDataUpdater},
-};
+use crate::{mesh_import_export, resources::UniformGPUDataUpdater};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -19,7 +16,6 @@ pub struct StaticMeshRenderData {
 
 impl Default for MeshFormat {
     fn default() -> Self {
-        MeshFormat::empty()
     }
 }
 
@@ -607,7 +603,7 @@ impl StaticMeshRenderData {
 
     pub fn new_arrow() -> Self {
         let arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let mut cone = Self::new_cone(0.025, 0.1, 10);
+        let cone = Self::new_cone(0.025, 0.1, 10);
         let mut positions = arrow.positions.unwrap();
         positions.append(
             &mut cone
