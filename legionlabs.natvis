@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="lgn_data_runtime::resource::ResourceId">
+    <DisplayString>	{((u16*)&amp;__0)[7],hb}{((u16*)&amp;__0)[6],hb}-{((u16*)&amp;__0)[5],hb}-{((u16*)&amp;__0)[4],hb}-{((u16*)&amp;__0)[3],hb}-{((u16*)&amp;__0)[2],hb}{((u16*)&amp;__0)[1],hb}{((u16*)&amp;__0)[0],hb}</DisplayString>
+  </Type>
+
+  <Type Name="lgn_data_runtime::resource::ResourceType">
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1c0ff9e497b0740f)">offline_entity ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x45307156cdfef705)">offline_script ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x09cde0390abe0694)">offline_debugcube ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x91dc60590cba171e)">offline_instance ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x07dd9f5d1793ed64)">offline_material ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x80b97dd7e2e9edca)">offline_mesh ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x4976b194d8a1e0c2)">offline_psd ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x0bac9261332b6ce8)">offline_testentity ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1d9ddd99aad89045)">runtime_entity ({__0,x})</DisplayString>
+	<DisplayString>{__0,x}</DisplayString>
+  </Type>
+
+</AutoVisualizer>

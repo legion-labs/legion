@@ -19,7 +19,7 @@ pub struct Args {
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let workspace = ctx.package_graph()?.workspace();
-    let bin_packages: Vec<_> = workspace
+    let mut bin_packages: Vec<_> = workspace
         .iter()
         .filter(|package| {
             package.build_targets().any(|bt| {
@@ -27,6 +27,8 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             })
         })
         .collect();
+    bin_packages.sort_by(|a, b| a.name().cmp(b.name()));
+
     let vscode_config = &ctx.config().vscode;
     let debugger_type = vscode_config.debugger_type.as_str();
 
@@ -107,7 +109,8 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
                     "preLaunchTask":  prelaunch_task,
-
+                    "visualizerFile": "${workspaceFolder}/legionlabs.natvis",
+                    "showDisplayString": true
                 }));
             }
         }
