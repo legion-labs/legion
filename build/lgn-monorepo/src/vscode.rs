@@ -156,7 +156,6 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
         "search.exclude": {
-          "codegen/**/*": true,
           "pnpm-lock.yaml": true,
           "Cargo.lock": true,
         }
