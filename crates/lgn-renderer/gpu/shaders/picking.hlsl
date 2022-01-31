@@ -34,15 +34,17 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     if (push_constant.use_gpu_pipeline) {
         GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
-    
-        vertex_in = static_buffer.Load<VertexIn>(addresses.vertex_buffer_va + vertexIn.vertexId * 56);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.vertex_buffer_va);
+        
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
 
         GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
         world = transpose(transform.world);        
     }
     else
     {
-        vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexIn.vertexId * 56);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.vertex_offset);
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     }
 
     float4 world_pos = mul(world, vertex_in.pos);
