@@ -16,7 +16,6 @@ include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 mod colorspace;
 
-
 /// Plugin module to register support types
 pub mod plugin;
 pub use plugin::*;
