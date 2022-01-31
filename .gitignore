@@ -12,7 +12,6 @@
 /.vscode/*
 !/.vscode/cspell.json
 !/.vscode/extensions.json
-!/.vscode/settings.json
 !/.vscode/launch_sample.json
 !/.vscode/tasks_sample.json
 !/.vscode/legionlabs.natvis
