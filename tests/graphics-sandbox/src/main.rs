@@ -232,7 +232,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
             light_type: LightType::Directional,
             radiance: 40.0,
             color: Vec3::new(1.0, 1.0, 1.0),
-            enabled: true,
+            enabled: false,
             ..LightComponent::default()
         });
 
