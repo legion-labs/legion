@@ -378,7 +378,11 @@ fn render_mesh(
 
     push_constant_data.set_world((*world_xform).into());
     push_constant_data.set_color(color.into());
-    push_constant_data.set_vertex_offset(default_meshes.mesh_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(
+        default_meshes
+            .mesh_description_offset_from_id(mesh_id)
+            .into(),
+    );
 
     cmd_buffer.push_constant(&push_constant_data);
 

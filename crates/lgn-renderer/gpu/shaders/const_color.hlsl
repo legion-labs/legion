@@ -9,14 +9,14 @@ struct VertexIn {
     float2 uv_coord : TEXCOORD0;
 };
 
-struct VertexOut {  
+struct VertexOut {
     float4 hpos : SV_POSITION;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
-    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.vertex_offset);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;

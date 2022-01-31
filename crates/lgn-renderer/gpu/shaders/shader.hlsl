@@ -30,7 +30,7 @@ struct VertexOut {
 
 VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
-    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.vertex_buffer_va);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;

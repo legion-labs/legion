@@ -9,7 +9,7 @@ use crate::{
 pub struct DefaultMeshes {
     static_buffer: UnifiedStaticBuffer,
     static_meshes: Vec<StaticMeshRenderData>,
-    static_mesh_offsets: Vec<u32>,
+    mesh_description_offsets: Vec<u32>,
     static_allocation: Option<PagedBufferAllocation>,
 }
 
@@ -70,10 +70,11 @@ impl DefaultMeshes {
             offset = u64::from(new_offset);
         }
 
-        let mut static_mesh_offsets = Vec::with_capacity(static_meshes.len());
+        let mut mesh_description_offsets = Vec::with_capacity(static_meshes.len());
         updater.add_update_jobs(&static_mesh_infos, offset);
         for (i, _mesh_info) in static_mesh_infos.into_iter().enumerate() {
-            static_mesh_offsets.push(offset as u32 + (i * std::mem::size_of::<MeshInfo>()) as u32);
+            mesh_description_offsets
+                .push(offset as u32 + (i * std::mem::size_of::<MeshInfo>()) as u32);
         }
 
         renderer.add_update_job_block(updater.job_blocks());
@@ -81,14 +82,14 @@ impl DefaultMeshes {
         Self {
             static_buffer,
             static_meshes,
-            static_mesh_offsets,
+            mesh_description_offsets,
             static_allocation: Some(static_allocation),
         }
     }
 
-    pub fn mesh_offset_from_id(&self, mesh_id: u32) -> u32 {
-        if mesh_id < self.static_mesh_offsets.len() as u32 {
-            self.static_mesh_offsets[mesh_id as usize]
+    pub fn mesh_description_offset_from_id(&self, mesh_id: u32) -> u32 {
+        if mesh_id < self.mesh_description_offsets.len() as u32 {
+            self.mesh_description_offsets[mesh_id as usize]
         } else {
             0
         }

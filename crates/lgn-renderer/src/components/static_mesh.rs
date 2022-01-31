@@ -16,7 +16,7 @@ pub struct StaticMesh {
     pub va_table_address: u32,
     pub instance_color_va: u32,
     pub world_transform_va: u32,
-    pub vertex_buffer_va: u32,
+    pub mesh_description_va: u32,
     pub picking_data_va: u32,
 }
 
@@ -42,7 +42,7 @@ impl StaticMesh {
             va_table_address: u32::MAX,
             instance_color_va: u32::MAX,
             world_transform_va: u32::MAX,
-            vertex_buffer_va: default_meshes.mesh_offset_from_id(clamped_mesh_id),
+            mesh_description_va: default_meshes.mesh_description_offset_from_id(clamped_mesh_id),
             picking_data_va: u32::MAX,
         }
     }

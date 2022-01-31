@@ -455,7 +455,7 @@ fn render_mesh(
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data.set_vertex_offset(static_mesh.vertex_buffer_va.into());
+    push_constant_data.set_mesh_description_offset(static_mesh.mesh_description_va.into());
     push_constant_data.set_picking_id(
         if let Some(id) = picking_id {
             id
