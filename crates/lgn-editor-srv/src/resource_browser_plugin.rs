@@ -8,9 +8,9 @@ use lgn_data_offline::resource::Project;
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
-    ArrayOperation, CloneResourceOperation, CreateResourceOperation, DataManager,
-    DeleteResourceOperation, LockContext, RenameResourceOperation, ReparentResourceOperation,
-    Transaction, UpdatePropertyOperation,
+    ArrayOperation, CloneResourceOperation, CreateResourceOperation, DeleteResourceOperation,
+    LockContext, RenameResourceOperation, ReparentResourceOperation, Transaction,
+    TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
 use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
@@ -29,7 +29,7 @@ use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
 pub(crate) struct ResourceBrowserRPC {
-    pub(crate) data_manager: Arc<Mutex<DataManager>>,
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
 }
 
 pub(crate) struct ResourceBrowserSettings {
@@ -109,15 +109,23 @@ impl Plugin for ResourceBrowserPlugin {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(i32)]
+pub enum SelectionOperation {
+    Set = 0,
+    Add = 1,
+    Remove = 2,
+}
+
 impl ResourceBrowserPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
-        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
         span_scope!("resource_browser::setup");
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
-            data_manager: data_manager.clone(),
+            transaction_manager: transaction_manager.clone(),
         });
         grpc_settings.register_service(resource_browser_service);
     }
@@ -126,21 +134,26 @@ impl ResourceBrowserPlugin {
     fn load_default_scene(
         settings: Res<'_, ResourceBrowserSettings>,
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
-        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
     ) {
         span_scope!("resource_browser::opening_default_scene");
         if !settings.default_scene.is_empty() {
             lgn_tracing::info!("Opening default scene: {}", settings.default_scene);
-            let data_manager = data_manager.clone();
-            let resource_name: ResourcePathName = settings.default_scene.clone().into();
+            let transaction_manager = transaction_manager.clone();
             tokio_runtime.block_on(async move {
-                let data_manager = data_manager.lock().await;
-                if let Err(err) = data_manager.build_by_name(&resource_name).await {
-                    lgn_tracing::warn!(
-                        "Failed to build default_scene '{}': {}",
-                        &resource_name,
-                        err.to_string()
-                    );
+                let transaction_manager = transaction_manager.lock().await;
+
+                for scene in settings.default_scene.split_terminator(';') {
+                    if let Err(err) = transaction_manager
+                        .build_by_name(&ResourcePathName::from(scene))
+                        .await
+                    {
+                        lgn_tracing::warn!(
+                            "Failed to build scene '{}': {}",
+                            scene,
+                            err.to_string()
+                        );
+                    }
                 }
             });
         }
@@ -227,8 +240,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         request: Request<SearchResourcesRequest>,
     ) -> Result<Response<SearchResourcesResponse>, Status> {
         let request = request.get_ref();
-        let data_manager = self.data_manager.lock().await;
-        let ctx = LockContext::new(&data_manager).await;
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
         let descriptors = ctx
             .project
             .resource_list()
@@ -314,8 +327,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ));
         }
 
-        let mut data_manager = self.data_manager.lock().await;
-        data_manager
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        transaction_manager
             .commit_transaction(transaction)
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
@@ -330,8 +343,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         &self,
         _request: Request<GetResourceTypeNamesRequest>,
     ) -> Result<Response<GetResourceTypeNamesResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().await;
-        let ctx = LockContext::new(&data_manager).await;
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
         let res_types = ctx.resource_registry.get_resource_types();
         Ok(Response::new(GetResourceTypeNamesResponse {
             resource_types: res_types
@@ -359,8 +372,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
-            let data_manager = self.data_manager.lock().await;
-            let ctx = LockContext::new(&data_manager).await;
+            let transaction_manager = self.transaction_manager.lock().await;
+            let ctx = LockContext::new(&transaction_manager).await;
             IndexSnapshot::new(&ctx.project).await
         };
 
@@ -403,8 +416,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
             }
         }
 
-        let mut data_manager = self.data_manager.lock().await;
-        data_manager
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        transaction_manager
             .commit_transaction(transaction)
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
@@ -424,8 +437,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(request.new_path.as_str()),
         ));
         {
-            let mut data_manager = self.data_manager.lock().await;
-            data_manager
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;
@@ -439,13 +452,13 @@ impl ResourceBrowser for ResourceBrowserRPC {
         &self,
         request: Request<CloneResourceRequest>,
     ) -> Result<Response<CloneResourceResponse>, Status> {
-        let request = request.get_ref();
+        let request = request.into_inner();
         let source_resource_id = parse_resource_id(request.source_id.as_str())?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
-            let data_manager = self.data_manager.lock().await;
-            let ctx = LockContext::new(&data_manager).await;
+            let transaction_manager = self.transaction_manager.lock().await;
+            let ctx = LockContext::new(&transaction_manager).await;
             IndexSnapshot::new(&ctx.project).await
         };
 
@@ -508,16 +521,27 @@ impl ResourceBrowser for ResourceBrowserRPC {
             }
         }
 
+        let clone_id = clone_mapping.get(&source_resource_id).unwrap();
+
+        // Add Init Values
+        for init_value in request.init_values {
+            transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                *clone_id,
+                init_value.property_path,
+                init_value.json_value,
+            ));
+        }
+
         {
-            let mut data_manager = self.data_manager.lock().await;
-            data_manager
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;
         };
 
         Ok(Response::new(CloneResourceResponse {
-            new_id: clone_mapping.get(&source_resource_id).unwrap().to_string(),
+            new_id: clone_id.to_string(),
         }))
     }
 
@@ -536,8 +560,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         if resource_id.kind == sample_data::offline::Entity::TYPE {
             // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
             let index_snapshot = {
-                let data_manager = self.data_manager.lock().await;
-                let ctx = LockContext::new(&data_manager).await;
+                let transaction_manager = self.transaction_manager.lock().await;
+                let ctx = LockContext::new(&transaction_manager).await;
                 IndexSnapshot::new(&ctx.project).await
             };
 
@@ -547,8 +571,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }
 
         {
-            let mut data_manager = self.data_manager.lock().await;
-            data_manager
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;

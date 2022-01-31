@@ -4114,18 +4114,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-debugcube"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
@@ -5207,7 +5195,6 @@ dependencies = [
 name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
- "lgn-compiler-debugcube",
  "lgn-compiler-material",
  "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",

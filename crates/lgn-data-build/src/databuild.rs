@@ -462,7 +462,7 @@ impl DataBuild {
         })?;
 
         let compiler_details = {
-            let unique_transforms = {
+            let unique_transforms: Vec<(Transform, ResourcePathId)> = {
                 let mut transforms = vec![];
                 for node in &topological_order {
                     let path = build_graph.node_weight(*node).unwrap();
@@ -471,7 +471,7 @@ impl DataBuild {
                     }
 
                     if let Some(transform) = path.last_transform() {
-                        transforms.push(transform);
+                        transforms.push((transform, path.clone()));
                     }
                 }
                 transforms.sort();
@@ -481,12 +481,12 @@ impl DataBuild {
 
             unique_transforms
                 .into_iter()
-                .map(|transform| {
+                .map(|(transform, res_path_id)| {
                     let (compiler, transform) = self
                         .compilers
                         .compilers()
                         .find_compiler(transform)
-                        .ok_or(Error::CompilerNotFound)?;
+                        .ok_or(Error::CompilerNotFound(transform, res_path_id))?;
                     let compiler_hash = compiler
                         .compiler_hash(transform, env)
                         .map_err(|e| Error::Io(e.into()))?;

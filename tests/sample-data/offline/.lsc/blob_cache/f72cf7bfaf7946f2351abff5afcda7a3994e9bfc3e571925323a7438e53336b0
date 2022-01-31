@@ -5,6 +5,11 @@
   ],
   "components": [
     {
+      "Name": {
+        "name": "Cube Group"
+      }
+    },
+    {
       "Transform": {
         "apply_to_children": true,
         "position": [
