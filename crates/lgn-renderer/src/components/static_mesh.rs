@@ -29,7 +29,7 @@ impl StaticMesh {
         material_type: DefaultMaterialType,
     ) -> Self {
         let mut clamped_mesh_id = mesh_id as u32;
-        if clamped_mesh_id > DefaultMeshType::Helmet_Lenses as u32 {
+        if clamped_mesh_id > DefaultMeshType::RotationRing as u32 {
             clamped_mesh_id = 0;
         }
         Self {

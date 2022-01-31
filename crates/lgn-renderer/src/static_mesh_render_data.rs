@@ -2,10 +2,7 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::{
-    mesh_import_export,
-    resources::{DefaultMeshType, UniformGPUDataUpdater},
-};
+use crate::{mesh_import_export, resources::UniformGPUDataUpdater};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -27,7 +24,7 @@ bitflags::bitflags! {
 
 impl Default for MeshFormat {
     fn default() -> Self {
-        MeshFormat::empty()
+        Self::empty()
     }
 }
 
@@ -54,19 +51,19 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
 impl StaticMeshRenderData {
     pub fn get_mesh_format(&self) -> MeshFormat {
         let mut format = MeshFormat::empty();
-        if let Some(_) = self.positions {
+        if self.positions.is_some() {
             format |= MeshFormat::POSITION;
         }
-        if let Some(_) = self.normals {
+        if self.normals.is_some() {
             format |= MeshFormat::NORMAL;
         }
-        if let Some(_) = self.tex_coords {
+        if self.tex_coords.is_some() {
             format |= MeshFormat::TEX_COORD;
         }
-        if let Some(_) = self.indices {
+        if self.indices.is_some() {
             format |= MeshFormat::INDEX;
         }
-        if let Some(_) = self.colors {
+        if self.colors.is_some() {
             format |= MeshFormat::COLOR;
         }
         format
@@ -77,33 +74,35 @@ impl StaticMeshRenderData {
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
     ) -> (u32, MeshInfo) {
-        let mut mesh_info = MeshInfo::default();
-        mesh_info.format = self.get_mesh_format();
+        let mut mesh_info = MeshInfo {
+            format: self.get_mesh_format(),
+            ..MeshInfo::default()
+        };
         let mut offset = offset;
 
         if let Some(positions) = &self.positions {
             mesh_info.position_offset = offset;
-            updater.add_update_jobs(&positions, offset as u64);
+            updater.add_update_jobs(positions, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
         }
         if let Some(normals) = &self.normals {
             mesh_info.normal_offset = offset;
-            updater.add_update_jobs(&normals, offset as u64);
+            updater.add_update_jobs(normals, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             mesh_info.tex_coord_offset = offset;
-            updater.add_update_jobs(&tex_coords, offset as u64);
+            updater.add_update_jobs(tex_coords, u64::from(offset));
             offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
         }
         if let Some(indices) = &self.indices {
             mesh_info.index_offset = offset;
-            updater.add_update_jobs(&indices, offset as u64);
+            updater.add_update_jobs(indices, u64::from(offset));
             offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
         }
         if let Some(colors) = &self.colors {
             mesh_info.color_offset = offset;
-            updater.add_update_jobs(&colors, offset as u64);
+            updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
         (offset, mesh_info)
@@ -138,7 +137,7 @@ impl StaticMeshRenderData {
         for i in 0..vertex_data.len() / 14 {
             let idx = i * 14;
             positions.push(Vec4::new(
-                vertex_data[idx + 0],
+                vertex_data[idx],
                 vertex_data[idx + 1],
                 vertex_data[idx + 2],
                 vertex_data[idx + 3],
@@ -173,7 +172,7 @@ impl StaticMeshRenderData {
         if let Some(positions) = &self.positions {
             return positions.len();
         }
-        unimplemented!()
+        unreachable!()
     }
 
     pub fn new_cube(size: f32) -> Self {
@@ -589,8 +588,8 @@ impl StaticMeshRenderData {
     }
 
     pub fn new_arrow() -> Self {
-        let mut arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let mut cone = Self::new_cone(0.025, 0.1, 10);
+        let arrow = Self::new_cylinder(0.01, 0.3, 10);
+        let cone = Self::new_cone(0.025, 0.1, 10);
         let mut positions = arrow.positions.unwrap();
         positions.append(
             &mut cone
