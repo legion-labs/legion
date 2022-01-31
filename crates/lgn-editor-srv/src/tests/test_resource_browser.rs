@@ -6,25 +6,17 @@ use tonic::Request;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName, ResourceRegistryOptions},
-    ResourcePathId,
-};
-use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
-};
+use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
+use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, ResourceTypeAndId};
 use lgn_math::Vec3;
 
-use lgn_data_transaction::{
-    ArrayOperation, BuildManager, CreateResourceOperation, DataManager, Transaction,
-    UpdatePropertyOperation,
-};
+use lgn_data_transaction::{ArrayOperation, BuildManager, DataManager, Transaction};
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
     DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
 };
 
-fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
+/*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {
         kind: <lgn_scripting::offline::Script as Resource>::TYPE,
         id: ResourceId::new(),
@@ -44,11 +36,11 @@ fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
                             pub fn entry() {
                                 //print("Hello world!");
                             }
-                            
+
                             pub fn arg() -> i64 {
                                 10
                             }
-                            
+
                             pub fn fibonacci(n: i64) -> i64 {
                                 if n <= 1 {
                                     n
@@ -71,13 +63,15 @@ fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
                     }})
                     .to_string(),
                 ))
-}
+}*/
 
 pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataManager>> {
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let project = Project::create_new(&project_dir).await.expect("failed to create a project");
+    let project = Project::create_new(&project_dir)
+        .await
+        .expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
     sample_data::offline::register_resource_types(&mut resource_registry);
@@ -100,7 +94,9 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Da
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project_dir, Manifest::default()).await.unwrap();
+    let build_manager = BuildManager::new(options, &project, Manifest::default())
+        .await
+        .unwrap();
     let project = Arc::new(Mutex::new(project));
 
     Arc::new(Mutex::new(DataManager::new(
@@ -165,11 +161,11 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             .await?;
 
         // Add Script + ScriptComponent
-        {
+        /*{
             let transaction = add_scripting_component(&root_entity_id);
             let mut guard = data_manager.lock().await;
             guard.commit_transaction(transaction).await.unwrap();
-        }
+        }*/
 
         // Creat an Hierarchy of Child->SubChild with increment_name
         {

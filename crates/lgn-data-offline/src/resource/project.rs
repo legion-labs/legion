@@ -324,7 +324,7 @@ impl Project {
     /// or increment the suffix number until resource name is not used
     /// Ex: /world/sample => /world/sample1
     /// Ex: /world/instance1099 => /world/instance1100
-    pub fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
+    pub async fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
         let mut name: String = resource_path.to_string();
 
         // extract the current suffix number if avaiable
@@ -339,7 +339,7 @@ impl Project {
         loop {
             // Check if the resource_name exists, if not increment index
             let new_path: ResourcePathName = format!("{}{}", name, index).into();
-            if !self.exists_named(&new_path) {
+            if !self.exists_named(&new_path).await {
                 return new_path;
             }
             index += 1;

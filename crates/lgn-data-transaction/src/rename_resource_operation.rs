@@ -35,10 +35,14 @@ impl TransactionOperation for RenameResourceOperation {
         let mut raw_name = ctx.project.raw_resource_name(self.resource_id.id)?;
         raw_name.replace_parent_info(None, Some(self.new_path.clone()));
 
-        if ctx.project.exists_named(&raw_name) {
+        if ctx.project.exists_named(&raw_name).await {
             return Err(Error::ResourcePathAlreadyExist(raw_name).into());
         }
-        self.old_path = Some(ctx.project.rename_resource(self.resource_id, &raw_name)?);
+        self.old_path = Some(
+            ctx.project
+                .rename_resource(self.resource_id, &raw_name)
+                .await?,
+        );
         Ok(())
     }
 

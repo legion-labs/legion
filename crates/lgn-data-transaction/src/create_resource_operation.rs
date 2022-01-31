@@ -46,7 +46,10 @@ impl TransactionOperation for CreateResourceOperation {
             if !self.auto_increment_name {
                 return Err(Error::ResourcePathAlreadyExist(self.resource_path.clone()).into());
             }
-            requested_resource_path = ctx.project.get_incremental_name(&requested_resource_path);
+            requested_resource_path = ctx
+                .project
+                .get_incremental_name(&requested_resource_path)
+                .await;
         }
 
         if let Some(resource_type_name) = ctx

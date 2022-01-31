@@ -55,7 +55,7 @@ impl TransactionOperation for CloneResourceOperation {
         let mut source_raw_name = ctx.project.raw_resource_name(self.source_resource_id.id)?;
         source_raw_name.replace_parent_info(self.target_parent_id, None);
 
-        source_raw_name = ctx.project.get_incremental_name(&source_raw_name);
+        source_raw_name = ctx.project.get_incremental_name(&source_raw_name).await;
 
         ctx.project
             .add_resource_with_id(

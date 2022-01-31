@@ -47,12 +47,12 @@ struct IndexSnapshot {
 }
 
 impl IndexSnapshot {
-    fn new(project: &Project) -> Self {
+    async fn new(project: &Project) -> Self {
         let mut entity_to_parent = HashMap::new();
         let mut parent_to_entities = HashMap::new();
         let mut entity_to_names = HashMap::new();
 
-        for id in project.resource_list() {
+        for id in project.resource_list().await {
             if let Ok(res_name) = project.raw_resource_name(id) {
                 let kind = project.resource_info(id).unwrap().0;
                 let res_id = ResourceTypeAndId { kind, id };
@@ -345,7 +345,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let index_snapshot = {
             let data_manager = self.data_manager.lock().await;
             let ctx = LockContext::new(&data_manager).await;
-            IndexSnapshot::new(&ctx.project)
+            IndexSnapshot::new(&ctx.project).await
         };
 
         // Recursively gather all the children entities as well
@@ -430,7 +430,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let index_snapshot = {
             let data_manager = self.data_manager.lock().await;
             let ctx = LockContext::new(&data_manager).await;
-            IndexSnapshot::new(&ctx.project)
+            IndexSnapshot::new(&ctx.project).await
         };
 
         // Are we cloning into another target
@@ -522,7 +522,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             let index_snapshot = {
                 let data_manager = self.data_manager.lock().await;
                 let ctx = LockContext::new(&data_manager).await;
-                IndexSnapshot::new(&ctx.project)
+                IndexSnapshot::new(&ctx.project).await
             };
 
             let old_parent = index_snapshot.entity_to_parent.get(&resource_id).copied();
@@ -530,7 +530,6 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 update_entity_parenting(resource_id, Some(new_parent), old_parent, transaction);
         }
 
-        let project = Arc::new(Mutex::new(project));
         {
             let mut data_manager = self.data_manager.lock().await;
             data_manager

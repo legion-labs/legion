@@ -32,14 +32,20 @@ impl TransactionOperation for ReparentResourceOperation {
 
         raw_name.replace_parent_info(Some(self.new_parent), None);
 
-        let raw_name = ctx.project.get_incremental_name(&raw_name);
-        self.old_path = Some(ctx.project.rename_resource(self.resource_id, &raw_name)?);
+        let raw_name = ctx.project.get_incremental_name(&raw_name).await;
+        self.old_path = Some(
+            ctx.project
+                .rename_resource(self.resource_id, &raw_name)
+                .await?,
+        );
         Ok(())
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(old_path) = &self.old_path {
-            ctx.project.rename_resource(self.resource_id, old_path)?;
+            ctx.project
+                .rename_resource(self.resource_id, old_path)
+                .await?;
         }
         Ok(())
     }
