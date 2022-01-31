@@ -91,3 +91,23 @@ pub fn rgba_image_diff(img_a: &[u8], img_b: &[u8], width: u32, height: u32) -> f
     }
     current_value / max_value
 }
+
+pub fn rgba_per_pixel_image_diff(img_a: &[u8], img_b: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let mut diff_image = Vec::new();
+    for y in 0..height {
+        for x in 0..width {
+            let left_bound = ((y * width + x) * 4) as usize;
+            let right_bound = (left_bound + 4) as usize;
+            let a = &img_a[left_bound..right_bound];
+            let b = &img_b[left_bound..right_bound];
+            diff_image.append(
+                &mut a
+                    .iter()
+                    .zip(b.iter())
+                    .map(|(a, b)| ((f64::from(*a) - f64::from(*b) + 255.0) / 2.0) as u8)
+                    .collect::<Vec<u8>>(),
+            );
+        }
+    }
+    diff_image
+}
