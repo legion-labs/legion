@@ -4,8 +4,9 @@ use lgn_blob_storage::BlobStorage;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    make_path_absolute, new_index_backend, utils::make_file_read_only, Error, IndexBackend,
-    MapOtherError, Result, TreeNode, WorkspaceRegistration,
+    make_path_absolute, new_index_backend,
+    utils::{make_file_read_only, parse_url_or_path},
+    Error, IndexBackend, MapOtherError, Result, TreeNode, WorkspaceRegistration,
 };
 
 mod backend;
@@ -155,12 +156,28 @@ impl Workspace {
         }
     }
 
+    fn try_make_filepath_absolute(url: &str, root: &Path) -> Result<String> {
+        match parse_url_or_path(url)
+            .map_other_err(format!("failed to parse index url `{}`", &url))?
+        {
+            crate::utils::UrlOrPath::Url(_) => Ok(url.to_owned()),
+            crate::utils::UrlOrPath::Path(path) => {
+                if path.is_absolute() {
+                    Ok(url.to_owned())
+                } else {
+                    Ok(root.join(path).into_os_string().into_string().unwrap())
+                }
+            }
+        }
+    }
+
     async fn new(
         root: PathBuf,
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
     ) -> Result<Self> {
-        let index_backend = new_index_backend(&config.index_url)?;
+        let absolute_url = Self::try_make_filepath_absolute(&config.index_url, &root)?;
+        let index_backend = new_index_backend(&absolute_url)?;
         let blob_storage = index_backend
             .get_blob_storage_url()
             .await?

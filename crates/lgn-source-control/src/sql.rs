@@ -57,4 +57,8 @@ impl SqlConnectionPool {
             .await
             .map_other_err("failed to start transaction")
     }
+
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
 }

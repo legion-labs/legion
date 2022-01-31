@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{env, vec};
 
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
@@ -23,12 +23,12 @@ use crate::databuild::CompileOutput;
 use crate::Error;
 use crate::{databuild::DataBuild, DataBuildOptions};
 
-fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
+fn setup_registry() -> Arc<tokio::sync::Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
         .add_type::<text_resource::TextResource>()
         .add_type::<multitext_resource::MultiTextResource>()
-        .create_registry()
+        .create_async_registry()
 }
 
 fn target_dir() -> PathBuf {
@@ -44,7 +44,7 @@ fn target_dir() -> PathBuf {
     )
 }
 
-fn create_resource(
+async fn create_resource(
     name: ResourcePathName,
     deps: &[ResourcePathId],
     project: &mut Project,
@@ -68,13 +68,16 @@ fn create_resource(
             &resource_b,
             resources,
         )
+        .await
         .unwrap()
 }
 
-fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
-    let mut project = Project::open(project_dir).expect("failed to open project");
+async fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
+    let mut project = Project::open(project_dir)
+        .await
+        .expect("failed to open project");
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let handle = project
         .load_resource(resource_id, &mut resources)
@@ -85,6 +88,7 @@ fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
     resource.content.push_str(" more content");
     project
         .save_resource(resource_id, &handle, &mut resources)
+        .await
         .expect("successful save");
 }
 
@@ -103,15 +107,17 @@ fn test_env() -> CompilationEnv {
     }
 }
 
-#[test]
-fn compile_change_no_deps() {
+#[tokio::test]
+async fn compile_change_no_deps() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let (resource_id, resource_handle) = {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -125,6 +131,7 @@ fn compile_change_no_deps() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
         (resource_id, resource_handle)
     };
@@ -139,8 +146,14 @@ fn compile_change_no_deps() {
 
     // compile the resource..
     let original_checksum = {
-        let mut build = config.create(&project_dir).expect("to create index");
-        build.source_pull().expect("failed to pull from project");
+        let (mut build, project) = config
+            .create_with_project(&project_dir)
+            .await
+            .expect("to create index");
+        build
+            .source_pull(&project)
+            .await
+            .expect("failed to pull from project");
 
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
 
@@ -163,12 +176,15 @@ fn compile_change_no_deps() {
 
     // ..change resource..
     {
-        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut project = Project::open(project_dir)
+            .await
+            .expect("failed to open project");
 
         resource_handle.get_mut(&mut resources).unwrap().content = String::from("new content");
 
         project
             .save_resource(resource_id, &resource_handle, &mut resources)
+            .await
             .unwrap();
     }
 
@@ -178,8 +194,11 @@ fn compile_change_no_deps() {
             DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
                 .content_store(&contentstore_path);
 
-        let mut build = config.open().expect("to open index");
-        build.source_pull().expect("failed to pull from project");
+        let (mut build, project) = config.open_with_project().await.expect("to open index");
+        build
+            .source_pull(&project)
+            .await
+            .expect("failed to pull from project");
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
@@ -213,31 +232,35 @@ fn compile_change_no_deps() {
 //         V            V
 //         D -------> t(E) -> E
 //
-fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
-    let mut project =
-        Project::create_new(project_dir.as_ref()).expect("failed to create a project");
+async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
+    let mut project = Project::create_new(project_dir.as_ref())
+        .await
+        .expect("failed to create a project");
 
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let res_c = create_resource(
         ResourcePathName::new("C"),
         &[],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_e = create_resource(
         ResourcePathName::new("E"),
         &[],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_d = create_resource(
         ResourcePathName::new("D"),
         &[ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE)],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_b = create_resource(
         ResourcePathName::new("B"),
         &[
@@ -246,7 +269,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
         ],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     let res_a = create_resource(
         ResourcePathName::new("A"),
         &[
@@ -255,21 +279,24 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
         ],
         &mut project,
         &mut resources,
-    );
+    )
+    .await;
     [res_a, res_b, res_c, res_d, res_e]
 }
 
-#[test]
-fn intermediate_resource() {
+#[tokio::test]
+async fn intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let source_magic_value = String::from("47");
 
     let source_id = {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(text_resource::TextResource::TYPE)
@@ -284,18 +311,20 @@ fn intermediate_resource() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build =
+    let (mut build, project) =
         DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
             .content_store(&cas_addr)
-            .create(project_dir)
+            .create_with_project(project_dir)
+            .await
             .expect("new build index");
 
-    let pulled = build.source_pull().expect("successful pull");
+    let pulled = build.source_pull(&project).await.expect("successful pull");
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
@@ -354,20 +383,21 @@ fn intermediate_resource() {
     }
 }
 
-#[test]
-fn unnamed_cache_use() {
+#[tokio::test]
+async fn unnamed_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
 
-    let resource_list = setup_project(&project_dir);
+    let resource_list = setup_project(&project_dir).await;
     let root_resource = resource_list[0];
 
-    let mut build =
+    let (mut build, project) =
         DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create(&project_dir)
+            .create_with_project(&project_dir)
+            .await
             .expect("new build index");
-    build.source_pull().expect("successful pull");
+    build.source_pull(&project).await.expect("successful pull");
 
     //
     // test(A) -> A -> test(B) -> B -> test(C) -> C
@@ -413,8 +443,8 @@ fn unnamed_cache_use() {
 
     // change root resource, one resource re-compiled.
     {
-        change_resource(root_resource, &project_dir);
-        build.source_pull().expect("to pull changes");
+        change_resource(root_resource, &project_dir).await;
+        build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
             resources,
@@ -432,8 +462,8 @@ fn unnamed_cache_use() {
     // change resource E - which invalides 4 resources in total (E included).
     {
         let resource_e = resource_list[4];
-        change_resource(resource_e, &project_dir);
-        build.source_pull().expect("to pull changes");
+        change_resource(resource_e, &project_dir).await;
+        build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
             resources,
@@ -449,17 +479,20 @@ fn unnamed_cache_use() {
     }
 }
 
-#[test]
-fn named_path_cache_use() {
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let magic_list = vec![String::from("47"), String::from("198")];
 
     let source_id = {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(multitext_resource::MultiTextResource::TYPE)
@@ -474,18 +507,20 @@ fn named_path_cache_use() {
                 &resource_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build =
+    let (mut build, project) =
         DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
             .content_store(&cas_addr)
-            .create(&project_dir)
+            .create_with_project(&project_dir)
+            .await
             .expect("new build index");
 
-    let pulled = build.source_pull().expect("successful pull");
+    let pulled = build.source_pull(&project).await.expect("successful pull");
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
@@ -580,9 +615,11 @@ fn named_path_cache_use() {
 
     // change "text_1" of source resource multitext resource..
     {
-        let mut project = Project::open(&project_dir).expect("failed to open project");
+        let mut project = Project::open(&project_dir)
+            .await
+            .expect("failed to open project");
         let resources = setup_registry();
-        let mut resources = resources.lock().unwrap();
+        let mut resources = resources.lock().await;
 
         let handle = project
             .load_resource(source_id, &mut resources)
@@ -593,9 +630,10 @@ fn named_path_cache_use() {
         resource.text_list[1] = String::from("852");
         project
             .save_resource(source_id, &handle, &mut resources)
+            .await
             .expect("successful save");
 
-        let pulled = build.source_pull().expect("pulled change");
+        let pulled = build.source_pull(&project).await.expect("pulled change");
         assert_eq!(pulled, 1);
     }
 
@@ -621,9 +659,11 @@ fn named_path_cache_use() {
 
     // change "text_0" and "text_1" of source resource multitext resource..
     {
-        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut project = Project::open(project_dir)
+            .await
+            .expect("failed to open project");
         let resources = setup_registry();
-        let mut resources = resources.lock().unwrap();
+        let mut resources = resources.lock().await;
 
         let handle = project
             .load_resource(source_id, &mut resources)
@@ -635,9 +675,10 @@ fn named_path_cache_use() {
         resource.text_list[1] = String::from("1");
         project
             .save_resource(source_id, &handle, &mut resources)
+            .await
             .expect("successful save");
 
-        let pulled = build.source_pull().expect("pulled change");
+        let pulled = build.source_pull(&project).await.expect("pulled change");
         assert_eq!(pulled, 1);
     }
 
@@ -682,15 +723,17 @@ fn named_path_cache_use() {
         .all(|r| !r.compile_path.is_named()));
 }
 
-#[test]
-fn link() {
+#[tokio::test]
+async fn link() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let parent_id = {
-        let mut project = Project::create_new(&project_dir).expect("new project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("new project");
 
         let child_handle = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -708,6 +751,7 @@ fn link() {
                 &child_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = resources
@@ -727,17 +771,19 @@ fn link() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build =
+    let (mut build, project) =
         DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
             .content_store(&contentstore_path)
-            .create(&project_dir)
+            .create_with_project(&project_dir)
+            .await
             .expect("to create index");
 
-    build.source_pull().unwrap();
+    build.source_pull(&project).await.unwrap();
 
     // for now each resource is a separate file so we need to validate that the
     // compile output and link output produce the same number of resources
@@ -777,16 +823,18 @@ fn link() {
     }
 }
 
-#[test]
-fn verify_manifest() {
+#[tokio::test]
+async fn verify_manifest() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     // child_id <- test(child_id) <- parent_id = test(parent_id)
     let parent_resource = {
-        let mut project = Project::create_new(&project_dir).expect("new project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("new project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -797,6 +845,7 @@ fn verify_manifest() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let child_handle = resources
@@ -817,17 +866,19 @@ fn verify_manifest() {
                 &child_handle,
                 &mut resources,
             )
+            .await
             .unwrap()
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build =
+    let (mut build, project) =
         DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
             .content_store(&contentstore_path)
-            .create(project_dir)
+            .create_with_project(project_dir)
+            .await
             .expect("to create index");
 
-    build.source_pull().unwrap();
+    build.source_pull(&project).await.unwrap();
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 

@@ -33,7 +33,8 @@ struct Args {
     clean: bool,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     if args.clean {
@@ -41,10 +42,10 @@ fn main() {
     }
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(&args.root);
+    raw_loader::build_offline(&args.root).await;
 
     // compile offline resources to runtime assets
-    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource));
+    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource)).await;
 }
 
 fn clean_folders(project_dir: &str) {

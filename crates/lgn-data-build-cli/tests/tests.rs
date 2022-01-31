@@ -13,8 +13,8 @@ use lgn_data_runtime::{AssetRegistryOptions, Resource};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
-#[test]
-fn build_device() {
+#[tokio::test]
+async fn build_device() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -28,11 +28,11 @@ fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let mut project = Project::create_new(project_dir).expect("new project");
+        let mut project = Project::create_new(project_dir).await.expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
-            .create_registry();
-        let mut resources = resources.lock().unwrap();
+            .create_async_registry();
+        let mut resources = resources.lock().await;
 
         let resource = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -49,6 +49,7 @@ fn build_device() {
                 &resource,
                 &mut resources,
             )
+            .await
             .expect("adding the resource")
     };
 
@@ -66,14 +67,15 @@ fn build_device() {
     };
 
     // create build index.
-    let mut build = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new(
         &buildindex_dir,
         CompilerRegistryOptions::from_dir(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
-    .create(project_dir)
+    .create_with_project(project_dir)
+    .await
     .expect("new build index");
-    build.source_pull().expect("successful pull");
+    build.source_pull(&project).await.expect("successful pull");
 
     // the transformation below will reverse source resource's content.
     let derived = ResourcePathId::from(source_id).push(refs_asset::RefsAsset::TYPE);
@@ -127,11 +129,11 @@ fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir).expect("new project");
+        let mut project = Project::open(project_dir).await.expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
-            .create_registry();
-        let mut resources = resources.lock().unwrap();
+            .create_async_registry();
+        let mut resources = resources.lock().await;
 
         let resource = project
             .load_resource(source_id, &mut resources)
@@ -143,6 +145,7 @@ fn build_device() {
 
         project
             .save_resource(source_id, resource, &mut resources)
+            .await
             .expect("successful save");
     }
 
@@ -156,8 +159,8 @@ fn build_device() {
     assert_eq!(resource.content, changed_derived_content);
 }
 
-#[test]
-fn no_intermediate_resource() {
+#[tokio::test]
+async fn no_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -171,11 +174,11 @@ fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).expect("new project");
+            let mut project = Project::create_new(project_dir).await.expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
-                .create_registry();
-            let mut resources = resources.lock().unwrap();
+                .create_async_registry();
+            let mut resources = resources.lock().await;
 
             let resource = resources
                 .new_resource(refs_resource::TestResource::TYPE)
@@ -189,13 +192,16 @@ fn no_intermediate_resource() {
                     &resource,
                     &mut resources,
                 )
+                .await
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from(cas.clone()))
-            .create(project_dir)
-            .expect("new build index");
-        build.source_pull().expect("successful pull");
+        let (mut build, project) =
+            DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
+                .content_store(&ContentStoreAddr::from(cas.clone()))
+                .create_with_project(project_dir)
+                .await
+                .expect("new build index");
+        build.source_pull(&project).await.expect("successful pull");
 
         resource_id
     };
@@ -238,8 +244,8 @@ fn no_intermediate_resource() {
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }
 
-#[test]
-fn with_intermediate_resource() {
+#[tokio::test]
+async fn with_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
 
     let cas = work_dir.path().join("content_store");
@@ -253,11 +259,11 @@ fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).expect("new project");
+            let mut project = Project::create_new(project_dir).await.expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
-                .create_registry();
-            let mut resources = resources.lock().unwrap();
+                .create_async_registry();
+            let mut resources = resources.lock().await;
 
             let resource = resources
                 .new_resource(text_resource::TextResource::TYPE)
@@ -271,13 +277,16 @@ fn with_intermediate_resource() {
                     &resource,
                     &mut resources,
                 )
+                .await
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from(cas.clone()))
-            .create(project_dir)
-            .expect("new build index");
-        build.source_pull().expect("successful pull");
+        let (mut build, project) =
+            DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
+                .content_store(&ContentStoreAddr::from(cas.clone()))
+                .create_with_project(project_dir)
+                .await
+                .expect("new build index");
+        build.source_pull(&project).await.expect("successful pull");
 
         resource_id
     };

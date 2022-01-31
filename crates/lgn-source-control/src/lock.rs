@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use lgn_tracing::span_fn;
 
 use crate::{make_canonical_relative_path, Lock, Workspace};
 
@@ -18,7 +17,6 @@ pub async fn verify_empty_lock_domain(workspace: &Workspace, lock_domain_id: &st
     Ok(())
 }
 
-#[span_fn]
 pub async fn lock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
     let workspace = Workspace::find(path_specified.as_ref()).await?;
     let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
@@ -36,7 +34,6 @@ pub async fn lock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
         .map_err(Into::into)
 }
 
-#[span_fn]
 pub async fn unlock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
     let workspace = Workspace::find(path_specified.as_ref()).await?;
     let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
@@ -49,7 +46,6 @@ pub async fn unlock_file_command(path_specified: impl AsRef<Path>) -> Result<()>
         .map_err(Into::into)
 }
 
-#[span_fn]
 pub async fn list_locks_command() -> Result<()> {
     let workspace = Workspace::find_in_current_directory().await?;
     let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
@@ -70,7 +66,6 @@ pub async fn list_locks_command() -> Result<()> {
     Ok(())
 }
 
-#[span_fn]
 pub async fn assert_not_locked(workspace: &Workspace, path_specified: &Path) -> Result<()> {
     let (current_branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
     let repo_branch = workspace

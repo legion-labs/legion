@@ -11,6 +11,7 @@ lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
+tokio = { version = "1.13", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.11.0"
@@ -22,6 +23,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 tempfile = "3.2.0"
+tokio-test = "0.4.2"
 refs-asset = { path = "../lgn-data-runtime/test-refs-asset" }
 integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
 refs-resource = { path = "../lgn-data-offline/test-refs-resource" }

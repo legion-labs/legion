@@ -13,7 +13,7 @@ async fn test_property_inspector() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
-        let data_manager = crate::test_resource_browser::setup_project(&project_dir);
+        let data_manager = crate::test_resource_browser::setup_project(&project_dir).await;
         let property_inspector = crate::property_inspector_plugin::PropertyInspectorRPC {
             data_manager: data_manager.clone(),
         };

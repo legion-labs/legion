@@ -307,7 +307,9 @@ enum SourceCommands {
     },
 }
 
-fn main() -> Result<(), String> {
+#[allow(clippy::too_many_lines)]
+#[tokio::main]
+async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
     //
@@ -347,7 +349,7 @@ fn main() -> Result<(), String> {
         }
         Commands::Explain { id } => {
             if let Some(config) = config {
-                let (build, project) = config.open()?;
+                let (build, project) = config.open().await?;
                 let rid = {
                     if let Ok(rid) = ResourcePathId::from_str(&id) {
                         rid
@@ -376,10 +378,10 @@ fn main() -> Result<(), String> {
         }
         Commands::Source { path, command } => {
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
-            let project = Project::open(proj_file).map_err(|e| e.to_string())?;
+            let project = Project::open(proj_file).await.map_err(|e| e.to_string())?;
             match command {
                 SourceCommands::List => {
-                    for id in project.resource_list() {
+                    for id in project.resource_list().await {
                         let name = project.resource_name(id).map_err(|e| e.to_string())?;
                         println!("{} = {}", name, id);
                     }
@@ -394,7 +396,7 @@ fn main() -> Result<(), String> {
                 }
                 SourceCommands::Id { name } => {
                     let name = ResourcePathName::from(name);
-                    if let Ok(id) = project.find_resource(&name) {
+                    if let Ok(id) = project.find_resource(&name).await {
                         println!("{} = {}", name, id);
                     } else {
                         println!("None");
@@ -404,19 +406,19 @@ fn main() -> Result<(), String> {
         }
         Commands::Asset { path } => {
             if path.is_file() {
-                parse_asset_file(path, &config);
+                parse_asset_file(path, &config).await;
             } else if path.is_dir() {
                 for entry in path.read_dir().unwrap().flatten() {
                     let path = entry.path();
                     if path.is_file() {
-                        parse_asset_file(path, &config);
+                        parse_asset_file(path, &config).await;
                     }
                 }
             }
         }
         Commands::Graph { id } => {
             if let Some(config) = config {
-                let (build, project) = config.open()?;
+                let (build, project) = config.open().await?;
                 let rid = {
                     if let Ok(resource_id) = id.parse() {
                         build
@@ -588,7 +590,7 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
 
 // Reads an asset file, and prints out its header information.
 #[allow(unsafe_code)]
-fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
+async fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let path = path.as_ref();
     let mut f = File::open(path).expect("unable to open asset file");
 
@@ -629,7 +631,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
             let asset_ref_id =
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
-                let (_build, project) = config.open().expect("open config");
+                let (_build, project) = config.open().await.expect("open config");
                 let path_id = ResourcePathId::from(ResourceTypeAndId {
                     kind: asset_ref_type,
                     id: asset_ref_id,

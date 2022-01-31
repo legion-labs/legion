@@ -247,9 +247,11 @@ impl BuildIndex {
         })
     }
 
-    pub(crate) fn open_project(&self) -> Result<Project, Error> {
+    pub(crate) async fn open_project(&self) -> Result<Project, Error> {
         let project_path = self.project_path()?;
-        Project::open(&project_path).map_err(|_e| Error::InvalidProject(project_path))
+        Project::open(&project_path)
+            .await
+            .map_err(|_e| Error::InvalidProject(project_path))
     }
 
     /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
@@ -559,11 +561,13 @@ mod tests {
 
     use super::BuildIndex;
 
-    #[test]
-    fn version_check() {
+    #[tokio::test]
+    async fn version_check() {
         let work_dir = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(work_dir.path()).expect("failed to create project");
+        let project = Project::create_new(work_dir.path())
+            .await
+            .expect("failed to create project");
         let projectindex_path = project.indexfile_path();
 
         let buildindex_dir = work_dir.path();
@@ -575,10 +579,12 @@ mod tests {
         assert!(BuildIndex::open(buildindex_dir, "0.0.2").is_err());
     }
 
-    #[test]
-    fn pathid_records() {
+    #[tokio::test]
+    async fn pathid_records() {
         let work_dir = tempfile::tempdir().unwrap();
-        let project = Project::create_new(work_dir.path()).expect("failed to create project");
+        let project = Project::create_new(work_dir.path())
+            .await
+            .expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
@@ -631,10 +637,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn dependency_update() {
+    #[tokio::test]
+    async fn dependency_update() {
         let work_dir = tempfile::tempdir().unwrap();
-        let project = Project::create_new(work_dir.path()).expect("failed to create project");
+        let project = Project::create_new(work_dir.path())
+            .await
+            .expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
