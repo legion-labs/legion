@@ -1,5 +1,7 @@
 use gltf::mesh::util::ReadIndices;
-use lgn_math::{Vec2, Vec3};
+use lgn_math::{Vec3, Vec4};
+
+use crate::static_mesh_render_data::StaticMeshRenderData;
 
 pub struct GltfWrapper {}
 
@@ -13,12 +15,10 @@ impl GltfWrapper {
             for primitive in mesh.primitives() {
                 let mut positions = Vec::new();
                 let mut normals = Vec::new();
-                let mut uvs = Vec::new();
                 let mut indices = Vec::new();
 
                 println!("- Primitive #{}", primitive.index());
                 let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
-                let mode = primitive.mode();
                 if let Some(iter) = reader.read_positions() {
                     for vertex_position in iter {
                         positions.push(vertex_position.into());
@@ -53,29 +53,20 @@ impl GltfWrapper {
                     positions: Some(
                         positions
                             .into_iter()
-                            .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
+                            .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 1.0))
                             .collect(),
                     ),
                     normals: Some(
                         normals
                             .into_iter()
-                            .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
+                            .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
                             .collect(),
                     ),
-                    tex_coords: if !tex_coords.is_empty() {
-                        Some(tex_coords)
-                    } else {
-                        None
-                    },
+                    tex_coords: None,
                     indices: Some(indices),
                     colors: None,
                 });
             }
-        }
-
-        let mut meshes = Vec::new();
-        for mesh_component in mesh_components {
-            let (positions, normals, tex_coords, indices) = mesh_component;
         }
         meshes
     }

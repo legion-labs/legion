@@ -445,6 +445,9 @@ fn render_mesh(
     push_constant_data.set_color(color.into());
     push_constant_data
         .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+            .mesh_description_offset_from_id(mesh_id)
+            .into(),
+    );
 
     cmd_buffer.push_constant(&push_constant_data);
 

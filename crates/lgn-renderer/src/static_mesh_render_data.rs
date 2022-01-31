@@ -741,33 +741,7 @@ impl StaticMeshRenderData {
     }
 
     pub fn new_gltf(path: String) -> Vec<Self> {
-        let mesh_components = mesh_import_export::GltfWrapper::new_mesh(path);
-        let mut meshes = Vec::new();
-        for mesh_component in mesh_components {
-            let (positions, normals, tex_coords, indices) = mesh_component;
-            meshes.push(Self {
-                positions: Some(
-                    positions
-                        .into_iter()
-                        .map(|v| Vec4::new(v.x, v.y, v.z, 1.0))
-                        .collect(),
-                ),
-                normals: Some(
-                    normals
-                        .into_iter()
-                        .map(|v| Vec4::new(v.x, v.y, v.z, 0.0))
-                        .collect(),
-                ),
-                tex_coords: if !tex_coords.is_empty() {
-                    Some(tex_coords)
-                } else {
-                    None
-                },
-                indices: Some(indices),
-                colors: None,
-            });
-        }
-        meshes
+        mesh_import_export::GltfWrapper::new_mesh(path)
     }
 }
 
