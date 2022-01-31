@@ -109,7 +109,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     },
                     "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
                     "preLaunchTask":  prelaunch_task,
-                    "visualizerFile": "${workspaceFolder}/legionlabs.natvis",
+                    "visualizerFile": "${workspaceFolder}/.vscode/legionlabs.natvis",
                     "showDisplayString": true
                 }));
             }
