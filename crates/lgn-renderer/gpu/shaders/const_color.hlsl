@@ -20,6 +20,26 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
+    {
+        vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
+    }
+    VertexIn vertex_in;
+    if (HasPosition(mesh_desc.format))
+    {
+        vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
+    }
+    if (HasNormal(mesh_desc.format))
+    {
+        vertex_in.normal = static_buffer.Load<float4>(mesh_desc.normal_offset + vertexId * 16);
+    }
+    if (HasColor(mesh_desc.format))
+    {
+        vertex_in.color = static_buffer.Load<float4>(mesh_desc.color_offset + vertexId * 16);
+    }
+    if (HasTexCoord(mesh_desc.format))
+    {
+        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc.tex_coord_offset + vertexId * 8);
+    }
     VertexOut vertex_out;
 
     float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, vertex_in.pos));
