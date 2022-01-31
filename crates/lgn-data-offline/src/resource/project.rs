@@ -3,13 +3,14 @@ use std::{
     fs::{self, File, OpenOptions},
     io::Seek,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    edit_file, revert_file, track_new_file, IndexBackend, LocalIndexBackend, Workspace,
-    WorkspaceConfig, WorkspaceRegistration,
+    edit_file, find_local_changes, list_remote_files, revert_file, track_new_file, IndexBackend,
+    LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -239,22 +240,56 @@ impl Project {
         }
     }
 
+    async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+        let local_changes = find_local_changes(&self.workspace).await.map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: e,
+                context: "local_resource_list".to_string(),
+            })
+        })?;
+        let changes = local_changes
+            .iter()
+            .map(|change| PathBuf::from(&change.relative_path))
+            .filter(|path| path.extension().is_none())
+            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        Ok(changes)
+    }
+
+    async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+        let files = list_remote_files(&self.workspace).await.map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: e,
+                context: "remote_resource_list".to_string(),
+            })
+        })?;
+
+        let files = files
+            .iter()
+            .map(|file| PathBuf::from(&file))
+            .filter(|path| path.extension().is_none())
+            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        Ok(files)
+    }
+
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub fn resource_list(&self) -> impl Iterator<Item = ResourceId> + '_ {
-        self.db
-            .remote_resources
-            .iter()
-            .chain(self.db.local_resources.iter())
-            .map(|typeid| typeid.id)
+    pub async fn resource_list(&self) -> Vec<ResourceId> {
+        let mut all = self.local_resource_list().await.unwrap();
+        let remote = self.remote_resource_list().await.unwrap();
+        all.extend(remote);
+        all
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
-    pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
+    pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
         // this below would be better expressed as try_map (still experimental).
         let res = self
             .resource_list()
+            .await
+            .into_iter()
             .find_map(|id| match self.read_meta(id) {
                 Ok(meta) => {
                     if &meta.name == name {
@@ -276,13 +311,13 @@ impl Project {
     }
 
     /// Checks if a resource with a given name is part of the project.
-    pub fn exists_named(&self, name: &ResourcePathName) -> bool {
-        self.find_resource(name).is_ok()
+    pub async fn exists_named(&self, name: &ResourcePathName) -> bool {
+        self.find_resource(name).await.is_ok()
     }
 
     /// Checks if a resource is part of the project.
-    pub fn exists(&self, id: ResourceId) -> bool {
-        self.resource_list().any(|v| v == id)
+    pub async fn exists(&self, id: ResourceId) -> bool {
+        self.resource_list().await.iter().any(|v| v == &id)
     }
 
     /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
@@ -712,7 +747,7 @@ impl Drop for Project {
 
 impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let names = self.resource_list().map(|r| self.resource_name(r).unwrap());
+        let names: Vec<ResourceTypeAndId> = vec![]; // todo self.resource_list().map(|r| self.resource_name(r).unwrap());
         f.debug_list().entries(names).finish()
     }
 }
@@ -1035,6 +1070,7 @@ mod tests {
 
         let top_level_resource = project
             .find_resource(&ResourcePathName::new("hero.actor"))
+            .await
             .unwrap();
 
         let (_, _, dependencies) = project.resource_info(top_level_resource.id).unwrap();
@@ -1047,7 +1083,7 @@ mod tests {
         old_name: ResourcePathName,
         new_name: ResourcePathName,
     ) {
-        let skeleton_id = proj.find_resource(&old_name);
+        let skeleton_id = proj.find_resource(&old_name).await;
         assert!(skeleton_id.is_ok());
         let skeleton_id = skeleton_id.unwrap();
 
@@ -1056,8 +1092,8 @@ mod tests {
         let prev_name = prev_name.unwrap();
         assert_eq!(&prev_name, &old_name);
 
-        assert!(proj.find_resource(&old_name).is_err());
-        assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
+        assert!(proj.find_resource(&old_name).await.is_err());
+        assert_eq!(proj.find_resource(&new_name).await.unwrap(), skeleton_id);
     }
 
     #[tokio::test]

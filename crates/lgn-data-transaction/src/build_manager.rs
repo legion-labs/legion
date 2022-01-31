@@ -33,7 +33,7 @@ impl BuildManager {
     }
 
     /// Builds derived resources based on changed source resoure.
-    pub fn build_all_derived(
+    pub async fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
         project: &Project,
@@ -60,7 +60,7 @@ impl BuildManager {
 
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
-        self.build.source_pull(project)?;
+        self.build.source_pull(project).await?;
         match self
             .build
             .compile(derived_id.clone(), None, &self.compile_env)

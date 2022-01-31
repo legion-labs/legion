@@ -52,19 +52,20 @@ impl<'a> LockContext<'a> {
             self.project.flush()?;
         }
 
-        self.changed_resources
-            .iter()
-            .try_for_each(|resource_id| -> anyhow::Result<()> {
-                match self.build.build_all_derived(*resource_id, &self.project) {
-                    Ok((runtime_path_id, _built_resources)) => {
-                        self.asset_registry.reload(runtime_path_id.resource_id());
-                    }
-                    Err(e) => {
-                        error!("Error building resource derivations {:?}", e);
-                    }
+        for resource_id in &self.changed_resources {
+            match self
+                .build
+                .build_all_derived(*resource_id, &self.project)
+                .await
+            {
+                Ok((runtime_path_id, _built_resources)) => {
+                    self.asset_registry.reload(runtime_path_id.resource_id());
                 }
-                Ok(())
-            })?;
+                Err(e) => {
+                    error!("Error building resource derivations {:?}", e);
+                }
+            }
+        }
 
         self.resource_registry.collect_garbage();
         Ok(())

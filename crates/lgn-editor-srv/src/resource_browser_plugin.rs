@@ -216,6 +216,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let descriptors = ctx
             .project
             .resource_list()
+            .await
+            .into_iter()
             .filter_map(|resource_id| {
                 let path: String = ctx
                     .project

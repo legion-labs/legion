@@ -58,10 +58,10 @@ async fn no_dependencies() {
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 1);
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 
     assert!(build.build_index.find_dependencies(&resource).is_some());
@@ -132,7 +132,7 @@ async fn with_dependency() {
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 2);
 
     let child_deps = build
@@ -147,7 +147,7 @@ async fn with_dependency() {
     assert_eq!(child_deps.len(), 0);
     assert_eq!(parent_deps.len(), 1);
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 }
 
@@ -208,9 +208,9 @@ async fn with_derived_dependency() {
             .await
             .expect("to create index");
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 3);
 
-    let updated_count = build.source_pull(&project).unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 }

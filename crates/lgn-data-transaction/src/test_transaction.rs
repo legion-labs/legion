@@ -229,7 +229,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
         asset_registry.update();
 
-        assert!(project.lock().await.exists_named(&resource_path));
+        assert!(project.lock().await.exists_named(&resource_path).await);
 
         // Test Array Insert Operation
         test_array_insert_operation(new_id, &mut data_manager).await?;
@@ -253,8 +253,8 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             Transaction::new().add_operation(CloneResourceOperation::new(new_id, clone_id, None));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
-        assert!(project.lock().await.exists_named(&clone_name));
-        assert!(project.lock().await.exists(clone_id.id));
+        assert!(project.lock().await.exists_named(&clone_name).await);
+        assert!(project.lock().await.exists(clone_id.id).await);
 
         // Rename the clone
         let rename_new_name: ResourcePathName = "/entity/test_clone_rename".into();
@@ -264,51 +264,51 @@ async fn test_transaction_system() -> anyhow::Result<()> {
         ));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
-        assert!(project.lock().await.exists_named(&rename_new_name));
-        assert!(!project.lock().await.exists_named(&clone_name));
+        assert!(project.lock().await.exists_named(&rename_new_name).await);
+        assert!(!project.lock().await.exists_named(&clone_name).await);
 
         // Undo Rename
         data_manager.undo_transaction().await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&rename_new_name));
-        assert!(project.lock().await.exists_named(&clone_name));
+        assert!(!project.lock().await.exists_named(&rename_new_name).await);
+        assert!(project.lock().await.exists_named(&clone_name).await);
 
         // Undo Clone
         data_manager.undo_transaction().await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&clone_name));
-        assert!(!project.lock().await.exists(clone_id.id));
+        assert!(!project.lock().await.exists_named(&clone_name).await);
+        assert!(!project.lock().await.exists(clone_id.id).await);
 
         // Delete the created Resource
         let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
         data_manager.commit_transaction(transaction).await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id.id));
+        assert!(!project.lock().await.exists_named(&resource_path).await);
+        assert!(!project.lock().await.exists(new_id.id).await);
 
         // Undo delete
         data_manager.undo_transaction().await?;
         asset_registry.update();
-        assert!(project.lock().await.exists_named(&resource_path));
-        assert!(project.lock().await.exists(new_id.id));
+        assert!(project.lock().await.exists_named(&resource_path).await);
+        assert!(project.lock().await.exists(new_id.id).await);
 
         // Undo Create
         data_manager.undo_transaction().await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id.id));
+        assert!(!project.lock().await.exists_named(&resource_path).await);
+        assert!(!project.lock().await.exists(new_id.id).await);
 
         // Redo Create
         data_manager.redo_transaction().await?;
         asset_registry.update();
-        assert!(project.lock().await.exists_named(&resource_path));
-        assert!(project.lock().await.exists(new_id.id));
+        assert!(project.lock().await.exists_named(&resource_path).await);
+        assert!(project.lock().await.exists(new_id.id).await);
 
         // Redo Delete
         data_manager.redo_transaction().await?;
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&resource_path));
-        assert!(!project.lock().await.exists(new_id.id));
+        assert!(!project.lock().await.exists_named(&resource_path).await);
+        assert!(!project.lock().await.exists(new_id.id).await);
 
         // Create Transaction with invalid edit
         let invalid_resource: ResourcePathName = "/entity/create_invalid.dc".into();
@@ -335,7 +335,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             "Transaction with invalid property update shouldn't succceed"
         );
         asset_registry.update();
-        assert!(!project.lock().await.exists_named(&invalid_resource));
+        assert!(!project.lock().await.exists_named(&invalid_resource).await);
 
         // Test CreateResource with auto Name Increment
         for _ in 0..2 {
@@ -350,14 +350,20 @@ async fn test_transaction_system() -> anyhow::Result<()> {
             data_manager.commit_transaction(transaction).await?;
         }
         asset_registry.update();
-        assert!(project
-            .lock()
-            .await
-            .exists_named(&"/entity/autoincrement1337".into()));
-        assert!(project
-            .lock()
-            .await
-            .exists_named(&"/entity/autoincrement1338".into()));
+        assert!(
+            project
+                .lock()
+                .await
+                .exists_named(&"/entity/autoincrement1337".into())
+                .await
+        );
+        assert!(
+            project
+                .lock()
+                .await
+                .exists_named(&"/entity/autoincrement1338".into())
+                .await
+        );
 
         drop(data_manager);
     }

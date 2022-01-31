@@ -79,7 +79,7 @@ fn compute_context_hash(
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create_with_project(".").await.expect("new build index");
 ///
-/// build.source_pull(&project).expect("successful source pull");
+/// build.source_pull(&project).await.expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
@@ -357,10 +357,10 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
+    pub async fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
         let mut updated_resources = 0;
 
-        for resource_id in project.resource_list() {
+        for resource_id in project.resource_list().await {
             let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
 
             if self.build_index.update_resource(

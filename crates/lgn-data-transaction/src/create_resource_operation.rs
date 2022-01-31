@@ -37,12 +37,12 @@ impl TransactionOperation for CreateResourceOperation {
             .ok_or(Error::ResourceCreationFailed(self.resource_id.kind))?;
 
         // Validate duplicate id/name
-        if ctx.project.exists(self.resource_id.id) {
+        if ctx.project.exists(self.resource_id.id).await {
             return Err(Error::ResourceIdAlreadyExist(self.resource_id).into());
         }
 
         let mut requested_resource_path = self.resource_path.clone();
-        if ctx.project.exists_named(&requested_resource_path) {
+        if ctx.project.exists_named(&requested_resource_path).await {
             if !self.auto_increment_name {
                 return Err(Error::ResourcePathAlreadyExist(self.resource_path.clone()).into());
             }

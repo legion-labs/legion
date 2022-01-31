@@ -35,6 +35,14 @@ pub async fn find_local_changes_command() -> Result<Vec<LocalChange>> {
         .map_err(Into::into)
 }
 
+pub async fn find_local_changes(workspace: &Workspace) -> Result<Vec<LocalChange>> {
+    workspace
+        .backend
+        .get_local_changes()
+        .await
+        .map_err(Into::into)
+}
+
 pub async fn track_new_file(workspace: &Workspace, path_specified: impl AsRef<Path>) -> Result<()> {
     let abs_path = make_path_absolute(path_specified)?;
 

@@ -381,7 +381,7 @@ async fn main() -> Result<(), String> {
             let project = Project::open(proj_file).await.map_err(|e| e.to_string())?;
             match command {
                 SourceCommands::List => {
-                    for id in project.resource_list() {
+                    for id in project.resource_list().await {
                         let name = project.resource_name(id).map_err(|e| e.to_string())?;
                         println!("{} = {}", name, id);
                     }
@@ -396,7 +396,7 @@ async fn main() -> Result<(), String> {
                 }
                 SourceCommands::Id { name } => {
                     let name = ResourcePathName::from(name);
-                    if let Ok(id) = project.find_resource(&name) {
+                    if let Ok(id) = project.find_resource(&name).await {
                         println!("{} = {}", name, id);
                     } else {
                         println!("None");

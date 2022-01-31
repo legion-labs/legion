@@ -192,7 +192,7 @@ async fn build_resource_from_raw(
         let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
 
         let id = {
-            if let Ok(id) = project.find_resource(name) {
+            if let Ok(id) = project.find_resource(name).await {
                 id
             } else {
                 let id = ResourceTypeAndId {
@@ -224,7 +224,7 @@ async fn build_test_entity(
     // Create TestEntity Generic DataContainer
     let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
     let id = {
-        if let Ok(id) = project.find_resource(&name) {
+        if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
             let kind_name = TestEntity::TYPENAME;
@@ -280,7 +280,7 @@ async fn build_debug_cubes(
     // Create DebugCube DataContainer
     for (index, _) in cube_ids.iter().enumerate() {
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
-        let id = if let Ok(id) = project.find_resource(&name) {
+        let id = if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
             let kind = DebugCube::TYPE;

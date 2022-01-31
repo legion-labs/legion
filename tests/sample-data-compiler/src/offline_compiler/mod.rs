@@ -56,7 +56,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
             .await
             .expect("new build index");
 
-    build.source_pull(&project).expect("successful pull");
+    build.source_pull(&project).await.expect("successful pull");
 
     let runtime_dir = root_folder.join("runtime");
     if !runtime_dir.exists() {
@@ -68,7 +68,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     let platform = Platform::Windows;
     let locale = Locale::new("en");
 
-    if let Ok(resource_id) = project.find_resource(resource_name) {
+    if let Ok(resource_id) = project.find_resource(resource_name).await {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
         let source_name = project
             .resource_name(asset_path.source_resource().id)

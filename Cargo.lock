@@ -4395,6 +4395,8 @@ dependencies = [
  "anyhow",
  "async-trait",
  "erased-serde",
+ "futures",
+ "futures-lite",
  "generic-data",
  "lgn-compiler-testentity",
  "lgn-content-store",

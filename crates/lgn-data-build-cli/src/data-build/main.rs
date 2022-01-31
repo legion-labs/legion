@@ -78,7 +78,7 @@ async fn main() -> Result<(), String> {
                     .await
                     .map_err(|e| format!("failed creating build index {}", e))?;
 
-            if let Err(e) = build.source_pull(&project) {
+            if let Err(e) = build.source_pull(&project).await {
                 eprintln!("Source Pull failed with '{}'", e);
                 let _res = std::fs::remove_file(build_index);
             }
@@ -139,6 +139,7 @@ async fn main() -> Result<(), String> {
             //
             build
                 .source_pull(&project)
+                .await
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
             let output = build

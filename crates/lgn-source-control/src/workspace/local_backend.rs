@@ -153,7 +153,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         Ok((current_branch.branch_name, current_branch.commit_id))
     }
 
-    #[span_fn]
     async fn set_current_branch(&self, branch_name: &str, commit_id: &str) -> Result<()> {
         let value = serde_json::to_string(&CurrentBranch {
             branch_name: branch_name.into(),
@@ -177,7 +176,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn get_local_changes(&self) -> Result<Vec<LocalChange>> {
         let sql: &str = &format!(
             "SELECT relative_path, change_type FROM {}",
@@ -207,7 +205,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         Ok(res)
     }
 
-    #[span_fn]
     async fn find_local_change(
         &self,
         canonical_relative_path: &str,
@@ -234,7 +231,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             }))
     }
 
-    #[span_fn]
     async fn save_local_change(&self, change_spec: &LocalChange) -> Result<()> {
         let sql: &str = &format!("REPLACE INTO {} VALUES(?, ?);", Self::TABLE_CHANGES);
         let sql = sqlx::query(sql)
@@ -253,7 +249,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn clear_local_changes(&self, changes: &[LocalChange]) -> Result<()> {
         let mut conn = self.sql_connection.lock().await;
         let mut transaction = conn
@@ -278,7 +273,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn read_pending_branch_merges(&self) -> Result<Vec<PendingBranchMerge>> {
         let sql: &str = &format!(
             "SELECT name, head FROM {};",
@@ -299,7 +293,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .collect())
     }
 
-    #[span_fn]
     async fn clear_pending_branch_merges(&self) -> Result<()> {
         let sql: &str = &format!("DELETE from {};", Self::TABLE_BRANCH_MERGES_PENDING);
 
@@ -311,7 +304,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn save_pending_branch_merge(&self, merge_spec: &PendingBranchMerge) -> Result<()> {
         let sql: &str = &format!(
             "INSERT OR REPLACE into {} VALUES(?,?);",
@@ -329,7 +321,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn save_resolve_pending(&self, resolve_pending: &ResolvePending) -> Result<()> {
         let sql: &str = &format!(
             "INSERT OR REPLACE into {} VALUES(?,?,?);",
@@ -348,7 +339,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn clear_resolve_pending(&self, resolve_pending: &ResolvePending) -> Result<()> {
         let sql: &str = &format!(
             "DELETE from {}
@@ -365,7 +355,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn find_resolve_pending(
         &self,
         canonical_relative_path: &str,
@@ -393,7 +382,6 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             }))
     }
 
-    #[span_fn]
     async fn read_resolves_pending(&self) -> Result<Vec<ResolvePending>> {
         let sql: &str = &format!(
             "SELECT relative_path, base_commit_id, theirs_commit_id 

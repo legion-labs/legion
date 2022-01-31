@@ -75,7 +75,7 @@ async fn build_device() {
     .create_with_project(project_dir)
     .await
     .expect("new build index");
-    build.source_pull(&project).expect("successful pull");
+    build.source_pull(&project).await.expect("successful pull");
 
     // the transformation below will reverse source resource's content.
     let derived = ResourcePathId::from(source_id).push(refs_asset::RefsAsset::TYPE);
@@ -201,7 +201,7 @@ async fn no_intermediate_resource() {
                 .create_with_project(project_dir)
                 .await
                 .expect("new build index");
-        build.source_pull(&project).expect("successful pull");
+        build.source_pull(&project).await.expect("successful pull");
 
         resource_id
     };
@@ -286,7 +286,7 @@ async fn with_intermediate_resource() {
                 .create_with_project(project_dir)
                 .await
                 .expect("new build index");
-        build.source_pull(&project).expect("successful pull");
+        build.source_pull(&project).await.expect("successful pull");
 
         resource_id
     };

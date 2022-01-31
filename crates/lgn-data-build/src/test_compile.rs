@@ -152,6 +152,7 @@ async fn compile_change_no_deps() {
             .expect("to create index");
         build
             .source_pull(&project)
+            .await
             .expect("failed to pull from project");
 
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
@@ -196,6 +197,7 @@ async fn compile_change_no_deps() {
         let (mut build, project) = config.open_with_project().await.expect("to open index");
         build
             .source_pull(&project)
+            .await
             .expect("failed to pull from project");
         let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
 
@@ -322,7 +324,7 @@ async fn intermediate_resource() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).expect("successful pull");
+    let pulled = build.source_pull(&project).await.expect("successful pull");
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
@@ -395,7 +397,7 @@ async fn unnamed_cache_use() {
             .create_with_project(&project_dir)
             .await
             .expect("new build index");
-    build.source_pull(&project).expect("successful pull");
+    build.source_pull(&project).await.expect("successful pull");
 
     //
     // test(A) -> A -> test(B) -> B -> test(C) -> C
@@ -442,7 +444,7 @@ async fn unnamed_cache_use() {
     // change root resource, one resource re-compiled.
     {
         change_resource(root_resource, &project_dir).await;
-        build.source_pull(&project).expect("to pull changes");
+        build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
             resources,
@@ -461,7 +463,7 @@ async fn unnamed_cache_use() {
     {
         let resource_e = resource_list[4];
         change_resource(resource_e, &project_dir).await;
-        build.source_pull(&project).expect("to pull changes");
+        build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
             resources,
@@ -518,7 +520,7 @@ async fn named_path_cache_use() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).expect("successful pull");
+    let pulled = build.source_pull(&project).await.expect("successful pull");
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
@@ -631,7 +633,7 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).expect("pulled change");
+        let pulled = build.source_pull(&project).await.expect("pulled change");
         assert_eq!(pulled, 1);
     }
 
@@ -676,7 +678,7 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).expect("pulled change");
+        let pulled = build.source_pull(&project).await.expect("pulled change");
         assert_eq!(pulled, 1);
     }
 
@@ -781,7 +783,7 @@ async fn link() {
             .await
             .expect("to create index");
 
-    build.source_pull(&project).unwrap();
+    build.source_pull(&project).await.unwrap();
 
     // for now each resource is a separate file so we need to validate that the
     // compile output and link output produce the same number of resources
@@ -876,7 +878,7 @@ async fn verify_manifest() {
             .await
             .expect("to create index");
 
-    build.source_pull(&project).unwrap();
+    build.source_pull(&project).await.unwrap();
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 

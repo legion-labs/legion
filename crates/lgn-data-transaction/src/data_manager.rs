@@ -83,8 +83,9 @@ impl DataManager {
     pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> anyhow::Result<()> {
         let mut ctx = LockContext::new(self).await;
         let project = self.project.lock().await;
-        let resource_id = ctx.project.find_resource(resource_path)?;
-        let (runtime_path_id, _results) = ctx.build.build_all_derived(resource_id, &project)?;
+        let resource_id = ctx.project.find_resource(resource_path).await?;
+        let (runtime_path_id, _results) =
+            ctx.build.build_all_derived(resource_id, &project).await?;
         ctx.asset_registry
             .load_untyped(runtime_path_id.resource_id());
         Ok(())
@@ -96,7 +97,7 @@ impl DataManager {
         let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
-        for resource_id in project.resource_list() {
+        for resource_id in project.resource_list().await {
             let (kind, _, _) = project.resource_info(resource_id).unwrap();
             let type_id = ResourceTypeAndId {
                 kind,
