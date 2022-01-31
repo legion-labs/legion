@@ -99,7 +99,6 @@ fn compute_context_hash(
 #[derive(Debug)]
 pub struct DataBuild {
     build_index: BuildIndex,
-    //project: Arc<Mutex<Project>>,
     resource_dir: PathBuf,
     content_store: HddContentStore,
     compilers: CompilerNode,
@@ -158,7 +157,6 @@ impl DataBuild {
         Ok((
             Self {
                 build_index,
-                //project: Arc::new(Mutex::new(project)),
                 resource_dir: project.resource_dir(),
                 content_store,
                 compilers: CompilerNode::new(compilers, registry),
@@ -349,7 +347,7 @@ impl DataBuild {
     ///
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.build_index.lookup_pathid(id)
+        self.build_index.output_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from
@@ -497,7 +495,9 @@ impl DataBuild {
         ) = {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
-                build_index.find_compiled(compile_node, context_hash, source_hash)
+                build_index
+                    .output_index
+                    .find_compiled(compile_node, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -526,7 +526,7 @@ impl DataBuild {
                     )
                     .map_err(Error::Compiler)?;
 
-                build_index.insert_compiled(
+                build_index.output_index.insert_compiled(
                     compile_node,
                     context_hash,
                     source_hash,
@@ -580,7 +580,10 @@ impl DataBuild {
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
-        let build_graph = self.build_index.generate_build_graph(compile_path);
+        let build_graph = self
+            .build_index
+            .source_index
+            .generate_build_graph(compile_path);
         #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
@@ -609,9 +612,12 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompileOutput, Error> {
-        self.build_index.record_pathid(&compile_path);
+        self.build_index.output_index.record_pathid(&compile_path);
 
-        let build_graph = self.build_index.generate_build_graph(compile_path);
+        let build_graph = self
+            .build_index
+            .source_index
+            .generate_build_graph(compile_path);
 
         let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
             eprintln!("{:?}", build_graph);
@@ -699,6 +705,7 @@ impl DataBuild {
                 //
                 let dependencies = self
                     .build_index
+                    .source_index
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
@@ -717,6 +724,7 @@ impl DataBuild {
                         // used as compilers can filter dependencies out.
                         //
                         self.build_index
+                            .source_index
                             .compute_source_hash(compile_node.clone())
                             .get()
                     } else {
@@ -734,6 +742,7 @@ impl DataBuild {
                         // we can assume there are results of compilation of the `direct_dependency`
                         let compiled = self
                             .build_index
+                            .output_index
                             .find_compiled(
                                 &direct_dependency.to_unnamed(),
                                 *dep_context_hash,

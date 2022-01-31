@@ -64,10 +64,15 @@ async fn no_dependencies() {
     let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 
-    assert!(build.build_index.find_dependencies(&resource).is_some());
+    assert!(build
+        .build_index
+        .source_index
+        .find_dependencies(&resource)
+        .is_some());
     assert_eq!(
         build
             .build_index
+            .source_index
             .find_dependencies(&resource)
             .unwrap()
             .len(),
@@ -137,10 +142,12 @@ async fn with_dependency() {
 
     let child_deps = build
         .build_index
+        .source_index
         .find_dependencies(&child_id)
         .expect("zero deps");
     let parent_deps = build
         .build_index
+        .source_index
         .find_dependencies(&parent_id)
         .expect("one dep");
 

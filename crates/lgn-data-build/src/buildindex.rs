@@ -127,148 +127,99 @@ impl OutputContent {
 }
 
 #[derive(Debug)]
-pub(crate) struct BuildIndex {
+pub(crate) struct SourceIndex {
     source_content: SourceContent,
-    output_content: OutputContent,
-    buildindex_dir: PathBuf,
     source_file: File,
-    output_file: File,
 }
 
-impl BuildIndex {
-    fn source_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
-        buildindex_dir.as_ref().join("source.index")
-    }
+impl SourceIndex {
+    /// Returns a combined hash of:
+    /// * `id` resource's content.
+    /// * content of all `id`'s dependencies.
+    /// todo: at one point dependency filtering here will be useful.
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> ResourceHash {
+        let sorted_unique_resource_hashes: Vec<ResourceHash> = {
+            let mut unique_resources = HashMap::new();
+            let mut queue: VecDeque<_> = VecDeque::new();
 
-    fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
-        buildindex_dir.as_ref().join("output.index")
-    }
+            queue.push_back(id);
 
-    pub(crate) fn create_new(
-        buildindex_dir: &Path,
-        projectindex_path: &Path,
-        version: &str,
-    ) -> Result<Self, Error> {
-        let source_index = Self::source_index_file(buildindex_dir);
-        let output_index = Self::output_index_file(buildindex_dir);
+            while let Some(resource) = queue.pop_front() {
+                if let Some(resource_info) = self
+                    .source_content
+                    .resources
+                    .iter()
+                    .find(|r| r.id == resource)
+                {
+                    unique_resources.insert(resource, resource_info.resource_hash);
 
-        // construct_project_path is called to validate the project's path
-        #[allow(clippy::let_underscore_drop)]
-        let _ = Self::construct_project_path(buildindex_dir, projectindex_path)?;
+                    let newly_discovered_deps: Vec<_> = resource_info
+                        .dependencies
+                        .iter()
+                        .filter(|r| !unique_resources.contains_key(*r))
+                        .cloned()
+                        .collect();
 
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(source_index)
-            .map_err(|_e| Error::Io)?;
+                    queue.extend(newly_discovered_deps);
+                } else {
+                    // follow the path otherwise.
+                    if let Some(dep) = resource.direct_dependency() {
+                        if !unique_resources.contains_key(&dep) {
+                            queue.push_back(dep);
+                        }
+                    }
+                }
+            }
 
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(output_index)
-            .map_err(|_e| Error::Io)?;
-
-        let source = SourceContent {
-            version: String::from(version),
-            project_index: projectindex_path.to_owned(),
-            resources: vec![],
+            let mut hashes: Vec<ResourceHash> =
+                unique_resources.into_iter().filter_map(|t| t.1).collect();
+            hashes.sort_unstable();
+            hashes
         };
 
-        let output = OutputContent {
-            version: String::from(version),
-            compiled_resources: vec![],
-            compiled_resource_references: vec![],
-            pathid_mapping: BTreeMap::new(),
-        };
-
-        // todo: write the output file
-
-        serde_json::to_writer_pretty(&source_file, &source).map_err(|_e| Error::Io)?;
-        serde_json::to_writer_pretty(&output_file, &output).map_err(|_e| Error::Io)?;
-
-        Ok(Self {
-            source_content: source,
-            output_content: output,
-            buildindex_dir: buildindex_dir.to_path_buf(),
-            source_file,
-            output_file,
-        })
+        let mut hasher = DefaultHasher::new();
+        for h in sorted_unique_resource_hashes {
+            h.hash(&mut hasher);
+        }
+        hasher.finish().into()
     }
 
-    pub(crate) fn open(buildindex_dir: &Path, version: &str) -> Result<Self, Error> {
-        let source_index = Self::source_index_file(buildindex_dir);
-        let output_index = Self::output_index_file(buildindex_dir);
+    pub(crate) fn update_resource(
+        &mut self,
+        id: ResourcePathId,
+        resource_hash: Option<ResourceHash>,
+        mut deps: Vec<ResourcePathId>,
+    ) -> bool {
+        if let Some(existing_res) = self
+            .source_content
+            .resources
+            .iter_mut()
+            .find(|r| r.id == id)
+        {
+            deps.sort();
 
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&source_index)
-            .map_err(|_e| Error::NotFound)?;
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(output_index)
-            .map_err(|_e| Error::NotFound)?;
-
-        let source_content: SourceContent =
-            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
-        let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
-
-        let project_path =
-            Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
-
-        if !project_path.exists() {
-            return Err(Error::InvalidProject(project_path));
-        }
-
-        if source_content.version != version {
-            return Err(Error::VersionMismatch {
-                value: source_content.version,
-                expected: version.to_owned(),
-            });
-        }
-
-        if output_content.version != version {
-            return Err(Error::VersionMismatch {
-                value: output_content.version,
-                expected: version.to_owned(),
-            });
-        }
-
-        Ok(Self {
-            source_content,
-            output_content,
-            buildindex_dir: buildindex_dir.to_path_buf(),
-            source_file,
-            output_file,
-        })
-    }
-
-    pub(crate) async fn open_project(&self) -> Result<Project, Error> {
-        let project_path = self.project_path()?;
-        Project::open(&project_path)
-            .await
-            .map_err(|_e| Error::InvalidProject(project_path))
-    }
-
-    /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
-    pub(crate) fn construct_project_path(
-        buildindex_dir: &Path,
-        projectindex_path: &Path,
-    ) -> Result<PathBuf, Error> {
-        let project_path = buildindex_dir.join(projectindex_path);
-        if !project_path.exists() {
-            Err(Error::InvalidProject(project_path))
+            let matching = existing_res
+                .dependencies
+                .iter()
+                .zip(deps.iter())
+                .filter(|&(a, b)| a == b)
+                .count();
+            if deps.len() == matching && existing_res.resource_hash == resource_hash {
+                false
+            } else {
+                existing_res.dependencies = deps;
+                existing_res.resource_hash = resource_hash;
+                true
+            }
         } else {
-            Ok(project_path)
+            let info = ResourceInfo {
+                id,
+                dependencies: deps,
+                resource_hash,
+            };
+            self.source_content.resources.push(info);
+            true
         }
-    }
-
-    pub(crate) fn project_path(&self) -> Result<PathBuf, Error> {
-        Self::construct_project_path(&self.buildindex_dir, &self.source_content.project_index)
     }
 
     /// Create an ordered build graph with edges directed towards
@@ -334,57 +285,22 @@ impl BuildIndex {
         dep_graph
     }
 
-    /// Returns a combined hash of:
-    /// * `id` resource's content.
-    /// * content of all `id`'s dependencies.
-    /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> ResourceHash {
-        let sorted_unique_resource_hashes: Vec<ResourceHash> = {
-            let mut unique_resources = HashMap::new();
-            let mut queue: VecDeque<_> = VecDeque::new();
-
-            queue.push_back(id);
-
-            while let Some(resource) = queue.pop_front() {
-                if let Some(resource_info) = self
-                    .source_content
-                    .resources
-                    .iter()
-                    .find(|r| r.id == resource)
-                {
-                    unique_resources.insert(resource, resource_info.resource_hash);
-
-                    let newly_discovered_deps: Vec<_> = resource_info
-                        .dependencies
-                        .iter()
-                        .filter(|r| !unique_resources.contains_key(*r))
-                        .cloned()
-                        .collect();
-
-                    queue.extend(newly_discovered_deps);
-                } else {
-                    // follow the path otherwise.
-                    if let Some(dep) = resource.direct_dependency() {
-                        if !unique_resources.contains_key(&dep) {
-                            queue.push_back(dep);
-                        }
-                    }
-                }
-            }
-
-            let mut hashes: Vec<ResourceHash> =
-                unique_resources.into_iter().filter_map(|t| t.1).collect();
-            hashes.sort_unstable();
-            hashes
-        };
-
-        let mut hasher = DefaultHasher::new();
-        for h in sorted_unique_resource_hashes {
-            h.hash(&mut hasher);
-        }
-        hasher.finish().into()
+    pub(crate) fn find_dependencies(&self, id: &ResourcePathId) -> Option<Vec<ResourcePathId>> {
+        self.source_content
+            .resources
+            .iter()
+            .find(|r| &r.id == id)
+            .map(|resource| resource.dependencies.clone())
     }
+}
 
+#[derive(Debug)]
+pub(crate) struct OutputIndex {
+    output_content: OutputContent,
+    output_file: File,
+}
+
+impl OutputIndex {
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.output_content
             .pathid_mapping
@@ -393,57 +309,6 @@ impl BuildIndex {
 
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
         self.output_content.pathid_mapping.get(&id).cloned()
-    }
-
-    pub(crate) fn update_resource(
-        &mut self,
-        id: ResourcePathId,
-        resource_hash: Option<ResourceHash>,
-        mut deps: Vec<ResourcePathId>,
-    ) -> bool {
-        self.record_pathid(&id);
-        for id in &deps {
-            self.record_pathid(id);
-        }
-
-        if let Some(existing_res) = self
-            .source_content
-            .resources
-            .iter_mut()
-            .find(|r| r.id == id)
-        {
-            deps.sort();
-
-            let matching = existing_res
-                .dependencies
-                .iter()
-                .zip(deps.iter())
-                .filter(|&(a, b)| a == b)
-                .count();
-            if deps.len() == matching && existing_res.resource_hash == resource_hash {
-                false
-            } else {
-                existing_res.dependencies = deps;
-                existing_res.resource_hash = resource_hash;
-                true
-            }
-        } else {
-            let info = ResourceInfo {
-                id,
-                dependencies: deps,
-                resource_hash,
-            };
-            self.source_content.resources.push(info);
-            true
-        }
-    }
-
-    pub(crate) fn find_dependencies(&self, id: &ResourcePathId) -> Option<Vec<ResourcePathId>> {
-        self.source_content
-            .resources
-            .iter()
-            .find(|r| &r.id == id)
-            .map(|resource| resource.dependencies.clone())
     }
 
     pub(crate) fn insert_compiled(
@@ -532,23 +397,204 @@ impl BuildIndex {
             Some((asset_objects, asset_references))
         }
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct BuildIndex {
+    pub(crate) source_index: SourceIndex,
+    pub(crate) output_index: OutputIndex,
+    buildindex_dir: PathBuf,
+}
+
+impl BuildIndex {
+    fn source_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
+        buildindex_dir.as_ref().join("source.index")
+    }
+
+    fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
+        buildindex_dir.as_ref().join("output.index")
+    }
+
+    pub(crate) fn create_new(
+        buildindex_dir: &Path,
+        projectindex_path: &Path,
+        version: &str,
+    ) -> Result<Self, Error> {
+        let source_index = Self::source_index_file(buildindex_dir);
+        let output_index = Self::output_index_file(buildindex_dir);
+
+        // construct_project_path is called to validate the project's path
+        #[allow(clippy::let_underscore_drop)]
+        let _ = Self::construct_project_path(buildindex_dir, projectindex_path)?;
+
+        let source_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(source_index)
+            .map_err(|_e| Error::Io)?;
+
+        let output_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(output_index)
+            .map_err(|_e| Error::Io)?;
+
+        let source_content = SourceContent {
+            version: String::from(version),
+            project_index: projectindex_path.to_owned(),
+            resources: vec![],
+        };
+
+        let output_content = OutputContent {
+            version: String::from(version),
+            compiled_resources: vec![],
+            compiled_resource_references: vec![],
+            pathid_mapping: BTreeMap::new(),
+        };
+
+        // todo: write the output file
+
+        serde_json::to_writer_pretty(&source_file, &source_content).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&output_file, &output_content).map_err(|_e| Error::Io)?;
+
+        Ok(Self {
+            source_index: SourceIndex {
+                source_content,
+                source_file,
+            },
+            output_index: OutputIndex {
+                output_content,
+                output_file,
+            },
+            buildindex_dir: buildindex_dir.to_path_buf(),
+        })
+    }
+
+    pub(crate) fn open(buildindex_dir: &Path, version: &str) -> Result<Self, Error> {
+        let source_index = Self::source_index_file(buildindex_dir);
+        let output_index = Self::output_index_file(buildindex_dir);
+
+        let source_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&source_index)
+            .map_err(|_e| Error::NotFound)?;
+        let output_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(output_index)
+            .map_err(|_e| Error::NotFound)?;
+
+        let source_content: SourceContent =
+            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
+        let output_content: OutputContent =
+            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
+
+        let project_path =
+            Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
+
+        if !project_path.exists() {
+            return Err(Error::InvalidProject(project_path));
+        }
+
+        if source_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: source_content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        if output_content.version != version {
+            return Err(Error::VersionMismatch {
+                value: output_content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        Ok(Self {
+            source_index: SourceIndex {
+                source_content,
+                source_file,
+            },
+            output_index: OutputIndex {
+                output_content,
+                output_file,
+            },
+            buildindex_dir: buildindex_dir.to_path_buf(),
+        })
+    }
+
+    pub(crate) async fn open_project(&self) -> Result<Project, Error> {
+        let project_path = self.project_path()?;
+        Project::open(&project_path)
+            .await
+            .map_err(|_e| Error::InvalidProject(project_path))
+    }
+
+    /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
+    pub(crate) fn construct_project_path(
+        buildindex_dir: &Path,
+        projectindex_path: &Path,
+    ) -> Result<PathBuf, Error> {
+        let project_path = buildindex_dir.join(projectindex_path);
+        if !project_path.exists() {
+            Err(Error::InvalidProject(project_path))
+        } else {
+            Ok(project_path)
+        }
+    }
+
+    pub(crate) fn project_path(&self) -> Result<PathBuf, Error> {
+        Self::construct_project_path(
+            &self.buildindex_dir,
+            &self.source_index.source_content.project_index,
+        )
+    }
+
+    pub(crate) fn update_resource(
+        &mut self,
+        id: ResourcePathId,
+        resource_hash: Option<ResourceHash>,
+        deps: Vec<ResourcePathId>,
+    ) -> bool {
+        // todo: move this to source_index.
+        self.output_index.record_pathid(&id);
+        for id in &deps {
+            self.output_index.record_pathid(id);
+        }
+        self.source_index.update_resource(id, resource_hash, deps)
+    }
 
     fn pre_serialize(&mut self) {
-        self.source_content.pre_serialize();
-        self.output_content.pre_serialize();
+        self.source_index.source_content.pre_serialize();
+        self.output_index.output_content.pre_serialize();
     }
 
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.pre_serialize();
 
-        self.source_file.set_len(0).unwrap();
-        self.source_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.source_file, &self.source_content)
-            .map_err(|_e| Error::Io)?;
+        self.source_index.source_file.set_len(0).unwrap();
+        self.source_index
+            .source_file
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
+        serde_json::to_writer_pretty(
+            &self.source_index.source_file,
+            &self.source_index.source_content,
+        )
+        .map_err(|_e| Error::Io)?;
 
-        self.output_file.set_len(0).unwrap();
-        self.output_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        let r = serde_json::to_writer_pretty(&self.output_file, &self.output_content);
+        self.output_index.output_file.set_len(0).unwrap();
+        self.output_index
+            .output_file
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
+        let r = serde_json::to_writer_pretty(
+            &self.output_index.output_file,
+            &self.output_index.output_content,
+        );
         r.map_err(|_e| Error::Io)
     }
 }
@@ -625,14 +671,20 @@ mod tests {
         }
 
         let db = BuildIndex::open(buildindex_dir, "0.0.1").unwrap();
-        assert_eq!(db.lookup_pathid(source_id).unwrap(), source_resource);
         assert_eq!(
-            db.lookup_pathid(intermediate_resource.resource_id())
+            db.output_index.lookup_pathid(source_id).unwrap(),
+            source_resource
+        );
+        assert_eq!(
+            db.output_index
+                .lookup_pathid(intermediate_resource.resource_id())
                 .unwrap(),
             intermediate_resource
         );
         assert_eq!(
-            db.lookup_pathid(output_resource.resource_id()).unwrap(),
+            db.output_index
+                .lookup_pathid(output_resource.resource_id())
+                .unwrap(),
             output_resource
         );
     }
@@ -669,20 +721,40 @@ mod tests {
             resource_hash,
             intermediate_deps.clone(),
         );
-        assert_eq!(db.source_content.resources.len(), 1);
-        assert_eq!(db.source_content.resources[0].dependencies.len(), 1);
+        assert_eq!(db.source_index.source_content.resources.len(), 1);
+        assert_eq!(
+            db.source_index.source_content.resources[0]
+                .dependencies
+                .len(),
+            1
+        );
 
         db.update_resource(source_resource, resource_hash, vec![]);
-        assert_eq!(db.source_content.resources.len(), 2);
-        assert_eq!(db.source_content.resources[1].dependencies.len(), 0);
+        assert_eq!(db.source_index.source_content.resources.len(), 2);
+        assert_eq!(
+            db.source_index.source_content.resources[1]
+                .dependencies
+                .len(),
+            0
+        );
 
         db.update_resource(intermediate_resource, resource_hash, intermediate_deps);
-        assert_eq!(db.source_content.resources.len(), 2);
-        assert_eq!(db.source_content.resources[0].dependencies.len(), 1);
+        assert_eq!(db.source_index.source_content.resources.len(), 2);
+        assert_eq!(
+            db.source_index.source_content.resources[0]
+                .dependencies
+                .len(),
+            1
+        );
 
         db.update_resource(output_resources, resource_hash, output_deps);
-        assert_eq!(db.source_content.resources.len(), 3);
-        assert_eq!(db.source_content.resources[2].dependencies.len(), 1);
+        assert_eq!(db.source_index.source_content.resources.len(), 3);
+        assert_eq!(
+            db.source_index.source_content.resources[2]
+                .dependencies
+                .len(),
+            1
+        );
 
         db.flush().unwrap();
     }
