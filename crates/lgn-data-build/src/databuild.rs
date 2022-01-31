@@ -372,10 +372,11 @@ impl DataBuild {
             // add each derived dependency with it's direct dependency listed in deps.
             for dependency in resource_deps {
                 if let Some(direct_dependency) = dependency.direct_dependency() {
-                    if self
-                        .build_index
-                        .source_index.update_resource(dependency, None, vec![direct_dependency])
-                    {
+                    if self.build_index.source_index.update_resource(
+                        dependency,
+                        None,
+                        vec![direct_dependency],
+                    ) {
                         updated_resources += 1;
                     }
                 }

@@ -129,19 +129,19 @@ impl OutputContent {
 
 #[derive(Debug)]
 pub(crate) struct SourceIndex {
-    source_content: SourceContent,
-    source_file: File,
+    content: SourceContent,
+    file: File,
 }
 
 impl SourceIndex {
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
-        self.source_content
+        self.content
             .pathid_mapping
             .insert(id.resource_id(), id.clone());
     }
 
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.source_content.pathid_mapping.get(&id).cloned()
+        self.content.pathid_mapping.get(&id).cloned()
     }
 
     /// Returns a combined hash of:
@@ -156,11 +156,8 @@ impl SourceIndex {
             queue.push_back(id);
 
             while let Some(resource) = queue.pop_front() {
-                if let Some(resource_info) = self
-                    .source_content
-                    .resources
-                    .iter()
-                    .find(|r| r.id == resource)
+                if let Some(resource_info) =
+                    self.content.resources.iter().find(|r| r.id == resource)
                 {
                     unique_resources.insert(resource, resource_info.resource_hash);
 
@@ -205,12 +202,7 @@ impl SourceIndex {
         for id in &deps {
             self.record_pathid(id);
         }
-        if let Some(existing_res) = self
-            .source_content
-            .resources
-            .iter_mut()
-            .find(|r| r.id == id)
-        {
+        if let Some(existing_res) = self.content.resources.iter_mut().find(|r| r.id == id) {
             deps.sort();
 
             let matching = existing_res
@@ -232,7 +224,7 @@ impl SourceIndex {
                 dependencies: deps,
                 resource_hash,
             };
-            self.source_content.resources.push(info);
+            self.content.resources.push(info);
             true
         }
     }
@@ -301,22 +293,28 @@ impl SourceIndex {
     }
 
     pub(crate) fn find_dependencies(&self, id: &ResourcePathId) -> Option<Vec<ResourcePathId>> {
-        self.source_content
+        self.content
             .resources
             .iter()
             .find(|r| &r.id == id)
             .map(|resource| resource.dependencies.clone())
     }
+
+    pub(crate) fn flush(&mut self) -> Result<(), Error> {
+        self.file.set_len(0).unwrap();
+        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::Io)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct OutputIndex {
-    output_content: OutputContent,
-    output_file: File,
+    content: OutputContent,
+    file: File,
 }
 
 impl OutputIndex {
-
     pub(crate) fn insert_compiled(
         &mut self,
         compile_path: &ResourcePathId,
@@ -358,11 +356,11 @@ impl OutputIndex {
             )
             .collect();
 
-        self.output_content
+        self.content
             .compiled_resources
             .append(&mut compiled_assets_desc);
 
-        self.output_content
+        self.content
             .compiled_resource_references
             .append(&mut compiled_references_desc);
     }
@@ -374,7 +372,7 @@ impl OutputIndex {
         source_hash: u64,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
         let asset_objects: Vec<CompiledResourceInfo> = self
-            .output_content
+            .content
             .compiled_resources
             .iter()
             .filter(|asset| {
@@ -389,7 +387,7 @@ impl OutputIndex {
             None
         } else {
             let asset_references: Vec<CompiledResourceReference> = self
-                .output_content
+                .content
                 .compiled_resource_references
                 .iter()
                 .filter(|reference| {
@@ -402,6 +400,13 @@ impl OutputIndex {
 
             Some((asset_objects, asset_references))
         }
+    }
+
+    pub(crate) fn flush(&mut self) -> Result<(), Error> {
+        self.file.set_len(0).unwrap();
+        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::Io)?;
+        Ok(())
     }
 }
 
@@ -467,12 +472,12 @@ impl BuildIndex {
 
         Ok(Self {
             source_index: SourceIndex {
-                source_content,
-                source_file,
+                content: source_content,
+                file: source_file,
             },
             output_index: OutputIndex {
-                output_content,
-                output_file,
+                content: output_content,
+                file: output_file,
             },
             buildindex_dir: buildindex_dir.to_path_buf(),
         })
@@ -521,12 +526,12 @@ impl BuildIndex {
 
         Ok(Self {
             source_index: SourceIndex {
-                source_content,
-                source_file,
+                content: source_content,
+                file: source_file,
             },
             output_index: OutputIndex {
-                output_content,
-                output_file,
+                content: output_content,
+                file: output_file,
             },
             buildindex_dir: buildindex_dir.to_path_buf(),
         })
@@ -555,39 +560,21 @@ impl BuildIndex {
     pub(crate) fn project_path(&self) -> Result<PathBuf, Error> {
         Self::construct_project_path(
             &self.buildindex_dir,
-            &self.source_index.source_content.project_index,
+            &self.source_index.content.project_index,
         )
     }
 
     fn pre_serialize(&mut self) {
-        self.source_index.source_content.pre_serialize();
-        self.output_index.output_content.pre_serialize();
+        self.source_index.content.pre_serialize();
+        self.output_index.content.pre_serialize();
     }
 
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.pre_serialize();
 
-        self.source_index.source_file.set_len(0).unwrap();
-        self.source_index
-            .source_file
-            .seek(std::io::SeekFrom::Start(0))
-            .unwrap();
-        serde_json::to_writer_pretty(
-            &self.source_index.source_file,
-            &self.source_index.source_content,
-        )
-        .map_err(|_e| Error::Io)?;
-
-        self.output_index.output_file.set_len(0).unwrap();
-        self.output_index
-            .output_file
-            .seek(std::io::SeekFrom::Start(0))
-            .unwrap();
-        let r = serde_json::to_writer_pretty(
-            &self.output_index.output_file,
-            &self.output_index.output_content,
-        );
-        r.map_err(|_e| Error::Io)
+        self.source_index.flush()?;
+        self.output_index.flush()?;
+        Ok(())
     }
 }
 
@@ -651,13 +638,15 @@ mod tests {
                 resource_hash,
                 intermediate_deps.clone(),
             );
-            db.source_index.update_resource(source_resource.clone(), resource_hash, vec![]);
+            db.source_index
+                .update_resource(source_resource.clone(), resource_hash, vec![]);
             db.source_index.update_resource(
                 intermediate_resource.clone(),
                 resource_hash,
                 intermediate_deps,
             );
-            db.source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
+            db.source_index
+                .update_resource(output_resource.clone(), resource_hash, output_deps);
 
             db.flush().unwrap();
         }
@@ -713,40 +702,23 @@ mod tests {
             resource_hash,
             intermediate_deps.clone(),
         );
-        assert_eq!(db.source_index.source_content.resources.len(), 1);
-        assert_eq!(
-            db.source_index.source_content.resources[0]
-                .dependencies
-                .len(),
-            1
-        );
+        assert_eq!(db.source_index.content.resources.len(), 1);
+        assert_eq!(db.source_index.content.resources[0].dependencies.len(), 1);
 
-        db.source_index.update_resource(source_resource, resource_hash, vec![]);
-        assert_eq!(db.source_index.source_content.resources.len(), 2);
-        assert_eq!(
-            db.source_index.source_content.resources[1]
-                .dependencies
-                .len(),
-            0
-        );
+        db.source_index
+            .update_resource(source_resource, resource_hash, vec![]);
+        assert_eq!(db.source_index.content.resources.len(), 2);
+        assert_eq!(db.source_index.content.resources[1].dependencies.len(), 0);
 
-        db.source_index.update_resource(intermediate_resource, resource_hash, intermediate_deps);
-        assert_eq!(db.source_index.source_content.resources.len(), 2);
-        assert_eq!(
-            db.source_index.source_content.resources[0]
-                .dependencies
-                .len(),
-            1
-        );
+        db.source_index
+            .update_resource(intermediate_resource, resource_hash, intermediate_deps);
+        assert_eq!(db.source_index.content.resources.len(), 2);
+        assert_eq!(db.source_index.content.resources[0].dependencies.len(), 1);
 
-        db.source_index.update_resource(output_resources, resource_hash, output_deps);
-        assert_eq!(db.source_index.source_content.resources.len(), 3);
-        assert_eq!(
-            db.source_index.source_content.resources[2]
-                .dependencies
-                .len(),
-            1
-        );
+        db.source_index
+            .update_resource(output_resources, resource_hash, output_deps);
+        assert_eq!(db.source_index.content.resources.len(), 3);
+        assert_eq!(db.source_index.content.resources[2].dependencies.len(), 1);
 
         db.flush().unwrap();
     }
