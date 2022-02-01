@@ -43,7 +43,7 @@
 	let canvas: HTMLCanvasElement;
 
 	$: {
-		if (mainWidth && container && transform) {
+		if (mainWidth && transform) {
 			updateChart();
 		}
 	}
@@ -125,6 +125,10 @@
 	}
 
 	function updateChart() {
+		if (!container) {
+			return;
+		}
+
 		var startTime = performance.now();
 
 		container
