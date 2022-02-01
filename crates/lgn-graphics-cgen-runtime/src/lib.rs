@@ -3,10 +3,12 @@
 // crate-specific lint exceptions:
 #![allow(unreachable_code)]
 
+use std::sync::{Arc, Mutex};
+
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
-    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType, TextureView,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
+    ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use half::prelude::*;
@@ -430,18 +432,96 @@ pub struct CGenPipelineLayoutDef {
     pub push_constant_type: Option<u32>,
 }
 
+// //
+// // CGenShaderFamilyID
+// //
+// #[derive(PartialEq, Eq)]
+// pub struct CGenShaderFamilyID(pub u64);
+
 //
-// CGenShaderDef
+// CGenShaderKey
 //
-#[derive(Default, Debug, PartialEq)]
-pub struct CGenShaderDef {}
+
+const _INVALID_SHADER_FAMILY_ID: u64 = 0;
+
+pub type CGenShaderFamilyID = u64;
+pub type CGenShaderOptionMask = u64;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct CGenShaderKey(u64);
+
+// #[derive(Clone, Copy, PartialEq, Eq)]
+// pub struct CGenShaderOptionMask(pub u64);
+
+impl CGenShaderKey {
+    const SHADER_FAMILY_OFFSET: usize = 0;
+    const SHADER_FAMILY_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
+    const SHADER_FAMILY_MASK: u64 = (1 << Self::SHADER_FAMILY_BITCOUNT) - 1;
+
+    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_BITCOUNT;
+    const SHADER_OPTIONS_BITCOUNT: usize =
+        std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
+    const SHADER_OPTIONS_MASK: u64 = (1 << Self::SHADER_OPTIONS_BITCOUNT) - 1;
+
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn new(
+        shader_family_id: CGenShaderFamilyID,
+        shader_option_mask: CGenShaderOptionMask,
+    ) -> Self {
+        Self(
+            ((shader_family_id as u64 & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
+                | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
+        )
+    }
+
+    pub fn shader_family_id(self) -> CGenShaderFamilyID {
+        (self.0 >> Self::SHADER_FAMILY_OFFSET) & Self::SHADER_FAMILY_MASK
+    }
+
+    pub fn shader_option_mask(self) -> CGenShaderOptionMask {
+        (self.0 >> Self::SHADER_OPTIONS_OFFSET) & Self::SHADER_OPTIONS_MASK
+    }
+}
+
+//
+// CGenShaderFamily
+//
+pub struct CGenShaderFamily {
+    pub id: CGenShaderFamilyID,
+    pub name: &'static str,
+    pub path: &'static str,
+}
+
+//
+// CGenShaderOption
+//
+pub struct CGenShaderOption {
+    pub shader_family_id: CGenShaderFamilyID,
+    pub index: u8,
+    pub name: &'static str,
+}
+
+//
+// CGenShaderInstance
+//
+pub struct CGenShaderInstance {    
+    pub shader_family_id: CGenShaderFamilyID,
+    pub shader_option_mask: CGenShaderOptionMask,
+    pub shader_stage_flags: ShaderStageFlags,
+}
 
 //
 // CGenRegistry
 //
 pub struct CGenRegistry {
     shutdown_fn: fn(),
+
+    // static
     type_defs: Vec<&'static CGenTypeDef>,
+    pub shader_options: Vec<&'static CGenShaderOption>,
+    pub shader_families: Vec<&'static CGenShaderFamily>,
+    pub shader_instances: Vec<&'static CGenShaderInstance>,
+    // dynamic
     descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pipeline_layouts: Vec<RootSignature>,
 }
@@ -453,6 +533,9 @@ impl CGenRegistry {
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),
+            shader_options: Vec::new(),
+            shader_families: Vec::new(),
+            shader_instances: Vec::new(),
         }
     }
 
@@ -535,20 +618,38 @@ impl CGenRegistry {
 // CGenRegistryList
 //
 
-#[derive(Default)]
+struct CGenRegistryListInner {
+    registry_list: Mutex<Vec<CGenRegistry>>,
+}
+
+#[derive(Clone)]
 pub struct CGenRegistryList {
-    registry_list: Vec<CGenRegistry>,
+    inner: Arc<CGenRegistryListInner>,
 }
 
 impl CGenRegistryList {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn push(&mut self, registry: CGenRegistry) {
-        self.registry_list.push(registry);
+        self.inner.registry_list.lock().unwrap().push(registry);
+    }
+}
+
+impl Default for CGenRegistryList {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(CGenRegistryListInner {
+                registry_list: Mutex::new(Vec::new()),
+            }),
+        }
     }
 }
 
 impl Drop for CGenRegistryList {
     fn drop(&mut self) {
-        for registry in self.registry_list.drain(..) {
+        for registry in self.inner.registry_list.lock().unwrap().drain(..) {
             registry.shutdown();
         }
     }

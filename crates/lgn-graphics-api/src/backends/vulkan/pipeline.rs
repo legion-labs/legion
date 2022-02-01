@@ -67,11 +67,12 @@ impl VulkanPipeline {
         let mut stages = vec![];
         for (stage, entry_point_name) in pipeline_def.shader.stages().iter().zip(&entry_point_names)
         {
+            let shader_stage_flags: ShaderStageFlags = stage.shader_stage.into();
             stages.push(
                 vk::PipelineShaderStageCreateInfo::builder()
                     .name(entry_point_name)
                     .module(stage.shader_module.vk_shader_module())
-                    .stage(stage.shader_stage.into())
+                    .stage(shader_stage_flags.into())
                     .build(),
             );
         }
@@ -192,7 +193,7 @@ impl VulkanPipeline {
 
         let vk_shader = pipeline_def.shader;
         assert_eq!(vk_shader.stages().len(), 1);
-        assert_eq!(vk_shader.stage_flags(), ShaderStageFlags::COMPUTE);
+        assert_eq!(vk_shader.stage_flags(), ShaderStageFlags::COMPUTE_FLAG);
 
         let mut entry_point_names = vec![];
         for stage in vk_shader.stages() {

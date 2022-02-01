@@ -94,6 +94,6 @@ impl ShaderResourceType {
             ShaderResourceType::RWTexture3D => "RWTexture3D",
             ShaderResourceType::TextureCube => "TextureCube",
             ShaderResourceType::TextureCubeArray => "TextureCubeArray",
-        }
+    }
     }
 }

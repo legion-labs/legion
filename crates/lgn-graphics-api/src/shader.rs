@@ -53,10 +53,9 @@ pub struct Shader {
 
 impl Shader {
     pub fn new(device_context: &DeviceContext, stages: Vec<ShaderStageDef>) -> Self {
-        // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
         let mut stage_flags = ShaderStageFlags::empty();
         for stage in &stages {
-            stage_flags |= stage.shader_stage;
+            stage_flags |= stage.shader_stage.into();
         }
 
         let inner = ShaderInner {

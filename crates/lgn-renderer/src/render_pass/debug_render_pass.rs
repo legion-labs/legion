@@ -1,9 +1,9 @@
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, FillMode, Format, GraphicsPipelineDef,
-    LoadOp, Pipeline, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp,
-    VertexLayout,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, FillMode, Format,
+    GraphicsPipelineDef, LoadOp, Pipeline, PrimitiveTopology, RasterizerState, SampleCount,
+    StencilOp, StoreOp, VertexLayout,
 };
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
@@ -13,10 +13,10 @@ use crate::{
     cgen,
     components::{CameraComponent, ManipulatorComponent, RenderSurface, StaticMesh},
     debug_display::{DebugDisplay, DebugPrimitiveType},
-    hl_gfx_api::HLCommandBuffer,
+    hl_gfx_api::{HLCommandBuffer, ShaderManager},
     picking::ManipulatorManager,
     resources::{DefaultMeshType, DefaultMeshes},
-    RenderContext, Renderer,
+    RenderContext,
 };
 
 pub struct DebugRenderPass {
@@ -29,12 +29,8 @@ pub struct DebugRenderPass {
 embedded_watched_file!(CONST_COLOR_SHADER, "gpu/shaders/const_color.hlsl");
 
 impl DebugRenderPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
-        let shader = renderer
-            .shader_manager()
-            .prepare_vs_ps(CONST_COLOR_SHADER.path());
+    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
+        let shader = shader_manager.prepare_vs_ps(CONST_COLOR_SHADER.path());
 
         //
         // Pipeline state

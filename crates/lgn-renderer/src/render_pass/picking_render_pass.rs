@@ -18,10 +18,10 @@ use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, StaticMesh,
     },
-    hl_gfx_api::HLCommandBuffer,
+    hl_gfx_api::{HLCommandBuffer, ShaderManager},
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
-    RenderContext, Renderer,
+    RenderContext,
 };
 
 struct ReadbackBufferPool {
@@ -135,13 +135,14 @@ pub struct PickingRenderPass {
 embedded_watched_file!(PICKING_SHADER, "gpu/shaders/picking.hlsl");
 
 impl PickingRenderPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
+    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader = renderer
-            .shader_manager()
-            .prepare_vs_ps(PICKING_SHADER.path());
+        let shader = shader_manager.prepare_vs_ps(PICKING_SHADER.path());
+
+        // let shader_id = cgen::shader_def::PickingShader::def().make_id( 0 );
+        // let shader = renderer
+        // .shader_manager()
+        // .get_shader(shader_id);
 
         //
         // Pipeline state
@@ -152,7 +153,6 @@ impl PickingRenderPass {
                 buffer_index: 0,
                 location: 0,
                 byte_offset: 0,
-                gl_attribute_name: None,
             }],
             buffers: vec![VertexLayoutBuffer {
                 stride: 4,

@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
+use strum::EnumIter;
 
 use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
@@ -197,30 +198,34 @@ bitflags::bitflags! {
     }
 }
 
-bitflags::bitflags! {
-    /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
-    /// VkShaderStageFlagBits
-    pub struct ShaderStageFlags : u32 {
-        const VERTEX = 1;
-        const TESSELLATION_CONTROL = 2;
-        const TESSELLATION_EVALUATION = 4;
-        const GEOMETRY = 8;
-        const FRAGMENT = 16;
-        const COMPUTE = 32;
-        const ALL_GRAPHICS = 0x1F;
-        const ALL = 0x7FFF_FFFF;
+#[derive(EnumIter, Clone, Copy)]
+pub enum ShaderStage {
+    Vertex = 0,
+    Fragment = 1,
+    Compute = 2,
+}
+
+pub const SHADER_STAGE_COUNT: u32 = 4;
+
+impl From<ShaderStage> for ShaderStageFlags {
+    fn from(val: ShaderStage) -> Self {
+        match val {
+            ShaderStage::Vertex => Self::VERTEX_FLAG,
+            ShaderStage::Fragment => Self::FRAGMENT_FLAG,
+            ShaderStage::Compute => Self::COMPUTE_FLAG,
+        }
     }
 }
 
-/// Contains all the individual stages
-pub const ALL_SHADER_STAGE_FLAGS: [ShaderStageFlags; 6] = [
-    ShaderStageFlags::VERTEX,
-    ShaderStageFlags::TESSELLATION_CONTROL,
-    ShaderStageFlags::TESSELLATION_EVALUATION,
-    ShaderStageFlags::GEOMETRY,
-    ShaderStageFlags::FRAGMENT,
-    ShaderStageFlags::COMPUTE,
-];
+bitflags::bitflags! {
+    /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
+    /// VkShaderStageFlagBits
+    pub struct ShaderStageFlags : u8 {
+        const VERTEX_FLAG = 1u8 << ShaderStage::Vertex as u32;
+        const FRAGMENT_FLAG = 1u8 << ShaderStage::Fragment as u32;
+        const COMPUTE_FLAG = 1u8 << ShaderStage::Compute as u32;
+    }
+}
 
 /// Indicates the type of pipeline, roughly corresponds with `QueueType`
 #[derive(Clone, Copy, PartialEq, Debug)]

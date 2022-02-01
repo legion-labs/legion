@@ -1,16 +1,19 @@
 use std::sync::Arc;
 
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::prelude::*;
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
 
 use crate::cgen;
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
+
 use crate::hl_gfx_api::HLCommandBuffer;
 
+use crate::hl_gfx_api::ShaderManager;
+
+use crate::tmp_shader_data::egui_shader_family;
 use crate::RenderContext;
-use crate::Renderer;
 
 pub struct EguiPass {
     pipeline: Pipeline,
@@ -18,13 +21,14 @@ pub struct EguiPass {
     sampler: Sampler,
 }
 
-embedded_watched_file!(UI_SHADER, "gpu/shaders/ui.hlsl");
-
 impl EguiPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
+    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
-        let shader = renderer.shader_manager().prepare_vs_ps(UI_SHADER.path());
+
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            egui_shader_family::ID,
+            egui_shader_family::TOTO,
+        ));
 
         //
         // Pipeline state
@@ -36,21 +40,18 @@ impl EguiPass {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
                 },
                 VertexLayoutAttribute {
                     format: Format::R32G32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
-                    gl_attribute_name: Some("uv".to_owned()),
                 },
                 VertexLayoutAttribute {
                     format: Format::R32G32B32A32_SFLOAT,
                     buffer_index: 0,
                     location: 2,
                     byte_offset: 16,
-                    gl_attribute_name: Some("color".to_owned()),
                 },
             ],
             buffers: vec![VertexLayoutBuffer {
@@ -73,8 +74,6 @@ impl EguiPass {
                 primitive_topology: PrimitiveTopology::TriangleList,
             })
             .unwrap();
-
-        let device_context = renderer.device_context();
 
         // Create sampler
         let sampler_def = SamplerDef {
@@ -213,8 +212,8 @@ impl EguiPass {
         let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
         descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
         descriptor_set.set_font_sampler(&self.sampler);
-        let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
 
+        let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
         cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
 
         for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {

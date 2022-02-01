@@ -3,8 +3,6 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
-#[cfg(not(feature = "offline"))]
-use lgn_math::{prelude::*, EulerRot};
 
 #[derive(Default)]
 pub struct GenericDataPlugin;
@@ -15,9 +13,6 @@ impl Plugin for GenericDataPlugin {
         app.add_startup_system(register_resource_types.exclusive_system());
 
         app.add_startup_system(add_loaders);
-
-        #[cfg(not(feature = "offline"))]
-        app.add_system_to_stage(CoreStage::PreUpdate, update_rotation);
     }
 }
 
@@ -39,26 +34,5 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     #[cfg(feature = "runtime")]
     {
         crate::runtime::add_loaders(asset_registry);
-    }
-}
-
-#[cfg(not(feature = "offline"))]
-fn update_rotation(
-    mut query: Query<
-        '_,
-        '_,
-        (
-            &mut lgn_transform::prelude::Transform,
-            &lgn_renderer::components::RotationComponent,
-        ),
-    >,
-) {
-    for (mut transform, rotation) in query.iter_mut() {
-        transform.rotate(Quat::from_euler(
-            EulerRot::XYZ,
-            rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
-        ));
     }
 }

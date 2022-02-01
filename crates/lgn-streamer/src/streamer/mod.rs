@@ -11,6 +11,7 @@ use lgn_input::{
 };
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
+    hl_gfx_api::ShaderManager,
     Renderer,
 };
 use lgn_tracing::{error, info, trace, warn};
@@ -311,6 +312,7 @@ pub(crate) fn on_render_surface_created_for_window(
     wnd_list: Res<'_, Windows>,
     streamer_windows: Res<'_, StreamerWindows>,
     renderer: Res<'_, Renderer>,
+    shader_manager: Res<'_, ShaderManager>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
     async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
@@ -326,7 +328,8 @@ pub(crate) fn on_render_surface_created_for_window(
                 .unwrap();
 
             let video_stream = VideoStream::new(
-                &renderer,
+                renderer.device_context(),
+                &shader_manager,
                 Resolution::new(wnd.physical_width(), wnd.physical_height()),
                 video_data_channel.clone(),
                 async_rt.handle(),

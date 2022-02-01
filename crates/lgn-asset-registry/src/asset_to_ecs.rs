@@ -4,7 +4,7 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
-    components::{RotationComponent, StaticMesh},
+    components::StaticMesh,
     resources::{DefaultMaterialType, DefaultMeshes},
 };
 use lgn_tracing::info;
@@ -202,13 +202,6 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             instance.color,
             DefaultMaterialType::Default,
         ));
-        entity.insert(RotationComponent {
-            rotation_speed: (
-                instance.rotation_speed.x,
-                instance.rotation_speed.y,
-                instance.rotation_speed.z,
-            ),
-        });
 
         Some(entity.id())
     }

@@ -3,17 +3,18 @@
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
-    Pipeline, PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
-    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Format,
+    GraphicsPipelineDef, LoadOp, Pipeline, PrimitiveTopology, RasterizerState, ResourceState,
+    SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
+    VertexLayoutBuffer,
 };
 use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
     components::{RenderSurface, StaticMesh},
-    hl_gfx_api::HLCommandBuffer,
-    RenderContext, Renderer,
+    hl_gfx_api::{HLCommandBuffer, ShaderManager},
+    RenderContext,
 };
 
 pub struct TmpRenderPass {
@@ -26,14 +27,10 @@ embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
+    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = renderer
-            .shader_manager()
-            .prepare_vs_ps(SHADER_SHADER.path());
+        let shader = shader_manager.prepare_vs_ps(SHADER_SHADER.path());
 
         //
         // Pipeline state
@@ -44,7 +41,6 @@ impl TmpRenderPass {
                 buffer_index: 0,
                 location: 0,
                 byte_offset: 0,
-                gl_attribute_name: None,
             }],
             buffers: vec![VertexLayoutBuffer {
                 stride: 4,

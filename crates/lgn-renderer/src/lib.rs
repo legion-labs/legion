@@ -16,6 +16,7 @@ use cgen::*;
 
 mod labels;
 use components::MaterialComponent;
+use hl_gfx_api::ShaderManager;
 pub use labels::*;
 
 mod renderer;
@@ -32,6 +33,7 @@ use resources::{
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
     MaterialManager,
 };
+use tmp_shader_data::egui_shader_family;
 
 pub mod resources;
 
@@ -48,6 +50,8 @@ pub mod hl_gfx_api;
 
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
+
+pub(crate) mod tmp_shader_data;
 
 use crate::{
     components::{
@@ -115,12 +119,13 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
 
+        app.insert_resource(ShaderManager::new(renderer.device_context().clone()));
         app.insert_resource(ManipulatorManager::new());
         app.add_startup_system(init_cgen);
         app.add_startup_system(init_manipulation_manager);
         app.add_startup_system(init_default_materials);
 
-        app.insert_resource(CGenRegistryList::default());
+        app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
@@ -192,13 +197,14 @@ fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
+    shader_manager: Res<'_, ShaderManager>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, extents);
+        let render_surface = RenderSurface::new(&renderer, &shader_manager, extents);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -228,16 +234,12 @@ fn on_window_resized(
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(
-                    &renderer,
+                    renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                 );
             }
         }
     }
-
-    // drop(wnd_list);
-    // drop(renderer);
-    // drop(render_surfaces);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -259,13 +261,34 @@ fn on_window_close_requested(
         }
         render_surfaces.remove(ev.id);
     }
-
-    // drop(query_render_surface);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
-    let cgen_registry = cgen::initialize(renderer.device_context());
+fn init_cgen(
+    renderer: Res<'_, Renderer>,
+    mut shader_manager: ResMut<'_, ShaderManager>,
+    mut cgen_registries: ResMut<'_, CGenRegistryList>,
+) {
+    let mut cgen_registry = cgen::initialize(renderer.device_context());
+
+    //< TMP
+
+    // EGuiShaderFamily::SHADER_FAMILY
+    //     .iter()
+    //     .for_each(|&x| cgen_registry.shader_families.push(x));
+    cgen_registry
+        .shader_families
+        .push(&egui_shader_family::SHADER_FAMILY);
+
+    egui_shader_family::SHADER_OPTIONS
+        .iter()
+        .for_each(|x| cgen_registry.shader_options.push(x));
+
+    egui_shader_family::SHADER_INSTANCES
+        .iter()
+        .for_each(|x| cgen_registry.shader_instances.push(x));
+
+    shader_manager.register(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }
 
