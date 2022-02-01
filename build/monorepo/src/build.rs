@@ -50,9 +50,10 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         .push(env!("CARGO_PKG_NAME").into());
 
     let mut packages = args.package_args.to_selected_packages(ctx)?;
-    let bin = args.build_args.bin.first();
-    if let Some(bin) = bin {
+    if let Some(bin) = args.build_args.bin.first() {
         packages.select_package_from_bin(bin.as_str(), ctx)?;
+    } else if let Some(example) = args.build_args.example.first() {
+        packages.select_package_from_example(example.as_str(), ctx)?;
     }
     cmd.run_on_packages(ctx, &packages)
 }

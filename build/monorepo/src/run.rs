@@ -45,22 +45,24 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     );
     if let Some(bin) = bin {
         packages.select_package_from_bin(bin.as_str(), ctx)?;
+    } else if let Some(example) = args.build_args.example.first() {
+        packages.select_package_from_example(example.as_str(), ctx)?;
     }
-    trace_name = format!(
-        "trace-{}-{}-{}.json",
-        trace_name,
-        std::time::SystemTime::UNIX_EPOCH
-            .elapsed()
-            .unwrap()
-            .as_secs(),
-        if args.build_args.release {
-            "release"
-        } else {
-            "debug"
-        }
-    )
-    .replace(":", "-"); // Windows doesn't like colons in the filename
     let env = if let Some(trace_file) = &args.ctrace {
+        trace_name = format!(
+            "trace-{}-{}-{}.json",
+            trace_name,
+            std::time::SystemTime::UNIX_EPOCH
+                .elapsed()
+                .unwrap()
+                .as_secs(),
+            if args.build_args.release {
+                "release"
+            } else {
+                "debug"
+            }
+        )
+        .replace(":", "-"); // Windows doesn't like colons in the filename
         vec![(
             "LGN_TRACE_FILE",
             Some(

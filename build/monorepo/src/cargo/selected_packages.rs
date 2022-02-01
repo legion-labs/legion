@@ -175,6 +175,7 @@ impl<'a> SelectedPackages<'a> {
             }
         }
     }
+
     pub fn select_package_from_bin(&mut self, bin: &str, ctx: &'a Context) -> Result<()> {
         match self.includes {
             SelectedInclude::Workspace => {
@@ -191,6 +192,33 @@ impl<'a> SelectedPackages<'a> {
                     return Err(Error::new(format!(
                         "no package contained a binary named `{}`",
                         bin
+                    )));
+                }
+                self.includes = includes;
+            }
+            SelectedInclude::Includes(_) => {}
+        }
+        Ok(())
+    }
+
+    pub fn select_package_from_example(&mut self, example: &str, ctx: &'a Context) -> Result<()> {
+        match self.includes {
+            SelectedInclude::Workspace => {
+                let includes = self.includes.intersection(
+                    ctx.package_graph()?
+                        .workspace()
+                        .iter()
+                        .filter(|package| {
+                            package
+                                .build_target(&BuildTargetId::Example(example))
+                                .is_some()
+                        })
+                        .map(|package| package.name()),
+                );
+                if includes.is_empty() {
+                    return Err(Error::new(format!(
+                        "no package contained an example named `{}`",
+                        example
                     )));
                 }
                 self.includes = includes;
