@@ -26,11 +26,11 @@ jobs:
         run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
 
       - name: Run initial checks
-        run: cargo ci check
+        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} check
 
   test:
     name: Running tests
-    needs: [lint, runner_selection]
+    needs: [lint, runner_selection, base_ref_selection]
     strategy:
       matrix:
         os:
@@ -46,7 +46,7 @@ jobs:
         run: cargo bootstrap
 
       - name: Run tests
-        run: cargo ci test
+        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} test
 
       - name: Upload GPU-test diffs
         if: ${{ failure() }}
