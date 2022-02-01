@@ -76,12 +76,8 @@ async fn create() {
             .expect("valid data build index");
     }
 
-    let index = BuildIndex::open(&buildindex_dir, DataBuild::version())
+    let _index = BuildIndex::open(&buildindex_dir, DataBuild::version())
         .expect("failed to open build index file");
 
-    assert!(index.project_path().is_ok());
-
     fs::remove_file(projectindex_path).unwrap();
-
-    assert!(!index.project_path().is_ok());
 }

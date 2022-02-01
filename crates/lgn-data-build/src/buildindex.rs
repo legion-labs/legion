@@ -9,10 +9,7 @@ use std::{
 
 use lgn_content_store::Checksum;
 use lgn_data_compiler::CompiledResource;
-use lgn_data_offline::{
-    resource::{Project, ResourceHash},
-    ResourcePathId,
-};
+use lgn_data_offline::{resource::ResourceHash, ResourcePathId};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
@@ -79,8 +76,6 @@ impl CompiledResourceReference {
 #[derive(Serialize, Deserialize, Debug)]
 struct SourceContent {
     version: String,
-    /// Path can be either absolute or relative to build index.
-    project_index: PathBuf,
     resources: Vec<ResourceInfo>,
     #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
     pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
@@ -300,6 +295,22 @@ impl SourceIndex {
             .map(|resource| resource.dependencies.clone())
     }
 
+    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+        let source_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .map_err(|_e| Error::NotFound)?;
+
+        let source_content: SourceContent =
+            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
+
+        Ok(Self {
+            content: source_content,
+            file: source_file,
+        })
+    }
+
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
@@ -408,13 +419,28 @@ impl OutputIndex {
         serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::Io)?;
         Ok(())
     }
+
+    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+        let output_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.as_ref())
+            .map_err(|_e| Error::NotFound)?;
+
+        let output_content: OutputContent =
+            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
+
+        Ok(Self {
+            content: output_content,
+            file: output_file,
+        })
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct BuildIndex {
     pub(crate) source_index: SourceIndex,
     pub(crate) output_index: OutputIndex,
-    buildindex_dir: PathBuf,
 }
 
 impl BuildIndex {
@@ -454,7 +480,6 @@ impl BuildIndex {
 
         let source_content = SourceContent {
             version: String::from(version),
-            project_index: projectindex_path.to_owned(),
             resources: vec![],
             pathid_mapping: BTreeMap::new(),
         };
@@ -479,7 +504,6 @@ impl BuildIndex {
                 content: output_content,
                 file: output_file,
             },
-            buildindex_dir: buildindex_dir.to_path_buf(),
         })
     }
 
@@ -487,61 +511,27 @@ impl BuildIndex {
         let source_index = Self::source_index_file(buildindex_dir);
         let output_index = Self::output_index_file(buildindex_dir);
 
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&source_index)
-            .map_err(|_e| Error::NotFound)?;
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(output_index)
-            .map_err(|_e| Error::NotFound)?;
+        let source_index = SourceIndex::load(source_index)?;
+        let output_index = OutputIndex::load(output_index)?;
 
-        let source_content: SourceContent =
-            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
-        let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
-
-        let project_path =
-            Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
-
-        if !project_path.exists() {
-            return Err(Error::InvalidProject(project_path));
-        }
-
-        if source_content.version != version {
+        if source_index.content.version != version {
             return Err(Error::VersionMismatch {
-                value: source_content.version,
+                value: source_index.content.version,
                 expected: version.to_owned(),
             });
         }
 
-        if output_content.version != version {
+        if output_index.content.version != version {
             return Err(Error::VersionMismatch {
-                value: output_content.version,
+                value: output_index.content.version,
                 expected: version.to_owned(),
             });
         }
 
         Ok(Self {
-            source_index: SourceIndex {
-                content: source_content,
-                file: source_file,
-            },
-            output_index: OutputIndex {
-                content: output_content,
-                file: output_file,
-            },
-            buildindex_dir: buildindex_dir.to_path_buf(),
+            source_index,
+            output_index,
         })
-    }
-
-    pub(crate) async fn open_project(&self) -> Result<Project, Error> {
-        let project_path = self.project_path()?;
-        Project::open(&project_path)
-            .await
-            .map_err(|_e| Error::InvalidProject(project_path))
     }
 
     /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
@@ -555,13 +545,6 @@ impl BuildIndex {
         } else {
             Ok(project_path)
         }
-    }
-
-    pub(crate) fn project_path(&self) -> Result<PathBuf, Error> {
-        Self::construct_project_path(
-            &self.buildindex_dir,
-            &self.source_index.content.project_index,
-        )
     }
 
     fn pre_serialize(&mut self) {

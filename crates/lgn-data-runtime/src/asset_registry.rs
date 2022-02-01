@@ -162,6 +162,7 @@ impl AssetRegistryOptions {
     ///
     /// `force_recompile` if set will cause each load request to go through data
     /// compilation.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_device_build(
         mut self,
         content_store: Box<dyn ContentStore>,
@@ -169,6 +170,7 @@ impl AssetRegistryOptions {
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
         buildindex: impl AsRef<Path>,
+        project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
         self.devices.push(Box::new(vfs::BuildDevice::new(
@@ -177,6 +179,7 @@ impl AssetRegistryOptions {
             cas_addr,
             build_bin,
             buildindex,
+            project,
             force_recompile,
         )));
         self

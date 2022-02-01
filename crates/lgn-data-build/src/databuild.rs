@@ -201,36 +201,6 @@ impl DataBuild {
         })
     }
 
-    pub(crate) async fn open(config: DataBuildOptions) -> Result<(Self, Project), Error> {
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        let project = build_index.open_project().await?;
-
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
-
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    config.contentstore_path.clone(),
-                    &compilers,
-                )
-            },
-            Ok,
-        )?;
-
-        Ok((
-            Self {
-                build_index,
-                resource_dir: project.resource_dir(),
-                content_store,
-                compilers: CompilerNode::new(compilers, registry),
-            },
-            project,
-        ))
-    }
-
     pub(crate) async fn open_with_proj(
         config: DataBuildOptions,
         project: &Project,
@@ -260,47 +230,6 @@ impl DataBuild {
             content_store,
             compilers: CompilerNode::new(compilers, registry),
         })
-    }
-
-    /// Opens the existing build index.
-    ///
-    /// If the build index does not exist it creates one if a project is present
-    /// in the directory.
-    pub(crate) async fn open_or_create(
-        config: DataBuildOptions,
-        project_dir: &Path,
-    ) -> Result<(Self, Project), Error> {
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
-        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
-            Ok(build_index) => {
-                let project = build_index.open_project().await?;
-
-                let compilers = config.compiler_options.create();
-                let registry = config.registry.map_or_else(
-                    || {
-                        Self::default_asset_registry(
-                            &project.resource_dir(),
-                            config.contentstore_path.clone(),
-                            &compilers,
-                        )
-                    },
-                    Ok,
-                )?;
-
-                Ok((
-                    Self {
-                        build_index,
-                        resource_dir: project.resource_dir(),
-                        content_store,
-                        compilers: CompilerNode::new(compilers, registry),
-                    },
-                    project,
-                ))
-            }
-            Err(Error::NotFound) => Self::new(config, project_dir).await,
-            Err(e) => Err(e),
-        }
     }
 
     pub(crate) async fn open_or_create_with_proj(
