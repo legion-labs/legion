@@ -23,7 +23,6 @@ thiserror = "1.0"
 
 [dev-dependencies]
 tempfile = "3.2.0"
-tokio-test = "0.4.2"
 refs-asset = { path = "../lgn-data-runtime/test-refs-asset" }
 integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
 refs-resource = { path = "../lgn-data-offline/test-refs-resource" }

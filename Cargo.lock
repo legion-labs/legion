@@ -4110,7 +4110,6 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "sample-data",
- "sample-data-compiler",
 ]
 
 [[package]]
@@ -4266,7 +4265,6 @@ dependencies = [
  "text-resource",
  "thiserror",
  "tokio",
- "tokio-test",
 ]
 
 [[package]]
@@ -4334,7 +4332,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
- "inventory",
  "lazy_static",
  "lgn-math",
  "serde",
@@ -4361,7 +4358,6 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
- "tokio-test",
 ]
 
 [[package]]
@@ -4403,7 +4399,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "erased-serde",
- "futures",
  "futures-lite",
  "generic-data",
  "lgn-compiler-testentity",
@@ -4691,7 +4686,6 @@ dependencies = [
  "crossbeam-channel 0.5.2",
  "instant",
  "lgn-app",
- "lgn-build-utils",
  "lgn-ecs",
  "lgn-embedded-fs",
  "lgn-graphics-api",
@@ -4899,7 +4893,6 @@ dependencies = [
  "interceptor",
  "lgn-app",
  "lgn-async",
- "lgn-build-utils",
  "lgn-codec-api",
  "lgn-config",
  "lgn-core",
@@ -8938,19 +8931,6 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
-]
-
-[[package]]
-name = "tokio-test"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53474327ae5e166530d17f2d956afcb4f8a004de581b3cae10f12006bc8163e3"
-dependencies = [
- "async-stream",
- "bytes",
- "futures-core",
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]
