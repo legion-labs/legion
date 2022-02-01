@@ -23,6 +23,8 @@
 
 	let totalMinMs = -Infinity;
 	let totalMaxMs = Infinity;
+	let currentMinMs = -Infinity;
+	let currentMaxMs = Infinity;
 	let metricsDesc: MetricDesc[] = [];
 	let metrics: ProcessMetricReply[] = [];
 	let points: Point[][] = [];
@@ -117,7 +119,7 @@
 
 		const zoom = d3
 			.zoom()
-			.scaleExtent([1, 1000])
+			.scaleExtent([1, width / 10])
 			.translateExtent([[0, 0], getTranslateExtent()])
 			.on("zoom", (event) => {
 				transform = event.transform;
@@ -146,7 +148,18 @@
 		x.range([0, width]);
 
 		const yMax = d3.max(
-			points.flatMap((p) => d3.max(p.map((p) => p.value)) ?? 0)
+			points.flatMap(
+				(p) =>
+					d3.max(
+						p
+							.filter(
+								(p) =>
+									p.time >= currentMinMs &&
+									p.time <= currentMaxMs
+							)
+							.map((p) => p.value)
+					) ?? 0
+			)
 		);
 
 		y.range([height, 0]).domain([0, yMax ?? 0]);
@@ -158,6 +171,9 @@
 
 	function draw() {
 		const scaleX = transform.rescaleX(x);
+
+		currentMinMs = scaleX.domain()[0].valueOf();
+		currentMaxMs = scaleX.domain()[1].valueOf();
 
 		context.fillStyle = "rgba(0, 0, 0, 0)";
 		context.fillRect(0, 0, width, height);
@@ -196,16 +212,27 @@
 			<div>updateTime: {updateTime} ms</div>
 			<div>
 				Transform: X{Math.floor(transform.x)} Y{Math.floor(transform.y)}
-				K{transform.k}
 			</div>
 			<ul>
+				<li>
+					<span class="font-bold">Zoom</span>
+					{transform.k}
+				</li>
 				<li>
 					<span class="font-bold">Min</span>
 					{totalMinMs.toFixed(2)}
 				</li>
 				<li>
+					<span class="font-bold">Current Min</span>
+					{currentMinMs.toFixed(2)}
+				</li>
+				<li>
 					<span class="font-bold">Max</span>
 					{totalMaxMs.toFixed(2)}
+				</li>
+				<li>
+					<span class="font-bold">Current Max</span>
+					{currentMaxMs.toFixed(2)}
 				</li>
 			</ul>
 			<br />
