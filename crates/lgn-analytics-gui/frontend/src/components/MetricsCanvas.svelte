@@ -103,7 +103,6 @@
 		x = d3.scaleTime().domain([totalMinMs, totalMaxMs]).nice();
 		y = d3.scaleLinear().nice();
 
-		xAxis = d3.axisBottom(x);
 		xAxis = d3
 			.axisBottom(x)
 			.tickFormat((d) => (d as Date).valueOf().toString());
