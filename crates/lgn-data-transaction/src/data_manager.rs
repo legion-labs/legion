@@ -83,8 +83,10 @@ impl DataManager {
     pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> anyhow::Result<()> {
         let mut ctx = LockContext::new(self).await;
         let resource_id = ctx.project.find_resource(resource_path).await?;
-        let (runtime_path_id, _results) =
-            ctx.build.build_all_derived(resource_id, &ctx.project).await?;
+        let (runtime_path_id, _results) = ctx
+            .build
+            .build_all_derived(resource_id, &ctx.project)
+            .await?;
         ctx.asset_registry
             .load_untyped(runtime_path_id.resource_id());
         Ok(())
