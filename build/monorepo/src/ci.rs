@@ -2,9 +2,10 @@ use std::process::{Command, Stdio};
 
 use clap::Subcommand;
 use lgn_tracing::{span_fn, span_scope};
+use monorepo_base::action_step;
 
 use crate::cargo::{BuildArgs, SelectedPackageArgs};
-use crate::{action_step, bench, build, check, clippy, fmt, lint, test, Error};
+use crate::{bench, build, check, clippy, fmt, lint, test, Error};
 use crate::{context::Context, Result};
 
 #[derive(Debug, clap::Args)]
@@ -197,10 +198,7 @@ fn check_repo_lints(ctx: &Context) -> Result<()> {
 #[span_fn]
 fn check_cargo_deny(ctx: &Context) -> Result<()> {
     action_step!("-- CI --", "Running cargo deny lints");
-    if !ctx
-        .installer()
-        .install_via_cargo_if_needed(ctx, "cargo-deny")
-    {
+    if !ctx.installer().install_via_cargo_if_needed("cargo-deny") {
         return Err(Error::new("could not find/install cargo-deny"));
     }
     let mut cargo_deny = Command::new("cargo");

@@ -5,11 +5,12 @@ use camino::{Utf8Path, Utf8PathBuf};
 use guppy::graph::PackageGraph;
 use lgn_tracing::span_fn;
 use lgn_tracing::span_scope;
+use monorepo_base::config::MONOREPO_DEPTH;
+use monorepo_base::installer::Installer;
 use once_cell::sync::OnceCell;
 
 use crate::config::MonorepoConfig;
 use crate::git::GitCli;
-use crate::installer::Installer;
 use crate::Error;
 use crate::Result;
 
@@ -26,7 +27,6 @@ pub struct Context {
 impl Context {
     #[span_fn]
     pub fn new() -> Result<Self> {
-        const MONOREPO_DEPTH: usize = 2;
         let workspace_root = Utf8Path::new(&env!("CARGO_MANIFEST_DIR"))
             .ancestors()
             .nth(MONOREPO_DEPTH)

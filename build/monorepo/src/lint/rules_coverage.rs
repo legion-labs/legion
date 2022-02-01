@@ -1,9 +1,10 @@
 use determinator::rules::PathMatch;
 use determinator::Determinator;
 use lgn_tracing::{span_fn, span_scope};
+use monorepo_base::action_step;
 
 use crate::context::Context;
-use crate::{action_step, Error, Result};
+use crate::{Error, Result};
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
@@ -33,7 +34,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         }
     }
     if file_not_matched {
-        Err(Error::new("found not matched files"))
+        Err(Error::new("found unmatched files"))
     } else {
         Ok(())
     }

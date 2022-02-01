@@ -6,6 +6,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::struct_excessive_bools)]
 
+mod aws;
 mod bench;
 mod build;
 mod cargo;
@@ -22,10 +23,8 @@ mod fix;
 mod fmt;
 mod git;
 mod hakari;
-mod installer;
 mod lint;
 mod run;
-mod term;
 mod test;
 mod tools;
 mod vscode;
@@ -44,7 +43,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Legion CLI
 #[derive(Parser)]
-#[clap(name = "lgn-monorepo")]
+#[clap(name = "monorepo")]
 #[clap(about = "Legion Monorepo CLI")]
 struct Cli {
     #[clap(subcommand)]

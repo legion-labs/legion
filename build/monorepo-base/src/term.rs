@@ -1,8 +1,9 @@
 use std::{fmt::Display, io::Write};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-pub(crate) const ACTION_STEP_COLOR: Color = Color::Green;
-pub(crate) const SKIP_STEP_COLOR: Color = Color::Yellow;
+pub const ACTION_STEP_COLOR: Color = Color::Green;
+pub const SKIP_STEP_COLOR: Color = Color::Yellow;
+pub const ERROR_STEP_COLOR: Color = Color::Red;
 
 pub fn print_step(color: Color, action: &str, description: impl Display) {
     if atty::is(atty::Stream::Stdout) {
@@ -41,7 +42,7 @@ macro_rules! action_step {
         $crate::term::print_step($crate::term::ACTION_STEP_COLOR, $action, $description)
     };
     ($action:expr, $fmt:expr, $($arg:tt)*) => {
-        action_step!($action, format!($fmt, $($arg)*))
+        $crate::action_step!($action, format!($fmt, $($arg)*))
     };
 }
 
@@ -52,6 +53,17 @@ macro_rules! skip_step {
         $crate::term::print_step($crate::term::SKIP_STEP_COLOR, $action, $description)
     };
     ($action:expr, $fmt:expr, $($arg:tt)*) => {
-        skip_step!($action, format!($fmt, $($arg)*))
+        $crate::skip_step!($action, format!($fmt, $($arg)*))
+    };
+}
+
+/// Prints an error step, with a red action verb followed by the subject.
+#[macro_export]
+macro_rules! error_step {
+    ($action:expr, $description:expr $(,)?) => {
+        $crate::term::print_step($crate::term::ERROR_STEP_COLOR, $action, $description)
+    };
+    ($action:expr, $fmt:expr, $($arg:tt)*) => {
+        $crate::error_step!($action, format!($fmt, $($arg)*))
     };
 }

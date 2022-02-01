@@ -1,5 +1,5 @@
 [package]
-name = "lgn-monorepo"
+name = "monorepo"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -11,6 +11,7 @@ publish = false
 # Dependencies to other legion crates must stay limited
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
+monorepo-base = { path = "../monorepo-base", version = "0.1.0" }
 ################################################################################
 anyhow = "1.0.0"
 atty = "0.2.14"

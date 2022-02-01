@@ -17,7 +17,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let success = if args.check {
         ctx.installer().check_all()
     } else {
-        ctx.installer().install_all(ctx)
+        ctx.installer().install_all()
     };
     if success {
         Ok(())

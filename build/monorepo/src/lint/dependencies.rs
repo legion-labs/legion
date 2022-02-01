@@ -1,7 +1,8 @@
 use lgn_tracing::span_fn;
+use monorepo_base::action_step;
 use semver::VersionReq;
 
-use crate::{action_step, context::Context, Error, Result};
+use crate::{context::Context, Error, Result};
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {

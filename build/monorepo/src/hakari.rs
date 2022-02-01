@@ -1,10 +1,10 @@
+use crate::{context::Context, Error, Result};
 use camino::Utf8PathBuf;
 use guppy::graph::cargo::CargoResolverVersion;
 use hakari::{HakariBuilder, HakariOutputOptions};
 use lgn_tracing::span_fn;
+use monorepo_base::action_step;
 use toml_edit::Document;
-
-use crate::{action_step, context::Context, Error, Result};
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
@@ -34,7 +34,7 @@ pub fn run(ctx: &Context) -> Result<()> {
     hakari_builder
         .add_traversal_excludes([package_graph
             .workspace()
-            .member_by_name("lgn-monorepo")
+            .member_by_name("monorepo")
             .map_err(|_err| Error::new("Exclude package was not found"))?
             .id()])
         .map_err(|err| Error::new("Failed to set platforms").with_source(err))?;
@@ -56,7 +56,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         .map_err(|_err| Error::new("Exclude package was not found"))?;
 
     for package in package_graph.workspace().iter() {
-        if package.name() == "lgn-workspace-hack" || package.name() == "lgn-monorepo" {
+        if package.name() == "lgn-workspace-hack" || package.name() == "monorepo" {
             continue;
         }
         let crate_dir = package.source().workspace_path().unwrap();

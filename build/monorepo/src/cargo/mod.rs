@@ -1,7 +1,6 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use std::env::var_os;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
@@ -9,6 +8,9 @@ use std::time::Instant;
 
 use indexmap::IndexMap;
 use lgn_tracing::{error, info, span_fn, warn};
+use monorepo_base::sccache::{
+    apply_sccache_if_possible, log_sccache_stats, sccache_should_run, stop_sccache_server,
+};
 
 use crate::context::Context;
 use crate::{Error, Result};
@@ -39,7 +41,11 @@ impl Cargo {
         let mut inner = Command::new("cargo");
         //sccache apply
         let envs: IndexMap<OsString, Option<OsString>> = if !skip_sccache {
-            let result = apply_sccache_if_possible(ctx);
+            let result = apply_sccache_if_possible(
+                ctx.workspace_root(),
+                ctx.installer(),
+                &ctx.config().cargo.sccache,
+            );
             match result {
                 Ok(env) => env
                     .iter()
@@ -62,7 +68,9 @@ impl Cargo {
         } else {
             IndexMap::new()
         };
-        let on_drop = if !skip_sccache && sccache_should_run(ctx, false) {
+        let on_drop = if !skip_sccache
+            && sccache_should_run(ctx.workspace_root(), &ctx.config().cargo.sccache, false)
+        {
             || {
                 log_sccache_stats();
                 stop_sccache_server();
@@ -383,131 +391,4 @@ impl<'a> CargoCommand<'a> {
             }
         }
     }
-}
-
-/// If the project is configured for sccache, and the env variable `SKIP_SCCACHE` is unset then returns true.
-/// If the `warn_if_not_correct_location` parameter is set to true, warnings will be logged if the project is configured for sccache
-/// but the `CARGO_HOME` or project root are not in the right locations.
-pub fn sccache_should_run(ctx: &Context, warn_if_not_correct_location: bool) -> bool {
-    if var_os("SKIP_SCCACHE").is_none() {
-        if let Some(sccache_config) = &ctx.config().cargo.sccache {
-            // Are we work on items in the right location:
-            // See: https://github.com/mozilla/sccache#known-caveats
-            let correct_location = var_os("CARGO_HOME").unwrap_or_default()
-                == sccache_config.required_cargo_home.as_str()
-                && sccache_config.required_git_home.as_str() == ctx.workspace_root();
-            if !correct_location && warn_if_not_correct_location {
-                warn!("You will not benefit from sccache in this build!!!");
-                warn!(
-                    "To get the best experience, please move your diem source code to {} and your set your CARGO_HOME to be {}, simply export it in your .profile or .bash_rc",
-                    &sccache_config.required_git_home.as_str(), &sccache_config.required_cargo_home.as_str()
-                );
-                warn!(
-                    "Current diem root is '{}',  and current CARGO_HOME is '{}'",
-                    ctx.workspace_root(),
-                    var_os("CARGO_HOME").unwrap_or_default().to_string_lossy()
-                );
-            }
-            correct_location
-        } else {
-            false
-        }
-    } else {
-        false
-    }
-}
-
-/// Logs the output of "sccache --show-stats"
-pub fn log_sccache_stats() {
-    info!("Sccache statistics:");
-    let mut sccache = Command::new("sccache");
-    sccache.arg("--show-stats");
-    sccache.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-    if let Err(error) = sccache.output() {
-        warn!("Could not log sccache statistics: {}", error);
-    }
-}
-
-pub fn stop_sccache_server() {
-    let mut sccache = Command::new("sccache");
-    sccache.arg("--stop-server");
-    sccache.stdout(Stdio::piped()).stderr(Stdio::piped());
-    match sccache.output() {
-        Ok(output) => {
-            if output.status.success() {
-                info!("Stopped already running sccache.");
-            } else {
-                let std_err = String::from_utf8_lossy(&output.stderr);
-                //sccache will fail
-                if !std_err.contains("couldn't connect to server") {
-                    warn!("Failed to stopped already running sccache.");
-                    warn!("status: {}", output.status);
-                    warn!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                    warn!("stderr: {}", std_err);
-                }
-            }
-        }
-        Err(error) => {
-            warn!("Failed to stop running sccache: {}", error);
-        }
-    }
-}
-
-pub fn apply_sccache_if_possible(ctx: &Context) -> Result<Vec<(&str, Option<String>)>> {
-    let mut envs = vec![];
-    if sccache_should_run(ctx, true) {
-        if let Some(sccache_config) = &ctx.config().cargo.sccache {
-            if !ctx.installer().install_via_cargo_if_needed(ctx, "sccache") {
-                return Err(Error::new("Failed to install sccache, bailing"));
-            }
-            stop_sccache_server();
-            envs.push(("RUSTC_WRAPPER", Some("sccache".to_owned())));
-            envs.push(("CARGO_INCREMENTAL", Some("false".to_owned())));
-            envs.push(("SCCACHE_BUCKET", Some(sccache_config.bucket.clone())));
-            if let Some(ssl) = &sccache_config.ssl {
-                envs.push((
-                    "SCCACHE_S3_USE_SSL",
-                    if *ssl {
-                        Some("true".to_owned())
-                    } else {
-                        Some("false".to_owned())
-                    },
-                ));
-            }
-
-            if let Some(url) = &sccache_config.endpoint {
-                envs.push(("SCCACHE_ENDPOINT", Some(url.clone())));
-            }
-
-            if let Some(extra_envs) = &sccache_config.envs {
-                for (key, value) in extra_envs {
-                    envs.push((key, Some(value.clone())));
-                }
-            }
-
-            if let Some(region) = &sccache_config.region {
-                envs.push(("SCCACHE_REGION", Some(region.clone())));
-            }
-
-            if let Some(prefix) = &sccache_config.prefix {
-                envs.push(("SCCACHE_S3_KEY_PREFIX", Some(prefix.clone())));
-            }
-            let access_key_id =
-                var_os("SCCACHE_AWS_ACCESS_KEY_ID").map(|val| val.to_string_lossy().to_string());
-            let access_key_secret = var_os("SCCACHE_AWS_SECRET_ACCESS_KEY")
-                .map(|val| val.to_string_lossy().to_string());
-            // if either the access or secret key is not set, attempt to perform a public read.
-            // do not set this flag if attempting to write, as it will prevent the use of the aws creds.
-            if (access_key_id.is_none() || access_key_secret.is_none())
-                && sccache_config.public.unwrap_or(true)
-            {
-                envs.push(("SCCACHE_S3_PUBLIC", Some("true".to_owned())));
-            }
-
-            //Note: that this is also used to _unset_ AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
-            envs.push(("AWS_ACCESS_KEY_ID", access_key_id));
-            envs.push(("AWS_SECRET_ACCESS_KEY", access_key_secret));
-        }
-    }
-    Ok(envs)
 }

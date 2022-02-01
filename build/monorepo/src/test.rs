@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    action_step,
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
     context::Context,
     Error, Result,
 };
 use lgn_tracing::{info, span_fn};
+use monorepo_base::action_step;
 use std::{
     ffi::OsString,
     fs::create_dir_all,
@@ -57,7 +57,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
 
     let generate_coverage = args.html_cov_dir.is_some();
     let env_vars = if generate_coverage {
-        if !ctx.installer().install_via_cargo_if_needed(ctx, "grcov") {
+        if !ctx.installer().install_via_cargo_if_needed("grcov") {
             return Err(Error::new("Could not install grcov"));
         }
 
