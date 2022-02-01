@@ -175,7 +175,7 @@
 	}
 
 	function getTranslateExtent(): [number, number] {
-		return [width, outerHeight];
+		return [width - margin.left, outerHeight];
 	}
 </script>
 
