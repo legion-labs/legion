@@ -1,16 +1,18 @@
 import { keepElementVisible } from "../lib/html";
-import { Writable } from "svelte/store";
-
-export type Store = {
-  currentIndex: number | null;
-};
+import KeyboardNavigationStore from "../stores/keyboardNavigation";
 
 export type Config = {
-  disabled: boolean;
-  listener?(index: number): void;
   size: number;
-  store: Writable<Store>;
+  store: KeyboardNavigationStore;
 };
+
+/**
+ * Will "mark" the html element as a "navigable" item container.
+ * By default the `keyboardNavigation` action will use the root element.
+ */
+export function keyboardNavigationContainer(htmlElement: HTMLElement) {
+  htmlElement.dataset.keyboardNavigationContainer = "";
+}
 
 /** Will "mark" the html element as a "navigable" item */
 export function keyboardNavigationItem(
@@ -22,17 +24,23 @@ export function keyboardNavigationItem(
 
 export default function keyboardNavigation(
   htmlElement: HTMLElement,
-  { disabled, listener, size, store }: Config
+  { size, store }: Config
 ) {
-  function handleWindowKeyword(event: KeyboardEvent) {
-    if (disabled) {
-      return null;
-    }
+  htmlElement.tabIndex = -1;
 
+  function handleKeyboard(event: KeyboardEvent) {
     store.update(({ currentIndex }) => {
       let newIndex: number | null = null;
 
       switch (event.key) {
+        case "Enter": {
+          htmlElement.dispatchEvent(
+            new CustomEvent("navigation-select", { detail: currentIndex })
+          );
+
+          break;
+        }
+
         case "ArrowUp": {
           // `currentIndex` should never be lt 0
           newIndex =
@@ -68,24 +76,29 @@ export default function keyboardNavigation(
         return { currentIndex };
       }
 
-      // Auto scroll to "follow" the user focus when using the arrow keys
-      keepElementVisible(htmlElement, element);
+      const container = htmlElement.querySelector(
+        `[data-keyboard-navigation-container]`
+      );
 
-      listener && listener(newIndex);
+      // Auto scroll to "follow" the user focus when using the arrow keys
+      keepElementVisible(container || htmlElement, element);
+
+      htmlElement.dispatchEvent(
+        new CustomEvent("navigation-change", { detail: newIndex })
+      );
 
       return { currentIndex: newIndex };
     });
   }
 
-  window.addEventListener("keydown", handleWindowKeyword);
+  htmlElement.addEventListener("keydown", handleKeyboard);
 
   return {
-    update({ disabled: newDisabled, size: newSize }: Config) {
-      disabled = newDisabled;
+    update({ size: newSize }: Config) {
       size = newSize;
     },
     destroy() {
-      window.removeEventListener("keydown", handleWindowKeyword);
+      htmlElement.removeEventListener("keydown", handleKeyboard);
     },
   };
 }

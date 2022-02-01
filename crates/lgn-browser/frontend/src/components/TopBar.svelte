@@ -81,7 +81,7 @@
 </script>
 
 <div class="root" class:tauri={window.__TAURI__}>
-  <div use:clickOutside={closeMenu} class="menus">
+  <div use:clickOutside on:click-outside={closeMenu} class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
     </div>
@@ -137,7 +137,7 @@
       {#if userInitials}
         {userInitials}
       {:else}
-        <Icon icon="ic:account-circle" />
+        <Icon icon="ic:baseline-account-circle" />
       {/if}
     </div>
     {#if window.__TAURI__}
@@ -146,7 +146,7 @@
           <Icon icon="ic:baseline-minimize" />
         </div>
         <div class="window-decoration" bind:this={topBarMaximize}>
-          <Icon icon="ic:outline-square" />
+          <Icon icon="ic:sharp-crop-square" />
         </div>
         <div class="window-decoration danger" bind:this={topBarClose}>
           <Icon icon="ic:baseline-close" />
@@ -178,7 +178,7 @@
   }
 
   .menu {
-    @apply hidden sm:flex items-center cursor-pointer z-20 hover:bg-gray-500;
+    @apply hidden sm:flex items-center cursor-pointer z-40 hover:bg-gray-500;
   }
 
   .menu-title {
@@ -186,7 +186,7 @@
   }
 
   .menu-dropdown {
-    @apply absolute top-7 rounded-b-sm shadow-xl;
+    @apply absolute top-7 rounded-b-sm shadow-lg shadow-gray-800;
   }
 
   .menu-dropdown.tauri {

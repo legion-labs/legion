@@ -32,14 +32,13 @@
   }: CustomEvent<ColorSet>) {
     setColors(hex);
   }
+
+  function hideDropdown() {
+    visible = false;
+  }
 </script>
 
-<div
-  class="root"
-  use:clickOutside={() => {
-    visible = false;
-  }}
->
+<div class="root" use:clickOutside on:click-outside={hideDropdown}>
   <TextInput
     value={hexValue}
     on:input={setColorsFromTextInput}

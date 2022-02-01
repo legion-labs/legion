@@ -45,10 +45,14 @@ class Benchmark {
       for (let i = 0; i < options.iter; i++) {
         const benchmark = await thunk();
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const start: bigint = process.hrtime.bigint();
 
         await benchmark();
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const end: bigint = process.hrtime.bigint();
 
         // We lose a bit of precision just so the bigint doesn't overflow

@@ -1,10 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { writable } from "svelte/store";
   import { Entry, Entries } from "@/lib/hierarchyTree";
-  import keyboardNavigation, {
-    Store as KeyboardNavigationStore,
-  } from "@lgn/frontend/src/actions/keyboardNavigation";
+  import keyboardNavigation from "@lgn/frontend/src/actions/keyboardNavigation";
+  import KeyboardNavigationStore from "@lgn/frontend/src/stores/keyboardNavigation";
   import Inner from "./Inner.svelte";
 
   type Item = $$Generic;
@@ -13,27 +11,24 @@
     name: { itemName: string };
   };
 
-  const dispatch = createEventDispatcher<{ select: Entry<Item> }>();
+  const dispatch =
+    createEventDispatcher<{ highlight: Entry<Item>; select: Entry<Item> }>();
 
   // Can be extracted if needed
-  const keyboardNavigationStore = writable<KeyboardNavigationStore>({
-    currentIndex: null,
-  });
+  const keyboardNavigationStore = new KeyboardNavigationStore();
 
   export let entries: Entries<Item>;
 
-  export let selectedItem: Item | null = null;
-
-  export let panelIsFocused: boolean;
+  export let highlightedItem: Item | null = null;
 
   let currentlyRenameEntry: Entry<Item> | null = null;
 
-  $: selectedEntry =
-    entries.find((entry) => entry.item === selectedItem) || null;
+  $: highlightedEntry =
+    entries.find((entry) => entry.item === highlightedItem) || null;
 
-  $: $keyboardNavigationStore.currentIndex = selectedItem
+  $: $keyboardNavigationStore.currentIndex = highlightedItem
     ? entries.findIndex((entry) =>
-        selectedEntry ? entry === selectedEntry : false
+        highlightedEntry ? entry === highlightedEntry : false
       )
     : null;
 
@@ -59,6 +54,14 @@
     entries = entries.remove(entry);
   }
 
+  function select() {
+    if (!highlightedEntry) {
+      return;
+    }
+
+    dispatch("select", highlightedEntry);
+  }
+
   function setName({
     detail: { entry: updatedEntry, newName },
   }: CustomEvent<{ entry: Entry<Item>; newName: string }>) {
@@ -67,30 +70,32 @@
     );
   }
 
-  function setSelectedEntry(entry: Entry<Item>) {
-    selectedItem = entry.item;
+  function setHighlightedEntry(entry: Entry<Item>) {
+    highlightedItem = entry.item;
 
-    if (selectedEntry) {
-      dispatch("select", selectedEntry);
+    if (highlightedEntry) {
+      dispatch("highlight", highlightedEntry);
     }
   }
 
-  function setSelectEntryWithIndex(index: number) {
+  function setHighlightedEntryWithIndex({
+    detail: index,
+  }: CustomEvent<number>) {
     const entry = entries.find((entry) => entry.index === index);
 
     if (!entry) {
       return;
     }
 
-    setSelectedEntry(entry);
+    setHighlightedEntry(entry);
   }
 </script>
 
 <div
   class="root"
+  on:navigation-change={setHighlightedEntryWithIndex}
+  on:navigation-select={select}
   use:keyboardNavigation={{
-    disabled: !panelIsFocused,
-    listener: setSelectEntryWithIndex,
     size: entries.size,
     store: keyboardNavigationStore,
   }}
@@ -98,11 +103,10 @@
   {#each entries.entries as entry (entry.name)}
     <Inner
       {entry}
-      {selectedEntry}
-      {panelIsFocused}
+      {highlightedEntry}
       bind:currentlyRenameEntry
-      on:dblclick
-      on:select={({ detail: entry }) => setSelectedEntry(entry)}
+      on:dblclick={select}
+      on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
       on:nameChange={setName}
       let:itemName
     >

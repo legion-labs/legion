@@ -299,7 +299,7 @@ It also supports manual RGBA edition with 4 different inputs.
   }
 
   .dropdown {
-    @apply flex flex-col w-48 border border-gray-800 absolute bg-gray-700 rounded-b-sm mt-1 shadow-xl;
+    @apply flex flex-col w-48 border border-gray-800 absolute bg-gray-700 rounded-b-sm mt-1 shadow-lg shadow-gray-800;
   }
 
   .sv-selector-input {

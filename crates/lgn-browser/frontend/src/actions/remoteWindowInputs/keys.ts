@@ -1,23 +1,23 @@
 export type KeyCode =
-  /// The '1' key over the letters.
+  // The '1' key over the letters.
   | "Key1"
-  /// The '2' key over the letters.
+  // The '2' key over the letters.
   | "Key2"
-  /// The '3' key over the letters.
+  // The '3' key over the letters.
   | "Key3"
-  /// The '4' key over the letters.
+  // The '4' key over the letters.
   | "Key4"
-  /// The '5' key over the letters.
+  // The '5' key over the letters.
   | "Key5"
-  /// The '6' key over the letters.
+  // The '6' key over the letters.
   | "Key6"
-  /// The '7' key over the letters.
+  // The '7' key over the letters.
   | "Key7"
-  /// The '8' key over the letters.
+  // The '8' key over the letters.
   | "Key8"
-  /// The '9' key over the letters.
+  // The '9' key over the letters.
   | "Key9"
-  /// The '0' key over the 'O' and 'P' keys.
+  // The '0' key over the 'O' and 'P' keys.
   | "Key0"
   | "A"
   | "B"
@@ -46,7 +46,7 @@ export type KeyCode =
   | "Y"
   | "Z"
 
-  /// The Escape "key"| next to F1.
+  // The Escape "key"| next to F1.
   | "Escape"
   | "F1"
   | "F2"
@@ -73,14 +73,14 @@ export type KeyCode =
   | "F23"
   | "F24"
 
-  /// Print Screen/SysRq.
+  // Print Screen/SysRq.
   | "Snapshot"
-  /// Scroll Lock.
+  // Scroll Lock.
   | "Scroll"
-  /// Pause/Break "key"| next to Scroll lock.
+  // Pause/Break "key"| next to Scroll lock.
   | "Pause"
 
-  /// `"Insert`"| next to Backspace.
+  // `"Insert`"| next to Backspace.
   | "Insert"
   | "Home"
   | "Delete"
@@ -92,14 +92,14 @@ export type KeyCode =
   | "Right"
   | "Down"
 
-  /// The Backspace "key"| right over Enter.
+  // The Backspace "key"| right over Enter.
   | "Back"
-  /// The Enter key.
+  // The Enter key.
   | "Return"
-  /// The space bar.
+  // The space bar.
   | "Space"
 
-  /// The "Compose" key on Linux.
+  // The "Compose" key on Linux.
   | "Compose"
   | "Caret"
   | "Numlock"
@@ -135,12 +135,12 @@ export type KeyCode =
   | "Kana"
   | "Kanji"
 
-  /// The left alt key. Maps to left option on Mac.
+  // The left alt key. Maps to left option on Mac.
   | "LAlt"
   | "LBracket"
   | "LControl"
   | "LShift"
-  /// The left Windows key. Maps to left Command on Mac.
+  // The left Windows key. Maps to left Command on Mac.
   | "LWin"
   | "Mail"
   | "MediaSelect"
@@ -161,12 +161,12 @@ export type KeyCode =
   | "PlayPause"
   | "Power"
   | "PrevTrack"
-  /// The right alt key. Maps to right option on Mac.
+  // The right alt key. Maps to right option on Mac.
   | "RAlt"
   | "RBracket"
   | "RControl"
   | "RShift"
-  /// The right Windows key. Maps to right Command on Mac.
+  // The right Windows key. Maps to right Command on Mac.
   | "RWin"
   | "Semicolon"
   | "Slash"

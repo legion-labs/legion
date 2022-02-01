@@ -8,7 +8,7 @@
  * @param targetElement the target element to keep visible
  */
 export function keepElementVisible(
-  rootElement: HTMLElement,
+  rootElement: Element,
   targetElement: Element
 ) {
   const targetElementRect = targetElement.getBoundingClientRect();

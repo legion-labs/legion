@@ -10,13 +10,17 @@
   export let activeTab = tabs[0];
 
   let isFocused = false;
+
+  function focus() {
+    isFocused = true;
+  }
+
+  function blur() {
+    isFocused = false;
+  }
 </script>
 
-<div
-  class="root"
-  on:click={() => (isFocused = true)}
-  use:clickOutside={() => (isFocused = false)}
->
+<div class="root">
   <div class="header">
     <div class="tabs">
       {#each tabs as tab, index (key(tab, index))}
@@ -38,7 +42,12 @@
     </div>
   </div>
 
-  <div class="content">
+  <div
+    class="content"
+    on:mousedown={focus}
+    on:click-outside={blur}
+    use:clickOutside
+  >
     <slot name="content" {isFocused} {activeTab} />
   </div>
 </div>

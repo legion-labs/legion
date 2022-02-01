@@ -1,10 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { writable } from "svelte/store";
   import keyboardNavigation, {
-    Store as KeyboardNavigationStore,
     keyboardNavigationItem,
   } from "../../actions/keyboardNavigation";
+  import KeyboardNavigationStore from "../../stores/keyboardNavigation";
 
   type Item = $$Generic;
 
@@ -14,12 +13,10 @@
     default: { item: Item };
   }
 
-  const dispatch = createEventDispatcher<{ select: Item }>();
+  const dispatch = createEventDispatcher<{ highlight: Item; select: Item }>();
 
   // Can be extracted if needed
-  const keyboardNavigationStore = writable<KeyboardNavigationStore>({
-    currentIndex: null,
-  });
+  const keyboardNavigationStore = new KeyboardNavigationStore();
 
   /**
    * The key attribute used to index the items during the iteration:
@@ -29,7 +26,7 @@
 
   export let items: Item[];
 
-  export let selectedItem: Item | null;
+  export let highlightedItem: Item | null;
 
   export let panelIsFocused: boolean;
 
@@ -42,28 +39,36 @@
    */
   export let itemsAreIdentical = (item1: Item, item2: Item) => item1 === item2;
 
-  $: $keyboardNavigationStore.currentIndex = selectedItem
+  $: $keyboardNavigationStore.currentIndex = highlightedItem
     ? items.findIndex((item) =>
-        selectedItem ? itemsAreIdentical(item, selectedItem) : false
+        highlightedItem ? itemsAreIdentical(item, highlightedItem) : false
       )
     : null;
 
-  function setSelectedItem(item: Item) {
-    selectedItem = item;
+  function select() {
+    if (!highlightedItem) {
+      return;
+    }
 
-    dispatch("select", selectedItem);
+    dispatch("select", highlightedItem);
   }
 
-  function selectItemWithIndex(index: number) {
-    setSelectedItem(items[index]);
+  function setHighlightedItem(item: Item) {
+    highlightedItem = item;
+
+    dispatch("highlight", highlightedItem);
+  }
+
+  function highlightItemWithIndex({ detail: index }: CustomEvent<number>) {
+    setHighlightedItem(items[index]);
   }
 </script>
 
 <div
   class="root"
+  on:navigation-change={highlightItemWithIndex}
+  on:navigation-select={select}
   use:keyboardNavigation={{
-    disabled: !panelIsFocused,
-    listener: selectItemWithIndex,
     size: items.length,
     store: keyboardNavigationStore,
   }}
@@ -71,11 +76,11 @@
   {#each items as item, index (key ? item[key] : index)}
     <div
       class="item"
-      class:selected-item={index === $keyboardNavigationStore.currentIndex}
+      class:highlighted-item={index === $keyboardNavigationStore.currentIndex}
       class:item-panel-is-focused={panelIsFocused}
       use:keyboardNavigationItem={index}
-      on:mousedown={() => setSelectedItem(item)}
-      on:dblclick
+      on:mousedown={() => setHighlightedItem(item)}
+      on:dblclick={select}
     >
       <slot {item} />
     </div>
@@ -91,11 +96,11 @@
     @apply cursor-pointer hover:bg-gray-500 py-1 px-2 border border-transparent border-dotted;
   }
 
-  .selected-item {
+  .highlighted-item {
     @apply bg-gray-500;
   }
 
-  .selected-item.item-panel-is-focused {
+  .highlighted-item.item-panel-is-focused {
     @apply border-orange-700;
   }
 </style>
