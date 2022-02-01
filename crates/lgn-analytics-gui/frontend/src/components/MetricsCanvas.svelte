@@ -21,8 +21,8 @@
 	let mainWidth: number = 0;
 	$: width = mainWidth - margin.left - margin.right;
 
-	let maxMs = Infinity;
-	let minMs = -Infinity;
+	let totalMinMs = -Infinity;
+	let totalMaxMs = Infinity;
 	let metricsDesc: MetricDesc[] = [];
 	let metrics: ProcessMetricReply[] = [];
 	let points: Point[][] = [];
@@ -57,15 +57,15 @@
 	async function fetchDataAsync() {
 		const reply = await client.list_process_metrics({ processId: id });
 		metricsDesc = reply.metrics;
-		minMs = reply.minTimeMs;
-		maxMs = reply.maxTimeMs;
+		totalMinMs = reply.minTimeMs;
+		totalMaxMs = reply.maxTimeMs;
 		metrics = await Promise.all(
 			metricsDesc.map((m) => {
 				return client.fetch_process_metric({
 					processId: id,
 					metricName: m.name,
-					beginMs: minMs,
-					endMs: maxMs,
+					beginMs: totalMinMs,
+					endMs: totalMaxMs,
 				});
 			})
 		);
@@ -100,7 +100,7 @@
 
 		context = canvas.getContext("2d")!;
 
-		x = d3.scaleTime().nice();
+		x = d3.scaleTime().domain([totalMinMs, totalMaxMs]).nice();
 		y = d3.scaleLinear().nice();
 
 		xAxis = d3.axisBottom(x);
@@ -137,7 +137,7 @@
 			.attr("height", height)
 			.attr("width", width - margin.left);
 
-		x.range([0, width]).domain([minMs, maxMs]);
+		x.range([0, width]);
 
 		const yMax = d3.max(
 			points.flatMap((p) => d3.max(p.map((p) => p.value)) ?? 0)
@@ -175,7 +175,6 @@
 	}
 
 	function getTranslateExtent(): [number, number] {
-		return [width - margin.left, outerHeight];
 		return [mainWidth, outerHeight];
 	}
 </script>
@@ -196,11 +195,11 @@
 			<ul>
 				<li>
 					<span class="font-bold">Min</span>
-					{minMs.toFixed(2)}
+					{totalMinMs.toFixed(2)}
 				</li>
 				<li>
 					<span class="font-bold">Max</span>
-					{maxMs.toFixed(2)}
+					{totalMaxMs.toFixed(2)}
 				</li>
 			</ul>
 			<br />
