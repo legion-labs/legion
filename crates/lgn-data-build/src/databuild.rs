@@ -135,9 +135,8 @@ impl DataBuild {
 
         let project = Self::open_project(&corrected_path).await?;
 
-        let build_index =
-            BuildIndex::create_new(&config.buildindex_dir, &projectindex_path, Self::version())
-                .map_err(|_e| Error::Io)?;
+        let build_index = BuildIndex::create_new(&config.buildindex_dir, Self::version())
+            .map_err(|e| Error::Io(e.into()))?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -169,14 +168,8 @@ impl DataBuild {
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let project_dir = project.project_dir();
-
-        let build_index = BuildIndex::create_new(
-            &config.buildindex_dir,
-            &Project::root_to_index_path(project_dir),
-            Self::version(),
-        )
-        .map_err(|_e| Error::Io)?;
+        let build_index = BuildIndex::create_new(&config.buildindex_dir, Self::version())
+            .map_err(|e| Error::Io(e.into()))?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -582,7 +575,7 @@ impl DataBuild {
                         .ok_or(Error::CompilerNotFound)?;
                     let compiler_hash = compiler
                         .compiler_hash(transform, env)
-                        .map_err(|_e| Error::Io)?;
+                        .map_err(|e| Error::Io(e.into()))?;
                     Ok((transform, (compiler, compiler_hash)))
                 })
                 .collect::<Result<HashMap<_, _>, Error>>()?

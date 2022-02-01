@@ -303,7 +303,7 @@ impl SourceIndex {
             .map_err(|_e| Error::NotFound)?;
 
         let source_content: SourceContent =
-            serde_json::from_reader(&source_file).map_err(|_e| Error::Io)?;
+            serde_json::from_reader(&source_file).map_err(|e| Error::Io(e.into()))?;
 
         Ok(Self {
             content: source_content,
@@ -314,7 +314,7 @@ impl SourceIndex {
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
         Ok(())
     }
 }
@@ -416,7 +416,7 @@ impl OutputIndex {
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
         Ok(())
     }
 
@@ -428,7 +428,7 @@ impl OutputIndex {
             .map_err(|_e| Error::NotFound)?;
 
         let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|_e| Error::Io)?;
+            serde_json::from_reader(&output_file).map_err(|e| Error::Io(e.into()))?;
 
         Ok(Self {
             content: output_content,
@@ -452,31 +452,23 @@ impl BuildIndex {
         buildindex_dir.as_ref().join("output.index")
     }
 
-    pub(crate) fn create_new(
-        buildindex_dir: &Path,
-        projectindex_path: &Path,
-        version: &str,
-    ) -> Result<Self, Error> {
+    pub(crate) fn create_new(buildindex_dir: &Path, version: &str) -> Result<Self, Error> {
         let source_index = Self::source_index_file(buildindex_dir);
         let output_index = Self::output_index_file(buildindex_dir);
-
-        // construct_project_path is called to validate the project's path
-        #[allow(clippy::let_underscore_drop)]
-        let _ = Self::construct_project_path(buildindex_dir, projectindex_path)?;
 
         let source_file = OpenOptions::new()
             .read(true)
             .write(true)
             .create_new(true)
             .open(source_index)
-            .map_err(|_e| Error::Io)?;
+            .map_err(|e| Error::Io(e.into()))?;
 
         let output_file = OpenOptions::new()
             .read(true)
             .write(true)
             .create_new(true)
             .open(output_index)
-            .map_err(|_e| Error::Io)?;
+            .map_err(|e| Error::Io(e.into()))?;
 
         let source_content = SourceContent {
             version: String::from(version),
@@ -492,8 +484,10 @@ impl BuildIndex {
 
         // todo: write the output file
 
-        serde_json::to_writer_pretty(&source_file, &source_content).map_err(|_e| Error::Io)?;
-        serde_json::to_writer_pretty(&output_file, &output_content).map_err(|_e| Error::Io)?;
+        serde_json::to_writer_pretty(&source_file, &source_content)
+            .map_err(|e| Error::Io(e.into()))?;
+        serde_json::to_writer_pretty(&output_file, &output_content)
+            .map_err(|e| Error::Io(e.into()))?;
 
         Ok(Self {
             source_index: SourceIndex {
@@ -510,6 +504,10 @@ impl BuildIndex {
     pub(crate) fn open(buildindex_dir: &Path, version: &str) -> Result<Self, Error> {
         let source_index = Self::source_index_file(buildindex_dir);
         let output_index = Self::output_index_file(buildindex_dir);
+
+        if !source_index.exists() || !output_index.exists() {
+            return Err(Error::NotFound);
+        }
 
         let source_index = SourceIndex::load(source_index)?;
         let output_index = OutputIndex::load(output_index)?;
@@ -564,7 +562,7 @@ impl BuildIndex {
 #[cfg(test)]
 mod tests {
 
-    use lgn_data_offline::{resource::Project, ResourcePathId};
+    use lgn_data_offline::ResourcePathId;
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use super::BuildIndex;
@@ -573,15 +571,9 @@ mod tests {
     async fn version_check() {
         let work_dir = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(work_dir.path())
-            .await
-            .expect("failed to create project");
-        let projectindex_path = project.indexfile_path();
-
         let buildindex_dir = work_dir.path();
         {
-            let _buildindex =
-                BuildIndex::create_new(buildindex_dir, &projectindex_path, "0.0.1").unwrap();
+            let _buildindex = BuildIndex::create_new(buildindex_dir, "0.0.1").unwrap();
         }
 
         assert!(BuildIndex::open(buildindex_dir, "0.0.2").is_err());
@@ -590,9 +582,6 @@ mod tests {
     #[tokio::test]
     async fn pathid_records() {
         let work_dir = tempfile::tempdir().unwrap();
-        let project = Project::create_new(work_dir.path())
-            .await
-            .expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
@@ -604,11 +593,9 @@ mod tests {
         let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
 
         let buildindex_dir = work_dir.path();
-        let projectindex_path = project.indexfile_path();
 
         {
-            let mut db =
-                BuildIndex::create_new(buildindex_dir, &projectindex_path, "0.0.1").unwrap();
+            let mut db = BuildIndex::create_new(buildindex_dir, "0.0.1").unwrap();
 
             // all dependencies need to be explicitly specified
             let intermediate_deps = vec![source_resource.clone()];
@@ -656,9 +643,6 @@ mod tests {
     #[tokio::test]
     async fn dependency_update() {
         let work_dir = tempfile::tempdir().unwrap();
-        let project = Project::create_new(work_dir.path())
-            .await
-            .expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
@@ -670,9 +654,8 @@ mod tests {
         let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);
 
         let buildindex_dir = work_dir.path();
-        let projectindex_path = project.indexfile_path();
 
-        let mut db = BuildIndex::create_new(buildindex_dir, &projectindex_path, "0.0.1").unwrap();
+        let mut db = BuildIndex::create_new(buildindex_dir, "0.0.1").unwrap();
 
         // all dependencies need to be explicitly specified
         let intermediate_deps = vec![source_resource.clone()];

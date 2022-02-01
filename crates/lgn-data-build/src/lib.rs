@@ -150,7 +150,7 @@ pub enum Error {
     CompilerNotFound,
     /// IO error.
     #[error("IO error.")]
-    Io,
+    Io(Box<dyn std::error::Error + Send + Sync>),
     /// Circular dependency in build graph.
     #[error("Circular dependency in build graph.")]
     CircularDependency,
