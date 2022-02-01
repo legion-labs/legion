@@ -27,6 +27,8 @@
     rar: "ic:baseline-archive",
   };
 
+  export let index: number;
+
   export let entry: Entry<Item>;
 
   export let highlightedEntry: Entry<Item> | null = null;
@@ -82,7 +84,7 @@
   }
 </script>
 
-<div class="root" on:dblclick use:keyboardNavigationItem={entry.index}>
+<div class="root" on:dblclick use:keyboardNavigationItem={index}>
   <div
     class="name"
     class:font-semibold={entry.subEntries}
@@ -113,9 +115,10 @@
     </div>
   </div>
   {#if entry.subEntries && isExpanded}
-    {#each entry.subEntries || [] as entry (entry.name)}
+    {#each entry.subEntries || [] as entry (entry.index)}
       <div class="sub-entries">
         <svelte:self
+          index={entry.index}
           {entry}
           {highlightedEntry}
           bind:currentlyRenameEntry

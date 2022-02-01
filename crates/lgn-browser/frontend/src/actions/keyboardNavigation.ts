@@ -41,6 +41,22 @@ export default function keyboardNavigation(
           break;
         }
 
+        case "F2": {
+          htmlElement.dispatchEvent(
+            new CustomEvent("navigation-rename", { detail: currentIndex })
+          );
+
+          break;
+        }
+
+        case "Delete": {
+          htmlElement.dispatchEvent(
+            new CustomEvent("navigation-remove", { detail: currentIndex })
+          );
+
+          break;
+        }
+
         case "ArrowUp": {
           // `currentIndex` should never be lt 0
           newIndex =

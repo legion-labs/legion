@@ -23,6 +23,8 @@
 
   let currentlyRenameEntry: Entry<Item> | null = null;
 
+  let hierarchyTree: HTMLElement | null;
+
   $: highlightedEntry =
     entries.find((entry) => entry.item === highlightedItem) || null;
 
@@ -31,6 +33,10 @@
         highlightedEntry ? entry === highlightedEntry : false
       )
     : null;
+
+  $: if (!currentlyRenameEntry) {
+    focus();
+  }
 
   // TODO: Use props instead of the `edit` function?
   export function edit(item: Item) {
@@ -55,7 +61,7 @@
   }
 
   function select() {
-    if (!highlightedEntry) {
+    if (!highlightedEntry || currentlyRenameEntry) {
       return;
     }
 
@@ -81,7 +87,7 @@
   function setHighlightedEntryWithIndex({
     detail: index,
   }: CustomEvent<number>) {
-    const entry = entries.find((entry) => entry.index === index);
+    const entry = entries.getFromIndex(index);
 
     if (!entry) {
       return;
@@ -89,19 +95,29 @@
 
     setHighlightedEntry(entry);
   }
+
+  function focus() {
+    if (hierarchyTree) {
+      hierarchyTree.focus();
+    }
+  }
 </script>
 
 <div
   class="root"
   on:navigation-change={setHighlightedEntryWithIndex}
   on:navigation-select={select}
+  on:navigation-rename={() => highlightedItem && edit(highlightedItem)}
+  on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
   use:keyboardNavigation={{
     size: entries.size,
     store: keyboardNavigationStore,
   }}
+  bind:this={hierarchyTree}
 >
-  {#each entries.entries as entry (entry.name)}
+  {#each entries.entries as entry (entry.index)}
     <Inner
+      index={entry.index}
       {entry}
       {highlightedEntry}
       bind:currentlyRenameEntry

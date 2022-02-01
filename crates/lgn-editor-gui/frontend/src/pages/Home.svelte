@@ -15,7 +15,6 @@
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";
   import { Entries } from "@/lib/hierarchyTree";
-  import { AsyncStoreOrchestratorList } from "@lgn/frontend/src/stores/asyncStore";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
     ContextMenuEntryRecord,
@@ -26,17 +25,18 @@
     Event as ContextMenuActionEvent,
     select,
   } from "@lgn/frontend/src/types/contextMenu";
-  import { openModal } from "@lgn/frontend/src/lib/modal";
+  import ModalStore from "@lgn/frontend/src/stores/modal";
   import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
   import { SvelteComponent } from "svelte";
+  import allResourcesStore from "@/stores/allResources";
 
   contextMenuStore.register("resource", contextMenuEntries);
 
+  const modalStore = new ModalStore();
+
   const { data: currentResourceData } = currentResource;
 
-  const allResourcesStore = new AsyncStoreOrchestratorList<
-    ResourceDescription[]
-  >();
+  const createResourceModalId = Symbol();
 
   let allResourcesData = allResourcesStore.data;
 
@@ -106,7 +106,11 @@
 
       case "new": {
         // TODO: Fix the typings
-        openModal(CreateResourceModal as unknown as SvelteComponent);
+        modalStore.open(
+          createResourceModalId,
+          CreateResourceModal as unknown as SvelteComponent,
+          currentResourceDescription
+        );
       }
 
       default: {
@@ -116,9 +120,9 @@
   }
 </script>
 
-<ModalContainer />
+<ModalContainer store={modalStore} />
 
-<ContextMenu {contextMenuStore} />
+<ContextMenu store={contextMenuStore} />
 
 <svelte:window
   on:contextmenu-action={autoClose(select(handleResourceRename, "resource"))}
