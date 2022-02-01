@@ -20,7 +20,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         Some(
             package_graph
                 .workspace()
-                .member_by_name("lgn-workspace-hack")
+                .member_by_name("workspace-hack")
                 .map_err(|_err| Error::new("Exclude package was not found"))?
                 .id(),
         ),
@@ -56,7 +56,7 @@ pub fn run(ctx: &Context) -> Result<()> {
         .map_err(|_err| Error::new("Exclude package was not found"))?;
 
     for package in package_graph.workspace().iter() {
-        if package.name() == "lgn-workspace-hack" || package.name() == "monorepo" {
+        if package.name() == "workspace-hack" || package.name() == "monorepo" {
             continue;
         }
         let crate_dir = package.source().workspace_path().unwrap();
@@ -69,10 +69,10 @@ pub fn run(ctx: &Context) -> Result<()> {
         };
 
         let mut doc = contents.parse::<Document>().expect("invalid doc");
-        doc["dependencies"]["lgn-workspace-hack"]["path"] = toml_edit::value(
-            path_to_workspace_hack(package.source().workspace_path().unwrap().to_owned()),
-        );
-        doc["dependencies"]["lgn-workspace-hack"]["optional"] = toml_edit::value(true);
+        doc["dependencies"]["workspace-hack"]["path"] = toml_edit::value(path_to_workspace_hack(
+            package.source().workspace_path().unwrap().to_owned(),
+        ));
+        doc["dependencies"]["workspace-hack"]["optional"] = toml_edit::value(true);
         std::fs::write(&toml_path, doc.to_string()).expect("write");
     }
 
