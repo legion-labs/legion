@@ -6,7 +6,7 @@ use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
     components::{CameraComponent, ManipulatorComponent, StaticMesh},
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, MeshManager},
 };
 
 use super::{
@@ -65,10 +65,10 @@ impl ManipulatorPart {
         mesh_id: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
         picking_block: &mut PickingIdBlock,
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
     ) -> Self {
         let mut static_mesh = StaticMesh::from_default_meshes(
-            default_meshes,
+            mesh_manager,
             mesh_id as usize,
             color,
             DefaultMaterialType::Default,
@@ -218,22 +218,22 @@ impl ManipulatorManager {
     pub fn initialize(
         &mut self,
         mut commands: Commands<'_, '_>,
-        default_meshes: Res<'_, DefaultMeshes>,
+        mesh_manager: Res<'_, MeshManager>,
         picking_manager: Res<'_, PickingManager>,
     ) {
         let mut inner = self.inner.lock().unwrap();
 
         inner
             .position
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
 
         inner
             .rotation
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
 
         inner
             .scale
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
     }
 
     pub fn current_manipulator_type(&self) -> ManipulatorType {

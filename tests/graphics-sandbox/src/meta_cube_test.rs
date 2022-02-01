@@ -5,7 +5,7 @@ use lgn_ecs::prelude::{Commands, Res};
 use lgn_renderer::components::StaticMesh;
 use lgn_transform::components::{GlobalTransform, Transform};
 
-use super::{DefaultMaterialType, DefaultMeshType, DefaultMeshes};
+use super::{DefaultMaterialType, DefaultMeshType, MeshManager};
 
 #[derive(Default)]
 pub struct MetaCubePlugin {
@@ -31,10 +31,10 @@ impl Plugin for MetaCubePlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn init_stress_test(
     commands: Commands<'_, '_>,
-    default_meshes: Res<'_, DefaultMeshes>,
+    mesh_manager: Res<'_, MeshManager>,
     meta_cube: Res<'_, MetaCubeResource>,
 ) {
-    meta_cube.initialize(commands, &default_meshes);
+    meta_cube.initialize(commands, &mesh_manager);
 }
 
 #[derive(Debug, PartialEq)]
@@ -72,7 +72,7 @@ impl MetaCubeResource {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn initialize(&self, mut commands: Commands<'_, '_>, default_meshes: &DefaultMeshes) {
+    fn initialize(&self, mut commands: Commands<'_, '_>, mesh_manager: &MeshManager) {
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("refs")
@@ -102,7 +102,7 @@ impl MetaCubeResource {
                         ))
                         .insert(GlobalTransform::identity())
                         .insert(StaticMesh::from_default_meshes(
-                            default_meshes,
+                            mesh_manager,
                             DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
                             DefaultMaterialType::Default,

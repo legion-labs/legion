@@ -4,7 +4,7 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::CameraComponent,
-    resources::{DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, MeshManager},
 };
 
 use super::{
@@ -25,7 +25,7 @@ impl PositionManipulator {
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
         picking_manager: &PickingManager,
     ) {
         let mut picking_block = picking_manager.acquire_picking_id_block();
@@ -61,7 +61,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -72,7 +72,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -83,7 +83,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -94,7 +94,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -105,7 +105,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -116,7 +116,7 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -127,7 +127,7 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -138,7 +138,7 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -149,7 +149,7 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 &mut picking_block,
-                default_meshes,
+                mesh_manager,
             ),
         ];
 
