@@ -57,6 +57,7 @@ fn clean_folders(project_dir: &str) {
         can_clean &= path.exists();
         path.pop();
     };
+    test("remote");
     test("offline");
     test("runtime");
     test("temp");
@@ -75,6 +76,7 @@ fn clean_folders(project_dir: &str) {
             remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
             path.pop();
         };
+        delete("remote", true);
         delete("offline", true);
         delete("runtime", true);
         delete("temp", true);

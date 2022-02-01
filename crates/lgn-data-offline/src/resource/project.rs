@@ -207,11 +207,6 @@ impl Project {
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
 
-        {
-            let remote_dir = project_dir.join("remote");
-            let _remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
-        }
-
         let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
             Error::SourceControl(lgn_source_control::Error::Other {
                 source: anyhow::Error::new(e),

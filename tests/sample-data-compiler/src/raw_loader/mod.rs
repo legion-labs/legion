@@ -122,9 +122,17 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
 
 async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
-    let project = match Project::open(root_folder).await {
-        Ok(project) => Ok(project),
-        Err(_) => Project::create_new(root_folder).await,
+    let project = if let Ok(project) = Project::open(root_folder).await {
+        Ok(project)
+    } else {
+        let project_dir = {
+            if root_folder.is_absolute() {
+                root_folder.to_owned()
+            } else {
+                std::env::current_dir().unwrap().join(root_folder)
+            }
+        };
+        Project::create_new(project_dir).await
     }
     .unwrap();
 
