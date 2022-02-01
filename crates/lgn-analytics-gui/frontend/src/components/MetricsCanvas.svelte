@@ -119,7 +119,7 @@
 
 		const zoom = d3
 			.zoom()
-			.scaleExtent([1, width / 10])
+			.scaleExtent([1, width])
 			.translateExtent([[0, 0], getTranslateExtent()])
 			.on("zoom", (event) => {
 				transform = event.transform;
@@ -207,17 +207,25 @@
 		<div>Loading...</div>
 	{:else}
 		<div>
-			<div>Width: {width}</div>
-			<div>Main Width {mainWidth}</div>
-			<div>updateTime: {updateTime} ms</div>
+			<div><span class="font-bold">Width</span>: {width}</div>
+			<div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
+			<br />
 			<div>
-				Transform: X{Math.floor(transform.x)} Y{Math.floor(transform.y)}
+				<span class="font-bold">Update Time</span>: {updateTime} ms
+			</div>
+			<div>
+				<span class="font-bold">Transform</span>
+				<span class="font-bold">X</span>
+				{transform.x.toFixed(2)}
+				<span class="font-bold">Y</span>
+				{transform.y.toFixed(2)}
 			</div>
 			<ul>
 				<li>
 					<span class="font-bold">Zoom</span>
 					{transform.k}
 				</li>
+				<br />
 				<li>
 					<span class="font-bold">Min</span>
 					{totalMinMs.toFixed(2)}
@@ -237,19 +245,13 @@
 			</ul>
 			<br />
 			<ul>
-				{#each metricsDesc as md}
+				{#each metricsDesc as md, index}
 					<li>
-						{md.name} (unit: {md.unit})
+						{md.name} (unit: {md.unit}) ({metrics[index].points
+							.length} points)
 					</li>
 				{/each}
 			</ul>
-			<div>
-				{#each metrics as metric, index}
-					<div>
-						[{index}] {metric.points.length} points
-					</div>
-				{/each}
-			</div>
 		</div>
 	{/if}
 </div>
