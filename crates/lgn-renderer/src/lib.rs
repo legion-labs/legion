@@ -28,7 +28,7 @@ pub use renderer::*;
 mod render_context;
 pub use render_context::*;
 use resources::{
-    DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
+    ui_mesh_manager, DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
     MaterialManager,
 };
@@ -145,6 +145,7 @@ impl Plugin for RendererPlugin {
         // Update
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
+            app.add_system_to_stage(RenderStage::Prepare, ui_mesh_manager);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
 

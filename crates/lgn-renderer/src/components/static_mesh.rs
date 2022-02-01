@@ -2,7 +2,7 @@ use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 
-use crate::resources::{DefaultMaterialType, DefaultMeshType, MeshManager};
+use crate::resources::{DefaultMaterialType, MeshManager};
 #[derive(Component)]
 pub struct StaticMesh {
     pub mesh_id: usize,
@@ -29,7 +29,7 @@ impl StaticMesh {
         material_type: DefaultMaterialType,
     ) -> Self {
         let mut clamped_mesh_id = mesh_id as u32;
-        if clamped_mesh_id > DefaultMeshType::RotationRing as u32 {
+        if clamped_mesh_id > mesh_manager.max_id() as u32 {
             clamped_mesh_id = 0;
         }
         Self {
