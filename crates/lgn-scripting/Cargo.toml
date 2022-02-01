@@ -31,5 +31,6 @@ inventory = "0.2"
 lgn-data-codegen = { path = "../lgn-data-codegen", version = "0.1.0" }
 
 [features]
+default = ["runtime"]
 offline = []
 runtime = []
