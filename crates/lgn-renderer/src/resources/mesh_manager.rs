@@ -122,3 +122,7 @@ impl MeshManager {
         self.static_meshes.len()
     }
 }
+
+fn update_mesh_manager_ui(egui_ctx: Res<'_, Egui>, mesh_manager: ResMut<'_, MeshManager>) {
+    egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {});
+}
