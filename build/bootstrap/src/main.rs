@@ -1,3 +1,7 @@
+//! CI bootstrap executable
+//! It's role is to compile lgn-monorepo through sccache
+//!
+
 use std::process::{Command, Stdio};
 
 use camino::Utf8Path;
