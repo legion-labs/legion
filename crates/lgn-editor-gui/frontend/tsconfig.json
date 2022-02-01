@@ -25,6 +25,8 @@
     "src/**/*.d.ts",
     "src/**/*.svelte",
     // Tests
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    // Benchmarks
+    "benchmarks/**/*.ts"
   ]
 }

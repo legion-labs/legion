@@ -3,18 +3,19 @@
   import { Resolution } from "@lgn/frontend/src/lib/types";
   import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
   import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
+  import ModalContainer from "@lgn/frontend/src/components/modal/ModalContainer.svelte";
   import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
   import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
   import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
   import { getAllResources, getResourceProperties } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
-  import { ResourceDescription } from "@lgn/proto-editor/dist/editor";
+  import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/frontend/src/lib/log";
   import { Entries } from "@/lib/hierarchyTree";
-  import asyncStore from "@lgn/frontend/src/stores/asyncStore";
+  import { AsyncStoreOrchestratorList } from "@lgn/frontend/src/stores/asyncStore";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
     ContextMenuEntryRecord,
@@ -25,12 +26,17 @@
     Event as ContextMenuActionEvent,
     select,
   } from "@lgn/frontend/src/types/contextMenu";
+  import { openModal } from "@lgn/frontend/src/lib/modal";
+  import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
+  import { SvelteComponent } from "svelte";
 
   contextMenuStore.register("resource", contextMenuEntries);
 
   const { data: currentResourceData } = currentResource;
 
-  const allResourcesStore = asyncStore<ResourceDescription[]>();
+  const allResourcesStore = new AsyncStoreOrchestratorList<
+    ResourceDescription[]
+  >();
 
   let allResourcesData = allResourcesStore.data;
 
@@ -73,9 +79,13 @@
   function handleResourceRename({
     detail: { action },
   }: ContextMenuActionEvent<Pick<ContextMenuEntryRecord, "resource">>) {
+    if (!currentResourceDescription) {
+      return;
+    }
+
     switch (action) {
       case "rename": {
-        if (!currentResourceDescription || !resourceHierarchyTree) {
+        if (!resourceHierarchyTree) {
           return;
         }
 
@@ -84,12 +94,29 @@
         return;
       }
 
+      case "remove": {
+        if (!resourceHierarchyTree) {
+          return;
+        }
+
+        resourceHierarchyTree.remove(currentResourceDescription);
+
+        return;
+      }
+
+      case "new": {
+        // TODO: Fix the typings
+        openModal(CreateResourceModal as unknown as SvelteComponent);
+      }
+
       default: {
         return;
       }
     }
   }
 </script>
+
+<ModalContainer />
 
 <ContextMenu {contextMenuStore} />
 
@@ -112,9 +139,9 @@
                 <PanelList
                   key="id"
                   items={resources}
-                  bind:selectedItem={currentResourceDescription}
                   panelIsFocused={isFocused}
-                  on:dblclick={fetchCurrentResourceDescription}
+                  on:select={fetchCurrentResourceDescription}
+                  bind:highlightedItem={currentResourceDescription}
                 >
                   <div slot="default" let:item={resource}>
                     {resource.path}
@@ -133,15 +160,14 @@
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
-          <Panel let:isFocused tabs={["Resource Browser"]}>
+          <Panel tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
                 <HierarchyTree
                   entries={Entries.unflatten($allResourcesData, Symbol)}
-                  panelIsFocused={isFocused}
-                  on:dblclick={fetchCurrentResourceDescription}
-                  bind:selectedItem={currentResourceDescription}
+                  on:select={fetchCurrentResourceDescription}
+                  bind:highlightedItem={currentResourceDescription}
                   bind:this={resourceHierarchyTree}
                 >
                   <div

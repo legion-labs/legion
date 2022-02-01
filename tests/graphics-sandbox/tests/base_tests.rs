@@ -5,7 +5,7 @@ use std::{
     process::Command,
 };
 
-use lgn_test_utils::rgba_image_diff;
+use lgn_test_utils::{rgba_image_diff, rgba_per_pixel_image_diff};
 
 static GRAPHICS_SANDBOX_CLI_EXE: &str = env!("CARGO_BIN_EXE_lgn-graphics-sandbox");
 static GRAPHICS_SANDBOX_TEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -59,6 +59,16 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
     }
 }
 
+/// Save the image using `png`
+fn save_image(path: &Path, data: &[u8], width: u32, height: u32) {
+    let prefix = path.parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
+    let mut encoder = png::Encoder::new(File::create(path).unwrap(), width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(data).unwrap(); // Save
+}
+
 const DIFF_THREASHOLD: f64 = 0.001;
 
 // cargo run --bin lgn-graphics-sandbox -- --snapshot
@@ -87,10 +97,25 @@ fn gpu_simple_scene() {
         snapshot.width,
         snapshot.height,
     );
-    assert!(
-        diff_coeff < DIFF_THREASHOLD,
-        "image diff threashold {} < {}",
-        diff_coeff,
-        DIFF_THREASHOLD
-    );
+    if diff_coeff >= DIFF_THREASHOLD {
+        let diff_image_path = format!("diffs/{}_diff.png", setup_name);
+        println!("Path to diff: {}", diff_image_path);
+        save_image(
+            Path::new(&diff_image_path),
+            &rgba_per_pixel_image_diff(
+                &snapshot.data,
+                &ref_snapshot.data,
+                snapshot.width,
+                snapshot.height,
+            ),
+            snapshot.width,
+            snapshot.height,
+        );
+        assert!(
+            diff_coeff < DIFF_THREASHOLD,
+            "image diff threashold {} < {}",
+            diff_coeff,
+            DIFF_THREASHOLD
+        );
+    }
 }

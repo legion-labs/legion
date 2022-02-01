@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
         .plugin(browser_plugin)
         .invoke_handler(tauri::generate_handler![]);
 
-    App::new()
+    App::default()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
         .add_plugin(TauriPlugin::new(tauri::generate_context!()))
         .add_plugin(AsyncPlugin)

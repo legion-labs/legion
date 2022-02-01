@@ -55,7 +55,7 @@ impl MaterialManager {
             .release_index_ids(&inner.release_gpu_indexes);
 
         // Then all updates
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 4096 * 1024);
+        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
         for mut material in updated_materials.iter_mut() {
             if material.gpu_offset() == u32::MAX {
                 let (new_index_block, new_material_id) =

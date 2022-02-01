@@ -11,7 +11,9 @@ lgn-core = { path = "../../crates/lgn-core", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-graphics-api = { path = "../../crates/lgn-graphics-api", version = "0.1.0" }
-lgn-graphics-runtime = { path = "../../crates/lgn-graphics-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0", features = [
+    "runtime",
+] }
 lgn-input = { path = "../../crates/lgn-input", version = "0.1.0" }
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
@@ -22,17 +24,15 @@ lgn-renderer = { path = "../../crates/lgn-renderer", version = "0.1.0" }
 lgn-transform = { path = "../../crates/lgn-transform", version = "0.1.0" }
 lgn-window = { path = "../../crates/lgn-window", version = "0.1.0" }
 lgn-winit = { path = "../../crates/lgn-winit", version = "0.1.0" }
+png = "0.17"
 
-generic-data = { path = "../generic-data", version = "0.1.0", features = [
+sample-data = { path = "../sample-data", version = "0.1.0", features = [
     "runtime",
 ] }
-sample-data-runtime = { path = "../sample-data-runtime", version = "0.1.0" }
-
 clap = { version = "3.0", features = ["derive"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../../crates/lgn-winit", features = ["x11"] }
 
 [dev-dependencies]
-png = "0.17"
 lgn-test-utils = { path = "../../crates/lgn-test-utils" }

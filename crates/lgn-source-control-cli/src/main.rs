@@ -187,7 +187,9 @@ async fn main() -> anyhow::Result<()> {
             .unwrap()
             .with_log_level(LevelFilter::Debug)
     } else {
-        TelemetryGuard::new(Config::default(), false)
+        let mut config = Config::default();
+        config.enable_console_printer = false;
+        TelemetryGuard::new(config)
             .unwrap()
             .with_log_level(LevelFilter::Info)
     };

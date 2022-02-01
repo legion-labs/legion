@@ -1,0 +1,2 @@
+#[component()]
+pub struct GlobalIllumination {}

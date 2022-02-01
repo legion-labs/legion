@@ -36,7 +36,7 @@ impl TransactionOperation for UpdatePropertyOperation {
         let resource_handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
-            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
+            .ok_or(Error::InvalidResource(self.resource_id))?;
 
         let reflection = ctx
             .resource_registry

@@ -24,3 +24,4 @@ xxhash-rust = { version = "0.8.2", features = ["xxh3", "const_xxh3"] }
 typetag = "0.1"
 lazy_static = "1.4"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
+inventory = "0.2"

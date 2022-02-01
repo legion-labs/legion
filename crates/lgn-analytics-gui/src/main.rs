@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
         .manage(Arc::clone(&token_cache))
         .invoke_handler(tauri::generate_handler![authenticate]);
 
-    App::new()
+    App::default()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
         .add_plugin(TauriPlugin::new(tauri::generate_context!()))
         .add_plugin(AsyncPlugin)

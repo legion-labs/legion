@@ -13,7 +13,7 @@
   };
 
   const dispatch = createEventDispatcher<{
-    select: Entry<Item>;
+    highlight: Entry<Item>;
     nameChange: { entry: Entry<Item>; newName: string };
   }>();
 
@@ -29,9 +29,7 @@
 
   export let entry: Entry<Item>;
 
-  export let selectedEntry: Entry<Item> | null = null;
-
-  export let panelIsFocused: boolean;
+  export let highlightedEntry: Entry<Item> | null = null;
 
   // TODO: Should be in a store?
   export let currentlyRenameEntry: Entry<Item> | null = null;
@@ -40,8 +38,8 @@
 
   let isExpanded = true;
 
-  function select() {
-    dispatch("select", entry);
+  function highlight() {
+    dispatch("highlight", entry);
   }
 
   function renameFile(event: Event) {
@@ -66,7 +64,7 @@
     isExpanded = !isExpanded;
   }
 
-  $: isSelected = selectedEntry ? entry === selectedEntry : false;
+  $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
 
   $: nameExtension = extension(entry.name);
 
@@ -79,7 +77,7 @@
 
   $: nameValue = mode === "edit" ? entryName() : "";
 
-  $: if (!isSelected) {
+  $: if (!isHighlighted) {
     cancelEdition();
   }
 </script>
@@ -89,12 +87,12 @@
     class="name"
     class:font-semibold={entry.subEntries}
     class:lg-space={mode === "view"}
-    class:selected-view={isSelected && mode === "view"}
-    on:mousedown={select}
+    class:highlighted-view={isHighlighted && mode === "view"}
+    on:mousedown={highlight}
   >
     {#if entry.subEntries}
       <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
-        <Icon icon="ic:chevron-right" />
+        <Icon icon="ic:baseline-chevron-right" />
       </div>
     {:else}
       <div class="icon">
@@ -119,10 +117,9 @@
       <div class="sub-entries">
         <svelte:self
           {entry}
-          {selectedEntry}
-          {panelIsFocused}
+          {highlightedEntry}
           bind:currentlyRenameEntry
-          on:select
+          on:highlight
           on:nameChange
           let:itemName
         >
@@ -142,7 +139,7 @@
     @apply flex items-center h-7 w-full px-1 cursor-pointer border border-transparent;
   }
 
-  .name.selected-view {
+  .name.highlighted-view {
     @apply border border-dotted border-orange-700 bg-orange-700 bg-opacity-10;
   }
 

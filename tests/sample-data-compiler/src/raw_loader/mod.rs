@@ -8,7 +8,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use generic_data::offline::{DebugCube, TestComponent, TestEntity};
@@ -16,13 +16,14 @@ use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_graphics_offline::PsdFile;
-use sample_data_offline as offline_data;
+use lgn_graphics_data::offline_psd::PsdFile;
+use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
+use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 
-pub fn build_offline(root_folder: impl AsRef<Path>) {
+pub async fn build_offline(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
     if let Ok(entries) = root_folder.read_dir() {
         let mut raw_dir = entries
@@ -30,8 +31,8 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
         if let Some(raw_dir) = raw_dir.next() {
             let raw_dir = raw_dir.path();
-            let (mut project, resources) = setup_project(root_folder);
-            let mut resources = resources.lock().unwrap();
+            let (mut project, resources) = setup_project(root_folder).await;
+            let mut resources = resources.lock().await;
 
             let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
 
@@ -51,7 +52,8 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                 .collect::<Vec<_>>();
 
             let resource_ids =
-                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources);
+                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources)
+                    .await;
 
             println!("Created resources: {:#?}", project);
 
@@ -66,7 +68,8 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "ins" => {
                         load_ron_resource::<raw_data::Instance, offline_data::Instance>(
@@ -75,16 +78,18 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "mat" => {
-                        load_ron_resource::<raw_data::Material, lgn_graphics_offline::Material>(
+                        load_ron_resource::<raw_data::Material, lgn_graphics_data::offline::Material>(
                             resource_id,
                             path,
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "mesh" => {
                         load_ron_resource::<raw_data::Mesh, offline_data::Mesh>(
@@ -93,10 +98,11 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                             &resource_ids,
                             &mut project,
                             &mut resources,
-                        );
+                        )
+                        .await;
                     }
                     "psd" => {
-                        load_psd_resource(resource_id, path, &mut project, &mut resources);
+                        load_psd_resource(resource_id, path, &mut project, &mut resources).await;
                     }
                     _ => panic!(),
                 }
@@ -114,19 +120,29 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
     }
 }
 
-fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
+async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
-    let project = match Project::open(root_folder) {
-        Ok(project) => Ok(project),
-        Err(_) => Project::create_new(root_folder),
+    let project = if let Ok(project) = Project::open(root_folder).await {
+        Ok(project)
+    } else {
+        let project_dir = {
+            if root_folder.is_absolute() {
+                root_folder.to_owned()
+            } else {
+                std::env::current_dir().unwrap().join(root_folder)
+            }
+        };
+        Project::create_new(project_dir).await
     }
     .unwrap();
 
     let mut registry = ResourceRegistryOptions::new();
     offline_data::register_resource_types(&mut registry);
-    lgn_graphics_offline::register_resource_types(&mut registry);
+    lgn_graphics_data::offline::register_resource_types(&mut registry)
+        .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
+        .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>();
     generic_data::offline::register_resource_types(&mut registry);
-    let registry = registry.create_registry();
+    let registry = registry.create_async_registry();
 
     (project, registry)
 }
@@ -139,13 +155,13 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
             offline_data::Instance::TYPE,
         ),
         "mat" => (
-            lgn_graphics_offline::Material::TYPENAME,
-            lgn_graphics_offline::Material::TYPE,
+            lgn_graphics_data::offline::Material::TYPENAME,
+            lgn_graphics_data::offline::Material::TYPE,
         ),
         "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
         "psd" => (
-            lgn_graphics_offline::PsdFile::TYPENAME,
-            lgn_graphics_offline::PsdFile::TYPE,
+            lgn_graphics_data::offline_psd::PsdFile::TYPENAME,
+            lgn_graphics_data::offline_psd::PsdFile::TYPE,
         ),
         _ => panic!(),
     }
@@ -159,20 +175,20 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
 /// This is done because we need to assign `ResourceId` for all resources before
 /// we load them in order to resolve references from a `ResourcePathName`
 /// (/path/to/resource) to `ResourceId` (125463453).
-fn create_or_find_default(
+async fn create_or_find_default(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> HashMap<ResourcePathName, ResourceTypeAndId> {
     let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
-    build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids);
-    build_test_entity(project, resources, &mut ids);
-    build_debug_cubes(project, resources, &mut ids);
+    build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids).await;
+    build_test_entity(project, resources, &mut ids).await;
+    build_debug_cubes(project, resources, &mut ids).await;
     ids
 }
 
-fn build_resource_from_raw(
+async fn build_resource_from_raw(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
@@ -184,7 +200,7 @@ fn build_resource_from_raw(
         let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
 
         let id = {
-            if let Ok(id) = project.find_resource(name) {
+            if let Ok(id) = project.find_resource(name).await {
                 id
             } else {
                 let id = ResourceTypeAndId {
@@ -200,6 +216,7 @@ fn build_resource_from_raw(
                         resources.new_resource(kind.1).unwrap(),
                         resources,
                     )
+                    .await
                     .unwrap()
             }
         };
@@ -207,7 +224,7 @@ fn build_resource_from_raw(
     }
 }
 
-fn build_test_entity(
+async fn build_test_entity(
     project: &mut Project,
     resources: &mut ResourceRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -215,7 +232,7 @@ fn build_test_entity(
     // Create TestEntity Generic DataContainer
     let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
     let id = {
-        if let Ok(id) = project.find_resource(&name) {
+        if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
             let kind_name = TestEntity::TYPENAME;
@@ -250,13 +267,14 @@ fn build_test_entity(
                     test_entity_handle,
                     resources,
                 )
+                .await
                 .unwrap()
         }
     };
     ids.insert(name, id);
 }
 
-fn build_debug_cubes(
+async fn build_debug_cubes(
     project: &mut Project,
     resources: &mut ResourceRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -268,9 +286,11 @@ fn build_debug_cubes(
     ];
 
     // Create DebugCube DataContainer
-    (0..3).for_each(|index| {
+    for (index, _) in cube_ids.iter().enumerate() {
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
-        let id = project.find_resource(&name).unwrap_or_else(|_err| {
+        let id = if let Ok(id) = project.find_resource(&name).await {
+            id
+        } else {
             let kind = DebugCube::TYPE;
             let id = ResourceTypeAndId {
                 kind,
@@ -313,11 +333,11 @@ fn build_debug_cubes(
                     cube_entity_handle,
                     resources,
                 )
+                .await
                 .unwrap()
-        });
-
+        };
         ids.insert(name, id);
-    });
+    }
 }
 
 fn path_to_resource_name(path: &Path) -> ResourcePathName {
@@ -364,7 +384,7 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
     files
 }
 
-fn load_ron_resource<RawType, OfflineType>(
+async fn load_ron_resource<RawType, OfflineType>(
     resource_id: ResourceTypeAndId,
     file: &Path,
     references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -390,6 +410,7 @@ where
 
         project
             .save_resource(resource_id, resource, resources)
+            .await
             .unwrap();
         Some(resource_id)
     } else {
@@ -397,7 +418,7 @@ where
     }
 }
 
-fn load_psd_resource(
+async fn load_psd_resource(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
@@ -416,6 +437,7 @@ fn load_psd_resource(
 
     project
         .save_resource(resource_id, resource, resources)
+        .await
         .unwrap();
     Some(resource_id)
 }

@@ -8,9 +8,10 @@ use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::GraphicsPlugin;
 use lgn_input::InputPlugin;
 use lgn_math::Vec3;
-use lgn_presenter_snapshot::component::PresenterSnapshot;
+use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
@@ -26,6 +27,10 @@ use lgn_transform::{
 };
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
+use sample_data::SampleDataPlugin;
+
+mod meta_cube_test;
+pub(crate) use meta_cube_test::*;
 
 struct SnapshotDescriptor {
     setup_name: String,
@@ -70,14 +75,10 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut app = App::new();
+    let mut app = App::default();
 
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(
-            args.egui,
-            !args.snapshot,
-            args.meta_cube_size,
-        ))
+        .add_plugin(RendererPlugin::new(args.egui, !args.snapshot))
         .insert_resource(WindowDescriptor {
             width: args.width,
             height: args.height,
@@ -94,6 +95,7 @@ fn main() {
             height: args.height,
         })
         .add_plugin(ScheduleRunnerPlugin::default())
+        .add_plugin(PresenterSnapshotPlugin::default())
         .add_system(presenter_snapshot_system)
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
@@ -107,13 +109,15 @@ fn main() {
     if args.use_asset_registry {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default())
-            .add_plugin(generic_data::plugin::GenericDataPlugin::default())
-            .add_startup_system(register_asset_loaders);
+            .add_plugin(GraphicsPlugin::default())
+            .add_plugin(SampleDataPlugin::default());
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else if args.setup_name.eq("material_test") {
         app.add_startup_system(init_material_scene);
-    } else if args.meta_cube_size == 0 {
+    } else if args.meta_cube_size != 0 {
+        app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
+    } else {
         app.add_startup_system(init_scene);
     }
 
@@ -419,9 +423,4 @@ fn on_snapshot_app_exit(
             commands.entity(entity).despawn();
         }
     }
-}
-
-fn register_asset_loaders(mut registry: NonSendMut<'_, lgn_data_runtime::AssetRegistryOptions>) {
-    sample_data_runtime::add_loaders(&mut registry);
-    lgn_graphics_runtime::add_loaders(&mut registry);
 }

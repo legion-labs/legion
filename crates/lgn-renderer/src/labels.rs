@@ -11,6 +11,7 @@ pub enum RenderStage {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum PrepareLabel {
+    AddedStaticMeshes,
     UpdateInstanceIds,
 }
 

@@ -18,7 +18,11 @@ lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 # temp dependency on sample-data, until runtime data moved to plugins
-sample-data-offline = { path = "../../tests/sample-data-offline", version = "0.1.0" }
-sample-data-runtime = { path = "../../tests/sample-data-runtime", version = "0.1.0" }
-sample-data-compiler = { path = "../../tests/sample-data-compiler", version = "0.1.0" }
+sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
 bincode = "1.3.3"
+
+[build-dependencies]
+lgn-data-codegen = { path = "../lgn-data-codegen", version = "0.1.0" }

@@ -1,3 +1,4 @@
+use core::fmt;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -11,6 +12,7 @@ use crate::{
     IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
 };
 
+#[derive(Debug)]
 enum SqlDatabaseDriver {
     Sqlite(String),
     Mysql(String),
@@ -64,7 +66,7 @@ impl SqlDatabaseDriver {
         match &self {
             Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::drop_database(uri)
                 .await
-                .map_other_err("failed to create database"),
+                .map_other_err("failed to drop database"),
         }
     }
 
@@ -82,6 +84,15 @@ pub struct SqlIndexBackend {
     driver: SqlDatabaseDriver,
     pool: Mutex<Option<Arc<SqlConnectionPool>>>,
     blob_storage_url: BlobStorageUrl,
+}
+
+impl fmt::Debug for SqlIndexBackend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SqlIndexBackend")
+            .field("driver", &self.driver)
+            .field("blob_storage_url", &self.blob_storage_url)
+            .finish()
+    }
 }
 
 impl SqlIndexBackend {
@@ -531,6 +542,12 @@ impl SqlIndexBackend {
             branch_name: row.get("branch_name"),
         }))
     }
+
+    pub async fn close(&mut self) {
+        if let Some(pool) = self.pool.lock().await.take() {
+            pool.close().await;
+        }
+    }
 }
 
 #[async_trait]
@@ -568,6 +585,10 @@ impl IndexBackend for SqlIndexBackend {
     async fn destroy_index(&self) -> Result<()> {
         if !self.driver.check_if_database_exists().await? {
             return Err(Error::index_does_not_exist(self.url()));
+        }
+
+        if let Some(pool) = self.pool.lock().await.take() {
+            pool.close().await;
         }
 
         self.driver.drop_database().await

@@ -1,5 +1,5 @@
 use std::collections::hash_map::HashMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -11,6 +11,27 @@ use crate::{make_file_read_only, ChangeType, HashedChange, Tree, TreeNode, Works
 pub enum TreeNodeType {
     Directory = 1,
     File = 2,
+}
+
+pub async fn list_remote_files(workspace: &Workspace) -> Result<Vec<String>> {
+    let (_, current_commit) = workspace.backend.get_current_branch().await?;
+    let commit = workspace.index_backend.read_commit(&current_commit).await?;
+    let tree_node = workspace.index_backend.read_tree(&commit.root_hash).await?;
+
+    let mut nodes = VecDeque::new();
+    nodes.push_back(tree_node);
+
+    let mut files = vec![];
+
+    while let Some(tree_node) = nodes.pop_front() {
+        for dir in &tree_node.directory_nodes {
+            let tree_node = workspace.index_backend.read_tree(&dir.hash).await?;
+            nodes.push_back(tree_node);
+        }
+        files.extend(tree_node.file_nodes.iter().map(|node| node.name.clone()));
+    }
+
+    Ok(files)
 }
 
 pub async fn fetch_tree_subdir(workspace: &Workspace, root: &Tree, subdir: &Path) -> Result<Tree> {

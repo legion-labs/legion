@@ -64,8 +64,6 @@ pub fn new_index_backend(url: &str) -> Result<Box<dyn IndexBackend>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::make_path_absolute;
-
     use super::*;
 
     #[test]
@@ -112,10 +110,7 @@ mod tests {
 
     #[test]
     fn test_index_new_backend_from_str_file_no_scheme_relative() {
-        assert_eq!(
-            new_index_backend("repo").unwrap().url(),
-            make_path_absolute("repo").unwrap().to_str().unwrap()
-        );
+        assert!(new_index_backend("repo").is_err());
     }
 
     #[test]

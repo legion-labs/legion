@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -12,10 +12,10 @@ use tempfile::TempDir;
 
 use crate::DataBuildOptions;
 
-fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
+fn setup_registry() -> Arc<tokio::sync::Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
-        .create_registry()
+        .create_async_registry()
 }
 
 fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
@@ -25,15 +25,17 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     (project_dir.to_owned(), output_dir)
 }
 
-#[test]
-fn no_dependencies() {
+#[tokio::test]
+async fn no_dependencies() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let resource = {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
         let id = project
             .add_resource(
                 ResourcePathName::new("resource"),
@@ -44,19 +46,22 @@ fn no_dependencies() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
         ResourcePathId::from(id)
     };
 
-    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .create(project_dir)
-        .expect("data build");
+    let (mut build, project) =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
+            .content_store(&ContentStoreAddr::from(output_dir))
+            .create_with_project(project_dir)
+            .await
+            .expect("data build");
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 1);
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 
     assert!(build.build_index.find_dependencies(&resource).is_some());
@@ -70,15 +75,17 @@ fn no_dependencies() {
     );
 }
 
-#[test]
-fn with_dependency() {
+#[tokio::test]
+async fn with_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     let (child_id, parent_id) = {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -89,6 +96,7 @@ fn with_dependency() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = {
@@ -109,6 +117,7 @@ fn with_dependency() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
         (
             ResourcePathId::from(child_id),
@@ -116,12 +125,14 @@ fn with_dependency() {
         )
     };
 
-    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .create(project_dir)
-        .expect("data build");
+    let (mut build, project) =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
+            .content_store(&ContentStoreAddr::from(output_dir))
+            .create_with_project(project_dir)
+            .await
+            .expect("data build");
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 2);
 
     let child_deps = build
@@ -136,19 +147,21 @@ fn with_dependency() {
     assert_eq!(child_deps.len(), 0);
     assert_eq!(parent_deps.len(), 1);
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 }
 
-#[test]
-fn with_derived_dependency() {
+#[tokio::test]
+async fn with_derived_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
-    let mut resources = resources.lock().unwrap();
+    let mut resources = resources.lock().await;
 
     {
-        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
 
         let child_id = project
             .add_resource(
@@ -160,6 +173,7 @@ fn with_derived_dependency() {
                     .unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let parent_handle = {
@@ -183,17 +197,20 @@ fn with_derived_dependency() {
                 &parent_handle,
                 &mut resources,
             )
+            .await
             .unwrap();
     }
 
-    let mut build = DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .create(project_dir)
-        .expect("to create index");
+    let (mut build, project) =
+        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
+            .content_store(&ContentStoreAddr::from(output_dir))
+            .create_with_project(project_dir)
+            .await
+            .expect("to create index");
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 3);
 
-    let updated_count = build.source_pull().unwrap();
+    let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 }

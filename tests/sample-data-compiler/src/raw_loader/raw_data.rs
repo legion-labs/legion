@@ -16,12 +16,12 @@ pub struct Entity {
     pub components: Vec<Component>,
 }
 
-#[derive(Serialize, Deserialize)]
+/*#[derive(Serialize, Deserialize)]
 pub enum GIContribution {
     Default,
     Blocker,
     Exclude,
-}
+}*/
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
@@ -29,7 +29,7 @@ pub struct Visual {
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
-    pub gi_contribution: GIContribution,
+    pub gi_contribution: usize,
 }
 
 #[derive(Serialize, Deserialize)]

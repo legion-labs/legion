@@ -61,7 +61,9 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), String> {
+#[allow(clippy::too_many_lines)]
+#[tokio::main]
+async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
     match args.command {
@@ -69,12 +71,14 @@ fn main() -> Result<(), String> {
             build_index,
             project,
         } => {
-            let mut build = DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
-                .content_store(&ContentStoreAddr::from("."))
-                .create(project)
-                .map_err(|e| format!("failed creating build index {}", e))?;
+            let (mut build, project) =
+                DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
+                    .content_store(&ContentStoreAddr::from("."))
+                    .create_with_project(project)
+                    .await
+                    .map_err(|e| format!("failed creating build index {}", e))?;
 
-            if let Err(e) = build.source_pull() {
+            if let Err(e) = build.source_pull(&project).await {
                 eprintln!("Source Pull failed with '{}'", e);
                 let _res = std::fs::remove_file(build_index);
             }
@@ -108,9 +112,10 @@ fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let mut build = DataBuildOptions::new(build_index, compilers)
+            let (mut build, project) = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
-                .open()
+                .open_with_project()
+                .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
             let derived = {
@@ -133,7 +138,8 @@ fn main() -> Result<(), String> {
             // by doing a source_pull. this should most likely be executed only on demand.
             //
             build
-                .source_pull()
+                .source_pull(&project)
+                .await
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
             let output = build

@@ -2,65 +2,12 @@ syntax = "proto3";
 package editor;
 
 service Editor {
-  rpc SearchResources(SearchResourcesRequest) returns (SearchResourcesResponse);
-
   rpc UndoTransaction(UndoTransactionRequest) returns (UndoTransactionResponse);
 
   rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
-
-  rpc GetResourceProperties(GetResourcePropertiesRequest)
-      returns (GetResourcePropertiesResponse);
-
-  rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
-      returns (UpdateResourcePropertiesResponse);
 }
 
 message UndoTransactionRequest { int32 id = 1; }
 message UndoTransactionResponse { int32 id = 1; }
 message RedoTransactionRequest { int32 id = 1; }
 message RedoTransactionResponse { int32 id = 1; }
-
-message SearchResourcesRequest { string searchToken = 1; }
-
-message SearchResourcesResponse {
-  string nextSearchToken = 1;
-  uint64 total = 2;
-  repeated ResourceDescription resourceDescriptions = 3;
-}
-
-message ResourceDescription {
-  string id = 1;
-  string path = 2;
-  uint32 version = 3;
-}
-
-message GetResourcePropertiesRequest { string id = 1; }
-
-message GetResourcePropertiesResponse {
-  ResourceDescription description = 1;
-  repeated ResourceProperty properties = 2;
-}
-
-message ResourceProperty {
-  string name = 1;
-  string ptype = 2;
-  bytes defaultValue = 3;
-  bytes value = 4;
-  string group = 5;
-}
-
-message UpdateResourcePropertiesRequest {
-  string id = 1;
-  uint32 version = 2;
-  repeated ResourcePropertyUpdate propertyUpdates = 3;
-}
-
-message UpdateResourcePropertiesResponse {
-  uint32 version = 1;
-  repeated ResourcePropertyUpdate updatedProperties = 2;
-}
-
-message ResourcePropertyUpdate {
-  string name = 1;
-  bytes value = 2;
-}

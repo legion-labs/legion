@@ -1,7 +1,6 @@
 import { getUserInfo as tauriGetUserInfo } from "./lib/auth/tauri";
 import { userAuth as browserUserAuth } from "./lib/auth/browser";
 import log, { Level as LogLevel } from "./lib/log";
-import { UserInfo } from "./lib/auth";
 import userInfo from "./stores/userInfo";
 
 export type AuthUserConfig = {
@@ -42,23 +41,6 @@ export function getTarget(rootQuerySelector: string) {
 
   return target;
 }
-
-type HookLogOnlyArgs<HasLog extends boolean> = {
-  log: HasLog extends true ? typeof log : null;
-};
-
-type HookLogOnlyFunction<HasLog extends boolean> = (
-  args: HookLogOnlyArgs<HasLog>
-) => void;
-
-type HookArgs<HasLog extends boolean, HasAuth extends boolean> = {
-  log: HasLog extends true ? typeof log : null;
-  userInfo: HasAuth extends true ? UserInfo : null;
-};
-
-type HookFunction<HasLog extends boolean, HasAuth extends boolean> = (
-  args: HookArgs<HasLog, HasAuth>
-) => void;
 
 export type Config<SvelteComponent> = {
   /** A Svelte component class */

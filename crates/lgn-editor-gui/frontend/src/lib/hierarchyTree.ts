@@ -9,13 +9,13 @@ export type Entry<Item, WithIndex extends boolean = true> = {
   // eslint-disable-next-line @typescript-eslint/ban-types
 } & (WithIndex extends true ? { index: number } : {});
 
+// TODO: Improve performance if needed, and stop using recursion
 /** A wrapper class around the `Entry<Item>[]` type. */
 export class Entries<Item> {
   entries: Entry<Item>[];
 
   #size: number | null = null;
 
-  // TODO: Improve performance if needed
   /**
    * Build an `Entries` object from any flat arrays of object.
    * Objects must contain a `path` attribute.
@@ -162,7 +162,6 @@ export class Entries<Item> {
     return this.#size;
   }
 
-  // TODO: Improve performance if needed
   /**
    * Finds an entry in an `Entries` array.
    */
@@ -188,7 +187,32 @@ export class Entries<Item> {
     return find(this.entries);
   }
 
-  // TODO: Improve performance if needed
+  /**
+   * Filters `Entries` based on a predicate.
+   */
+  filter(pred: (entry: Entry<Item>) => boolean): this {
+    function filter(entries: Entry<Item>[]): Entry<Item>[] {
+      return entries.reduce((acc, entry) => {
+        if (!pred(entry)) {
+          return acc;
+        }
+
+        if (entry.subEntries) {
+          return [...acc, { ...entry, subEntries: filter(entry.subEntries) }];
+        }
+
+        return [...acc, entry];
+      }, [] as Entry<Item>[]);
+    }
+
+    this.entries = filter(this.entries);
+
+    // Resets the size so it's computed again if needed
+    this.#size = null;
+
+    return this;
+  }
+
   /**
    * Finds an entry index in an `Entries` array.
    *
@@ -200,7 +224,6 @@ export class Entries<Item> {
     return entry?.index ?? null;
   }
 
-  // TODO: Improve performance if needed
   /**
    * Takes a whole `Entries` object and a function called for each entry in this object.
    *
@@ -211,7 +234,7 @@ export class Entries<Item> {
     shouldUpdate: (
       entry: Entry<Item>
     ) => Pick<Entry<Item>, "item" | "name"> | null
-  ): Entries<Item> {
+  ): this {
     function update(entries: Entry<Item>[]): Entry<Item>[] {
       return entries.map((entry) => {
         const updatedEntry = shouldUpdate(entry);
@@ -240,5 +263,9 @@ export class Entries<Item> {
     this.entries = update(this.entries);
 
     return this;
+  }
+
+  remove(removedEntry: Entry<Item>): this {
+    return this.filter((entry) => entry !== removedEntry);
   }
 }

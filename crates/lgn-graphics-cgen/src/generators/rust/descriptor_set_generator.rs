@@ -52,11 +52,7 @@ fn generate_rust_descriptor_set(
             ],
             &["};"],
         );
-        writer.add_lines(&[
-            "CGenDescriptorSetInfo,",
-            "CGenDescriptorDef,",
-            "CGenDescriptorSetDef,",
-        ]);
+        writer.add_lines(&["CGenDescriptorDef,", "CGenDescriptorSetDef,"]);
     }
     writer.new_line();
 
@@ -140,11 +136,13 @@ fn generate_rust_descriptor_set(
             let mut writer = writer.add_block(
                 &[
                     "#[allow(unsafe_code)]",
-                    "pub fn initialize(device_context: &DeviceContext) {",
+                    "pub fn initialize(descriptor_set_layout: &DescriptorSetLayout) {",
                 ],
                 &["}"],
             );
-            writer.add_line( "unsafe { DESCRIPTOR_SET_LAYOUT = Some(DESCRIPTOR_SET_DEF.create_descriptor_set_layout(device_context)); }" );
+            writer.add_line(
+                "unsafe { DESCRIPTOR_SET_LAYOUT = Some(descriptor_set_layout.clone()); }",
+            );
         }
 
         writer.new_line();

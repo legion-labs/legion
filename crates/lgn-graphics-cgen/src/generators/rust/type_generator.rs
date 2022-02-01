@@ -81,7 +81,6 @@ fn generate_rust_struct(
             writer.add_block(&["static TYPE_DEF: CGenTypeDef = CGenTypeDef{"], &["};"]);
         writer.add_lines(&[
             format!("name: \"{}\",", struct_ty.name),
-            format!("id: {},", ty_id),
             format!("size: {},", ty_layout.padded_size),
         ]);
     }

@@ -1,8 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
 
-  type Size = "default" | "sm";
-
   // Type are not preserved when using the `on:input` shortcut
   // so we must use dispatch and explicitely type it
   const dispatch = createEventDispatcher<{
@@ -11,7 +9,7 @@
 
   export let value: string;
 
-  export let size: Size = "default";
+  export let size: "default" | "sm" | "lg" = "default";
 
   export let fullWidth = false;
 
@@ -20,6 +18,8 @@
   export let autoSelect = false;
 
   export let disabled = false;
+
+  export let placeholder: string | null = null;
 
   let input: HTMLInputElement | undefined;
 
@@ -50,6 +50,7 @@
   class:disabled
   class:default={size === "default"}
   class:sm={size === "sm"}
+  class:lg={size === "lg"}
   class:with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
   {#if $$slots.leftExtension}
@@ -57,6 +58,7 @@
       class="extension left-extension"
       class:extension-default={size === "default"}
       class:extension-sm={size === "sm"}
+      class:extension-lg={size === "lg"}
     >
       <slot name="leftExtension" />
     </div>
@@ -68,18 +70,23 @@
     class:with-left-extension={$$slots.leftExtension}
     class:default={size === "default"}
     class:sm={size === "sm"}
+    class:lg={size === "lg"}
+    autocomplete="none"
+    aria-autocomplete="none"
     type="text"
-    on:input={disabled ? null : onInput}
-    on:focus={disabled ? null : onFocus}
+    {disabled}
+    {placeholder}
     bind:value
     bind:this={input}
-    {disabled}
+    on:input={disabled ? null : onInput}
+    on:focus={disabled ? null : onFocus}
   />
   {#if $$slots.rightExtension}
     <div
       class="extension right-extension"
       class:extension-default={size === "default"}
       class:extension-sm={size === "sm"}
+      class:extension-lg={size === "lg"}
     >
       <slot name="rightExtension" />
     </div>
@@ -103,8 +110,12 @@
     @apply h-6 text-sm;
   }
 
+  .root.lg {
+    @apply h-10 text-sm;
+  }
+
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 rounded-sm outline-none w-full;
+    @apply bg-gray-800 border-gray-400 px-2 rounded-sm outline-none w-full h-full;
   }
 
   .input.disabled {
@@ -117,6 +128,10 @@
 
   .input.sm {
     @apply py-0.5;
+  }
+
+  .input.lg {
+    @apply py-1 text-base;
   }
 
   .input.with-right-extension {
@@ -145,5 +160,9 @@
 
   .extension-sm {
     @apply w-6 flex-shrink-0;
+  }
+
+  .extension-lg {
+    @apply w-10 flex-shrink-0;
   }
 </style>

@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 
@@ -15,9 +13,9 @@ pub struct BuildManager {
 
 impl BuildManager {
     /// New instance of `BuildManager`.
-    pub fn new(
+    pub async fn new(
         options: DataBuildOptions,
-        project_dir: impl AsRef<Path>,
+        project: &Project,
         manifest: Manifest,
     ) -> anyhow::Result<Self> {
         let editor_env = CompilationEnv {
@@ -26,7 +24,7 @@ impl BuildManager {
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create(project_dir)?;
+        let build = options.open_or_create(project).await?;
         Ok(Self {
             build,
             compile_env: editor_env,
@@ -35,9 +33,10 @@ impl BuildManager {
     }
 
     /// Builds derived resources based on changed source resoure.
-    pub fn build_all_derived(
+    pub async fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
+        project: &Project,
     ) -> anyhow::Result<(ResourcePathId, Vec<ResourceTypeAndId>)> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
@@ -45,19 +44,23 @@ impl BuildManager {
             ResourceType::new(b"runtime_debugcube")
         } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
             ResourceType::new(b"runtime_testentity")
-        } else if resource_id.kind == ResourceType::new(b"offline_entitydc") {
-            ResourceType::new(b"runtime_entitydc")
         } else if resource_id.kind == ResourceType::new(b"offline_entity") {
             ResourceType::new(b"runtime_entity")
         } else if resource_id.kind == ResourceType::new(b"offline_material") {
             ResourceType::new(b"runtime_material")
+        } else if resource_id.kind == ResourceType::new(b"offline_script") {
+            ResourceType::new(b"runtime_script")
         } else {
+            error!(
+                "Data Build {} Failed: Cannot find runtime type mapping",
+                resource_id
+            );
             resource_id.kind
         };
 
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
-        self.build.source_pull()?;
+        self.build.source_pull(project).await?;
         match self
             .build
             .compile(derived_id.clone(), None, &self.compile_env)

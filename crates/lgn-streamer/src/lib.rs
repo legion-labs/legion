@@ -7,6 +7,15 @@
 use lgn_app::prelude::*;
 use lgn_core::Time;
 
+mod cgen {
+    include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
+}
+#[allow(unused_imports)]
+use cgen::*;
+use lgn_ecs::prelude::{Res, ResMut};
+use lgn_graphics_cgen_runtime::CGenRegistryList;
+use lgn_renderer::Renderer;
+
 mod grpc;
 mod streamer;
 mod webrtc;
@@ -31,7 +40,8 @@ impl Plugin for StreamerPlugin {
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams)
             .add_system(streamer::on_app_exit)
-            .add_system(streamer::on_render_surface_created_for_window);
+            .add_system(streamer::on_render_surface_created_for_window)
+            .add_startup_system(init_cgen);
 
         let webrtc_server =
             webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
@@ -43,4 +53,9 @@ impl Plugin for StreamerPlugin {
             .into_inner()
             .register_service(grpc_server.service());
     }
+}
+
+fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
+    let cgen_registry = cgen::initialize(renderer.device_context());
+    cgen_registries.push(cgen_registry);
 }

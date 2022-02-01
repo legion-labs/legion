@@ -7,10 +7,9 @@ use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
     resources::{DefaultMaterialType, DefaultMeshes},
 };
-use lgn_scripting::components::ECSScriptComponent;
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
-use sample_data_runtime as runtime_data;
+use sample_data::runtime as runtime_data;
 
 use crate::asset_entities::AssetToEntityMap;
 
@@ -98,25 +97,26 @@ impl AssetToECS for runtime_data::Entity {
                 entity.insert(StaticMesh::from_default_meshes(
                     default_meshes,
                     static_mesh.mesh_id,
-                    (255, 0, 0).into(),
+                    static_mesh.color,
                     DefaultMaterialType::Default,
                 ));
-            } else if let Some(script) = component.downcast_ref::<runtime_data::ScriptComponent>() {
-                if script.script.is_none() {
-                    continue;
-                }
-                entity.insert(ECSScriptComponent {
-                    input_values: script.input_values.clone(),
-                    entry_fn: script.entry_fn.clone(),
-                    lib_path: script.lib_path.clone(),
-                });
+            } else if let Some(script) =
+                component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
+            {
+                entity.insert(script.clone());
+            } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+                entity.insert(visual.clone());
+            } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
+                entity.insert(gi.clone());
+            } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
+                entity.insert(nav_mesh.clone());
+            } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
+                entity.insert(view.clone());
+            } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
+                entity.insert(light.clone());
+            } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
+                entity.insert(physics.clone());
             }
-            // } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-            // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
-            // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
-            // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
-            // } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
-            // } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
         }
 
         if !transform_inserted {
@@ -124,21 +124,21 @@ impl AssetToECS for runtime_data::Entity {
         }
         entity.insert(GlobalTransform::identity());
 
-        // parent, if it exists, must already be loaded since parents load their
-        // children
-        let parent = runtime_entity
-            .parent
-            .as_ref()
-            .and_then(|parent| asset_to_entity_map.get(parent.id()));
-
-        if let Some(parent) = parent {
-            entity.insert(Parent(parent));
-        }
-
         let entity_id = entity.id();
 
-        if let Some(parent) = parent {
-            commands.entity(parent).push_children(&[entity_id]);
+        // try to hook the parent
+        if let Some(parent_id) = runtime_entity.parent.as_ref() {
+            if let Some(parent) = asset_to_entity_map.get(parent_id.id()) {
+                entity.insert(Parent(parent));
+                entity.commands().entity(parent).push_children(&[entity_id]);
+            }
+        }
+
+        // try to hook the children
+        for child_ref in &runtime_entity.children {
+            if let Some(child_entity) = asset_to_entity_map.get(child_ref.id()) {
+                entity.push_children(&[child_entity]);
+            }
         }
 
         Some(entity_id)
@@ -162,11 +162,11 @@ impl AssetToECS for runtime_data::Instance {
     }
 }
 
-impl AssetToECS for lgn_graphics_runtime::Material {}
+impl AssetToECS for lgn_graphics_data::runtime::Material {}
 
 impl AssetToECS for runtime_data::Mesh {}
 
-impl AssetToECS for lgn_graphics_runtime::Texture {}
+impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {}
 
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
@@ -209,78 +209,25 @@ impl AssetToECS for generic_data::runtime::DebugCube {
     }
 }
 
-impl AssetToECS for generic_data::runtime::EntityDc {
+impl AssetToECS for lgn_scripting::runtime::Script {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         entity: &Self,
         asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        default_meshes: &Res<'_, DefaultMeshes>,
+        _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
-        let mut ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+        let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
         } else {
             commands.spawn()
         };
 
-        let entity_id = ecs_entity.id();
+        info!(
+            "Loading script resource {} bytes",
+            entity.compiled_script.len()
+        );
 
-        for component in &entity.components {
-            if let Some(transform_component) =
-                component.downcast_ref::<generic_data::runtime::TransformComponent>()
-            {
-                ecs_entity.insert(Transform {
-                    translation: transform_component.position,
-                    rotation: transform_component.rotation,
-                    scale: transform_component.scale,
-                });
-                ecs_entity.insert(GlobalTransform::identity());
-            } else if let Some(static_mesh_component) =
-                component.downcast_ref::<generic_data::runtime::StaticMeshComponent>()
-            {
-                ecs_entity.insert(StaticMesh::from_default_meshes(
-                    default_meshes,
-                    static_mesh_component.mesh_id,
-                    static_mesh_component.color,
-                    DefaultMaterialType::Default,
-                ));
-            } else if let Some(light_component) =
-                component.downcast_ref::<generic_data::runtime::LightComponent>()
-            {
-                ecs_entity.insert(light_component.clone());
-            }
-        }
-
-        // try to hook the parent
-        if let Some(parent_id) = entity.parent.as_ref() {
-            if let Some(parent) = asset_to_entity_map.get(parent_id.id()) {
-                ecs_entity.insert(Parent(parent));
-                ecs_entity
-                    .commands()
-                    .entity(parent)
-                    .push_children(&[entity_id]);
-            }
-        }
-
-        // try to hook the children
-        for child_ref in &entity.children {
-            if let Some(child_entity) = asset_to_entity_map.get(child_ref.id()) {
-                ecs_entity.push_children(&[child_entity]);
-            }
-        }
-        Some(entity_id)
+        Some(ecs_entity.id())
     }
 }
-
-/*impl AssetToECS for runtime_data::Script {
-    fn create_in_ecs(
-        commands: &mut Commands<'_, '_>,
-        _instance: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, DefaultMeshes>,
-    ) -> Option<Entity> {
-        let entity = commands.spawn();
-
-        Some(entity.id())
-    }
-}*/

@@ -16,8 +16,10 @@ doc = false
 [dependencies]
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
-lgn-graphics-runtime = { path = "../../crates/lgn-graphics-runtime", version = "0.1.0" }
-lgn-graphics-offline = { path = "../../crates/lgn-graphics-offline", version = "0.1.0" }
+lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0", features = [
+    "runtime",
+    "offline",
+] }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

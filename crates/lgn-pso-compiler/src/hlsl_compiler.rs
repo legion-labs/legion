@@ -10,7 +10,7 @@ use spirv_reflect::types::{
 };
 use spirv_tools::{opt::Optimizer, TargetEnv};
 
-use crate::{file_server::FileServerIncludeHandler, FileSystem};
+use crate::file_server::{FileServerIncludeHandler, FileSystem};
 
 pub struct CompileDefine {
     name: String,
@@ -75,11 +75,11 @@ impl HlslCompiler {
     /// # Errors
     /// fails if the Dxc library cannot be loaded.
     ///
-    pub fn new(filesystem: FileSystem) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             inner: Arc::new(HlslCompilerInner {
                 dxc: Dxc::new(None)?,
-                filesystem,
+                filesystem: FileSystem::new(),
             }),
         })
     }
@@ -388,8 +388,7 @@ mod tests {
 
     #[test]
     fn compile_vs_shader() {
-        let filesystem = FileSystem::new(".").unwrap();
-        let compiler = HlslCompiler::new(filesystem).expect(
+        let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );
 
@@ -420,8 +419,7 @@ mod tests {
 
     #[test]
     fn compile_ps_shader() {
-        let filesystem = FileSystem::new(".").unwrap();
-        let compiler = HlslCompiler::new(filesystem).expect(
+        let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );
 

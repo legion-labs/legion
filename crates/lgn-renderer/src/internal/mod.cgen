@@ -1,3 +1,0 @@
-struct LayoutD {
-    a: Float4,
-}

@@ -3,24 +3,18 @@
  * When the user clicks outside the provided `node` (that is, on an element on the page
  * that isn't contained by the `node`) the `listener` function is called.
  *
- * To click inside the context menu (if it's present in the page) will _not_ trigger
- * the click outside function.
- *
- * @param node The `node`
- * @param listener The function called when the user clicks outside the `ref node`
+ * Additionally, "ignored" nodes can be provided with the `ignoredNodes` attribute.
+ * When the user clicks on any of these nodes, the `listener` is not called.
  */
-export default function clickOutside(
-  node: Node,
-  listener: (event: MouseEvent) => void
-) {
-  const handleClick = (event: MouseEvent) => {
-    const contextMenu = document.getElementById("context-menu");
-
+export default function clickOutside(node: Node, ignoredNodes: Node[] = []) {
+  const handleMouseUp = (event: MouseEvent) => {
     if (
       // Target is not a valid Node
       !(event.target instanceof Node) ||
-      // The context menu is in the page and contains the event target
-      (contextMenu && contextMenu.contains(event.target)) ||
+      // Any of the ignored nodes contains the event target
+      ignoredNodes.some((ignoredNode) =>
+        ignoredNode.contains(event.target as Node)
+      ) ||
       // The node contains the event target
       node.contains(event.target) ||
       // The event has been "prevented"
@@ -29,14 +23,19 @@ export default function clickOutside(
       return;
     }
 
-    listener(event);
+    node.dispatchEvent(new CustomEvent("click-outside"));
   };
 
-  window.addEventListener("click", handleClick, true);
+  window.addEventListener("mouseup", handleMouseUp);
 
   return {
+    update(newlyIgnoredNodes: Node[]) {
+      if (newlyIgnoredNodes) {
+        ignoredNodes = newlyIgnoredNodes;
+      }
+    },
     destroy() {
-      window.removeEventListener("click", handleClick, true);
+      window.removeEventListener("mouseup", handleMouseUp);
     },
   };
 }

@@ -8,8 +8,26 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-erased-serde = "0.3.12"
-serde_json = "1.0"
-lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
+lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+psd = "0.3.0"
+lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
+lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
+lgn-data-model = { path = "../../crates/lgn-data-model", version = "0.1.0" }
+
+# codegen
+anyhow = "1.0"
 lazy_static = "1.4"
+bincode = "1.3.3"
+erased-serde = "0.3.12"
+memoffset = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+typetag = "0.1.8"
+
+[build-dependencies]
+lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
+
+[features]
+offline = []
+runtime = []

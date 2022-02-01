@@ -1,4 +1,4 @@
-use lgn_graphics_api::MAX_DESCRIPTOR_SET_LAYOUTS;
+use heck::ToSnakeCase;
 
 use crate::{
     db::PipelineLayout,
@@ -32,15 +32,10 @@ fn generate_rust_pipeline_layout(
     let mut writer = FileWriter::new();
 
     // global dependencies
-    writer.add_line("use std::{mem, ptr};");
-    writer.new_line();
-
     {
         let mut writer = writer.add_block(&["use lgn_graphics_api::{"], &["};"]);
         writer.add_lines(&[
-            "DeviceContext,",
             "RootSignature,",
-            "DescriptorSetLayout,",
             "DescriptorSetHandle,",
             "MAX_DESCRIPTOR_SET_LAYOUTS,",
         ]);
@@ -49,23 +44,20 @@ fn generate_rust_pipeline_layout(
 
     {
         let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
-        writer.add_lines(&["CGenPipelineLayoutDef,", "PipelineDataProvider,"]);
+        writer.add_line("CGenPipelineLayoutDef");
     }
     writer.new_line();
 
     // local dependencies
     {
-        for (_, content) in &pipeline_layout.members {
-            match content {
-                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
-                    writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
-                }
-                crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
-                    let ty = ty_ref.get(ctx.model);
-                    writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
-                }
-            }
+        for ds_handle in pipeline_layout.descriptor_sets() {
+            let ds = ds_handle.get(ctx.model);
+            writer.add_line(format!("use super::super::descriptor_set::{};", ds.name));
+        }
+
+        if let Some(pc_handle) = &pipeline_layout.push_constant {
+            let ty = pc_handle.get(ctx.model);
+            writer.add_line(format!("use super::super::cgen_type::{};", ty.name()));
         }
     }
     writer.new_line();
@@ -79,18 +71,17 @@ fn generate_rust_pipeline_layout(
         writer.add_line(format!("name: \"{}\",", pipeline_layout.name));
         writer.add_line(format!("id: {},", pipeline_layout_id));
         writer.add_line("descriptor_set_layout_ids: [");
-        for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            let opt_ds_ref = pipeline_layout.find_descriptor_set_by_frequency(ctx.model, i);
-            match opt_ds_ref {
-                Some(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
+        for ds_opt in &pipeline_layout.descriptor_sets {
+            match ds_opt {
+                Some(ds_handle) => {
+                    let ds = ds_handle.get(ctx.model);
                     writer.add_line(format!("Some({}::id()),", ds.name));
                 }
                 None => writer.add_line("None,"),
             }
         }
         writer.add_line("],");
-        if let Some(ty_handle) = pipeline_layout.push_constant() {
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
             let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant_type: Some({}::id())", ty.name()));
         } else {
@@ -115,8 +106,8 @@ fn generate_rust_pipeline_layout(
         writer.add_line(
             "descriptor_sets: [Option<DescriptorSetHandle>; MAX_DESCRIPTOR_SET_LAYOUTS],",
         );
-        if let Some(ty_ref) = pipeline_layout.push_constant() {
-            let ty = ty_ref.get(ctx.model);
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
+            let ty = ty_handle.get(ctx.model);
             writer.add_line(format!("push_constant: {}", ty.name()));
         }
     }
@@ -129,20 +120,13 @@ fn generate_rust_pipeline_layout(
         // fn initialize
         {
             let mut writer = writer.add_block(
-                &["#[allow(unsafe_code)]", "pub fn initialize(device_context: &DeviceContext, descriptor_set_layouts: &[&DescriptorSetLayout]) {"],
+                &[
+                    "#[allow(unsafe_code)]",
+                    "pub fn initialize(pipeline_layout: &RootSignature) {",
+                ],
                 &["}"],
             );
-            writer.add_line("unsafe { ");
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line(format!(
-                    "let push_constant_def = Some({}::def());",
-                    ty.name()
-                ));
-            } else {
-                writer.add_line("let push_constant_def = None");
-            };
-            writer.add_lines(&["PIPELINE_LAYOUT = Some(PIPELINE_LAYOUT_DEF.create_pipeline_layout(device_context, descriptor_set_layouts, push_constant_def));", "}"]);
+            writer.add_line("unsafe{ PIPELINE_LAYOUT = Some(pipeline_layout.clone()) };");
         }
         writer.new_line();
 
@@ -152,6 +136,10 @@ fn generate_rust_pipeline_layout(
                 writer.add_block(&["#[allow(unsafe_code)]", "pub fn shutdown() {"], &["}"]);
             writer.add_line("unsafe{ PIPELINE_LAYOUT = None; }");
         }
+        writer.new_line();
+
+        // impl: def
+        writer.add_line("pub fn def() -> &'static CGenPipelineLayoutDef { &PIPELINE_LAYOUT_DEF }");
         writer.new_line();
 
         // fn root_signature
@@ -179,37 +167,34 @@ fn generate_rust_pipeline_layout(
         writer.new_line();
 
         // fn setters
-        for (name, content) in &pipeline_layout.members {
-            match content {
-                crate::db::PipelineLayoutContent::DescriptorSet(ds_ref) => {
-                    let ds = ds_ref.get(ctx.model);
-                    let mut writer = writer.add_block(
-                        &[format!(
-                        "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
-                        name
-                    )],
-                        &["}"],
-                    );
 
-                    writer.add_line(format!(
-                        "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
-                        ds.frequency
-                    ));
-                }
-                crate::db::PipelineLayoutContent::PushConstant(ty_ref) => {
-                    let ty = ty_ref.get(ctx.model);
-                    let mut writer = writer.add_block(
-                        &[format!(
-                            "pub fn set_{}(&mut self, data: &{}) {{",
-                            name,
-                            ty.name()
-                        )],
-                        &["}"],
-                    );
+        for ds_handle in pipeline_layout.descriptor_sets() {
+            let ds = ds_handle.get(ctx.model);
+            let mut writer = writer.add_block(
+                &[format!(
+                    "pub fn set_{}(&mut self, descriptor_set_handle: DescriptorSetHandle) {{",
+                    ds.name.to_snake_case()
+                )],
+                &["}"],
+            );
 
-                    writer.add_line("self.push_constant = *data;");
-                }
-            }
+            writer.add_line(format!(
+                "self.descriptor_sets[{}] = Some(descriptor_set_handle);",
+                ds.frequency
+            ));
+        }
+
+        if let Some(ty_handle) = &pipeline_layout.push_constant {
+            let ty = ty_handle.get(ctx.model);
+            let mut writer = writer.add_block(
+                &[format!(
+                    "pub fn set_push_constant(&mut self, data: &{}) {{",
+                    ty.name()
+                )],
+                &["}"],
+            );
+
+            writer.add_line("self.push_constant = *data;");
         }
     }
 
@@ -218,7 +203,7 @@ fn generate_rust_pipeline_layout(
     // trait: Default
     {
         let mut writer = writer.add_block(
-            &[format!("impl Default for {} {{", pipeline_layout.name)],
+            &[format!("impl Default for {} {{", pipeline_layout.name())],
             &["}"],
         );
 
@@ -227,58 +212,10 @@ fn generate_rust_pipeline_layout(
             {
                 let mut writer = writer.add_block(&["Self {"], &["}"]);
                 writer.add_line("descriptor_sets: [None; MAX_DESCRIPTOR_SET_LAYOUTS],");
-                if let Some(ty_ref) = pipeline_layout.push_constant() {
-                    let ty = ty_ref.get(ctx.model);
+                if let Some(ty_handle) = &pipeline_layout.push_constant {
+                    let ty = ty_handle.get(ctx.model);
                     writer.add_line(format!("push_constant: {}::default(),", ty.name()));
                 }
-            }
-        }
-    }
-
-    writer.new_line();
-
-    // trait: PipelineDataProvider
-    {
-        let mut writer = writer.add_block(
-            &[format!(
-                "impl PipelineDataProvider for {} {{",
-                pipeline_layout.name
-            )],
-            &["}"],
-        );
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer =
-                writer.add_block(&["fn root_signature() -> &'static RootSignature {"], &["}"]);
-            writer.add_line("Self::root_signature()");
-        }
-        writer.new_line();
-
-        // fn descriptor_set
-        {
-            let mut writer = writer.add_block(
-                &["fn descriptor_set(&self, frequency: u32) -> Option<DescriptorSetHandle> {"],
-                &["}"],
-            );
-            writer.add_line("self.descriptor_sets[frequency as usize]");
-        }
-        writer.new_line();
-
-        // fn push_constant
-        {
-            let mut writer =
-                writer.add_block(&["fn push_constant(&self) -> Option<&[u8]> {"], &["}"]);
-            if let Some(ty_handle) = pipeline_layout.push_constant() {
-                writer.add_line("#![allow(unsafe_code)]");
-                let ty = ty_handle.get(ctx.model);
-                writer.add_line("let data_slice = unsafe {");
-                writer.add_line(format!("&*ptr::slice_from_raw_parts((&self.push_constant as *const {0}).cast::<u8>(), mem::size_of::<{0}>())", ty.name()));
-                writer.add_line("};");
-                writer.add_line("Some(data_slice)");
-            } else {
-                writer.add_line("None");
             }
         }
     }

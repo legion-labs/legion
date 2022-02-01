@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
-use sample_data_offline as offline_data;
+use lgn_data_runtime::{Component, ResourceType, ResourceTypeAndId};
+use sample_data::offline as offline_data;
 
 use super::raw_data;
 
@@ -113,7 +113,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
             Some(parent) => lookup_asset_path(references, &parent),
             None => None,
         };
-        let mut components: Vec<Box<dyn offline_data::Component>> = Vec::new();
+        let mut components: Vec<Box<dyn Component>> = Vec::new();
         for component in raw.components {
             match component {
                 raw_data::Component::Transform(raw) => {
@@ -145,7 +145,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
             }
         }
         Self {
-            name: raw.name,
+            //name: raw.name,
             children,
             parent,
             components,
@@ -174,11 +174,12 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
-            gi_contribution: raw.gi_contribution.into(),
+            gi_contribution: raw.gi_contribution,
         }
     }
 }
 
+/*
 impl From<raw_data::GIContribution> for offline_data::GIContribution {
     fn from(raw: raw_data::GIContribution) -> Self {
         match raw {
@@ -187,7 +188,7 @@ impl From<raw_data::GIContribution> for offline_data::GIContribution {
             raw_data::GIContribution::Exclude => Self::Exclude,
         }
     }
-}
+}*/
 
 impl From<raw_data::GlobalIllumination> for offline_data::GlobalIllumination {
     fn from(_raw: raw_data::GlobalIllumination) -> Self {
@@ -196,14 +197,14 @@ impl From<raw_data::GlobalIllumination> for offline_data::GlobalIllumination {
 }
 
 impl From<raw_data::NavMesh> for offline_data::NavMesh {
-    fn from(raw: raw_data::NavMesh) -> Self {
+    fn from(_raw: raw_data::NavMesh) -> Self {
         Self {
-            voxelisation_config: raw.voxelisation_config.into(),
+           /* voxelisation_config: raw.voxelisation_config.into(),
             layer_config: raw
                 .layer_config
                 .iter()
                 .map(Into::<offline_data::NavMeshLayerConfig>::into)
-                .collect(),
+                .collect(),*/
         }
     }
 }
@@ -226,19 +227,19 @@ impl From<raw_data::View> for offline_data::View {
             fov: raw.fov,
             near: raw.near,
             far: raw.far,
-            projection_type: raw.projection_type.into(),
+            projection_type: raw.projection_type as usize,
         }
     }
 }
 
-impl From<raw_data::ProjectionType> for offline_data::ProjectionType {
+/*impl From<raw_data::ProjectionType> for offline_data::ProjectionType {
     fn from(raw: raw_data::ProjectionType) -> Self {
         match raw {
             raw_data::ProjectionType::Orthogonal => Self::Orthogonal,
             raw_data::ProjectionType::Perspective => Self::Perspective,
         }
     }
-}
+}*/
 
 impl From<raw_data::Light> for offline_data::Light {
     fn from(_raw: raw_data::Light) -> Self {
@@ -262,6 +263,7 @@ impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
     fn from(raw: raw_data::StaticMesh) -> Self {
         Self {
             mesh_id: raw.mesh_id,
+            ..Self::default()
         }
     }
 }
@@ -281,7 +283,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
 
 // ----- Material conversions -----
 
-impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
+impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
     fn from_raw(
         raw: raw_data::Material,
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,

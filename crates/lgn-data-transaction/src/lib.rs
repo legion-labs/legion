@@ -34,5 +34,8 @@ pub use update_property_operation::*;
 
 pub mod array_element_operation;
 pub use array_element_operation::*;
+
+pub mod reparent_resource_operation;
+pub use reparent_resource_operation::*;
 #[cfg(test)]
 pub(crate) mod test_transaction;

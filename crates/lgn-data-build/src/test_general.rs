@@ -17,8 +17,8 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     (project_dir.to_owned(), output_dir)
 }
 
-#[test]
-fn invalid_project() {
+#[tokio::test]
+async fn invalid_project() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
 
@@ -29,7 +29,8 @@ fn invalid_project() {
     {
         let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(&project_dir);
+            .create_with_project(&project_dir)
+            .await;
 
         assert!(
             matches!(build, Err(Error::InvalidProject(_))),
@@ -45,19 +46,22 @@ fn invalid_project() {
 
         let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(project_dir);
+            .create_with_project(project_dir)
+            .await;
 
         assert!(matches!(build, Err(Error::Project(_))), "{:?}", build);
     }
 }
 
-#[test]
-fn create() {
+#[tokio::test]
+async fn create() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
 
     let projectindex_path = {
-        let project = Project::create_new(&project_dir).expect("failed to create a project");
+        let project = Project::create_new(&project_dir)
+            .await
+            .expect("failed to create a project");
         project.indexfile_path()
     };
 
@@ -67,7 +71,8 @@ fn create() {
     {
         let _build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create(project_dir)
+            .create_with_project(project_dir)
+            .await
             .expect("valid data build index");
     }
 

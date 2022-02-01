@@ -162,7 +162,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.0.11",
+ "clap 3.0.13",
  "lgn-analytics",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
@@ -183,7 +183,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -907,6 +907,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
+name = "bootstrap"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "monorepo-base",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1187,9 +1195,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.11"
+version = "3.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7216c62891a806990b7b69ccd99f7ed011da4ff13529968fb1625abef7f3c6"
+checksum = "08799f92c961c7a1cf0cc398a9073da99e21ce388b46372c37f3191f2f3eed3e"
 dependencies = [
  "atty",
  "bitflags",
@@ -1327,6 +1335,41 @@ dependencies = [
  "once_cell",
  "terminal_size",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "console-api"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14f67643a7d716307ad10b3e3aef02826382acbe349a3e7605ac57556148bc87"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tonic",
+ "tonic-build",
+ "tracing-core",
+]
+
+[[package]]
+name = "console-subscriber"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "829835c211a0247cd11e65e13cec8696b879374879c35ce162ce8098b23c90d4"
+dependencies = [
+ "console-api",
+ "crossbeam-channel 0.5.2",
+ "futures",
+ "hdrhistogram",
+ "humantime",
+ "serde",
+ "serde_json",
+ "thread_local",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber 0.3.6",
 ]
 
 [[package]]
@@ -2270,7 +2313,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "clap 3.0.11",
+ "clap 3.0.13",
  "directories",
  "json",
  "lgn-analytics",
@@ -2303,15 +2346,15 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "erased-serde",
  "generic-data",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
  "lgn-codec-api",
- "lgn-compiler-entitydc",
- "lgn-compiler-testentity",
+ "lgn-compiler-runtime-entity",
+ "lgn-compiler-script2asm",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -2324,22 +2367,20 @@ dependencies = [
  "lgn-ecs",
  "lgn-editor-proto",
  "lgn-graphics-data",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
  "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
+ "lgn-scripting",
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
  "serde_json",
  "tempfile",
  "tokio",
@@ -2927,6 +2968,7 @@ dependencies = [
  "bincode",
  "erased-serde",
  "generic-data",
+ "inventory",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -3365,6 +3407,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hdrhistogram"
+version = "7.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6490be71f07a5f62b564bc58e36953f675833df11c7e4a0647bee7a07ca1ec5e"
+dependencies = [
+ "base64",
+ "byteorder",
+ "flate2",
+ "nom 7.1.0",
+ "num-traits",
+]
+
+[[package]]
 name = "heck"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3467,6 +3522,12 @@ name = "httpdate"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
+
+[[package]]
+name = "humantime"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
@@ -3941,12 +4002,12 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-renderer",
  "lgn-scripting",
  "lgn-tracing",
  "lgn-transform",
- "sample-data-runtime",
+ "sample-data",
  "serde_json",
 ]
 
@@ -4047,38 +4108,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-entitydc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "lgn-compiler-instancedc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
 ]
 
 [[package]]
@@ -4088,7 +4125,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
+ "lgn-graphics-data",
  "serde",
  "serde_json",
 ]
@@ -4098,12 +4135,11 @@ name = "lgn-compiler-runtime-entity"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4111,12 +4147,11 @@ name = "lgn-compiler-runtime-instance"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4124,25 +4159,23 @@ name = "lgn-compiler-runtime-mesh"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
 name = "lgn-compiler-script2asm"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "curl",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-runtime",
- "sample-data-offline",
- "sample-data-runtime",
+ "lgn-scripting",
  "serde",
  "serde_json",
  "zip",
@@ -4223,8 +4256,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "serde",
  "serde_json",
 ]
@@ -4286,6 +4318,8 @@ dependencies = [
  "tempfile",
  "text-resource",
  "thiserror",
+ "tokio",
+ "tokio-test",
 ]
 
 [[package]]
@@ -4293,7 +4327,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.0.11",
+ "clap 3.0.13",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -4308,6 +4342,7 @@ dependencies = [
  "syn",
  "tempfile",
  "text-resource",
+ "tokio",
 ]
 
 [[package]]
@@ -4328,7 +4363,7 @@ dependencies = [
  "anyhow",
  "binary-resource",
  "bincode",
- "clap 3.0.11",
+ "clap 3.0.13",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -4371,12 +4406,14 @@ dependencies = [
  "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime",
+ "lgn-source-control",
  "lgn-utils",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
+ "tokio-test",
 ]
 
 [[package]]
@@ -4388,6 +4425,7 @@ dependencies = [
  "erased-serde",
  "flurry",
  "hex",
+ "inventory",
  "lazy_static",
  "lgn-content-store",
  "lgn-data-model",
@@ -4417,6 +4455,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "erased-serde",
+ "futures-lite",
  "generic-data",
  "lgn-compiler-testentity",
  "lgn-content-store",
@@ -4525,7 +4564,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4555,47 +4594,35 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bincode",
  "erased-serde",
  "lazy_static",
+ "lgn-app",
+ "lgn-data-codegen",
  "lgn-data-model",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "lgn-graphics-offline"
-version = "0.1.0"
-dependencies = [
- "bincode",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-ecs",
+ "memoffset 0.6.5",
  "psd",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "lgn-graphics-runtime"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "lgn-data-runtime",
- "lgn-tracing",
+ "typetag",
 ]
 
 [[package]]
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.0.11",
- "generic-data",
+ "clap 3.0.13",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-api",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
  "lgn-presenter-snapshot",
@@ -4608,7 +4635,7 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "png 0.17.2",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -4651,35 +4678,6 @@ name = "lgn-math"
 version = "0.1.0"
 dependencies = [
  "glam",
-]
-
-[[package]]
-name = "lgn-monorepo"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atty",
- "camino",
- "clap 3.0.11",
- "determinator",
- "globset",
- "guppy",
- "hakari",
- "hex",
- "indexmap",
- "indoc",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "once_cell",
- "rayon",
- "regex",
- "semver 1.0.4",
- "serde",
- "serde_json",
- "termcolor",
- "thiserror",
- "toml",
- "toml_edit",
 ]
 
 [[package]]
@@ -4747,7 +4745,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-embedded-fs",
  "lgn-graphics-api",
- "lgn-pso-compiler",
+ "lgn-graphics-cgen",
+ "lgn-graphics-cgen-runtime",
  "lgn-renderer",
  "lgn-tasks",
  "lgn-tracing",
@@ -4814,7 +4813,6 @@ dependencies = [
  "linkme",
  "parking_lot 0.11.2",
  "paste",
- "png 0.17.2",
  "smallvec",
  "static_assertions",
  "uuid",
@@ -4833,10 +4831,8 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
- "lgn-graphics-offline",
  "lgn-tasks",
  "lgn-ubercompiler",
- "sample-data-offline",
  "tokio",
 ]
 
@@ -4857,6 +4853,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
+ "inventory",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -4916,7 +4913,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "fuser",
  "lgn-cli-utils",
  "lgn-source-control",
@@ -4958,11 +4955,12 @@ dependencies = [
  "lgn-ecs",
  "lgn-embedded-fs",
  "lgn-graphics-api",
+ "lgn-graphics-cgen",
+ "lgn-graphics-cgen-runtime",
  "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
- "lgn-pso-compiler",
  "lgn-renderer",
  "lgn-streaming-proto",
  "lgn-tasks",
@@ -5046,6 +5044,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "console-subscriber",
  "ctrlc",
  "json",
  "lazy_static",
@@ -5127,13 +5126,12 @@ name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
  "lgn-compiler-debugcube",
- "lgn-compiler-entitydc",
- "lgn-compiler-instancedc",
  "lgn-compiler-material",
  "lgn-compiler-psd2tex",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-instance",
  "lgn-compiler-runtime-mesh",
+ "lgn-compiler-script2asm",
  "lgn-compiler-test-atoi",
  "lgn-compiler-test-base64",
  "lgn-compiler-test-refs",
@@ -5185,10 +5183,6 @@ dependencies = [
  "web-sys",
  "winit",
 ]
-
-[[package]]
-name = "lgn-workspace-hack"
-version = "0.1.0"
 
 [[package]]
 name = "libc"
@@ -5346,7 +5340,7 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-test-utils",
@@ -5597,6 +5591,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "monorepo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atty",
+ "camino",
+ "clap 3.0.13",
+ "determinator",
+ "globset",
+ "guppy",
+ "hakari",
+ "hex",
+ "indexmap",
+ "indoc",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "monorepo-base",
+ "once_cell",
+ "rayon",
+ "regex",
+ "semver 1.0.4",
+ "serde",
+ "serde_json",
+ "termcolor",
+ "thiserror",
+ "toml",
+ "toml_edit",
+]
+
+[[package]]
+name = "monorepo-base"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "camino",
+ "serde",
+ "termcolor",
+ "toml",
 ]
 
 [[package]]
@@ -7327,7 +7362,7 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "directories",
  "lgn-app",
  "lgn-async",
@@ -7346,7 +7381,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.0.11",
+ "clap 3.0.13",
  "generic-data",
  "instant",
  "lgn-app",
@@ -7356,7 +7391,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-grpc",
  "lgn-input",
  "lgn-presenter-window",
@@ -7368,7 +7403,7 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
- "sample-data-runtime",
+ "sample-data",
 ]
 
 [[package]]
@@ -7514,11 +7549,27 @@ dependencies = [
 name = "sample-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bincode",
+ "erased-serde",
  "insta",
+ "inventory",
  "json",
+ "lazy_static",
+ "lgn-app",
+ "lgn-data-codegen",
  "lgn-data-compiler",
+ "lgn-data-model",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-math",
+ "memoffset 0.6.5",
+ "serde",
  "serde_json",
  "tempfile",
+ "typetag",
 ]
 
 [[package]]
@@ -7526,47 +7577,21 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.0.11",
+ "clap 3.0.13",
  "generic-data",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
+ "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
  "ron",
- "sample-data-offline",
- "sample-data-runtime",
+ "sample-data",
  "serde",
  "serde_json",
- "typetag",
-]
-
-[[package]]
-name = "sample-data-offline"
-version = "0.1.0"
-dependencies = [
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-math",
- "serde",
- "serde_json",
- "typetag",
-]
-
-[[package]]
-name = "sample-data-runtime"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "lgn-data-runtime",
- "lgn-graphics-runtime",
- "lgn-math",
- "lgn-tracing",
- "serde",
+ "tokio",
  "typetag",
 ]
 
@@ -8030,7 +8055,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.0.11",
+ "clap 3.0.13",
  "http",
  "hyper",
  "lgn-source-control",
@@ -8673,7 +8698,7 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -8694,7 +8719,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.0.11",
+ "clap 3.0.13",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
@@ -8898,6 +8923,7 @@ dependencies = [
  "pin-project-lite",
  "signal-hook-registry",
  "tokio-macros",
+ "tracing",
  "winapi 0.3.9",
 ]
 
@@ -8963,6 +8989,19 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio-test"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53474327ae5e166530d17f2d956afcb4f8a004de581b3cae10f12006bc8163e3"
+dependencies = [
+ "async-stream",
+ "bytes",
+ "futures-core",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -9422,7 +9461,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.0.11",
+ "clap 3.0.13",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -10167,6 +10206,10 @@ dependencies = [
  "windows 0.24.0",
  "xml-rs",
 ]
+
+[[package]]
+name = "workspace-hack"
+version = "0.1.0"
 
 [[package]]
 name = "wry"

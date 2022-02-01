@@ -1,37 +1,10 @@
-import { Writable, writable } from "svelte/store";
+import { Orchestrator, Writable } from "../lib/store";
 
-export type InitAsyncStoreValue<Data> = {
+export type InitAsyncStoreOrchestratorValue<Data> = {
   data?: Data | null;
   loading?: boolean;
   error?: unknown;
 };
-
-type SingleValueAsyncStore<Data> = {
-  data: Writable<Data | null>;
-  loading: Writable<boolean>;
-  error: Writable<unknown>;
-  /**
-   * Run the provided [async thunk](https://en.wikipedia.org/wiki/Thunk)
-   * and populate the stores accordingly.
-   */
-  run(promise: () => Promise<Data>): Promise<Data>;
-};
-
-type ListAsyncStore<Data extends unknown[]> = SingleValueAsyncStore<Data> & {
-  /**
-   * Unlike the `run` function, `loadMore` will not replace but rather append
-   * the promise result to the data.
-   *
-   * `loadMore` returns _only the appended results_.
-   *
-   * On error the data will be preserved.
-   */
-  loadMore(promise: () => Promise<Data>): Promise<Data>;
-};
-
-export type AsyncStore<Data> = Data extends unknown[]
-  ? ListAsyncStore<Data>
-  : SingleValueAsyncStore<Data>;
 
 // TODO: Add initial value support
 /**
@@ -49,94 +22,104 @@ export type AsyncStore<Data> = Data extends unknown[]
  * ## Example
  *
  * ```
- * const { data, error } = asyncStore<string>();
+ * const basicStoreOrchestrator = new AsyncStoreOrchestrator<string>();
+ * const { data, error } = basicStoreOrchestrator;
  *
- * console.assert($data === null);
+ * assert($data === null);
  *
- * await basicAsyncStore.run(() => Promise.resolve("Hello"));
+ * await basicStoreOrchestrator.run(() => Promise.resolve("Hello"));
  *
- * console.assert($data === "Hello");
+ * assert($data === "Hello");
  *
  * try {
- *   await basicAsyncStore.run(() => Promise.reject("Oh no..."));
+ *   await basicStoreOrchestrator.run(() => Promise.reject("Oh no..."));
  * } catch {}
  *
- * console.assert($data === null);
- * console.assert($error === "Oh no...");
+ * assert($data === null);
+ * assert($error === "Oh no...");
  * ```
- *
- * @param initValue - Defaults to "init", data, error, and even the loading state can be initialized using this param
- * @returns An object containing several states, including the resolved data, errors if any, and a loading state
  */
-export default function asyncStore<Data>(
-  initValue?: InitAsyncStoreValue<Data>
-): SingleValueAsyncStore<Data>;
-export default function asyncStore<Data extends unknown[]>(
-  initValue?: InitAsyncStoreValue<Data>
-): ListAsyncStore<Data>;
-export default function asyncStore<Data extends unknown[]>(
-  initValue: InitAsyncStoreValue<Data> = {}
-): unknown {
-  const loading = writable("loading" in initValue ? initValue.loading : false);
-  const error = writable("error" in initValue ? initValue.error : null);
-  const data = writable("data" in initValue ? initValue.data : null);
+export class AsyncStoreOrchestrator<Data> implements Orchestrator {
+  name = "AsyncStore";
 
-  async function run(promise: () => Promise<Data>) {
-    loading.set(true);
+  loading: Writable<boolean>;
+  error: Writable<unknown>;
+  data: Writable<Data | null>;
+
+  constructor(initValue: InitAsyncStoreOrchestratorValue<Data> = {}) {
+    this.loading = new Writable(
+      ("loading" in initValue && initValue.loading) || false
+    );
+    this.error = new Writable("error" in initValue ? initValue.error : null);
+    this.data = new Writable(("data" in initValue && initValue.data) || null);
+  }
+
+  /**
+   * Run the provided [async thunk](https://en.wikipedia.org/wiki/Thunk)
+   * and populate the stores accordingly.
+   */
+  async run(promise: () => Promise<Data>) {
+    this.loading.set(true);
 
     let newData: Data;
 
     try {
       newData = await promise();
 
-      data.set(newData);
+      this.data.set(newData);
 
-      error.set(null);
-    } catch (e) {
-      data.set(null);
+      this.error.set(null);
+    } catch (error) {
+      this.data.set(null);
 
-      error.set(e);
+      this.error.set(error);
 
-      throw e;
+      throw error;
     } finally {
-      loading.set(false);
+      this.loading.set(false);
     }
 
     return newData;
   }
+}
 
-  async function loadMore(promise: () => Promise<Data>) {
-    loading.set(true);
+export class AsyncStoreOrchestratorList<
+  Data extends unknown[]
+> extends AsyncStoreOrchestrator<Data> {
+  name = "AsyncStoreList";
+
+  /**
+   * Unlike the `run` function, `loadMore` will not replace but rather append
+   * the promise result to the data.
+   *
+   * `loadMore` returns _only the appended results_.
+   *
+   * On error the data will be preserved.
+   */
+  async loadMore(promise: () => Promise<Data>) {
+    this.loading.set(true);
 
     let appendedData: Data;
 
     try {
       appendedData = await promise();
 
-      data.update(
+      this.data.update(
         (currentData): Data =>
           (currentData
             ? [...currentData, ...appendedData]
             : appendedData) as Data
       );
 
-      error.set(null);
-    } catch (e) {
-      error.set(e);
+      this.error.set(null);
+    } catch (error) {
+      this.error.set(error);
 
-      throw e;
+      throw error;
     } finally {
-      loading.set(false);
+      this.loading.set(false);
     }
 
     return appendedData;
   }
-
-  return {
-    data,
-    loading,
-    error,
-    run,
-    loadMore,
-  };
 }

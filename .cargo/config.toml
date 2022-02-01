@@ -6,25 +6,31 @@ vcs = "none"
 ################################################################################
 
 [alias]
-md = "run -p lgn-monorepo --"
-m = "run -q -p lgn-monorepo --"
+md = "run -p monorepo --"
+m = "run -q -p monorepo --"
+bootstrap = "run -p bootstrap"
 
 # for cases when settings only accept a single word and m clippy, m build wouldn't work
-mclippy = "run -q -p lgn-monorepo -- clippy"
-mbuild = "run -q -p lgn-monorepo -- build"
-mtest = "run -q -p lgn-monorepo -- test"
-mdoc = "run -q -p lgn-monorepo -- doc"
-mrun = "run -q -p lgn-monorepo -- run"
-ci = "run -q -p lgn-monorepo -- ci"
+mclippy = "run -q -p monorepo -- clippy"
+mbuild = "run -q -p monorepo -- build"
+mtest = "run -q -p monorepo -- test"
+mdoc = "run -q -p monorepo -- doc"
+mrun = "run -q -p monorepo -- run"
+ci = "run -q -p monorepo -- ci"
 
-# command used in vs code, to get errors on the initial build of lgn-monorepo
-vsclippy = "run -q --message-format=json -p lgn-monorepo -- clippy"
+# command used in vs code, to get errors on the initial build of monorepo
+vsclippy = "run -q --message-format=json -p monorepo -- clippy"
 
 ################################################################################
 
-# To be set if necesseary to enable sanitizers
-#[build]
-#rustflags = ["-C", "link-args=-fsanitize=address"]
+[build]
+rustflags = [
+    # enable support for tokio's tracing feature (currently unstable)
+    "--cfg",
+    "tokio_unstable",
+    # enable sanitizers
+    # "-C", "link-args=-fsanitize=address"
+]
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"

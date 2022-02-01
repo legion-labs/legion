@@ -21,8 +21,6 @@ lgn-data-compiler = { path = "../lgn-data-compiler" }
 
 # Compilers
 lgn-compiler-debugcube = { path = "../lgn-debugcube-compiler" }
-lgn-compiler-entitydc = { path = "../lgn-entitydc-compiler" }
-lgn-compiler-instancedc = { path = "../lgn-instancedc-compiler" }
 lgn-compiler-material = { path = "../lgn-material-compiler" }
 lgn-compiler-psd2tex = { path = "../lgn-psd2tex-compiler" }
 lgn-compiler-runtime-entity = { path = "../lgn-runtime-entity-compiler" }
@@ -35,3 +33,4 @@ lgn-compiler-test-reverse = { path = "../../tests/reverse-compiler" }
 lgn-compiler-test-split = { path = "../../tests/split-compiler" }
 lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
 lgn-compiler-tex2bin = { path = "../../tests/tex2bin-compiler" }
+lgn-compiler-script2asm = { path = "../lgn-script2asm-compiler" }

@@ -14,6 +14,9 @@ pub struct ArrayDescriptor {
     pub get: unsafe fn(array: *const (), index: usize) -> anyhow::Result<*const ()>,
     /// Function to return an element mutable raw pointer
     pub get_mut: unsafe fn(array: *mut (), index: usize) -> anyhow::Result<*mut ()>,
+    /// Function to clear an array
+    pub clear: unsafe fn(array: *mut ()),
+
     /// Function to insert a new defualt element at the specified index
     pub insert_element: unsafe fn(
         array: *mut (),
@@ -82,6 +85,10 @@ macro_rules! implement_array_descriptor {
                         .get_mut(index).ok_or($crate::ArrayDescriptorError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")).into())
                         .and_then(|value| Ok((value as *mut $type_id).cast::<()>()))
                 },
+                clear:|array: *mut ()| unsafe {
+                    (*(array as *mut Vec<$type_id>)).clear();
+                },
+
                 insert_element : |array: *mut(), index : usize, deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
                     let array = &mut (*(array as *mut Vec<$type_id>));
                     let new_element : $type_id = ::erased_serde::deserialize(deserializer)?;

@@ -8,6 +8,8 @@ use lgn_data_model::{implement_box_dyn_reflection, TypeReflection};
 pub trait Component: Any + Sync + Send + TypeReflection {
     /// Compare to dynamic Component instance is they are the same
     fn eq(&self, other: &dyn Component) -> bool;
+    /// Activate all the references of a Component
+    fn activate_references(&mut self, _registry: &crate::AssetRegistry) {}
 }
 
 /// Note: Based on impl of dyn Any
@@ -41,4 +43,4 @@ impl PartialEq for dyn Component {
     }
 }
 
-implement_box_dyn_reflection!(dyn Component);
+implement_box_dyn_reflection!(dyn Component, ComponentFactory);

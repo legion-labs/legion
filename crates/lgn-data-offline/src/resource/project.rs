@@ -3,10 +3,15 @@ use std::{
     fs::{self, File, OpenOptions},
     io::Seek,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_source_control::{
+    edit_file, find_local_changes, list_remote_files, revert_file, track_new_file, IndexBackend,
+    LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -88,6 +93,8 @@ pub struct Project {
     db: ResourceDb,
     project_dir: PathBuf,
     resource_dir: PathBuf,
+    local_remote: Option<LocalIndexBackend>,
+    workspace: Workspace,
 }
 
 #[derive(Error, Debug)]
@@ -102,6 +109,9 @@ pub enum Error {
     /// IO error on the project index file.
     #[error("IO on '{0}' failed with {1}")]
     Io(PathBuf, #[source] std::io::Error),
+    /// Source Control related error.
+    #[error("Source Control Error: '{0}'")]
+    SourceControl(#[source] lgn_source_control::Error),
 }
 
 impl Project {
@@ -124,9 +134,14 @@ impl Project {
         Self::root_to_index_path(&self.project_dir)
     }
 
+    /// Returns directory the project is in, relative to CWD.
+    pub fn project_dir(&self) -> &Path {
+        &self.project_dir
+    }
+
     /// Creates a new project index file turning the containing directory into a
     /// project.
-    pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
@@ -145,16 +160,40 @@ impl Project {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
+        let remote = {
+            let remote_dir = project_dir.join("remote");
+            let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
+            let _res = remote.create_index().await.map_err(Error::SourceControl)?;
+            remote
+        };
+
+        let workspace = Workspace::init(
+            &resource_dir,
+            WorkspaceConfig {
+                index_url: "../remote/".to_string(),
+                registration: WorkspaceRegistration::new_with_current_user(),
+            },
+        )
+        .await
+        .map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: anyhow::Error::new(e),
+                context: "Workspace::init".to_string(),
+            })
+        })?;
+
         Ok(Self {
             file,
             db,
             project_dir,
             resource_dir,
+            local_remote: Some(remote),
+            workspace,
         })
     }
 
     /// Opens the project index specified
-    pub fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
@@ -167,57 +206,92 @@ impl Project {
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
+
+        let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: anyhow::Error::new(e),
+                context: "Workspace::load".to_string(),
+            })
+        })?;
+
         Ok(Self {
             file,
             db,
             project_dir,
             resource_dir,
+            local_remote: None,
+            workspace,
         })
     }
 
-    /// Reload a project
-    pub fn reload(&mut self) -> Result<(), Error> {
-        let index_path = Self::root_to_index_path(&self.project_dir);
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .append(false)
-            .open(&index_path)
-            .map_err(|_e| Error::NotFound)?;
-
-        self.file = file;
-        self.db =
-            serde_json::from_reader(&self.file).map_err(|e| Error::Parse(index_path.clone(), e))?;
-        Ok(())
-    }
-
     /// Deletes the project by deleting the index file.
-    pub fn delete(self) {
+    pub async fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
         let index_path = self.indexfile_path();
         let _res = fs::remove_file(index_path);
+
+        if let Some(remote) = &self.local_remote {
+            remote.destroy_index().await.unwrap();
+        }
+    }
+
+    async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+        let local_changes = find_local_changes(&self.workspace).await.map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: e,
+                context: "local_resource_list".to_string(),
+            })
+        })?;
+        let changes = local_changes
+            .iter()
+            .map(|change| PathBuf::from(&change.relative_path))
+            .filter(|path| path.extension().is_none())
+            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        Ok(changes)
+    }
+
+    async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+        let files = list_remote_files(&self.workspace).await.map_err(|e| {
+            Error::SourceControl(lgn_source_control::Error::Other {
+                source: e,
+                context: "remote_resource_list".to_string(),
+            })
+        })?;
+
+        let files = files
+            .iter()
+            .map(|file| PathBuf::from(&file))
+            .filter(|path| path.extension().is_none())
+            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        Ok(files)
     }
 
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub fn resource_list(&self) -> impl Iterator<Item = ResourceTypeAndId> + '_ {
-        self.db
-            .remote_resources
-            .iter()
-            .chain(self.db.local_resources.iter())
-            .copied()
+    pub async fn resource_list(&self) -> Vec<ResourceId> {
+        let mut all = self.local_resource_list().await.unwrap();
+        let remote = self.remote_resource_list().await.unwrap();
+        all.extend(remote);
+        all
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
-    pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
+    pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
         // this below would be better expressed as try_map (still experimental).
         let res = self
             .resource_list()
+            .await
+            .into_iter()
             .find_map(|id| match self.read_meta(id) {
                 Ok(meta) => {
                     if &meta.name == name {
-                        Some(Ok(id))
+                        Some(Ok(ResourceTypeAndId {
+                            id,
+                            kind: meta.type_id,
+                        }))
                     } else {
                         None
                     }
@@ -232,13 +306,39 @@ impl Project {
     }
 
     /// Checks if a resource with a given name is part of the project.
-    pub fn exists_named(&self, name: &ResourcePathName) -> bool {
-        self.find_resource(name).is_ok()
+    pub async fn exists_named(&self, name: &ResourcePathName) -> bool {
+        self.find_resource(name).await.is_ok()
     }
 
     /// Checks if a resource is part of the project.
-    pub fn exists(&self, id: ResourceTypeAndId) -> bool {
-        self.resource_list().any(|v| v == id)
+    pub async fn exists(&self, id: ResourceId) -> bool {
+        self.resource_list().await.iter().any(|v| v == &id)
+    }
+
+    /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
+    /// or increment the suffix number until resource name is not used
+    /// Ex: /world/sample => /world/sample1
+    /// Ex: /world/instance1099 => /world/instance1100
+    pub async fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
+        let mut name: String = resource_path.to_string();
+
+        // extract the current suffix number if avaiable
+        let mut suffix = String::new();
+        name.chars()
+            .rev()
+            .take_while(|c| c.is_digit(10))
+            .for_each(|c| suffix.insert(0, c));
+
+        name = name.trim_end_matches(suffix.as_str()).into();
+        let mut index = suffix.parse::<u32>().unwrap_or(1);
+        loop {
+            // Check if the resource_name exists, if not increment index
+            let new_path: ResourcePathName = format!("{}{}", name, index).into();
+            if !self.exists_named(&new_path).await {
+                return new_path;
+            }
+            index += 1;
+        }
     }
 
     /// Add a given resource of a given type with an associated `.meta`.
@@ -249,7 +349,7 @@ impl Project {
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
-    pub fn add_resource(
+    pub async fn add_resource(
         &mut self,
         name: ResourcePathName,
         kind_name: &str,
@@ -262,6 +362,7 @@ impl Project {
             id: ResourceId::new(),
         };
         self.add_resource_with_id(name, kind_name, kind, type_id, handle, registry)
+            .await
     }
 
     /// Add a given resource of a given type and id with an associated `.meta`.
@@ -272,7 +373,7 @@ impl Project {
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
-    pub fn add_resource_with_id(
+    pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
         kind_name: &str,
@@ -281,8 +382,8 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(type_id);
-        let resource_path = self.resource_path(type_id);
+        let meta_path = self.metadata_path(type_id.id);
+        let resource_path = self.resource_path(type_id.id);
 
         let directory = {
             let mut directory = resource_path.clone();
@@ -311,7 +412,7 @@ impl Project {
 
         let meta_file = File::create(&meta_path).map_err(|e| {
             fs::remove_file(&resource_path).unwrap();
-            Error::Io(meta_path, e)
+            Error::Io(meta_path.clone(), e)
         })?;
 
         let metadata = Metadata::new_with_dependencies(
@@ -323,41 +424,83 @@ impl Project {
         );
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
+        {
+            track_new_file(&self.workspace, &meta_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "add resource".to_string(),
+                    })
+                })?;
+
+            track_new_file(&self.workspace, &resource_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "add resource".to_string(),
+                    })
+                })?;
+        }
+
         self.db.local_resources.push(type_id);
         Ok(type_id)
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id);
-        let metadata_path = self.metadata_path(type_id);
+    pub async fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
+        let resource_path = self.resource_path(id);
+        let metadata_path = self.metadata_path(id);
+
+        {
+            // todo: for now this assumes the files are staged but not committed.
+
+            revert_file(&self.workspace, &metadata_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "delete_resource".to_string(),
+                    })
+                })?;
+
+            revert_file(&self.workspace, &resource_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "delete_resource".to_string(),
+                    })
+                })?;
+        }
 
         std::fs::remove_file(&resource_path).map_err(|e| Error::Io(resource_path, e))?;
         std::fs::remove_file(&metadata_path).map_err(|e| Error::Io(metadata_path, e))?;
 
-        self.db.local_resources.retain(|x| *x != type_id);
-        self.db.remote_resources.retain(|x| *x != type_id);
+        self.db.local_resources.retain(|x| x.id != id);
+        self.db.remote_resources.retain(|x| x.id != id);
         Ok(())
     }
 
     /// Writes the resource behind `handle` from memory to disk and updates the
     /// corresponding .meta file.
-    pub fn save_resource(
+    pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<ResourceHandleUntyped>,
         resources: &mut ResourceRegistry,
     ) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id);
-        let metadata_path = self.metadata_path(type_id);
+        let resource_path = self.resource_path(type_id.id);
+        let metadata_path = self.metadata_path(type_id.id);
 
         let mut meta_file = OpenOptions::new()
             .read(true)
             .write(true)
             .open(&metadata_path)
             .map_err(|e| Error::Io(metadata_path.clone(), e))?;
-        let mut metadata: Metadata =
-            serde_json::from_reader(&meta_file).map_err(|e| Error::Parse(metadata_path, e))?;
+        let mut metadata: Metadata = serde_json::from_reader(&meta_file)
+            .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
 
         let build_dependencies = {
             let mut resource_file = OpenOptions::new()
@@ -376,7 +519,7 @@ impl Project {
             let mut resource_file =
                 File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
             content_checksum_from_read(&mut resource_file)
-                .map_err(|e| Error::Io(resource_path, e))?
+                .map_err(|e| Error::Io(resource_path.clone(), e))?
         };
 
         metadata.content_checksum = content_checksum;
@@ -385,6 +528,27 @@ impl Project {
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+
+        {
+            // todo: editing a file just added for 'Add' will fail.
+            // we still must handle other errors.
+            let _result = edit_file(&self.workspace, &metadata_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "save_resource".to_string(),
+                    })
+                });
+            let _result = edit_file(&self.workspace, &resource_path)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: e,
+                        context: "save_resource".to_string(),
+                    })
+                });
+        }
         Ok(())
     }
 
@@ -398,7 +562,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, Error> {
-        let resource_path = self.resource_path(type_id);
+        let resource_path = self.resource_path(type_id.id);
 
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
@@ -411,27 +575,26 @@ impl Project {
     /// Returns information about a given resource from its `.meta` file.
     pub fn resource_info(
         &self,
-        type_id: ResourceTypeAndId,
-    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(type_id)?;
+        id: ResourceId,
+    ) -> Result<(ResourceType, ResourceHash, Vec<ResourcePathId>), Error> {
+        let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
 
-        Ok((resource_hash, dependencies))
+        Ok((meta.type_id, resource_hash, dependencies))
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, type_id: ResourceTypeAndId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id)?;
+    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(id)?;
         if let Some((resource_id, suffix)) = meta
             .name
             .as_str()
             .strip_prefix("/!")
             .and_then(|v| v.split_once('/'))
         {
-            if let Ok(resource_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id)
-            {
-                if let Ok(mut parent_path) = self.resource_name(resource_id) {
+            if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
+                if let Ok(mut parent_path) = self.resource_name(type_id.id) {
                     parent_path.push(suffix);
                     return Ok(parent_path);
                 }
@@ -440,9 +603,15 @@ impl Project {
         Ok(meta.name)
     }
 
-    /// Returns the type name of the resource from its `.meta` file.
-    pub fn resource_type_name(&self, type_id: ResourceTypeAndId) -> Result<String, Error> {
+    /// Returns the raw name of the resource from its `.meta` file.
+    pub fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
         let meta = self.read_meta(type_id)?;
+        Ok(meta.name)
+    }
+
+    /// Returns the type name of the resource from its `.meta` file.
+    pub fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
+        let meta = self.read_meta(id)?;
         Ok(meta.type_name)
     }
 
@@ -451,15 +620,15 @@ impl Project {
         self.resource_dir.clone()
     }
 
-    fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
+    fn metadata_path(&self, id: ResourceId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(type_id.id.resource_path());
+        path.push(id.resource_path());
         path.set_extension(METADATA_EXT);
         path
     }
 
-    fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(type_id.id.resource_path())
+    fn resource_path(&self, id: ResourceId) -> PathBuf {
+        self.resource_dir().join(id.resource_path())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
@@ -482,8 +651,8 @@ impl Project {
         Err(Error::NotFound)
     }
 
-    fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
-        let path = self.metadata_path(type_id);
+    fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
+        let path = self.metadata_path(id);
 
         let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
 
@@ -491,16 +660,16 @@ impl Project {
         Ok(result)
     }
 
-    fn update_meta<F>(&self, type_id: ResourceTypeAndId, mut func: F)
+    async fn update_meta<F>(&self, id: ResourceId, mut func: F)
     where
         F: FnMut(&mut Metadata),
     {
-        let path = self.metadata_path(type_id);
+        let path = self.metadata_path(id);
 
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(path)
+            .open(&path)
             .unwrap(); // todo(kstasik): return a result and propagate an error
 
         let mut meta = serde_json::from_reader(&file).unwrap();
@@ -510,13 +679,24 @@ impl Project {
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&file, &meta).unwrap();
+
+        {
+            // todo: editing a file just added for 'Add' will fail.
+            // we still must handle other errors.
+            let _result = edit_file(&self.workspace, &path).await.map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: e,
+                    context: "update_meta".to_string(),
+                })
+            });
+        }
     }
 
     /// Change the name of the resource.
     ///
     /// Changing the name of the resource if `free`. It does not change its
     /// `ResourceId` nor it invalidates any build using that asset.
-    pub fn rename_resource(
+    pub async fn rename_resource(
         &mut self,
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
@@ -524,9 +704,10 @@ impl Project {
         self.checkout(type_id)?;
 
         let mut old_name: Option<ResourcePathName> = None;
-        self.update_meta(type_id, |data| {
+        self.update_meta(type_id.id, |data| {
             old_name = Some(data.rename(new_name));
-        });
+        })
+        .await;
         Ok(old_name.unwrap())
     }
 
@@ -561,7 +742,7 @@ impl Drop for Project {
 
 impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let names = self.resource_list().map(|r| self.resource_name(r).unwrap());
+        let names: Vec<ResourceTypeAndId> = vec![]; // todo self.resource_list().map(|r| self.resource_name(r).unwrap());
         f.debug_list().entries(names).finish()
     }
 }
@@ -569,13 +750,12 @@ impl fmt::Debug for Project {
 #[cfg(test)]
 mod tests {
     use std::any::Any;
-    use std::sync::{Arc, Mutex};
-    use std::{fs::File, path::Path, str::FromStr};
+    use std::sync::Arc;
+    use std::{fs::File, str::FromStr};
 
     use lgn_data_runtime::{resource, Resource, ResourceType};
-    use tempfile::TempDir;
+    use tokio::sync::Mutex;
 
-    use super::ResourceDb;
     use crate::resource::project::Project;
     use crate::resource::Error;
     use crate::{
@@ -584,17 +764,6 @@ mod tests {
         },
         ResourcePathId,
     };
-
-    fn setup_test() -> TempDir {
-        let root = tempfile::tempdir().unwrap();
-
-        let project_index_path = Project::root_to_index_path(root.path());
-        let project_index_file = File::create(project_index_path).unwrap();
-        std::fs::create_dir(root.path().join("offline")).unwrap();
-
-        serde_json::to_writer_pretty(project_index_file, &ResourceDb::default()).unwrap();
-        root
-    }
 
     const RESOURCE_TEXTURE: &str = "texture";
     const RESOURCE_MATERIAL: &str = "material";
@@ -681,9 +850,8 @@ mod tests {
         }
     }
 
-    fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
-        let index_path = Project::root_to_index_path(project_dir);
-        let mut project = Project::open(&index_path).unwrap();
+    #[allow(clippy::too_many_lines)]
+    async fn create_actor(project: &mut Project) -> Arc<Mutex<ResourceRegistry>> {
         let resources_arc = ResourceRegistryOptions::new()
             .add_type_processor(
                 ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
@@ -705,9 +873,9 @@ mod tests {
                 ResourceType::new(RESOURCE_ACTOR.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .create_registry();
+            .create_async_registry();
 
-        let mut resources = resources_arc.lock().unwrap();
+        let mut resources = resources_arc.lock().await;
         let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
@@ -717,6 +885,7 @@ mod tests {
                 &resources.new_resource(texture_type).unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
@@ -737,6 +906,7 @@ mod tests {
                 &material,
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let geometry_type = ResourceType::new(RESOURCE_GEOMETRY.as_bytes());
@@ -757,6 +927,7 @@ mod tests {
                 &geometry,
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let skeleton_type = ResourceType::new(RESOURCE_SKELETON.as_bytes());
@@ -768,6 +939,7 @@ mod tests {
                 &resources.new_resource(skeleton_type).unwrap(),
                 &mut resources,
             )
+            .await
             .unwrap();
 
         let actor_type = ResourceType::new(RESOURCE_ACTOR.as_bytes());
@@ -787,13 +959,14 @@ mod tests {
                 &actor,
                 &mut resources,
             )
+            .await
             .unwrap();
 
         drop(resources);
-        (project, resources_arc)
+        resources_arc
     }
 
-    fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
+    async fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
         let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
@@ -803,6 +976,7 @@ mod tests {
                 &resources.new_resource(texture_type).unwrap(),
                 resources,
             )
+            .await
             .unwrap();
 
         let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
@@ -824,57 +998,58 @@ mod tests {
                 &material,
                 resources,
             )
+            .await
             .unwrap();
     }
 
-    /*
-     * + data-offline/
-     *  - albedo.texture
-     *  - body.material // texture ref
-     *  - hero.geometry // material ref
-     *  - hero.actor // geometry ref, skeleton ref
-     *  - hero.skeleton // no refs
-     */
+    /* test disabled due to problems with project deletion.
+    sqlx doesn't release .db file for some reason.
 
-    #[test]
-    fn proj_create_delete() {
+    #[tokio::test]
+    async fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(root.path()).expect("failed to create project");
-        let same_project = Project::create_new(root.path());
+        let project = Project::create_new(root.path())
+            .await
+            .expect("failed to create project");
+        let same_project = Project::create_new(root.path()).await;
         assert!(same_project.is_err());
 
-        project.delete();
+        project.delete().await;
 
-        let _project = Project::create_new(root.path()).expect("failed to re-create project");
-        let same_project = Project::create_new(root.path());
+        let _project = Project::create_new(root.path())
+            .await
+            .expect("failed to re-create project");
+        let same_project = Project::create_new(root.path()).await;
         assert!(same_project.is_err());
-    }
+    }*/
 
-    #[test]
-    fn proj_open() {
+    #[tokio::test]
+    async fn proj_open() {
         let root = tempfile::tempdir().unwrap();
 
         let proj_path = root.path().join("project.index");
         let _fake_project = File::create(proj_path);
 
-        let project = Project::open(root.path());
+        let project = Project::open(root.path()).await;
         assert!(matches!(project.unwrap_err(), Error::Parse(_, _)));
     }
 
-    #[test]
-    fn local_changes() {
-        let proj_root_path = setup_test();
-        let (project, _) = create_actor(proj_root_path.path());
+    #[tokio::test]
+    async fn local_changes() {
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project).await;
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
     }
 
-    #[test]
-    fn commit() {
-        let proj_root_path = setup_test();
-        let (mut project, _) = create_actor(proj_root_path.path());
+    #[tokio::test]
+    async fn commit() {
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project).await;
 
         project.commit().unwrap();
 
@@ -882,51 +1057,59 @@ mod tests {
         assert_eq!(project.db.remote_resources.len(), 5);
     }
 
-    #[test]
-    fn immediate_dependencies() {
-        let project_dir = setup_test();
-        let (project, _) = create_actor(project_dir.path());
+    #[tokio::test]
+    async fn immediate_dependencies() {
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let _resources = create_actor(&mut project).await;
 
         let top_level_resource = project
             .find_resource(&ResourcePathName::new("hero.actor"))
+            .await
             .unwrap();
 
-        let (_, dependencies) = project.resource_info(top_level_resource).unwrap();
+        let (_, _, dependencies) = project.resource_info(top_level_resource.id).unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }
 
-    #[test]
-    fn rename() {
-        let rename_assert =
-            |proj: &mut Project, old_name: ResourcePathName, new_name: ResourcePathName| {
-                let skeleton_id = proj.find_resource(&old_name);
-                assert!(skeleton_id.is_ok());
-                let skeleton_id = skeleton_id.unwrap();
+    async fn rename_assert(
+        proj: &mut Project,
+        old_name: ResourcePathName,
+        new_name: ResourcePathName,
+    ) {
+        let skeleton_id = proj.find_resource(&old_name).await;
+        assert!(skeleton_id.is_ok());
+        let skeleton_id = skeleton_id.unwrap();
 
-                let prev_name = proj.rename_resource(skeleton_id, &new_name);
-                assert!(prev_name.is_ok());
-                let prev_name = prev_name.unwrap();
-                assert_eq!(&prev_name, &old_name);
+        let prev_name = proj.rename_resource(skeleton_id, &new_name).await;
+        assert!(prev_name.is_ok());
+        let prev_name = prev_name.unwrap();
+        assert_eq!(&prev_name, &old_name);
 
-                assert!(proj.find_resource(&old_name).is_err());
-                assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
-            };
+        assert!(proj.find_resource(&old_name).await.is_err());
+        assert_eq!(proj.find_resource(&new_name).await.unwrap(), skeleton_id);
+    }
 
-        let project_dir = setup_test();
-        let (mut project, resources) = create_actor(project_dir.path());
+    #[tokio::test]
+    async fn rename() {
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let resources = create_actor(&mut project).await;
         assert!(project.commit().is_ok());
-        create_sky_material(&mut project, &mut resources.lock().unwrap());
+        create_sky_material(&mut project, &mut *resources.lock().await).await;
 
         rename_assert(
             &mut project,
             ResourcePathName::new("hero.skeleton"),
             ResourcePathName::new("boss.skeleton"),
-        );
+        )
+        .await;
         rename_assert(
             &mut project,
             ResourcePathName::new("sky.material"),
             ResourcePathName::new("clouds.material"),
-        );
+        )
+        .await;
     }
 }

@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api";
 import { UserInfo } from "../lib/auth";
 import { createAwsCognito } from "../lib/auth/browser";
 import { getCookie } from "../lib/cookie";
-import asyncStore from "./asyncStore";
+import { AsyncStoreOrchestrator } from "./asyncStore";
 
 export async function getUserInfo() {
   const awsCognitoAuthenticator = createAwsCognito();
@@ -18,4 +18,4 @@ export async function getUserInfo() {
   return awsCognitoAuthenticator.getUserInfo(accessToken);
 }
 
-export default asyncStore<UserInfo>();
+export default new AsyncStoreOrchestrator<UserInfo>();

@@ -1,5 +1,4 @@
-use crate::type_reflection::TypeReflection;
-use crate::utils::ReflectionError;
+use crate::type_reflection::{TypeDefinition, TypeReflection};
 use crate::utils::{deserialize_property_by_name, serialize_property_by_name};
 
 /// Read a Property as a json value
@@ -49,25 +48,144 @@ pub fn reflection_apply_json_edit<T: TypeReflection>(
     object: &mut T,
     values: &serde_json::Value,
 ) -> anyhow::Result<()> {
-    if let serde_json::Value::Object(json_object) = values {
-        json_object
-            .iter()
-            .try_for_each(|(key, value)| -> anyhow::Result<()> {
-                let mut erased_de = <dyn erased_serde::Deserializer<'_>>::erase(value);
-                match deserialize_property_by_name(object, key, &mut erased_de) {
-                    Ok(_) => Ok(()),
-                    Err(err) => {
-                        // Ignore InvalidPath when applying json
-                        if let Some(ReflectionError::FieldNotFoundOnStruct(_, _)) =
-                            err.downcast_ref::<ReflectionError>()
+    internal_apply_json_edit(
+        Some((object as *mut dyn TypeReflection).cast::<()>()),
+        object.get_type(),
+        values,
+    )?;
+    Ok(())
+}
+
+// Recursively serialize the json_value using the Reflection descriptor
+fn internal_apply_json_edit(
+    target: Option<*mut ()>,
+    offline_type_def: TypeDefinition,
+    json_value: &serde_json::Value,
+) -> anyhow::Result<serde_json::Value> {
+    match offline_type_def {
+        TypeDefinition::None => {
+            return Err(anyhow::anyhow!("error"));
+        }
+        TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+            // Read the 'typetag' map
+            if let serde_json::Value::Object(object) = json_value {
+                if let Some((k, value)) = object.iter().next() {
+                    // Find the dyn Type descriptor using factory
+                    if let Some(instance_type) = (box_dyn_descriptor.find_type)(k.as_str()) {
+                        if let Ok(result_json) =
+                            internal_apply_json_edit(None, instance_type, value)
                         {
-                            Ok(())
-                        } else {
-                            Err(err)
+                            // 'typetag' require a wrapper, add a Value::Object()
+                            return Ok(serde_json::json!({ k: result_json }));
                         }
                     }
                 }
-            })?;
+            }
+        }
+        TypeDefinition::Array(array_descriptor) => {
+            if let serde_json::Value::Array(array) = json_value {
+                let array_target = target.unwrap();
+                // Reset array using descriptor
+                unsafe {
+                    (array_descriptor.clear)(array_target);
+                }
+                for (i, value) in array.iter().enumerate() {
+                    // For each element, apply the values and return the merge json
+                    if let Ok(merged_json) =
+                        internal_apply_json_edit(None, array_descriptor.inner_type, value)
+                    {
+                        // Add the new element into the array using the merged_json result
+                        unsafe {
+                            (array_descriptor.insert_element)(
+                                array_target,
+                                i,
+                                &mut <dyn erased_serde::Deserializer<'_>>::erase(&merged_json),
+                            )?;
+                        }
+                    }
+                }
+            }
+        }
+
+        TypeDefinition::Primitive(primitive_descriptor) => {
+            // If there's a target, serialize in it directly, else return the json_value as is to be add to array or option
+            if let Some(target) = target {
+                let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(json_value);
+                unsafe {
+                    (primitive_descriptor.base_descriptor.dynamic_deserialize)(
+                        target,
+                        &mut deserializer,
+                    )?;
+                }
+                return Ok(serde_json::Value::Null);
+            }
+            return Ok(json_value.clone());
+        }
+
+        TypeDefinition::Option(offline_option_descriptor) => {
+            let option_value = if !json_value.is_null() {
+                // Recursively process the option value
+                internal_apply_json_edit(None, offline_option_descriptor.inner_type, json_value)?
+            } else {
+                serde_json::Value::Null
+            };
+
+            // If there's a 'target', apply the value
+            if let Some(target) = target {
+                let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(&option_value);
+                unsafe {
+                    (offline_option_descriptor
+                        .base_descriptor
+                        .dynamic_deserialize)(target, &mut deserializer)?;
+                }
+                return Ok(serde_json::Value::Null);
+            }
+            return Ok(option_value);
+        }
+        TypeDefinition::Struct(struct_descriptor) => {
+            // If there's already a target, process all its fields
+            if let Some(target) = target {
+                if let serde_json::Value::Object(object) = json_value {
+                    struct_descriptor.fields.iter().try_for_each(
+                        |offline_field| -> anyhow::Result<()> {
+                            if let Some(field_value) = object.get(&offline_field.field_name) {
+                                let field_base = unsafe {
+                                    target.cast::<u8>().add(offline_field.offset).cast::<()>()
+                                };
+                                internal_apply_json_edit(
+                                    Some(field_base),
+                                    offline_field.field_type,
+                                    field_value,
+                                )?;
+                            }
+                            Ok(())
+                        },
+                    )?;
+                }
+            } else {
+                // If the target doesn't exists (array/option init), create a default one and recursively process it
+                let mut new_struct = (struct_descriptor.new_instance)();
+                let ty: &mut dyn TypeReflection = new_struct.as_mut();
+                internal_apply_json_edit(
+                    Some((ty as *mut dyn TypeReflection).cast::<()>()),
+                    ty.get_type(),
+                    json_value,
+                )?;
+                // Re-serialize the entire struct to generated a merge_json to return to the parent array/option
+                let mut buffer = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut buffer);
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                unsafe {
+                    (struct_descriptor.base_descriptor.dynamic_serialize)(
+                        (ty as *const dyn TypeReflection).cast::<()>(),
+                        &mut serializer,
+                    )?;
+                }
+                return Ok(serde_json::from_slice::<serde_json::Value>(
+                    buffer.as_slice(),
+                )?);
+            }
+        }
     }
-    Ok(())
+    Ok(serde_json::Value::Null)
 }

@@ -23,7 +23,7 @@ use sample_data_compiler::{offline_compiler, raw_loader};
 #[clap(setting(AppSettings::ArgRequiredElseHelp))]
 struct Args {
     /// Folder containing raw/ directory
-    #[clap(long, default_value = "test/sample-data")]
+    #[clap(long, default_value = "tests/sample-data")]
     root: String,
     /// Path name of the resource to compile
     #[clap(long, default_value = "/world/sample_1.ent")]
@@ -33,7 +33,8 @@ struct Args {
     clean: bool,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     if args.clean {
@@ -41,10 +42,10 @@ fn main() {
     }
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(&args.root);
+    raw_loader::build_offline(&args.root).await;
 
     // compile offline resources to runtime assets
-    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource));
+    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource)).await;
 }
 
 fn clean_folders(project_dir: &str) {
@@ -56,6 +57,7 @@ fn clean_folders(project_dir: &str) {
         can_clean &= path.exists();
         path.pop();
     };
+    test("remote");
     test("offline");
     test("runtime");
     test("temp");
@@ -74,6 +76,7 @@ fn clean_folders(project_dir: &str) {
             remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
             path.pop();
         };
+        delete("remote", true);
         delete("offline", true);
         delete("runtime", true);
         delete("temp", true);

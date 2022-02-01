@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { Writable } from "../lib/store";
 
 export const menus = [
   { id: 1, title: "File" },
@@ -13,14 +13,18 @@ export const menus = [
 // as the menu might become dynamic at one point
 export type Id = typeof menus[number]["id"];
 
-const openedMenuStore = writable<Id | null>(null);
+class Store extends Writable<Id | null> {
+  constructor() {
+    super(null);
+  }
 
-export default {
-  subscribe: openedMenuStore.subscribe,
   close() {
-    openedMenuStore.set(null);
-  },
-  set(id: Id) {
-    openedMenuStore.set(id);
-  },
-};
+    super.set(null);
+  }
+
+  override set(id: Id) {
+    super.set(id);
+  }
+}
+
+export default new Store();

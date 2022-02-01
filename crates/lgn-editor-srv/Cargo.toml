@@ -29,7 +29,7 @@ lgn-input = { path = "../lgn-input" }
 lgn-tasks = { path = "../lgn-tasks" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
 clap = { version = "3.0", features = ["derive"] }
 anyhow = "1.0"
@@ -41,21 +41,29 @@ generic-data = { path = "../../tests/generic-data", version = "0.1.0", features 
     "offline",
     "runtime",
 ] }
-sample-data-offline = { path = "../../tests/sample-data-offline", version = "0.1.0" }
-sample-data-runtime = { path = "../../tests/sample-data-runtime", version = "0.1.0" }
-lgn-graphics-offline = { path = "../lgn-graphics-offline", version = "0.1.0" }
-lgn-graphics-runtime = { path = "../lgn-graphics-runtime", version = "0.1.0" }
+sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
 
 
 [dev-dependencies]
 tempfile = "3.2.0"
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-data-build = { path = "../lgn-data-build", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
-lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
-lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
-lgn-compiler-entitydc = { path = "../lgn-entitydc-compiler" }
-lgn-math = { path = "../lgn-math", version = "0.1.0" }
+lgn-compiler-runtime-entity = { path = "../lgn-runtime-entity-compiler" }
+lgn-compiler-script2asm = { path = "../lgn-script2asm-compiler", version = "0.1.0" }
+
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [

@@ -1,23 +1,28 @@
 use async_trait::async_trait;
 use lgn_tracing::info;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
-    utils::make_path_absolute, BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock,
-    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result,
+    SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
+#[derive(Debug)]
 pub struct LocalIndexBackend {
     directory: PathBuf,
     sql_repository_index: SqlIndexBackend,
 }
 
 impl LocalIndexBackend {
-    pub fn new(directory: PathBuf) -> Result<Self> {
-        let directory =
-            make_path_absolute(directory).map_other_err("failed to make path absolute")?;
-        let db_path = directory.join("repo.db3");
-        let blob_storage_url = &BlobStorageUrl::Local(directory.join("blobs"));
+    pub fn new(directory: impl AsRef<Path>) -> Result<Self> {
+        if !directory.as_ref().is_absolute() {
+            return Err(Error::invalid_index_url(
+                directory.as_ref().to_str().unwrap(),
+                anyhow::anyhow!("expected absolute directory"),
+            ));
+        }
+        let db_path = directory.as_ref().join("repo.db3");
+        let blob_storage_url = &BlobStorageUrl::Local(directory.as_ref().join("blobs"));
 
         // Careful: here be dragons. You may be tempted to store the SQLite url
         // in a `Url` but this will break SQLite on Windows, as attempting to
@@ -34,9 +39,13 @@ impl LocalIndexBackend {
         );
 
         Ok(Self {
-            directory,
+            directory: directory.as_ref().to_owned(),
             sql_repository_index: SqlIndexBackend::new(sqlite_url)?,
         })
+    }
+
+    pub async fn close(&mut self) {
+        self.sql_repository_index.close().await;
     }
 }
 
@@ -191,3 +200,41 @@ impl IndexBackend for LocalIndexBackend {
         self.sql_repository_index.get_blob_storage_url().await
     }
 }
+
+/*#[cfg(test)]
+mod tests {
+    use crate::{IndexBackend, LocalIndexBackend};
+
+    //#[tracing::instrument]
+    async fn test() {
+        println!("Hello world");
+
+        let root = tempfile::tempdir().unwrap();
+        {
+            let mut index = LocalIndexBackend::new(root.path()).unwrap();
+            index.create_index().await.unwrap();
+            index.close().await;
+            //}
+            tokio::time::sleep(tokio::time::Duration::from_micros(1)).await;
+            //{
+            //let index = LocalIndexBackend::new(root.path()).unwrap();
+            index.destroy_index().await.unwrap();
+        }
+    }
+
+    #[test]
+    fn create_destroy() {
+        //tracing_subscriber::fmt::init();
+
+        //console_subscriber::ConsoleLayer::builder()
+        //    .with_default_env()
+        //    .recording_path("D://recording.txt")
+        //    .init();
+
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(test());
+    }
+}*/

@@ -1,4 +1,4 @@
-
+#include "crate://lgn-streamer/gpu/pipeline_layout/rgb2yuv_pipeline_layout.hlsl"
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,10 +65,7 @@ float3 tonemap(float3 value) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture2D<float4> hdr_image;
-RWTexture2D<float> y_image;
-RWTexture2D<float> u_image;
-RWTexture2D<float> v_image;
+
 
 #define UV_TILE_SIZE 8
 
@@ -76,7 +73,7 @@ groupshared float2 gs_uv[UV_TILE_SIZE][UV_TILE_SIZE];
 
 /// Convert RGB to YUV (rec.709)
 [numthreads(UV_TILE_SIZE, UV_TILE_SIZE, 1)]
-void cs_main(uint3 dispatchThreadId : SV_DispatchThreadID,
+void main_cs(uint3 dispatchThreadId : SV_DispatchThreadID,
              uint3 groupThreadId    : SV_GroupThreadID) {
 
     uint2 screenPos = dispatchThreadId.xy;   

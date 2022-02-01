@@ -57,7 +57,9 @@ impl TypeDefinition {
             TypeDefinition::Option(option_descriptor) => {
                 option_descriptor.base_descriptor.type_name.as_str()
             }
-            TypeDefinition::BoxDyn(box_dyn_descriptor) => box_dyn_descriptor.type_name.as_str(),
+            TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+                box_dyn_descriptor.base_descriptor.type_name.as_str()
+            }
             TypeDefinition::None => "None",
         }
     }

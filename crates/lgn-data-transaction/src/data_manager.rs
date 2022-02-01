@@ -42,6 +42,10 @@ pub enum Error {
     /// Invalid Resource Reflection
     #[error("Resource {0} doesn't have reflection.")]
     InvalidTypeReflection(ResourceTypeAndId),
+
+    /// Invalid Resource Type
+    #[error("Invalid resource type {0} ")]
+    InvalidResourceType(ResourceType),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -78,8 +82,11 @@ impl DataManager {
     /// Build a resource by name
     pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> anyhow::Result<()> {
         let mut ctx = LockContext::new(self).await;
-        let resource_id = ctx.project.find_resource(resource_path)?;
-        let (runtime_path_id, _results) = ctx.build.build_all_derived(resource_id)?;
+        let resource_id = ctx.project.find_resource(resource_path).await?;
+        let (runtime_path_id, _results) = ctx
+            .build
+            .build_all_derived(resource_id, &ctx.project)
+            .await?;
         ctx.asset_registry
             .load_untyped(runtime_path_id.resource_id());
         Ok(())
@@ -91,14 +98,19 @@ impl DataManager {
         let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
-        for resource_id in project.resource_list() {
+        for resource_id in project.resource_list().await {
+            let (kind, _, _) = project.resource_info(resource_id).unwrap();
+            let type_id = ResourceTypeAndId {
+                kind,
+                id: resource_id,
+            };
             project
-                .load_resource(resource_id, &mut resource_registry)
+                .load_resource(type_id, &mut resource_registry)
                 .map_or_else(
                     |err| {
-                        warn!("Failed to load {}: {}", resource_id, err);
+                        warn!("Failed to load {}: {}", type_id, err);
                     },
-                    |handle| resource_handles.insert(resource_id, handle),
+                    |handle| resource_handles.insert(type_id, handle),
                 );
         }
         info!(

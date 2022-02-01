@@ -1,5 +1,6 @@
-use std::{fmt, hash::Hash};
+use std::{fmt, hash::Hash, str::FromStr};
 
+use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a resource.
@@ -50,6 +51,44 @@ impl ResourcePathName {
     /// Return the `ResourcePathName` as a str
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    /// Extract the parenting info from the resource name
+    pub fn extract_parent_info(&self) -> (Option<ResourceTypeAndId>, &str) {
+        if let Some((resource_id, relative_name)) = self
+            .0
+            .as_str()
+            .strip_prefix("/!")
+            .and_then(|v| v.split_once('/'))
+        {
+            if let Ok(resource_id) = ResourceTypeAndId::from_str(resource_id) {
+                return (Some(resource_id), relative_name);
+            }
+        }
+        (None, &self.0)
+    }
+
+    /// Replace the encoded parent identifier
+    pub fn replace_parent_info(
+        &mut self,
+        new_parent_id: Option<ResourceTypeAndId>,
+        new_path: Option<Self>,
+    ) {
+        if let Some((resource_id, relative_name)) = self
+            .0
+            .as_str()
+            .strip_prefix("/!")
+            .and_then(|v| v.split_once('/'))
+        {
+            let resource_id = new_parent_id.map_or(resource_id.into(), |s| s.to_string());
+            let new_path = new_path.as_ref().map_or(
+                format!("/{}", relative_name),
+                std::string::ToString::to_string,
+            );
+            self.0 = format!("/!{}{}", resource_id, new_path);
+        } else if let Some(new_path) = new_path {
+            *self = new_path;
+        }
     }
 }
 

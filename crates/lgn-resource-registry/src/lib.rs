@@ -58,27 +58,31 @@ impl ResourceRegistryPlugin {
         let project_dir = settings.root_folder.clone();
         let build_dir = project_dir.join("temp");
 
-        let project = Project::open(&project_dir).expect("unable to open project dir");
-
-        let project = Arc::new(Mutex::new(project));
-
-        let compilers = lgn_ubercompiler::create();
-
+        let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
         let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
-
-        let build_options = DataBuildOptions::new(&build_dir, compilers)
-            .content_store(&ContentStoreAddr::from(build_dir.as_path())); //.asset_registry(asset_registry.clone());
-
         let manifest = world.get_resource::<Manifest>().unwrap();
-        let build_manager = BuildManager::new(build_options, &project_dir, manifest.clone())
-            .expect("the editor requires valid build manager");
 
-        let data_manager = Arc::new(Mutex::new(DataManager::new(
-            project,
-            registry,
-            asset_registry.clone(),
-            build_manager,
-        )));
+        let data_manager = async_rt.block_on(async move {
+            let project = Project::open(&project_dir)
+                .await
+                .expect("unable to open project dir");
+
+            let compilers = lgn_ubercompiler::create();
+
+            let build_options = DataBuildOptions::new(&build_dir, compilers)
+                .content_store(&ContentStoreAddr::from(build_dir.as_path())); //.asset_registry(asset_registry.clone());
+
+            let build_manager = BuildManager::new(build_options, &project, manifest.clone())
+                .await
+                .expect("the editor requires valid build manager");
+
+            Arc::new(Mutex::new(DataManager::new(
+                Arc::new(Mutex::new(project)),
+                registry,
+                asset_registry.clone(),
+                build_manager,
+            )))
+        });
 
         {
             let async_rt = world

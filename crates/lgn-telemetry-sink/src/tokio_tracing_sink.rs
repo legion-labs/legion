@@ -1,16 +1,14 @@
 use std::fmt::Write;
 
+use console_subscriber::ConsoleLayer;
 use lgn_tracing::{dispatch::log_interop, logs::LogMetadata, Level};
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use tracing::{
-    dispatcher::SetGlobalDefaultError,
     field::Field,
     span::{Attributes, Id, Record},
-    subscriber, Event, Subscriber,
+    Event, Subscriber,
 };
-use tracing_subscriber::{
-    layer::Context, prelude::*, registry::LookupSpan, EnvFilter, Layer, Registry,
-};
+use tracing_subscriber::{layer::Context, prelude::*, registry::LookupSpan, EnvFilter, Layer};
 
 // References:
 // * https://docs.rs/tracing/latest/tracing/subscriber/index.html
@@ -19,20 +17,49 @@ use tracing_subscriber::{
 pub(crate) struct TelemetryLayer {}
 
 impl TelemetryLayer {
-    pub(crate) fn setup() {
-        static INIT_RESULT: Lazy<Result<(), SetGlobalDefaultError>> = Lazy::new(|| {
-            let default_filter = format!("{}", ::tracing::Level::INFO);
-            let filter_layer = EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new(&default_filter))
-                .unwrap();
-            let subscriber = Registry::default().with(filter_layer);
+    pub(crate) fn setup(enable_tokio_console_server: bool) {
+        static TRACING_SUBSCRIBER_INIT: OnceCell<()> = OnceCell::new();
 
-            let lgn_telemetry_layer = TelemetryLayer::default();
-            let subscriber = subscriber.with(lgn_telemetry_layer);
+        TRACING_SUBSCRIBER_INIT.get_or_init(|| {
+            let subscriber = tracing_subscriber::registry();
 
-            subscriber::set_global_default(subscriber)
+            // get default filters
+            let subscriber = {
+                let env_filter_layer = EnvFilter::try_from_default_env()
+                    .or_else(|_| {
+                        EnvFilter::try_new(format!(
+                            "{},tokio=trace,runtime=trace",
+                            ::tracing::Level::INFO
+                        ))
+                    })
+                    .unwrap();
+
+                subscriber.with(env_filter_layer)
+            };
+
+            // redirect tokio tracing events and spans to telemetry
+            let subscriber = {
+                let lgn_telemetry_layer = Self::default();
+
+                subscriber.with(lgn_telemetry_layer)
+            };
+
+            if enable_tokio_console_server {
+                // spawn the console server in the background, returning a `Layer`
+                let console_layer = ConsoleLayer::builder()
+                    .with_default_env()
+                    //.server_addr(([127, 0, 0, 1], 61234))
+                    .spawn();
+
+                let subscriber = subscriber.with(console_layer);
+
+                tracing::subscriber::set_global_default(subscriber)
+                    .expect("unable to set global tracing subscriber");
+            } else {
+                tracing::subscriber::set_global_default(subscriber)
+                    .expect("unable to set global tracing subscriber");
+            }
         });
-        assert!(INIT_RESULT.is_ok());
     }
 }
 
