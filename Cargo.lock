@@ -5135,10 +5135,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-workspace-hack"
-version = "0.1.0"
-
-[[package]]
 name = "libc"
 version = "0.2.113"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10159,6 +10155,10 @@ dependencies = [
  "windows 0.24.0",
  "xml-rs",
 ]
+
+[[package]]
+name = "workspace-hack"
+version = "0.1.0"
 
 [[package]]
 name = "wry"
