@@ -15,7 +15,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, MeshManager},
     RenderContext, Renderer,
 };
 
@@ -157,7 +157,7 @@ impl DebugRenderPass {
         &self,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_context: &RenderContext<'_>,
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
     ) {
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
@@ -168,7 +168,7 @@ impl DebugRenderPass {
             &Mat4::IDENTITY,
             Vec4::ZERO,
             cmd_buffer,
-            default_meshes,
+            mesh_manager,
         );
     }
 
@@ -177,7 +177,7 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         picked_meshes: &[(&StaticMesh, &GlobalTransform)],
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
     ) {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
@@ -188,7 +188,7 @@ impl DebugRenderPass {
                 static_mesh_component.mesh_id as u32,
                 transform,
                 cmd_buffer,
-                default_meshes,
+                mesh_manager,
             );
 
             cmd_buffer.bind_pipeline(&self.solid_pso_depth);
@@ -197,7 +197,7 @@ impl DebugRenderPass {
                 &transform.compute_matrix(),
                 Vec4::new(0.0, 0.5, 0.5, 0.75),
                 cmd_buffer,
-                default_meshes,
+                mesh_manager,
             );
         }
     }
@@ -208,7 +208,7 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         debug_display: &mut DebugDisplay,
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
     ) {
         cmd_buffer.bind_pipeline(&self.wire_pso_depth);
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
@@ -224,7 +224,7 @@ impl DebugRenderPass {
                 &primitive.transform,
                 primitive.color.extend(1.0),
                 cmd_buffer,
-                default_meshes,
+                mesh_manager,
             );
         });
     }
@@ -235,7 +235,7 @@ impl DebugRenderPass {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
         camera: &CameraComponent,
     ) {
         let (view_matrix, projection_matrix) = camera.build_view_projection(
@@ -275,7 +275,7 @@ impl DebugRenderPass {
                     &scaled_world_matrix,
                     color,
                     cmd_buffer,
-                    default_meshes,
+                    mesh_manager,
                 );
             }
         }
@@ -290,7 +290,7 @@ impl DebugRenderPass {
         picked_meshes: &[(&StaticMesh, &GlobalTransform)],
         manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
-        default_meshes: &DefaultMeshes,
+        mesh_manager: &MeshManager,
         debug_display: &mut DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
@@ -313,18 +313,18 @@ impl DebugRenderPass {
             }),
         );
 
-        self.render_ground_plane(cmd_buffer, render_context, default_meshes);
+        self.render_ground_plane(cmd_buffer, render_context, mesh_manager);
 
-        self.render_picked(render_context, cmd_buffer, picked_meshes, default_meshes);
+        self.render_picked(render_context, cmd_buffer, picked_meshes, mesh_manager);
 
-        self.render_debug_display(render_context, cmd_buffer, debug_display, default_meshes);
+        self.render_debug_display(render_context, cmd_buffer, debug_display, mesh_manager);
 
         self.render_manipulators(
             render_context,
             cmd_buffer,
             render_surface,
             manipulator_meshes,
-            default_meshes,
+            mesh_manager,
             camera,
         );
 
@@ -337,9 +337,9 @@ fn render_aabb_for_mesh(
     mesh_id: u32,
     transform: &GlobalTransform,
     cmd_buffer: &mut HLCommandBuffer<'_>,
-    default_meshes: &DefaultMeshes,
+    mesh_manager: &MeshManager,
 ) {
-    let mesh = default_meshes.mesh_from_id(mesh_id);
+    let mesh = mesh_manager.mesh_from_id(mesh_id);
 
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
@@ -363,7 +363,7 @@ fn render_aabb_for_mesh(
         &aabb_transform.compute_matrix(),
         Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
         cmd_buffer,
-        default_meshes,
+        mesh_manager,
     );
 }
 
@@ -372,22 +372,16 @@ fn render_mesh(
     world_xform: &Mat4,
     color: Vec4,
     cmd_buffer: &HLCommandBuffer<'_>,
-    default_meshes: &DefaultMeshes,
+    mesh_manager: &MeshManager,
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 
     push_constant_data.set_world((*world_xform).into());
     push_constant_data.set_color(color.into());
-    push_constant_data.set_mesh_description_offset(
-        default_meshes
-            .mesh_description_offset_from_id(mesh_id)
-            .into(),
-    );
+    push_constant_data
+        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(
-        default_meshes.mesh_from_id(mesh_id).num_vertices() as u32,
-        0,
-    );
+    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
 }

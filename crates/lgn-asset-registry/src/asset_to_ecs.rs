@@ -5,7 +5,7 @@ use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::{RotationComponent, StaticMesh},
-    resources::{DefaultMaterialType, DefaultMeshes},
+    resources::{DefaultMaterialType, MeshManager},
 };
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
@@ -19,7 +19,7 @@ pub(crate) fn load_ecs_asset<T>(
     registry: &ResMut<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
-    default_meshes: &Res<'_, DefaultMeshes>,
+    mesh_manager: &Res<'_, MeshManager>,
 ) -> bool
 where
     T: AssetToECS + Resource + 'static,
@@ -31,7 +31,7 @@ where
                 &asset,
                 asset_id,
                 asset_to_entity_map,
-                default_meshes,
+                mesh_manager,
             );
 
             if let Some(entity_id) = entity {
@@ -64,7 +64,7 @@ pub(crate) trait AssetToECS {
         _asset: &Self,
         _asset_id: &ResourceTypeAndId,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, DefaultMeshes>,
+        _default_meshes: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         None
     }
@@ -76,7 +76,7 @@ impl AssetToECS for runtime_data::Entity {
         runtime_entity: &Self,
         asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        default_meshes: &Res<'_, DefaultMeshes>,
+        mesh_manager: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -95,7 +95,7 @@ impl AssetToECS for runtime_data::Entity {
                 transform_inserted = true;
             } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
                 entity.insert(StaticMesh::from_default_meshes(
-                    default_meshes,
+                    mesh_manager,
                     static_mesh.mesh_id,
                     static_mesh.color,
                     DefaultMaterialType::Default,
@@ -151,7 +151,7 @@ impl AssetToECS for runtime_data::Instance {
         _instance: &Self,
         asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, DefaultMeshes>,
+        _default_meshes: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -174,7 +174,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         instance: &Self,
         asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        default_meshes: &Res<'_, DefaultMeshes>,
+        mesh_manager: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -192,7 +192,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         });
         entity.insert(GlobalTransform::default());
         entity.insert(StaticMesh::from_default_meshes(
-            default_meshes,
+            mesh_manager,
             instance.mesh_id,
             instance.color,
             DefaultMaterialType::Default,
@@ -215,7 +215,7 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         entity: &Self,
         asset_id: &ResourceTypeAndId,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, DefaultMeshes>,
+        _mesh_manager: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)

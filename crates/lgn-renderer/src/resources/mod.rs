@@ -4,8 +4,8 @@ pub(crate) use command_buffer_pool::*;
 mod default_materials;
 pub use default_materials::*;
 
-mod default_meshes;
-pub use default_meshes::*;
+mod mesh_manager;
+pub use mesh_manager::*;
 
 mod descriptor_pool;
 pub(crate) use descriptor_pool::*;

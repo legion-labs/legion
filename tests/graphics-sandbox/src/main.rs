@@ -18,7 +18,7 @@ use lgn_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, RotationComponent, StaticMesh,
     },
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, MeshManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -184,14 +184,14 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
     // sphere 1
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
             DefaultMaterialType::Default,
@@ -202,7 +202,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
             DefaultMaterialType::Default,
@@ -214,7 +214,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
             DefaultMaterialType::Default,
@@ -275,13 +275,13 @@ fn init_light_test(mut commands: Commands<'_, '_>, default_meshes: Res<'_, Defau
         });
 }
 
-fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_material_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(-1.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
             DefaultMaterialType::Gold,
@@ -295,7 +295,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
             DefaultMaterialType::Silver,
@@ -306,7 +306,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(Transform::from_xyz(1.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
             DefaultMaterialType::Bronze,
@@ -317,7 +317,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(Transform::from_xyz(2.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
             DefaultMaterialType::BluePlastic,
@@ -328,7 +328,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         .insert(Transform::from_xyz(-2.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
             DefaultMaterialType::RoughMetal,
@@ -361,13 +361,13 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMeshes>) {
+fn init_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Plane as usize,
             (255, 0, 0).into(),
             DefaultMaterialType::Default,
@@ -381,7 +381,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Cube as usize,
             (0, 255, 0).into(),
             DefaultMaterialType::Default,
@@ -392,7 +392,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Pyramid as usize,
             (0, 0, 255).into(),
             DefaultMaterialType::Default,

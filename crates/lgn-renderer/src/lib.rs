@@ -59,7 +59,7 @@ use crate::{
     egui::egui_plugin::{Egui, EguiPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, MeshManager},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -124,7 +124,7 @@ impl Plugin for RendererPlugin {
 
         app.insert_resource(CGenRegistryList::default());
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(DefaultMeshes::new(&renderer));
+        app.insert_resource(MeshManager::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
         app.insert_resource(MaterialManager::new(renderer.static_buffer()));
         app.insert_resource(renderer);
@@ -274,10 +274,10 @@ fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRe
 fn init_manipulation_manager(
     commands: Commands<'_, '_>,
     mut manipulation_manager: ResMut<'_, ManipulatorManager>,
-    default_meshes: Res<'_, DefaultMeshes>,
+    mesh_manager: Res<'_, MeshManager>,
     picking_manager: Res<'_, PickingManager>,
 ) {
-    manipulation_manager.initialize(commands, default_meshes, picking_manager);
+    manipulation_manager.initialize(commands, mesh_manager, picking_manager);
 }
 
 fn init_default_materials(
@@ -457,7 +457,7 @@ fn update_gpu_instance_ids(
 fn render_update(
     renderer: ResMut<'_, Renderer>,
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    default_meshes: ResMut<'_, DefaultMeshes>,
+    mesh_manager: ResMut<'_, MeshManager>,
     picking_manager: ResMut<'_, PickingManager>,
     va_table_adresses: Res<'_, GpuVaTableForGpuInstance>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
@@ -499,7 +499,7 @@ fn render_update(
     };
 
     let mut light_picking_mesh = StaticMesh::from_default_meshes(
-        default_meshes.as_ref(),
+        mesh_manager.as_ref(),
         DefaultMeshType::Sphere as usize,
         Color::default(),
         DefaultMaterialType::Default,
@@ -610,7 +610,7 @@ fn render_update(
             q_picked_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             camera_component,
-            &default_meshes,
+            &mesh_manager,
             debug_display.as_mut(),
         );
 
