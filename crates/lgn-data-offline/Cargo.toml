@@ -26,3 +26,7 @@ lazy_static = "1.4"
 
 [dev-dependencies]
 tempfile = "3.2.0"
+tokio-test = "0.4.2"
+
+[package.metadata.cargo-udeps.ignore]
+development = ["tokio-test"]
