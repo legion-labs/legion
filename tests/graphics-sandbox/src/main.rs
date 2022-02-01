@@ -200,7 +200,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
         ));
@@ -213,7 +213,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         )))
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
-            default_meshes.as_ref(),
+            mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
         ));
