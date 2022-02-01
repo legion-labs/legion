@@ -6,6 +6,7 @@
   import Timeline from "@/pages/Timeline.svelte";
   import Metrics from "@/pages/Metrics.svelte";
   import Graph from "@/pages/Graph.svelte";
+  import MetricsCanvas from "./components/MetricsCanvas.svelte";
 
   const historyStore = { subscribe: globalHistory.listen };
 </script>
@@ -42,7 +43,7 @@
     </Route>
     <Route path="/metrics/:id" let:params primary={false}>
       {#key params.id}
-        <Metrics id={params.id} />
+        <MetricsCanvas id={params.id} />
       {/key}
     </Route>
     <Route path="/cumulative-call-graph" primary={false}><Graph /></Route>
