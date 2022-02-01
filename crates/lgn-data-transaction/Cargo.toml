@@ -23,7 +23,7 @@ erased-serde = "0.3.12"
 uuid = { version = "0.8", features = ["v4"] }
 thiserror = "1.0"
 anyhow = "1.0"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 async-trait = "0.1"
 futures-lite = "1.12"
 

@@ -15,6 +15,7 @@ lgn-config = { path = "../lgn-config", version = "0.1.0" }
 anyhow = "1.0"
 async-trait = "0.1"
 chrono = "0.4"
+console-subscriber = { version = "0.1.1", optional = true }
 ctrlc = "3.2.0"
 json = "0.12"
 lazy_static = "1.4"
@@ -22,14 +23,14 @@ log = { version = "0.4", features = ["std"] }
 once_cell = "1.7.2"
 prost = "0.9"
 simple_logger = "1.16"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
 tracing = { version = "0.1", features = [
     "release_max_level_info",
 ], optional = true }
 tracing-subscriber = { version = "0.3.1", features = [
-    "registry",
     "env-filter",
+    "registry",
 ], optional = true }
 uuid = { version = "0.8", features = ["v4"] }
 
@@ -78,4 +79,4 @@ release_max_lod_min = ["lgn-tracing/release_max_lod_min"]
 release_max_lod_med = ["lgn-tracing/release_max_lod_med"]
 release_max_lod_max = ["lgn-tracing/release_max_lod_max"]
 
-tokio-tracing = ["tracing", "tracing-subscriber"]
+tokio-tracing = ["tracing", "tracing-subscriber", "console-subscriber"]

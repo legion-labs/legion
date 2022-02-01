@@ -10,4 +10,4 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 ctrlc = { version = "3.2.1", features = ["termination"] }
 lazy_static = "1.4.0"
 anyhow = "1.0"
-tokio = { version = "1.13", features = ["full"] }
+tokio = { version = "1.13", features = ["full", "tracing"] }

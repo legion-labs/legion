@@ -121,7 +121,7 @@ pub fn build_runtime(
     #[cfg(not(feature = "standalone"))]
     let standalone = false;
 
-    let mut app = App::new();
+    let mut app = App::default();
 
     app
         // Start app with 60 fps

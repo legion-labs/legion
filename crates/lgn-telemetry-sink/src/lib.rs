@@ -30,12 +30,14 @@ use lgn_tracing::{
 use lgn_tracing::{info, set_max_lod, LodFilter};
 
 pub struct Config {
-    logs_buffer_size: usize,
-    metrics_buffer_size: usize,
-    threads_buffer_size: usize,
-    max_level: LevelFilter,
+    pub logs_buffer_size: usize,
+    pub metrics_buffer_size: usize,
+    pub threads_buffer_size: usize,
+    pub max_level: LevelFilter,
     level_filters: HashMap<String, String>,
-    max_queue_size: isize,
+    pub max_queue_size: isize,
+    pub enable_console_printer: bool,
+    pub enable_tokio_console_server: bool,
 }
 
 impl Default for Config {
@@ -65,14 +67,13 @@ impl Default for Config {
             .unwrap_or(LevelFilter::Off),
             level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
             max_queue_size: 16, //todo: change to nb_threads * 2
+            enable_console_printer: true,
+            enable_tokio_console_server: false,
         }
     }
 }
 
-fn alloc_telemetry_system(
-    config: Config,
-    enable_console_printer: bool,
-) -> anyhow::Result<Arc<TracingSystemGuard>> {
+fn alloc_telemetry_system(config: Config) -> anyhow::Result<Arc<TracingSystemGuard>> {
     lazy_static::lazy_static! {
         static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TracingSystemGuard>> = Mutex::new(Weak::new());
     }
@@ -84,7 +85,7 @@ fn alloc_telemetry_system(
     let sink: Arc<dyn EventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
         Ok(url) => Arc::new(GRPCEventSink::new(&url, config.max_queue_size)),
         Err(_no_url_in_env) => {
-            if enable_console_printer {
+            if config.enable_console_printer {
                 Arc::new(ImmediateEventSink::new(
                     config.level_filters,
                     std::env::var("LGN_TRACE_FILE").ok(),
@@ -115,17 +116,17 @@ pub struct TelemetryGuard {
 
 impl TelemetryGuard {
     pub fn default() -> anyhow::Result<Self> {
-        Self::new(Config::default(), true)
+        Self::new(Config::default())
     }
 
     //todo: refac enable_console_printer, put in config?
-    pub fn new(config: Config, enable_console_printer: bool) -> anyhow::Result<Self> {
+    pub fn new(config: Config) -> anyhow::Result<Self> {
         #[cfg(feature = "tokio-tracing")]
-        tokio_tracing_sink::TelemetryLayer::setup();
+        tokio_tracing_sink::TelemetryLayer::setup(config.enable_tokio_console_server);
 
         // order here is important
         Ok(Self {
-            _guard: alloc_telemetry_system(config, enable_console_printer)?,
+            _guard: alloc_telemetry_system(config)?,
             _thread_guard: TracingThreadGuard::new(),
         })
     }

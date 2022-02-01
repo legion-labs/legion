@@ -34,7 +34,7 @@ lgn_utils::define_label!(AppLabel);
 /// # use lgn_ecs::prelude::*;
 ///
 /// fn main() {
-///    App::new()
+///    App::default()
 ///        .add_system(hello_world_system)
 ///        .run();
 /// }
@@ -68,9 +68,20 @@ struct SubApp {
 
 impl Default for App {
     fn default() -> Self {
+        Self::new(lgn_telemetry_sink::Config::default())
+    }
+}
+
+impl App {
+    /// Creates a new [`App`] with some default structure to enable core engine features.
+    /// This is the preferred constructor for most use cases.
+    pub fn new(telemetry_config: lgn_telemetry_sink::Config) -> Self {
         let mut app = Self::empty();
-        app.telemetry_guard =
-            Some(TelemetryGuard::default().expect("telemetry guard should be initialized once"));
+
+        app.telemetry_guard = Some(
+            TelemetryGuard::new(telemetry_config)
+                .expect("telemetry guard should be initialized once"),
+        );
 
         app.add_default_stages()
             .add_event::<AppExit>()
@@ -82,14 +93,6 @@ impl Default for App {
         }
 
         app
-    }
-}
-
-impl App {
-    /// Creates a new [`App`] with some default structure to enable core engine features.
-    /// This is the preferred constructor for most use cases.
-    pub fn new() -> Self {
-        Self::default()
     }
 
     /// Creates a new empty [`App`] with minimal default configuration.
@@ -138,7 +141,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_stage("my_stage", SystemStage::parallel());
     /// ```
@@ -155,7 +158,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_stage_after(CoreStage::Update, "my_stage", SystemStage::parallel());
     /// ```
@@ -177,7 +180,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_stage_before(CoreStage::Update, "my_stage", SystemStage::parallel());
     /// ```
@@ -199,7 +202,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_startup_stage("my_startup_stage", SystemStage::parallel());
     /// ```
@@ -221,7 +224,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_startup_stage_after(
     ///     StartupStage::Startup,
@@ -252,7 +255,7 @@ impl App {
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_startup_stage_before(
     ///     StartupStage::Startup,
@@ -292,7 +295,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn my_system() {}
     /// #
     /// app.stage(CoreStage::Update, |stage: &mut SystemStage| {
@@ -321,7 +324,7 @@ impl App {
     /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_system(my_system);
     /// ```
@@ -337,7 +340,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn system_a() {}
     /// # fn system_b() {}
     /// # fn system_c() {}
@@ -361,7 +364,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn my_system() {}
     /// #
     /// app.add_system_to_stage(CoreStage::PostUpdate, my_system);
@@ -383,7 +386,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn system_a() {}
     /// # fn system_b() {}
     /// # fn system_c() {}
@@ -423,7 +426,7 @@ impl App {
     ///     println!("My startup system");
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///     .add_startup_system(my_startup_system.system());
     /// ```
     pub fn add_startup_system<Params>(
@@ -441,7 +444,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn startup_system_a() {}
     /// # fn startup_system_b() {}
     /// # fn startup_system_c() {}
@@ -468,7 +471,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn my_startup_system() {}
     /// #
     /// app.add_startup_system_to_stage(StartupStage::PreStartup, my_startup_system);
@@ -497,7 +500,7 @@ impl App {
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// #
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// # fn startup_system_a() {}
     /// # fn startup_system_b() {}
     /// # fn startup_system_c() {}
@@ -621,7 +624,7 @@ impl App {
     /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct MyEvent;
-    /// # let mut app = App::new();
+    /// # let mut app = App::default();
     /// #
     /// app.add_event::<MyEvent>();
     /// ```
@@ -651,7 +654,7 @@ impl App {
     ///     counter: usize,
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///    .insert_resource(MyCounter { counter: 0 });
     /// ```
     pub fn insert_resource<T>(&mut self, resource: T) -> &mut Self
@@ -675,7 +678,7 @@ impl App {
     ///     counter: usize,
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///     .insert_non_send_resource(MyCounter { counter: 0 });
     /// ```
     pub fn insert_non_send_resource<T>(&mut self, resource: T) -> &mut Self
@@ -708,7 +711,7 @@ impl App {
     ///     }
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///     .init_resource::<MyCounter>();
     /// ```
     pub fn init_resource<R>(&mut self) -> &mut Self
@@ -762,7 +765,7 @@ impl App {
     ///     }
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///     .set_runner(my_runner);
     /// ```
     pub fn set_runner(&mut self, run_fn: impl FnOnce(Self) + 'static) -> &mut Self {
@@ -783,7 +786,7 @@ impl App {
     /// ```ignore
     /// # use lgn_app::prelude::*;
     /// #
-    /// App::new().add_plugin(lgn_transform::TransformPlugin::default());
+    /// App::default().add_plugin(lgn_transform::TransformPlugin::default());
     /// ```
     #[allow(clippy::needless_pass_by_value)]
     #[span_fn]
@@ -813,7 +816,7 @@ impl App {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){;}
     /// # }
     /// #
-    /// App::new()
+    /// App::default()
     ///     .add_plugins(MinimalPlugins);
     /// ```
     pub fn add_plugins<T: PluginGroup>(&mut self, mut group: T) -> &mut Self {
@@ -846,7 +849,7 @@ impl App {
     /// #     fn build(&self, app: &mut App){;}
     /// # }
     /// #
-    /// App::new()
+    /// App::default()
     ///      .add_plugins_with(DefaultPlugins, |group| {
     ///             group.add_before::<lgn_transform::TransformPlugin, _>(MyOwnPlugin)
     ///         });
