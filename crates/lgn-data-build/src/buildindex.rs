@@ -532,19 +532,6 @@ impl BuildIndex {
         })
     }
 
-    /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
-    pub(crate) fn construct_project_path(
-        buildindex_dir: &Path,
-        projectindex_path: &Path,
-    ) -> Result<PathBuf, Error> {
-        let project_path = buildindex_dir.join(projectindex_path);
-        if !project_path.exists() {
-            Err(Error::InvalidProject(project_path))
-        } else {
-            Ok(project_path)
-        }
-    }
-
     fn pre_serialize(&mut self) {
         self.source_index.content.pre_serialize();
         self.output_index.content.pre_serialize();

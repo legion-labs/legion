@@ -124,50 +124,7 @@ impl DataBuild {
         Ok(options.create())
     }
 
-    // todo: should not return the Project
-    pub(crate) async fn new(
-        config: DataBuildOptions,
-        project_dir: &Path,
-    ) -> Result<(Self, Project), Error> {
-        let projectindex_path = Project::root_to_index_path(project_dir);
-        let corrected_path =
-            BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
-
-        let project = Self::open_project(&corrected_path).await?;
-
-        let build_index = BuildIndex::create_new(&config.buildindex_dir, Self::version())
-            .map_err(|e| Error::Io(e.into()))?;
-
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
-
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    config.contentstore_path.clone(),
-                    &compilers,
-                )
-            },
-            Ok,
-        )?;
-
-        Ok((
-            Self {
-                build_index,
-                resource_dir: project.resource_dir(),
-                content_store,
-                compilers: CompilerNode::new(compilers, registry),
-            },
-            project,
-        ))
-    }
-
-    pub(crate) async fn new_with_proj(
-        config: DataBuildOptions,
-        project: &Project,
-    ) -> Result<Self, Error> {
+    pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let build_index = BuildIndex::create_new(&config.buildindex_dir, Self::version())
             .map_err(|e| Error::Io(e.into()))?;
 
@@ -194,10 +151,7 @@ impl DataBuild {
         })
     }
 
-    pub(crate) async fn open_with_proj(
-        config: DataBuildOptions,
-        project: &Project,
-    ) -> Result<Self, Error> {
+    pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
         // todo: validate project path
         //let project = build_index.open_project().await?;
@@ -225,7 +179,7 @@ impl DataBuild {
         })
     }
 
-    pub(crate) async fn open_or_create_with_proj(
+    pub(crate) async fn open_or_create(
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
@@ -256,13 +210,9 @@ impl DataBuild {
                     compilers: CompilerNode::new(compilers, registry),
                 })
             }
-            Err(Error::NotFound) => Self::new_with_proj(config, project).await,
+            Err(Error::NotFound) => Self::new(config, project).await,
             Err(e) => Err(e),
         }
-    }
-
-    async fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).await.map_err(Error::from)
     }
 
     /// Returns a source of a resource id.
