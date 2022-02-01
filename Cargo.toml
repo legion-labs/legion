@@ -1,9 +1,3 @@
 [workspace]
-members = [
-    "crates/*",
-    "examples/*",
-    "tests/*",
-    "build/lgn-monorepo",
-    "build/lgn-workspace-hack",
-]
-exclude = []
+members = ["crates/*", "examples/*", "tests/*", "build/*"]
+exclude = ["build/env"]

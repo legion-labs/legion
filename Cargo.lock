@@ -907,6 +907,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
+name = "bootstrap"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "monorepo-base",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4622,35 +4630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-monorepo"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atty",
- "camino",
- "clap 3.0.13",
- "determinator",
- "globset",
- "guppy",
- "hakari",
- "hex",
- "indexmap",
- "indoc",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "once_cell",
- "rayon",
- "regex",
- "semver 1.0.4",
- "serde",
- "serde_json",
- "termcolor",
- "thiserror",
- "toml",
- "toml_edit",
-]
-
-[[package]]
 name = "lgn-mp4"
 version = "0.1.0"
 dependencies = [
@@ -5566,6 +5545,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "monorepo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atty",
+ "camino",
+ "clap 3.0.13",
+ "determinator",
+ "globset",
+ "guppy",
+ "hakari",
+ "hex",
+ "indexmap",
+ "indoc",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "monorepo-base",
+ "once_cell",
+ "rayon",
+ "regex",
+ "semver 1.0.4",
+ "serde",
+ "serde_json",
+ "termcolor",
+ "thiserror",
+ "toml",
+ "toml_edit",
+]
+
+[[package]]
+name = "monorepo-base"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "camino",
+ "serde",
+ "termcolor",
+ "toml",
 ]
 
 [[package]]

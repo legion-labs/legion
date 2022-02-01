@@ -3,19 +3,24 @@
 cargo-deny = { version = "0.11.1" }
 grcov = { version = "0.8.6" }
 mdbook = { version = "0.4.15" }
-sccache = { version = "0.2.15", features = ["s3"] }
 wasm-bindgen-cli = { version = "0.2.79" }
+
+[cargo.installs.sccache]
+version = "0.2.16-alpha.0"
+git = "https://github.com/diem/sccache.git"
+rev = "ef50d87a58260c30767520045e242ccdbdb965af"
+features = ["s3"]
 
 ################################################################################
 
 #[cargo.sccache]
-#bucket = "ci-artifacts.legionlabs.com"
+#bucket = "legionlabs-ci-artefacts"
 #prefix = "sccache/legion/"
 #public = false
 #region = "ca-central-1"
 #endpoint = "https://s3-ca-central-1.amazonaws.com"
-#required-cargo-home = { windows = "C:\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/home/ubuntu/.cargo/", macos = "tbd" }
-#required-git-home = { windows = "C:\\github\\workspace", linux = "/github/workspace", macos = "tbd" }
+#required-cargo-home = { windows = "C:\\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/home/ubuntu/.cargo", macos = "tbd" }
+#required-git-home = { windows = "C:\\github\\work\\legion\\legion", linux = "/github/work/legion/legion", macos = "tbd" }
 #envs = []
 
 ################################################################################
