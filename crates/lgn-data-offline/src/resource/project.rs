@@ -105,14 +105,20 @@ pub enum Error {
     #[error("Parsing '{0}' failed with {1}")]
     Parse(PathBuf, #[source] serde_json::error::Error),
     /// Not found.
-    #[error("Not found")]
-    NotFound,
+    #[error("File {0} not found")]
+    FileNotFound(String),
     /// IO error on the project index file.
     #[error("IO on '{0}' failed with {1}")]
     Io(PathBuf, #[source] std::io::Error),
     /// Source Control related error.
     #[error("Source Control Error: '{0}'")]
     SourceControl(#[source] lgn_source_control::Error),
+    /// RegistryRegistry Error
+    #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
+    ResourceRegistry(
+        ResourceTypeAndId,
+        #[source] crate::resource::ResourceRegistryError,
+    ),
 }
 
 impl Project {
@@ -201,7 +207,7 @@ impl Project {
             .write(true)
             .append(false)
             .open(&index_path)
-            .map_err(|_e| Error::NotFound)?;
+            .map_err(|_e| Error::FileNotFound(index_path.as_path().display().to_string()))?;
 
         let db = serde_json::from_reader(&file).map_err(|e| Error::Parse(index_path.clone(), e))?;
 
@@ -302,7 +308,7 @@ impl Project {
             });
 
         match res {
-            None => Err(Error::NotFound),
+            None => Err(Error::FileNotFound(name.to_string())),
             Some(e) => e,
         }
     }
@@ -397,7 +403,7 @@ impl Project {
 
             let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
+                .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
             build_deps
         };
 
@@ -488,7 +494,7 @@ impl Project {
 
             let (_written, build_deps) = resources
                 .serialize_resource(type_id.kind, handle, &mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
+                .map_err(|e| Error::ResourceRegistry(type_id, e))?;
             build_deps
         };
 
@@ -534,7 +540,7 @@ impl Project {
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
         let handle = resources
             .deserialize_resource(type_id.kind, &mut resource_file)
-            .map_err(|e| Error::Io(resource_path, e))?;
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
         Ok(handle)
     }
 
@@ -614,7 +620,7 @@ impl Project {
             return Ok(());
         }
 
-        Err(Error::NotFound)
+        Err(Error::FileNotFound(type_id.to_string()))
     }
 
     fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
@@ -751,7 +757,8 @@ mod tests {
     use crate::resource::Error;
     use crate::{
         resource::{
-            ResourcePathName, ResourceProcessor, ResourceRegistry, ResourceRegistryOptions,
+            ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceRegistry,
+            ResourceRegistryOptions,
         },
         ResourcePathId,
     };
@@ -789,7 +796,7 @@ mod tests {
             &self,
             resource: &dyn Any,
             writer: &mut dyn std::io::Write,
-        ) -> std::io::Result<usize> {
+        ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
@@ -817,7 +824,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 

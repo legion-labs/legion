@@ -15,6 +15,26 @@ use lgn_data_runtime::Asset;
 
 use crate::ResourcePathId;
 
+/// Error type for `ResourceProcessorError`
+#[derive(thiserror::Error, Debug)]
+pub enum ResourceProcessorError {
+    /// IOError fallthrough
+    #[error("ResourceProcessor IO error: {0}")]
+    IOError(#[from] std::io::Error),
+
+    /// AssetLoaderError fallthrough
+    #[error("ResourceProcessor load failed: '{0}'")]
+    AssetLoaderError(#[from] lgn_data_runtime::AssetLoaderError),
+
+    /// Resource Serialization Error
+    #[error("ResourceProcessor failed to serialize: '{0}'")]
+    ResourceSerializationFailed(&'static str, String),
+
+    /// AssetLoaderError fallthrough
+    #[error("ResourceProcessor Reflection Error '{0}'")]
+    ReflectionError(#[from] lgn_data_model::ReflectionError),
+}
+
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Asset {
     /// Offline resource processor bound to the resource.
@@ -37,13 +57,17 @@ pub trait ResourceProcessor {
     }
 
     /// Interface defining serialization behavior of the resource.
-    fn write_resource(&self, resource: &dyn Any, writer: &mut dyn io::Write) -> io::Result<usize>;
+    fn write_resource(
+        &self,
+        resource: &dyn Any,
+        writer: &mut dyn io::Write,
+    ) -> Result<usize, ResourceProcessorError>;
 
     /// Interface defining deserialization behavior of the resource.
     fn read_resource(
         &mut self,
         reader: &mut dyn io::Read,
-    ) -> io::Result<Box<dyn Any + Send + Sync>>;
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError>;
 
     /// Interface to retrieve the Resource reflection interface
     fn get_resource_reflection<'a>(

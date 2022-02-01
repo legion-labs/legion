@@ -26,31 +26,36 @@ impl RenameResourceOperation {
 
 #[async_trait]
 impl TransactionOperation for RenameResourceOperation {
-    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if !ctx.project.exists(self.resource_id.id).await {
-            return Err(Error::InvalidResource(self.resource_id).into());
+            return Err(Error::InvalidResource(self.resource_id));
         }
 
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
-        let mut raw_name = ctx.project.raw_resource_name(self.resource_id.id)?;
+        let mut raw_name = ctx
+            .project
+            .raw_resource_name(self.resource_id.id)
+            .map_err(|err| Error::Project(self.resource_id, err))?;
         raw_name.replace_parent_info(None, Some(self.new_path.clone()));
 
         if ctx.project.exists_named(&raw_name).await {
-            return Err(Error::ResourcePathAlreadyExist(raw_name).into());
+            return Err(Error::ResourcePathAlreadyExist(raw_name));
         }
         self.old_path = Some(
             ctx.project
                 .rename_resource(self.resource_id, &raw_name)
-                .await?,
+                .await
+                .map_err(|err| Error::Project(self.resource_id, err))?,
         );
         Ok(())
     }
 
-    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if let Some(old_path) = &self.old_path {
             ctx.project
                 .rename_resource(self.resource_id, old_path)
-                .await?;
+                .await
+                .map_err(|err| Error::Project(self.resource_id, err))?;
         }
         Ok(())
     }

@@ -141,7 +141,8 @@ use thiserror::Error;
 pub enum Error {
     /// Project-related error.
     #[error("Project-related error: '{0}")]
-    Project(#[source] lgn_data_offline::resource::Error),
+    Project(#[from] lgn_data_offline::resource::Error),
+
     /// Not found.
     #[error("Not found.")]
     NotFound,
@@ -183,15 +184,6 @@ pub enum Error {
     /// Source Index error.
     #[error("Source Index error")]
     SourceIndex,
-}
-
-impl From<lgn_data_offline::resource::Error> for Error {
-    fn from(err: lgn_data_offline::resource::Error) -> Self {
-        match err {
-            lgn_data_offline::resource::Error::NotFound => Self::NotFound,
-            _ => Self::Project(err),
-        }
-    }
 }
 
 mod asset_file_writer;

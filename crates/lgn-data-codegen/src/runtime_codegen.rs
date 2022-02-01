@@ -65,9 +65,10 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
         pub struct #runtime_loader {}
 
         impl lgn_data_runtime::AssetLoader for #runtime_loader {
-            fn load(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
-                let output : #runtime_identifier = bincode::deserialize_from(reader).map_err(|_err|
-                    std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse"))?;
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
+                let output : #runtime_identifier = bincode::deserialize_from(reader)
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#runtime_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
+
                 Ok(Box::new(output))
             }
 

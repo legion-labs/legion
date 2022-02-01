@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
 use lgn_app::prelude::*;
-use lgn_data_model::collector::collect_properties;
+use lgn_data_model::{collector::collect_properties, ReflectionError};
 use lgn_editor_proto::property_inspector::{
     property_inspector_server::{PropertyInspector, PropertyInspectorServer},
     DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
@@ -75,7 +75,7 @@ impl PropertyInspectorPlugin {
 struct ResourcePropertyCollector;
 impl PropertyCollector for ResourcePropertyCollector {
     type Item = ResourceProperty;
-    fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
+    fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
         let mut name = item_info
             .field_descriptor
             .map_or(String::new(), |field| field.field_name.clone())
@@ -200,7 +200,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             .resource_registry
             .get_resource_reflection(resource_id.kind, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID format: {}", request.id)))
-            .map(|reflection| -> anyhow::Result<ResourceProperty> {
+            .map(|reflection| -> Result<ResourceProperty, ReflectionError> {
                 collect_properties::<ResourcePropertyCollector>(reflection)
             })?
             .map_err(|err| Status::internal(err.to_string()))?;

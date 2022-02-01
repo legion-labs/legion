@@ -14,7 +14,8 @@ use flurry::TryInsertError;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType, ResourceTypeAndId,
+    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, ResourceId,
+    ResourceType, ResourceTypeAndId,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,7 +38,7 @@ struct LoadOutput {
 pub(crate) enum LoaderResult {
     Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
     Unloaded(ResourceTypeAndId),
-    LoadError(HandleUntyped, Option<LoadId>, io::ErrorKind),
+    LoadError(HandleUntyped, Option<LoadId>, AssetRegistryError),
     Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
 }
 
@@ -258,20 +259,16 @@ impl AssetLoaderIO {
         self.loaders.insert(kind, loader);
     }
 
-    fn load_resource(&self, type_id: ResourceTypeAndId) -> io::Result<Vec<u8>> {
+    fn load_resource(&self, type_id: ResourceTypeAndId) -> Result<Vec<u8>, AssetRegistryError> {
         for device in &self.devices {
             if let Some(content) = device.load(type_id) {
                 return Ok(content);
             }
         }
-
-        Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            "Resource Not Found",
-        ))
+        Err(AssetRegistryError::ResourceNotFound(type_id))
     }
 
-    fn reload_resource(&self, type_id: ResourceTypeAndId) -> io::Result<Vec<u8>> {
+    fn reload_resource(&self, type_id: ResourceTypeAndId) -> Result<Vec<u8>, AssetRegistryError> {
         for device in &self.devices {
             if let Some(content) = device.reload(type_id) {
                 return Ok(content);
@@ -282,7 +279,7 @@ impl AssetLoaderIO {
         self.load_resource(type_id)
     }
 
-    fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), io::Error> {
+    fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), AssetRegistryError> {
         let primary_id = primary_handle.id();
         let asset_data = self.reload_resource(primary_id)?;
 
@@ -331,7 +328,7 @@ impl AssetLoaderIO {
         &mut self,
         primary_handle: HandleUntyped,
         load_id: Option<u32>,
-    ) -> Result<(), (HandleUntyped, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
         let primary_id = primary_handle.id();
         if self.loaded_resources.contains(&primary_id)
             || self
@@ -397,7 +394,7 @@ impl AssetLoaderIO {
     fn process_request(
         &mut self,
         request: LoaderRequest,
-    ) -> Result<(), (HandleUntyped, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
         match request {
             LoaderRequest::Load(primary_handle, load_id) => {
                 self.process_load(primary_handle, load_id)
@@ -441,16 +438,22 @@ impl AssetLoaderIO {
                 .partition(|pending| pending.references.iter().any(|reff| reff == &load_failed));
 
             for failed_pending in failed {
+                let dependent_error = AssetRegistryError::ResourceDependentLoadFailed {
+                    parent: load_failed.id(),
+                    resource: failed_pending.primary_handle.id(),
+                    parent_error: err.to_string(),
+                };
+
                 self.result_tx
                     .send(LoaderResult::LoadError(
                         failed_pending.primary_handle,
                         failed_pending.load_id,
-                        err.kind(),
+                        dependent_error,
                     ))
                     .unwrap();
             }
             self.result_tx
-                .send(LoaderResult::LoadError(load_failed, None, err.kind()))
+                .send(LoaderResult::LoadError(load_failed, None, err))
                 .unwrap();
 
             self.processing_list = pending;
@@ -508,14 +511,18 @@ impl AssetLoaderIO {
         handle: &HandleUntyped,
         reader: &mut dyn io::Read,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
-    ) -> Result<LoadOutput, io::Error> {
+    ) -> Result<LoadOutput, AssetRegistryError> {
         let type_id = handle.id();
         let mut content = Vec::new();
-        reader.read_to_end(&mut content)?;
+        reader
+            .read_to_end(&mut content)
+            .map_err(|err| AssetRegistryError::ResourceIOError(type_id, err))?;
 
         let asset_type = type_id.kind;
         let loader = loaders.get_mut(&asset_type).unwrap();
-        let boxed_asset = loader.load(&mut &content[..])?;
+        let boxed_asset = loader
+            .load(&mut &content[..])
+            .map_err(|err| AssetRegistryError::AssetLoaderFailed(type_id, err))?;
 
         Ok(LoadOutput {
             assets: vec![(type_id, Some(boxed_asset))],
@@ -527,34 +534,53 @@ impl AssetLoaderIO {
         primary_handle: &HandleUntyped,
         reader: &mut dyn io::Read,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
-    ) -> Result<LoadOutput, io::Error> {
+    ) -> Result<LoadOutput, AssetRegistryError> {
         let primary_id = primary_handle.id();
         const ASSET_FILE_VERSION: u16 = 1;
 
         let mut typename: [u8; 4] = [0; 4];
-        reader.read_exact(&mut typename)?;
+        reader
+            .read_exact(&mut typename)
+            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
+
         if &typename != ASSET_FILE_TYPENAME {
-            return Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                "Filetype Mismatch",
+            return Err(AssetRegistryError::ResourceTypeMismatch(
+                primary_id,
+                format!("{:?}", typename),
+                format!("{:?}", ASSET_FILE_TYPENAME),
             ));
         }
 
         // asset file header
-        let version = reader.read_u16::<LittleEndian>()?;
+        let version = reader
+            .read_u16::<LittleEndian>()
+            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
+
         if version != ASSET_FILE_VERSION {
-            return Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                "Version Mismatch",
+            return Err(AssetRegistryError::ResourceVersionMismatch(
+                primary_id,
+                version,
+                ASSET_FILE_VERSION,
             ));
         }
 
-        let reference_count = reader.read_u64::<LittleEndian>()?;
+        let reference_count = reader
+            .read_u64::<LittleEndian>()
+            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
+
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
             let asset_ref = ResourceTypeAndId {
-                kind: ResourceType::from_raw(reader.read_u64::<LittleEndian>()?),
-                id: ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
+                kind: ResourceType::from_raw(
+                    reader
+                        .read_u64::<LittleEndian>()
+                        .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?,
+                ),
+                id: ResourceId::from_raw(
+                    reader
+                        .read_u128::<LittleEndian>()
+                        .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?,
+                ),
             };
             reference_list.push(AssetReference {
                 primary: asset_ref,
@@ -587,9 +613,11 @@ impl AssetLoaderIO {
 
         let loader = loaders
             .get_mut(&asset_type)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Interrupted, "Asset Loader not found"))?;
+            .ok_or(AssetRegistryError::AssetLoaderNotFound(asset_type))?;
 
-        let boxed_asset = loader.load(&mut &content[..])?;
+        let boxed_asset = loader
+            .load(&mut &content[..])
+            .map_err(|err| AssetRegistryError::AssetLoaderFailed(primary_id, err))?;
 
         // todo: Do not load what was loaded in another primary-asset.
         //

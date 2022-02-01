@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use lgn_tracing::{info, warn};
 
+use crate::Error;
 use crate::LockContext;
 
 /// Definition of a Transaction
@@ -13,8 +14,8 @@ pub struct Transaction {
 
 #[async_trait]
 pub trait TransactionOperation {
-    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
-    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error>;
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error>;
 }
 
 impl Transaction {
@@ -32,9 +33,9 @@ impl Transaction {
     pub(crate) async fn apply_transaction(
         &mut self,
         mut context: LockContext<'_>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), Error> {
         // Try to apply all the operations
-        let mut rollback_state: Option<(anyhow::Error, usize)> = None;
+        let mut rollback_state: Option<(Error, usize)> = None;
         for (index, op) in self.operations.iter_mut().enumerate() {
             if let Err(op_err) = op.apply_operation(&mut context).await {
                 rollback_state = Some((op_err, index));
@@ -67,9 +68,9 @@ impl Transaction {
     pub(crate) async fn rollback_transaction(
         &mut self,
         mut context: LockContext<'_>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), Error> {
         // Try to rollback all transaction operations (in reverse order)
-        let mut rollback_state: Option<(anyhow::Error, usize)> = None;
+        let mut rollback_state: Option<(Error, usize)> = None;
         for (index, op) in self.operations.iter().rev().enumerate() {
             if let Err(op_err) = op.rollback_operation(&mut context).await {
                 // If the rollback failed, abort rollback

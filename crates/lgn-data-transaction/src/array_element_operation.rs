@@ -81,7 +81,7 @@ impl ArrayOperation {
 #[async_trait]
 impl TransactionOperation for ArrayOperation {
     #[allow(unsafe_code)]
-    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         let resource_handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
@@ -92,20 +92,17 @@ impl TransactionOperation for ArrayOperation {
             .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-        let array_value = find_property_mut(reflection, self.array_path.as_str())?;
+        let array_value = find_property_mut(reflection, self.array_path.as_str())
+            .map_err(|err| Error::Reflection(self.resource_id, err))?;
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
             match &mut self.operation_type {
                 ArrayOpType::InsertElement(index, json_value) => {
                     let mut json = serde_json::Deserializer::from_str(json_value);
                     let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(&mut json);
-                    index.get_or_insert(unsafe { (array_desc.len)(array_value.base) });
 
                     unsafe {
-                        (array_desc.insert_element)(
-                            array_value.base,
-                            index.unwrap(),
-                            &mut deserializer,
-                        )?;
+                        (array_desc.insert_element)(array_value.base, *index, &mut deserializer)
+                            .map_err(|err| Error::Reflection(self.resource_id, err))?;
                     }
                 }
                 ArrayOpType::DeleteElement(index, old_value) => {
@@ -117,7 +114,8 @@ impl TransactionOperation for ArrayOperation {
                             array_value.base,
                             *index,
                             Some(&mut serializer),
-                        )?;
+                        )
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
                     }
                     *old_value = Some(buffer);
                 }
@@ -144,7 +142,8 @@ impl TransactionOperation for ArrayOperation {
                 }
 
                 ArrayOpType::ReorderElement(old_index, new_index) => unsafe {
-                    (array_desc.reorder_element)(array_value.base, *old_index, *new_index)?;
+                    (array_desc.reorder_element)(array_value.base, *old_index, *new_index)
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
                 },
             }
         }
@@ -153,7 +152,7 @@ impl TransactionOperation for ArrayOperation {
     }
 
     #[allow(unsafe_code)]
-    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         let handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
@@ -164,12 +163,18 @@ impl TransactionOperation for ArrayOperation {
             .get_resource_reflection_mut(self.resource_id.kind, handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-        let array_value = find_property_mut(reflection, self.array_path.as_str())?;
+        let array_value = find_property_mut(reflection, self.array_path.as_str())
+            .map_err(|err| Error::Reflection(self.resource_id, err))?;
 
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
             match &self.operation_type {
                 ArrayOpType::InsertElement(index, _json_value) => unsafe {
-                    (array_desc.delete_element)(array_value.base, index.unwrap(), None)?;
+                    (array_desc.delete_element)(
+                        array_value.base,
+                        index.unwrap_or((array_desc.len)(array_value.base) - 1),
+                        None,
+                    )
+                    .map_err(|err| Error::Reflection(self.resource_id, err))?;
                 },
                 ArrayOpType::DeleteElement(index, saved_value) => {
                     if let Some(saved_value) = saved_value {
@@ -179,9 +184,10 @@ impl TransactionOperation for ArrayOperation {
                         unsafe {
                             (array_desc.insert_element)(
                                 array_value.base,
-                                *index,
+                                Some(*index),
                                 &mut deserializer,
-                            )?;
+                            )
+                            .map_err(|err| Error::Reflection(self.resource_id, err))?;
                         };
                     }
                 }
@@ -194,15 +200,17 @@ impl TransactionOperation for ArrayOperation {
                         unsafe {
                             (array_desc.insert_element)(
                                 array_value.base,
-                                *saved_index,
+                                Some(*saved_index),
                                 &mut deserializer,
-                            )?;
+                            )
+                            .map_err(|err| Error::Reflection(self.resource_id, err))?;
                         };
                     }
                 }
 
                 ArrayOpType::ReorderElement(old_index, new_index) => unsafe {
-                    (array_desc.reorder_element)(array_value.base, *new_index, *old_index)?;
+                    (array_desc.reorder_element)(array_value.base, *new_index, *old_index)
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
                 },
             }
         }

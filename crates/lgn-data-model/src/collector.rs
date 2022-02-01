@@ -19,7 +19,7 @@ pub trait PropertyCollector {
     type Item;
 
     /// Callback to create a new Item for a field
-    fn new_item(info: &ItemInfo<'_>) -> anyhow::Result<Self::Item>
+    fn new_item(info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError>
     where
         Self: Sized;
 
@@ -30,7 +30,7 @@ pub trait PropertyCollector {
 }
 
 /// Collect all the properties of a `TypeReflection`
-pub fn collect_properties<T>(base: &dyn TypeReflection) -> anyhow::Result<T::Item>
+pub fn collect_properties<T>(base: &dyn TypeReflection) -> Result<T::Item, ReflectionError>
 where
     T: PropertyCollector,
 {
@@ -44,7 +44,7 @@ where
     internal_collect_properties::<T>(&item_info)
 }
 
-fn internal_collect_properties<T>(item_info: &ItemInfo<'_>) -> anyhow::Result<T::Item>
+fn internal_collect_properties<T>(item_info: &ItemInfo<'_>) -> Result<T::Item, ReflectionError>
 where
     T: PropertyCollector,
 {
@@ -56,7 +56,7 @@ where
                     f.field_name.as_str()
                 });
 
-            return Err(ReflectionError::InvalidateTypeDescriptor(resource_type.into()).into());
+            return Err(ReflectionError::InvalidTypeDescriptor(resource_type.into()));
         }
         TypeDefinition::BoxDyn(box_dyn_descriptor) => {
             // For BoxDyn, pipe directly to the inner type
@@ -105,10 +105,8 @@ where
         }
         TypeDefinition::Struct(struct_descriptor) => {
             let mut struct_parent = T::new_item(item_info)?;
-            struct_descriptor
-                .fields
-                .iter()
-                .try_for_each(|field| -> anyhow::Result<()> {
+            struct_descriptor.fields.iter().try_for_each(
+                |field| -> Result<(), ReflectionError> {
                     let field_base =
                         unsafe { item_info.base.cast::<u8>().add(field.offset).cast::<()>() };
                     let child = internal_collect_properties::<T>(&ItemInfo {
@@ -120,7 +118,8 @@ where
                     })?;
                     T::add_child(&mut struct_parent, child);
                     Ok(())
-                })?;
+                },
+            )?;
             struct_parent
         }
     };

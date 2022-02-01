@@ -39,3 +39,4 @@ pub mod collector;
 pub mod json_utils;
 /// Utilities to serializing reflection
 pub mod utils;
+pub use utils::ReflectionError;

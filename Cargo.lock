@@ -3031,7 +3031,6 @@ dependencies = [
 name = "generic-data"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "erased-serde",
  "inventory",
@@ -4415,7 +4414,6 @@ dependencies = [
 name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "binary-resource",
  "bincode",
  "clap 3.0.14",
@@ -4433,17 +4431,18 @@ dependencies = [
  "serde_json",
  "tempfile",
  "text-resource",
+ "thiserror",
 ]
 
 [[package]]
 name = "lgn-data-model"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "erased-serde",
  "lazy_static",
  "lgn-math",
+ "lgn-tracing",
  "serde",
  "serde_json",
  "thiserror",
@@ -4490,6 +4489,7 @@ dependencies = [
  "lgn-utils",
  "serde",
  "serde_json",
+ "thiserror",
  "typetag",
  "uuid",
  "xxhash-rust",
@@ -4507,7 +4507,6 @@ dependencies = [
 name = "lgn-data-transaction"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "erased-serde",
  "futures-lite",
@@ -4646,7 +4645,6 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "erased-serde",
  "lazy_static",
@@ -7728,7 +7726,6 @@ dependencies = [
 name = "sample-data"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "erased-serde",
  "insta",

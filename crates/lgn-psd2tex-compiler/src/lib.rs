@@ -43,9 +43,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let compiled_content = {
         let final_image = resource
             .final_texture()
-            .ok_or(CompilerError::CompilationError(
-                "Failed to generate texture",
-            ))?;
+            .ok_or_else(|| CompilerError::CompilationError("Failed to generate texture".into()))?;
         let mut content = vec![];
         texture_proc
             .write_resource(&final_image, &mut content)
@@ -67,9 +65,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
 
     for layer_name in resource
         .layer_list()
-        .ok_or(CompilerError::CompilationError(
-            "Failed to extract layer names",
-        ))?
+        .ok_or_else(|| CompilerError::CompilationError("Failed to extract layer names".into()))?
     {
         let pixels = compile_layer(&resource, layer_name);
         let output = context.store(&pixels, context.target_unnamed.new_named(layer_name))?;

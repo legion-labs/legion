@@ -2,10 +2,37 @@ use std::sync::Arc;
 use std::{any::Any, collections::HashMap, io};
 
 use lgn_data_model::TypeReflection;
-use lgn_data_runtime::ResourceType;
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 
-use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
+use super::{
+    OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
+    ResourceProcessorError,
+};
 use crate::ResourcePathId;
+
+/// Error For `ResourceRegistry`
+#[derive(thiserror::Error, Debug)]
+pub enum ResourceRegistryError {
+    /// Processor not found
+    #[error("Processor '{0}'not found")]
+    ProcessorNotFound(ResourceType),
+
+    /// ResourceProcess fallthrough
+    #[error(transparent)]
+    ResourceProcessError(#[from] ResourceProcessorError),
+
+    /// Resource not found
+    #[error("Resource '{0}' not found")]
+    ResourceNotFound(ResourceTypeAndId),
+
+    /// Invalid Handle
+    #[error("Invalid Resource handle '{0}'.")]
+    InvalidHandle(u32),
+
+    /// AssetLoaderError fallthrough
+    #[error("Resource loading handle '{0}'")]
+    AssetLoaderError(#[from] lgn_data_runtime::AssetLoaderError),
+}
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -126,15 +153,12 @@ impl ResourceRegistry {
         &mut self,
         kind: ResourceType,
         reader: &mut dyn io::Read,
-    ) -> io::Result<ResourceHandleUntyped> {
+    ) -> Result<ResourceHandleUntyped, ResourceRegistryError> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = processor.read_resource(reader)?;
             Ok(self.insert(resource))
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Processor not found for '{:?}'.", kind),
-            ))
+            Err(ResourceRegistryError::ProcessorNotFound(kind))
         }
     }
 
@@ -152,12 +176,12 @@ impl ResourceRegistry {
         kind: ResourceType,
         handle: impl AsRef<ResourceHandleUntyped>,
         writer: &mut dyn io::Write,
-    ) -> io::Result<(usize, Vec<ResourcePathId>)> {
+    ) -> Result<(usize, Vec<ResourcePathId>), ResourceRegistryError> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = self
                 .resources
                 .get(&handle.as_ref().id)
-                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Resource not found."))?
+                .ok_or_else(|| ResourceRegistryError::InvalidHandle(handle.as_ref().id))?
                 .as_ref()
                 .unwrap()
                 .as_ref();
@@ -166,10 +190,7 @@ impl ResourceRegistry {
             let written = processor.write_resource(&*resource, writer)?;
             Ok((written, build_deps))
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Processor not found for '{:?}'.", kind),
-            ))
+            Err(ResourceRegistryError::ProcessorNotFound(kind))
         }
     }
 
@@ -284,10 +305,13 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+    use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
     use crate::{
-        resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},
+        resource::{
+            registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor,
+            ResourceProcessorError,
+        },
         ResourcePathId,
     };
 
@@ -310,19 +334,23 @@ mod tests {
     }
 
     impl AssetLoader for SampleProcessor {
-        fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        fn load(
+            &mut self,
+            reader: &mut dyn io::Read,
+        ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
             let mut resource = Box::new(SampleResource {
                 content: String::from(""),
             });
 
             let mut bytes = 0usize.to_ne_bytes();
             reader.read_exact(&mut bytes)?;
+
             let length = usize::from_ne_bytes(bytes);
 
             let mut buffer = vec![0; length];
             reader.read_exact(&mut buffer)?;
-            resource.content = String::from_utf8(buffer)
-                .map_err(|_e| io::Error::new(io::ErrorKind::InvalidData, "Parsing error"))?;
+
+            resource.content = String::from_utf8(buffer)?;
             Ok(resource)
         }
 
@@ -344,7 +372,7 @@ mod tests {
             &self,
             resource: &dyn Any,
             writer: &mut dyn std::io::Write,
-        ) -> std::io::Result<usize> {
+        ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<SampleResource>().unwrap();
 
             let length = resource.content.len();
@@ -356,8 +384,8 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-            self.load(reader)
+        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+            Ok(self.load(reader)?)
         }
 
         fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<ResourcePathId> {

@@ -69,7 +69,7 @@ impl CompilerStub for BinCompilerStub {
                 compiled_resources: output.compiled_resources,
                 resource_references: output.resource_references,
             })
-            .map_err(|_e| CompilerError::StdoutError)
+            .map_err(CompilerError::StdoutError)
     }
 
     fn info(&self) -> io::Result<Vec<CompilerInfo>> {

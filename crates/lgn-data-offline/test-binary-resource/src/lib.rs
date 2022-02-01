@@ -1,10 +1,10 @@
 use std::{any::Any, io};
 
 use lgn_data_offline::{
-    resource::{OfflineResource, ResourceProcessor},
+    resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
     ResourcePathId,
 };
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
 #[resource("bin")]
@@ -25,7 +25,10 @@ impl OfflineResource for BinaryResource {
 pub struct BinaryResourceProc {}
 
 impl AssetLoader for BinaryResourceProc {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let mut resource = BinaryResource { content: vec![] };
         reader.read_to_end(&mut resource.content)?;
         let boxed = Box::new(resource);
@@ -48,7 +51,7 @@ impl ResourceProcessor for BinaryResourceProc {
         &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
-    ) -> std::io::Result<usize> {
+    ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<BinaryResource>().unwrap();
         writer.write_all(&resource.content)?;
         Ok(1) // no bytes written exposed by serde.
@@ -57,7 +60,7 @@ impl ResourceProcessor for BinaryResourceProc {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        self.load(reader)
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        Ok(self.load(reader)?)
     }
 }

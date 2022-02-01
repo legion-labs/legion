@@ -5,10 +5,13 @@
 
 use std::{any::Any, io, str::FromStr};
 
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 use super::OfflineResource;
-use crate::{resource::ResourceProcessor, ResourcePathId};
+use crate::{
+    resource::{ResourceProcessor, ResourceProcessorError},
+    ResourcePathId,
+};
 
 /// Resource temporarily used for testing.
 ///
@@ -36,7 +39,10 @@ impl OfflineResource for TestResource {
 pub struct TestResourceProc {}
 
 impl AssetLoader for TestResourceProc {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let mut resource = Box::new(TestResource {
             content: String::from(""),
             build_deps: vec![],
@@ -89,7 +95,7 @@ impl ResourceProcessor for TestResourceProc {
         &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
-    ) -> std::io::Result<usize> {
+    ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<TestResource>().unwrap();
         let mut nbytes = 0;
 
@@ -121,7 +127,7 @@ impl ResourceProcessor for TestResourceProc {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        self.load(reader)
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        Ok(self.load(reader)?)
     }
 }

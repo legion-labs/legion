@@ -45,9 +45,12 @@ pub(crate) fn generate(
             let resources = context.registry();
 
             let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
+            if let Some(err) = resources.retrieve_err(offline_resource.id()) {
+                return Err(CompilerError::CompilationError(err.to_string()));
+            }
             let offline_resource = offline_resource
                 .get(&resources)
-                .ok_or(CompilerError::CompilationError("Failed to load resource"))?;
+                .ok_or_else(|| CompilerError::CompilationError(format!("Failed to retrieve resource '{}'", context.source.resource_id())))?;
 
             let offline_resource : &OfflineType = &offline_resource;
             let mut runtime_resource = RuntimeType::default();

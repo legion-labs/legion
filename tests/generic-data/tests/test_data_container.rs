@@ -6,7 +6,7 @@ use std::io::Cursor;
 use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
 use lgn_data_model::collector::{collect_properties, ItemInfo, PropertyCollector};
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
-use lgn_data_model::TypeReflection;
+use lgn_data_model::{ReflectionError, TypeReflection};
 use lgn_data_runtime::AssetLoader;
 use lgn_math::prelude::*;
 
@@ -146,7 +146,7 @@ fn test_collector() {
 
     impl PropertyCollector for PropertyBag {
         type Item = Self;
-        fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
+        fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
             Ok(Self::Item {
                 name: item_info
                     .field_descriptor

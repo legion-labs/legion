@@ -1,6 +1,6 @@
 use std::{any::Any, io};
 
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 #[resource("integer_asset")]
 pub struct IntegerAsset {
@@ -15,7 +15,10 @@ impl Asset for IntegerAsset {
 pub struct IntegerAssetLoader {}
 
 impl AssetLoader for IntegerAssetLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Sync + Send>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Sync + Send>, AssetLoaderError> {
         let mut buf = 0i32.to_ne_bytes();
         reader.read_exact(&mut buf)?;
         let magic_value = i32::from_ne_bytes(buf);
