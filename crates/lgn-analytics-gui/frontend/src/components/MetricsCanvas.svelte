@@ -104,6 +104,9 @@
 		y = d3.scaleLinear().nice();
 
 		xAxis = d3.axisBottom(x);
+		xAxis = d3
+			.axisBottom(x)
+			.tickFormat((d) => (d as Date).valueOf().toString());
 		yAxis = d3.axisLeft(y);
 
 		gxAxis = svgGroup
