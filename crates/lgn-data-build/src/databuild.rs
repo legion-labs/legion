@@ -19,7 +19,9 @@ use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
-use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceReference};
+use crate::buildindex::{
+    self, CompiledResourceInfo, CompiledResourceReference, OutputIndex, SourceIndex,
+};
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
@@ -98,7 +100,8 @@ fn compute_context_hash(
 /// ```
 #[derive(Debug)]
 pub struct DataBuild {
-    build_index: BuildIndex,
+    source_index: SourceIndex,
+    output_index: OutputIndex,
     resource_dir: PathBuf,
     content_store: HddContentStore,
     compilers: CompilerNode,
@@ -125,8 +128,9 @@ impl DataBuild {
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let build_index = BuildIndex::create_new(&config.buildindex_dir, Self::version())
-            .map_err(|e| Error::Io(e.into()))?;
+        let (source_index, output_index) =
+            buildindex::create_new(&config.buildindex_dir, Self::version())
+                .map_err(|e| Error::Io(e.into()))?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -144,7 +148,8 @@ impl DataBuild {
         )?;
 
         Ok(Self {
-            build_index,
+            source_index,
+            output_index,
             resource_dir: project.resource_dir(),
             content_store,
             compilers: CompilerNode::new(compilers, registry),
@@ -152,7 +157,8 @@ impl DataBuild {
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
+        let (source_index, output_index) =
+            buildindex::open(&config.buildindex_dir, Self::version())?;
         // todo: validate project path
         //let project = build_index.open_project().await?;
 
@@ -172,7 +178,8 @@ impl DataBuild {
         )?;
 
         Ok(Self {
-            build_index,
+            source_index,
+            output_index,
             resource_dir: project.resource_dir(),
             content_store,
             compilers: CompilerNode::new(compilers, registry),
@@ -185,8 +192,8 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
-        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
-            Ok(build_index) => {
+        match buildindex::open(&config.buildindex_dir, Self::version()) {
+            Ok((source_index, output_index)) => {
                 // todo: validate the two paths
                 //let p = build_index.project_path();
                 //let p2 = project.project_dir();
@@ -204,7 +211,8 @@ impl DataBuild {
                 )?;
 
                 Ok(Self {
-                    build_index,
+                    source_index,
+                    output_index,
                     resource_dir: project.resource_dir(),
                     content_store,
                     compilers: CompilerNode::new(compilers, registry),
@@ -219,7 +227,7 @@ impl DataBuild {
     ///
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.build_index.source_index.lookup_pathid(id)
+        self.source_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from
@@ -230,7 +238,7 @@ impl DataBuild {
         for resource_id in project.resource_list().await {
             let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
 
-            if self.build_index.source_index.update_resource(
+            if self.source_index.update_resource(
                 ResourcePathId::from(ResourceTypeAndId {
                     id: resource_id,
                     kind,
@@ -244,11 +252,10 @@ impl DataBuild {
             // add each derived dependency with it's direct dependency listed in deps.
             for dependency in resource_deps {
                 if let Some(direct_dependency) = dependency.direct_dependency() {
-                    if self.build_index.source_index.update_resource(
-                        dependency,
-                        None,
-                        vec![direct_dependency],
-                    ) {
+                    if self
+                        .source_index
+                        .update_resource(dependency, None, vec![direct_dependency])
+                    {
                         updated_resources += 1;
                     }
                 }
@@ -342,7 +349,7 @@ impl DataBuild {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
-        build_index: &mut BuildIndex,
+        output_index: &mut OutputIndex,
         cas_addr: ContentStoreAddr,
         project_dir: &Path,
         compile_node: &ResourcePathId,
@@ -368,9 +375,7 @@ impl DataBuild {
         ) = {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
-                build_index
-                    .output_index
-                    .find_compiled(compile_node, context_hash, source_hash)
+                output_index.find_compiled(compile_node, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -399,7 +404,7 @@ impl DataBuild {
                     )
                     .map_err(Error::Compiler)?;
 
-                build_index.output_index.insert_compiled(
+                output_index.insert_compiled(
                     compile_node,
                     context_hash,
                     source_hash,
@@ -453,10 +458,7 @@ impl DataBuild {
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
-        let build_graph = self
-            .build_index
-            .source_index
-            .generate_build_graph(compile_path);
+        let build_graph = self.source_index.generate_build_graph(compile_path);
         #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
@@ -485,12 +487,9 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompileOutput, Error> {
-        self.build_index.source_index.record_pathid(&compile_path);
+        self.source_index.record_pathid(&compile_path);
 
-        let build_graph = self
-            .build_index
-            .source_index
-            .generate_build_graph(compile_path);
+        let build_graph = self.source_index.generate_build_graph(compile_path);
 
         let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
             eprintln!("{:?}", build_graph);
@@ -577,7 +576,6 @@ impl DataBuild {
                 // this has to be reevaluated in the future.
                 //
                 let dependencies = self
-                    .build_index
                     .source_index
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
@@ -596,8 +594,7 @@ impl DataBuild {
                         // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
-                        self.build_index
-                            .source_index
+                        self.source_index
                             .compute_source_hash(compile_node.clone())
                             .get()
                     } else {
@@ -614,7 +611,6 @@ impl DataBuild {
 
                         // we can assume there are results of compilation of the `direct_dependency`
                         let compiled = self
-                            .build_index
                             .output_index
                             .find_compiled(
                                 &direct_dependency.to_unnamed(),
@@ -641,7 +637,7 @@ impl DataBuild {
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
                 let (resource_infos, resource_references, stats) = Self::compile_node(
-                    &mut self.build_index,
+                    &mut self.output_index,
                     self.content_store.address(),
                     &self.resource_dir,
                     &compile_node,
@@ -757,7 +753,7 @@ impl DataBuild {
 // todo(kstasik): file IO on destructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
-        self.build_index.flush().unwrap();
+        buildindex::flush(&mut self.source_index, &mut self.output_index).unwrap();
     }
 }
 
