@@ -18,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
       - name: Build release
         # This will be replace by cargo cd
         run: cargo m build --release

@@ -19,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build benchmarks
-        run: make bench-build
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
 
-      - name: Run benchmarks
-        run: make bench-run
+      - name: Build benchmarks
+        run: cargo ci bench

@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
       - name: Build and run tests with coverage
         run: make cov
 
