@@ -7,8 +7,15 @@ struct Script {
     pub compiled_script: Vec<u8>,
 }
 
+/*pub enum ScriptType {
+    Mun, // 1
+    Rune, // 2
+    Rhai // 3
+}*/
+
 #[component]
 struct ScriptComponent {
+    pub script_type: usize, //ScriptType,
     pub input_values: Vec<String>,
     pub entry_fn: String,
 

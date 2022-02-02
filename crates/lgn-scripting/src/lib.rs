@@ -1,4 +1,4 @@
-//! Scripting library - currently using the MUN language
+//! Scripting library - currently has an integration for the MUN language, Rune and Rhai.
 
 // generated from def\script.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));

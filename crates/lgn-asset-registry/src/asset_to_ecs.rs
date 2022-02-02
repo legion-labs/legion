@@ -107,36 +107,6 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
                 entity.insert(script.clone());
-                /*if script.script.is_none() {
-                    continue;
-                }
-                let payload = match script.script_type {
-                    runtime_data::ScriptType::Mun => {
-                        ECSScriptPayload::LibPath(match &script.payload {
-                            runtime_data::ScriptPayload::LibPath(path) => path.clone(),
-                            _ => panic!("Bad payload for LibPath!"),
-                        })
-                    }
-                    runtime_data::ScriptType::Rune | runtime_data::ScriptType::Rhai => {
-                        let script_handle: Handle<runtime_data::Script> = registry
-                            .get_untyped(script.script.as_ref().unwrap().id())
-                            .unwrap()
-                            .into();
-                        let script_ref = script_handle.get(registry);
-                        ECSScriptPayload::ContainedScript(
-                            std::str::from_utf8(&script_ref.unwrap().data)
-                                .unwrap()
-                                .to_string(),
-                        )
-                    }
-                };
-                #[allow(unsafe_code)]
-                entity.insert(ECSScriptComponent {
-                    script_type: unsafe { std::mem::transmute(script.script_type.clone()) },
-                    input_values: script.input_values.clone(),
-                    entry_fn: script.entry_fn.clone(),
-                    payload,
-                });*/
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                 entity.insert(visual.clone());
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {

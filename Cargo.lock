@@ -2977,7 +2977,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "erased-serde",
- "generic-data",
  "inventory",
  "lazy_static",
  "lgn-app",

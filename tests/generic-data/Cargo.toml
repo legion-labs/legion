@@ -35,8 +35,8 @@ inventory = "0.2"
 [build-dependencies]
 lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 
-[dev-dependencies]
-generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
+# [dev-dependencies]
+# generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
 
 [features]
 offline = []

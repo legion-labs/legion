@@ -1,21 +1,22 @@
 use lgn_app::prelude::*;
 #[cfg(feature = "offline")]
 use lgn_data_offline::resource::ResourceRegistryOptions;
-use lgn_data_runtime::AssetRegistryOptions;
+use lgn_data_runtime::{AssetRegistryOptions, AssetRegistry};
 use lgn_ecs::prelude::*;
+use rhai::Scope;
+use rune::{termcolor::{StandardStream, ColorChoice}, ToValue, FromValue};
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use crate::runtime::ScriptComponent;
-use mun_runtime::{invoke_fn, Runtime};
+use crate::runtime::{Script, ScriptComponent};
 use std::str::FromStr;
 
 #[derive(Default)]
 struct RuntimeScripts {
-    pub mun_runtimes: Vec<(ECSScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
+    pub mun_runtimes: Vec<(ScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
     pub rune_vm: Option<rune::Vm>,
     pub rhai_eng: Option<rhai::Engine>,
-    pub rhai_asts: Vec<(ECSScriptComponent, Rc<RefCell<rhai::AST>>)>,
+    pub rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
 }
 
 #[derive(Default)]
@@ -38,42 +39,45 @@ impl ScriptingPlugin {
     fn tick_scripts(
         runtimes: NonSendMut<'_, RuntimeScripts>,
         scripts: Query<'_, '_, &mut ScriptComponent>,
+        registry: Res<'_, Arc<AssetRegistry>>,
     ) {
         let mun_components = scripts
             .iter()
-            .filter(|s| s.script_type == ECSScriptType::Mun);
+            .filter(|s| s.script_type == 1 /*ScriptType::Mun*/);
         let rune_components = scripts
             .iter()
-            .filter(|s| s.script_type == ECSScriptType::Rune);
+            .filter(|s| s.script_type == 2 /*ScriptType::Rune*/);
         let rhai_components = scripts
             .iter()
-            .filter(|s| s.script_type == ECSScriptType::Rhai);
+            .filter(|s| s.script_type == 3 /*ScriptType::Rhai*/);
 
-        Self::tick_mun(mun_components, &mut runtimes);
-        Self::tick_rune(rune_components, &mut runtimes);
-        Self::tick_rhai(rhai_components, &mut runtimes);
+        let r = runtimes.into_inner(); 
+        Self::tick_mun(mun_components, r, &registry);
+        Self::tick_rune(rune_components, r, &registry);
+        Self::tick_rhai(rhai_components, r, &registry);
     }
 
     fn tick_mun<'a>(
-        mun_components: impl Iterator<Item = &'a ECSScriptComponent>,
+        mun_components: impl Iterator<Item = &'a ScriptComponent>,
         runtimes: &mut RuntimeScripts,
+        registry: &AssetRegistry,
     ) {
         if runtimes.mun_runtimes.is_empty() {
             for script in mun_components {
-                /*TODO: Fix using compiled_script
-                let lib_path = match &script.payload {
-                    ECSScriptPayload::LibPath(path) => path,
-                    _ => panic!("Unexpected script payload!"),
-                };
+                let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
+                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let lib_path = std::str::from_utf8(&script_typed.compiled_script).unwrap();
+                println!("{}", &lib_path);
+
                 let runtime = mun_runtime::RuntimeBuilder::new(&lib_path)
                     .spawn()
                     .expect("Failed to spawn Runtime");
-                runtimes.mun_runtimes.push((script.clone(), runtime));*/
+                runtimes.mun_runtimes.push((script.clone(), runtime));
             }
         }
         for runtime in &runtimes.mun_runtimes {
             {
-                let runtime_ref = runtime.1.deref().borrow();
+                let runtime_ref = runtime.1.borrow();
                 let result: i64 = mun_runtime::invoke_fn!(
                     runtime_ref,
                     &runtime.0.entry_fn,
@@ -89,17 +93,17 @@ impl ScriptingPlugin {
     }
 
     fn tick_rune<'a>(
-        rune_components: impl Iterator<Item = &'a ECSScriptComponent>,
+        rune_components: impl Iterator<Item = &'a ScriptComponent>,
         runtimes: &mut RuntimeScripts,
+        registry: &AssetRegistry,
     ) {
         if runtimes.rune_vm.is_none() {
             for script in rune_components {
                 let context = rune_modules::default_context().unwrap();
 
-                let source_payload = match &script.payload {
-                    ECSScriptPayload::ContainedScript(text) => text,
-                    _ => panic!("Unexpected script payload!"),
-                };
+                let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
+                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
                 println!("{}", &source_payload);
 
                 let mut sources = rune::Sources::new();
@@ -145,23 +149,25 @@ impl ScriptingPlugin {
     }
 
     fn tick_rhai<'a>(
-        rhai_components: impl Iterator<Item = &'a ECSScriptComponent>,
+        rhai_components: impl Iterator<Item = &'a ScriptComponent>,
         runtimes: &mut RuntimeScripts,
+        registry: &AssetRegistry,
     ) {
         if runtimes.rhai_eng.is_none() {
             for script in rhai_components {
                 if runtimes.rhai_eng.is_none() {
                     runtimes.rhai_eng = Some(rhai::Engine::new());
                 }
-                let script_source = match &script.payload {
-                    ECSScriptPayload::ContainedScript(text) => text,
-                    _ => panic!("Bad script payload!"),
-                };
+                let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
+                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
+                println!("{}", &source_payload);
+
                 let ast = runtimes
                     .rhai_eng
                     .as_ref()
                     .unwrap()
-                    .compile(script_source)
+                    .compile(source_payload)
                     .unwrap();
                 runtimes
                     .rhai_asts
