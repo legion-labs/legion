@@ -220,37 +220,8 @@ async fn create_offline_data(
         path.push(generic_data::runtime::DebugCube::TYPE)
     };
 
-    // scene
-    let scene_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("29b8b0d0-ee1e-4792-aca2-3b3a3ce63916").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.children.push(ground_path_id);
-        entity.children.push(pad_right_path_id);
-        entity.children.push(pad_left_path_id);
-        entity.children.push(ball_path_id);
-        project
-            .add_resource_with_id(
-                "/scene.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        id
-    };
-
     // script
-    let script_id = {
+    let script_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
             kind: lgn_scripting::offline::Script::TYPE,
@@ -287,8 +258,45 @@ async fn create_offline_data(
             )
             .await
             .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(lgn_scripting::runtime::Script::TYPE)
+    };
+
+    // scene
+    let scene_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("29b8b0d0-ee1e-4792-aca2-3b3a3ce63916").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity.children.push(ground_path_id);
+        entity.children.push(pad_right_path_id);
+        entity.children.push(pad_left_path_id);
+        entity.children.push(ball_path_id);
+        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
+            input_values: vec!["10".to_string()],
+            entry_fn: "fibonacci".to_string(),
+            script_id: Some(script_path_id),
+            temp_script: "".to_string(),
+        });
+        entity.components.push(script_component);
+        project
+            .add_resource_with_id(
+                "/scene.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
         id
     };
 
-    vec![scene_id, script_id]
+    vec![scene_id]
 }
