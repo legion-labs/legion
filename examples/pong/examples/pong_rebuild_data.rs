@@ -12,8 +12,8 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() {
     let project_dir = PathBuf::from("examples/pong/data");
-
     let build_dir = project_dir.join("temp");
+    
     std::fs::create_dir_all(&build_dir).unwrap();
 
     let project = Project::create_new(project_dir)
@@ -47,7 +47,7 @@ async fn main() {
         .unwrap();
     let project = Arc::new(Mutex::new(project));
 
-    let data_manager = Arc::new(Mutex::new(DataManager::new(
+    let _data_manager = Arc::new(Mutex::new(DataManager::new(
         project,
         resource_registry,
         asset_registry,
