@@ -10,7 +10,7 @@ use crate::{Checksum, ContentStore, ContentStoreAddr};
 ///
 /// All content is assumed to be stored directly in a directory provided to
 /// [`HddContentStore::open`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HddContentStore {
     address: ContentStoreAddr,
 }

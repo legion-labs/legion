@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store::Checksum;
+use lgn_content_store::{Checksum, ContentStore};
 use lgn_data_compiler::CompiledResource;
 use lgn_data_offline::{resource::ResourceHash, ResourcePathId};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -122,14 +122,27 @@ impl OutputContent {
     }
 }
 
-#[derive(Debug)]
 pub(crate) struct SourceIndex {
     content: SourceContent,
     file: File,
+    content_store: Box<dyn ContentStore>,
+}
+
+impl std::fmt::Debug for SourceIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SourceIndex")
+            .field("content", &self.content)
+            .field("file", &self.file)
+            .finish()
+    }
 }
 
 impl SourceIndex {
-    pub(crate) fn create_new(source_index: &Path, version: &str) -> Result<Self, Error> {
+    pub(crate) fn create_new(
+        source_index: &Path,
+        content_store: Box<dyn ContentStore>,
+        version: &str,
+    ) -> Result<Self, Error> {
         let source_file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -148,11 +161,12 @@ impl SourceIndex {
 
         Ok(Self {
             content: source_content,
+            content_store,
             file: source_file,
         })
     }
 
-    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+    fn load(path: impl AsRef<Path>, content_store: Box<dyn ContentStore>) -> Result<Self, Error> {
         let source_file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -164,16 +178,21 @@ impl SourceIndex {
 
         Ok(Self {
             content: source_content,
+            content_store,
             file: source_file,
         })
     }
 
-    pub(crate) fn open(source_index: &Path, version: &str) -> Result<Self, Error> {
+    pub(crate) fn open(
+        source_index: &Path,
+        content_store: Box<dyn ContentStore>,
+        version: &str,
+    ) -> Result<Self, Error> {
         if !source_index.exists() {
             return Err(Error::NotFound);
         }
 
-        let source_index = Self::load(source_index)?;
+        let source_index = Self::load(source_index, content_store)?;
 
         if source_index.content.version != version {
             return Err(Error::VersionMismatch {
@@ -394,7 +413,7 @@ impl OutputIndex {
         })
     }
 
-    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+    fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
         let output_file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -527,44 +546,14 @@ impl OutputIndex {
     }
 }
 
-pub(crate) fn create_new(
-    buildindex_dir: &Path,
-    version: &str,
-) -> Result<(SourceIndex, OutputIndex), Error> {
-    let source_index = SourceIndex::source_index_file(buildindex_dir);
-    let output_index = OutputIndex::output_index_file(buildindex_dir);
-
-    Ok((
-        SourceIndex::create_new(&source_index, version)?,
-        OutputIndex::create_new(&output_index, version)?,
-    ))
-}
-
-pub(crate) fn open(
-    buildindex_dir: &Path,
-    version: &str,
-) -> Result<(SourceIndex, OutputIndex), Error> {
-    let source_index = SourceIndex::open(&SourceIndex::source_index_file(buildindex_dir), version)?;
-    let output_index = OutputIndex::open(&OutputIndex::output_index_file(buildindex_dir), version)?;
-    Ok((source_index, output_index))
-}
-
-pub(crate) fn flush(
-    source_index: &mut SourceIndex,
-    output_index: &mut OutputIndex,
-) -> Result<(), Error> {
-    source_index.flush()?;
-    output_index.flush()?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
 
+    use lgn_content_store::RamContentStore;
     use lgn_data_offline::ResourcePathId;
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
-    use crate::buildindex::{create_new, flush, open, SourceIndex};
+    use crate::buildindex::{OutputIndex, SourceIndex};
 
     #[tokio::test]
     async fn version_check() {
@@ -572,10 +561,26 @@ mod tests {
 
         let buildindex_dir = work_dir.path();
         {
-            let _buildindex = create_new(buildindex_dir, "0.0.1").unwrap();
+            let _source_index = SourceIndex::create_new(
+                &SourceIndex::source_index_file(&buildindex_dir),
+                Box::new(RamContentStore::default()),
+                "0.0.1",
+            )
+            .unwrap();
+            let _output_index =
+                OutputIndex::create_new(&OutputIndex::output_index_file(&buildindex_dir), "0.0.1")
+                    .unwrap();
         }
 
-        assert!(open(buildindex_dir, "0.0.2").is_err());
+        assert!(SourceIndex::open(
+            &SourceIndex::source_index_file(&buildindex_dir),
+            Box::new(RamContentStore::default()),
+            "0.0.2"
+        )
+        .is_err());
+        assert!(
+            OutputIndex::open(&OutputIndex::output_index_file(&buildindex_dir), "0.0.2").is_err()
+        );
     }
 
     #[tokio::test]
@@ -594,7 +599,15 @@ mod tests {
         let buildindex_dir = work_dir.path();
 
         {
-            let (mut source_index, mut output_index) = create_new(buildindex_dir, "0.0.1").unwrap();
+            let mut source_index = SourceIndex::create_new(
+                &SourceIndex::source_index_file(&buildindex_dir),
+                Box::new(RamContentStore::default()),
+                "0.0.1",
+            )
+            .unwrap();
+            let mut output_index =
+                OutputIndex::create_new(&OutputIndex::output_index_file(&buildindex_dir), "0.0.1")
+                    .unwrap();
 
             // all dependencies need to be explicitly specified
             let intermediate_deps = vec![source_resource.clone()];
@@ -615,11 +628,16 @@ mod tests {
             );
             source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
 
-            flush(&mut source_index, &mut output_index).unwrap();
+            source_index.flush().unwrap();
+            output_index.flush().unwrap();
         }
 
-        let source_index =
-            SourceIndex::open(&SourceIndex::source_index_file(buildindex_dir), "0.0.1").unwrap();
+        let source_index = SourceIndex::open(
+            &SourceIndex::source_index_file(buildindex_dir),
+            Box::new(RamContentStore::default()),
+            "0.0.1",
+        )
+        .unwrap();
         assert_eq!(
             source_index.lookup_pathid(source_id).unwrap(),
             source_resource
@@ -653,9 +671,12 @@ mod tests {
 
         let buildindex_dir = work_dir.path();
 
-        let mut source_index =
-            SourceIndex::create_new(&SourceIndex::source_index_file(buildindex_dir), "0.0.1")
-                .unwrap();
+        let mut source_index = SourceIndex::create_new(
+            &SourceIndex::source_index_file(buildindex_dir),
+            Box::new(RamContentStore::default()),
+            "0.0.1",
+        )
+        .unwrap();
 
         // all dependencies need to be explicitly specified
         let intermediate_deps = vec![source_resource.clone()];

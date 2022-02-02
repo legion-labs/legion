@@ -20,7 +20,7 @@ use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{
-    self, CompiledResourceInfo, CompiledResourceReference, OutputIndex, SourceIndex,
+    CompiledResourceInfo, CompiledResourceReference, OutputIndex, SourceIndex,
 };
 use crate::{DataBuildOptions, Error};
 
@@ -128,12 +128,19 @@ impl DataBuild {
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let (source_index, output_index) =
-            buildindex::create_new(&config.buildindex_dir, Self::version())
-                .map_err(|e| Error::Io(e.into()))?;
-
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
+
+        let source_index = SourceIndex::create_new(
+            &SourceIndex::source_index_file(&config.buildindex_dir),
+            Box::new(content_store.clone()),
+            Self::version(),
+        )?;
+
+        let output_index = OutputIndex::create_new(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
+        )?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -157,11 +164,18 @@ impl DataBuild {
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let (source_index, output_index) =
-            buildindex::open(&config.buildindex_dir, Self::version())?;
-
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
+
+        let source_index = SourceIndex::open(
+            &SourceIndex::source_index_file(&config.buildindex_dir),
+            Box::new(content_store.clone()),
+            Self::version(),
+        )?;
+        let output_index = OutputIndex::open(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
+        )?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -190,31 +204,52 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
-        match buildindex::open(&config.buildindex_dir, Self::version()) {
-            Ok((source_index, output_index)) => {
-                let compilers = config.compiler_options.create();
-                let registry = config.registry.map_or_else(
-                    || {
-                        Self::default_asset_registry(
-                            &project.resource_dir(),
-                            config.contentstore_path.clone(),
-                            &compilers,
-                        )
-                    },
-                    Ok,
-                )?;
 
-                Ok(Self {
-                    source_index,
-                    output_index,
-                    resource_dir: project.resource_dir(),
-                    content_store,
-                    compilers: CompilerNode::new(compilers, registry),
-                })
-            }
-            Err(Error::NotFound) => Self::new(config, project).await,
+        let source_index = match SourceIndex::open(
+            &SourceIndex::source_index_file(&config.buildindex_dir),
+            Box::new(content_store.clone()),
+            Self::version(),
+        ) {
+            Ok(source_index) => Ok(source_index),
+            Err(Error::NotFound) => SourceIndex::create_new(
+                &SourceIndex::source_index_file(&config.buildindex_dir),
+                Box::new(content_store.clone()),
+                Self::version(),
+            ),
             Err(e) => Err(e),
-        }
+        }?;
+
+        let output_index = match OutputIndex::open(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
+        ) {
+            Ok(output_index) => Ok(output_index),
+            Err(Error::NotFound) => OutputIndex::create_new(
+                &OutputIndex::output_index_file(&config.buildindex_dir),
+                Self::version(),
+            ),
+            Err(e) => Err(e),
+        }?;
+
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
+        Ok(Self {
+            source_index,
+            output_index,
+            resource_dir: project.resource_dir(),
+            content_store,
+            compilers: CompilerNode::new(compilers, registry),
+        })
     }
 
     /// Returns a source of a resource id.
@@ -747,7 +782,8 @@ impl DataBuild {
 // todo(kstasik): file IO on destructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
-        buildindex::flush(&mut self.source_index, &mut self.output_index).unwrap();
+        self.source_index.flush().unwrap();
+        self.output_index.flush().unwrap();
     }
 }
 
