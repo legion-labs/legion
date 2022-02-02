@@ -53,37 +53,6 @@ pub trait StreamingBlobStorage: Send + Sync {
     ///
     /// In any other case, an error is returned.
     async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>>;
-}
-
-#[async_trait]
-pub trait BlobStorage: Send + Sync {
-    async fn blob_exists(&self, name: &str) -> Result<bool> {
-        self.get_blob_info(name).await.map(|info| info.is_some())
-    }
-
-    /// Read information about a blob.
-    ///
-    /// If the blob does not exist, Ok(None) is returned.
-    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>>;
-
-    /// Reads the the full contents of a blob from the storage.
-    async fn read_blob(&self, name: &str) -> Result<Vec<u8>>;
-
-    /// Writes the full contents of a blob to the storage.
-    /// warning: nothing prevents a reader from accessing a partially written blob.
-    async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()>;
-
-    /// Download a blob from the storage and persist it to disk at the specified
-    /// location.
-    async fn download_blob(&self, path: &Path, name: &str) -> Result<()>;
-}
-
-/// Blanket implementation for all blob streaming storage backends.
-#[async_trait]
-impl<T: StreamingBlobStorage> BlobStorage for T {
-    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>> {
-        StreamingBlobStorage::get_blob_info(self, name).await
-    }
 
     /// Reads the the full contents of a blob from the storage.
     async fn read_blob(&self, name: &str) -> Result<Vec<u8>> {
@@ -129,5 +98,66 @@ impl<T: StreamingBlobStorage> BlobStorage for T {
             })?;
 
         Ok(())
+    }
+
+    /// Deletes a blob from the storage.
+    ///
+    /// If the blob does not exist, no error is returned.
+    async fn delete_blob(&self, name: &str) -> Result<()>;
+}
+
+#[async_trait]
+pub trait BlobStorage: Send + Sync {
+    async fn blob_exists(&self, name: &str) -> Result<bool> {
+        self.get_blob_info(name).await.map(|info| info.is_some())
+    }
+
+    /// Read information about a blob.
+    ///
+    /// If the blob does not exist, Ok(None) is returned.
+    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>>;
+
+    /// Reads the the full contents of a blob from the storage.
+    async fn read_blob(&self, name: &str) -> Result<Vec<u8>>;
+
+    /// Writes the full contents of a blob to the storage.
+    /// warning: nothing prevents a reader from accessing a partially written blob.
+    async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()>;
+
+    /// Download a blob from the storage and persist it to disk at the specified
+    /// location.
+    async fn download_blob(&self, path: &Path, name: &str) -> Result<()>;
+
+    /// Deletes a blob from the storage.
+    ///
+    /// If the blob does not exist, no error is returned.
+    async fn delete_blob(&self, name: &str) -> Result<()>;
+}
+
+/// Blanket implementation for all blob streaming storage backends.
+#[async_trait]
+impl<T: StreamingBlobStorage> BlobStorage for T {
+    async fn get_blob_info(&self, name: &str) -> Result<Option<BlobStats>> {
+        StreamingBlobStorage::get_blob_info(self, name).await
+    }
+
+    /// Reads the the full contents of a blob from the storage.
+    async fn read_blob(&self, name: &str) -> Result<Vec<u8>> {
+        StreamingBlobStorage::read_blob(self, name).await
+    }
+
+    /// Writes the full contents of a blob to the storage.
+    async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()> {
+        StreamingBlobStorage::write_blob(self, name, content).await
+    }
+
+    /// Download a blob from the storage and persist it to disk at the specified
+    /// location.
+    async fn download_blob(&self, path: &Path, name: &str) -> Result<()> {
+        StreamingBlobStorage::download_blob(self, path, name).await
+    }
+
+    async fn delete_blob(&self, name: &str) -> Result<()> {
+        StreamingBlobStorage::delete_blob(self, name).await
     }
 }

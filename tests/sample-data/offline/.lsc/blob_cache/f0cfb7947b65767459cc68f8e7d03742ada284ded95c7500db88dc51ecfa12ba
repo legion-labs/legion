@@ -1,0 +1,9 @@
+{
+  "name": "/world/sample_1/cube_group_1.ent.ins",
+  "type_name": "offline_instance",
+  "type_id": "91dc60590cba171e",
+  "dependencies": [
+    "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)|1d9ddd99aad89045"
+  ],
+  "content_checksum": "42b6a626b84ba0268c52d09513527325"
+}

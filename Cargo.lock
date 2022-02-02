@@ -4881,15 +4881,18 @@ dependencies = [
  "chrono",
  "diffy",
  "dirs 4.0.0",
+ "futures",
  "git2",
  "glob",
  "http",
+ "itertools",
  "lgn-blob-storage",
  "lgn-online",
  "lgn-source-control-proto",
  "lgn-tracing",
  "lz4",
  "path-clean",
+ "path-slash",
  "pin-project",
  "reqwest",
  "serde",
@@ -4915,6 +4918,7 @@ dependencies = [
  "anyhow",
  "clap 3.0.14",
  "fuser",
+ "lgn-blob-storage",
  "lgn-cli-utils",
  "lgn-source-control",
  "lgn-telemetry-sink",
@@ -6468,6 +6472,12 @@ name = "path-clean"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecba01bf2678719532c5e3059e0b5f0811273d94b397088b82e3bd0a78c78fdd"
+
+[[package]]
+name = "path-slash"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cacbb3c4ff353b534a67fb8d7524d00229da4cb1dc8c79f4db96e375ab5b619"
 
 [[package]]
 name = "pathdiff"

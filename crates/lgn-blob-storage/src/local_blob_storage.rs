@@ -91,4 +91,22 @@ impl StreamingBlobStorage for LocalBlobStorage {
 
         Ok(Some(Box::pin(file)))
     }
+
+    async fn delete_blob(&self, name: &str) -> super::Result<()> {
+        let blob_path = self.0.join(name);
+
+        match fs::remove_file(&blob_path).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(super::Error::forward_with_context(
+                        e,
+                        format!("could not delete blob file: {}", blob_path.display()),
+                    ))
+                }
+            }
+        }
+    }
 }

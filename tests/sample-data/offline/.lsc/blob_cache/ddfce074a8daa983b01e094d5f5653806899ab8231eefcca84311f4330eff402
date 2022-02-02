@@ -1,0 +1,9 @@
+{
+  "name": "/world/sample_1/ground.ent",
+  "type_name": "offline_entity",
+  "type_id": "1c0ff9e497b0740f",
+  "dependencies": [
+    "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f"
+  ],
+  "content_checksum": "6c9e65df2380c3991203a132cdd4446e"
+}

@@ -1,18 +1,18 @@
-use std::time::SystemTime;
+use std::{collections::BTreeSet, time::SystemTime};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use lgn_tracing::span_fn;
 
-use super::HashedChange;
+use crate::{Change, Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
     pub id: String,
     pub owner: String,
     pub message: String,
-    pub changes: Vec<HashedChange>,
-    pub root_hash: String,
-    pub parents: Vec<String>,
+    pub changes: BTreeSet<Change>,
+    pub root_tree_id: String,
+    pub parents: BTreeSet<String>,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -22,21 +22,44 @@ impl Commit {
         id: String,
         owner: String,
         message: String,
-        changes: Vec<HashedChange>,
-        root_hash: String,
-        parents: Vec<String>,
+        changes: BTreeSet<Change>,
+        root_tree_id: String,
+        parents: BTreeSet<String>,
         timestamp: DateTime<Utc>,
     ) -> Self {
-        assert!(!parents.contains(&id));
+        assert!(!parents.contains(&id), "commit cannot be its own parent");
+
         Self {
             id,
             owner,
             message,
             changes,
-            root_hash,
+            root_tree_id,
             parents,
             timestamp,
         }
+    }
+
+    #[span_fn]
+    pub fn new_unique_now(
+        owner: String,
+        message: impl Into<String>,
+        changes: BTreeSet<Change>,
+        root_tree_id: String,
+        parents: BTreeSet<String>,
+    ) -> Self {
+        let id = uuid::Uuid::new_v4().to_string();
+        let timestamp = Utc::now();
+
+        Self::new(
+            id,
+            owner,
+            message.into(),
+            changes,
+            root_tree_id,
+            parents,
+            timestamp,
+        )
     }
 }
 
@@ -49,17 +72,17 @@ impl From<Commit> for lgn_source_control_proto::Commit {
             owner: commit.owner,
             message: commit.message,
             changes: commit.changes.into_iter().map(Into::into).collect(),
-            root_hash: commit.root_hash,
-            parents: commit.parents,
+            root_tree_id: commit.root_tree_id,
+            parents: commit.parents.into_iter().collect(),
             timestamp: Some(timestamp.into()),
         }
     }
 }
 
 impl TryFrom<lgn_source_control_proto::Commit> for Commit {
-    type Error = anyhow::Error;
+    type Error = Error;
 
-    fn try_from(commit: lgn_source_control_proto::Commit) -> anyhow::Result<Self> {
+    fn try_from(commit: lgn_source_control_proto::Commit) -> Result<Self> {
         let timestamp = commit.timestamp.unwrap_or_default();
         let timestamp = DateTime::from_utc(
             NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
@@ -70,15 +93,15 @@ impl TryFrom<lgn_source_control_proto::Commit> for Commit {
             .changes
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<anyhow::Result<Vec<_>>>()?;
+            .collect::<Result<BTreeSet<Change>>>()?;
 
         Ok(Self {
             id: commit.id,
             owner: commit.owner,
             message: commit.message,
             changes,
-            root_hash: commit.root_hash,
-            parents: commit.parents,
+            root_tree_id: commit.root_tree_id,
+            parents: commit.parents.into_iter().collect(),
             timestamp,
         })
     }
@@ -98,7 +121,7 @@ mod tests {
             owner: "owner".to_string(),
             message: "message".to_string(),
             changes: vec![],
-            root_hash: "root_hash".to_string(),
+            root_tree_id: "root_tree_id".to_string(),
             parents: vec!["parent".to_string()],
             timestamp: Some(now_sys.into()),
         };
@@ -111,9 +134,9 @@ mod tests {
                 id: "id".to_string(),
                 owner: "owner".to_string(),
                 message: "message".to_string(),
-                changes: vec![],
-                root_hash: "root_hash".to_string(),
-                parents: vec!["parent".to_string()],
+                changes: BTreeSet::new(),
+                root_tree_id: "root_tree_id".to_string(),
+                parents: vec!["parent".to_string()].into_iter().collect(),
                 timestamp: now,
             }
         );
@@ -128,9 +151,9 @@ mod tests {
             id: "id".to_string(),
             owner: "owner".to_string(),
             message: "message".to_string(),
-            changes: vec![],
-            root_hash: "root_hash".to_string(),
-            parents: vec!["parent".to_string()],
+            changes: BTreeSet::new(),
+            root_tree_id: "root_tree_id".to_string(),
+            parents: vec!["parent".to_string()].into_iter().collect(),
             timestamp: now,
         };
 
@@ -143,7 +166,7 @@ mod tests {
                 owner: "owner".to_string(),
                 message: "message".to_string(),
                 changes: vec![],
-                root_hash: "root_hash".to_string(),
+                root_tree_id: "root_tree_id".to_string(),
                 parents: vec!["parent".to_string()],
                 timestamp: Some(now_sys.into()),
             }

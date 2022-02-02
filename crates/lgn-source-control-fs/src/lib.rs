@@ -9,6 +9,8 @@ use lgn_source_control::IndexBackend;
 
 #[cfg(not(target_os = "windows"))]
 mod filesystem;
+#[cfg(not(target_os = "windows"))]
+mod inode_index;
 
 /// Implements all the running logic, so that we can easily conditionally
 /// compile it for UNIX systems only.
@@ -41,19 +43,21 @@ pub async fn run(
         use fuser::MountOption;
         use tokio::sync::Semaphore;
 
-        let fs = SourceControlFilesystem::new(index_backend, branch);
+        let fs = SourceControlFilesystem::new(index_backend, branch).await?;
         let options = vec![MountOption::RO, MountOption::FSName("hello".to_string())];
 
         let session = fuser::Session::new(fs, mountpoint.as_ref(), &options)
             .context("failed to create fuse session")?;
 
-        let _session = session
+        let session = session
             .spawn()
             .context("failed to run fuse session in the background")?;
 
         let semaphore = Semaphore::new(0);
         let _permit = semaphore.acquire().await?;
-    }
 
-    Ok(())
+        session.join();
+
+        Ok(())
+    }
 }

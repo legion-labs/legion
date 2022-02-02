@@ -6,12 +6,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use async_recursion::async_recursion;
 
-use crate::{make_file_read_only, ChangeType, HashedChange, Tree, TreeNode, Workspace};
-
-pub enum TreeNodeType {
-    Directory = 1,
-    File = 2,
-}
+use crate::{Change, Tree, Workspace};
 
 pub async fn list_remote_files(workspace: &Workspace) -> Result<Vec<String>> {
     let (_, current_commit) = workspace.backend.get_current_branch().await?;
@@ -41,14 +36,16 @@ pub async fn fetch_tree_subdir(workspace: &Workspace, root: &Tree, subdir: &Path
             .as_os_str()
             .to_str()
             .expect("invalid path component name");
-        match parent.find_dir_node(component_name) {
-            Ok(node) => {
-                parent = workspace.index_backend.read_tree(&node.hash).await?;
-            }
-            Err(_) => {
-                return Ok(Tree::empty()); //new directory
-            }
-        }
+        //TODO: Commented this out during refactoring.
+        //match parent.find_dir_node(component_name) {
+        //    Ok(node) => {
+        //        parent = workspace.index_backend.read_tree(&node.hash).await?;
+        //    }
+        //    Err(_) => {
+        //        return Ok(Tree::empty()); //new directory
+        //    }
+        //}
+        todo!()
     }
     Ok(parent)
 }
@@ -60,28 +57,30 @@ pub async fn find_file_hash_in_tree(
 ) -> Result<Option<String>> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(workspace, root_tree, parent_dir).await?;
-    match dir_tree.find_file_node(
-        relative_path
-            .file_name()
-            .expect("no file name in path specified")
-            .to_str()
-            .expect("invalid file name"),
-    ) {
-        Some(file_node) => Ok(Some(file_node.hash.clone())),
-        None => Ok(None),
-    }
+    //TODO: Commented this out during refactoring.
+    //match dir_tree.find_file_node(
+    //    relative_path
+    //        .file_name()
+    //        .expect("no file name in path specified")
+    //        .to_str()
+    //        .expect("invalid file name"),
+    //) {
+    //    Some(file_node) => Ok(Some(file_node.hash.clone())),
+    //    None => Ok(None),
+    //}
+    todo!()
 }
 
 // returns the hash of the updated root tree
 pub async fn update_tree_from_changes(
     previous_root: &Tree,
-    local_changes: &[HashedChange],
+    local_changes: &[Change],
     workspace: &Workspace,
 ) -> Result<String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
     for change in local_changes {
-        let relative_path = Path::new(&change.relative_path);
+        let relative_path = Path::new(&change.canonical_path);
         let parent = relative_path
             .parent()
             .expect("relative path with no parent");
@@ -105,7 +104,9 @@ pub async fn update_tree_from_changes(
         dir_to_update_by_length.push(dir.to_path_buf());
     }
 
-    let mut parent_to_children_dir = HashMap::<PathBuf, Vec<TreeNode>>::new();
+    //TODO: Commented this out during refactoring.
+    //let mut parent_to_children_dir = HashMap::<PathBuf, Vec<TreeNode>>::new();
+
     //process leafs before parents to be able to patch parents with hash of
     // children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
@@ -113,7 +114,7 @@ pub async fn update_tree_from_changes(
     for dir in dir_to_update_by_length {
         let mut tree = fetch_tree_subdir(workspace, previous_root, &dir).await?;
         for change in local_changes {
-            let relative_path = Path::new(&change.relative_path);
+            let relative_path = Path::new(&change.canonical_path);
             let parent = relative_path
                 .parent()
                 .expect("relative path with no parent");
@@ -125,25 +126,28 @@ pub async fn update_tree_from_changes(
                         .to_str()
                         .expect("path is invalid string"),
                 );
-                if change.change_type == ChangeType::Delete {
-                    tree.remove_file_node(&filename);
-                } else {
-                    tree.add_or_update_file_node(TreeNode {
-                        name: filename,
-                        hash: change.hash.clone(),
-                    });
-                }
+                //TODO: Commented this out during refactoring.
+                //if change.change_type == ChangeType::Delete {
+                //    tree.remove_file_node(&filename);
+                //} else {
+                //    tree.add_or_update_file_node(TreeNode {
+                //        name: filename,
+                //        hash: change.hash.clone(),
+                //    });
+                //}
+                todo!()
             }
         }
         //find dir's children, add them to the current tree
-        if let Some(v) = parent_to_children_dir.get(&dir) {
-            for node in v {
-                tree.add_or_update_dir_node(node.clone());
-            }
-        }
+        //TODO: Commented this out during refactoring.
+        //if let Some(v) = parent_to_children_dir.get(&dir) {
+        //    for node in v {
+        //        tree.add_or_update_dir_node(node.clone());
+        //    }
+        //}
 
         tree.sort();
-        let dir_hash = tree.hash(); //important not to modify tree beyond this point
+        let dir_hash = tree.id(); //important not to modify tree beyond this point
 
         //save the child for the parent to find
         if let Some(dir_parent) = dir.parent() {
@@ -152,21 +156,23 @@ pub async fn update_tree_from_changes(
             let name = dir
                 .strip_prefix(dir_parent)
                 .expect("Error getting directory name");
-            let dir_node = TreeNode {
-                name: String::from(name.to_str().expect("path is invalid string")),
-                hash: dir_hash.clone(),
-            };
-            match parent_to_children_dir.get_mut(&key) {
-                Some(v) => {
-                    v.push(dir_node);
-                }
-                None => {
-                    parent_to_children_dir.insert(key, Vec::from([dir_node]));
-                }
-            }
+            //TODO: Commented this out during refactoring.
+            //let dir_node = TreeNode {
+            //    name: String::from(name.to_str().expect("path is invalid string")),
+            //    hash: dir_hash.clone(),
+            //};
+            //match parent_to_children_dir.get_mut(&key) {
+            //    Some(v) => {
+            //        v.push(dir_node);
+            //    }
+            //    None => {
+            //        parent_to_children_dir.insert(key, Vec::from([dir_node]));
+            //    }
+            //}
         }
 
-        workspace.index_backend.save_tree(&tree, &dir_hash).await?;
+        workspace.index_backend.save_tree(&tree).await?;
+        //workspace.index_backend.save_tree(&tree, &dir_hash).await?;
 
         if dir.components().count() == 0 {
             return Ok(dir_hash);
@@ -185,28 +191,29 @@ pub async fn remove_dir_rec(
     let mut messages: Vec<String> = Vec::new();
     let tree = workspace.index_backend.read_tree(tree_hash).await?;
 
-    for file_node in &tree.file_nodes {
-        let file_path = local_path.join(&file_node.name);
-        make_file_read_only(&file_path, false)?;
+    //TODO: Commented this out during refactoring.
+    //for file_node in &tree.file_nodes {
+    //    let file_path = local_path.join(&file_node.name);
+    //    make_file_read_only(&file_path, false)?;
 
-        if let Err(e) = fs::remove_file(&file_path) {
-            messages.push(format!(
-                "Error deleting file {}: {}",
-                file_path.display(),
-                e
-            ));
-        } else {
-            messages.push(format!("Deleted {}", file_path.display()));
-        }
-    }
+    //    if let Err(e) = fs::remove_file(&file_path) {
+    //        messages.push(format!(
+    //            "Error deleting file {}: {}",
+    //            file_path.display(),
+    //            e
+    //        ));
+    //    } else {
+    //        messages.push(format!("Deleted {}", file_path.display()));
+    //    }
+    //}
 
-    for dir_node in tree.directory_nodes {
-        let dir_path = local_path.join(&dir_node.name);
-        let message = remove_dir_rec(workspace, &dir_path, &dir_node.hash).await?;
-        if !message.is_empty() {
-            messages.push(message);
-        }
-    }
+    //for dir_node in tree.directory_nodes {
+    //    let dir_path = local_path.join(&dir_node.name);
+    //    let message = remove_dir_rec(workspace, &dir_path, &dir_node.hash).await?;
+    //    if !message.is_empty() {
+    //        messages.push(message);
+    //    }
+    //}
 
     if let Err(e) = fs::remove_dir(local_path) {
         messages.push(format!(
