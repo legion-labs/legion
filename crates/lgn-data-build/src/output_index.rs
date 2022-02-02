@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::BTreeMap,
     fs::{File, OpenOptions},
     io::Seek,
     path::{Path, PathBuf},
@@ -8,8 +9,10 @@ use std::{
 use lgn_content_store::Checksum;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::serde_as;
+use serde_with::DisplayFromStr;
 
 use crate::Error;
 
@@ -57,6 +60,8 @@ struct OutputContent {
     version: String,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
+    #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
+    pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
 
 impl OutputContent {
@@ -101,6 +106,7 @@ impl OutputIndex {
             version: String::from(version),
             compiled_resources: vec![],
             compiled_resource_references: vec![],
+            pathid_mapping: BTreeMap::<_, _>::new(),
         };
 
         serde_json::to_writer_pretty(&output_file, &output_content)
@@ -242,6 +248,16 @@ impl OutputIndex {
 
     pub(crate) fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
         buildindex_dir.as_ref().join("output.index")
+    }
+
+    pub fn record_pathid(&mut self, id: &ResourcePathId) {
+        self.content
+            .pathid_mapping
+            .insert(id.resource_id(), id.clone());
+    }
+
+    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
+        self.content.pathid_mapping.get(&id).cloned()
     }
 }
 

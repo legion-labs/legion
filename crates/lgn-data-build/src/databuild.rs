@@ -258,7 +258,7 @@ impl DataBuild {
         if let Some(source_index) = self.source_index.current() {
             source_index.lookup_pathid(id)
         } else {
-            None
+            self.output_index.lookup_pathid(id)
         }
     }
 
@@ -289,6 +289,8 @@ impl DataBuild {
         manifest_file: Option<PathBuf>,
         env: &CompilationEnv,
     ) -> Result<Manifest, Error> {
+        self.output_index.record_pathid(&compile_path);
+
         let (mut manifest, file) = {
             if let Some(manifest_file) = manifest_file {
                 if let Ok(file) = OpenOptions::new()

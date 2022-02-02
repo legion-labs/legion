@@ -1,6 +1,6 @@
 ---
 source: tests/sample-data/tests/build.rs
-assertion_line: 113
+assertion_line: 115
 expression: incremental_buildindex
 
 ---
@@ -371,5 +371,11 @@ expression: incremental_buildindex
       "compiled_path": "(91dc60590cba171e,ee30f104-3ef5-46e7-af16-4f085bd6f8e3)|e5c099cc30495fed",
       "compiled_reference": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045"
     }
+  ],
+  "pathid_mapping": [
+    [
+      "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)",
+      "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)|1d9ddd99aad89045"
+    ]
   ]
 }

@@ -1,11 +1,12 @@
 ---
 source: tests/sample-data/tests/build.rs
-assertion_line: 83
+assertion_line: 85
 expression: read_build_output(&buildindex)
 
 ---
 {
   "version": "0.1.0",
   "compiled_resources": [],
-  "compiled_resource_references": []
+  "compiled_resource_references": [],
+  "pathid_mapping": []
 }
