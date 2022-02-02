@@ -19,9 +19,8 @@ use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
-use crate::buildindex::{
-    CompiledResourceInfo, CompiledResourceReference, OutputIndex, SourceIndex,
-};
+use crate::output_index::{CompiledResourceInfo, CompiledResourceReference, OutputIndex};
+use crate::source_index::SourceIndex;
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]

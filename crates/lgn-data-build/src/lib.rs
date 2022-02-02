@@ -192,9 +192,10 @@ impl From<lgn_data_offline::resource::Error> for Error {
 }
 
 mod asset_file_writer;
-mod buildindex;
 mod databuild;
 mod options;
+mod output_index;
+mod source_index;
 
 pub use databuild::*;
 pub use options::*;

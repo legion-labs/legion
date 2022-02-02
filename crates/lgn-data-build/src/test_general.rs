@@ -8,7 +8,7 @@ use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use tempfile::TempDir;
 
-use crate::{buildindex::OutputIndex, databuild::DataBuild, DataBuildOptions, Error};
+use crate::{databuild::DataBuild, output_index::OutputIndex, DataBuildOptions, Error};
 
 fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     let project_dir = work_dir.path();
