@@ -8,9 +8,9 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "check:all": "echo No checks yet",
+    "check": "echo No checks yet",
     "clean": "rimraf node_modules dist",
-    "test": "pnpm check:all"
+    "test": "pnpm check"
   },
   "devDependencies": {
     "jest": "^27.4.7",
