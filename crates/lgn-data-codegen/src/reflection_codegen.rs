@@ -10,7 +10,7 @@ fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<
         .iter()
         .filter(|m| {
             (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
-                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
         })
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
@@ -29,7 +29,7 @@ fn generate_defaults(members: &[MemberMetaInfo], gen_type: GenerationType) -> Ve
         .iter()
         .filter(|m| {
             (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
-                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
         })
         .map(|m| {
             let member_type = match gen_type {
@@ -70,7 +70,7 @@ fn generate_fields_descriptors(
         .iter()
         .filter(|m| {
             (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
-                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline())
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
         })
         .map(|m| {
             let struct_type_name = format_ident!("{}", &data_container_info.name);
