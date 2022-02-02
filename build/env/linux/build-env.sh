@@ -8,8 +8,10 @@ set -eux
 echo "------------------------------------ Install base utils ---------------------------------------"
 sudo apt-get update 
 
-DEBIAN_FRONTEND="noninteractive" TZ="America/Toronto"\
-    sudo apt-get install -y git make curl wget zip unzip python3 \
+export DEBIAN_FRONTEND=noninteractive
+export TZ="America/Toronto"
+
+sudo apt-get install -y git make curl wget zip unzip python3 \
     ca-certificates lsb-release software-properties-common jq
 
 echo "--------------------------------------- Build C++ --------------------------------------------"
@@ -20,9 +22,10 @@ sudo apt-get update
 sudo apt-get install -y make cmake libunwind-dev
 sudo wget https://apt.llvm.org/llvm.sh
 sudo chmod +x llvm.sh
-sudo ./llvm.sh && export `cat llvm.sh | grep ^LLVM_VERSION=`
+sudo ./llvm.sh && export LLVM_VERSION=`cat llvm.sh | grep ^CURRENT_LLVM_STABLE= | cut -f2 -d=`
 rm ./llvm.sh -f
-DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+sudo apt-get install -y \
+    pkg-config \
     build-essential \
     libllvm-${LLVM_VERSION}-ocaml-dev \
     libllvm${LLVM_VERSION} \
@@ -46,6 +49,7 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
     libclc-${LLVM_VERSION}-dev \
     python3-lldb-${LLVM_VERSION} \
     nasm \
+    libssl-dev \
     libglib2.0-dev \
     libcairo-dev \
     librust-pango-dev \
@@ -54,6 +58,8 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
     libgdk-pixbuf2.0-dev \
     librust-gdk-sys-dev \
     libwebkit2gtk-4.0-dev \
+    fuse3 \
+    libfuse3-dev \
     musl-tools
 
 NINJA_LATEST=$(curl -s https://api.github.com/repos/ninja-build/ninja/releases/latest | \
@@ -85,18 +91,20 @@ sudo chmod +x rustup-init.sh
 rm rustup-init.sh -f
 source $HOME/.cargo/env
 sudo chmod -R a+w $RUSTUP_HOME $CARGO_HOME
-rustup install 1.56.1
-rustup install 1.57.0
-rustup component add llvm-tools-preview --toolchain '1.56.1'
-rustup component add llvm-tools-preview --toolchain '1.57.0'
-rustup target add x86_64-unknown-linux-musl --toolchain '1.56.1'
-rustup target add x86_64-unknown-linux-musl --toolchain '1.57.0'
+rustup install 1.58.0
+rustup install 1.58.1
+rustup component add llvm-tools-preview --toolchain '1.58.0'
+rustup component add llvm-tools-preview --toolchain '1.58.1'
+rustup target add x86_64-unknown-linux-musl --toolchain '1.58.0'
+rustup target add x86_64-unknown-linux-musl --toolchain '1.58.1'
 
 # installing some built from source dependencies
-cargo install cargo-deny --locked
-cargo install mdbook --locked
-cargo install grcov --locked
-cargo install cargo-build-dist --locked
+cargo install cargo-deny --version "0.11.1" --locked
+cargo install mdbook --version "0.4.15" --locked
+cargo install sccache --git="https://github.com/diem/sccache.git" --rev=ef50d87a58260c30767520045e242ccdbdb965af
+cargo install grcov --version "0.8.6" --locked
+cargo install wasm-bindgen-cli --version "0.2.79"
+
 # We need to clean the registery so we don't drag along fetched sources in the image
 rm -rf $CARGO_HOME/registry
 rm -rf $CARGO_HOME/git
@@ -126,6 +134,7 @@ export PROTOBUF_VERSION=3.19.1
 wget -O protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
 unzip protoc.zip -d protoc
 sudo cp protoc/bin/protoc /usr/local/bin/
+sudo chmod o+x /usr/local/bin/protoc
 rm -rf protoc.zip protoc
 
 # Persist the environment variable for the profile.
