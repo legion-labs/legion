@@ -527,9 +527,7 @@ impl Workspace {
         let mut changes_to_clear = vec![];
 
         for (canonical_path, _) in fs_tree.files() {
-            if let Err(err) = tokio::fs::remove_file(canonical_path.to_path_buf(&self.root)).await {
-                warn!("failed to delete file {:?}: {}", canonical_path, err);
-            }
+            self.remove_file(&canonical_path).await?;
 
             if let Some(staged_change) = staged_changes.get(&canonical_path) {
                 match staged_change.change_type() {
@@ -1051,19 +1049,24 @@ impl Workspace {
         if let Some(from) = from {
             for (path, _) in from {
                 if let Ok(None) = to.find(&path) {
-                    let abs_path = path.to_path_buf(&self.root);
-
-                    tokio::fs::remove_file(&abs_path)
-                        .await
-                        .map_other_err(format!(
-                            "failed to remove file at `{}`",
-                            abs_path.display()
-                        ))?;
+                    self.remove_file(&path).await?;
                 }
             }
         }
 
         Ok(())
+    }
+
+    async fn remove_file(&self, path: &CanonicalPath) -> Result<()> {
+        let abs_path = path.to_path_buf(&self.root);
+
+        // On Windows, one must make the file read-write to be able to delete it.
+        #[cfg(target_os = "windows")]
+        self.make_file_read_only(&abs_path, false).await?;
+
+        tokio::fs::remove_file(abs_path)
+            .await
+            .map_other_err(format!("failed to delete file `{}`", path))
     }
 
     /// Download a blob from the index backend and write it to the local

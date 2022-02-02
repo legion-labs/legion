@@ -547,5 +547,6 @@ async fn test_full_flow() {
     assert_file_content(&workspace, "strawberry.txt", "I am a strawberry").await;
 
     // Destroy the index.
+    #[cfg(not(target_os = "windows"))]
     index.destroy().await.unwrap();
 }
