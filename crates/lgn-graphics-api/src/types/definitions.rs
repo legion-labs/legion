@@ -184,6 +184,69 @@ impl TextureDef {
     }
 }
 
+/// Used to create a `Buffer`
+#[derive(Clone, Copy, Debug)]
+pub struct BufferDef {
+    pub size: u64,
+    pub usage_flags: ResourceUsage,
+    pub creation_flags: ResourceCreation,
+}
+
+impl Default for BufferDef {
+    fn default() -> Self {
+        Self {
+            size: 0,
+            usage_flags: ResourceUsage::empty(),
+            creation_flags: ResourceCreation::empty(),
+        }
+    }
+}
+
+impl BufferDef {
+    pub fn verify(&self) {
+        assert_ne!(self.size, 0);
+        assert!(!self
+            .usage_flags
+            .intersects(ResourceUsage::TEXTURE_ONLY_USAGE_FLAGS));
+    }
+
+    pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
+        Self {
+            size: size as u64,
+            usage_flags,
+            creation_flags: ResourceCreation::empty(),
+        }
+    }
+
+    pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
+        Self::for_staging_buffer(lgn_utils::memory::slice_size_in_bytes(data), usage_flags)
+    }
+
+    pub fn for_staging_vertex_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_VERTEX_BUFFER)
+    }
+
+    pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_VERTEX_BUFFER)
+    }
+
+    pub fn for_staging_index_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_INDEX_BUFFER)
+    }
+
+    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_INDEX_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_CONST_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_CONST_BUFFER)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GPUViewType {
     ConstantBuffer,
@@ -393,6 +456,121 @@ impl TextureViewDef {
             texture_def.extents.depth
         };
         assert!(last_array_slice <= max_array_len);
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct BufferViewDef {
+    pub gpu_view_type: GPUViewType,
+    pub byte_offset: u64,
+    pub element_count: u64,
+    pub element_size: u64,
+    pub buffer_view_flags: BufferViewFlags,
+}
+
+impl BufferViewDef {
+    pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ConstantBuffer,
+            byte_offset: 0,
+            element_count: 1,
+            element_size: buffer_def.size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
+    pub fn as_const_buffer_with_offset(buffer_size: u64, byte_offset: u64) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ConstantBuffer,
+            byte_offset,
+            element_count: 1,
+            element_size: buffer_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
+    pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool) -> Self {
+        assert!(buffer_def.size % struct_size == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResource
+            } else {
+                GPUViewType::UnorderedAccess
+            },
+            byte_offset: 0,
+            element_count: buffer_def.size / struct_size,
+            element_size: struct_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
+    pub fn as_structured_buffer_with_offset(
+        buffer_size: u64,
+        struct_size: u64,
+        read_only: bool,
+        byte_offset: u64,
+    ) -> Self {
+        assert!(buffer_size % struct_size == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResource
+            } else {
+                GPUViewType::UnorderedAccess
+            },
+            byte_offset,
+            element_count: buffer_size / struct_size,
+            element_size: struct_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
+    pub fn as_byte_address_buffer(buffer_def: &BufferDef, read_only: bool) -> Self {
+        assert!(buffer_def.size % 4 == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResource
+            } else {
+                GPUViewType::UnorderedAccess
+            },
+            byte_offset: 0,
+            element_count: buffer_def.size / 4,
+            element_size: 4,
+            buffer_view_flags: BufferViewFlags::RAW_BUFFER,
+        }
+    }
+
+    pub fn verify(&self, buffer_def: &BufferDef) {
+        match self.gpu_view_type {
+            GPUViewType::ConstantBuffer => {
+                assert!(buffer_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_CONST_BUFFER));
+                assert!(self.element_size > 0);
+                assert!(self.element_count == 1);
+                assert!(self.buffer_view_flags.is_empty());
+            }
+            GPUViewType::ShaderResource | GPUViewType::UnorderedAccess => {
+                assert!(buffer_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_SHADER_RESOURCE));
+                if self
+                    .buffer_view_flags
+                    .intersects(BufferViewFlags::RAW_BUFFER)
+                {
+                    assert!(self.element_size == 4);
+                } else {
+                    assert!(self.element_size > 0);
+                };
+                assert!(self.byte_offset % self.element_size == 0);
+                assert!(self.element_count >= 1);
+            }
+            GPUViewType::RenderTarget | GPUViewType::DepthStencil => {
+                panic!();
+            }
+        }
+
+        let upper_bound = self.byte_offset + self.element_count * self.element_size;
+        assert!(upper_bound <= buffer_def.size);
     }
 }
 
