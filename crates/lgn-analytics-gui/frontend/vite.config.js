@@ -7,15 +7,13 @@ import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [
-      tsconfigPaths({
-        extensions: [".ts", ".svelte"],
-      }),
-      svelte(),
+  plugins: [
+    tsconfigPaths({
+      extensions: [".ts", ".svelte"],
+    }),
+    svelte(),
     viteTsProto({
-      modules: [
-        { name: "@lgn/proto-telemetry", glob: "*.proto" },
-    ],
+      modules: [{ name: "@lgn/proto-telemetry", glob: "*.proto" }],
     }),
   ],
 });

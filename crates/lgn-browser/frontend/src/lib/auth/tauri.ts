@@ -4,6 +4,7 @@ import userInfoStore, {
   getUserInfo as _getUserInfo,
 } from "../../stores/userInfo";
 import log from "../log";
+import { UserInfo } from ".";
 
 /**
  * Start authentication on Tauri.
@@ -11,7 +12,9 @@ import log from "../log";
 export async function startUserAuth() {
   try {
     await userInfoStore.run(async () => {
-      const userInfo = await invoke("plugin:browser|authenticate");
+      const userInfo = (await invoke(
+        "plugin:browser|authenticate"
+      )) as UserInfo;
 
       log.debug("auth", userInfo);
 

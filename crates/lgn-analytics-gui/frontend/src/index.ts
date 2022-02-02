@@ -1,11 +1,18 @@
 import "./assets/index.css";
-
+import { defaultAuthUserConfig, run } from "@lgn/frontend";
 import App from "./App.svelte";
 
-const target = document.querySelector("#root");
-
-if (!target) {
-  throw new Error("#root element can't be found");
-}
-
-new App({ target });
+run({
+  appComponent: App,
+  auth: {
+    forceAuth: true,
+    redirectTo: "/",
+    redirectedTo: "/",
+    redirectionTitle: "Home",
+  },
+  rootQuerySelector: "#root",
+  logLevel: "debug",
+  onPreInit: null,
+})
+  // eslint-disable-next-line no-console
+  .catch((error) => console.error("Application couldn't start", error));
