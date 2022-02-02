@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
@@ -12,8 +12,11 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() {
     let project_dir = PathBuf::from("examples/pong/data");
+
+    clean_folders(&project_dir);
+
     let build_dir = project_dir.join("temp");
-    
+
     std::fs::create_dir_all(&build_dir).unwrap();
 
     let project = Project::create_new(project_dir)
@@ -53,4 +56,27 @@ async fn main() {
         asset_registry,
         build_manager,
     )));
+}
+
+fn clean_folders(project_dir: impl AsRef<Path>) {
+    let mut path = project_dir.as_ref().to_owned();
+
+    let mut clean = |sub_path| {
+        path.push(sub_path);
+        if path.exists() {
+            let remove = if path.is_dir() {
+                std::fs::remove_dir_all
+            } else {
+                std::fs::remove_file
+            };
+            remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+        }
+        path.pop();
+    };
+
+    clean("remote");
+    clean("offline");
+    clean("runtime");
+    clean("temp");
+    clean("project.index");
 }
