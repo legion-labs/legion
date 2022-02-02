@@ -104,8 +104,8 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         runtime_script = get_compiled_script(&context.source.resource_id(), &resource);
     } else {
         runtime_script = runtime_data::Script {
-			compiled_script: resource.script.as_bytes().to_vec(),
-		}
+            compiled_script: resource.script.as_bytes().to_vec(),
+        }
     }
     let result_buffer = bincode::serialize(&runtime_script).unwrap();
 

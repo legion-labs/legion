@@ -1,10 +1,13 @@
 use lgn_app::prelude::*;
 #[cfg(feature = "offline")]
 use lgn_data_offline::resource::ResourceRegistryOptions;
-use lgn_data_runtime::{AssetRegistryOptions, AssetRegistry};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_ecs::prelude::*;
 use rhai::Scope;
-use rune::{termcolor::{StandardStream, ColorChoice}, ToValue, FromValue};
+use rune::{
+    termcolor::{ColorChoice, StandardStream},
+    FromValue, ToValue,
+};
 
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
@@ -51,7 +54,7 @@ impl ScriptingPlugin {
             .iter()
             .filter(|s| s.script_type == 3 /*ScriptType::Rhai*/);
 
-        let r = runtimes.into_inner(); 
+        let r = runtimes.into_inner();
         Self::tick_mun(mun_components, r, &registry);
         Self::tick_rune(rune_components, r, &registry);
         Self::tick_rhai(rhai_components, r, &registry);
