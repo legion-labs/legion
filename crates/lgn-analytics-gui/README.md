@@ -17,13 +17,13 @@ And the application should start.
 ```
 cd frontend
 pnpm install
-pnpm dev
+pnpm start
 ```
 
 Or from the root of the monorepo:
 
 ```
-pnpm analytics:dev
+pnpm analytics:start
 ```
 
 ## Starting the analytics server

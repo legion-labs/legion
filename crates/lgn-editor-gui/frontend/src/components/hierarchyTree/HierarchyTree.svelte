@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { Entry, Entries } from "@/lib/hierarchyTree";
-  import keyboardNavigation from "@lgn/frontend/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/frontend/src/stores/keyboardNavigation";
+  import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
+  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import Inner from "./Inner.svelte";
 
   type Item = $$Generic;

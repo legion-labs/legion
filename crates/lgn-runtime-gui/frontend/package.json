@@ -9,13 +9,13 @@
   "packageManager": "pnpm@6.24.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "build": "vite build",
-    "check:all": "pnpm eslint:check && pnpm prettier:check && pnpm svelte:check",
-    "eslint:check": "eslint --ext .ts,.svelte .",
-    "eslint:fix": "eslint --ext .ts,.svelte --fix .",
-    "prettier:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
-    "prettier:fix": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
+    "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
+    "lint": "eslint --ext .ts,.svelte .",
+    "lint:fix": "eslint --ext .ts,.svelte --fix .",
+    "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
+    "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "svelte:check": "tsc --noEmit && svelte-check",
     "clean": "rimraf node_modules dist",
     "test": "jest"
@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
-    "@lgn/frontend": "^0.1.0",
+    "@lgn/web-client": "^0.1.0",
     "@lgn/proto-runtime": "^0.1.0",
     "@lgn/proto-streaming": "^0.1.0",
     "@tauri-apps/api": "^1.0.0-beta.8",

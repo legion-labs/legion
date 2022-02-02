@@ -25,7 +25,7 @@ pnpm install
 And run the application:
 
 ```
-pnpm dev
+pnpm start
 ```
 
 The development server on will be accessible on [http://localhost:3000](http://localhost:3000).
@@ -35,8 +35,8 @@ The development server on will be accessible on [http://localhost:3000](http://l
 You should regularly check that the code is clean and properly formatted:
 
 ```
-pnpm eslint:check # pnpm eslint:fix to fix the errors when possible
-pnpm prettier:check # pnpm prettier:fix to format the code
+pnpm lint # pnpm lint:fix to fix the errors when possible
+pnpm fmt:check # pnpm fmt to format the code
 pnpm svelte:check # TypeScript and Svelte code checkers
 ```
 

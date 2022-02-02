@@ -22,7 +22,7 @@ unnecessary context menu entries.
 `./stores/myContextMenu.ts`
 
 ```typescript
-import buildContextMenuStore from "@lgn/frontend/src/stores/contextMenu";
+import buildContextMenuStore from "@lgn/web-client/src/stores/contextMenu";
 
 // We define our context menu entry record with a simple type:
 // keys represent the name of the entry set
@@ -37,7 +37,7 @@ export default buildContextMenuStore<ContextMenuEntryRecord>();
 `./actions/myContextMenu.ts`
 
 ```typescript
-import buildContextMenu from "@lgn/frontend/src/actions/contextMenu";
+import buildContextMenu from "@lgn/web-client/src/actions/contextMenu";
 import { ContextMenuEntryRecord } from "../stores/myContextMenu";
 
 export default buildContextMenu<ContextMenuEntryRecord>();
@@ -47,7 +47,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
 
 ```svelte
 <script>
-  import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
+  import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
 
   import myContextMenu from "../actions/myContextMenu";
   import myContextMenuStore, { ContextMenuEntryRecord } from "../stores/myContextMenu";

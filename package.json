@@ -6,13 +6,17 @@
   "packageManager": "pnpm@6.24.1",
   "scripts": {
     "build": "pnpm -r build",
-    "check:all": "pnpm -r check:all",
+    "check": "pnpm -r check",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "fmt": "pnpm -r fmt",
+    "fmt:check": "pnpm -r fmt:check",
     "clean": "pnpm -r clean && rimraf node_modules",
     "test": "pnpm -r test",
-    "prettier:fix": "pnpm -r prettier:fix",
-    "analytics:dev": "pnpm -C crates/lgn-analytics-gui/frontend dev",
-    "editor:dev": "pnpm -C crates/lgn-editor-gui/frontend dev",
-    "runtime:dev": "pnpm -C crates/lgn-runtime-gui/frontend dev"
+    "benchmark": "pnpm -r benchmark",
+    "analytics:start": "pnpm -C crates/lgn-analytics-gui/frontend start",
+    "editor:start": "pnpm -C crates/lgn-editor-gui/frontend start",
+    "runtime:start": "pnpm -C crates/lgn-runtime-gui/frontend start"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

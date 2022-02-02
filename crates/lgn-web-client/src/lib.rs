@@ -9,7 +9,7 @@
 //! let authorization_url = "https://my-app.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=XXX&response_type=code&scope=XXX&redirect_uri=http://localhost:3000/";
 //!
 //! // First you need the plugin itself:
-//! let browser_plugin = lgn_browser::BrowserPlugin::from_url_str(authorization_url, "my-app")
+//! let browser_plugin = lgn_web_client::BrowserPlugin::from_url_str(authorization_url, "my-app")
 //!     .expect("Couldn't build the BrowserPlugin");
 //!
 //! // Now we can build a Tauri application with the browser plugin:

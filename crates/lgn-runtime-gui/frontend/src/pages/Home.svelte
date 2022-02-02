@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Panel } from "@lgn/frontend/src/components/panel";
-  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
-  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
-  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
-  import { Resolution } from "@lgn/frontend/src/lib/types";
+  import { Panel } from "@lgn/web-client/src/components/panel";
+  import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
+  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
+  import { Resolution } from "@lgn/web-client/src/lib/types";
 
   let desiredVideoResolution: Resolution | null;
 </script>

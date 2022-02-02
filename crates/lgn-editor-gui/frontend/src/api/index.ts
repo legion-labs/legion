@@ -1,4 +1,4 @@
-import log from "@lgn/frontend/src/lib/log";
+import log from "@lgn/web-client/src/lib/log";
 import {
   GrpcWebImpl as EditorResourceBrowserWebImpl,
   ResourceBrowserClientImpl,

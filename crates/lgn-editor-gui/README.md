@@ -36,7 +36,7 @@ cd frontend
 And run the application:
 
 ```
-pnpm dev
+pnpm start
 ```
 
 Go to [http://localhost:3000](http://localhost:3000).
@@ -70,7 +70,7 @@ Then the frontend:
 
 ```
 cd frontend
-pnpm dev
+pnpm start
 ```
 
 ## Structure of the application

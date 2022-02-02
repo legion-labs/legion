@@ -14,7 +14,7 @@
     ResourceProperty,
   } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
-  import log from "@lgn/frontend/src/lib/log";
+  import log from "@lgn/web-client/src/lib/log";
   import { createEventDispatcher } from "svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";

@@ -3,7 +3,7 @@
   import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
   import Icon from "@iconify/svelte";
-  import { keyboardNavigationItem } from "@lgn/frontend/src/actions/keyboardNavigation";
+  import { keyboardNavigationItem } from "@lgn/web-client/src/actions/keyboardNavigation";
   import TextInput from "../inputs/TextInput.svelte";
 
   type Item = $$Generic;
