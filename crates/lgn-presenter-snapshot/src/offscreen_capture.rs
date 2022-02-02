@@ -1,6 +1,6 @@
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::prelude::*;
 
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     hl_gfx_api::ShaderManager,
@@ -8,7 +8,7 @@ use lgn_renderer::{
 };
 use lgn_tracing::span_fn;
 
-use crate::cgen;
+use crate::{cgen, tmp_shader_data::display_mapper_shader_family};
 
 pub struct OffscreenHelper {
     render_image: Texture,
@@ -18,8 +18,6 @@ pub struct OffscreenHelper {
     bilinear_sampler: Sampler,
 }
 
-embedded_watched_file!(DISPLAY_MAPPER_SHADER, "shaders/display_mapper.hlsl");
-
 impl OffscreenHelper {
     pub fn new(
         shader_manager: &ShaderManager,
@@ -28,7 +26,10 @@ impl OffscreenHelper {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let shader = shader_manager.prepare_vs_ps(DISPLAY_MAPPER_SHADER.path());
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            display_mapper_shader_family::ID,
+            display_mapper_shader_family::NONE,
+        ));
 
         let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
             shader: &shader,

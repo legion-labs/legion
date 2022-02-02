@@ -445,15 +445,23 @@ pub struct CGenPipelineLayoutDef {
 const _INVALID_SHADER_FAMILY_ID: u64 = 0;
 
 pub type CGenShaderFamilyID = u64;
+
+pub const fn shader_family_id(crate_id: u64, family_idx: u64) -> CGenShaderFamilyID {
+    (crate_id << 8) | family_idx
+}
+
 pub type CGenShaderOptionMask = u64;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(packed)]
 pub struct CGenShaderKey(u64);
 
 // #[derive(Clone, Copy, PartialEq, Eq)]
 // pub struct CGenShaderOptionMask(pub u64);
 
 impl CGenShaderKey {
+    // u16: family_id
+    // u48: options
     const SHADER_FAMILY_OFFSET: usize = 0;
     const SHADER_FAMILY_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
     const SHADER_FAMILY_MASK: u64 = (1 << Self::SHADER_FAMILY_BITCOUNT) - 1;
@@ -469,7 +477,7 @@ impl CGenShaderKey {
         shader_option_mask: CGenShaderOptionMask,
     ) -> Self {
         Self(
-            ((shader_family_id as u64 & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
+            ((shader_family_id & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
                 | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
         )
     }
@@ -504,7 +512,7 @@ pub struct CGenShaderOption {
 //
 // CGenShaderInstance
 //
-pub struct CGenShaderInstance {    
+pub struct CGenShaderInstance {
     pub shader_family_id: CGenShaderFamilyID,
     pub shader_option_mask: CGenShaderOptionMask,
     pub shader_stage_flags: ShaderStageFlags,

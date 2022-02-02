@@ -10,11 +10,15 @@ use lgn_core::Time;
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
+
+mod tmp_shader_data;
+
 #[allow(unused_imports)]
 use cgen::*;
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::Renderer;
+use lgn_renderer::{hl_gfx_api::ShaderManager, Renderer};
+use tmp_shader_data::patch_cgen_registry;
 
 mod grpc;
 mod streamer;
@@ -55,7 +59,13 @@ impl Plugin for StreamerPlugin {
     }
 }
 
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
-    let cgen_registry = cgen::initialize(renderer.device_context());
+fn init_cgen(
+    renderer: Res<'_, Renderer>,
+    mut shader_manager: ResMut<'_, ShaderManager>,
+    mut cgen_registries: ResMut<'_, CGenRegistryList>,
+) {
+    let mut cgen_registry = cgen::initialize(renderer.device_context());
+    patch_cgen_registry(&mut cgen_registry);
+    shader_manager.register(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

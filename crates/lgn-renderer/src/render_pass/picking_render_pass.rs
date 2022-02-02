@@ -1,7 +1,7 @@
 use std::slice;
 
 use lgn_core::Handle;
-use lgn_embedded_fs::embedded_watched_file;
+
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
     BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
@@ -10,6 +10,7 @@ use lgn_graphics_api::{
     SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
     VertexLayoutBuffer,
 };
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Mat4;
 use lgn_transform::components::GlobalTransform;
 
@@ -21,6 +22,7 @@ use crate::{
     hl_gfx_api::{HLCommandBuffer, ShaderManager},
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
+    tmp_shader_data::picking_shader_family,
     RenderContext,
 };
 
@@ -132,17 +134,14 @@ pub struct PickingRenderPass {
     picked_rw_view: BufferView,
 }
 
-embedded_watched_file!(PICKING_SHADER, "gpu/shaders/picking.hlsl");
-
 impl PickingRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader = shader_manager.prepare_vs_ps(PICKING_SHADER.path());
 
-        // let shader_id = cgen::shader_def::PickingShader::def().make_id( 0 );
-        // let shader = renderer
-        // .shader_manager()
-        // .get_shader(shader_id);
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            picking_shader_family::ID,
+            picking_shader_family::NONE,
+        ));
 
         //
         // Pipeline state

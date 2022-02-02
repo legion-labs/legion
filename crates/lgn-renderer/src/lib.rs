@@ -33,7 +33,7 @@ use resources::{
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
     MaterialManager,
 };
-use tmp_shader_data::egui_shader_family;
+use tmp_shader_data::patch_cgen_registry;
 
 pub mod resources;
 
@@ -270,24 +270,7 @@ fn init_cgen(
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let mut cgen_registry = cgen::initialize(renderer.device_context());
-
-    //< TMP
-
-    // EGuiShaderFamily::SHADER_FAMILY
-    //     .iter()
-    //     .for_each(|&x| cgen_registry.shader_families.push(x));
-    cgen_registry
-        .shader_families
-        .push(&egui_shader_family::SHADER_FAMILY);
-
-    egui_shader_family::SHADER_OPTIONS
-        .iter()
-        .for_each(|x| cgen_registry.shader_options.push(x));
-
-    egui_shader_family::SHADER_INSTANCES
-        .iter()
-        .for_each(|x| cgen_registry.shader_instances.push(x));
-
+    patch_cgen_registry(&mut cgen_registry);
     shader_manager.register(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

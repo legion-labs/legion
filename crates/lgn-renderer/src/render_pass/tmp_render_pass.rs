@@ -8,12 +8,14 @@ use lgn_graphics_api::{
     SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
     VertexLayoutBuffer,
 };
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
     components::{RenderSurface, StaticMesh},
     hl_gfx_api::{HLCommandBuffer, ShaderManager},
+    tmp_shader_data::shader_shader_family,
     RenderContext,
 };
 
@@ -24,13 +26,15 @@ pub struct TmpRenderPass {
 }
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
-embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = shader_manager.prepare_vs_ps(SHADER_SHADER.path());
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            shader_shader_family::ID,
+            shader_shader_family::NONE,
+        ));
 
         //
         // Pipeline state

@@ -1,9 +1,9 @@
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::prelude::*;
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{components::RenderSurface, hl_gfx_api::ShaderManager, RenderContext};
 use lgn_tracing::span_fn;
 
-use crate::cgen;
+use crate::{cgen, tmp_shader_data::rgb2yuv_shader_family};
 
 use super::Resolution;
 
@@ -94,8 +94,6 @@ pub struct RgbToYuvConverter {
     pipeline: Pipeline,
 }
 
-embedded_watched_file!(RGV_2_YUV_SHADER, "shaders/rgb2yuv.hlsl");
-
 impl RgbToYuvConverter {
     pub fn new(
         shader_manager: &ShaderManager,
@@ -104,7 +102,10 @@ impl RgbToYuvConverter {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader = shader_manager.prepare_cs(RGV_2_YUV_SHADER.path());
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            rgb2yuv_shader_family::ID,
+            rgb2yuv_shader_family::NONE,
+        ));
 
         let pipeline = device_context.create_compute_pipeline(&ComputePipelineDef {
             shader: &shader,

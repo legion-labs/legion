@@ -70,6 +70,7 @@ impl ShaderManager {
         }
     }
 
+    #[span_fn]
     pub fn get_shader(&self, key: CGenShaderKey) -> Shader {
         let shader_family_id = key.shader_family_id();
         let shader_option_mask = key.shader_option_mask();
@@ -157,58 +158,6 @@ impl ShaderManager {
         }
 
         panic!();
-    }
-
-    #[span_fn]
-    pub fn prepare_vs_ps(&self, shader_path: &str) -> Shader {
-        let shader_build_result = self
-            .shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Path(shader_path),
-                global_defines: &[],
-                entry_points: &[
-                    EntryPoint {
-                        defines: &[],
-                        name: "main_vs",
-                        target_profile: TargetProfile::Vertex,
-                    },
-                    EntryPoint {
-                        defines: &[],
-                        name: "main_ps",
-                        target_profile: TargetProfile::Pixel,
-                    },
-                ],
-            })
-            .unwrap();
-
-        let vert_shader_module = self
-            .device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        let frag_shader_module = self
-            .device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        self.device_context.create_shader(vec![
-            ShaderStageDef {
-                entry_point: "main_vs".to_owned(),
-                shader_stage: ShaderStage::Vertex,
-                shader_module: vert_shader_module,
-            },
-            ShaderStageDef {
-                entry_point: "main_ps".to_owned(),
-                shader_stage: ShaderStage::Fragment,
-                shader_module: frag_shader_module,
-            },
-        ])
     }
 
     #[span_fn]

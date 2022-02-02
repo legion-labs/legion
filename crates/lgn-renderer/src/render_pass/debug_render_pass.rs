@@ -1,10 +1,10 @@
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, FillMode, Format,
     GraphicsPipelineDef, LoadOp, Pipeline, PrimitiveTopology, RasterizerState, SampleCount,
     StencilOp, StoreOp, VertexLayout,
 };
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::GlobalTransform;
@@ -16,6 +16,7 @@ use crate::{
     hl_gfx_api::{HLCommandBuffer, ShaderManager},
     picking::ManipulatorManager,
     resources::{DefaultMeshType, DefaultMeshes},
+    tmp_shader_data::const_color_shader_family,
     RenderContext,
 };
 
@@ -26,11 +27,12 @@ pub struct DebugRenderPass {
     _wire_pso_nodepth: Pipeline,
 }
 
-embedded_watched_file!(CONST_COLOR_SHADER, "gpu/shaders/const_color.hlsl");
-
 impl DebugRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
-        let shader = shader_manager.prepare_vs_ps(CONST_COLOR_SHADER.path());
+        let shader = shader_manager.get_shader(CGenShaderKey::new(
+            const_color_shader_family::ID,
+            const_color_shader_family::NONE,
+        ));
 
         //
         // Pipeline state
