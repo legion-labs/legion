@@ -66,7 +66,7 @@ pub(crate) trait AssetToECS {
         _asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, MeshManager>,
+        _mesh_manager: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         None
     }
@@ -155,7 +155,7 @@ impl AssetToECS for runtime_data::Instance {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _default_meshes: &Res<'_, MeshManager>,
+        _mesh_manager: &Res<'_, MeshManager>,
     ) -> Option<Entity> {
         let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
