@@ -8,7 +8,7 @@ use camino::Utf8Path;
 use monorepo_base::{
     config::{MonorepoBaseConfig, MONOREPO_DEPTH},
     installer::Installer,
-    sccache::apply_sccache_if_possible,
+    sccache::{apply_sccache_if_possible, log_sccache_stats, stop_sccache_server},
 };
 
 fn main() -> std::io::Result<()> {
@@ -32,5 +32,8 @@ fn main() -> std::io::Result<()> {
         }
     }
     cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-    cmd.output().map(|_output| ())
+    let output = cmd.output();
+    log_sccache_stats();
+    stop_sccache_server();
+    output.map(|_output| ())
 }
