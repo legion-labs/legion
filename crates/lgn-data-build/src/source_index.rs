@@ -330,6 +330,8 @@ impl SourceIndex {
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<i32, Error> {
         let mut updated_resources = 0;
 
+        let root_checksum = project.root_checksum().await?;
+
         let mut source_index = self.current.take().unwrap_or(SourceContent {
             version: version.to_owned(),
             resources: vec![],
@@ -366,7 +368,7 @@ impl SourceIndex {
             .store(&buffer)
             .ok_or(Error::InvalidContentStore)?;
 
-        self.index_keys.keys.insert("todo".to_string(), checksum);
+        self.index_keys.keys.insert(root_checksum, checksum);
 
         self.current = Some(source_index);
         Ok(updated_resources)

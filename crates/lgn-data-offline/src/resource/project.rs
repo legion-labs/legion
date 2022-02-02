@@ -681,6 +681,27 @@ impl Project {
         self.flush()
     }
 
+    /// Returns the checksum of the root project directory at the current state.
+    pub async fn root_checksum(&self) -> Result<String, Error> {
+        let remote = self
+            .workspace
+            .get_current_tree()
+            .await
+            .map_err(Error::SourceControl)?;
+
+        let staged_changes = self
+            .workspace
+            .get_staged_changes()
+            .await
+            .map_err(Error::SourceControl)?;
+
+        let local = remote
+            .with_changes(staged_changes.values())
+            .map_err(Error::SourceControl)?;
+
+        Ok(local.id())
+    }
+
     fn pre_serialize(&mut self) {
         self.db.pre_serialize();
     }
