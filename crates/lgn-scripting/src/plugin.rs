@@ -68,7 +68,7 @@ impl ScriptingPlugin {
         if runtimes.mun_runtimes.is_empty() {
             for script in mun_components {
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
                 let lib_path = std::str::from_utf8(&script_typed.compiled_script).unwrap();
                 println!("{}", &lib_path);
 
@@ -105,7 +105,7 @@ impl ScriptingPlugin {
                 let context = rune_modules::default_context().unwrap();
 
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
                 let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
                 println!("{}", &source_payload);
 
@@ -162,7 +162,7 @@ impl ScriptingPlugin {
                     runtimes.rhai_eng = Some(rhai::Engine::new());
                 }
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-                let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
+                let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
                 let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
                 println!("{}", &source_payload);
 
