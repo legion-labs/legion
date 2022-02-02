@@ -244,4 +244,46 @@ async fn create_offline_data(
             .unwrap();
         id
     };
+
+    // script
+    let _script_path_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: lgn_scripting::offline::Script::TYPE,
+            id: ResourceId::from_str("d46d7e71-27bc-4516-9e85-074f5431d29c").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+        let script = handle
+            .get_mut::<lgn_scripting::offline::Script>(&mut resources)
+            .unwrap();
+        script.script = r#"pub fn entry() {
+            //print("Hello world!");
+        }
+        
+        pub fn arg() -> i64 {
+            10
+        }
+        
+        pub fn fibonacci(n: i64) -> i64 {
+            if n <= 1 {
+                n
+            } else {
+                fibonacci(n - 1) + fibonacci(n - 2)
+            }
+        }"#
+        .to_string();
+        project
+            .add_resource_with_id(
+                "/scene/pong_script".into(),
+                lgn_scripting::offline::Script::TYPENAME,
+                id.kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(lgn_scripting::runtime::Script::TYPE)
+    };
 }
