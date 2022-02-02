@@ -1,4 +1,5 @@
 use std::{
+    fs::OpenOptions,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -18,22 +19,21 @@ use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
-    let project_dir = {
-        let project_dir = PathBuf::from("examples/pong/data");
-        if !project_dir.is_absolute() {
-            std::env::current_dir().unwrap().join(project_dir)
-        } else {
-            project_dir
-        }
-    };
+    let project_dir = PathBuf::from("examples/pong/data");
 
     clean_folders(&project_dir);
 
     let build_dir = project_dir.join("temp");
-
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let mut project = Project::create_new(project_dir)
+    let absolute_project_dir = {
+        if !project_dir.is_absolute() {
+            std::env::current_dir().unwrap().join(&project_dir)
+        } else {
+            project_dir.clone()
+        }
+    };
+    let mut project = Project::create_new(absolute_project_dir)
         .await
         .expect("failed to create a project");
 
@@ -59,17 +59,29 @@ async fn main() {
         .add_compiler(&lgn_compiler_debugcube::COMPILER_INFO)
         .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
 
-    let options = DataBuildOptions::new(&build_dir, compilers)
+    let data_build = DataBuildOptions::new(&build_dir, compilers)
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(options, &project, Manifest::default())
+    let mut build_manager = BuildManager::new(data_build, &project, Manifest::default())
         .await
         .unwrap();
 
     for id in resource_ids {
         build_manager.build_all_derived(id, &project).await.unwrap();
     }
+
+    let runtime_dir = project_dir.join("runtime");
+    std::fs::create_dir(&runtime_dir).unwrap();
+    let runtime_manifest_path = runtime_dir.join("game.manifest");
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(runtime_manifest_path)
+        .expect("open file");
+
+    serde_json::to_writer_pretty(file, &build_manager.get_manifest()).expect("to write manifest");
 }
 
 fn clean_folders(project_dir: impl AsRef<Path>) {

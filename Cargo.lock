@@ -6827,6 +6827,7 @@ dependencies = [
  "rand 0.8.4",
  "runtime-srv",
  "sample-data",
+ "serde_json",
  "tokio",
 ]
 

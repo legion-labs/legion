@@ -136,12 +136,9 @@ impl DataBuild {
 
         let project = Self::open_project(&corrected_path).await?;
 
-        let build_index = BuildIndex::create_new(
-            &config.buildindex_dir,
-            &Project::root_to_index_path(project_dir),
-            Self::version(),
-        )
-        .map_err(|_e| Error::Io)?;
+        let build_index =
+            BuildIndex::create_new(&config.buildindex_dir, &projectindex_path, Self::version())
+                .map_err(|_e| Error::Io)?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;

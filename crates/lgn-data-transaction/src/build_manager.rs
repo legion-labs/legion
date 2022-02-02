@@ -82,4 +82,9 @@ impl BuildManager {
             }
         }
     }
+
+    /// Runtime manifest
+    pub fn get_manifest(&self) -> &Manifest {
+        &self.manifest
+    }
 }
