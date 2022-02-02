@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
-    Error, IndexBackend, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    Error, FileInfo, IndexBackend, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -203,7 +203,7 @@ impl SqlIndexBackend {
         "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), UNIQUE (id));
          CREATE TABLE `{}` (id VARCHAR(255), parent_id TEXT);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id VARCHAR(255) NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255));
+         CREATE TABLE `{}` (commit_id VARCHAR(255) NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER);
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
          Self::TABLE_COMMIT_PARENTS,
@@ -220,7 +220,7 @@ impl SqlIndexBackend {
 
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), hash VARCHAR(255));
+            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), hash VARCHAR(255), size INTEGER);
             CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id), FOREIGN KEY (child_id) REFERENCES `{}`(id));
             CREATE INDEX forest_links_index on `{}`(id);",
             Self::TABLE_FOREST,
@@ -390,13 +390,39 @@ impl SqlIndexBackend {
 
         for change in &commit.changes {
             sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?, ?);",
                 Self::TABLE_COMMIT_CHANGES
             ))
             .bind(commit.id.clone())
             .bind(change.canonical_path().to_string())
-            .bind(change.change_type().old_hash())
-            .bind(change.change_type().new_hash())
+            .bind(
+                change
+                    .change_type()
+                    .old_info()
+                    .map(|info| info.hash.as_str())
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .new_info()
+                    .map(|info| info.hash.as_str())
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .old_info()
+                    .map(|info| i64::try_from(info.size).unwrap_or(0))
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .new_info()
+                    .map(|info| i64::try_from(info.size).unwrap_or(0))
+                    .unwrap_or_default(),
+            )
             .execute(&mut *transaction)
             .await
             .map_other_err(format!(
@@ -462,7 +488,7 @@ impl SqlIndexBackend {
         // We only insert the tree node if it doesn't exist already.
         if !Self::tree_node_exists(&mut *transaction, &id).await? {
             let sql = &format!(
-                "INSERT INTO `{}` (id, name, hash) VALUES(?, ?, ?);",
+                "INSERT INTO `{}` (id, name, hash, size) VALUES(?, ?, ?, ?);",
                 Self::TABLE_FOREST,
             );
 
@@ -472,6 +498,7 @@ impl SqlIndexBackend {
                         .bind(&id)
                         .bind(name)
                         .bind(Option::<String>::None)
+                        .bind(Option::<i64>::None)
                         .execute(&mut *transaction)
                         .await
                         .map_other_err(&format!(
@@ -483,11 +510,12 @@ impl SqlIndexBackend {
                         Self::save_tree_node_transactional(transaction, Some(&id), child).await?;
                     }
                 }
-                Tree::File { name, hash } => {
+                Tree::File { name, info } => {
                     sqlx::query(sql)
                         .bind(&id)
                         .bind(name)
-                        .bind(Some(hash))
+                        .bind(Some(&info.hash))
+                        .bind(Some(i64::try_from(info.size).unwrap_or(0)))
                         .execute(&mut *transaction)
                         .await
                         .map_other_err(&format!("failed to insert tree file node `{}`", &id))?;
@@ -519,7 +547,7 @@ impl SqlIndexBackend {
         id: &str,
     ) -> Result<Tree> {
         let row = sqlx::query(&format!(
-            "SELECT name, hash
+            "SELECT name, hash, size
              FROM `{}`
              WHERE id = ?;",
             Self::TABLE_FOREST
@@ -530,9 +558,20 @@ impl SqlIndexBackend {
         .map_other_err(format!("failed to fetch tree node `{}`", id))?;
 
         let name = row.get("name");
-        let hash = row.get("hash");
+        let hash: String = row.get("hash");
 
-        let tree = Self::read_tree_node_transactional(transaction, id, name, hash).await?;
+        let info = if !hash.is_empty() {
+            let size: i64 = row.get("size");
+
+            Some(FileInfo {
+                hash,
+                size: size as u64,
+            })
+        } else {
+            None
+        };
+
+        let tree = Self::read_tree_node_transactional(transaction, id, name, info).await?;
 
         #[cfg(debug_assertions)]
         assert!(
@@ -549,10 +588,10 @@ impl SqlIndexBackend {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         id: &str,
         name: String,
-        hash: Option<String>,
+        info: Option<FileInfo>,
     ) -> Result<Tree> {
-        Ok(if let Some(hash) = hash {
-            Tree::File { hash, name }
+        Ok(if let Some(info) = info {
+            Tree::File { info, name }
         } else {
             let child_ids = sqlx::query(&format!(
                 "SELECT child_id
@@ -572,7 +611,7 @@ impl SqlIndexBackend {
 
             for child_id in child_ids {
                 let row = sqlx::query(&format!(
-                    "SELECT name, hash
+                    "SELECT name, hash, size
                     FROM `{}`
                     WHERE id = ?;",
                     Self::TABLE_FOREST
@@ -586,10 +625,21 @@ impl SqlIndexBackend {
                 ))?;
 
                 let name: String = row.get("name");
-                let hash = row.get("hash");
+                let hash: String = row.get("hash");
+
+                let info = if !hash.is_empty() {
+                    let size: i64 = row.get("size");
+
+                    Some(FileInfo {
+                        hash,
+                        size: size as u64,
+                    })
+                } else {
+                    None
+                };
 
                 let child =
-                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, hash)
+                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, info)
                         .await?;
 
                 children.insert(child.name().to_string(), child);
@@ -819,7 +869,7 @@ impl IndexBackend for SqlIndexBackend {
         let mut conn = self.get_conn().await?;
 
         let changes = sqlx::query(&format!(
-            "SELECT canonical_path, old_hash, new_hash
+            "SELECT canonical_path, old_hash, new_hash, old_size, new_size
              FROM `{}`
              WHERE commit_id = ?;",
             Self::TABLE_COMMIT_CHANGES,
@@ -834,7 +884,32 @@ impl IndexBackend for SqlIndexBackend {
         .into_iter()
         .filter_map(|row| {
             if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                ChangeType::new(row.get("old_hash"), row.get("new_hash"))
+                let old_hash: String = row.get("old_hash");
+
+                let old_info = if !old_hash.is_empty() {
+                    let old_size: i64 = row.get("old_size");
+
+                    Some(FileInfo {
+                        hash: old_hash,
+                        size: old_size as u64,
+                    })
+                } else {
+                    None
+                };
+
+                let new_hash: String = row.get("new_hash");
+                let new_info = if !new_hash.is_empty() {
+                    let new_size: i64 = row.get("new_size");
+
+                    Some(FileInfo {
+                        hash: new_hash,
+                        size: new_size as u64,
+                    })
+                } else {
+                    None
+                };
+
+                ChangeType::new(old_info, new_info)
                     .map(|change_type| Change::new(canonical_path, change_type))
             } else {
                 None
