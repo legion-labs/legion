@@ -255,42 +255,19 @@ impl DataBuild {
     ///
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.source_index.lookup_pathid(id)
+        if let Some(source_index) = self.source_index.current() {
+            source_index.lookup_pathid(id)
+        } else {
+            None
+        }
     }
 
     /// Updates the build database with information about resources from
     /// provided resource database.
     pub async fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
-        let mut updated_resources = 0;
-
-        for resource_id in project.resource_list().await {
-            let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
-
-            if self.source_index.update_resource(
-                ResourcePathId::from(ResourceTypeAndId {
-                    id: resource_id,
-                    kind,
-                }),
-                Some(resource_hash),
-                resource_deps.clone(),
-            ) {
-                updated_resources += 1;
-            }
-
-            // add each derived dependency with it's direct dependency listed in deps.
-            for dependency in resource_deps {
-                if let Some(direct_dependency) = dependency.direct_dependency() {
-                    if self
-                        .source_index
-                        .update_resource(dependency, None, vec![direct_dependency])
-                    {
-                        updated_resources += 1;
-                    }
-                }
-            }
-        }
-
-        Ok(updated_resources)
+        self.source_index
+            .source_pull(project, Self::version())
+            .await
     }
 
     /// Compile `compile_path` resource and all its dependencies in the build
@@ -486,20 +463,24 @@ impl DataBuild {
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
-        let build_graph = self.source_index.generate_build_graph(compile_path);
-        #[rustfmt::skip]
+        if let Some(source_index) = self.source_index.current() {
+            let build_graph = source_index.generate_build_graph(compile_path);
+            #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
             format!("label = \"{}\"", (name_parser)(nr.1))
         };
-        let dot = petgraph::dot::Dot::with_attr_getters(
-            &build_graph,
-            &[petgraph::dot::Config::EdgeNoLabel],
-            &|_, _| String::new(),
-            &inner_getter,
-        );
+            let dot = petgraph::dot::Dot::with_attr_getters(
+                &build_graph,
+                &[petgraph::dot::Config::EdgeNoLabel],
+                &|_, _| String::new(),
+                &inner_getter,
+            );
 
-        format!("{:?}", dot)
+            format!("{:?}", dot)
+        } else {
+            String::new()
+        }
     }
 
     /// Compile a resource identified by [`ResourcePathId`] and all its
@@ -515,9 +496,12 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompileOutput, Error> {
-        self.source_index.record_pathid(&compile_path);
+        if self.source_index.current().is_none() {
+            return Err(Error::SourceIndex);
+        }
+        let source_index = self.source_index.current().unwrap();
 
-        let build_graph = self.source_index.generate_build_graph(compile_path);
+        let build_graph = source_index.generate_build_graph(compile_path);
 
         let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
             eprintln!("{:?}", build_graph);
@@ -603,8 +587,7 @@ impl DataBuild {
                 //
                 // this has to be reevaluated in the future.
                 //
-                let dependencies = self
-                    .source_index
+                let dependencies = source_index
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
@@ -622,9 +605,7 @@ impl DataBuild {
                         // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
-                        self.source_index
-                            .compute_source_hash(compile_node.clone())
-                            .get()
+                        source_index.compute_source_hash(compile_node.clone()).get()
                     } else {
                         //
                         // since this is a path-derived resource its hash is equal to the

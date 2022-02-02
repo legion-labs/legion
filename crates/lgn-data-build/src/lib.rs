@@ -180,6 +180,9 @@ pub enum Error {
     /// Compiler returned an error.
     #[error("Compiler returned an error: '{0}'")]
     Compiler(#[source] CompilerError),
+    /// Source Index error.
+    #[error("Source Index error")]
+    SourceIndex,
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {

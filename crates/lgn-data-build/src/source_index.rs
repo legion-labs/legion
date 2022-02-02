@@ -7,7 +7,10 @@ use std::{
 };
 
 use lgn_content_store::{Checksum, ContentStore};
-use lgn_data_offline::{resource::ResourceHash, ResourcePathId};
+use lgn_data_offline::{
+    resource::{Project, ResourceHash},
+    ResourcePathId,
+};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
@@ -34,7 +37,7 @@ impl ResourceInfo {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
-struct SourceContent {
+pub(crate) struct SourceContent {
     version: String,
     resources: Vec<ResourceInfo>,
     #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
@@ -48,6 +51,13 @@ impl SourceContent {
         for resource in &mut self.resources {
             resource.pre_serialize();
         }
+    }
+
+    fn write(&mut self) -> Result<Vec<u8>, Error> {
+        self.pre_serialize();
+        let mut buffer = vec![];
+        serde_json::to_writer_pretty(&mut buffer, &self).map_err(|e| Error::Io(e.into()))?;
+        Ok(buffer)
     }
 
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
@@ -220,6 +230,7 @@ struct IndexKeys {
 
 pub(crate) struct SourceIndex {
     index_keys: IndexKeys,
+    current: Option<SourceContent>,
     file: File,
     content_store: Box<dyn ContentStore>,
 }
@@ -256,6 +267,7 @@ impl SourceIndex {
         Ok(Self {
             index_keys,
             content_store,
+            current: None,
             file: source_file,
         })
     }
@@ -273,6 +285,7 @@ impl SourceIndex {
         Ok(Self {
             index_keys,
             content_store,
+            current: None,
             file: source_file,
         })
     }
@@ -308,6 +321,55 @@ impl SourceIndex {
 
     pub(crate) fn source_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
         buildindex_dir.as_ref().join("source.index")
+    }
+
+    pub fn current(&self) -> Option<&SourceContent> {
+        self.current.as_ref()
+    }
+
+    pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<i32, Error> {
+        let mut updated_resources = 0;
+
+        let mut source_index = self.current.take().unwrap_or(SourceContent {
+            version: version.to_owned(),
+            resources: vec![],
+            pathid_mapping: BTreeMap::<_, _>::new(),
+        });
+
+        for resource_id in project.resource_list().await {
+            let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
+
+            if source_index.update_resource(
+                ResourcePathId::from(ResourceTypeAndId {
+                    id: resource_id,
+                    kind,
+                }),
+                Some(resource_hash),
+                resource_deps.clone(),
+            ) {
+                updated_resources += 1;
+            }
+
+            // add each derived dependency with it's direct dependency listed in deps.
+            for dependency in resource_deps {
+                if let Some(direct_dependency) = dependency.direct_dependency() {
+                    if source_index.update_resource(dependency, None, vec![direct_dependency]) {
+                        updated_resources += 1;
+                    }
+                }
+            }
+        }
+
+        let buffer = source_index.write()?;
+        let checksum = self
+            .content_store
+            .store(&buffer)
+            .ok_or(Error::InvalidContentStore)?;
+
+        self.index_keys.keys.insert("todo".to_string(), checksum);
+
+        self.current = Some(source_index);
+        Ok(updated_resources)
     }
 }
 
