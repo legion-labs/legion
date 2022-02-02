@@ -45,6 +45,13 @@ pub(crate) struct SourceContent {
 }
 
 impl SourceContent {
+    fn new(version: &str) -> Self {
+        Self {
+            version: version.to_owned(),
+            resources: vec![],
+            pathid_mapping: BTreeMap::<_, _>::new(),
+        }
+    }
     // sort contents so serialization is deterministic
     fn pre_serialize(&mut self) {
         self.resources.sort_by(|a, b| a.id.cmp(&b.id));
@@ -332,11 +339,7 @@ impl SourceIndex {
 
         let root_checksum = project.root_checksum().await?;
 
-        let mut source_index = self.current.take().unwrap_or(SourceContent {
-            version: version.to_owned(),
-            resources: vec![],
-            pathid_mapping: BTreeMap::<_, _>::new(),
-        });
+        let mut source_index = self.current.take().unwrap_or(SourceContent::new(version));
 
         for resource_id in project.resource_list().await {
             let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
@@ -375,14 +378,14 @@ impl SourceIndex {
     }
 }
 
-/*#[cfg(test)]
+#[cfg(test)]
 mod tests {
 
     use lgn_content_store::RamContentStore;
     use lgn_data_offline::ResourcePathId;
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
-    use crate::source_index::SourceIndex;
+    use crate::source_index::{SourceContent, SourceIndex};
 
     #[tokio::test]
     async fn version_check() {
@@ -408,8 +411,6 @@ mod tests {
 
     #[tokio::test]
     async fn pathid_records() {
-        let work_dir = tempfile::tempdir().unwrap();
-
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
             kind: refs_resource::TestResource::TYPE,
@@ -419,15 +420,8 @@ mod tests {
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
 
-        let buildindex_dir = work_dir.path();
-
-        {
-            let mut source_index = SourceIndex::create_new(
-                &SourceIndex::source_index_file(&buildindex_dir),
-                Box::new(RamContentStore::default()),
-                "0.0.1",
-            )
-            .unwrap();
+        let source_index = {
+            let mut source_index = SourceContent::new("0.0.1");
 
             // all dependencies need to be explicitly specified
             let intermediate_deps = vec![source_resource.clone()];
@@ -447,16 +441,9 @@ mod tests {
                 intermediate_deps,
             );
             source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
+            source_index
+        };
 
-            source_index.flush().unwrap();
-        }
-
-        let source_index = SourceIndex::open(
-            &SourceIndex::source_index_file(buildindex_dir),
-            Box::new(RamContentStore::default()),
-            "0.0.1",
-        )
-        .unwrap();
         assert_eq!(
             source_index.lookup_pathid(source_id).unwrap(),
             source_resource
@@ -477,8 +464,6 @@ mod tests {
 
     #[tokio::test]
     async fn dependency_update() {
-        let work_dir = tempfile::tempdir().unwrap();
-
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
             kind: refs_resource::TestResource::TYPE,
@@ -488,14 +473,7 @@ mod tests {
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);
 
-        let buildindex_dir = work_dir.path();
-
-        let mut source_index = SourceIndex::create_new(
-            &SourceIndex::source_index_file(buildindex_dir),
-            Box::new(RamContentStore::default()),
-            "0.0.1",
-        )
-        .unwrap();
+        let mut source_index = SourceContent::new("0.0.1");
 
         // all dependencies need to be explicitly specified
         let intermediate_deps = vec![source_resource.clone()];
@@ -508,21 +486,19 @@ mod tests {
             resource_hash,
             intermediate_deps.clone(),
         );
-        assert_eq!(source_index.index_keys.resources.len(), 1);
-        assert_eq!(source_index.index_keys.resources[0].dependencies.len(), 1);
+        assert_eq!(source_index.resources.len(), 1);
+        assert_eq!(source_index.resources[0].dependencies.len(), 1);
 
         source_index.update_resource(source_resource, resource_hash, vec![]);
-        assert_eq!(source_index.index_keys.resources.len(), 2);
-        assert_eq!(source_index.index_keys.resources[1].dependencies.len(), 0);
+        assert_eq!(source_index.resources.len(), 2);
+        assert_eq!(source_index.resources[1].dependencies.len(), 0);
 
         source_index.update_resource(intermediate_resource, resource_hash, intermediate_deps);
-        assert_eq!(source_index.index_keys.resources.len(), 2);
-        assert_eq!(source_index.index_keys.resources[0].dependencies.len(), 1);
+        assert_eq!(source_index.resources.len(), 2);
+        assert_eq!(source_index.resources[0].dependencies.len(), 1);
 
         source_index.update_resource(output_resources, resource_hash, output_deps);
-        assert_eq!(source_index.index_keys.resources.len(), 3);
-        assert_eq!(source_index.index_keys.resources[2].dependencies.len(), 1);
-
-        source_index.flush().unwrap();
+        assert_eq!(source_index.resources.len(), 3);
+        assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
-}*/
+}
