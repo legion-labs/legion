@@ -154,7 +154,12 @@ allow = [
 ################################################################################
 
 [[determinator.path-rule]]
-globs = [".github/workflows/*", "rust-toolchain.toml", "monorepo.toml"]
+globs = [
+    ".github/actions/*",
+    ".github/workflows/*",
+    "rust-toolchain.toml",
+    "monorepo.toml",
+]
 mark-changed = "all"
 
 [[determinator.path-rule]]
@@ -175,5 +180,9 @@ globs = [
     "*.md",
 ]
 mark-changed = []
+
+[[determinator.package-rule]]
+on-affected = ["monorepo"]
+mark-changed = "all"
 
 ################################################################################

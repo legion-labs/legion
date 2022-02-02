@@ -23,10 +23,14 @@ runs:
 
     - name: Bootstrap monorepo
       if: runner.os == 'Linux'
-      run: cargo bootstrap
+      run: |
+        cargo bootstrap
+        cargo m --help
       shell: bash
 
     - name: Bootstrap monorepo
       if: runner.os == 'Windows'
-      run: cargo bootstrap
+      run: |
+        cargo bootstrap
+        cargo m --help
       shell: powershell
