@@ -95,61 +95,153 @@ async fn create_offline_data(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
 ) {
-    // ball
-    let ball_path_id = {
+    // ground
+    let ground_path_id = {
         let mut resources = resource_registry.lock().await;
-        let ball_id = ResourceTypeAndId {
+        let id = ResourceTypeAndId {
             kind: generic_data::offline::DebugCube::TYPE,
-            id: ResourceId::from_str("26b7a335-2d28-489d-882b-f7aae1fb2196").unwrap(),
+            id: ResourceId::from_str("63c338c9-0d03-4636-8a17-8f0cba02b618").unwrap(),
         };
-        let ball_handle = resources.new_resource(ball_id.kind).unwrap();
-        let ball_entity = ball_handle
+        let handle = resources.new_resource(id.kind).unwrap();
+        let debug_cube = handle
             .get_mut::<generic_data::offline::DebugCube>(&mut resources)
             .unwrap();
-        ball_entity.color = (255, 16, 64).into();
-        ball_entity.mesh_id = 8;
-        ball_entity.name = "Ball".to_string();
-        ball_entity.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
-        ball_entity.scale = (0.4_f32, 0.4_f32, 0.4_f32).into();
+        debug_cube.color = (208, 255, 208).into();
+        debug_cube.name = "Ground".to_string();
+        debug_cube.position = (0_f32, 0_f32, -0.1_f32).into();
+        debug_cube.scale = (12_f32, 8_f32, 0.01_f32).into();
         project
             .add_resource_with_id(
-                "/scene/Ball".into(),
+                "/scene/Ground".into(),
                 generic_data::offline::DebugCube::TYPENAME,
-                ball_id.kind,
-                ball_id,
-                ball_handle,
+                id.kind,
+                id,
+                handle,
                 &mut resources,
             )
             .await
             .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(generic_data::runtime::DebugCube::TYPE)
+    };
 
-        let path: ResourcePathId = ball_id.into();
+    // pad right
+    let pad_right_path_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: generic_data::offline::DebugCube::TYPE,
+            id: ResourceId::from_str("727eef7f-2544-4a46-be99-9aedd44a098e").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+        let debug_cube = handle
+            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+            .unwrap();
+        debug_cube.color = (0, 255, 255).into();
+        debug_cube.name = "Pad Right".to_string();
+        debug_cube.position = (-2.4_f32, 0_f32, 0_f32).into();
+        debug_cube.scale = (0.4_f32, 2_f32, 0.4_f32).into();
+        project
+            .add_resource_with_id(
+                "/scene/Pad Right".into(),
+                generic_data::offline::DebugCube::TYPENAME,
+                id.kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(generic_data::runtime::DebugCube::TYPE)
+    };
+
+    // pad left
+    let pad_left_path_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: generic_data::offline::DebugCube::TYPE,
+            id: ResourceId::from_str("719c8d5b-d320-4102-a92a-b3fa5240e140").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+        let debug_cube = handle
+            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+            .unwrap();
+        debug_cube.color = (0, 0, 255).into();
+        debug_cube.name = "Pad Left".to_string();
+        debug_cube.position = (2.4_f32, 0_f32, 0_f32).into();
+        debug_cube.scale = (0.4_f32, 2_f32, 0.4_f32).into();
+        project
+            .add_resource_with_id(
+                "/scene/Pad Left".into(),
+                generic_data::offline::DebugCube::TYPENAME,
+                id.kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(generic_data::runtime::DebugCube::TYPE)
+    };
+
+    // ball
+    let ball_path_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: generic_data::offline::DebugCube::TYPE,
+            id: ResourceId::from_str("26b7a335-2d28-489d-882b-f7aae1fb2196").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+        let debug_cube = handle
+            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+            .unwrap();
+        debug_cube.color = (255, 16, 64).into();
+        debug_cube.mesh_id = 8;
+        debug_cube.name = "Ball".to_string();
+        debug_cube.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
+        debug_cube.scale = (0.4_f32, 0.4_f32, 0.4_f32).into();
+        project
+            .add_resource_with_id(
+                "/scene/Ball".into(),
+                generic_data::offline::DebugCube::TYPENAME,
+                id.kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
         path.push(generic_data::runtime::DebugCube::TYPE)
     };
 
     // scene
     let _scene_id = {
         let mut resources = resource_registry.lock().await;
-        let scene_id = ResourceTypeAndId {
+        let id = ResourceTypeAndId {
             kind: sample_data::offline::Entity::TYPE,
             id: ResourceId::from_str("29b8b0d0-ee1e-4792-aca2-3b3a3ce63916").unwrap(),
         };
-        let scene_handle = resources.new_resource(scene_id.kind).unwrap();
-        let scene_entity = scene_handle
+        let handle = resources.new_resource(id.kind).unwrap();
+        let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        scene_entity.children.push(ball_path_id);
+        entity.children.push(ground_path_id);
+        entity.children.push(pad_right_path_id);
+        entity.children.push(pad_left_path_id);
+        entity.children.push(ball_path_id);
         project
             .add_resource_with_id(
                 "/scene.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
-                scene_id.kind,
-                scene_id,
-                scene_handle,
+                id.kind,
+                id,
+                handle,
                 &mut resources,
             )
             .await
             .unwrap();
-        scene_id
+        id
     };
 }
