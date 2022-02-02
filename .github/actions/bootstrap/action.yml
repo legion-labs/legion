@@ -24,13 +24,21 @@ runs:
     - name: Bootstrap monorepo
       if: runner.os == 'Linux'
       run: |
+        echo "::group::Build and run the bootstrap package"
         cargo bootstrap
-        cargo m --help
+        echo "::endgroup::"
+        echo "::group::Relink monorepo executable"
+        cargo md --help
+        echo "::endgroup::"
       shell: bash
 
     - name: Bootstrap monorepo
       if: runner.os == 'Windows'
       run: |
+        echo "::group::Build and run the bootstrap package"
         cargo bootstrap
-        cargo m --help
+        echo "::endgroup::"
+        echo "::group::Relink monorepo executable"
+        cargo md --help
+        echo "::endgroup::"
       shell: powershell
