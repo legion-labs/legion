@@ -24,6 +24,9 @@ runs:
     - name: Bootstrap monorepo
       if: runner.os == 'Linux'
       run: |
+        echo "::group::Fetch all packages"
+        cargo fetch
+        echo "::endgroup::"
         echo "::group::Build and run the bootstrap package"
         cargo bootstrap
         echo "::endgroup::"
@@ -35,6 +38,9 @@ runs:
     - name: Bootstrap monorepo
       if: runner.os == 'Windows'
       run: |
+        echo "::group::Fetch all packages"
+        cargo fetch
+        echo "::endgroup::"
         echo "::group::Build and run the bootstrap package"
         cargo bootstrap
         echo "::endgroup::"
