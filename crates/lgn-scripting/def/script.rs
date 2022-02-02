@@ -1,6 +1,6 @@
 #[resource]
 struct Script {
-    #[legion(offline)]
+    #[legion(offline_only, editor_type = "script")]
     pub script: String,
 
     #[legion(runtime_only)]

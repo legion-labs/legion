@@ -27,7 +27,7 @@ pub struct TestEntity {
     #[legion(default = 32.32f32, group = "GroupTest2")]
     test_float32: f32,
 
-    #[legion(default = 64.64f64, offline)]
+    #[legion(default = 64.64f64, offline_only)]
     test_float64: f64,
 
     // Default with Integer constant

@@ -9,13 +9,14 @@ use quote::{quote, ToTokens};
 const LEGION_TAG: &str = "legion";
 const DEFAULT_ATTR: &str = "default";
 const HIDDEN_ATTR: &str = "hidden";
-const OFFLINE_ATTR: &str = "offline";
+const OFFLINE_ONLY_ATTR: &str = "offline_only";
 const RUNTIME_ONLY_ATTR: &str = "runtime_only";
 const IGNORE_DEPS_ATTR: &str = "ignore_deps";
 const TOOLTIP_ATTR: &str = "tooltip";
 const READONLY_ATTR: &str = "readonly";
 const GROUP_ATTR: &str = "group";
 const TRANSIENT_ATTR: &str = "transient";
+const EDITOR_TYPE_ATTR: &str = "editor_type";
 const RESOURCE_TYPE_ATTR: &str = "resource_type";
 
 pub struct DataContainerMetaInfo {
@@ -129,8 +130,8 @@ impl MemberMetaInfo {
         !self.type_path.segments.is_empty() && self.type_path.segments[0].ident == "Option"
     }
 
-    pub fn is_offline(&self) -> bool {
-        self.attributes.contains_key(OFFLINE_ATTR)
+    pub fn is_offline_only(&self) -> bool {
+        self.attributes.contains_key(OFFLINE_ONLY_ATTR)
     }
 
     pub fn is_runtime_only(&self) -> bool {
@@ -311,7 +312,7 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
                         }
 
                         // Bool Attributes
-                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ATTR | TRANSIENT_ATTR
+                        READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ONLY_ATTR | TRANSIENT_ATTR
                         | RUNTIME_ONLY_ATTR | IGNORE_DEPS_ATTR => {
                             member_info.attributes.insert(ident, "true".into());
                         }
@@ -329,7 +330,7 @@ pub fn get_member_info(field: &syn::Field, type_path: syn::Path) -> MemberMetaIn
                                 .push(syn::parse_str("lgn_data_runtime::Reference").unwrap());
                         }
                         // Literal Attributes
-                        GROUP_ATTR | TOOLTIP_ATTR => {
+                        EDITOR_TYPE_ATTR | GROUP_ATTR | TOOLTIP_ATTR => {
                             member_info
                                 .attributes
                                 .insert(ident, get_attribute_literal(&mut group_iter));
