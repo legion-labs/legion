@@ -19,24 +19,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registery
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
-      - name: Bootstrap monorepo
-        run: cargo bootstrap
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
 
       - name: Print changed crates
         run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
@@ -60,24 +44,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
-      - name: Bootstrap monorepo
-        run: cargo bootstrap
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
 
       - name: Run tests
         run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} test
@@ -96,24 +64,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
-      - name: Bootstrap monorepo
-        run: cargo bootstrap
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
 
       - name: Build docs
         run: cargo m doc
@@ -204,24 +156,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
-      - name: Bootstrap monorepo
-        run: cargo bootstrap
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
 
       - name: Test changed crates
         id: changed-crates
