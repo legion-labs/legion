@@ -1,4 +1,4 @@
-import { Entry } from "@lgn/frontend/src/types/contextMenu";
+import { Entry } from "@lgn/web-client/src/types/contextMenu";
 
 const entries: Entry[] = [
   { type: "item", action: "rename", label: "Rename" },

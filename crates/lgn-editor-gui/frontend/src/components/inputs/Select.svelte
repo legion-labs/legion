@@ -1,11 +1,11 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import clickOutside from "@lgn/frontend/src/actions/clickOutside";
+  import clickOutside from "@lgn/web-client/src/actions/clickOutside";
   import keyboardNavigation, {
     keyboardNavigationItem,
     keyboardNavigationContainer,
-  } from "@lgn/frontend/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/frontend/src/stores/keyboardNavigation";
+  } from "@lgn/web-client/src/actions/keyboardNavigation";
+  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
 
   type Item = $$Generic;
 

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
-  import Modal from "@lgn/frontend/src/components/modal/Modal.svelte";
-  import Button from "@lgn/frontend/src/components/Button.svelte";
-  import { AsyncStoreOrchestrator } from "@lgn/frontend/src/stores/asyncStore";
+  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+  import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
   import Select from "../inputs/Select.svelte";
   import TextInput from "../inputs/TextInput.svelte";
   import {

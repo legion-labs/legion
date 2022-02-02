@@ -7,12 +7,12 @@ const contentGlobSuffix = "**/*.{svelte,ts}";
 
 const srcContentDir = "./src";
 
-const lgnFrontendContentDir = "./node_modules/@lgn/frontend/src";
+const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
 
 if (!fs.existsSync(lgnFrontendContentDir)) {
   // eslint-disable-next-line no-console
   console.error(
-    `It seems @lgn/frontend src folder is not installed or not accessible here: ${lgnFrontendContentDir}`
+    `It seems @lgn/web-client src folder is not installed or not accessible here: ${lgnFrontendContentDir}`
   );
 
   process.exit(1);

@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { ServerType } from "@lgn/frontend/src/api";
-  import { Resolution } from "@lgn/frontend/src/lib/types";
-  import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
-  import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
-  import ModalContainer from "@lgn/frontend/src/components/modal/ModalContainer.svelte";
-  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
-  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
-  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
+  import { ServerType } from "@lgn/web-client/src/api";
+  import { Resolution } from "@lgn/web-client/src/lib/types";
+  import { Panel, PanelList } from "@lgn/web-client/src/components/panel";
+  import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
+  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
+  import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
+  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import { getAllResources, getResourceProperties } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
-  import log from "@lgn/frontend/src/lib/log";
+  import log from "@lgn/web-client/src/lib/log";
   import { Entries } from "@/lib/hierarchyTree";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
@@ -24,8 +24,8 @@
     autoClose,
     Event as ContextMenuActionEvent,
     select,
-  } from "@lgn/frontend/src/types/contextMenu";
-  import ModalStore from "@lgn/frontend/src/stores/modal";
+  } from "@lgn/web-client/src/types/contextMenu";
+  import ModalStore from "@lgn/web-client/src/stores/modal";
   import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
   import { SvelteComponent } from "svelte";
   import allResourcesStore from "@/stores/allResources";

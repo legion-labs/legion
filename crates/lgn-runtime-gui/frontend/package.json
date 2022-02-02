@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
-    "@lgn/frontend": "^0.1.0",
+    "@lgn/web-client": "^0.1.0",
     "@lgn/proto-runtime": "^0.1.0",
     "@lgn/proto-streaming": "^0.1.0",
     "@tauri-apps/api": "^1.0.0-beta.8",

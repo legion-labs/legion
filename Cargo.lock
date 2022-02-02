@@ -2320,7 +2320,6 @@ dependencies = [
  "lgn-app",
  "lgn-async",
  "lgn-blob-storage",
- "lgn-browser",
  "lgn-build-utils",
  "lgn-build-utils-web",
  "lgn-ecs",
@@ -2329,6 +2328,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-tracing-transit",
+ "lgn-web-client",
  "prost",
  "regex",
  "serde",
@@ -4045,18 +4045,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-browser"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "directories",
- "lgn-online",
- "serde_json",
- "tauri",
- "url",
-]
-
-[[package]]
 name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
@@ -5155,6 +5143,18 @@ dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.4",
  "siphasher",
+]
+
+[[package]]
+name = "lgn-web-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "directories",
+ "lgn-online",
+ "serde_json",
+ "tauri",
+ "url",
 ]
 
 [[package]]

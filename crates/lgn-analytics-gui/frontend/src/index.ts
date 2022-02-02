@@ -1,5 +1,5 @@
 import "./assets/index.css";
-import { defaultAuthUserConfig, run } from "@lgn/frontend";
+import { defaultAuthUserConfig, run } from "@lgn/web-client";
 import App from "./App.svelte";
 
 run({
