@@ -38,9 +38,9 @@ export default buildContextMenuStore<ContextMenuEntryRecord>();
 
 ```typescript
 import buildContextMenu from "@lgn/frontend/src/actions/contextMenu";
-import myContextMenuStore, { ContextMenuEntryRecord } from "../stores/myContextMenu";
+import { ContextMenuEntryRecord } from "../stores/myContextMenu";
 
-export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
+export default buildContextMenu<ContextMenuEntryRecord>();
 ```
 
 `./pages/MyPage.svelte`
@@ -99,7 +99,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
 
 <svelte:window on:contextmenu-action={handleContextMenuAction} />
 
-<ContextMenu contextMenuStore={myContextMenuStore}
+<ContextMenu store={myContextMenuStore}
 
 <div>
   <div>If you right click me, the default context menu is shown.</div>
@@ -145,7 +145,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export let contextMenuStore: ContextMenuStore<any>;
+  export let store: ContextMenuStore<any>;
 
   let state: State = { type: "hidden" };
 
@@ -249,8 +249,7 @@ export default buildContextMenu<ContextMenuEntryRecord>(myContextMenuStore);
     event.stopPropagation();
 
     const newCurrentEntries =
-      ($contextMenuStore && $contextMenuStore[event.detail.name]) ||
-      defaultEntries;
+      ($store && $store[event.detail.name]) || defaultEntries;
 
     let position = computePositionFrom(
       event.detail.originalEvent,

@@ -1,76 +1,127 @@
 <script lang="ts">
+  import { form as createForm, field } from "svelte-forms";
+  import { required } from "svelte-forms/validators";
   import Modal from "@lgn/frontend/src/components/modal/Modal.svelte";
   import Button from "@lgn/frontend/src/components/Button.svelte";
-  import { sleep } from "@lgn/frontend/src/lib/promises";
   import { AsyncStoreOrchestrator } from "@lgn/frontend/src/stores/asyncStore";
   import Select from "../inputs/Select.svelte";
   import TextInput from "../inputs/TextInput.svelte";
+  import {
+    getResourceTypes,
+    createResource as createResourceApi,
+    getAllResources,
+  } from "@/api";
+  import {
+    GetResourceTypeNamesResponse,
+    ResourceDescription,
+  } from "@lgn/proto-editor/dist/resource_browser";
+  import allResourcesStore from "@/stores/allResources";
+  import { join } from "@/lib/path";
+  import Field from "../Field.svelte";
 
-  const requestStore = new AsyncStoreOrchestrator();
+  const createResourceStore = new AsyncStoreOrchestrator();
 
-  const { loading } = requestStore;
+  const { loading } = createResourceStore;
 
-  // TODO: Fetch types on the server side
-  const typeOptions = [
-    { id: "foo", value: "foo", label: "Foo" },
-    { id: "bar", value: "bar", label: "Bar" },
-    { id: "baz", value: "baz", label: "Baz" },
-    { id: "qux", value: "qux", label: "Qux" },
-    { id: "quux", value: "quux", label: "Quux" },
-    { id: "qux2", value: "qux2", label: "Qux2" },
-    { id: "foofoo", value: "foofoo", label: "Foofoo" },
-    { id: "nnnn", value: "nnnn", label: "Nnnn" },
-    { id: "truc", value: "truc", label: "Truc" },
-  ];
+  const resourceTypesStore =
+    new AsyncStoreOrchestrator<GetResourceTypeNamesResponse>();
 
-  let name = "";
+  const name = field("name", "", [required()]);
 
-  let type: typeof typeOptions[number] | "" = "";
+  const type = field<{ value: string; item: string } | "">("type", "", [
+    required(),
+  ]);
+
+  const createResourceForm = createForm(name, type);
+
+  export let close: () => void;
+
+  export let payload: ResourceDescription;
 
   async function createResource(event: SubmitEvent) {
     event.preventDefault();
 
     // Simulate a long request
-    await requestStore.run(() => sleep(1_000));
+    await createResourceStore.run(async () => {
+      await createResourceForm.validate();
+
+      if (!$createResourceForm.valid || !$type.value) {
+        return;
+      }
+
+      // TODO: As soon as the folder-ish resources are supported, uncomment
+      // const path = join(payload.path, $name.value);
+      const resourcePath = $name.value;
+
+      const resourceType = $type.value.item;
+
+      try {
+        await createResourceStore.run(() =>
+          createResourceApi({
+            resourcePath,
+            resourceType,
+          })
+        );
+      } catch (error) {}
+
+      close();
+
+      allResourcesStore.run(getAllResources);
+    });
   }
 </script>
 
 <form on:submit={createResource}>
-  <Modal>
+  <Modal on:close={close}>
     <div slot="title">
       <div>Create New Resource</div>
     </div>
     <div class="body" slot="body">
-      <label>
-        <div class="field">
-          <div>Name</div>
-          <div>
+      <div>
+        <Field field={name}>
+          <div slot="label">Resource Name</div>
+          <div slot="input">
             <TextInput
-              bind:value={name}
+              bind:value={$name.value}
               autoFocus
               disabled={$loading}
               size="lg"
+              status={$name.invalid ? "error" : "default"}
             />
           </div>
-        </div>
-      </label>
-      <label>
-        <div class="field">
-          <div>Type</div>
-          <div>
-            <Select
-              options={typeOptions}
-              size="lg"
-              disabled={$loading}
-              bind:value={type}
-            >
-              <div slot="option" let:option>{option.label}</div>
-            </Select>
+          <div slot="error" let:error>
+            Resource name is {error}
           </div>
-        </div>
-      </label>
+        </Field>
+      </div>
+      <div>
+        <Field field={type}>
+          <div slot="label">Resource Type</div>
+          <div slot="input">
+            {#await resourceTypesStore.run(getResourceTypes) then { resourceTypes }}
+              <Select
+                bind:value={$type.value}
+                options={resourceTypes.map((resourceType) => ({
+                  item: resourceType,
+                  value: resourceType,
+                }))}
+                size="lg"
+                disabled={$loading}
+                status={$type.invalid ? "error" : "default"}
+              >
+                <div slot="option" let:option>{option.item}</div>
+              </Select>
+            {:catch}
+              <div>Couldn't retrieve the resource type from the server</div>
+            {/await}
+          </div>
+          <div slot="error" let:error>
+            Resource type is {error}
+          </div>
+        </Field>
+      </div>
     </div>
-    <div class="footer" slot="footer" let:close>
+    <div class="footer" slot="footer">
       <div class="buttons">
         <div>
           <Button size="lg" on:click={close} disabled={$loading}>Cancel</Button>
@@ -88,10 +139,6 @@
 <style lang="postcss">
   .body {
     @apply flex flex-col space-y-4 px-2 py-4;
-
-    .field {
-      @apply flex flex-col space-y-1;
-    }
   }
 
   .footer {

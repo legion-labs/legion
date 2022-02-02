@@ -1,13 +1,14 @@
 import { prependIfNonPresent } from "./array";
 import { components } from "./path";
 
-export type Entry<Item, WithIndex extends boolean = true> = {
+export type Entry<Item> = {
   name: string;
+  index: number;
   depth: number;
   item: Item;
-  subEntries: Entry<Item, WithIndex>[] | null;
+  subEntries: Entry<Item>[] | null;
   // eslint-disable-next-line @typescript-eslint/ban-types
-} & (WithIndex extends true ? { index: number } : {});
+};
 
 // TODO: Improve performance if needed, and stop using recursion
 /** A wrapper class around the `Entry<Item>[]` type. */
@@ -50,14 +51,16 @@ export class Entries<Item> {
     function buildEntriesFromPathComponents(
       [pathComponent, ...otherPathComponents]: string[],
       item: Item,
-      entries: Entry<Item | AltItem, false>[],
+      entries: Entry<Item | AltItem>[],
       depth = 0
-    ): Entry<Item | AltItem, false>[] {
+    ): Entry<Item | AltItem>[] {
       const extendedEntries = prependIfNonPresent(
         entries,
         (entry) => entry.name === pathComponent,
         () => ({
           depth,
+          // Dumb index, will be set again properly later
+          index: -1,
           name: pathComponent,
           item: otherPathComponents.length
             ? buildItemFromName(pathComponent)
@@ -87,8 +90,8 @@ export class Entries<Item> {
 
     function buildEntriesFromItems(
       [item, ...otherItems]: Item[],
-      entries: Entry<Item | AltItem, false>[] = []
-    ): Entry<Item | AltItem, false>[] {
+      entries: Entry<Item | AltItem>[] = []
+    ): Entry<Item | AltItem>[] {
       const pathComponents = components(item.path);
 
       if (!pathComponents.length) {
@@ -106,36 +109,13 @@ export class Entries<Item> {
         : populatedEntries;
     }
 
-    const entries = buildEntriesFromItems(items);
+    const entries = new Entries(buildEntriesFromItems(items));
 
-    if (!entries.length) {
-      return new Entries([]);
-    }
+    entries.#sort();
 
-    function sort(entries: Entry<Item | AltItem, false>[]): void {
-      entries
-        .sort((entry1, entry2) => (entry1.name > entry2.name ? 1 : -1))
-        .map((entry) => ({
-          ...entry,
-          subEntries: entry.subEntries ? sort(entry.subEntries) : null,
-        }));
-    }
+    entries.#setIndices();
 
-    sort(entries);
-
-    let index = 0;
-
-    function addIndex(
-      entries: Entry<Item | AltItem, false>[]
-    ): Entry<Item | AltItem>[] {
-      return entries.map((entry) => ({
-        ...entry,
-        index: index++,
-        subEntries: entry.subEntries ? addIndex(entry.subEntries) : null,
-      }));
-    }
-
-    return new Entries(addIndex(entries));
+    return entries;
   }
 
   /** Builds an `Entries` object from and array of `Entry` */
@@ -151,8 +131,8 @@ export class Entries<Item> {
 
     function count(entries: Entry<Item>[], size = 0): number {
       return entries.reduce(
-        (s, entry) =>
-          entry.subEntries ? count(entry.subEntries, s + 1) : s + 1,
+        (size, entry) =>
+          entry.subEntries ? count(entry.subEntries, size + 1) : size + 1,
         size
       );
     }
@@ -162,29 +142,38 @@ export class Entries<Item> {
     return this.#size;
   }
 
+  #setIndices() {
+    for (const [index, entry] of this) {
+      entry.index = index;
+    }
+  }
+
+  // Could be exposed if needed
+  #sort() {
+    function sort(entries: Entry<Item>[]): void {
+      entries
+        .sort((entry1, entry2) => (entry1.name > entry2.name ? 1 : -1))
+        .forEach((entry) => {
+          if (entry.subEntries?.length) {
+            sort(entry.subEntries);
+          }
+        });
+    }
+
+    sort(this.entries);
+  }
+
   /**
    * Finds an entry in an `Entries` array.
    */
   find(pred: (entry: Entry<Item>) => boolean): Entry<Item> | null {
-    function find(entries: Entry<Item>[]): Entry<Item> | null {
-      for (const entry of entries) {
-        if (pred(entry)) {
-          return entry;
-        }
-
-        if (entry.subEntries) {
-          const foundEntry = find(entry.subEntries);
-
-          if (foundEntry) {
-            return foundEntry;
-          }
-        }
+    for (const [, entry] of this) {
+      if (pred(entry)) {
+        return entry;
       }
-
-      return null;
     }
 
-    return find(this.entries);
+    return null;
   }
 
   /**
@@ -210,6 +199,8 @@ export class Entries<Item> {
     // Resets the size so it's computed again if needed
     this.#size = null;
 
+    this.#setIndices();
+
     return this;
   }
 
@@ -219,9 +210,13 @@ export class Entries<Item> {
    * Unlike `Array.prototype.findIndex`, this method returns `null` if the index is not found, not -1.
    */
   findIndex(pred: (entry: Entry<Item>) => boolean): number | null {
-    const entry = this.find(pred);
+    for (const [index, entry] of this) {
+      if (pred(entry)) {
+        return index;
+      }
+    }
 
-    return entry?.index ?? null;
+    return null;
   }
 
   /**
@@ -265,7 +260,36 @@ export class Entries<Item> {
     return this;
   }
 
+  /** Get an entry from its index */
+  getFromIndex(index: number): Entry<Item> | null {
+    for (const [entryIndex, entry] of this) {
+      if (entryIndex === index) {
+        return entry;
+      }
+    }
+
+    return null;
+  }
+
   remove(removedEntry: Entry<Item>): this {
     return this.filter((entry) => entry !== removedEntry);
+  }
+
+  [Symbol.iterator]() {
+    let index = 0;
+
+    function* iter(
+      entries: Entry<Item>[]
+    ): Generator<[index: number, entry: Entry<Item>]> {
+      for (const entry of entries) {
+        yield [index++, entry];
+
+        if (entry.subEntries) {
+          yield* iter(entry.subEntries);
+        }
+      }
+    }
+
+    return iter(this.entries);
   }
 }

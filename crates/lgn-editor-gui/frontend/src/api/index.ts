@@ -140,6 +140,23 @@ export async function removeVectorSubProperty(
   });
 }
 
+export async function getResourceTypes() {
+  return resourceBrowserClient.getResourceTypeNames({});
+}
+
+export async function createResource({
+  resourcePath,
+  resourceType,
+}: {
+  resourcePath: string;
+  resourceType: string;
+}) {
+  return resourceBrowserClient.createResource({
+    resourcePath,
+    resourceType,
+  });
+}
+
 /**
  * Used for logging purpose
  * @param jsonCommand

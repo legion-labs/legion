@@ -9,6 +9,8 @@
 
   export let value: string;
 
+  export let status: "default" | "error" = "default";
+
   export let size: "default" | "sm" | "lg" = "default";
 
   export let fullWidth = false;
@@ -51,6 +53,7 @@
   class:default={size === "default"}
   class:sm={size === "sm"}
   class:lg={size === "lg"}
+  class:error={status === "error" && !disabled}
   class:with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
   {#if $$slots.leftExtension}
@@ -94,6 +97,10 @@
 </div>
 
 <style lang="postcss">
+  .root {
+    @apply rounded-sm;
+  }
+
   .root.with-extension {
     @apply flex flex-row;
   }
@@ -112,6 +119,10 @@
 
   .root.lg {
     @apply h-10 text-sm;
+  }
+
+  .root.error {
+    @apply border border-red-700;
   }
 
   .input {

@@ -1,5 +1,3 @@
-import ContextMenuStore from "../stores/contextMenu";
-
 /**
  * Builds a type safe `contextMenu` action that automatically uses
  * the proper context menu (entries) on right click.
@@ -9,7 +7,7 @@ import ContextMenuStore from "../stores/contextMenu";
  */
 export default function buildContextMenu<
   EntryRecord extends Record<string, unknown>
->(contextMenuStore: ContextMenuStore<EntryRecord>) {
+>() {
   return function contextMenu<Name extends keyof EntryRecord>(
     element: HTMLElement,
     options:

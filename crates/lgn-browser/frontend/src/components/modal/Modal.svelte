@@ -1,7 +1,7 @@
 <!--
 @Component
 
-_Not to be mistaken with the `Modal` component._
+_Not to be mistaken with the `ModalContainer` component._
 
 Simple Modal component wrapper. You can provided a title, a body, and a footer.
 
@@ -9,21 +9,23 @@ Some helpers, like `close`, will be passed down to the slots.
 -->
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import { closeModal } from "../../lib/modal";
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{ close: undefined }>();
 </script>
 
 <div class="root">
   <div class="header">
-    <div><slot name="title" close={closeModal} /></div>
-    <div class="close" on:click={closeModal} title="Close modal">
+    <div><slot name="title" /></div>
+    <div class="close" on:click={() => dispatch("close")} title="Close modal">
       <Icon icon="ic:baseline-close" />
     </div>
   </div>
   <div class="body">
-    <slot name="body" close={closeModal} />
+    <slot name="body" />
   </div>
   <div class="footer">
-    <slot name="footer" close={closeModal} />
+    <slot name="footer" />
   </div>
 </div>
 
