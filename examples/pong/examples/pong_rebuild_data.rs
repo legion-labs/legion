@@ -11,7 +11,14 @@ use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
-    let project_dir = PathBuf::from("examples/pong/data");
+    let project_dir = {
+        let project_dir = PathBuf::from("examples/pong/data");
+        if !project_dir.is_absolute() {
+            std::env::current_dir().unwrap().join(project_dir)
+        } else {
+            project_dir
+        }
+    };
 
     clean_folders(&project_dir);
 
