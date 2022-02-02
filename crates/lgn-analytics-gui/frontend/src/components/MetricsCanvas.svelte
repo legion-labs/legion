@@ -1,5 +1,6 @@
 <script lang="ts">
   import { client } from "@/lib/client";
+  import { formatExecutionTime } from "@/lib/format";
   import {
     MetricDesc,
     ProcessMetricReply,
@@ -107,7 +108,7 @@
 
     xAxis = d3
       .axisBottom(x)
-      .tickFormat((d) => (d as Date).valueOf().toString());
+      .tickFormat((d) => formatExecutionTime((d as Date).valueOf()));
     yAxis = d3.axisLeft(y);
 
     gxAxis = svgGroup
