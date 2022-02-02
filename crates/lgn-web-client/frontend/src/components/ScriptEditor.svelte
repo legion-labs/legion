@@ -1,9 +1,17 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+  import { debounce } from "../lib/promises";
+
+  const dispatch = createEventDispatcher<{
+    change: string;
+  }>();
+
+  const debounceTime = 500;
 
   export let theme: monaco.editor.BuiltinTheme | undefined = undefined;
+
+  export let value: string;
 
   let editorContainer: HTMLDivElement | undefined;
 
@@ -15,11 +23,17 @@
     }
 
     editor = monaco.editor.create(editorContainer, {
-      value: 'function hello(): void {\n\talert("Hello Legion");\n}\n',
-      language: "typescript",
+      value,
+      language: "rust",
       automaticLayout: true,
       theme,
     });
+
+    editor.onDidChangeModelContent(
+      debounce(() => {
+        dispatch("change", getValue());
+      }, debounceTime)
+    );
   });
 
   onDestroy(() => {
@@ -30,7 +44,7 @@
    * `undefined` is returned if the editor doesn't exist.
    */
   export function getValue() {
-    return editor?.getValue();
+    return editor?.getValue() ?? "";
   }
 </script>
 

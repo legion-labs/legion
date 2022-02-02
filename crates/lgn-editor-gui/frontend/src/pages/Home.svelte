@@ -1,17 +1,14 @@
 <script lang="ts">
-  import { ServerType } from "@lgn/web-client/src/api";
-  import { Resolution } from "@lgn/web-client/src/lib/types";
   import { Panel, PanelList } from "@lgn/web-client/src/components/panel";
   import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
+  import ViewportPanel from "@lgn/web-client/src/components/panel/ViewportPanel.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
-  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import { getAllResources, getResourceProperties } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
   import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
   import log from "@lgn/web-client/src/lib/log";
   import { Entries } from "@/lib/hierarchyTree";
@@ -29,8 +26,20 @@
   import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
   import { SvelteComponent } from "svelte";
   import allResourcesStore from "@/stores/allResources";
+  import viewportOrchestrator from "@/stores/viewport";
 
   contextMenuStore.register("resource", contextMenuEntries);
+
+  const editorViewportKey = Symbol();
+
+  viewportOrchestrator.addAllViewport(
+    [editorViewportKey, { type: "video", name: "editor" }],
+    [Symbol(), { type: "video", name: "runtime" }]
+  );
+
+  viewportOrchestrator.activate(editorViewportKey);
+
+  const { activeViewportStore, viewportStore } = viewportOrchestrator;
 
   const modalStore = new ModalStore();
 
@@ -41,10 +50,6 @@
   let allResourcesData = allResourcesStore.data;
 
   let currentResourceDescription: ResourceDescription | null = null;
-
-  let desiredVideoResolution: Resolution | null;
-
-  let editorActiveTab: ServerType;
 
   let allResourcesPromise = allResourcesStore.run(getAllResources);
 
@@ -190,35 +195,7 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <Panel
-          tabs={["editor", "runtime", "script"]}
-          bind:activeTab={editorActiveTab}
-        >
-          <div slot="tab" let:tab>
-            {#if tab === "editor" || tab === "runtime"}
-              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
-              {#if desiredVideoResolution}
-                <span>
-                  - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-                </span>
-              {/if}
-            {:else if tab === "script"}
-              Script
-            {/if}
-          </div>
-          <div class="video-container" slot="content">
-            {#if editorActiveTab === "editor" || editorActiveTab === "runtime"}
-              {#key editorActiveTab}
-                <RemoteWindow
-                  serverType={editorActiveTab}
-                  bind:desiredResolution={desiredVideoResolution}
-                />
-              {/key}
-            {:else if editorActiveTab === "script"}
-              <ScriptEditor theme="vs-dark" />
-            {/if}
-          </div>
-        </Panel>
+        <ViewportPanel orchestrator={viewportOrchestrator} />
       </div>
       <div class="v-separator" />
       <div class="secondary-contents">
@@ -253,10 +230,6 @@
 
   .main-content {
     @apply flex flex-col w-full;
-  }
-
-  .video-container {
-    @apply h-full w-full;
   }
 
   .v-separator {
