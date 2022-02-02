@@ -1,13 +1,15 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
-use lgn_data_build::DataBuildOptions;
+//use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
-use lgn_data_transaction::{BuildManager, DataManager};
-use tokio::sync::Mutex;
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+//use lgn_data_transaction::BuildManager;
 
 #[tokio::main]
 async fn main() {
@@ -26,7 +28,7 @@ async fn main() {
 
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let project = Project::create_new(project_dir)
+    let mut project = Project::create_new(project_dir)
         .await
         .expect("failed to create a project");
 
@@ -41,28 +43,50 @@ async fn main() {
         .add_device_cas(Box::new(content_store), Manifest::default());
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
-    let asset_registry = asset_registry.create();
+    let _asset_registry = asset_registry.create();
 
-    let compilers = CompilerRegistryOptions::default()
+    let _compilers = CompilerRegistryOptions::default()
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
         .add_compiler(&lgn_compiler_debugcube::COMPILER_INFO)
         .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
 
-    let options = DataBuildOptions::new(&build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-        .asset_registry(asset_registry.clone());
+    // let options = DataBuildOptions::new(&build_dir, compilers)
+    //     .content_store(&ContentStoreAddr::from(build_dir.as_path()))
+    //     .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project, Manifest::default())
-        .await
-        .unwrap();
-    let project = Arc::new(Mutex::new(project));
+    // let build_manager = BuildManager::new(options, &project, Manifest::default())
+    //     .await
+    //     .unwrap();
 
-    let _data_manager = Arc::new(Mutex::new(DataManager::new(
-        project,
-        resource_registry,
-        asset_registry,
-        build_manager,
-    )));
+    // ball
+    let _ball_id = {
+        let mut resources = resource_registry.lock().await;
+        let ball_id = ResourceTypeAndId {
+            kind: generic_data::offline::DebugCube::TYPE,
+            id: ResourceId::from_str("95114898-37a9-51c4-53ad-e7d62c10935b").unwrap(),
+        };
+        let ball_handle = resources.new_resource(ball_id.kind).unwrap();
+        let ball_entity = ball_handle
+            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+            .unwrap();
+        ball_entity.color = (255, 16, 64).into();
+        ball_entity.mesh_id = 8;
+        ball_entity.name = "Ball".to_string();
+        ball_entity.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
+        ball_entity.scale = (0.4_f32, 0.4_f32, 0.4_f32).into();
+        project
+            .add_resource_with_id(
+                "/scene/Ball".into(),
+                generic_data::offline::DebugCube::TYPENAME,
+                ball_id.kind,
+                ball_id,
+                ball_handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        ball_id
+    };
 }
 
 fn clean_folders(project_dir: impl AsRef<Path>) {
