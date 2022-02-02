@@ -20,3 +20,31 @@ generic-data = { path = "../../tests/generic-data", version = "0.1.0", features 
 
 dolly = "0.2.0"
 rand = "0.8"
+
+[[example]]
+name = "pong_rebuild_data"
+
+[dev-dependencies]
+lgn-compiler-debugcube = { path = "../../crates/lgn-debugcube-compiler", version = "0.1.0" }
+lgn-compiler-runtime-entity = { path = "../../crates/lgn-runtime-entity-compiler" }
+lgn-compiler-script2asm = { path = "../../crates/lgn-script2asm-compiler", version = "0.1.0" }
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
+lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
+lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
+lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
+lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "0.1.0" }
+lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+serde_json = "1.0"
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }

@@ -4,7 +4,7 @@ use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 
-/// Builds necessary derived resources based on source resources chnaged.
+/// Builds necessary derived resources based on source resources changed.
 pub struct BuildManager {
     build: DataBuild,
     compile_env: CompilationEnv,
@@ -32,7 +32,7 @@ impl BuildManager {
         })
     }
 
-    /// Builds derived resources based on changed source resoure.
+    /// Builds derived resources based on changed source resource.
     pub async fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
@@ -81,5 +81,10 @@ impl BuildManager {
                 Err(anyhow::Error::new(e))
             }
         }
+    }
+
+    /// Runtime manifest
+    pub fn get_manifest(&self) -> &Manifest {
+        &self.manifest
     }
 }

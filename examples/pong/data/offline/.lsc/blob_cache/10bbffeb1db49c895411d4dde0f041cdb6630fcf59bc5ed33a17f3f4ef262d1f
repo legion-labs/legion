@@ -1,7 +1,7 @@
 {
-  "name": "/scene/Pad Left",
+  "name": "/scene/Ground",
   "type_name": "offline_debugcube",
   "type_id": "09cde0390abe0694",
   "dependencies": [],
-  "content_checksum": "d011182e1186b3968d3907b746be95b4"
+  "content_checksum": "7bf8d4a191be5651a2a7958227fe0817"
 }
