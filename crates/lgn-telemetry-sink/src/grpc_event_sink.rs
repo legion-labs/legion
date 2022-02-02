@@ -1,3 +1,4 @@
+use lgn_tracing::debug;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::{
     fmt,
@@ -150,7 +151,7 @@ impl GRPCEventSink {
                         match client.insert_process(process_info).await {
                             Ok(_response) => {}
                             Err(e) => {
-                                println!("insert_process failed: {}", e);
+                                debug!("insert_process failed: {}", e);
                             }
                         }
                     }
@@ -158,7 +159,7 @@ impl GRPCEventSink {
                         match client.insert_stream(stream_info).await {
                             Ok(_response) => {}
                             Err(e) => {
-                                println!("insert_process failed: {}", e);
+                                debug!("insert_stream failed: {}", e);
                             }
                         }
                     }
