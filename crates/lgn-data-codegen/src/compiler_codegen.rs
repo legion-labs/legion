@@ -1,18 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::DataContainerMetaInfo;
+use crate::struct_meta_info::StructMetaInfo;
 
-pub fn generate(
-    data_container_info: &DataContainerMetaInfo,
+pub(crate) fn generate(
+    data_container_info: &StructMetaInfo,
     crate_name: &syn::Ident,
 ) -> TokenStream {
     let type_name: syn::Ident = format_ident!("{}", data_container_info.name);
-
     let signature_hash = data_container_info.calculate_hash().to_string();
 
     quote! {
-
         use std::env;
         use lgn_data_compiler::{
             compiler_api::{
@@ -38,8 +36,6 @@ pub fn generate(
             compiler_hash_func: hash_code_and_data,
             compile_func: compile,
         };
-
-
 
         fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
             registry.add_loader::<OfflineType>()

@@ -100,6 +100,10 @@ fn convert_json_value_to_runtime(
             }
         }
 
+        TypeDefinition::Enum(_enum_descriptor) => {
+            // Keep enum as is
+        }
+
         TypeDefinition::Primitive(primitive_descriptor) => {
             // Convert ResourcePathId to Runtime ReferenceType
             if primitive_descriptor.base_descriptor.type_name == "ResourcePathId" {

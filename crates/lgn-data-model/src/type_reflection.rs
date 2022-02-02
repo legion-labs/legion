@@ -39,6 +39,8 @@ pub enum TypeDefinition {
     Option(&'static crate::OptionDescriptor),
     /// Box<dyn XXX> Type
     BoxDyn(&'static crate::BoxDynDescriptor),
+    /// Enum Type
+    Enum(&'static crate::EnumDescriptor),
 }
 
 impl TypeDefinition {
@@ -59,6 +61,9 @@ impl TypeDefinition {
             }
             TypeDefinition::BoxDyn(box_dyn_descriptor) => {
                 box_dyn_descriptor.base_descriptor.type_name.as_str()
+            }
+            TypeDefinition::Enum(enum_descriptor) => {
+                enum_descriptor.base_descriptor.type_name.as_str()
             }
             TypeDefinition::None => "None",
         }

@@ -107,6 +107,21 @@ fn internal_apply_json_edit(
             }
         }
 
+        TypeDefinition::Enum(enum_descriptor) => {
+            // If there's a target, serialize in it directly, else return the json_value as is to be add to array or option
+            if let Some(target) = target {
+                let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(json_value);
+                unsafe {
+                    (enum_descriptor.base_descriptor.dynamic_deserialize)(
+                        target,
+                        &mut deserializer,
+                    )?;
+                }
+                return Ok(serde_json::Value::Null);
+            }
+            return Ok(json_value.clone());
+        }
+
         TypeDefinition::Primitive(primitive_descriptor) => {
             // If there's a target, serialize in it directly, else return the json_value as is to be add to array or option
             if let Some(target) = target {

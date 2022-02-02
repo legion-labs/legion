@@ -141,7 +141,7 @@ fn test_collector() {
         name: String,
         ptype: String,
         sub_properties: Vec<PropertyBag>,
-        attributes: HashMap<String, String>,
+        attributes: Option<HashMap<String, String>>,
     }
 
     impl PropertyCollector for PropertyBag {
@@ -156,14 +156,16 @@ fn test_collector() {
                 sub_properties: Vec::new(),
                 attributes: item_info
                     .field_descriptor
-                    .map_or(HashMap::new(), |field| field.attributes.clone()),
+                    .and_then(|field| field.attributes.clone()),
             })
         }
         fn add_child(parent: &mut Self::Item, child: Self::Item) {
             let sub_properties = &mut parent.sub_properties;
 
             // If there's a 'Group' attribute, find or create a PropertyBag for the Group within the parent
-            if let Some(group_name) = child.attributes.get("group") {
+            if let Some(Some(group_name)) =
+                child.attributes.as_ref().map(|attrs| attrs.get("group"))
+            {
                 // Search for the Group within the Parent SubProperties
 
                 let group_bag = if let Some(group_bag) = sub_properties
@@ -177,7 +179,7 @@ fn test_collector() {
                         name: group_name.into(),
                         ptype: "_group_".into(),
                         sub_properties: Vec::new(),
-                        attributes: std::collections::HashMap::new(),
+                        attributes: None,
                     });
                     sub_properties.last_mut().unwrap()
                 };
