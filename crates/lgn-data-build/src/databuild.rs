@@ -159,8 +159,6 @@ impl DataBuild {
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let (source_index, output_index) =
             buildindex::open(&config.buildindex_dir, Self::version())?;
-        // todo: validate project path
-        //let project = build_index.open_project().await?;
 
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
@@ -194,10 +192,6 @@ impl DataBuild {
             .ok_or(Error::InvalidContentStore)?;
         match buildindex::open(&config.buildindex_dir, Self::version()) {
             Ok((source_index, output_index)) => {
-                // todo: validate the two paths
-                //let p = build_index.project_path();
-                //let p2 = project.project_dir();
-
                 let compilers = config.compiler_options.create();
                 let registry = config.registry.map_or_else(
                     || {

@@ -129,6 +129,70 @@ pub(crate) struct SourceIndex {
 }
 
 impl SourceIndex {
+    pub(crate) fn create_new(source_index: &Path, version: &str) -> Result<Self, Error> {
+        let source_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(source_index)
+            .map_err(|e| Error::Io(e.into()))?;
+
+        let source_content = SourceContent {
+            version: String::from(version),
+            resources: vec![],
+            pathid_mapping: BTreeMap::new(),
+        };
+
+        serde_json::to_writer_pretty(&source_file, &source_content)
+            .map_err(|e| Error::Io(e.into()))?;
+
+        Ok(Self {
+            content: source_content,
+            file: source_file,
+        })
+    }
+
+    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+        let source_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .map_err(|_e| Error::NotFound)?;
+
+        let source_content: SourceContent =
+            serde_json::from_reader(&source_file).map_err(|e| Error::Io(e.into()))?;
+
+        Ok(Self {
+            content: source_content,
+            file: source_file,
+        })
+    }
+
+    pub(crate) fn open(source_index: &Path, version: &str) -> Result<Self, Error> {
+        if !source_index.exists() {
+            return Err(Error::NotFound);
+        }
+
+        let source_index = Self::load(source_index)?;
+
+        if source_index.content.version != version {
+            return Err(Error::VersionMismatch {
+                value: source_index.content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        Ok(source_index)
+    }
+
+    pub(crate) fn flush(&mut self) -> Result<(), Error> {
+        self.content.pre_serialize();
+        self.file.set_len(0).unwrap();
+        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
+        Ok(())
+    }
+
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.content
             .pathid_mapping
@@ -295,70 +359,6 @@ impl SourceIndex {
             .map(|resource| resource.dependencies.clone())
     }
 
-    pub(crate) fn create_new(source_index: &Path, version: &str) -> Result<Self, Error> {
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(source_index)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        let source_content = SourceContent {
-            version: String::from(version),
-            resources: vec![],
-            pathid_mapping: BTreeMap::new(),
-        };
-
-        serde_json::to_writer_pretty(&source_file, &source_content)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            content: source_content,
-            file: source_file,
-        })
-    }
-
-    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
-            .map_err(|_e| Error::NotFound)?;
-
-        let source_content: SourceContent =
-            serde_json::from_reader(&source_file).map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            content: source_content,
-            file: source_file,
-        })
-    }
-
-    pub(crate) fn open(source_index: &Path, version: &str) -> Result<Self, Error> {
-        if !source_index.exists() {
-            return Err(Error::NotFound);
-        }
-
-        let source_index = Self::load(source_index)?;
-
-        if source_index.content.version != version {
-            return Err(Error::VersionMismatch {
-                value: source_index.content.version,
-                expected: version.to_owned(),
-            });
-        }
-
-        Ok(source_index)
-    }
-
-    pub(crate) fn flush(&mut self) -> Result<(), Error> {
-        self.content.pre_serialize();
-        self.file.set_len(0).unwrap();
-        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
-        Ok(())
-    }
-
     pub(crate) fn source_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
         buildindex_dir.as_ref().join("source.index")
     }
@@ -371,6 +371,70 @@ pub(crate) struct OutputIndex {
 }
 
 impl OutputIndex {
+    pub(crate) fn create_new(output_index: &Path, version: &str) -> Result<Self, Error> {
+        let output_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(output_index)
+            .map_err(|e| Error::Io(e.into()))?;
+
+        let output_content = OutputContent {
+            version: String::from(version),
+            compiled_resources: vec![],
+            compiled_resource_references: vec![],
+        };
+
+        serde_json::to_writer_pretty(&output_file, &output_content)
+            .map_err(|e| Error::Io(e.into()))?;
+
+        Ok(Self {
+            content: output_content,
+            file: output_file,
+        })
+    }
+
+    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+        let output_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.as_ref())
+            .map_err(|_e| Error::NotFound)?;
+
+        let output_content: OutputContent =
+            serde_json::from_reader(&output_file).map_err(|e| Error::Io(e.into()))?;
+
+        Ok(Self {
+            content: output_content,
+            file: output_file,
+        })
+    }
+
+    pub(crate) fn open(output_index: &Path, version: &str) -> Result<Self, Error> {
+        if !output_index.exists() {
+            return Err(Error::NotFound);
+        }
+
+        let output_index = Self::load(output_index)?;
+
+        if output_index.content.version != version {
+            return Err(Error::VersionMismatch {
+                value: output_index.content.version,
+                expected: version.to_owned(),
+            });
+        }
+
+        Ok(output_index)
+    }
+
+    pub(crate) fn flush(&mut self) -> Result<(), Error> {
+        self.content.pre_serialize();
+        self.file.set_len(0).unwrap();
+        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
+        Ok(())
+    }
+
     pub(crate) fn insert_compiled(
         &mut self,
         compile_path: &ResourcePathId,
@@ -456,70 +520,6 @@ impl OutputIndex {
 
             Some((asset_objects, asset_references))
         }
-    }
-
-    pub(crate) fn flush(&mut self) -> Result<(), Error> {
-        self.content.pre_serialize();
-        self.file.set_len(0).unwrap();
-        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
-        Ok(())
-    }
-
-    pub(crate) fn create_new(output_index: &Path, version: &str) -> Result<Self, Error> {
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(output_index)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        let output_content = OutputContent {
-            version: String::from(version),
-            compiled_resources: vec![],
-            compiled_resource_references: vec![],
-        };
-
-        serde_json::to_writer_pretty(&output_file, &output_content)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            content: output_content,
-            file: output_file,
-        })
-    }
-
-    pub(crate) fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path.as_ref())
-            .map_err(|_e| Error::NotFound)?;
-
-        let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            content: output_content,
-            file: output_file,
-        })
-    }
-
-    pub(crate) fn open(output_index: &Path, version: &str) -> Result<Self, Error> {
-        if !output_index.exists() {
-            return Err(Error::NotFound);
-        }
-
-        let output_index = Self::load(output_index)?;
-
-        if output_index.content.version != version {
-            return Err(Error::VersionMismatch {
-                value: output_index.content.version,
-                expected: version.to_owned(),
-            });
-        }
-
-        Ok(output_index)
     }
 
     pub(crate) fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
