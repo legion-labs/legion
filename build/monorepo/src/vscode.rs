@@ -165,6 +165,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let settings = json!({
         "editor.formatOnSave": true,
         "files.eol": "\n",
+        "protoc": {
+            "compile_on_save": false,
+            "options": [
+                "--proto_path=${workspaceRoot}/crates/lgn-telemetry-proto/protos/",
+            ],
+        },
         "rust-analyzer.checkOnSave.command": "vsclippy",
         "rust-analyzer.checkOnSave.extraArgs": [
           "--target-dir",
@@ -176,6 +182,9 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "css.lint.unknownAtRules": "ignore",
         "[html]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[proto3]": {
+            "editor.defaultFormatter": "xaver.clang-format"
         },
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
