@@ -7,7 +7,9 @@ use std::{
 
 use sha2::{Digest, Sha256};
 
-use crate::{CanonicalPath, Change, ChangeType, Error, MapOtherError, Result, WithParentName};
+use crate::{
+    CanonicalPath, Change, ChangeType, Error, FileInfo, MapOtherError, Result, WithParentName,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
@@ -17,7 +19,7 @@ pub enum Tree {
     },
     File {
         name: String,
-        hash: String,
+        info: FileInfo,
     },
 }
 
@@ -27,34 +29,39 @@ impl From<Tree> for lgn_source_control_proto::Tree {
             Tree::Directory { name, children } => Self {
                 name,
                 children: children.into_values().map(Into::into).collect(),
-                hash: "".to_string(),
+                info: None,
             },
-            Tree::File { name, hash } => Self {
+            Tree::File { name, info } => Self {
                 name,
                 children: vec![],
-                hash,
+                info: Some(info.into()),
             },
         }
     }
 }
 
-impl From<lgn_source_control_proto::Tree> for Tree {
-    fn from(tree: lgn_source_control_proto::Tree) -> Self {
-        if tree.hash.is_empty() {
+impl TryFrom<lgn_source_control_proto::Tree> for Tree {
+    type Error = Error;
+
+    fn try_from(tree: lgn_source_control_proto::Tree) -> Result<Self> {
+        Ok(if tree.info.is_none() {
             Self::Directory {
                 name: tree.name,
                 children: tree
                     .children
                     .into_iter()
-                    .map(|n| (n.name.clone(), n.into()))
-                    .collect(),
+                    .map(|n| {
+                        let n: Result<Self> = n.try_into();
+                        n.map(|n| (n.name().to_string(), n))
+                    })
+                    .collect::<Result<_>>()?,
             }
         } else {
             Self::File {
                 name: tree.name,
-                hash: tree.hash,
+                info: tree.info.ok_or(Error::InvalidTreeNode)?.into(),
             }
-        }
+        })
     }
 }
 
@@ -93,8 +100,8 @@ impl Tree {
         }
     }
 
-    pub fn file(name: String, hash: String) -> Self {
-        Self::File { name, hash }
+    pub fn file(name: String, info: FileInfo) -> Self {
+        Self::File { name, info }
     }
 
     /// Creates a tree from an existing root directory.
@@ -172,13 +179,20 @@ impl Tree {
             })?
             .to_string_lossy();
 
+        let metadata = tokio::fs::metadata(&path)
+            .await
+            .map_other_err(format!("failed to read `{}` metadata", path.display()))?;
+
         let contents = tokio::fs::read(&path)
             .await
             .map_other_err(format!("failed to read `{}`", path.display()))?;
 
-        let hash = format!("{:x}", Sha256::digest(&contents));
+        let info = FileInfo {
+            size: metadata.len(),
+            hash: format!("{:x}", Sha256::digest(&contents)),
+        };
 
-        Ok(Self::file(name.to_string(), hash))
+        Ok(Self::file(name.to_string(), info))
     }
 
     pub fn filter(&self, filter: &TreeFilter) -> Result<Self> {
@@ -213,10 +227,10 @@ impl Tree {
         }
     }
 
-    pub fn hash(&self) -> &str {
+    pub fn info(&self) -> &FileInfo {
         match self {
-            Tree::Directory { .. } => "",
-            Tree::File { hash, .. } => hash,
+            Tree::File { info, .. } => info,
+            Tree::Directory { .. } => panic!("cannot get info from a directory"),
         }
     }
 
@@ -234,17 +248,30 @@ impl Tree {
     pub fn id(&self) -> String {
         let mut hasher = Sha256::new();
 
+        // Separators are important as they prevent naming attacks and
+        // disambiguate.
+        //
+        // A good rule of thumb for a hashing function, is to make sure that
+        // before applying the hashing process, the input string should be 100%
+        // decodable to its original form, without any ambiguity.
         match &self {
-            Self::File { name, hash } => {
+            Self::File { name, info } => {
+                hasher.update(b"F(");
                 hasher.update(name.as_bytes());
-                hasher.update(hash.as_bytes());
+                hasher.update(b",");
+                hasher.update(info.hash.as_bytes());
+                hasher.update(b")");
             }
             &Self::Directory { name, ref children } => {
+                hasher.update(b"D(");
                 hasher.update(name.as_bytes());
 
                 for child in children.values() {
+                    hasher.update(b",");
                     hasher.update(child.id().as_bytes());
                 }
+
+                hasher.update(b")");
             }
         }
 
@@ -429,12 +456,12 @@ impl Tree {
         }
     }
 
-    /// Remove a file node by its canonical path if its hash matches.
+    /// Remove a file node by its canonical path if its info matches.
     ///
     /// If a node is removed, it is returned.
     ///
-    /// If no such node is found, or the node is not a file, or the hash doesn't match an error is returned.
-    pub fn remove_file(&mut self, canonical_path: &CanonicalPath, hash: &str) -> Result<Self> {
+    /// If no such node is found, or the node is not a file, or the info doesn't match an error is returned.
+    pub fn remove_file(&mut self, canonical_path: &CanonicalPath, info: &FileInfo) -> Result<Self> {
         if let Some((name, child_path)) = canonical_path.split_left() {
             let parent_name = self.name().to_string();
             if let Some(child) = self
@@ -443,7 +470,7 @@ impl Tree {
             {
                 if let Some(child_path) = child_path {
                     let result = child
-                        .remove_file(&child_path, hash)
+                        .remove_file(&child_path, info)
                         .with_parent_name(&parent_name)?;
 
                     // If we removed a node and the child is now empty, we need to remove it as well.
@@ -453,7 +480,7 @@ impl Tree {
 
                     Ok(result)
                 } else {
-                    self.remove_direct_file_by_name(name, hash)
+                    self.remove_direct_file_by_name(name, info)
                         .with_parent_name(&parent_name)
                 }
             } else {
@@ -465,14 +492,14 @@ impl Tree {
         } else {
             // We were passed a root path: empty the tree and return the old
             // tree.
-            if let Self::File { hash: h, .. } = self {
-                if h == hash {
+            if let Self::File { info: i, .. } = self {
+                if i == info {
                     Ok(std::mem::replace(self, Self::empty()))
                 } else {
                     Err(Error::file_content_mismatch(
                         canonical_path.clone(),
-                        h.clone(),
-                        hash,
+                        i.clone(),
+                        info.clone(),
                     ))
                 }
             } else {
@@ -485,20 +512,20 @@ impl Tree {
     pub fn update_file(
         &mut self,
         canonical_path: &CanonicalPath,
-        old_hash: &str,
-        new_hash: &str,
+        old_info: &FileInfo,
+        new_info: &FileInfo,
     ) -> Result<&mut Self> {
         match self.find_mut(canonical_path)? {
             Some(child) => {
-                if let Self::File { hash: h, .. } = child {
-                    if h == old_hash {
-                        *h = new_hash.to_string();
+                if let Self::File { info: i, .. } = child {
+                    if i == old_info {
+                        *i = new_info.clone();
                         Ok(child)
                     } else {
                         Err(Error::file_content_mismatch(
                             canonical_path.clone(),
-                            h.clone(),
-                            new_hash,
+                            i.clone(),
+                            new_info.clone(),
                         ))
                     }
                 } else {
@@ -583,7 +610,7 @@ impl Tree {
             Self::Directory { children, .. } => match children.entry(tree.name().to_string()) {
                 Entry::Occupied(entry) => {
                     let old = entry.get();
-                    if old.hash() != tree.hash() {
+                    if old != &tree {
                         Err(Error::file_already_exists(CanonicalPath::new_from_name(
                             old.name(),
                         )))
@@ -605,21 +632,28 @@ impl Tree {
     }
 
     /// Remove a direct file child of the tree by its name.
-    fn remove_direct_file_by_name(&mut self, name: &str, hash: &str) -> Result<Self> {
+    fn remove_direct_file_by_name(&mut self, name: &str, info: &FileInfo) -> Result<Self> {
         match self {
             Self::File { .. } => Err(Error::path_is_not_a_directory(CanonicalPath::root())),
             Self::Directory { children, .. } => match children.entry(name.to_string()) {
-                Entry::Occupied(entry) => {
-                    if entry.get().hash() == hash {
-                        Ok(entry.remove())
-                    } else {
-                        Err(Error::file_content_mismatch(
-                            CanonicalPath::new_from_name(name),
-                            hash,
-                            entry.get().hash(),
-                        ))
+                Entry::Occupied(entry) => match entry.get() {
+                    Self::File {
+                        info: entry_info, ..
+                    } => {
+                        if entry_info == info {
+                            Ok(entry.remove())
+                        } else {
+                            Err(Error::file_content_mismatch(
+                                CanonicalPath::new_from_name(name),
+                                info.clone(),
+                                entry_info.clone(),
+                            ))
+                        }
                     }
-                }
+                    Self::Directory { .. } => Err(Error::path_is_not_a_file(
+                        CanonicalPath::new_from_name(name),
+                    )),
+                },
                 Entry::Vacant(_) => Err(Error::file_does_not_exist(CanonicalPath::new_from_name(
                     name,
                 ))),
@@ -633,16 +667,16 @@ impl Tree {
     ) -> Result<Self> {
         // We need to iterate first over the deletions, because it could make some additions fail.
         for change in changes.clone() {
-            if let ChangeType::Delete { old_hash } = change.change_type() {
-                self.remove_file(change.canonical_path(), old_hash)
-                    .map_other_err("failed to commit file deletion")?;
+            if let ChangeType::Delete { old_info } = change.change_type() {
+                self.remove_file(change.canonical_path(), old_info)
+                    .map_other_err("failed to apply file deletion")?;
             }
         }
 
         // Deletions were done, now we can add and edit files.
         for change in changes {
             match change.change_type() {
-                ChangeType::Add { new_hash } => {
+                ChangeType::Add { new_info: new_hash } => {
                     let (parent_path, name) = change.canonical_path().split();
                     let name = if let Some(name) = name {
                         name
@@ -652,11 +686,11 @@ impl Tree {
 
                     // If the addition is conflicting, an error will be raised.
                     self.add(&parent_path, Self::file(name.to_string(), new_hash.clone()))
-                        .map_other_err("failed to commit file addition")?;
+                        .map_other_err("failed to apply file addition")?;
                 }
-                ChangeType::Edit { old_hash, new_hash } => {
-                    self.update_file(change.canonical_path(), old_hash, new_hash)
-                        .map_other_err("failed to commit file edit")?;
+                ChangeType::Edit { old_info, new_info } => {
+                    self.update_file(change.canonical_path(), old_info, new_info)
+                        .map_other_err("failed to apply file edit")?;
                 }
                 ChangeType::Delete { .. } => {}
             }
@@ -853,7 +887,14 @@ mod tests {
     }
 
     fn f(name: &str, hash: &str) -> Tree {
-        Tree::file(name.to_string(), hash.to_string())
+        Tree::file(name.to_string(), fi(hash, 123))
+    }
+
+    fn fi(hash: &str, size: u64) -> FileInfo {
+        FileInfo {
+            hash: hash.to_string(),
+            size,
+        }
     }
 
     fn cp(s: &str) -> CanonicalPath {
@@ -867,6 +908,10 @@ mod tests {
         // Let's resolve the root.
         let tree = Tree::from_root(root, &TreeFilter::default()).await.unwrap();
 
+        fn f(name: &str, hash: &str, size: u64) -> Tree {
+            Tree::file(name.to_string(), fi(hash, size))
+        }
+
         assert_eq!(
             tree,
             d(
@@ -877,15 +922,18 @@ mod tests {
                         [
                             f(
                                 "apple.txt",
-                                "301d0c5a6cbb464b9e8427bce163412dd74edf1c715dadf9486b3a27af3acb9b"
+                                "301d0c5a6cbb464b9e8427bce163412dd74edf1c715dadf9486b3a27af3acb9b",
+                                14,
                             ),
                             f(
                                 "orange.txt",
-                                "8af674552764bdc01df1500a627879f9137e90eb7f9fc4e2b319ef823d7fe1cf"
+                                "8af674552764bdc01df1500a627879f9137e90eb7f9fc4e2b319ef823d7fe1cf",
+                                15,
                             ),
                             f(
                                 "tomato.txt",
-                                "2b7a28339945bca2e0fcbbb4713e3c3e39cc87c6d1c4aee075e42d54c08c9b5a"
+                                "2b7a28339945bca2e0fcbbb4713e3c3e39cc87c6d1c4aee075e42d54c08c9b5a",
+                                14,
                             ),
                         ]
                     ),
@@ -893,7 +941,8 @@ mod tests {
                         "vegetables",
                         [f(
                             "carrot.txt",
-                            "ebd4714227c5dd3c4bd0767bdbcc53a417a3d61ac208e46f0c1d46a0cc9c598a"
+                            "ebd4714227c5dd3c4bd0767bdbcc53a417a3d61ac208e46f0c1d46a0cc9c598a",
+                            13,
                         )]
                     ),
                 ],
@@ -915,7 +964,8 @@ mod tests {
                     "vegetables",
                     [f(
                         "carrot.txt",
-                        "ebd4714227c5dd3c4bd0767bdbcc53a417a3d61ac208e46f0c1d46a0cc9c598a"
+                        "ebd4714227c5dd3c4bd0767bdbcc53a417a3d61ac208e46f0c1d46a0cc9c598a",
+                        13,
                     )]
                 ),],
             )
@@ -1020,6 +1070,13 @@ mod tests {
 
     #[test]
     fn test_tree_manipulation() {
+        fn fi(hash: &str) -> FileInfo {
+            FileInfo {
+                hash: hash.to_string(),
+                size: 123,
+            }
+        }
+
         let mut tree = d(
             "",
             [
@@ -1107,12 +1164,12 @@ mod tests {
         );
 
         assert_eq!(
-            tree.remove_file(&cp("/a/b/c/d/x"), "hx").unwrap(),
+            tree.remove_file(&cp("/a/b/c/d/x"), &fi("hx")).unwrap(),
             f("x", "hx")
         );
 
         // File does not exist anymore.
-        match tree.remove_file(&cp("/a/b/c/d/x"), "hx") {
+        match tree.remove_file(&cp("/a/b/c/d/x"), &fi("hx")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/x"));
             }
@@ -1120,7 +1177,7 @@ mod tests {
         }
 
         // Intermediate path does not exist.
-        match tree.remove_file(&cp("/a/a/a/a/x"), "hx") {
+        match tree.remove_file(&cp("/a/a/a/a/x"), &fi("hx")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/a/a/a/x"));
             }
@@ -1128,21 +1185,21 @@ mod tests {
         }
 
         // File exists but with a different content.
-        match tree.remove_file(&cp("/a/b/c/d/z"), "hz2") {
+        match tree.remove_file(&cp("/a/b/c/d/z"), &fi("hz2")) {
             Err(Error::FileContentMistmatch {
                 canonical_path,
-                expected_hash,
-                hash,
+                expected_info,
+                info,
             }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
-                assert_eq!(expected_hash, "hz2");
-                assert_eq!(hash, "hz");
+                assert_eq!(expected_info, fi("hz2"));
+                assert_eq!(info, fi("hz"));
             }
             _ => panic!("expected FileContentMistmatch"),
         }
 
         // Trying to remove a file on a file.
-        match tree.remove_file(&cp("/a/b/c/d/z/z"), "hz") {
+        match tree.remove_file(&cp("/a/b/c/d/z/z"), &fi("hz")) {
             Err(Error::PathIsNotADirectory { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
@@ -1164,17 +1221,19 @@ mod tests {
 
         // No-op update should be fine.
         assert_eq!(
-            tree.update_file(&cp("/a/b/c/d/z"), "hz", "hz").unwrap(),
+            tree.update_file(&cp("/a/b/c/d/z"), &fi("hz"), &fi("hz"))
+                .unwrap(),
             &mut f("z", "hz")
         );
 
         assert_eq!(
-            tree.update_file(&cp("/a/b/c/d/z"), "hz", "hz2").unwrap(),
+            tree.update_file(&cp("/a/b/c/d/z"), &fi("hz"), &fi("hz2"))
+                .unwrap(),
             &mut f("z", "hz2")
         );
 
         // File does not exist anymore.
-        match tree.update_file(&cp("/a/b/c/d/x"), "hx", "hx2") {
+        match tree.update_file(&cp("/a/b/c/d/x"), &fi("hx"), &fi("hx2")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/x"));
             }
@@ -1182,7 +1241,7 @@ mod tests {
         }
 
         // Intermediate path does not exist.
-        match tree.update_file(&cp("/a/a/a/a/x"), "hx", "hx2") {
+        match tree.update_file(&cp("/a/a/a/a/x"), &fi("hx"), &fi("hx2")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/a/a/a/x"));
             }
@@ -1190,7 +1249,7 @@ mod tests {
         }
 
         // Trying to remove a file on a file.
-        match tree.update_file(&cp("/a/b/c/d"), "hz", "hz2") {
+        match tree.update_file(&cp("/a/b/c/d"), &fi("hz"), &fi("hz2")) {
             Err(Error::PathIsNotAFile { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d"));
             }

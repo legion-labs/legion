@@ -75,7 +75,7 @@ impl SourceControlFilesystem {
     fn tree_to_attr(&self, ino: u64, tree: &Tree) -> FileAttr {
         let (kind, nlink, size, perm) = match tree {
             Tree::Directory { .. } => (FileType::Directory, 2, 0, 0o550),
-            Tree::File { .. } => (FileType::RegularFile, 1, 42, 0o440),
+            Tree::File { info, .. } => (FileType::RegularFile, 1, info.size, 0o440),
         };
 
         FileAttr {
@@ -148,7 +148,7 @@ impl Filesystem for SourceControlFilesystem {
         if let Some((_, _, tree)) = self.inode_index.lock().unwrap().get_tree_node(ino) {
             match tree {
                 Tree::Directory { .. } => reply.error(EISDIR),
-                Tree::File { hash, .. } => match self.get_blob(hash) {
+                Tree::File { info, .. } => match self.get_blob(&info.hash) {
                     Ok(data) => {
                         reply.data(&data[offset as usize..]);
                     }

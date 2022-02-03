@@ -295,7 +295,7 @@ impl IndexBackend for GrpcIndexBackend {
             .map_other_err(format!("failed to read tree `{}`", id))?
             .into_inner();
 
-        Ok(resp.tree.unwrap_or_default().into())
+        resp.tree.unwrap_or_default().try_into()
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {

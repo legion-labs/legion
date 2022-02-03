@@ -10,7 +10,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use clap::Parser;
-use lgn_source_control::{new_index_backend, BlobStorageUrl, Commit, Error, IndexBackend, Result};
+use lgn_source_control::{
+    new_index_backend, BlobStorageUrl, Commit, Error, IndexBackend, Result, Tree,
+};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
@@ -384,8 +386,11 @@ impl SourceControl for Service {
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
+        let tree: Result<Tree> = request.tree.unwrap_or_default().try_into();
+        let tree = tree.map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
         let tree_id = index_backend
-            .save_tree(&request.tree.unwrap_or_default().into())
+            .save_tree(&tree)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 

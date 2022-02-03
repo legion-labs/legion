@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, Lock};
+use crate::{Branch, CanonicalPath, FileInfo, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -46,16 +46,18 @@ pub enum Error {
     PathIsNotAFile { canonical_path: CanonicalPath },
     #[error("`{canonical_path}` is not a directory")]
     PathIsNotADirectory { canonical_path: CanonicalPath },
-    #[error("file content for `{canonical_path}` does not match what was expected: got  `{hash}` but expected `{expected_hash}`")]
+    #[error("file content for `{canonical_path}` does not match what was expected: got `{}` but expected `{}`", .info.hash, .expected_info.hash)]
     FileContentMistmatch {
         canonical_path: CanonicalPath,
-        expected_hash: String,
-        hash: String,
+        expected_info: FileInfo,
+        info: FileInfo,
     },
     #[error("invalid canonical path `{path}`: {reason}")]
     InvalidCanonicalPath { path: String, reason: String },
     #[error("invalid change type")]
     InvalidChangeType,
+    #[error("invalid tree node")]
+    InvalidTreeNode,
     #[error("path `{path}` is not included")]
     PathNotIncluded { path: CanonicalPath },
     #[error("path `{path}` is excluded by `{exclusion_rule}`")]
@@ -148,13 +150,13 @@ impl Error {
 
     pub fn file_content_mismatch(
         canonical_path: CanonicalPath,
-        expected_hash: impl Into<String>,
-        hash: impl Into<String>,
+        expected_info: FileInfo,
+        info: FileInfo,
     ) -> Self {
         Self::FileContentMistmatch {
             canonical_path,
-            expected_hash: expected_hash.into(),
-            hash: hash.into(),
+            expected_info,
+            info,
         }
     }
 

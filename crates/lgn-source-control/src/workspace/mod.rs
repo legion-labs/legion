@@ -327,8 +327,10 @@ impl Workspace {
         for (canonical_path, file) in fs_tree.files() {
             let change = if let Some(staged_change) = staged_changes.get(&canonical_path) {
                 match staged_change.change_type() {
-                    ChangeType::Add { new_hash } => {
-                        if new_hash == file.hash() {
+                    ChangeType::Add { new_info } => {
+                        let info = file.info();
+
+                        if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
@@ -338,12 +340,14 @@ impl Workspace {
                         Change::new(
                             canonical_path,
                             ChangeType::Add {
-                                new_hash: file.hash().to_string(),
+                                new_info: info.clone(),
                             },
                         )
                     }
-                    ChangeType::Edit { old_hash, new_hash } => {
-                        if new_hash == file.hash() {
+                    ChangeType::Edit { old_info, new_info } => {
+                        let info = file.info();
+
+                        if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
@@ -353,18 +357,18 @@ impl Workspace {
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_hash: old_hash.clone(),
-                                new_hash: file.hash().to_string(),
+                                old_info: old_info.clone(),
+                                new_info: info.clone(),
                             },
                         )
                     }
-                    ChangeType::Delete { old_hash } => {
+                    ChangeType::Delete { old_info } => {
                         // The file was staged for deletion: replace it with an edit.
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_hash: old_hash.clone(),
-                                new_hash: file.hash().to_string(),
+                                old_info: old_info.clone(),
+                                new_info: file.info().clone(),
                             },
                         )
                     }
@@ -380,7 +384,7 @@ impl Workspace {
                 Change::new(
                     canonical_path,
                     ChangeType::Add {
-                        new_hash: file.hash().to_string(),
+                        new_info: file.info().clone(),
                     },
                 )
             };
@@ -415,8 +419,10 @@ impl Workspace {
         for (canonical_path, file) in fs_tree.files() {
             let change = if let Some(staged_change) = staged_changes.get(&canonical_path) {
                 match staged_change.change_type() {
-                    ChangeType::Add { new_hash } => {
-                        if new_hash == file.hash() {
+                    ChangeType::Add { new_info } => {
+                        let info = file.info();
+
+                        if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
@@ -426,12 +432,14 @@ impl Workspace {
                         Change::new(
                             canonical_path,
                             ChangeType::Add {
-                                new_hash: file.hash().to_string(),
+                                new_info: info.clone(),
                             },
                         )
                     }
-                    ChangeType::Edit { old_hash, new_hash } => {
-                        if new_hash == file.hash() {
+                    ChangeType::Edit { old_info, new_info } => {
+                        let info = file.info();
+
+                        if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
@@ -441,18 +449,18 @@ impl Workspace {
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_hash: old_hash.clone(),
-                                new_hash: file.hash().to_string(),
+                                old_info: old_info.clone(),
+                                new_info: info.clone(),
                             },
                         )
                     }
-                    ChangeType::Delete { old_hash } => {
+                    ChangeType::Delete { old_info } => {
                         // The file was staged for deletion: replace it with an edit.
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_hash: old_hash.clone(),
-                                new_hash: file.hash().to_string(),
+                                old_info: old_info.clone(),
+                                new_info: file.info().clone(),
                             },
                         )
                     }
@@ -463,11 +471,11 @@ impl Workspace {
                         // The file is a directory, it cannot be edited.
                         return Err(Error::cannot_edit_directory(canonical_path.clone()));
                     }
-                    Tree::File { hash: old_hash, .. } => Change::new(
+                    Tree::File { info, .. } => Change::new(
                         canonical_path,
                         ChangeType::Edit {
-                            old_hash: old_hash.clone(),
-                            new_hash: file.hash().to_string(),
+                            old_info: info.clone(),
+                            new_info: file.info().clone(),
                         },
                     ),
                 }
@@ -475,7 +483,7 @@ impl Workspace {
                 Change::new(
                     canonical_path,
                     ChangeType::Add {
-                        new_hash: file.hash().to_string(),
+                        new_info: file.info().clone(),
                     },
                 )
             };
@@ -535,13 +543,15 @@ impl Workspace {
                         // The file was staged for addition: remove the staged change instead.
                         changes_to_clear.push(staged_change.clone());
                     }
-                    ChangeType::Edit { old_hash, .. } => {
+                    ChangeType::Edit {
+                        old_info: old_hash, ..
+                    } => {
                         // The file was staged for edit: staged a deletion instead.
 
                         changes_to_save.push(Change::new(
                             canonical_path,
                             ChangeType::Delete {
-                                old_hash: old_hash.clone(),
+                                old_info: old_hash.clone(),
                             },
                         ));
                     }
@@ -556,7 +566,7 @@ impl Workspace {
                     changes_to_save.push(Change::new(
                         canonical_path,
                         ChangeType::Delete {
-                            old_hash: file.hash().to_string(),
+                            old_info: file.info().clone(),
                         },
                     ));
                 }
@@ -615,8 +625,8 @@ impl Workspace {
         {
             match staged_change.change_type() {
                 ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_hash, .. } | ChangeType::Delete { old_hash } => {
-                    self.download_blob(old_hash, canonical_path).await?;
+                ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
+                    self.download_blob(&old_info.hash, canonical_path).await?;
                 }
             }
 
@@ -629,8 +639,8 @@ impl Workspace {
         {
             match unstaged_change.change_type() {
                 ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_hash, .. } | ChangeType::Delete { old_hash } => {
-                    self.download_blob(old_hash, canonical_path).await?;
+                ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
+                    self.download_blob(&old_info.hash, canonical_path).await?;
                 }
             }
 
@@ -719,9 +729,9 @@ impl Workspace {
         // disk.
         for change in &staged_changes {
             match change.change_type() {
-                ChangeType::Add { new_hash } | ChangeType::Edit { new_hash, .. } => {
+                ChangeType::Add { new_info } | ChangeType::Edit { new_info, .. } => {
                     if let Some(node) = fs_tree.find(change.canonical_path())? {
-                        if node.hash() == new_hash {
+                        if node.info() == new_info {
                             if let Err(err) = self
                                 .make_file_read_only(
                                     change.canonical_path().to_path_buf(&self.root),
@@ -750,9 +760,9 @@ impl Workspace {
         //
         // Good enough for now.
         for change in &staged_changes {
-            if let Some(new_hash) = change.change_type().new_hash() {
-                if let Err(err) = self.uncache_blob(new_hash).await {
-                    warn!("failed to uncache blob `{}`: {}", new_hash, err);
+            if let Some(new_info) = change.change_type().new_info() {
+                if let Err(err) = self.uncache_blob(&new_info.hash).await {
+                    warn!("failed to uncache blob `{}`: {}", &new_info.hash, err);
                 }
             }
         }
@@ -782,7 +792,7 @@ impl Workspace {
                 let change = Change::new(
                     path.clone(),
                     ChangeType::Add {
-                        new_hash: node.hash().to_string(),
+                        new_info: node.info().clone(),
                     },
                 );
 
@@ -791,13 +801,13 @@ impl Workspace {
         }
 
         for (path, node) in tree.files() {
-            if let Some(Tree::File { hash, .. }) = fs_tree.find(&path)? {
-                if hash != node.hash() {
+            if let Some(Tree::File { info, .. }) = fs_tree.find(&path)? {
+                if info != node.info() {
                     let change = Change::new(
                         path.clone(),
                         ChangeType::Edit {
-                            old_hash: node.hash().to_string(),
-                            new_hash: hash.to_string(),
+                            old_info: node.info().clone(),
+                            new_info: info.clone(),
                         },
                     );
 
@@ -807,7 +817,7 @@ impl Workspace {
                 let change = Change::new(
                     path.clone(),
                     ChangeType::Delete {
-                        old_hash: node.hash().to_string(),
+                        old_info: node.info().clone(),
                     },
                 );
 
@@ -870,10 +880,10 @@ impl Workspace {
         staged_changes
             .into_iter()
             .filter_map(|change| match &change.change_type() {
-                ChangeType::Add { new_hash } => Some(new_hash.as_str()),
-                ChangeType::Edit { old_hash, new_hash } => {
-                    if old_hash != new_hash {
-                        Some(new_hash.as_str())
+                ChangeType::Add { new_info } => Some(new_info.hash.as_str()),
+                ChangeType::Edit { old_info, new_info } => {
+                    if old_info != new_info {
+                        Some(new_info.hash.as_str())
                     } else {
                         None
                     }
@@ -1029,13 +1039,13 @@ impl Workspace {
                             abs_path.display()
                         ))?;
                 }
-                Tree::File { hash, .. } => {
+                Tree::File { info, .. } => {
                     self.blob_storage
-                        .download_blob(&abs_path, hash)
+                        .download_blob(&abs_path, &info.hash)
                         .await
                         .map_other_err(format!(
                             "failed to download blob `{}` to {}",
-                            &hash,
+                            &info.hash,
                             abs_path.display()
                         ))?;
 

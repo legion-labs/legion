@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use lgn_source_control::{
-    CanonicalPath, Change, ChangeType, Error, Index, MapOtherError, Workspace, WorkspaceConfig,
-    WorkspaceRegistration,
+    CanonicalPath, Change, ChangeType, Error, FileInfo, Index, MapOtherError, Workspace,
+    WorkspaceConfig, WorkspaceRegistration,
 };
 
 async fn create_file(workspace: &Workspace, path: &str, content: &str) {
@@ -84,30 +84,42 @@ fn cp(s: &str) -> CanonicalPath {
     CanonicalPath::new(s).unwrap()
 }
 
-fn add(s: &str, new_hash: &str) -> Change {
+fn add(s: &str, new_hash: &str, new_size: u64) -> Change {
     Change::new(
         cp(s),
         ChangeType::Add {
-            new_hash: new_hash.to_owned(),
+            new_info: FileInfo {
+                hash: new_hash.to_owned(),
+                size: new_size,
+            },
         },
     )
 }
 
-fn edit(s: &str, old_hash: &str, new_hash: &str) -> Change {
+fn edit(s: &str, old_hash: &str, new_hash: &str, old_size: u64, new_size: u64) -> Change {
     Change::new(
         cp(s),
         ChangeType::Edit {
-            old_hash: old_hash.to_owned(),
-            new_hash: new_hash.to_owned(),
+            old_info: FileInfo {
+                hash: old_hash.to_owned(),
+                size: old_size,
+            },
+            new_info: FileInfo {
+                hash: new_hash.to_owned(),
+                size: new_size,
+            },
         },
     )
 }
 
-fn delete(s: &str, old_hash: &str) -> Change {
+fn delete(s: &str, old_hash: &str, old_size: u64) -> Change {
     Change::new(
         cp(s),
         ChangeType::Delete {
-            old_hash: old_hash.to_owned(),
+            old_info: FileInfo {
+                hash: old_hash.to_owned(),
+                size: old_size,
+            },
         },
     )
 }
@@ -166,14 +178,17 @@ async fn test_full_flow() {
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+                13,
             ),
             add(
                 "/orange.txt",
                 "9bd4bfdc816b05ebc6fa07ddb99991e65097f22d53b3e492dadebef90f25baa0",
+                14,
             ),
             add(
                 "/vegetables/carrot.txt",
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                13,
             ),
         ],
     )
@@ -199,14 +214,17 @@ async fn test_full_flow() {
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+                13,
             ),
             add(
                 "/orange.txt",
                 "9bd4bfdc816b05ebc6fa07ddb99991e65097f22d53b3e492dadebef90f25baa0",
+                14,
             ),
             add(
                 "/vegetables/carrot.txt",
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                13,
             ),
         ],
     )
@@ -223,14 +241,17 @@ async fn test_full_flow() {
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+                13,
             ),
             add(
                 "/orange.txt",
                 "9bd4bfdc816b05ebc6fa07ddb99991e65097f22d53b3e492dadebef90f25baa0",
+                14,
             ),
             add(
                 "/vegetables/carrot.txt",
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                13,
             ),
         ],
     )
@@ -247,14 +268,17 @@ async fn test_full_flow() {
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+                13,
             ),
             add(
                 "/orange.txt",
                 "9bd4bfdc816b05ebc6fa07ddb99991e65097f22d53b3e492dadebef90f25baa0",
+                14,
             ),
             add(
                 "/vegetables/carrot.txt",
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                13,
             ),
         ],
     )
@@ -286,6 +310,8 @@ async fn test_full_flow() {
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+            13,
+            13,
         )],
     )
     .await;
@@ -301,6 +327,8 @@ async fn test_full_flow() {
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
+            13,
+            17,
         )],
     )
     .await;
@@ -328,6 +356,8 @@ async fn test_full_flow() {
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
+            13,
+            17,
         )],
     )
     .await;
@@ -353,6 +383,7 @@ async fn test_full_flow() {
         &[delete(
             "/vegetables/carrot.txt",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
+            17,
         )],
     )
     .await;
@@ -415,6 +446,8 @@ async fn test_full_flow() {
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+            13,
+            13,
         )],
     )
     .await;
@@ -430,6 +463,8 @@ async fn test_full_flow() {
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
+            13,
+            13,
         )],
     )
     .await;
@@ -448,6 +483,8 @@ async fn test_full_flow() {
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            13,
+            16,
         )],
     )
     .await;
@@ -470,6 +507,8 @@ async fn test_full_flow() {
             "/apple.txt",
             "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
             "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+            16,
+            24,
         )],
     )
     .await;
@@ -513,10 +552,13 @@ async fn test_full_flow() {
                 "/apple.txt",
                 "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
                 "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+                16,
+                24,
             ),
             add(
                 "/strawberry.txt",
                 "ee15463ad8b18f1bec0374e55969913f81c205e02cc9fb331e8ca60211344ee2",
+                17,
             ),
         ],
     )
@@ -538,6 +580,7 @@ async fn test_full_flow() {
         &[add(
             "/strawberry.txt",
             "ee15463ad8b18f1bec0374e55969913f81c205e02cc9fb331e8ca60211344ee2",
+            17,
         )],
     )
     .await;

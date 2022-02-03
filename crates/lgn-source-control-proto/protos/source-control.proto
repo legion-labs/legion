@@ -111,8 +111,13 @@ message Change {
 }
 
 message ChangeType {
-  string old_hash = 1;
-  string new_hash = 2;
+  FileInfo old_info = 1;
+  FileInfo new_info = 2;
+}
+
+message FileInfo {
+  string hash = 1;
+  uint64 size = 2;
 }
 
 message ReadTreeRequest {
@@ -124,7 +129,7 @@ message ReadTreeResponse { Tree tree = 1; }
 
 message Tree {
   string name = 1;
-  string hash = 2;
+  FileInfo info = 2;
   repeated Tree children = 3;
 }
 

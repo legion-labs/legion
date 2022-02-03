@@ -24,7 +24,10 @@ impl TryFrom<lgn_source_control_proto::Change> for Change {
     fn try_from(change: lgn_source_control_proto::Change) -> Result<Self> {
         Ok(Self {
             canonical_path: CanonicalPath::new(&change.canonical_path)?,
-            change_type: change.change_type.ok_or(Error::InvalidChangeType)?.into(),
+            change_type: change
+                .change_type
+                .ok_or(Error::InvalidChangeType)?
+                .try_into()?,
         })
     }
 }
@@ -60,22 +63,31 @@ impl From<Change> for CanonicalPath {
 
 #[cfg(test)]
 mod tests {
+    use crate::FileInfo;
+
     use super::*;
 
     fn sc(p: &str, ct: ChangeType) -> Change {
         Change::new(CanonicalPath::new(p).unwrap(), ct)
     }
 
+    fn fi(hash: &str, size: u64) -> FileInfo {
+        FileInfo {
+            hash: hash.to_string(),
+            size,
+        }
+    }
+
     fn add() -> ChangeType {
         ChangeType::Add {
-            new_hash: "new_hash".to_string(),
+            new_info: fi("new", 123),
         }
     }
 
     fn edit() -> ChangeType {
         ChangeType::Edit {
-            old_hash: "old_hash".to_string(),
-            new_hash: "new_hash".to_string(),
+            old_info: fi("old", 123),
+            new_info: fi("new", 123),
         }
     }
 
