@@ -237,7 +237,7 @@ struct IndexKeys {
 
 pub(crate) struct SourceIndex {
     index_keys: IndexKeys,
-    current: Option<SourceContent>,
+    current: Option<(String, SourceContent)>,
     file: File,
     content_store: Box<dyn ContentStore>,
 }
@@ -331,7 +331,7 @@ impl SourceIndex {
     }
 
     pub fn current(&self) -> Option<&SourceContent> {
-        self.current.as_ref()
+        self.current.as_ref().map(|(_, index)| index)
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<i32, Error> {
@@ -339,7 +339,10 @@ impl SourceIndex {
 
         let root_checksum = project.root_checksum().await?;
 
-        let mut source_index = self.current.take().unwrap_or(SourceContent::new(version));
+        let (_, mut source_index) = self
+            .current
+            .take()
+            .unwrap_or(("".to_string(), SourceContent::new(version)));
 
         for resource_id in project.resource_list().await {
             let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
@@ -371,9 +374,9 @@ impl SourceIndex {
             .store(&buffer)
             .ok_or(Error::InvalidContentStore)?;
 
-        self.index_keys.keys.insert(root_checksum, checksum);
+        self.index_keys.keys.insert(root_checksum.clone(), checksum);
 
-        self.current = Some(source_index);
+        self.current = Some((root_checksum, source_index));
         Ok(updated_resources)
     }
 }
@@ -382,7 +385,10 @@ impl SourceIndex {
 mod tests {
 
     use lgn_content_store::{ContentStoreAddr, HddContentStore, RamContentStore};
-    use lgn_data_offline::{resource::Project, ResourcePathId};
+    use lgn_data_offline::{
+        resource::{Project, ResourcePathName, ResourceRegistryOptions},
+        ResourcePathId,
+    };
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use crate::source_index::{SourceContent, SourceIndex};
@@ -502,11 +508,15 @@ mod tests {
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
 
+    fn current_checksum(index: &SourceIndex) -> String {
+        index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
+    }
+
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(&work_dir.path())
+        let mut project = Project::create_new(&work_dir.path())
             .await
             .expect("failed to create a project");
 
@@ -525,10 +535,91 @@ mod tests {
         )
         .unwrap();
 
-        source_index.source_pull(&project, version).await.unwrap();
-        assert_eq!(source_index.index_keys.keys.len(), 1);
+        // repeated source_pull fetches results from cache
+        let first_entry_checksum = {
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 1);
 
-        source_index.source_pull(&project, version).await.unwrap();
-        assert_eq!(source_index.index_keys.keys.len(), 1);
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 1);
+            current_checksum(&source_index)
+        };
+
+        let resource_registry = ResourceRegistryOptions::new()
+            .add_type::<refs_resource::TestResource>()
+            .create_async_registry();
+        let mut resources = resource_registry.lock().await;
+
+        let (resource_id, resource_handle) = {
+            let resource_handle = resources
+                .new_resource(refs_resource::TestResource::TYPE)
+                .expect("new resource")
+                .typed::<refs_resource::TestResource>();
+
+            resource_handle.get_mut(&mut resources).unwrap().content = "hello".to_string();
+
+            let resource_id = project
+                .add_resource(
+                    ResourcePathName::new("test_source"),
+                    refs_resource::TestResource::TYPENAME,
+                    refs_resource::TestResource::TYPE,
+                    &resource_handle,
+                    &mut resources,
+                )
+                .await
+                .expect("adding the resource");
+            (resource_id, resource_handle)
+        };
+
+        // new resource creates a new cached entry
+        let second_entry_checksum = {
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 2);
+            current_checksum(&source_index)
+        };
+
+        // committing changes does not create a new entry
+        {
+            project.commit().expect("sucessful commit");
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 2);
+            assert_eq!(current_checksum(&source_index), second_entry_checksum);
+        }
+
+        // modify a resource
+        let third_checksum = {
+            let res = resource_handle
+                .get_mut(&mut resources)
+                .expect("loaded resource");
+            res.content = "hello world!".to_string();
+
+            project
+                .save_resource(resource_id, resource_handle, &mut resources)
+                .await
+                .expect("successful save");
+
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 3);
+            current_checksum(&source_index)
+        };
+
+        // committing changes does not create a new entry
+        {
+            project.commit().expect("sucessful commit");
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 3);
+            assert_eq!(current_checksum(&source_index), third_checksum);
+        }
+
+        // deleting the resource takes us back to the previous cache entry.
+        {
+            project
+                .delete_resource(resource_id.id)
+                .await
+                .expect("removed resource");
+            source_index.source_pull(&project, version).await.unwrap();
+            assert_eq!(source_index.index_keys.keys.len(), 3);
+            assert_eq!(current_checksum(&source_index), first_entry_checksum);
+        }
     }
 }
