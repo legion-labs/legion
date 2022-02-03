@@ -14,7 +14,6 @@ mod error;
 //pub mod import_git_repo;
 pub mod index;
 pub mod lock;
-//pub mod log;
 //pub mod merge_branch;
 //pub mod resolve;
 //pub mod revert;
@@ -24,7 +23,6 @@ pub mod sql;
 mod utils;
 pub mod workspace;
 
-//pub use crate::log::*;
 pub use attach_branch::*;
 pub use blob_storage_url::*;
 pub use branch::*;

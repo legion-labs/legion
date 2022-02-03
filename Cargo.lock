@@ -5345,6 +5345,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "atty",
+ "chrono",
  "clap 3.0.14",
  "lgn-source-control",
  "lgn-telemetry-sink",

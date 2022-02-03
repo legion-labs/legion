@@ -9,7 +9,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -444,7 +444,10 @@ impl Project {
             // todo: for now this assumes the files are staged but not committed.
 
             self.workspace
-                .revert_files([metadata_path.as_path(), resource_path.as_path()])
+                .revert_files(
+                    [metadata_path.as_path(), resource_path.as_path()],
+                    Staging::StagedAndUnstaged,
+                )
                 .await
                 .map_err(Error::SourceControl)?;
         }

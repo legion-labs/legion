@@ -307,8 +307,13 @@ impl Workspace {
     }
 
     /// Get the current branch and commit.
-    pub async fn get_current_branch_and_commit(&self) -> Result<(String, String)> {
+    pub async fn get_current_branch_and_commit_id(&self) -> Result<(String, String)> {
         self.backend.get_current_branch().await
+    }
+
+    /// Get the commits chain, starting from the specified commit.
+    pub async fn get_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
+        self.index_backend.read_commits(commit_id, depth).await
     }
 
     /// Get the tree of files and directories for the current branch and commit.

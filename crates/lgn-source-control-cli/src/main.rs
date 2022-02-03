@@ -175,7 +175,11 @@ enum Commands {
     },
     /// Lists commits of the current branch
     #[clap(name = "log")]
-    Log,
+    Log {
+        /// Display the log in short format.
+        #[clap(long)]
+        short: bool,
+    },
     /// Updates the workspace with the latest version of the files
     #[clap(name = "sync")]
     Sync {
@@ -420,7 +424,7 @@ async fn main() -> anyhow::Result<()> {
             let current_dir =
                 std::env::current_dir().map_other_err("failed to determine current directory")?;
             let workspace = Workspace::find_in_current_directory().await?;
-            let (branch, commit_id) = workspace.get_current_branch_and_commit().await?;
+            let (branch, commit_id) = workspace.get_current_branch_and_commit_id().await?;
             let staging = Staging::from_bool(staged, unstaged);
             let (staged_changes, unstaged_changes) = workspace.status(staging).await?;
 
@@ -475,8 +479,31 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::Log => {
-            info!("log");
+        Commands::Log { short } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+            let (branch, commit_id) = workspace.get_current_branch_and_commit_id().await?;
+            let commits = workspace.get_commits(&commit_id, 50).await?;
+
+            if short {
+                for commit in &commits {
+                    println!("{} {}", commit.id, commit.message);
+                }
+            } else {
+                println!("Displaying commits for branch {} (@{})", branch, commit_id);
+
+                for commit in &commits {
+                    stdout.set_color(&yellow())?;
+                    println!("\ncommit {}", commit.id);
+                    stdout.reset()?;
+                    println!("Author: {}", commit.owner);
+                    println!(
+                        "Date:   {}",
+                        chrono::DateTime::<chrono::Local>::from(commit.timestamp)
+                            .format("%a %b %d %H:%M:%S %Y %z")
+                    );
+                    println!("\n    {}", commit.message);
+                }
+            }
 
             Ok(())
         }
