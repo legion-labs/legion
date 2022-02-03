@@ -102,42 +102,49 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new();
+        let device_context = renderer.device_context().clone();
+        let static_buffer = renderer.static_buffer().clone();
 
-        app.add_stage_after(
-            CoreStage::PostUpdate,
-            RenderStage::Prepare,
-            SystemStage::parallel(),
-        );
-
-        app.add_stage_after(
-            RenderStage::Prepare,
-            RenderStage::Render,
-            SystemStage::parallel(),
-        );
-
-        app.add_plugin(EguiPlugin::new());
-        app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
-
-        app.insert_resource(ShaderManager::new(renderer.device_context().clone()));
+        //
+        // Resources
+        //
+        app.insert_resource(ShaderManager::new(&device_context));
         app.insert_resource(ManipulatorManager::new());
-        app.add_startup_system(init_cgen);
-        app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(init_default_materials);
-
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
-        app.insert_resource(MaterialManager::new(renderer.static_buffer()));
+        app.insert_resource(MaterialManager::new(&static_buffer));
         app.insert_resource(renderer);
 
         app.init_resource::<DebugDisplay>();
         app.init_resource::<LightingManager>();
+
+        //
+        // Events
+        //
+        app.add_event::<RenderSurfaceCreatedForWindow>();
+
+        //
+        // Systems
+        //
+
+        //
+        // Stage Startup
+        //
+        app.add_startup_system(init_cgen);
+        app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(init_default_materials);
         app.add_startup_system(create_camera);
 
-        // Pre-Update
+        //
+        // Stage PreUpdate
+        //
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+
+        //
+        // Stage PostUpdate
+        //
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
         app.add_system_to_stage(
@@ -145,7 +152,16 @@ impl Plugin for RendererPlugin {
             on_window_close_requested.exclusive_system(),
         );
 
-        // Update
+        //
+        // Stage Prepare
+        //
+
+        app.add_stage_after(
+            CoreStage::PostUpdate,
+            RenderStage::Prepare,
+            SystemStage::parallel(),
+        );
+
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
@@ -172,6 +188,16 @@ impl Plugin for RendererPlugin {
 
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
+        app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
+
+        //
+        // Stage: Render
+        //
+        app.add_stage_after(
+            RenderStage::Prepare,
+            RenderStage::Render,
+            SystemStage::parallel(),
+        );
 
         app.add_system_set_to_stage(
             RenderStage::Render,
@@ -181,13 +207,17 @@ impl Plugin for RendererPlugin {
                 .label(CommandBufferLabel::Generate),
         );
 
-        // Post-Update
         app.add_system_to_stage(
             RenderStage::Render,
             render_post_update.label(CommandBufferLabel::Submit),
         );
 
-        app.add_event::<RenderSurfaceCreatedForWindow>();
+        //
+        // Plugins
+        //
+        app.add_plugin(EguiPlugin::new());
+        app.add_plugin(PickingPlugin {});
+        app.add_plugin(GpuDataPlugin::new(&static_buffer));
     }
 }
 
@@ -450,6 +480,10 @@ fn update_gpu_instance_ids(
         updater.add_update_jobs(&[gpu_instance_va_table], u64::from(mesh.va_table_address));
     }
     renderer.add_update_job_block(updater.job_blocks());
+}
+
+fn prepare_shaders(mut shader_manager: ResMut<'_, ShaderManager>) {
+    shader_manager.update();
 }
 
 #[span_fn]

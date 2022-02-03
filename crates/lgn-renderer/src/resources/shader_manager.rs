@@ -7,20 +7,31 @@ use lgn_pso_compiler::{
     CompileDefine, CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile,
 };
 use lgn_tracing::span_fn;
+use parking_lot::RwLock;
 use smallvec::SmallVec;
+
+pub struct ShaderHandle(usize);
+
+struct ShaderInfo {
+    key: CGenShaderKey,
+}
 
 pub struct ShaderManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
     shader_families: Vec<&'static CGenShaderFamily>,
+    infos: RwLock<Vec<ShaderInfo>>,
+    shaders: Vec<Option<Shader>>,
 }
 
 impl ShaderManager {
-    pub(crate) fn new(device_context: DeviceContext) -> Self {
+    pub(crate) fn new(device_context: &DeviceContext) -> Self {
         Self {
-            device_context,
+            device_context: device_context.clone(),
             shader_compiler: HlslCompiler::new().unwrap(),
             shader_families: Vec::new(),
+            infos: RwLock::new(Vec::new()),
+            shaders: Vec::new(),
         }
     }
 
@@ -29,8 +40,36 @@ impl ShaderManager {
             .extend_from_slice(&registry.shader_families);
     }
 
+    pub fn get_shader(&self, handle: ShaderHandle) -> Option<&Shader> {
+        if handle.0 >= self.shaders.len() {
+            None
+        } else {
+            self.shaders[handle.0].as_ref()
+        }
+    }
+
     #[span_fn]
-    pub fn get_shader(&self, key: CGenShaderKey) -> Shader {
+    pub fn register_shader(&self, key: CGenShaderKey) -> ShaderHandle {
+        // get the instance
+        self.shader_instance(key).unwrap();
+        {
+            let mut infos = self.infos.write();
+            infos.push(ShaderInfo { key });
+            ShaderHandle(infos.len() - 1)
+        }
+    }
+
+    pub fn update(&mut self) {
+        let infos = self.infos.read();
+
+        for i in 0..self.shaders.len() {
+            if self.shaders[i].is_none() {
+                self.shaders[i] = self.create_shader(infos[i].key).ok();
+            }
+        }
+    }
+
+    fn create_shader(&self, key: CGenShaderKey) -> Result<Shader, ()> {
         // get the instance
         let shader_instance = self.shader_instance(key).unwrap();
 
@@ -79,7 +118,7 @@ impl ShaderManager {
                 }],
                 entry_points: &entry_points,
             })
-            .unwrap();
+            .map_err(|e| ())?;
 
         // build the final shader
         let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::count()]> =
@@ -98,7 +137,7 @@ impl ShaderManager {
                         )
                         .module_def(),
                     )
-                    .unwrap();
+                    .map_err(|e| ())?;
 
                 shader_stage_defs.push(ShaderStageDef {
                     entry_point: Self::entry_point(shader_stage).to_string(),
@@ -110,8 +149,9 @@ impl ShaderManager {
             }
         }
 
-        self.device_context
-            .create_shader(shader_stage_defs.to_vec())
+        Ok(self
+            .device_context
+            .create_shader(shader_stage_defs.to_vec()))
     }
 
     fn shader_family(&self, key: CGenShaderKey) -> Option<&CGenShaderFamily> {

@@ -26,13 +26,15 @@ impl OffscreenHelper {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::make(
+        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
             display_mapper_shader_family::ID,
             display_mapper_shader_family::NONE,
         ));
 
+        let shader = shader_manager.get_shader(shader_handle).unwrap();
+
         let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
-            shader: &shader,
+            shader,
             root_signature,
             vertex_layout: &VertexLayout::default(),
             blend_state: &BlendState::default(),

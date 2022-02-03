@@ -102,13 +102,15 @@ impl RgbToYuvConverter {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::make(
+        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
             rgb2yuv_shader_family::ID,
             rgb2yuv_shader_family::NONE,
         ));
 
+        let shader = shader_manager.get_shader(shader_handle).unwrap();
+
         let pipeline = device_context.create_compute_pipeline(&ComputePipelineDef {
-            shader: &shader,
+            shader,
             root_signature,
         })?;
 

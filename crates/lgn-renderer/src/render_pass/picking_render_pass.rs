@@ -138,10 +138,12 @@ impl PickingRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::make(
+        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
             picking_shader_family::ID,
             picking_shader_family::NONE,
         ));
+
+        let shader = shader_manager.get_shader(shader_handle).unwrap();
 
         //
         // Pipeline state
@@ -178,7 +180,7 @@ impl PickingRenderPass {
 
         let pipeline = device_context
             .create_graphics_pipeline(&GraphicsPipelineDef {
-                shader: &shader,
+                shader,
                 root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default_alpha_enabled(),
