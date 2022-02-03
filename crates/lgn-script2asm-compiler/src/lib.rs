@@ -89,6 +89,7 @@ fn get_compiled_script(
     #[cfg(not(target_os = "windows"))]
     {
         runtime_data::Script {
+            script_type: 1, // Mun
             compiled_script: Vec::new(),
         }
     }
