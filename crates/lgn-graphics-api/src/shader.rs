@@ -1,8 +1,5 @@
 use std::{hash::Hash, marker::PhantomData};
 
-#[cfg(feature = "serde-support")]
-use serde::{Deserialize, Serialize};
-
 use crate::{deferred_drop::Drc, DeviceContext, ShaderModule, ShaderStageFlags};
 
 /// Describes a single stage within a shader
@@ -20,7 +17,6 @@ pub struct ShaderStageDef {
 /// optionally include data for multiple APIs allowing a single file to be used
 /// with whatever API is found at runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum ShaderPackage {
     SpirV(Vec<u8>),
     Null,

@@ -42,7 +42,6 @@ pub struct VertexLayout {
 /// Affects depth testing and stencil usage. Commonly used to enable
 /// "Z-buffering".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct DepthState {
     pub depth_test_enable: bool,
     pub depth_write_enable: bool,
@@ -84,7 +83,6 @@ impl Default for DepthState {
 /// Affects rasterization, commonly used to enable backface culling or wireframe
 /// rendering
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RasterizerState {
     pub cull_mode: CullMode,
     pub front_face: FrontFace,
@@ -146,7 +144,6 @@ impl Default for RasterizerState {
 
 /// Configures blend state for a particular render target
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct BlendStateRenderTarget {
     pub src_factor: BlendFactor,
     pub dst_factor: BlendFactor,
@@ -201,7 +198,6 @@ impl BlendStateRenderTarget {
 /// Affects the way the result of a pixel shader is blended with a value it will
 /// overwrite. Commonly used to enable "alpha-blending".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct BlendState {
     /// Individual blend states for blend targets
     pub render_target_blend_states: Vec<BlendStateRenderTarget>,

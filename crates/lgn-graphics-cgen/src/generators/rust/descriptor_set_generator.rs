@@ -70,7 +70,7 @@ fn generate_rust_descriptor_set(
             writer.add_line(format!("name: \"{}\",", descriptor.name));
             writer.add_line(format!(
                 "shader_resource_type: ShaderResourceType::{},",
-                descriptor.def.shader_resource_type()
+                descriptor.def.shader_resource_type().as_str()
             ));
             writer.add_line(format!("flat_index_start: {},", descriptor.flat_index));
             writer.add_line(format!(

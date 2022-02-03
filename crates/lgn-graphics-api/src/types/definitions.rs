@@ -1,9 +1,5 @@
 use std::hash::Hash;
 
-use serde::{Deserialize, Serialize};
-
-use strum::IntoStaticStr;
-
 bitflags::bitflags! {
     pub struct ResourceUsage: u16 {
         // buffer
@@ -63,9 +59,7 @@ pub enum PlaneSlice {
     Plane2,
 }
 
-#[derive(
-    Copy, strum::Display, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, IntoStaticStr,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
     Sampler = 0x00_01,
     ConstantBuffer = 0x00_02,
@@ -81,4 +75,25 @@ pub enum ShaderResourceType {
     RWTexture3D = 0x08_00,
     TextureCube = 0x10_00,
     TextureCubeArray = 0x20_00,
+}
+
+impl ShaderResourceType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ShaderResourceType::Sampler => "Sampler",
+            ShaderResourceType::ConstantBuffer => "ConstantBuffer",
+            ShaderResourceType::StructuredBuffer => "StructuredBuffer",
+            ShaderResourceType::RWStructuredBuffer => "RWStructuredBuffer",
+            ShaderResourceType::ByteAddressBuffer => "ByteAddressBuffer",
+            ShaderResourceType::RWByteAddressBuffer => "RWByteAddressBuffer",
+            ShaderResourceType::Texture2D => "Texture2D",
+            ShaderResourceType::RWTexture2D => "RWTexture2D",
+            ShaderResourceType::Texture2DArray => "Texture2DArray",
+            ShaderResourceType::RWTexture2DArray => "RWTexture2DArray",
+            ShaderResourceType::Texture3D => "Texture3D",
+            ShaderResourceType::RWTexture3D => "RWTexture3D",
+            ShaderResourceType::TextureCube => "TextureCube",
+            ShaderResourceType::TextureCubeArray => "TextureCubeArray",
+        }
+    }
 }

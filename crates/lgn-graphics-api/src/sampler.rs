@@ -7,25 +7,15 @@ use crate::{AddressMode, CompareOp, DeviceContext, FilterType, GfxResult, MipMap
 
 /// Used to create a `Sampler`
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct SamplerDef {
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub min_filter: FilterType,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mag_filter: FilterType,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mip_map_mode: MipMapMode,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_u: AddressMode,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_v: AddressMode,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub address_mode_w: AddressMode,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub mip_lod_bias: f32,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub max_anisotropy: f32,
-    #[cfg_attr(feature = "serde-support", serde(default))]
     pub compare_op: CompareOp,
     //NOTE: Custom hash impl, don't forget to add changes there too!
 }

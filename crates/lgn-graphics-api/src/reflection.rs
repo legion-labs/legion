@@ -1,6 +1,4 @@
 use lgn_tracing::error;
-#[cfg(feature = "serde-support")]
-use serde::{Deserialize, Serialize};
 
 use crate::types::ShaderStageFlags;
 use crate::{GfxResult, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
@@ -18,7 +16,6 @@ pub struct ShaderResourceBindingKey {
 /// shader-compiler
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct ShaderResource {
     pub name: String,
     pub shader_resource_type: ShaderResourceType,

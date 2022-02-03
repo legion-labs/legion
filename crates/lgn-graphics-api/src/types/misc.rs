@@ -1,8 +1,6 @@
 use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
-#[cfg(feature = "serde-support")]
-use serde::{Deserialize, Serialize};
 
 use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
@@ -92,7 +90,6 @@ pub struct Offset3D {
 
 /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum SampleCount {
     SampleCount1,
     SampleCount2,
@@ -110,7 +107,6 @@ impl Default for SampleCount {
 bitflags::bitflags! {
     /// Indicates how a resource will be used. In some cases, multiple flags are allowed.
     #[derive(Default)]
-    #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ResourceFlags: u32 {
         const TEXTURE_CUBE = 1<<12;
     }
@@ -118,7 +114,6 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
     /// Flags for enabling/disabling color channels, used with `BlendState`
-    #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ColorFlags: u8 {
         const RED = 1;
         const GREEN = 2;
@@ -189,7 +184,6 @@ pub enum FenceStatus {
 
 bitflags::bitflags! {
     /// Indicates what render targets are affected by a blend state
-    #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct BlendStateTargets : u8 {
         const BLEND_STATE_TARGET_0 = 0x01;
         const BLEND_STATE_TARGET_1 = 0x02;
@@ -206,7 +200,6 @@ bitflags::bitflags! {
 bitflags::bitflags! {
     /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
     /// VkShaderStageFlagBits
-    #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ShaderStageFlags : u32 {
         const VERTEX = 1;
         const TESSELLATION_CONTROL = 2;
@@ -286,7 +279,6 @@ impl Default for StoreOp {
 /// How to intepret vertex data into a form of geometry. Similar to
 /// `vkPrimitiveTopology`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum PrimitiveTopology {
     PointList,
     LineList,
@@ -298,7 +290,6 @@ pub enum PrimitiveTopology {
 
 /// The size of index buffer elements
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum IndexType {
     Uint32,
     Uint16,
@@ -312,7 +303,6 @@ impl Default for IndexType {
 
 /// Affects blending. Similar to `vkBlendFactor`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum BlendFactor {
     Zero,
     One,
@@ -337,7 +327,6 @@ impl Default for BlendFactor {
 
 /// Affects blending. Similar to `vkBlendOp`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum BlendOp {
     Add,
     Subtract,
@@ -354,7 +343,6 @@ impl Default for BlendOp {
 
 /// Affects depth testing and sampling. Similar to `vkCompareOp`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum CompareOp {
     Never,
     Less,
@@ -374,7 +362,6 @@ impl Default for CompareOp {
 
 /// Similar to `vkStencilOp`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum StencilOp {
     Keep,
     Zero,
@@ -396,7 +383,6 @@ impl Default for StencilOp {
 /// direction is determined by `FrontFace`, sometimes called "winding order".
 /// Similar to `vkCullModeFlags`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum CullMode {
     None,
     Back,
@@ -412,7 +398,6 @@ impl Default for CullMode {
 /// Determines what winding order is considered the front face of a polygon.
 /// Similar to `vkFrontFace`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FrontFace {
     CounterClockwise,
     Clockwise,
@@ -426,7 +411,6 @@ impl Default for FrontFace {
 
 /// Whether to fill in polygons or not. Similar to `vkPolygonMode`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FillMode {
     Solid,
     Wireframe,
@@ -440,7 +424,6 @@ impl Default for FillMode {
 
 /// Filtering method when sampling. Similar to `vkFilter`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FilterType {
     /// Finds the closest value in the texture and uses it. Commonly used for
     /// "pixel-perfect" assets.
@@ -460,7 +443,6 @@ impl Default for FilterType {
 /// Affects image sampling, particularly for UV coordinates outside the [0, 1]
 /// range. Similar to `vkSamplerAddressMode`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum AddressMode {
     Mirror,
     Repeat,
@@ -476,7 +458,6 @@ impl Default for AddressMode {
 
 /// Similar to `vkSamplerMipmapMode`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum MipMapMode {
     Nearest,
     Linear,
