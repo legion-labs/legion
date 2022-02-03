@@ -9,7 +9,7 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::ResourcePathId;
+use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::ResourceTypeAndId;
 
 #[derive(Parser, Debug)]
@@ -37,7 +37,10 @@ enum Commands {
     Compile {
         /// Path in build graph to compile.
         resource: String,
-        /// BBuild index file.
+        /// Source project path.
+        #[clap(long = "project")]
+        project: PathBuf,
+        /// Build index file.
         #[clap(long = "buildindex")]
         build_index: PathBuf,
         /// Compiled Asset Store addresses where assets will be output.
@@ -85,6 +88,7 @@ async fn main() -> Result<(), String> {
         }
         Commands::Compile {
             resource,
+            project,
             build_index,
             cas,
             manifest,
@@ -112,9 +116,11 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let (mut build, project) = DataBuildOptions::new(build_index, compilers)
+            let project = Project::open(&project).await.map_err(|e| e.to_string())?;
+
+            let mut build = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
-                .open_with_project()
+                .open(&project)
                 .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 

@@ -176,7 +176,7 @@ async fn compile_change_no_deps() {
 
     // ..change resource..
     {
-        let mut project = Project::open(project_dir)
+        let mut project = Project::open(&project_dir)
             .await
             .expect("failed to open project");
 
@@ -194,7 +194,11 @@ async fn compile_change_no_deps() {
             DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
                 .content_store(&contentstore_path);
 
-        let (mut build, project) = config.open_with_project().await.expect("to open index");
+        let project = Project::open(project_dir)
+            .await
+            .expect("failed to open project");
+
+        let mut build = config.open(&project).await.expect("to open index");
         build
             .source_pull(&project)
             .await

@@ -39,6 +39,7 @@ fn exec_create_build_index(
 fn exec_data_compile(
     compile_path: &str,
     buildindex_dir: &Path,
+    project: &Path,
     destination: &Path,
 ) -> std::io::Result<std::process::Output> {
     let target = "game";
@@ -52,6 +53,7 @@ fn exec_data_compile(
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
     command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+    command.arg(format!("--project={}", project.to_str().unwrap()));
     let output = command.output()?;
     if !output.status.success() {
         println!("'{}'", std::str::from_utf8(&output.stdout).unwrap());
@@ -78,7 +80,7 @@ fn incremental_build() {
     let buildindex = work_dir.as_ref().to_owned();
 
     // create build index and do a source pull
-    exec_create_build_index(&buildindex, project).expect("new build index");
+    exec_create_build_index(&buildindex, &project).expect("new build index");
 
     insta::assert_snapshot!("initial_index", read_build_output(&buildindex));
 
@@ -89,8 +91,8 @@ fn incremental_build() {
     //
     // first data build
     //
-    let out =
-        exec_data_compile(root_entity, &buildindex, work_dir.path()).expect("build completed");
+    let out = exec_data_compile(root_entity, &buildindex, &project, work_dir.path())
+        .expect("build completed");
 
     let manifest: Manifest = serde_json::from_slice(&out.stdout).expect("valid manifest");
     insta::assert_json_snapshot!("first_manifest", manifest);
@@ -101,8 +103,8 @@ fn incremental_build() {
     //
     // incremental data build
     //
-    let out =
-        exec_data_compile(root_entity, &buildindex, work_dir.path()).expect("build completed");
+    let out = exec_data_compile(root_entity, &buildindex, &project, work_dir.path())
+        .expect("build completed");
 
     let incremental_manifest: Manifest =
         serde_json::from_slice(&out.stdout).expect("valid manifest");

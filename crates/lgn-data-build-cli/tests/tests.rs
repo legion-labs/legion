@@ -108,6 +108,7 @@ async fn build_device() {
             manifest,
             DATABUILD_EXE,
             buildindex_dir,
+            project_dir,
             true,
         )
         .create();
@@ -224,6 +225,7 @@ async fn no_intermediate_resource() {
             manifest_path.to_str().expect("valid path")
         ));
         command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
     };
 
@@ -311,6 +313,7 @@ async fn with_intermediate_resource() {
             manifest_path.to_str().expect("valid path")
         ));
         command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
     };
 

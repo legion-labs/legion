@@ -64,15 +64,10 @@ async fn no_dependencies() {
     let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 0);
 
-    assert!(build.build_index.find_dependencies(&resource).is_some());
-    assert_eq!(
-        build
-            .build_index
-            .find_dependencies(&resource)
-            .unwrap()
-            .len(),
-        0
-    );
+    let source_index = build.source_index.current().unwrap();
+
+    assert!(source_index.find_dependencies(&resource).is_some());
+    assert_eq!(source_index.find_dependencies(&resource).unwrap().len(), 0);
 }
 
 #[tokio::test]
@@ -135,14 +130,12 @@ async fn with_dependency() {
     let updated_count = build.source_pull(&project).await.unwrap();
     assert_eq!(updated_count, 2);
 
-    let child_deps = build
-        .build_index
+    let source_index = build.source_index.current().unwrap();
+
+    let child_deps = source_index
         .find_dependencies(&child_id)
         .expect("zero deps");
-    let parent_deps = build
-        .build_index
-        .find_dependencies(&parent_id)
-        .expect("one dep");
+    let parent_deps = source_index.find_dependencies(&parent_id).expect("one dep");
 
     assert_eq!(child_deps.len(), 0);
     assert_eq!(parent_deps.len(), 1);

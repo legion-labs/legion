@@ -8,7 +8,7 @@ use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use tempfile::TempDir;
 
-use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions, Error};
+use crate::{databuild::DataBuild, output_index::OutputIndex, DataBuildOptions, Error};
 
 fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     let project_dir = work_dir.path();
@@ -76,12 +76,11 @@ async fn create() {
             .expect("valid data build index");
     }
 
-    let index = BuildIndex::open(&buildindex_dir, DataBuild::version())
-        .expect("failed to open build index file");
-
-    assert!(index.project_path().is_ok());
+    let _index = OutputIndex::open(
+        &OutputIndex::output_index_file(&buildindex_dir),
+        DataBuild::version(),
+    )
+    .expect("failed to open build index file");
 
     fs::remove_file(projectindex_path).unwrap();
-
-    assert!(!index.project_path().is_ok());
 }

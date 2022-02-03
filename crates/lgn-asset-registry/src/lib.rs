@@ -81,6 +81,7 @@ impl AssetRegistryPlugin {
                 manifest.clone(),
                 &databuild_config.build_bin,
                 &databuild_config.buildindex,
+                &databuild_config.project,
                 false,
             );
         } else {

@@ -150,7 +150,7 @@ pub enum Error {
     CompilerNotFound,
     /// IO error.
     #[error("IO error.")]
-    Io,
+    Io(Box<dyn std::error::Error + Send + Sync>),
     /// Circular dependency in build graph.
     #[error("Circular dependency in build graph.")]
     CircularDependency,
@@ -180,6 +180,9 @@ pub enum Error {
     /// Compiler returned an error.
     #[error("Compiler returned an error: '{0}'")]
     Compiler(#[source] CompilerError),
+    /// Source Index error.
+    #[error("Source Index error")]
+    SourceIndex,
 }
 
 impl From<lgn_data_offline::resource::Error> for Error {
@@ -192,9 +195,10 @@ impl From<lgn_data_offline::resource::Error> for Error {
 }
 
 mod asset_file_writer;
-mod buildindex;
 mod databuild;
 mod options;
+mod output_index;
+mod source_index;
 
 pub use databuild::*;
 pub use options::*;

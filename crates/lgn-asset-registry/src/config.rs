@@ -6,13 +6,19 @@ use lgn_data_runtime::ResourceTypeAndId;
 pub struct DataBuildConfig {
     pub(crate) build_bin: PathBuf,
     pub(crate) buildindex: PathBuf,
+    pub(crate) project: PathBuf,
 }
 
 impl DataBuildConfig {
-    pub fn new(build_bin: impl AsRef<Path>, buildindex: impl AsRef<Path>) -> Self {
+    pub fn new(
+        build_bin: impl AsRef<Path>,
+        buildindex: impl AsRef<Path>,
+        project: impl AsRef<Path>,
+    ) -> Self {
         Self {
             build_bin: build_bin.as_ref().to_path_buf(),
             buildindex: buildindex.as_ref().to_path_buf(),
+            project: project.as_ref().to_path_buf(),
         }
     }
 }
@@ -44,12 +50,13 @@ impl AssetRegistrySettings {
         content_store_addr: impl AsRef<Path>,
         game_manifest: impl AsRef<Path>,
         assets_to_load: Vec<ResourceTypeAndId>,
+        project: impl AsRef<Path>,
         build_bin: impl AsRef<Path>,
     ) -> Self {
         let content_store_addr = content_store_addr.as_ref().to_owned();
         let databuild_config = {
             let buildindex = &content_store_addr;
-            Some(DataBuildConfig::new(build_bin, buildindex))
+            Some(DataBuildConfig::new(build_bin, buildindex, project))
         };
 
         Self {
