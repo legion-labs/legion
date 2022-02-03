@@ -4,13 +4,13 @@ mod labels;
 pub use labels::*;
 
 use lgn_app::prelude::*;
+use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
-use physx::prelude::*;
+use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
 // type aliases
 
-type PxAllocator = physx::foundation::DefaultAllocator;
 type PxMaterial = physx::material::PxMaterial<()>;
 type PxShape = physx::shape::PxShape<(), PxMaterial>;
 type PxArticulationLink = physx::articulation_link::PxArticulationLink<(), PxShape>;
@@ -51,7 +51,13 @@ impl Plugin for PhysicsPlugin {
 
 impl PhysicsPlugin {
     fn setup(mut commands: Commands<'_, '_>) {
-        let mut physics = PhysicsFoundation::<PxAllocator, PxShape>::default();
+        let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
+        physics_builder
+            .enable_visual_debugger(false)
+            .set_length_tolerance(1.0)
+            .set_speed_tolerance(1.0)
+            .with_extensions(false);
+        let mut physics = physics_builder.build::<PxShape>().unwrap();
 
         {
             let scene: Owner<PxScene> = physics
@@ -70,28 +76,26 @@ impl PhysicsPlugin {
     }
 
     #[span_fn]
-    fn update(
-        // physics: Res<'_, PhysicsFoundation<PxAllocator, PxShape>>,
-        mut scene: ResMut<'_, Owner<PxScene>>,
-    ) {
+    fn update(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
+        let delta_time = time.delta_seconds();
+        if delta_time <= 0_f32 {
+            return;
+        }
+
         #[allow(unsafe_code)]
         let mut scratch = unsafe { ScratchBuffer::new(4) };
 
         scene
             .step(
-                0.1,
+                delta_time,
                 None::<&mut physx_sys::PxBaseTask>,
                 Some(&mut scratch),
                 true,
             )
             .expect("error occurred during simulation");
 
-        for _actor in scene.get_dynamic_actors() {}
-
-        //for _aggregate in scene.get_aggregates() {}
-
-        // drop(physics);
         drop(scene);
+        drop(time);
     }
 }
 
