@@ -9896,9 +9896,9 @@ dependencies = [
 
 [[package]]
 name = "webrtc"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5ba0c1cc8a2daa7bbf049e0785c06a0c4a144d466d6d0a7e1bb2f9cade4b759"
+checksum = "27d31ce825629e0a7b91c881d6b0a911cd65a7ebb6325fa94fbbddf1c7486f33"
 dependencies = [
  "async-trait",
  "bytes",
@@ -9916,7 +9916,7 @@ dependencies = [
  "sdp",
  "serde",
  "serde_json",
- "sha2 0.9.9",
+ "sha2 0.10.1",
  "stun",
  "thiserror",
  "tokio",

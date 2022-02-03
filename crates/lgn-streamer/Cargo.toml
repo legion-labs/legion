@@ -40,7 +40,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
-webrtc = "0.3"
+webrtc = "0.4"
 
 [build-dependencies]
 lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
