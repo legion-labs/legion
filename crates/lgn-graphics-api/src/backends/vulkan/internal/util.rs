@@ -96,8 +96,8 @@ pub fn shader_resource_type_to_descriptor_type(
         ShaderResourceType::ConstantBuffer => vk::DescriptorType::UNIFORM_BUFFER,
         ShaderResourceType::StructuredBuffer
         | ShaderResourceType::RWStructuredBuffer
-        | ShaderResourceType::ByteAdressBuffer
-        | ShaderResourceType::RWByteAdressBuffer => vk::DescriptorType::STORAGE_BUFFER,
+        | ShaderResourceType::ByteAddressBuffer
+        | ShaderResourceType::RWByteAddressBuffer => vk::DescriptorType::STORAGE_BUFFER,
         ShaderResourceType::Texture2D
         | ShaderResourceType::Texture2DArray
         | ShaderResourceType::Texture3D

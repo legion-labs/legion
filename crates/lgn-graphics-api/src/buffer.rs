@@ -1,7 +1,70 @@
 use crate::{
-    backends::BackendBuffer, deferred_drop::Drc, BufferDef, BufferView, BufferViewDef,
-    DeviceContext,
+    backends::BackendBuffer, deferred_drop::Drc, BufferView, BufferViewDef, DeviceContext,
+    ResourceCreation, ResourceUsage,
 };
+
+/// Used to create a `Buffer`
+#[derive(Clone, Copy, Debug)]
+pub struct BufferDef {
+    pub size: u64,
+    pub usage_flags: ResourceUsage,
+    pub creation_flags: ResourceCreation,
+}
+
+impl Default for BufferDef {
+    fn default() -> Self {
+        Self {
+            size: 0,
+            usage_flags: ResourceUsage::empty(),
+            creation_flags: ResourceCreation::empty(),
+        }
+    }
+}
+
+impl BufferDef {
+    pub fn verify(&self) {
+        assert_ne!(self.size, 0);
+        assert!(!self
+            .usage_flags
+            .intersects(ResourceUsage::TEXTURE_ONLY_USAGE_FLAGS));
+    }
+
+    pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
+        Self {
+            size: size as u64,
+            usage_flags,
+            creation_flags: ResourceCreation::empty(),
+        }
+    }
+
+    pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
+        Self::for_staging_buffer(lgn_utils::memory::slice_size_in_bytes(data), usage_flags)
+    }
+
+    pub fn for_staging_vertex_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_VERTEX_BUFFER)
+    }
+
+    pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_VERTEX_BUFFER)
+    }
+
+    pub fn for_staging_index_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_INDEX_BUFFER)
+    }
+
+    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_INDEX_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer(size: usize) -> Self {
+        Self::for_staging_buffer(size, ResourceUsage::AS_CONST_BUFFER)
+    }
+
+    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_CONST_BUFFER)
+    }
+}
 
 pub(crate) struct BufferInner {
     pub(crate) buffer_def: BufferDef,

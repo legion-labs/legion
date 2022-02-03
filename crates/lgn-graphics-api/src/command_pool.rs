@@ -1,7 +1,15 @@
 use crate::{
-    backends::BackendCommandPool, CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext,
-    GfxResult, Queue, QueueType,
+    backends::BackendCommandPool, CommandBuffer, CommandBufferDef, DeviceContext, GfxResult, Queue,
+    QueueType,
 };
+
+/// Used to create a `CommandPool`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CommandPoolDef {
+    /// Set to true if the command buffers allocated from the pool are expected
+    /// to have very short lifetimes
+    pub transient: bool,
+}
 
 pub(crate) struct CommandPoolInner {
     pub(crate) device_context: DeviceContext,

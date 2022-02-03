@@ -7,9 +7,80 @@ use lgn_tracing::span_fn;
 use crate::backends::{BackendRawImage, BackendTexture};
 use crate::deferred_drop::Drc;
 use crate::{
-    DeviceContext, Extents3D, GfxResult, PlaneSlice, TextureDef, TextureSubResource, TextureView,
-    TextureViewDef,
+    DeviceContext, Extents3D, Format, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags,
+    ResourceUsage, TextureSubResource, TextureTiling, TextureView, TextureViewDef,
 };
+
+/// Used to create a `Texture`
+#[derive(Clone, Copy, Debug)]
+pub struct TextureDef {
+    pub extents: Extents3D,
+    pub array_length: u32,
+    pub mip_count: u32,
+    pub format: Format,
+    pub usage_flags: ResourceUsage,
+    pub resource_flags: ResourceFlags,
+    pub mem_usage: MemoryUsage,
+    pub tiling: TextureTiling,
+}
+
+impl Default for TextureDef {
+    fn default() -> Self {
+        Self {
+            extents: Extents3D {
+                width: 0,
+                height: 0,
+                depth: 0,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::UNDEFINED,
+            usage_flags: ResourceUsage::empty(),
+            resource_flags: ResourceFlags::empty(),
+            mem_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        }
+    }
+}
+
+impl TextureDef {
+    pub fn is_2d(&self) -> bool {
+        self.extents.depth == 1
+    }
+
+    pub fn is_3d(&self) -> bool {
+        self.extents.depth > 1
+    }
+
+    pub fn is_cube(&self) -> bool {
+        self.resource_flags.contains(ResourceFlags::TEXTURE_CUBE)
+    }
+
+    pub fn verify(&self) {
+        assert!(self.extents.width > 0);
+        assert!(self.extents.height > 0);
+        assert!(self.extents.depth > 0);
+        assert!(self.array_length > 0);
+        assert!(self.mip_count > 0);
+
+        assert!(!self
+            .usage_flags
+            .intersects(ResourceUsage::BUFFER_ONLY_USAGE_FLAGS));
+
+        if self.resource_flags.contains(ResourceFlags::TEXTURE_CUBE) {
+            assert_eq!(self.array_length % 6, 0);
+        }
+
+        // vdbdd: I think this validation is wrong
+        assert!(
+            !(self.format.has_depth()
+                && self
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_UNORDERED_ACCESS)),
+            "Cannot use depth stencil as UAV"
+        );
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct TextureInner {

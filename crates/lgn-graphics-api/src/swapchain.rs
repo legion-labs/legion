@@ -1,9 +1,17 @@
 use raw_window_handle::HasRawWindowHandle;
 
 use crate::{
-    backends::BackendSwapchain, DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainDef,
-    SwapchainImage,
+    backends::BackendSwapchain, DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainImage,
 };
+
+/// Used to create a `Swapchain`
+#[derive(Clone)]
+pub struct SwapchainDef {
+    pub width: u32,
+    pub height: u32,
+    pub enable_vsync: bool,
+    // image count?
+}
 
 pub struct Swapchain {
     pub(crate) device_context: DeviceContext,

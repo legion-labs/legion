@@ -2,8 +2,32 @@ use lgn_tracing::span_fn;
 
 use crate::{
     backends::BackendQueue, CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence,
-    GfxResult, PagedBufferAllocation, PresentSuccessResult, QueueType, Semaphore, Swapchain,
+    GfxResult, PagedBufferAllocation, PresentSuccessResult, Semaphore, Swapchain,
 };
+
+/// Used to indicate which type of queue to use. Some operations require certain
+/// types of queues.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum QueueType {
+    /// Graphics queues generally supports all operations and are a safe default
+    /// choice
+    Graphics,
+
+    /// Compute queues can be used for compute-based work.
+    Compute,
+
+    /// Transfer queues are generally limited to basic operations like copying
+    /// data from buffers to images.
+    Transfer,
+
+    /// Decode queues are not available on all device but allow use of dedicated
+    /// hardware to encode videos
+    Decode,
+
+    /// Encode queues are not available on all device but allow use of dedicated
+    /// hardware to encode videos
+    Encode,
+}
 
 pub(crate) struct QueueInner {
     device_context: DeviceContext,

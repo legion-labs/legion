@@ -1,6 +1,171 @@
 use crate::backends::BackendTextureView;
-use crate::{deferred_drop::Drc, GfxResult, Texture, TextureViewDef};
-use crate::{Descriptor, GPUViewType, ShaderResourceType};
+use crate::{deferred_drop::Drc, GfxResult, Texture};
+use crate::{
+    Descriptor, GPUViewType, PlaneSlice, ResourceUsage, ShaderResourceType, TextureDef,
+    ViewDimension,
+};
+
+#[derive(Clone, Copy, Debug)]
+pub struct TextureViewDef {
+    pub gpu_view_type: GPUViewType,
+    pub view_dimension: ViewDimension,
+    pub first_mip: u32,
+    pub mip_count: u32,
+    pub plane_slice: PlaneSlice,
+    pub first_array_slice: u32,
+    pub array_size: u32,
+}
+
+impl TextureViewDef {
+    pub fn as_shader_resource_view(texture_def: &TextureDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ShaderResource,
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: texture_def.mip_count,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: texture_def.array_length,
+        }
+    }
+
+    pub fn as_render_target_view(_texture: &TextureDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::RenderTarget,
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
+    pub fn as_depth_stencil_view(_texture: &TextureDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::DepthStencil,
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
+    pub fn verify(&self, texture_def: &TextureDef) {
+        match self.view_dimension {
+            ViewDimension::_2D | ViewDimension::_2DArray => {
+                assert!(texture_def.is_2d() || texture_def.is_3d());
+            }
+            ViewDimension::Cube | ViewDimension::CubeArray => {
+                assert!(texture_def.is_cube());
+            }
+            ViewDimension::_3D => {
+                assert!(texture_def.is_3d());
+            }
+        }
+
+        match self.gpu_view_type {
+            GPUViewType::ShaderResource => {
+                assert!(texture_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_SHADER_RESOURCE));
+
+                match self.view_dimension {
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
+                    }
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D | ViewDimension::Cube => {
+                        assert!(self.plane_slice == PlaneSlice::Default);
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
+                    }
+                    ViewDimension::CubeArray => {
+                        assert!(self.plane_slice == PlaneSlice::Default);
+                    }
+                }
+            }
+            GPUViewType::UnorderedAccess => {
+                assert!(texture_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_UNORDERED_ACCESS));
+
+                assert!(self.mip_count == 1);
+
+                match self.view_dimension {
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
+                    }
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D => {
+                        assert!(self.plane_slice == PlaneSlice::Default);
+                    }
+                    ViewDimension::Cube | ViewDimension::CubeArray => {
+                        panic!();
+                    }
+                }
+            }
+            GPUViewType::RenderTarget => {
+                assert!(texture_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_RENDER_TARGET));
+
+                assert!(self.mip_count == 1);
+
+                match self.view_dimension {
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
+                    }
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D => {
+                        assert!(self.plane_slice == PlaneSlice::Default);
+                    }
+                    ViewDimension::Cube | ViewDimension::CubeArray => {
+                        panic!();
+                    }
+                }
+            }
+            GPUViewType::DepthStencil => {
+                assert!(texture_def
+                    .usage_flags
+                    .intersects(ResourceUsage::AS_DEPTH_STENCIL));
+
+                assert!(self.mip_count == 1);
+
+                match self.view_dimension {
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
+                    }
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D | ViewDimension::Cube | ViewDimension::CubeArray => {
+                        panic!();
+                    }
+                }
+            }
+            GPUViewType::ConstantBuffer => {
+                panic!();
+            }
+        }
+
+        let last_mip = self.first_mip + self.mip_count;
+        assert!(last_mip <= texture_def.mip_count);
+
+        let last_array_slice = self.first_array_slice + self.array_size;
+
+        let max_array_len = if texture_def.is_2d() {
+            texture_def.array_length
+        } else {
+            texture_def.extents.depth
+        };
+        assert!(last_array_slice <= max_array_len);
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct TextureViewInner {
@@ -47,9 +212,9 @@ impl TextureView {
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer
             | ShaderResourceType::StructuredBuffer
-            | ShaderResourceType::ByteAdressBuffer
+            | ShaderResourceType::ByteAddressBuffer
             | ShaderResourceType::RWStructuredBuffer
-            | ShaderResourceType::RWByteAdressBuffer
+            | ShaderResourceType::RWByteAddressBuffer
             | ShaderResourceType::Sampler => false,
 
             ShaderResourceType::Texture2D

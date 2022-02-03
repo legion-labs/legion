@@ -1,13 +1,47 @@
 use std::sync::atomic::Ordering;
 
 use crate::{
-    backends::BackendDescriptorSetLayout, deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef,
-    DeviceContext, GfxResult, MAX_DESCRIPTOR_BINDINGS,
+    backends::BackendDescriptorSetLayout, deferred_drop::Drc, Descriptor, DeviceContext, GfxResult,
+    ShaderResourceType, MAX_DESCRIPTOR_BINDINGS,
 };
 
 static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
+#[derive(Debug, Clone, Hash)]
+pub struct DescriptorDef {
+    pub name: String,
+    pub binding: u32,
+    pub shader_resource_type: ShaderResourceType,
+    pub array_size: u32,
+}
+
+impl DescriptorDef {
+    pub fn array_size_normalized(&self) -> u32 {
+        self.array_size.max(1u32)
+    }
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct DescriptorSetLayoutDef {
+    pub frequency: u32,
+    pub descriptor_defs: Vec<DescriptorDef>,
+}
+
+impl DescriptorSetLayoutDef {
+    pub fn new() -> Self {
+        Self {
+            frequency: 0,
+            descriptor_defs: Vec::new(),
+        }
+    }
+}
+
+impl Default for DescriptorSetLayoutDef {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 #[derive(Debug)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,

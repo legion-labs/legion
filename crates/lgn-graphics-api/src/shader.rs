@@ -3,7 +3,15 @@ use std::{hash::Hash, marker::PhantomData};
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{deferred_drop::Drc, DeviceContext, ShaderStageDef, ShaderStageFlags};
+use crate::{deferred_drop::Drc, DeviceContext, ShaderModule, ShaderStageFlags};
+
+/// Describes a single stage within a shader
+#[derive(Clone)]
+pub struct ShaderStageDef {
+    pub entry_point: String,
+    pub shader_stage: ShaderStageFlags,
+    pub shader_module: ShaderModule,
+}
 
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
 ///

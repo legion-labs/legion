@@ -348,10 +348,10 @@ impl ValueWrapper for BufferView {
             ShaderResourceType::ConstantBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
             }
-            ShaderResourceType::ByteAdressBuffer | ShaderResourceType::StructuredBuffer => {
+            ShaderResourceType::ByteAddressBuffer | ShaderResourceType::StructuredBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
             }
-            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAddressBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::UnorderedAccess
             }
             ShaderResourceType::Sampler

@@ -244,8 +244,8 @@ impl HlslCompiler {
                 let byteaddressbuffer = descriptor_binding.block.members[0].padded_size == 0;
                 let readonly = Self::is_descriptor_readonly(descriptor_binding);
                 match (byteaddressbuffer, readonly) {
-                    (true, true) => ShaderResourceType::ByteAdressBuffer,
-                    (true, false) => ShaderResourceType::RWByteAdressBuffer,
+                    (true, true) => ShaderResourceType::ByteAddressBuffer,
+                    (true, false) => ShaderResourceType::RWByteAddressBuffer,
                     (false, true) => ShaderResourceType::StructuredBuffer,
                     (false, false) => ShaderResourceType::RWStructuredBuffer,
                 }

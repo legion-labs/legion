@@ -1,6 +1,63 @@
+use lgn_utils::decimal::DecimalF32;
+use std::hash::{Hash, Hasher};
+
 use crate::backends::BackendSampler;
 use crate::deferred_drop::Drc;
-use crate::{DeviceContext, GfxResult, SamplerDef};
+use crate::{AddressMode, CompareOp, DeviceContext, FilterType, GfxResult, MipMapMode};
+
+/// Used to create a `Sampler`
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct SamplerDef {
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub min_filter: FilterType,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub mag_filter: FilterType,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub mip_map_mode: MipMapMode,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub address_mode_u: AddressMode,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub address_mode_v: AddressMode,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub address_mode_w: AddressMode,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub mip_lod_bias: f32,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub max_anisotropy: f32,
+    #[cfg_attr(feature = "serde-support", serde(default))]
+    pub compare_op: CompareOp,
+    //NOTE: Custom hash impl, don't forget to add changes there too!
+}
+
+impl Eq for SamplerDef {}
+impl PartialEq for SamplerDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_filter == other.min_filter
+            && self.mag_filter == other.mag_filter
+            && self.mip_map_mode == other.mip_map_mode
+            && self.address_mode_u == other.address_mode_u
+            && self.address_mode_v == other.address_mode_v
+            && self.address_mode_w == other.address_mode_w
+            && DecimalF32(self.mip_lod_bias) == DecimalF32(other.mip_lod_bias)
+            && DecimalF32(self.max_anisotropy) == DecimalF32(other.max_anisotropy)
+            && self.compare_op == other.compare_op
+    }
+}
+
+impl Hash for SamplerDef {
+    fn hash<H: Hasher>(&self, mut state: &mut H) {
+        self.min_filter.hash(&mut state);
+        self.mag_filter.hash(&mut state);
+        self.mip_map_mode.hash(&mut state);
+        self.address_mode_u.hash(&mut state);
+        self.address_mode_v.hash(&mut state);
+        self.address_mode_w.hash(&mut state);
+        DecimalF32(self.mip_lod_bias).hash(&mut state);
+        DecimalF32(self.max_anisotropy).hash(&mut state);
+        self.compare_op.hash(&mut state);
+    }
+}
 
 pub(crate) struct SamplerInner {
     device_context: DeviceContext,

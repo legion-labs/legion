@@ -3,9 +3,58 @@
 use crate::{
     backends::{BackendDescriptorHeap, BackendDescriptorHeapPartition, BackendDescriptorSetHandle},
     deferred_drop::Drc,
-    DescriptorHeapDef, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext,
-    GfxResult,
+    DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef, DescriptorSetWriter, DeviceContext,
+    GfxResult, ShaderResourceType,
 };
+
+/// Used to create a `DescriptorHeap`
+#[derive(Default, Clone, Copy)]
+pub struct DescriptorHeapDef {
+    pub max_descriptor_sets: u32,
+    pub sampler_count: u32,
+    pub constant_buffer_count: u32,
+    pub buffer_count: u32,
+    pub rw_buffer_count: u32,
+    pub texture_count: u32,
+    pub rw_texture_count: u32,
+}
+
+impl DescriptorHeapDef {
+    pub fn from_descriptor_set_layout_def(
+        definition: &DescriptorSetLayoutDef,
+        max_descriptor_sets: u32,
+    ) -> Self {
+        let mut result = Self {
+            max_descriptor_sets,
+            ..Self::default()
+        };
+
+        for descriptor_def in &definition.descriptor_defs {
+            let count = max_descriptor_sets * descriptor_def.array_size_normalized();
+            match descriptor_def.shader_resource_type {
+                ShaderResourceType::Sampler => result.sampler_count += count,
+                ShaderResourceType::ConstantBuffer => result.constant_buffer_count += count,
+                ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAddressBuffer => {
+                    result.buffer_count += count;
+                }
+                ShaderResourceType::RWStructuredBuffer
+                | ShaderResourceType::RWByteAddressBuffer => {
+                    result.rw_buffer_count += count;
+                }
+                ShaderResourceType::Texture2D
+                | ShaderResourceType::Texture2DArray
+                | ShaderResourceType::Texture3D
+                | ShaderResourceType::TextureCube => result.texture_count += count,
+                ShaderResourceType::RWTexture2D
+                | ShaderResourceType::RWTexture2DArray
+                | ShaderResourceType::RWTexture3D
+                | ShaderResourceType::TextureCubeArray => result.rw_texture_count += count,
+            }
+        }
+
+        result
+    }
+}
 
 //
 // DescriptorSetHandle

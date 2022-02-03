@@ -4,7 +4,7 @@ use lgn_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{Buffer, BufferView, PlaneSlice, Sampler, Texture, TextureView};
+use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
 /// Information about the device, mostly limits, requirements (like memory
 /// alignment), and flags to indicate whether certain features are supported
@@ -30,30 +30,6 @@ pub struct DeviceInfo {
     // metal_heaps: u32,
     // metal_placement_heaps: u32,
     // metal_draw_index_vertex_offset_supported: bool,
-}
-
-/// Used to indicate which type of queue to use. Some operations require certain
-/// types of queues.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum QueueType {
-    /// Graphics queues generally supports all operations and are a safe default
-    /// choice
-    Graphics,
-
-    /// Compute queues can be used for compute-based work.
-    Compute,
-
-    /// Transfer queues are generally limited to basic operations like copying
-    /// data from buffers to images.
-    Transfer,
-
-    /// Decode queues are not available on all device but allow use of dedicated
-    /// hardware to encode videos
-    Decode,
-
-    /// Encode queues are not available on all device but allow use of dedicated
-    /// hardware to encode videos
-    Encode,
 }
 
 /// The color space an image data is in. The correct color space often varies

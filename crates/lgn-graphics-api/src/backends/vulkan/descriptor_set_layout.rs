@@ -45,8 +45,8 @@ impl VulkanDescriptorSetLayout {
                 crate::ShaderResourceType::ConstantBuffer
                 | crate::ShaderResourceType::StructuredBuffer
                 | crate::ShaderResourceType::RWStructuredBuffer
-                | crate::ShaderResourceType::ByteAdressBuffer
-                | crate::ShaderResourceType::RWByteAdressBuffer => {
+                | crate::ShaderResourceType::ByteAddressBuffer
+                | crate::ShaderResourceType::RWByteAddressBuffer => {
                     let offset = vk_buffer_info_count;
                     vk_buffer_info_count += vk_binding.descriptor_count;
                     offset

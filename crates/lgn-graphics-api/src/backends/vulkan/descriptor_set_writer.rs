@@ -90,8 +90,8 @@ impl<'frame> DescriptorSetWriter<'frame> {
             ShaderResourceType::ConstantBuffer
             | ShaderResourceType::StructuredBuffer
             | ShaderResourceType::RWStructuredBuffer
-            | ShaderResourceType::ByteAdressBuffer
-            | ShaderResourceType::RWByteAdressBuffer => {
+            | ShaderResourceType::ByteAddressBuffer
+            | ShaderResourceType::RWByteAddressBuffer => {
                 for update_data in update_datas {
                     if let DescriptorRef::BufferView(buffer_view) = update_data {
                         assert!(buffer_view.is_compatible_with_descriptor(descriptor));

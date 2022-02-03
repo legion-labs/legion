@@ -6,9 +6,17 @@ use crate::{
 };
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
-    ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,
-    GfxResult, IndexBufferBinding, QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
+    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
+    IndexBufferBinding, QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
 };
+
+/// Used to create a `CommandBuffer`
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommandBufferDef {
+    /// Secondary command buffers are used to encode a single pass on multiple
+    /// threads
+    pub is_secondary: bool,
+}
 
 pub(crate) struct CommandBufferInner {
     pub(crate) device_context: DeviceContext,
