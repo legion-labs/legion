@@ -12,6 +12,7 @@ keywords = ["legion"]
 # legion
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 
 # other
 physx = "0.12.1"

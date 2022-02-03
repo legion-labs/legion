@@ -5,6 +5,7 @@ pub use labels::*;
 
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
+use lgn_tracing::prelude::*;
 use physx::prelude::*;
 
 // type aliases
@@ -64,12 +65,14 @@ impl PhysicsPlugin {
         commands.insert_resource(scene);
     }
 
+    #[span_fn]
     fn update(
         // physics: Res<'_, PhysicsFoundation<PxAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
     ) {
         #[allow(unsafe_code)]
         let mut scratch = unsafe { ScratchBuffer::new(4) };
+
         scene
             .step(
                 0.1,
