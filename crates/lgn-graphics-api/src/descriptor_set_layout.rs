@@ -1,12 +1,27 @@
 use std::sync::atomic::Ordering;
 
 use crate::{
-    backends::BackendDescriptorSetLayout, deferred_drop::Drc, Descriptor, DeviceContext, GfxResult,
+    backends::BackendDescriptorSetLayout, deferred_drop::Drc, DeviceContext, GfxResult,
     ShaderResourceType, MAX_DESCRIPTOR_BINDINGS,
 };
 
 static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
+
+#[derive(Clone, Debug)]
+pub struct Descriptor {
+    pub name: String,
+    pub binding: u32,
+    pub shader_resource_type: ShaderResourceType,
+    pub element_count: u32,
+    pub update_data_offset: u32,
+}
+
+impl Descriptor {
+    pub fn element_count_normalized(&self) -> u32 {
+        self.element_count.max(1)
+    }
+}
 
 #[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {

@@ -6,32 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
-/// Information about the device, mostly limits, requirements (like memory
-/// alignment), and flags to indicate whether certain features are supported
-#[derive(Clone, Copy)]
-pub struct DeviceInfo {
-    pub supports_multithreaded_usage: bool,
-
-    pub min_uniform_buffer_offset_alignment: u32,
-    pub min_storage_buffer_offset_alignment: u32,
-    pub upload_buffer_texture_alignment: u32,
-    pub upload_buffer_texture_row_alignment: u32,
-
-    // Requires iOS 14.0, macOS 10.12
-    pub supports_clamp_to_border_color: bool,
-
-    pub max_vertex_attribute_count: u32,
-    //max_vertex_input_binding_count: u32,
-    // max_root_signature_dwords: u32,
-    // wave_lane_count: u32,
-    // wave_ops_support_flags: u32,
-    // gpu_vendor_preset: u32,
-    // metal_argument_buffer_max_textures: u32,
-    // metal_heaps: u32,
-    // metal_placement_heaps: u32,
-    // metal_draw_index_vertex_offset_supported: bool,
-}
-
 /// The color space an image data is in. The correct color space often varies
 /// between texture types (like normal maps vs. albedo maps).
 #[derive(Copy, Clone, Debug)]

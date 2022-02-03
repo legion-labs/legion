@@ -1,6 +1,12 @@
-use crate::{BufferDef, BufferViewFlags, ResourceUsage};
+use crate::{BufferDef, ResourceUsage};
 
 use super::{deferred_drop::Drc, Buffer, Descriptor, GPUViewType, ShaderResourceType};
+
+bitflags::bitflags! {
+    pub struct BufferViewFlags: u8 {
+        const RAW_BUFFER = 0x01;
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct BufferViewDef {

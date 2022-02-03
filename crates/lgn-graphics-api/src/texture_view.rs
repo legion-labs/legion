@@ -1,9 +1,15 @@
 use crate::backends::BackendTextureView;
 use crate::{deferred_drop::Drc, GfxResult, Texture};
-use crate::{
-    Descriptor, GPUViewType, PlaneSlice, ResourceUsage, ShaderResourceType, TextureDef,
-    ViewDimension,
-};
+use crate::{Descriptor, GPUViewType, PlaneSlice, ResourceUsage, ShaderResourceType, TextureDef};
+
+#[derive(Clone, Copy, Debug)]
+pub enum ViewDimension {
+    _2D,
+    _2DArray,
+    Cube,
+    CubeArray,
+    _3D,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct TextureViewDef {

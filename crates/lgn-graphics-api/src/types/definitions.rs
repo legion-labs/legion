@@ -52,36 +52,6 @@ pub enum GPUViewType {
     DepthStencil,
 }
 
-bitflags::bitflags! {
-    pub struct BufferViewFlags: u8 {
-        const RAW_BUFFER = 0x01;
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Descriptor {
-    pub name: String,
-    pub binding: u32,
-    pub shader_resource_type: ShaderResourceType,
-    pub element_count: u32,
-    pub update_data_offset: u32,
-}
-
-impl Descriptor {
-    pub fn element_count_normalized(&self) -> u32 {
-        self.element_count.max(1)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ViewDimension {
-    _2D,
-    _2DArray,
-    Cube,
-    CubeArray,
-    _3D,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlaneSlice {
     Default,

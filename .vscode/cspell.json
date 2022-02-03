@@ -6,6 +6,7 @@
     "words": [
         "asft",
         "bincode",
+        "bitflags",
         "Blit",
         "chrono",
         "codegen",
