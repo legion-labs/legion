@@ -6,7 +6,9 @@ pub use labels::*;
 use lgn_app::prelude::*;
 use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
+use lgn_math::prelude::*;
 use lgn_tracing::prelude::*;
+use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
 // type aliases
@@ -32,20 +34,23 @@ type PxScene = physx::scene::PxScene<
     OnWakeSleep,
     OnAdvance,
 >;
+//struct DynamicRigidBodyHandle(PxRigidStatic);
 
 #[derive(Default)]
 pub struct PhysicsPlugin {}
 
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
+        app.add_startup_system(Self::setup);
+
         app.add_stage_before(
             CoreStage::Update,
             PhysicsStage::Update,
             SystemStage::parallel(),
         );
 
-        app.add_startup_system(Self::setup);
-        app.add_system_to_stage(PhysicsStage::Update, Self::update);
+        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
+        app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
 }
 
@@ -76,7 +81,7 @@ impl PhysicsPlugin {
     }
 
     #[span_fn]
-    fn update(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
+    fn step_simulation(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
         let delta_time = time.delta_seconds();
         if delta_time <= 0_f32 {
             return;
@@ -97,6 +102,52 @@ impl PhysicsPlugin {
         drop(scene);
         drop(time);
     }
+
+    #[span_fn]
+    fn sync_transforms(mut query: Query<'_, '_, (&RigidDynamicActor, &mut Transform)>) {
+        for (dynamic, mut transform) in query.iter_mut() {
+            // TODO: use into() to convert to glam types
+            *transform = Transform::from_matrix(convert_to_mat4(dynamic.actor.get_global_pose()));
+        }
+    }
+
+    // fn create_dynamic() {
+    //     let mut sphere_actor = physics
+    //         .create_rigid_dynamic(
+    //             PxTransform::from_translation(&PxVec3::new(0.0, 40.0, 100.0)),
+    //             &sphere_geo,
+    //             material.as_mut(),
+    //             10.0,
+    //             PxTransform::default(),
+    //             (),
+    //         )
+    //         .unwrap();
+    //     sphere_actor.set_angular_damping(0.5);
+    //     sphere_actor.set_rigid_body_flag(RigidBodyFlag::EnablePoseIntegrationPreview, true);
+    //     scene.add_dynamic_actor(sphere_actor);
+    // }
+}
+
+#[derive(Component)]
+struct RigidDynamicActor {
+    actor: Owner<PxRigidDynamic>,
+}
+
+// math transforms, until glam feature is public
+
+fn convert_to_vec3(value: PxVec3) -> Vec3 {
+    Vec3::new(value.x(), value.y(), value.z())
+}
+
+fn convert_to_quat(value: PxQuat) -> Quat {
+    Quat::from_xyzw(value.x(), value.y(), value.z(), value.w())
+}
+
+fn convert_to_mat4(value: PxTransform) -> Mat4 {
+    Mat4::from_rotation_translation(
+        convert_to_quat(value.rotation()),
+        convert_to_vec3(value.translation()),
+    )
 }
 
 // callbacks
