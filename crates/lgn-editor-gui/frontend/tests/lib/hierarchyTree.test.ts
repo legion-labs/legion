@@ -3,13 +3,13 @@ import resources from "@/resources/resourcesResponse.json";
 
 describe("updateEntry", () => {
   it("updates no entry names when the provided function always returns null in the Entries", () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     expect(entries.update(() => null)).toEqual(entries);
   });
 
   it("updates no entry names when the provided function always return an empty string in the Entries", () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     expect(
       entries.update((entry) => ({
@@ -20,7 +20,7 @@ describe("updateEntry", () => {
   });
 
   it('updates 1 entry name "leaf" when the provided function returns a non empty string for a "leaf" entry', () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     expect(
       entries.update((entry) =>
@@ -32,7 +32,7 @@ describe("updateEntry", () => {
   });
 
   it('updates 1 entry name "node" when the provided function returns a non empty string for a "node" entry', () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     expect(
       entries.update((entry) =>
@@ -42,8 +42,8 @@ describe("updateEntry", () => {
   });
 });
 
-describe("unflatten", () => {
-  it("unflattens a `ResourceDescription` array into a hierarchical tree", () => {
-    expect(Entries.unflatten(resources, Symbol)).toMatchSnapshot();
+describe("fromArray", () => {
+  it("transforms a `ResourceDescription` array into a hierarchical tree", () => {
+    expect(Entries.fromArray(resources, Symbol)).toMatchSnapshot();
   });
 });

@@ -3,15 +3,19 @@ import { suite } from "../benchmark";
 import { Entries } from "@/lib/hierarchyTree";
 import resources from "../resources/resourcesResponse.json";
 
-export const resourcesSuite = suite("Entries.unflatten", (bench) => {
-  bench.add("Unflatten entries", { iter: 10_000 }, () => {
-    return () => {
-      Entries.unflatten(resources, Symbol);
-    };
-  });
+export const resourcesSuite = suite("Entries.fromArray", (bench) => {
+  bench.add(
+    "Transforms resources into hierarchy tree entries",
+    { iter: 10_000 },
+    () => {
+      return () => {
+        Entries.fromArray(resources, Symbol);
+      };
+    }
+  );
 
   bench.add("Compute size of entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.size;
@@ -19,7 +23,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Find early entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.find((entry) => entry.name === "DebugCube1");
@@ -27,7 +31,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Find late entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.find((entry) => entry.name === "ground.mat");
@@ -35,7 +39,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Update early entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.update((entry) =>
@@ -45,7 +49,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Update late entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.update((entry) =>
@@ -55,7 +59,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Remove early entry from entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       entries.remove(entries.entries[2]);
@@ -63,7 +67,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
   });
 
   bench.add("Remove late entry from entries", { iter: 10_000 }, () => {
-    const entries = Entries.unflatten(resources, Symbol);
+    const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -73,7 +77,7 @@ export const resourcesSuite = suite("Entries.unflatten", (bench) => {
 });
 
 export const bigResourcesSuite = suite(
-  "Entries.unflatten - big resources",
+  "Entries.fromArray - big resources",
   (bench) => {
     const bigResources: { path: string; id: string; version: number }[] = [];
 
@@ -85,14 +89,18 @@ export const bigResourcesSuite = suite(
       });
     }
 
-    bench.add("Unflatten entries - big resources", { iter: 100 }, () => {
-      return () => {
-        Entries.unflatten(bigResources, Symbol);
-      };
-    });
+    bench.add(
+      "Transforms resources into hierarchy tree entries - big resources",
+      { iter: 100 },
+      () => {
+        return () => {
+          Entries.fromArray(bigResources, Symbol);
+        };
+      }
+    );
 
     bench.add("Compute size of entries - big resources", { iter: 100 }, () => {
-      const entries = Entries.unflatten(bigResources, Symbol);
+      const entries = Entries.fromArray(bigResources, Symbol);
 
       return () => {
         entries.size;
@@ -103,7 +111,7 @@ export const bigResourcesSuite = suite(
       "Find early entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           entries.find((entry) => entry.name === "DebugCube1");
@@ -115,7 +123,7 @@ export const bigResourcesSuite = suite(
       "Find late entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           entries.find((entry) => entry.name === "ground.mat");
@@ -127,7 +135,7 @@ export const bigResourcesSuite = suite(
       "Update early entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           entries.update((entry) =>
@@ -143,7 +151,7 @@ export const bigResourcesSuite = suite(
       "Update late entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           entries.update((entry) =>
@@ -159,7 +167,7 @@ export const bigResourcesSuite = suite(
       "Remove early entry from entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           entries.remove(entries.entries[2]);
@@ -171,7 +179,7 @@ export const bigResourcesSuite = suite(
       "Remove late entry from entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.unflatten(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources, Symbol);
 
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

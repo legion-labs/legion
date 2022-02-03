@@ -62,20 +62,16 @@ export function extension(path: Path): string | null {
 
 /**
  * Joins path parts using the detected main separator.
+ *
  * A custom main separator can be provided if needed.
  *
- * If no custom separators are provided, and the main separator
- * cannot be detected, `"/"` is used by default.
+ * If no custom separators are provided `"/"` is used by default.
  */
-export function join(
-  root: Path,
-  part: string | Path,
-  separator = detectMainPathSeparator(root) || "/"
-): Path {
-  return `${root}${separator}${part}`;
+export function join(parts: string[], separator = "/"): Path {
+  return parts.join(separator);
 }
 
-/** Joins the path compenents into a `Path` using the provided main separator */
+/** Joins the path components into a `Path` using the provided main separator */
 export function absolute(
   components: string[],
   mainSeparator: MainSeparator
