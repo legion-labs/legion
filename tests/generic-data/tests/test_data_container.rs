@@ -194,7 +194,7 @@ fn test_collector() {
     let entity = TestEntity::default();
     let output = collect_properties::<PropertyBag>(&entity).unwrap();
     assert_eq!(output.ptype, "TestEntity");
-    assert_eq!(output.sub_properties.len(), 12);
+    assert_eq!(output.sub_properties.len(), 13);
     assert_eq!(output.sub_properties[0].name, "test_string");
     assert_eq!(output.sub_properties[0].ptype, "String");
     assert_eq!(output.sub_properties[1].name, "GroupTest1");
