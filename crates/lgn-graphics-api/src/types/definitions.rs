@@ -61,20 +61,20 @@ pub enum PlaneSlice {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
-    Sampler = 0x00_01,
-    ConstantBuffer = 0x00_02,
-    StructuredBuffer = 0x00_04,
-    RWStructuredBuffer = 0x00_08,
-    ByteAddressBuffer = 0x00_10,
-    RWByteAddressBuffer = 0x00_20,
-    Texture2D = 0x00_40,
-    RWTexture2D = 0x00_80,
-    Texture2DArray = 0x01_00,
-    RWTexture2DArray = 0x02_00,
-    Texture3D = 0x04_00,
-    RWTexture3D = 0x08_00,
-    TextureCube = 0x10_00,
-    TextureCubeArray = 0x20_00,
+    Sampler,
+    ConstantBuffer,
+    StructuredBuffer,
+    RWStructuredBuffer,
+    ByteAddressBuffer,
+    RWByteAddressBuffer,
+    Texture2D,
+    RWTexture2D,
+    Texture2DArray,
+    RWTexture2DArray,
+    Texture3D,
+    RWTexture3D,
+    TextureCube,
+    TextureCubeArray,
 }
 
 impl ShaderResourceType {

@@ -1,12 +1,12 @@
 use std::{hash::Hash, marker::PhantomData};
 
-use crate::{deferred_drop::Drc, DeviceContext, ShaderModule, ShaderStageFlags};
+use crate::{deferred_drop::Drc, DeviceContext, ShaderModule, ShaderStage, ShaderStageFlags};
 
 /// Describes a single stage within a shader
 #[derive(Clone)]
 pub struct ShaderStageDef {
     pub entry_point: String,
-    pub shader_stage: ShaderStageFlags,
+    pub shader_stage: ShaderStage,
     pub shader_module: ShaderModule,
 }
 

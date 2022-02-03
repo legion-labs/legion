@@ -1,7 +1,6 @@
 use std::hash::{Hash, Hasher};
 
 use lgn_utils::decimal::DecimalF32;
-use strum::EnumIter;
 
 use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
@@ -198,14 +197,41 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(EnumIter, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum ShaderStage {
-    Vertex = 0,
-    Fragment = 1,
-    Compute = 2,
+    Vertex,
+    Fragment,
+    Compute,
 }
 
-pub const SHADER_STAGE_COUNT: u32 = 4;
+pub struct ShaderStageEnumerator(usize);
+
+impl Iterator for ShaderStageEnumerator {
+    type Item = ShaderStage;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0 {
+            0 => {
+                self.0 += 1;
+                Some(ShaderStage::Vertex)
+            }
+            1 => {
+                self.0 += 1;
+                Some(ShaderStage::Fragment)
+            }
+            2 => {
+                self.0 += 1;
+                Some(ShaderStage::Compute)
+            }
+            _ => None,
+        }
+    }
+}
+
+impl ShaderStage {
+    pub fn iter() -> ShaderStageEnumerator {
+        ShaderStageEnumerator(0)
+    }
+}
 
 impl From<ShaderStage> for ShaderStageFlags {
     fn from(val: ShaderStage) -> Self {

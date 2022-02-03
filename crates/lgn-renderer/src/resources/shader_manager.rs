@@ -8,8 +8,6 @@ use lgn_pso_compiler::{
 };
 use lgn_tracing::span_fn;
 
-use strum::IntoEnumIterator;
-
 pub struct ShaderManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
