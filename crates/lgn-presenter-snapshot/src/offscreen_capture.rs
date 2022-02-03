@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    hl_gfx_api::ShaderManager,
+    resources::ShaderManager,
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -26,7 +26,7 @@ impl OffscreenHelper {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             display_mapper_shader_family::ID,
             display_mapper_shader_family::NONE,
         ));

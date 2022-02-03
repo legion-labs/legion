@@ -18,8 +18,7 @@ use lgn_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, StaticMesh,
     },
-    hl_gfx_api::ShaderManager,
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, ShaderManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{

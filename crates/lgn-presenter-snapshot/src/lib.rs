@@ -17,7 +17,7 @@ mod tmp_shader_data;
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{hl_gfx_api::ShaderManager, Renderer};
+use lgn_renderer::{resources::ShaderManager, Renderer};
 use offscreen_capture::OffscreenHelper;
 use tmp_shader_data::patch_cgen_registry;
 

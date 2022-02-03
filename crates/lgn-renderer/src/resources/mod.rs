@@ -36,3 +36,6 @@ pub(crate) use static_buffer::*;
 
 mod transient_buffer;
 pub(crate) use transient_buffer::*;
+
+mod shader_manager;
+pub use shader_manager::*;

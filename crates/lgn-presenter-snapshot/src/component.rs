@@ -4,7 +4,7 @@ use lgn_ecs::prelude::Component;
 use lgn_graphics_api::DeviceContext;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
-    hl_gfx_api::ShaderManager,
+    resources::ShaderManager,
     RenderContext,
 };
 

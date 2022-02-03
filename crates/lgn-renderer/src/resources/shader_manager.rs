@@ -1,7 +1,7 @@
 use lgn_graphics_api::{DeviceContext, Shader, ShaderPackage, ShaderStage, ShaderStageDef};
 
 use lgn_graphics_cgen_runtime::{
-    CGenRegistry, CGenShaderFamily, CGenShaderInstance, CGenShaderKey, CGenShaderOption,
+    CGenRegistry, CGenShaderFamily, CGenShaderInstance, CGenShaderKey,
 };
 use lgn_pso_compiler::{
     CompileDefine, CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile,
@@ -10,17 +10,11 @@ use lgn_tracing::span_fn;
 
 use strum::IntoEnumIterator;
 
-#[derive(Default)]
-pub struct ShaderRegistry {
-    shader_options: Vec<&'static CGenShaderOption>,
-    shader_families: Vec<&'static CGenShaderFamily>,
-    shader_instances: Vec<&'static CGenShaderInstance>,
-}
-
 pub struct ShaderManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
-    shader_registry: ShaderRegistry,
+    shader_families: Vec<&'static CGenShaderFamily>,
+    shader_instances: Vec<&'static CGenShaderInstance>,
 }
 
 impl ShaderManager {
@@ -28,25 +22,21 @@ impl ShaderManager {
         Self {
             device_context,
             shader_compiler: HlslCompiler::new().unwrap(),
-            shader_registry: ShaderRegistry::default(),
+            shader_families: Vec::new(),
+            shader_instances: Vec::new(),
         }
     }
 
     pub fn register(&mut self, registry: &CGenRegistry) {
-        self.shader_registry
-            .shader_options
-            .extend_from_slice(&registry.shader_options);
-        self.shader_registry
-            .shader_families
+        self.shader_families
             .extend_from_slice(&registry.shader_families);
-        self.shader_registry
-            .shader_instances
+        self.shader_instances
             .extend_from_slice(&registry.shader_instances);
     }
 
     fn shader_family(&self, key: CGenShaderKey) -> Option<&CGenShaderFamily> {
         let shader_family_id = key.shader_family_id();
-        for shader_family in &self.shader_registry.shader_families {
+        for shader_family in &self.shader_families {
             if shader_family.id == shader_family_id {
                 return Some(shader_family);
             }
@@ -75,10 +65,8 @@ impl ShaderManager {
         let shader_family_id = key.shader_family_id();
         let shader_option_mask = key.shader_option_mask();
 
-        for shader_instance in &self.shader_registry.shader_instances {
-            if shader_instance.shader_family_id == shader_family_id
-                && shader_instance.shader_option_mask == shader_option_mask
-            {
+        for shader_instance in &self.shader_instances {
+            if shader_instance.key == key {
                 let shader_family = self.shader_family(key).unwrap();
                 let mut defines = Vec::new();
 
@@ -87,7 +75,7 @@ impl ShaderManager {
                     let trailing_zeros = shader_option_mask.trailing_zeros();
                     shader_option_mask >>= trailing_zeros + 1;
                     let option_index = trailing_zeros as u8;
-                    for shader_option in &self.shader_registry.shader_options {
+                    for shader_option in shader_family.options {
                         if shader_option.shader_family_id == shader_family_id
                             && shader_option.index == option_index
                         {
@@ -103,8 +91,7 @@ impl ShaderManager {
 
                 for shader_stage in ShaderStage::iter() {
                     let shader_stage_flag = shader_stage.into();
-                    if (shader_instance.shader_stage_flags & shader_stage_flag) == shader_stage_flag
-                    {
+                    if (shader_instance.stage_flags & shader_stage_flag) == shader_stage_flag {
                         entry_points.push(EntryPoint {
                             defines: &defines,
                             name: Self::entry_point(shader_stage),
@@ -129,8 +116,7 @@ impl ShaderManager {
                 let mut binary_index = 0;
                 for shader_stage in ShaderStage::iter() {
                     let shader_stage_flag = shader_stage.into();
-                    if (shader_instance.shader_stage_flags & shader_stage_flag) == shader_stage_flag
-                    {
+                    if (shader_instance.stage_flags & shader_stage_flag) == shader_stage_flag {
                         let shader_module = self
                             .device_context
                             .create_shader_module(
@@ -158,35 +144,5 @@ impl ShaderManager {
         }
 
         panic!();
-    }
-
-    #[span_fn]
-    pub fn prepare_cs(&self, shader_path: &str) -> Shader {
-        let shader_build_result = self
-            .shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Path(shader_path),
-                global_defines: &[],
-                entry_points: &[EntryPoint {
-                    defines: &[],
-                    name: "main_cs",
-                    target_profile: TargetProfile::Compute,
-                }],
-            })
-            .unwrap();
-
-        let compute_shader_module = self
-            .device_context
-            .create_shader_module(
-                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
-                    .module_def(),
-            )
-            .unwrap();
-
-        self.device_context.create_shader(vec![ShaderStageDef {
-            entry_point: "main_cs".to_owned(),
-            shader_stage: ShaderStage::Compute,
-            shader_module: compute_shader_module,
-        }])
     }
 }

@@ -1,6 +1,6 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_renderer::{components::RenderSurface, hl_gfx_api::ShaderManager, RenderContext};
+use lgn_renderer::{components::RenderSurface, resources::ShaderManager, RenderContext};
 use lgn_tracing::span_fn;
 
 use crate::{cgen, tmp_shader_data::rgb2yuv_shader_family};
@@ -102,7 +102,7 @@ impl RgbToYuvConverter {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             rgb2yuv_shader_family::ID,
             rgb2yuv_shader_family::NONE,
         ));

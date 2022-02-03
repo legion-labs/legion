@@ -12,7 +12,7 @@ use lgn_graphics_api::DeviceContext;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
-    hl_gfx_api::ShaderManager,
+    resources::ShaderManager,
     RenderContext,
 };
 use lgn_tracing::prelude::*;

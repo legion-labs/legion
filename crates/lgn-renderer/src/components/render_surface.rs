@@ -12,9 +12,10 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
-use crate::hl_gfx_api::{HLCommandBuffer, ShaderManager};
+use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
 use crate::{RenderContext, Renderer};
+use crate::resources::ShaderManager;
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);

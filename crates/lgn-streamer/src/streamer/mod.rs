@@ -11,7 +11,7 @@ use lgn_input::{
 };
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
-    hl_gfx_api::ShaderManager,
+    resources::ShaderManager,
     Renderer,
 };
 use lgn_tracing::{error, info, trace, warn};

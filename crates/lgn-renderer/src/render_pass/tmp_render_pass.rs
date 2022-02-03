@@ -14,7 +14,8 @@ use lgn_tracing::span_fn;
 use crate::{
     cgen,
     components::{RenderSurface, StaticMesh},
-    hl_gfx_api::{HLCommandBuffer, ShaderManager},
+    hl_gfx_api::HLCommandBuffer,
+    resources::ShaderManager,
     tmp_shader_data::shader_shader_family,
     RenderContext,
 };
@@ -31,7 +32,7 @@ impl TmpRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             shader_shader_family::ID,
             shader_shader_family::NONE,
         ));

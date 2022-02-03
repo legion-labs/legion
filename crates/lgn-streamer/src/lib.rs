@@ -17,7 +17,7 @@ mod tmp_shader_data;
 use cgen::*;
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{hl_gfx_api::ShaderManager, Renderer};
+use lgn_renderer::{resources::ShaderManager, Renderer};
 use tmp_shader_data::patch_cgen_registry;
 
 mod grpc;

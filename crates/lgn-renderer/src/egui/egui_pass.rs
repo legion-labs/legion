@@ -10,11 +10,11 @@ use crate::egui::egui_plugin::Egui;
 
 use crate::hl_gfx_api::HLCommandBuffer;
 
-use crate::hl_gfx_api::ShaderManager;
-
 use crate::tmp_shader_data::egui_shader_family;
 
 use crate::RenderContext;
+
+use crate::resources::ShaderManager;
 
 pub struct EguiPass {
     pipeline: Pipeline,
@@ -26,7 +26,7 @@ impl EguiPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             egui_shader_family::ID,
             egui_shader_family::TOTO,
         ));

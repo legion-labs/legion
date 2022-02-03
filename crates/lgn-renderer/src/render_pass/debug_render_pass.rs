@@ -13,9 +13,9 @@ use crate::{
     cgen,
     components::{CameraComponent, ManipulatorComponent, RenderSurface, StaticMesh},
     debug_display::{DebugDisplay, DebugPrimitiveType},
-    hl_gfx_api::{HLCommandBuffer, ShaderManager},
+    hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, DefaultMeshes, ShaderManager},
     tmp_shader_data::const_color_shader_family,
     RenderContext,
 };
@@ -29,7 +29,7 @@ pub struct DebugRenderPass {
 
 impl DebugRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             const_color_shader_family::ID,
             const_color_shader_family::NONE,
         ));

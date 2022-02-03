@@ -16,7 +16,7 @@ use cgen::*;
 
 mod labels;
 use components::MaterialComponent;
-use hl_gfx_api::ShaderManager;
+
 pub use labels::*;
 
 mod renderer;
@@ -28,14 +28,14 @@ pub use renderer::*;
 
 mod render_context;
 pub use render_context::*;
+
+pub mod resources;
 use resources::{
     DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
-    MaterialManager,
+    MaterialManager, ShaderManager,
 };
 use tmp_shader_data::patch_cgen_registry;
-
-pub mod resources;
 
 pub mod components;
 

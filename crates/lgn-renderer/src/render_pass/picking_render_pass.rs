@@ -19,9 +19,9 @@ use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, StaticMesh,
     },
-    hl_gfx_api::{HLCommandBuffer, ShaderManager},
+    hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
+    resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, ShaderManager},
     tmp_shader_data::picking_shader_family,
     RenderContext,
 };
@@ -138,7 +138,7 @@ impl PickingRenderPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
 
-        let shader = shader_manager.get_shader(CGenShaderKey::new(
+        let shader = shader_manager.get_shader(CGenShaderKey::make(
             picking_shader_family::ID,
             picking_shader_family::NONE,
         ));
