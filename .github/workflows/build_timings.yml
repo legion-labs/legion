@@ -5,6 +5,9 @@ on:
     # Run the job at midnight EDT
     - cron: "0 4 * * *"
 
+env:
+  SKIP_SCCACHE: "1"
+
 jobs:
   timings:
     name: Running a timed build
