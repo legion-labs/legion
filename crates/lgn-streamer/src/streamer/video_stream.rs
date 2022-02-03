@@ -80,6 +80,7 @@ impl VideoStream {
     pub(crate) fn present(
         &mut self,
         render_context: &RenderContext<'_>,
+
         render_surface: &mut RenderSurface,
     ) {
         self.record_frame_id_metric();

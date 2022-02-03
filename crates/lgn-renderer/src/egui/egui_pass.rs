@@ -14,10 +14,10 @@ use crate::tmp_shader_data::egui_shader_family;
 
 use crate::RenderContext;
 
-use crate::resources::ShaderManager;
+use crate::resources::{ShaderHandle, ShaderManager};
 
 pub struct EguiPass {
-    pipeline: Pipeline,
+    shader_handle: ShaderHandle,
     texture_data: Option<(u64, Texture, TextureView)>,
     sampler: Sampler,
 }
@@ -26,57 +26,49 @@ impl EguiPass {
     pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
 
-        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
-            egui_shader_family::ID,
-            egui_shader_family::TOTO,
-        ));
+        let mut vertex_layout = VertexLayout::default();
+        vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
+            format: Format::R32G32_SFLOAT,
+            buffer_index: 0,
+            location: 0,
+            byte_offset: 0,
+        });
+        vertex_layout.attributes[1] = Some(VertexLayoutAttribute {
+            format: Format::R32G32_SFLOAT,
+            buffer_index: 0,
+            location: 1,
+            byte_offset: 8,
+        });
+        vertex_layout.attributes[2] = Some(VertexLayoutAttribute {
+            format: Format::R32G32B32A32_SFLOAT,
+            buffer_index: 0,
+            location: 2,
+            byte_offset: 16,
+        });
+        vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
+            stride: 32,
+            rate: VertexAttributeRate::Vertex,
+        });
 
-        let shader = shader_manager.get_shader(shader_handle).unwrap();
-
-        //
-        // Pipeline state
-        //
-        let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 8,
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32A32_SFLOAT,
-                    buffer_index: 0,
-                    location: 2,
-                    byte_offset: 16,
-                },
-            ],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 32,
-                rate: VertexAttributeRate::Vertex,
-            }],
-        };
-
-        let pipeline = device_context
-            .create_graphics_pipeline(&GraphicsPipelineDef {
-                shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_enabled(),
-                depth_state: &DepthState::default(),
-                rasterizer_state: &RasterizerState::default(),
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-            .unwrap();
+        let shader_handle = shader_manager.register_pipeline(
+            CGenShaderKey::make(egui_shader_family::ID, egui_shader_family::TOTO),
+            move |device_context, shader| {
+                device_context
+                    .create_graphics_pipeline(&GraphicsPipelineDef {
+                        shader,
+                        root_signature,
+                        vertex_layout: &vertex_layout,
+                        blend_state: &BlendState::default_alpha_enabled(),
+                        depth_state: &DepthState::default(),
+                        rasterizer_state: &RasterizerState::default(),
+                        color_formats: &[Format::R16G16B16A16_SFLOAT],
+                        sample_count: SampleCount::SampleCount1,
+                        depth_stencil_format: None,
+                        primitive_topology: PrimitiveTopology::TriangleList,
+                    })
+                    .unwrap()
+            },
+        );
 
         // Create sampler
         let sampler_def = SamplerDef {
@@ -93,7 +85,7 @@ impl EguiPass {
         let sampler = device_context.create_sampler(&sampler_def).unwrap();
 
         Self {
-            pipeline,
+            shader_handle,
             texture_data: None,
             sampler,
         }
@@ -208,7 +200,11 @@ impl EguiPass {
 
         let transient_allocator = render_context.transient_buffer_allocator();
 
-        cmd_buffer.bind_pipeline(&self.pipeline);
+        let pipeline = render_context
+            .shader_manager()
+            .get_pipeline(self.shader_handle)
+            .unwrap();
+        cmd_buffer.bind_pipeline(pipeline);
 
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 

@@ -1,4 +1,6 @@
-use lgn_graphics_api::{DeviceContext, Shader, ShaderPackage, ShaderStage, ShaderStageDef};
+use lgn_graphics_api::{
+    DeviceContext, Pipeline, Shader, ShaderPackage, ShaderStage, ShaderStageDef,
+};
 
 use lgn_graphics_cgen_runtime::{
     CGenRegistry, CGenShaderFamily, CGenShaderInstance, CGenShaderKey,
@@ -10,18 +12,20 @@ use lgn_tracing::span_fn;
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ShaderHandle(usize);
 
-struct ShaderInfo {
+struct PipelineInfo {
     key: CGenShaderKey,
+    create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync>,
 }
 
 pub struct ShaderManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
     shader_families: Vec<&'static CGenShaderFamily>,
-    infos: RwLock<Vec<ShaderInfo>>,
-    shaders: Vec<Option<Shader>>,
+    infos: RwLock<Vec<PipelineInfo>>,
+    pipelines: Vec<Option<Pipeline>>,
 }
 
 impl ShaderManager {
@@ -31,44 +35,59 @@ impl ShaderManager {
             shader_compiler: HlslCompiler::new().unwrap(),
             shader_families: Vec::new(),
             infos: RwLock::new(Vec::new()),
-            shaders: Vec::new(),
+            pipelines: Vec::new(),
         }
     }
 
-    pub fn register(&mut self, registry: &CGenRegistry) {
+    pub fn register_cgen_registry(&mut self, registry: &CGenRegistry) {
         self.shader_families
             .extend_from_slice(&registry.shader_families);
     }
 
-    pub fn get_shader(&self, handle: ShaderHandle) -> Option<&Shader> {
-        if handle.0 >= self.shaders.len() {
+    pub fn get_pipeline(&self, handle: ShaderHandle) -> Option<&Pipeline> {
+        if handle.0 >= self.pipelines.len() {
             None
         } else {
-            self.shaders[handle.0].as_ref()
+            self.pipelines[handle.0].as_ref()
         }
     }
 
-    #[span_fn]
-    pub fn register_shader(&self, key: CGenShaderKey) -> ShaderHandle {
-        // get the instance
+    pub fn register_pipeline<F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>(
+        &self,
+        key: CGenShaderKey,
+        func: F,
+    ) -> ShaderHandle {
+        // check if it exists
         self.shader_instance(key).unwrap();
         {
             let mut infos = self.infos.write();
-            infos.push(ShaderInfo { key });
+            infos.push(PipelineInfo {
+                key,
+                create_pipeline: Box::new(func),
+            });
             ShaderHandle(infos.len() - 1)
         }
     }
 
+    #[span_fn]
     pub fn update(&mut self) {
         let infos = self.infos.read();
 
-        for i in 0..self.shaders.len() {
-            if self.shaders[i].is_none() {
-                self.shaders[i] = self.create_shader(infos[i].key).ok();
+        self.pipelines.resize(infos.len(), None);
+
+        for i in 0..self.pipelines.len() {
+            if self.pipelines[i].is_none() {
+                let info = &infos[i];
+                let shader = self.create_shader(info.key);
+                if let Ok(shader) = shader {
+                    let pipeline = (info.create_pipeline)(&self.device_context, &shader);
+                    self.pipelines[i] = Some(pipeline);
+                }
             }
         }
     }
 
+    #[span_fn]
     fn create_shader(&self, key: CGenShaderKey) -> Result<Shader, ()> {
         // get the instance
         let shader_instance = self.shader_instance(key).unwrap();
@@ -118,7 +137,7 @@ impl ShaderManager {
                 }],
                 entry_points: &entry_points,
             })
-            .map_err(|e| ())?;
+            .map_err(|_| ())?;
 
         // build the final shader
         let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::count()]> =
@@ -137,7 +156,7 @@ impl ShaderManager {
                         )
                         .module_def(),
                     )
-                    .map_err(|e| ())?;
+                    .map_err(|_| ())?;
 
                 shader_stage_defs.push(ShaderStageDef {
                     entry_point: Self::entry_point(shader_stage).to_string(),
@@ -188,5 +207,11 @@ impl ShaderManager {
             ShaderStage::Fragment => TargetProfile::Pixel,
             ShaderStage::Compute => TargetProfile::Compute,
         }
+    }
+}
+
+impl Drop for ShaderManager {
+    fn drop(&mut self) {
+        println!( "ShaderManager has been dropped"  );
     }
 }

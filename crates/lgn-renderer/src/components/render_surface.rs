@@ -14,8 +14,8 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
-use crate::{RenderContext, Renderer};
 use crate::resources::ShaderManager;
+use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);
@@ -302,14 +302,8 @@ impl RenderSurface {
                 device_context,
                 shader_manager,
             ))),
-            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(
-                device_context,
-                shader_manager,
-            ))),
-            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(
-                device_context,
-                shader_manager,
-            ))),
+            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(shader_manager))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(shader_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, shader_manager))),
             presenters: Vec::new(),
         }

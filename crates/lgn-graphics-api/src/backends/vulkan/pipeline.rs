@@ -81,6 +81,10 @@ impl VulkanPipeline {
         let mut attributes = Vec::with_capacity(pipeline_def.vertex_layout.attributes.len());
 
         for (index, vertex_buffer) in pipeline_def.vertex_layout.buffers.iter().enumerate() {
+            if vertex_buffer.is_none() {
+                break;
+            }
+            let vertex_buffer = vertex_buffer.as_ref().unwrap();
             if vertex_buffer.stride > 0 {
                 bindings.push(
                     vk::VertexInputBindingDescription::builder()
@@ -93,6 +97,10 @@ impl VulkanPipeline {
         }
 
         for vertex_attribute in &pipeline_def.vertex_layout.attributes {
+            if vertex_attribute.is_none() {
+                break;
+            }
+            let vertex_attribute = vertex_attribute.as_ref().unwrap();
             attributes.push(
                 vk::VertexInputAttributeDescription::builder()
                     .format(vertex_attribute.format.into())

@@ -66,6 +66,6 @@ fn init_cgen(
 ) {
     let mut cgen_registry = cgen::initialize(renderer.device_context());
     patch_cgen_registry(&mut cgen_registry);
-    shader_manager.register(&cgen_registry);
+    shader_manager.register_cgen_registry(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

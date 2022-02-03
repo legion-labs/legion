@@ -1,6 +1,10 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_renderer::{components::RenderSurface, resources::ShaderManager, RenderContext};
+use lgn_renderer::{
+    components::RenderSurface,
+    resources::{ShaderHandle, ShaderManager},
+    RenderContext,
+};
 use lgn_tracing::span_fn;
 
 use crate::{cgen, tmp_shader_data::rgb2yuv_shader_family};
@@ -91,7 +95,7 @@ impl ResolutionDependentResources {
 pub struct RgbToYuvConverter {
     render_frame_count: u32,
     resolution_dependent_resources: ResolutionDependentResources,
-    pipeline: Pipeline,
+    shader_handle: ShaderHandle,
 }
 
 impl RgbToYuvConverter {
@@ -102,17 +106,19 @@ impl RgbToYuvConverter {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
-            rgb2yuv_shader_family::ID,
-            rgb2yuv_shader_family::NONE,
-        ));
+        let shader_handle = shader_manager.register_pipeline(
+            CGenShaderKey::make(rgb2yuv_shader_family::ID, rgb2yuv_shader_family::NONE),
+            |device_context, shader| {
+                device_context
+                    .create_compute_pipeline(&ComputePipelineDef {
+                        shader,
+                        root_signature,
+                    })
+                    .unwrap()
+            },
+        );
 
-        let shader = shader_manager.get_shader(shader_handle).unwrap();
-
-        let pipeline = device_context.create_compute_pipeline(&ComputePipelineDef {
-            shader,
-            root_signature,
-        })?;
+        // let shader = shader_manager.get_shader(shader_handle).unwrap();
 
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +129,7 @@ impl RgbToYuvConverter {
         Ok(Self {
             render_frame_count: 1,
             resolution_dependent_resources,
-            pipeline,
+            shader_handle,
         })
     }
 
@@ -148,6 +154,7 @@ impl RgbToYuvConverter {
     pub fn convert(
         &mut self,
         render_context: &RenderContext<'_>,
+
         render_surface: &mut RenderSurface,
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
@@ -181,7 +188,11 @@ impl RgbToYuvConverter {
                 )],
             );
 
-            cmd_buffer.bind_pipeline(&self.pipeline);
+            let pipeline = render_context
+                .shader_manager()
+                .get_pipeline(self.shader_handle)
+                .unwrap();
+            cmd_buffer.bind_pipeline(pipeline);
 
             let yuv_images_views =
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];

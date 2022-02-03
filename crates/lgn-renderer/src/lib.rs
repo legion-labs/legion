@@ -301,7 +301,7 @@ fn init_cgen(
 ) {
     let mut cgen_registry = cgen::initialize(renderer.device_context());
     patch_cgen_registry(&mut cgen_registry);
-    shader_manager.register(&cgen_registry);
+    shader_manager.register_cgen_registry(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }
 
@@ -494,6 +494,7 @@ fn prepare_shaders(mut shader_manager: ResMut<'_, ShaderManager>) {
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    shader_manager: Res<'_, ShaderManager>,
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
@@ -515,7 +516,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &shader_manager);
     let q_drawables = q_drawables.iter().collect::<Vec<&StaticMesh>>();
     let q_picked_drawables = q_picked_drawables
         .iter()

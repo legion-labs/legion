@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    resources::ShaderManager,
+    resources::{ShaderHandle, ShaderManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -14,7 +14,7 @@ pub struct OffscreenHelper {
     render_image: Texture,
     render_image_rtv: TextureView,
     copy_image: Texture,
-    pipeline: Pipeline,
+    shader_handle: ShaderHandle,
     bilinear_sampler: Sampler,
 }
 
@@ -26,28 +26,33 @@ impl OffscreenHelper {
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let shader_handle = shader_manager.register_shader(CGenShaderKey::make(
-            display_mapper_shader_family::ID,
-            display_mapper_shader_family::NONE,
-        ));
+        // let shader = shader_manager.get_shader(self.shader_handle).unwrap();
 
-        let shader = shader_manager.get_shader(shader_handle).unwrap();
-
-        let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
-            shader,
-            root_signature,
-            vertex_layout: &VertexLayout::default(),
-            blend_state: &BlendState::default(),
-            depth_state: &DepthState::default(),
-            rasterizer_state: &RasterizerState {
-                cull_mode: CullMode::Back,
-                ..RasterizerState::default()
+        let shader_handle = shader_manager.register_pipeline(
+            CGenShaderKey::make(
+                display_mapper_shader_family::ID,
+                display_mapper_shader_family::NONE,
+            ),
+            |device_context, shader| {
+                device_context
+                    .create_graphics_pipeline(&GraphicsPipelineDef {
+                        shader,
+                        root_signature,
+                        vertex_layout: &VertexLayout::default(),
+                        blend_state: &BlendState::default(),
+                        depth_state: &DepthState::default(),
+                        rasterizer_state: &RasterizerState {
+                            cull_mode: CullMode::Back,
+                            ..RasterizerState::default()
+                        },
+                        primitive_topology: PrimitiveTopology::TriangleList,
+                        color_formats: &[Format::R8G8B8A8_UNORM],
+                        depth_stencil_format: None,
+                        sample_count: SampleCount::SampleCount1,
+                    })
+                    .unwrap()
             },
-            primitive_topology: PrimitiveTopology::TriangleList,
-            color_formats: &[Format::R8G8B8A8_UNORM],
-            depth_stencil_format: None,
-            sample_count: SampleCount::SampleCount1,
-        })?;
+        );
 
         let sampler_def = SamplerDef {
             min_filter: FilterType::Linear,
@@ -98,7 +103,7 @@ impl OffscreenHelper {
             render_image,
             render_image_rtv,
             copy_image,
-            pipeline,
+            shader_handle,
             bilinear_sampler,
         })
     }
@@ -136,7 +141,11 @@ impl OffscreenHelper {
             &None,
         );
 
-        cmd_buffer.bind_pipeline(&self.pipeline);
+        let pipeline = render_context
+            .shader_manager()
+            .get_pipeline(self.shader_handle)
+            .unwrap();
+        cmd_buffer.bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
         descriptor_set.set_hdr_image(render_surface.shader_resource_view());
