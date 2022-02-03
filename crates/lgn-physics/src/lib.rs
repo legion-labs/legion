@@ -53,16 +53,20 @@ impl PhysicsPlugin {
     fn setup(mut commands: Commands<'_, '_>) {
         let mut physics = PhysicsFoundation::<PxAllocator, PxShape>::default();
 
-        let scene: Owner<PxScene> = physics
-            .create(SceneDescriptor {
-                gravity: PxVec3::new(0.0, -9.81, 0.0),
-                on_advance: Some(OnAdvance),
-                ..SceneDescriptor::new(())
-            })
-            .unwrap();
+        {
+            let scene: Owner<PxScene> = physics
+                .create(SceneDescriptor {
+                    gravity: PxVec3::new(0.0, -9.81, 0.0),
+                    on_advance: Some(OnAdvance),
+                    ..SceneDescriptor::new(())
+                })
+                .unwrap();
 
+            commands.insert_resource(scene);
+        }
+
+        // Note: important to insert physics after scene, for drop order
         commands.insert_resource(physics);
-        commands.insert_resource(scene);
     }
 
     #[span_fn]
@@ -82,7 +86,9 @@ impl PhysicsPlugin {
             )
             .expect("error occurred during simulation");
 
-        let _actors = scene.get_dynamic_actors();
+        for _actor in scene.get_dynamic_actors() {}
+
+        //for _aggregate in scene.get_aggregates() {}
 
         // drop(physics);
         drop(scene);
