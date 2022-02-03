@@ -12,6 +12,7 @@ pub trait IndexBackend: Send + Sync {
     async fn create_index(&self) -> Result<BlobStorageUrl>;
     async fn destroy_index(&self) -> Result<()>;
     async fn index_exists(&self) -> Result<bool>;
+
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
@@ -23,22 +24,32 @@ pub trait IndexBackend: Send + Sync {
                 branch_name: branch_name.to_string(),
             })
     }
+
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;
     async fn update_branch(&self, branch: &Branch) -> Result<()>;
     async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>>;
     async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>>;
     async fn read_branches(&self) -> Result<Vec<Branch>>;
-    async fn read_commit(&self, commit_id: &str) -> Result<Commit>;
-    async fn insert_commit(&self, commit: &Commit) -> Result<()>;
+
+    async fn read_commit(&self, commit_id: &str) -> Result<Commit> {
+        self.read_commits(commit_id, 1)
+            .await?
+            .pop()
+            .ok_or_else(|| Error::commit_does_not_exist(commit_id.to_string()))
+    }
+
+    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>>;
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()>;
-    async fn commit_exists(&self, commit_id: &str) -> Result<bool>;
+
     async fn read_tree(&self, id: &str) -> Result<Tree>;
     async fn save_tree(&self, tree: &Tree) -> Result<String>;
+
     async fn insert_lock(&self, lock: &Lock) -> Result<()>;
     async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>>;
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>>;
     async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()>;
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32>;
+
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl>;
 }
 

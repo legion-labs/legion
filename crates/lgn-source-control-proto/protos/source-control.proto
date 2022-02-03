@@ -7,29 +7,34 @@ service SourceControl {
   rpc IndexExists(IndexExistsRequest) returns (IndexExistsResponse) {};
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {};
   rpc DestroyIndex(DestroyIndexRequest) returns (DestroyIndexResponse) {};
+
   rpc GetBlobStorageUrl(GetBlobStorageUrlRequest)
       returns (GetBlobStorageUrlResponse) {};
+
   rpc RegisterWorkspace(RegisterWorkspaceRequest)
       returns (RegisterWorkspaceResponse) {};
+
   rpc FindBranch(FindBranchRequest) returns (FindBranchResponse) {};
   rpc ReadBranches(ReadBranchesRequest) returns (ReadBranchesResponse) {};
-  rpc FindBranchesInLockDomain(FindBranchesInLockDomainRequest)
-      returns (FindBranchesInLockDomainResponse) {};
-  rpc ReadCommit(ReadCommitRequest) returns (ReadCommitResponse) {};
+  rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {};
+  rpc InsertBranch(InsertBranchRequest) returns (InsertBranchResponse) {};
+
+  rpc ReadCommits(ReadCommitsRequest) returns (ReadCommitsResponse) {};
+  rpc CommitToBranch(CommitToBranchRequest) returns (CommitToBranchResponse) {};
+
   rpc ReadTree(ReadTreeRequest) returns (ReadTreeResponse) {};
+  rpc SaveTree(SaveTreeRequest) returns (SaveTreeResponse) {};
+
   rpc InsertLock(InsertLockRequest) returns (InsertLockResponse) {};
   rpc FindLock(FindLockRequest) returns (FindLockResponse) {};
   rpc FindLocksInDomain(FindLocksInDomainRequest)
       returns (FindLocksInDomainResponse) {};
-  rpc SaveTree(SaveTreeRequest) returns (SaveTreeResponse) {};
-  rpc InsertCommit(InsertCommitRequest) returns (InsertCommitResponse) {};
-  rpc CommitToBranch(CommitToBranchRequest) returns (CommitToBranchResponse) {};
-  rpc CommitExists(CommitExistsRequest) returns (CommitExistsResponse) {};
-  rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {};
-  rpc InsertBranch(InsertBranchRequest) returns (InsertBranchResponse) {};
   rpc ClearLock(ClearLockRequest) returns (ClearLockResponse) {};
   rpc CountLocksInDomain(CountLocksInDomainRequest)
       returns (CountLocksInDomainResponse) {};
+  rpc FindBranchesInLockDomain(FindBranchesInLockDomainRequest)
+      returns (FindBranchesInLockDomainResponse) {};
+
 }
 
 message IndexExistsRequest { string repository_name = 1; }
@@ -88,12 +93,13 @@ message FindBranchesInLockDomainRequest {
 
 message FindBranchesInLockDomainResponse { repeated Branch branches = 1; }
 
-message ReadCommitRequest {
+message ReadCommitsRequest {
   string repository_name = 1;
   string commit_id = 2;
+  uint32 depth = 3;
 }
 
-message ReadCommitResponse { Commit commit = 1; }
+message ReadCommitsResponse { repeated Commit commits = 1; }
 
 message Commit {
   string id = 1;
@@ -171,13 +177,6 @@ message SaveTreeResponse {
   string tree_id = 1;
 }
 
-message InsertCommitRequest {
-  string repository_name = 1;
-  Commit commit = 2;
-}
-
-message InsertCommitResponse {}
-
 message CommitToBranchRequest {
   string repository_name = 1;
   Commit commit = 2;
@@ -185,13 +184,6 @@ message CommitToBranchRequest {
 }
 
 message CommitToBranchResponse {}
-
-message CommitExistsRequest {
-  string repository_name = 1;
-  string commit_id = 2;
-}
-
-message CommitExistsResponse { bool exists = 1; }
 
 message UpdateBranchRequest {
   string repository_name = 1;

@@ -5,12 +5,12 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use lgn_source_control_proto::{
-    source_control_client::SourceControlClient, ClearLockRequest, CommitExistsRequest,
-    CommitToBranchRequest, CountLocksInDomainRequest, CreateIndexRequest, DestroyIndexRequest,
-    FindBranchRequest, FindBranchesInLockDomainRequest, FindLockRequest, FindLocksInDomainRequest,
-    GetBlobStorageUrlRequest, IndexExistsRequest, InsertBranchRequest, InsertCommitRequest,
-    InsertLockRequest, ReadBranchesRequest, ReadCommitRequest, ReadTreeRequest,
-    RegisterWorkspaceRequest, SaveTreeRequest, UpdateBranchRequest,
+    source_control_client::SourceControlClient, ClearLockRequest, CommitToBranchRequest,
+    CountLocksInDomainRequest, CreateIndexRequest, DestroyIndexRequest, FindBranchRequest,
+    FindBranchesInLockDomainRequest, FindLockRequest, FindLocksInDomainRequest,
+    GetBlobStorageUrlRequest, IndexExistsRequest, InsertBranchRequest, InsertLockRequest,
+    ReadBranchesRequest, ReadCommitsRequest, ReadTreeRequest, RegisterWorkspaceRequest,
+    SaveTreeRequest, UpdateBranchRequest,
 };
 
 use crate::{
@@ -217,36 +217,25 @@ impl IndexBackend for GrpcIndexBackend {
         Ok(resp.branches.into_iter().map(Into::into).collect())
     }
 
-    async fn read_commit(&self, commit_id: &str) -> Result<Commit> {
+    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
         let resp = self
             .client
             .lock()
             .await
-            .read_commit(ReadCommitRequest {
+            .read_commits(ReadCommitsRequest {
                 repository_name: self.repository_name.clone(),
                 commit_id: commit_id.into(),
+                depth: depth,
             })
             .await
             .map_other_err(format!("failed to read commit `{}`", commit_id))?
             .into_inner();
 
-        resp.commit
-            .unwrap_or_default()
-            .try_into()
-            .map_other_err("failed to parse commit")
-    }
-
-    async fn insert_commit(&self, commit: &Commit) -> Result<()> {
-        self.client
-            .lock()
-            .await
-            .insert_commit(InsertCommitRequest {
-                repository_name: self.repository_name.clone(),
-                commit: Some(commit.clone().into()),
-            })
-            .await
-            .map_other_err(format!("failed to insert commit `{}`", commit.id))
-            .map(|_| ())
+        resp.commits
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>>>()
+            .map_other_err("failed to parse commits")
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
@@ -264,22 +253,6 @@ impl IndexBackend for GrpcIndexBackend {
                 commit.id, branch.name
             ))
             .map(|_| ())
-    }
-
-    async fn commit_exists(&self, commit_id: &str) -> Result<bool> {
-        let resp = self
-            .client
-            .lock()
-            .await
-            .commit_exists(CommitExistsRequest {
-                repository_name: self.repository_name.clone(),
-                commit_id: commit_id.into(),
-            })
-            .await
-            .map_other_err(format!("failed to check if commit `{}` exists", commit_id))?
-            .into_inner();
-
-        Ok(resp.exists)
     }
 
     async fn read_tree(&self, id: &str) -> Result<Tree> {

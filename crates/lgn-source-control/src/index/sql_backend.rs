@@ -865,7 +865,11 @@ impl IndexBackend for SqlIndexBackend {
         .collect())
     }
 
-    async fn read_commit(&self, id: &str) -> Result<Commit> {
+    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
+        if depth == 0 {
+            return Ok(vec![]);
+        }
+
         let mut conn = self.get_conn().await?;
 
         let changes = sqlx::query(&format!(
@@ -874,12 +878,12 @@ impl IndexBackend for SqlIndexBackend {
              WHERE commit_id = ?;",
             Self::TABLE_COMMIT_CHANGES,
         ))
-        .bind(id)
+        .bind(commit_id)
         .fetch_all(&mut conn)
         .await
         .map_other_err(format!(
             "failed to fetch commit changes for commit `{}`",
-            id
+            commit_id
         ))?
         .into_iter()
         .filter_map(|row| {
@@ -923,50 +927,61 @@ impl IndexBackend for SqlIndexBackend {
              WHERE id = ?;",
             Self::TABLE_COMMIT_PARENTS,
         ))
-        .bind(id)
+        .bind(commit_id)
         .fetch_all(&mut conn)
         .await
-        .map_other_err(format!("failed to fetch parents for commit `{}`", id))?
+        .map_other_err(format!(
+            "failed to fetch parents for commit `{}`",
+            commit_id
+        ))?
         .into_iter()
         .map(|row| row.get("parent_id"))
         .collect();
 
-        sqlx::query(&format!(
-            "SELECT owner, message, root_hash, date_time_utc 
+        let mut result = vec![];
+        result.reserve((depth as usize) * 2); // Heuristic. Should be plenty for most cases as the history tends to be linear.
+
+        result.push(
+            match sqlx::query(&format!(
+                "SELECT owner, message, root_hash, date_time_utc 
              FROM `{}`
              WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to fetch commit `{}`", id))
-        .map(|row| {
-            let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
-                .unwrap()
-                .into();
+                Self::TABLE_COMMITS
+            ))
+            .bind(commit_id)
+            .fetch_one(&mut conn)
+            .await
+            {
+                Ok(row) => {
+                    let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
+                        .unwrap()
+                        .into();
 
-            Commit::new(
-                String::from(id),
-                row.get("owner"),
-                row.get("message"),
-                changes,
-                row.get("root_hash"),
-                parents,
-                timestamp,
-            )
-        })
-    }
+                    Commit::new(
+                        String::from(commit_id),
+                        row.get("owner"),
+                        row.get("message"),
+                        changes,
+                        row.get("root_hash"),
+                        parents,
+                        timestamp,
+                    )
+                }
+                Err(sqlx::Error::RowNotFound) => {
+                    return Err(Error::commit_does_not_exist(commit_id));
+                }
+                Err(err) => {
+                    return Err(err)
+                        .map_other_err(format!("failed to fetch commit `{}`", commit_id));
+                }
+            },
+        );
 
-    async fn insert_commit(&self, commit: &Commit) -> Result<()> {
-        let mut transaction = self.get_transaction().await?;
+        for parent_commit_id in result[0].parents.clone() {
+            result.append(&mut self.read_commits(&parent_commit_id, depth - 1).await?);
+        }
 
-        Self::insert_commit_transactional(&mut transaction, commit).await?;
-
-        transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while inserting commit `{}`",
-            &commit.id
-        ))
+        Ok(result)
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
@@ -991,22 +1006,6 @@ impl IndexBackend for SqlIndexBackend {
             "failed to commit transaction while committing commit `{}` to branch `{}`",
             &commit.id, &branch.name
         ))
-    }
-
-    async fn commit_exists(&self, id: &str) -> Result<bool> {
-        let mut conn = self.get_conn().await?;
-
-        sqlx::query(&format!(
-            "SELECT count(*) as count
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to check if commit `{}` exists", id))
-        .map(|row| row.get::<i32, _>("count") > 0)
     }
 
     async fn read_tree(&self, id: &str) -> Result<Tree> {

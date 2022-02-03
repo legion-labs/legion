@@ -16,6 +16,8 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
+    #[error("the specified commit `{commit_id}` does not exist")]
+    CommitDoesNotExist { commit_id: String },
     #[error("the folder `{path}` is not a workspace")]
     NotAWorkspace { path: PathBuf },
     #[error("the path `{path}` did not match any files")]
@@ -88,6 +90,12 @@ impl Error {
         Self::InvalidIndexUrl {
             url: url.into(),
             source: source.into(),
+        }
+    }
+
+    pub fn commit_does_not_exist(commit_id: impl Into<String>) -> Self {
+        Self::CommitDoesNotExist {
+            commit_id: commit_id.into(),
         }
     }
 
