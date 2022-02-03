@@ -16,7 +16,7 @@ use crate::asset_entities::AssetToEntityMap;
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceTypeAndId,
     handle: &HandleUntyped,
-    registry: &ResMut<'_, Arc<AssetRegistry>>,
+    registry: &Res<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
     default_meshes: &Res<'_, DefaultMeshes>,
@@ -30,6 +30,7 @@ where
                 commands,
                 &asset,
                 asset_id,
+                registry,
                 asset_to_entity_map,
                 default_meshes,
             );
@@ -63,6 +64,7 @@ pub(crate) trait AssetToECS {
         _commands: &mut Commands<'_, '_>,
         _asset: &Self,
         _asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -75,6 +77,7 @@ impl AssetToECS for runtime_data::Entity {
         commands: &mut Commands<'_, '_>,
         runtime_entity: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -150,6 +153,7 @@ impl AssetToECS for runtime_data::Instance {
         commands: &mut Commands<'_, '_>,
         _instance: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -173,6 +177,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         commands: &mut Commands<'_, '_>,
         instance: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {
@@ -214,6 +219,7 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         commands: &mut Commands<'_, '_>,
         entity: &Self,
         asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _default_meshes: &Res<'_, DefaultMeshes>,
     ) -> Option<Entity> {

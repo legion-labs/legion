@@ -127,7 +127,7 @@ impl AssetRegistryPlugin {
 
     #[allow(clippy::needless_pass_by_value)]
     fn update_assets(
-        registry: ResMut<'_, Arc<AssetRegistry>>,
+        registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,

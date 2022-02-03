@@ -1,0 +1,4 @@
+{
+  "script": "fn fibonacci(n) {\n            if n < 2 {\n                n\n            } else {\n                fibonacci(n-1) + fibonacci(n-2)\n            }\n        }",
+  "script_type": 3
+}

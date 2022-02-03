@@ -1,5 +1,13 @@
+/*pub enum ScriptType {
+    Mun, // 1
+    Rune, // 2
+    Rhai // 3
+}*/
+
 #[resource]
 struct Script {
+    pub script_type: usize, // ScriptType
+
     #[legion(offline_only, editor_type = "script")]
     pub script: String,
 
@@ -9,6 +17,7 @@ struct Script {
 
 #[component]
 struct ScriptComponent {
+    pub script_type: usize, //ScriptType,
     pub input_values: Vec<String>,
     pub entry_fn: String,
 

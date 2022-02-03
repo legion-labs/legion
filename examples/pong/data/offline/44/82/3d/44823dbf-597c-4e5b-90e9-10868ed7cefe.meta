@@ -1,7 +1,7 @@
 {
-  "name": "/scene/mun_script",
+  "name": "/scene/rhai_script",
   "type_name": "offline_script",
   "type_id": "45307156cdfef705",
   "dependencies": [],
-  "content_checksum": "32e0691c8457c461059b7ad21a92dec4"
+  "content_checksum": "60eb1284bd8ace0eac746fc8f0f0dac6"
 }

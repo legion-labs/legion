@@ -1,7 +1,7 @@
 {
-  "name": "/scene/pong_script",
+  "name": "/scene/rune_script",
   "type_name": "offline_script",
   "type_id": "45307156cdfef705",
   "dependencies": [],
-  "content_checksum": "d8b1021ee891f8c288a09c91e3b61a8a"
+  "content_checksum": "9e6017fe11af45c06d93eaf6bcd3365e"
 }
