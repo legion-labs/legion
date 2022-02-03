@@ -31,7 +31,7 @@ pub struct Workspace {
     cache_blob_storage: LocalBlobStorage,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Staging {
     StagedAndUnstaged,
     StagedOnly,
@@ -670,6 +670,7 @@ impl Workspace {
 
         let mut changes_to_clear = vec![];
         let mut changes_to_ignore = vec![];
+        let mut changes_to_save = vec![];
 
         let is_selected = |path| -> bool {
             for p in &canonical_paths {
@@ -685,13 +686,41 @@ impl Workspace {
             staged_changes.iter().filter(|(path, _)| is_selected(path))
         {
             match staged_change.change_type() {
-                ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
-                    self.download_blob(&old_info.hash, canonical_path).await?;
+                ChangeType::Add { .. } => {
+                    changes_to_clear.push(staged_change.clone());
+                }
+                ChangeType::Edit { old_info, new_info } => {
+                    // Only remove local changes if we are not reverting staged changes only.
+                    match staging {
+                        Staging::UnstagedOnly => {
+                            // We should never end-up here.
+                            unreachable!();
+                        }
+                        Staging::StagedOnly => {
+                            if new_info != old_info {
+                                changes_to_save.push(Change::new(
+                                    canonical_path.clone(),
+                                    ChangeType::Edit {
+                                        old_info: old_info.clone(),
+                                        new_info: old_info.clone(),
+                                    },
+                                ));
+                                changes_to_clear.push(staged_change.clone());
+                            }
+                        }
+                        Staging::StagedAndUnstaged => {
+                            self.download_blob(&old_info.hash, canonical_path, Some(true))
+                                .await?;
+                            changes_to_clear.push(staged_change.clone());
+                        }
+                    }
+                }
+                ChangeType::Delete { old_info } => {
+                    self.download_blob(&old_info.hash, canonical_path, Some(true))
+                        .await?;
+                    changes_to_clear.push(staged_change.clone());
                 }
             }
-
-            changes_to_clear.push(staged_change.clone());
         }
 
         for (canonical_path, unstaged_change) in unstaged_changes
@@ -701,7 +730,14 @@ impl Workspace {
             match unstaged_change.change_type() {
                 ChangeType::Add { .. } => {}
                 ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
-                    self.download_blob(&old_info.hash, canonical_path).await?;
+                    let read_only = match staging {
+                        Staging::StagedAndUnstaged => Some(true),
+                        Staging::StagedOnly => unreachable!(),
+                        Staging::UnstagedOnly => None,
+                    };
+
+                    self.download_blob(&old_info.hash, canonical_path, read_only)
+                        .await?;
                 }
             }
 
@@ -711,6 +747,7 @@ impl Workspace {
         }
 
         self.backend.clear_staged_changes(&changes_to_clear).await?;
+        self.backend.save_staged_changes(&changes_to_save).await?;
 
         Ok(changes_to_clear
             .into_iter()
@@ -736,6 +773,23 @@ impl Workspace {
         //for change in &staged_changes {
         //    assert_not_locked(workspace, &abs_path).await?;
         //}
+
+        let unchanged_files_marked_for_edition: BTreeSet<_> = staged_changes
+            .iter()
+            .filter_map(|(path, change)| {
+                if change.change_type().has_modifications() {
+                    None
+                } else {
+                    Some(path.clone())
+                }
+            })
+            .collect();
+
+        if !unchanged_files_marked_for_edition.is_empty() {
+            return Err(Error::UnchangedFilesMarkedForEdition {
+                paths: unchanged_files_marked_for_edition,
+            });
+        }
 
         // Upload all the data straight away.
         //
@@ -1036,14 +1090,23 @@ impl Workspace {
             .map_other_err(format!("failed to write blob `{}`", hash))
     }
 
-    async fn download_blob(&self, hash: &str, path: &CanonicalPath) -> Result<()> {
+    async fn download_blob(
+        &self,
+        hash: &str,
+        path: &CanonicalPath,
+        read_only: Option<bool>,
+    ) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
         match self.cache_blob_storage.download_blob(&abs_path, hash).await {
             Ok(()) => {
                 debug!("downloaded blob `{}` from cache", hash);
 
-                self.make_file_read_only(abs_path, true).await
+                if let Some(read_only) = read_only {
+                    self.make_file_read_only(abs_path, read_only).await
+                } else {
+                    Ok(())
+                }
             }
             Err(lgn_blob_storage::Error::NoSuchBlob(_)) => match self
                 .blob_storage
@@ -1054,7 +1117,11 @@ impl Workspace {
                 Ok(()) => {
                     debug!("downloaded blob `{}` from blob storage", hash);
 
-                    self.make_file_read_only(abs_path, true).await
+                    if let Some(read_only) = read_only {
+                        self.make_file_read_only(abs_path, read_only).await
+                    } else {
+                        Ok(())
+                    }
                 }
                 Err(e) => Err(e),
             },

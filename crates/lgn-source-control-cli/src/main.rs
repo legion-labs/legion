@@ -3,7 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
@@ -154,7 +154,7 @@ enum Commands {
         #[clap(required = true, parse(from_os_str))]
         paths: Vec<PathBuf>,
 
-        /// Only revert staged changes. Will not modify files on disk.
+        /// Only revert staged changes. Will not modify files on disk. Changed edited files will remain in edit mode.
         #[clap(long, conflicts_with = "unstaged")]
         staged: bool,
 
@@ -192,6 +192,34 @@ enum Commands {
         #[clap(short)]
         message: String,
     },
+}
+
+fn binary_name() -> String {
+    "lsc".to_string()
+}
+
+fn green() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Green)).set_intense(true);
+
+    colorspec
+}
+
+fn yellow() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Yellow)).set_intense(true);
+
+    colorspec
+}
+
+fn red() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Red));
+
+    colorspec
 }
 
 #[tokio::main]
@@ -369,11 +397,24 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
             let staging = Staging::from_bool(staged, unstaged);
 
-            workspace
+            let reverted_files = workspace
                 .revert_files(paths.iter().map(PathBuf::as_path), staging)
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
+                .await?;
+
+            if reverted_files.is_empty() {
+                println!("Nothing to revert");
+            } else {
+                println!("Reverted files:");
+
+                let current_dir = std::env::current_dir()
+                    .map_other_err("failed to determine current directory")?;
+
+                for file in &reverted_files {
+                    println!("   {}", workspace.make_relative_path(&current_dir, file));
+                }
+            }
+
+            Ok(())
         }
         Commands::Status { staged, unstaged } => {
             let current_dir =
@@ -388,19 +429,25 @@ async fn main() -> anyhow::Result<()> {
             if !staged_changes.is_empty() {
                 println!("\nChanges staged for commit:");
 
-                stdout.set_color(
-                    ColorSpec::new()
-                        .set_fg(Some(Color::Green))
-                        .set_intense(true),
-                )?;
-
                 for (path, change) in &staged_changes {
-                    writeln!(
-                        &mut stdout,
+                    if change.change_type().has_modifications() {
+                        stdout.set_color(&green())?;
+                    } else {
+                        stdout.set_color(&yellow())?;
+                    }
+
+                    print!(
                         "\t{:>8}:   {}",
                         change.change_type().to_human_string(),
                         workspace.make_relative_path(&current_dir, path),
-                    )?;
+                    );
+
+                    if !change.change_type().has_modifications() {
+                        stdout.reset()?;
+                        print!(" (no modifications staged yet)");
+                    }
+
+                    println!("");
                 }
 
                 stdout.reset()?;
@@ -409,15 +456,14 @@ async fn main() -> anyhow::Result<()> {
             if !unstaged_changes.is_empty() {
                 println!("\nChanges not staged for commit:");
 
-                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                stdout.set_color(&red())?;
 
                 for (path, change) in &unstaged_changes {
-                    writeln!(
-                        &mut stdout,
+                    println!(
                         "\t{:>8}:   {}",
                         change.change_type().to_human_string(),
                         workspace.make_relative_path(&current_dir, path),
-                    )?;
+                    );
                 }
 
                 stdout.reset()?;
@@ -447,11 +493,35 @@ async fn main() -> anyhow::Result<()> {
         Commands::Commit { message } => {
             let workspace = Workspace::find_in_current_directory().await?;
 
-            workspace
-                .commit(&message)
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
+            match workspace.commit(&message).await {
+                Ok(()) => Ok(()),
+                Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
+                    let current_dir = std::env::current_dir()
+                        .map_other_err("failed to determine current directory")?;
+
+                    println!("The following files are marked for edition but do not have any change staged:");
+                    println!(
+                        "  (use \"{} add <file>...\" to update what will be commited)",
+                        binary_name()
+                    );
+                    println!(
+                        "  (use \"{} revert --staged <file>...\" to remove the edition mark)",
+                        binary_name()
+                    );
+
+                    for path in &paths {
+                        stdout.set_color(&red())?;
+                        print!("\t{}", workspace.make_relative_path(&current_dir, path));
+                        stdout.reset()?;
+                        println!("");
+                    }
+
+                    println!("");
+
+                    Err(anyhow::anyhow!("refusing to commit"))
+                }
+                Err(err) => Err(err.into()),
+            }
         }
     }
 }

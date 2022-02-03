@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use thiserror::Error;
 
@@ -34,6 +34,8 @@ pub enum Error {
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
     EmptyCommitNotAllowed,
+    #[error("some files are marked for edition but no changes are staged for them: please stage your changes or revert the files")]
+    UnchangedFilesMarkedForEdition { paths: BTreeSet<CanonicalPath> },
     #[error("`{canonical_path}` is a directory and cannot be edited")]
     CannotEditDirectory { canonical_path: CanonicalPath },
     #[error(

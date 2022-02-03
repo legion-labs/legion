@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use lgn_source_control::{
-    CanonicalPath, Change, ChangeType, Error, FileInfo, Index, MapOtherError, Workspace,
+    CanonicalPath, Change, ChangeType, Error, FileInfo, Index, MapOtherError, Staging, Workspace,
     WorkspaceConfig, WorkspaceRegistration,
 };
 
@@ -30,6 +30,15 @@ async fn update_file(workspace: &Workspace, path: &str, content: &str) {
     tokio::fs::write(file_path, content)
         .await
         .map_other_err(format!("failed to write file `{}`", path))
+        .unwrap();
+}
+
+async fn delete_file(workspace: &Workspace, path: &str) {
+    let file_path = workspace.root().join(path);
+
+    tokio::fs::remove_file(file_path)
+        .await
+        .map_other_err(format!("failed to remove file `{}`", path))
         .unwrap();
 }
 
@@ -295,6 +304,17 @@ async fn test_full_flow() {
     assert_file_read_only(&workspace, "vegetables/carrot.txt", true).await;
     assert_file_content(&workspace, "vegetables/carrot.txt", "I am a carrot").await;
 
+    // Committing the change should fail, as the commit is empty.
+    match workspace.commit("Edited the carrot").await {
+        Err(Error::EmptyCommitNotAllowed) => {}
+        Err(err) => {
+            panic!("unexpected error: {:?}", err);
+        }
+        Ok(_) => {
+            panic!("commit should have failed");
+        }
+    }
+
     // Let's now edit one file.
     let new_edited_files = workspace
         .edit_files([Path::new("vegetables")])
@@ -333,10 +353,12 @@ async fn test_full_flow() {
     )
     .await;
 
-    // Commit the change should fail, as we have one edited file whose hash
+    // Committing the change should fail, as we have one edited file whose hash
     // changed but the change was not staged.
     match workspace.commit("Edited the carrot").await {
-        Err(Error::EmptyCommitNotAllowed) => {}
+        Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
+            assert_eq!(paths, [cp("/vegetables/carrot.txt")].into());
+        }
         Err(err) => {
             panic!("unexpected error: {:?}", err);
         }
@@ -515,7 +537,7 @@ async fn test_full_flow() {
 
     // Reverting the file with unstaged changes should work.
     let new_reverted_files = workspace
-        .revert_files([Path::new("apple.txt")])
+        .revert_files([Path::new("apple.txt")], Staging::StagedAndUnstaged)
         .await
         .unwrap();
 
@@ -566,7 +588,10 @@ async fn test_full_flow() {
     assert_unstaged_changes(&workspace, &[]).await;
 
     // Reverting the file with staged changes should work too.
-    let new_reverted_files = workspace.revert_files([Path::new(".")]).await.unwrap();
+    let new_reverted_files = workspace
+        .revert_files([Path::new(".")], Staging::StagedAndUnstaged)
+        .await
+        .unwrap();
 
     assert_eq!(
         new_reverted_files,
@@ -586,8 +611,142 @@ async fn test_full_flow() {
     .await;
 
     assert_file_read_only(&workspace, "apple.txt", true).await;
+    assert_file_read_only(&workspace, "strawberry.txt", false).await;
     assert_file_content(&workspace, "apple.txt", "I am a new apple").await;
     assert_file_content(&workspace, "strawberry.txt", "I am a strawberry").await;
+    delete_file(&workspace, "strawberry.txt").await;
+
+    assert_staged_changes(&workspace, &[]).await;
+    assert_unstaged_changes(&workspace, &[]).await;
+
+    // Let's mark a file for edition, change it but do not stage it. Then let's revert it in staging.
+    let new_edited_files = workspace
+        .edit_files([Path::new("apple.txt")])
+        .await
+        .unwrap();
+
+    assert_eq!(new_edited_files, [cp("/apple.txt").into()].into());
+
+    assert_unstaged_changes(&workspace, &[]).await;
+    assert_staged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )],
+    )
+    .await;
+
+    update_file(&workspace, "apple.txt", "I am an even newer apple").await;
+
+    assert_unstaged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+            16,
+            24,
+        )],
+    )
+    .await;
+    assert_staged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )],
+    )
+    .await;
+
+    let new_reverted_files = workspace
+        .revert_files([Path::new("apple.txt")], Staging::StagedOnly)
+        .await
+        .unwrap();
+
+    assert_eq!(new_reverted_files, [].into());
+
+    let new_added_files = workspace.add_files([Path::new("apple.txt")]).await.unwrap();
+
+    assert_eq!(new_added_files, [cp("/apple.txt"),].into(),);
+
+    assert_unstaged_changes(&workspace, &[]).await;
+    assert_staged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+            16,
+            24,
+        )],
+    )
+    .await;
+
+    update_file(&workspace, "apple.txt", "Unstaged modification").await;
+
+    let new_reverted_files = workspace
+        .revert_files([Path::new("apple.txt")], Staging::StagedOnly)
+        .await
+        .unwrap();
+
+    assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
+
+    assert_file_read_only(&workspace, "apple.txt", false).await;
+    assert_file_content(&workspace, "apple.txt", "Unstaged modification").await;
+
+    assert_unstaged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "d5c062b844a8a2fce186e6552465512dd7f08fbec83f2580d72f560ab51c541e",
+            16,
+            21,
+        )],
+    )
+    .await;
+    assert_staged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )],
+    )
+    .await;
+
+    // This time let's only revert unstaged changes.
+    let new_reverted_files = workspace
+        .revert_files([Path::new("apple.txt")], Staging::UnstagedOnly)
+        .await
+        .unwrap();
+
+    assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
+
+    assert_file_read_only(&workspace, "apple.txt", false).await;
+    assert_file_content(&workspace, "apple.txt", "I am a new apple").await;
+
+    assert_unstaged_changes(&workspace, &[]).await;
+    assert_staged_changes(
+        &workspace,
+        &[edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )],
+    )
+    .await;
 
     // Destroy the index.
     #[cfg(not(target_os = "windows"))]

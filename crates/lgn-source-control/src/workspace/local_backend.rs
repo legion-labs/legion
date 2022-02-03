@@ -239,6 +239,10 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
 
     #[span_fn]
     async fn save_staged_changes(&self, changes: &[Change]) -> Result<()> {
+        if changes.is_empty() {
+            return Ok(());
+        }
+
         let sql: &str = &format!(
             "REPLACE INTO `{}` (canonical_path, old_hash, new_hash, old_size, new_size) VALUES(?, ?, ?, ?, ?);",
             Self::TABLE_CHANGES

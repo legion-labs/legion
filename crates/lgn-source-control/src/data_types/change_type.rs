@@ -55,6 +55,14 @@ impl ChangeType {
             ChangeType::Delete { .. } => "deleted".to_string(),
         }
     }
+
+    pub fn has_modifications(&self) -> bool {
+        match self {
+            ChangeType::Add { .. } => true,
+            ChangeType::Edit { old_info, new_info } => old_info != new_info,
+            ChangeType::Delete { .. } => true,
+        }
+    }
 }
 
 impl Display for ChangeType {
