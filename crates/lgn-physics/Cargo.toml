@@ -15,3 +15,4 @@ lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 
 # other
 physx = "0.12.1"
+physx-sys = "0.4.16"
