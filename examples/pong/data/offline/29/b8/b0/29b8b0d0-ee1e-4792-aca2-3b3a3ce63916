@@ -8,12 +8,12 @@
   "components": [
     {
       "ScriptComponent": {
-        "script_type": 2,
-        "entry_fn": "fib",
+        "entry_fn": "fibonacci",
         "input_values": [
           "10"
         ],
         "script_id": "(45307156cdfef705,f7e3757c-22b1-44af-a8d3-5ae080c4fef1)|17bed132bc803773",
+        "script_type": 2,
         "temp_script": ""
       }
     }

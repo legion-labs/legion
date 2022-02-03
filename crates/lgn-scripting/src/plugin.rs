@@ -9,7 +9,7 @@ use rune::{
     FromValue, ToValue,
 };
 
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc, fs};
 
 use crate::runtime::{Script, ScriptComponent};
 use std::str::FromStr;
@@ -67,10 +67,20 @@ impl ScriptingPlugin {
     ) {
         if runtimes.mun_runtimes.is_empty() {
             for script in mun_components {
-                let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
+                let script_id = script.script_id.as_ref().unwrap().id();
+                let script_untyped = registry.get_untyped(script_id);
                 let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
-                let lib_path = std::str::from_utf8(&script_typed.compiled_script).unwrap();
-                println!("{}", &lib_path);
+
+                let lib_path = {
+                    let mut temp_crate = std::env::temp_dir();
+                    temp_crate.push(script_id.id.to_string());
+                    fs::remove_dir_all(&temp_crate).unwrap_or_default();
+                    fs::create_dir_all(&temp_crate).unwrap();
+                    temp_crate.push("mod.munlib");
+                    fs::write(&temp_crate, &script_typed.compiled_script).unwrap();
+                    temp_crate
+                };
+                println!("{:?}", &lib_path);
 
                 let runtime = mun_runtime::RuntimeBuilder::new(&lib_path)
                     .spawn()
@@ -81,13 +91,14 @@ impl ScriptingPlugin {
         for runtime in &runtimes.mun_runtimes {
             {
                 let runtime_ref = runtime.1.borrow();
+                let arg = i64::from_str(&runtime.0.input_values[0]).unwrap();
                 let result: i64 = mun_runtime::invoke_fn!(
                     runtime_ref,
                     &runtime.0.entry_fn,
-                    i64::from_str(&runtime.0.input_values[0]).unwrap()
+                    arg
                 )
                 .unwrap();
-                println!("fibonacci({}) = {}", &runtime.0.input_values[0], result);
+                println!("Mun: fibonacci({}) = {}", &arg, result);
             }
 
             // reload the script of the path changed
@@ -136,7 +147,7 @@ impl ScriptingPlugin {
                 let fn_name = &[script.entry_fn.as_str()];
                 let hashed_fn_name = rune::Hash::type_hash(fn_name);
 
-                let output = runtimes
+                let result = runtimes
                     .rune_vm
                     .as_mut()
                     .unwrap()
@@ -144,9 +155,8 @@ impl ScriptingPlugin {
                     .unwrap()
                     .complete()
                     .unwrap();
-                let output = i64::from_value(output).unwrap();
-
-                println!("output: {}", output);
+                let result = i64::from_value(result).unwrap();
+                println!("Rune: fibonacci({}) = {}", &arg, result);
             }
         }
     }
@@ -160,6 +170,7 @@ impl ScriptingPlugin {
             for script in rhai_components {
                 if runtimes.rhai_eng.is_none() {
                     runtimes.rhai_eng = Some(rhai::Engine::new());
+                    runtimes.rhai_eng.as_mut().unwrap().set_max_call_levels(15);
                 }
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
                 let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
@@ -180,7 +191,7 @@ impl ScriptingPlugin {
             for runtime in &runtimes.rhai_asts {
                 let mut scope = Scope::new();
                 let arg = i64::from_str(runtime.0.input_values[0].as_str()).unwrap();
-                let output: i64 = runtimes
+                let result: i64 = runtimes
                     .rhai_eng
                     .as_ref()
                     .unwrap()
@@ -191,7 +202,7 @@ impl ScriptingPlugin {
                         (arg,),
                     )
                     .unwrap();
-                println!("output: {}", output);
+                println!("Rhai: fibonacci({}) = {}", &arg, result);
             }
         }
     }

@@ -107,6 +107,41 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("project.index");
 }
 
+// Script
+async fn build_script(
+    project: &mut Project,
+    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    guid: &str,
+    script_type: usize,
+    file_name: &str,
+    script_text: &str,
+) -> ResourcePathId {
+    let mut resources = resource_registry.lock().await;
+    let id = ResourceTypeAndId {
+        kind: lgn_scripting::offline::Script::TYPE,
+        id: ResourceId::from_str(guid).unwrap(),
+    };
+    let handle = resources.new_resource(id.kind).unwrap();
+    let script = handle
+        .get_mut::<lgn_scripting::offline::Script>(&mut resources)
+        .unwrap();
+    script.script_type = script_type;
+    script.script = script_text.to_string();
+    project
+        .add_resource_with_id(
+            file_name.into(),
+            lgn_scripting::offline::Script::TYPENAME,
+            id.kind,
+            id,
+            &handle,
+            &mut resources,
+        )
+        .await
+        .unwrap();
+    let path: ResourcePathId = id.into();
+    path.push(lgn_scripting::runtime::Script::TYPE)
+}
+
 async fn create_offline_data(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
@@ -232,47 +267,50 @@ async fn create_offline_data(
         path.push(generic_data::runtime::DebugCube::TYPE)
     };
 
-    // script
-    let script_path_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: lgn_scripting::offline::Script::TYPE,
-            id: ResourceId::from_str("d46d7e71-27bc-4516-9e85-074f5431d29c").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-        let script = handle
-            .get_mut::<lgn_scripting::offline::Script>(&mut resources)
-            .unwrap();
-        script.script = r#"pub fn entry() {
-            //print("Hello world!");
-        }
-        
-        pub fn arg() -> i64 {
-            10
-        }
-        
-        pub fn fibonacci(n: i64) -> i64 {
+    // Mun script
+    let _mun_script = build_script(project, resource_registry,
+        "d46d7e71-27bc-4516-9e85-074f5431d29c",
+        1,
+        "/scene/mun_script",
+        r#"pub fn fibonacci(n: i64) -> i64 {
             if n <= 1 {
                 n
             } else {
                 fibonacci(n - 1) + fibonacci(n - 2)
             }
-        }"#
-        .to_string();
-        project
-            .add_resource_with_id(
-                "/scene/pong_script".into(),
-                lgn_scripting::offline::Script::TYPENAME,
-                id.kind,
-                id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(lgn_scripting::runtime::Script::TYPE)
-    };
+        }"#,
+    )
+    .await;
+
+    // Rune script
+    let rune_script = build_script(project, resource_registry,
+        "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
+        2,
+        "/scene/rune_script",
+        r#"pub fn fibonacci(n) {
+            if n <= 1 {
+                n
+            } else {
+                fibonacci(n - 1) + fibonacci(n - 2)
+            }
+        }"#,
+    )
+    .await;
+
+    // Rhai script
+    let _rhai_script = build_script(project, resource_registry,
+        "44823dbf-597c-4e5b-90e9-10868ed7cefe",
+        3,
+        "/scene/rhai_script",
+        r#"fn fibonacci(n) {
+            if n < 2 {
+                n
+            } else {
+                fibonacci(n-1) + fibonacci(n-2)
+            }
+        }"#,
+    )
+    .await;
 
     // scene
     let scene_id = {
@@ -290,9 +328,10 @@ async fn create_offline_data(
         entity.children.push(pad_left_path_id);
         entity.children.push(ball_path_id);
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
+            script_type: 2, // Rune
             input_values: vec!["10".to_string()],
             entry_fn: "fibonacci".to_string(),
-            script_id: Some(script_path_id),
+            script_id: Some(rune_script),
             temp_script: "".to_string(),
         });
         entity.components.push(script_component);
