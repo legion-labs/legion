@@ -381,8 +381,8 @@ impl SourceIndex {
 #[cfg(test)]
 mod tests {
 
-    use lgn_content_store::RamContentStore;
-    use lgn_data_offline::ResourcePathId;
+    use lgn_content_store::{ContentStoreAddr, HddContentStore, RamContentStore};
+    use lgn_data_offline::{resource::Project, ResourcePathId};
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use crate::source_index::{SourceContent, SourceIndex};
@@ -500,5 +500,35 @@ mod tests {
         source_index.update_resource(output_resources, resource_hash, output_deps);
         assert_eq!(source_index.resources.len(), 3);
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn source_index_cache() {
+        let work_dir = tempfile::tempdir().unwrap();
+
+        let project = Project::create_new(&work_dir.path())
+            .await
+            .expect("failed to create a project");
+
+        let temp_dir = work_dir.path().join("temp");
+        std::fs::create_dir(&temp_dir).expect("new directory");
+
+        let content_store =
+            HddContentStore::open(ContentStoreAddr::from(temp_dir.clone())).unwrap();
+
+        let version = "0.0.1";
+
+        let mut source_index = SourceIndex::create_new(
+            &SourceIndex::source_index_file(&temp_dir),
+            Box::new(content_store),
+            version,
+        )
+        .unwrap();
+
+        source_index.source_pull(&project, version).await.unwrap();
+        assert_eq!(source_index.index_keys.keys.len(), 1);
+
+        source_index.source_pull(&project, version).await.unwrap();
+        assert_eq!(source_index.index_keys.keys.len(), 1);
     }
 }
