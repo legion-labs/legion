@@ -27,6 +27,7 @@ pub mod egui_shader_family {
         name: "EGui",
         path: SHADER_PATH.path(),
         options: &SHADER_OPTIONS,
+        instances: &SHADER_INSTANCES,
     };
 
     pub const NONE: u64 = 0;
@@ -64,6 +65,7 @@ pub mod shader_shader_family {
         name: "Shader",
         path: SHADER_PATH.path(),
         options: &SHADER_OPTIONS,
+        instances: &SHADER_INSTANCES,
     };
 
     pub const NONE: u64 = 0;
@@ -97,6 +99,7 @@ pub mod picking_shader_family {
         name: "Picking",
         path: SHADER_PATH.path(),
         options: &SHADER_OPTIONS,
+        instances: &SHADER_INSTANCES,
     };
 
     pub const NONE: u64 = 0;
@@ -130,6 +133,7 @@ pub mod const_color_shader_family {
         name: "ConstColor",
         path: SHADER_PATH.path(),
         options: &SHADER_OPTIONS,
+        instances: &SHADER_INSTANCES,
     };
 
     pub const NONE: u64 = 0;
@@ -147,14 +151,10 @@ pub mod const_color_shader_family {
 macro_rules! register_family {
     ($registry:ident,  $family:ident) => {
         $registry.shader_families.push(&$family::SHADER_FAMILY);
-
-        $family::SHADER_INSTANCES
-            .iter()
-            .for_each(|x| $registry.shader_instances.push(x));
     };
 }
 
-pub fn patch_cgen_registry(cgen_registry: &mut CGenRegistry) {
+pub fn patch_cgen_registry(cgen_registry: &mut CGenRegistry) {    
     register_family!(cgen_registry, egui_shader_family);
     register_family!(cgen_registry, shader_shader_family);
     register_family!(cgen_registry, picking_shader_family);

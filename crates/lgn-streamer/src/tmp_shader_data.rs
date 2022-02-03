@@ -27,6 +27,7 @@ pub mod rgb2yuv_shader_family {
         name: "Rgb2Yuv",
         path: SHADER_PATH.path(),
         options: &SHADER_OPTIONS,
+        instances: &SHADER_INSTANCES,
     };
 
     pub const NONE: u64 = 0;
@@ -42,10 +43,6 @@ pub mod rgb2yuv_shader_family {
 macro_rules! register_family {
     ($registry:ident,  $family:ident) => {
         $registry.shader_families.push(&$family::SHADER_FAMILY);
-
-        $family::SHADER_INSTANCES
-            .iter()
-            .for_each(|x| $registry.shader_instances.push(x));
     };
 }
 

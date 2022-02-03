@@ -511,6 +511,7 @@ pub struct CGenShaderFamily {
     pub name: &'static str,
     pub path: &'static str,
     pub options: &'static [CGenShaderOption],
+    pub instances: &'static [CGenShaderInstance]
 }
 
 //
@@ -538,8 +539,7 @@ pub struct CGenRegistry {
 
     // static
     type_defs: Vec<&'static CGenTypeDef>,
-    pub shader_families: Vec<&'static CGenShaderFamily>,
-    pub shader_instances: Vec<&'static CGenShaderInstance>,
+    pub shader_families: Vec<&'static CGenShaderFamily>,    
     // dynamic
     descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pipeline_layouts: Vec<RootSignature>,
@@ -552,8 +552,7 @@ impl CGenRegistry {
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),
-            shader_families: Vec::new(),
-            shader_instances: Vec::new(),
+            shader_families: Vec::new(),            
         }
     }
 
