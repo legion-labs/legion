@@ -99,14 +99,14 @@ impl VulkanDescriptorSetLayout {
 
 impl DescriptorSetLayout {
     pub(crate) fn vk_layout(&self) -> vk::DescriptorSetLayout {
-        self.inner.platform_layout.vk_layout
+        self.inner.backend_layout.vk_layout
     }
 
     pub(crate) fn vk_image_info_count(&self) -> u32 {
-        self.inner.platform_layout.vk_image_info_count
+        self.inner.backend_layout.vk_image_info_count
     }
 
     pub(crate) fn vk_buffer_info_count(&self) -> u32 {
-        self.inner.platform_layout.vk_buffer_info_count
+        self.inner.backend_layout.vk_buffer_info_count
     }
 }

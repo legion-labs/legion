@@ -1,5 +1,4 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanPipeline;
+use crate::backends::BackendPipeline;
 use crate::DeviceContext;
 use crate::{
     deferred_drop::Drc, ComputePipelineDef, GfxResult, GraphicsPipelineDef, PipelineType,
@@ -9,15 +8,12 @@ use crate::{
 pub(crate) struct PipelineInner {
     root_signature: RootSignature,
     pipeline_type: PipelineType,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_pipeline: VulkanPipeline,
+    pub(crate) backend_pipeline: BackendPipeline,
 }
 
 impl Drop for PipelineInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_pipeline
+        self.backend_pipeline
             .destroy(self.root_signature.device_context());
     }
 }
@@ -32,19 +28,14 @@ impl Pipeline {
         device_context: &DeviceContext,
         pipeline_def: &GraphicsPipelineDef<'_>,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_pipeline = VulkanPipeline::new_graphics_pipeline(device_context, pipeline_def)
-            .map_err(|e| {
-                lgn_tracing::error!("Error creating graphics pipeline {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
+        let backend_pipeline =
+            BackendPipeline::new_graphics_pipeline(device_context, pipeline_def)?;
 
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Graphics,
                 root_signature: pipeline_def.root_signature.clone(),
-                #[cfg(any(feature = "vulkan"))]
-                platform_pipeline,
+                backend_pipeline,
             }),
         })
     }
@@ -53,19 +44,13 @@ impl Pipeline {
         device_context: &DeviceContext,
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_pipeline = VulkanPipeline::new_compute_pipeline(device_context, pipeline_def)
-            .map_err(|e| {
-                lgn_tracing::error!("Error creating compute pipeline {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
+        let backend_pipeline = BackendPipeline::new_compute_pipeline(device_context, pipeline_def)?;
 
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Compute,
                 root_signature: pipeline_def.root_signature.clone(),
-                #[cfg(any(feature = "vulkan"))]
-                platform_pipeline,
+                backend_pipeline,
             }),
         })
     }

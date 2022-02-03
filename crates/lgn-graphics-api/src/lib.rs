@@ -3,10 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 //#![warn(missing_docs)]
-#![cfg_attr(
-    not(any(feature = "vulkan")),
-    allow(dead_code, unused_attributes, unused_variables)
-)]
+#![cfg_attr(not(any(feature = "vulkan")), allow(dead_code))]
 
 pub mod backends;
 pub mod error;
@@ -42,6 +39,9 @@ pub use device_context::*;
 
 mod fence;
 pub use fence::*;
+
+mod memory_allocation;
+pub use memory_allocation::*;
 
 mod pipeline;
 pub use pipeline::*;

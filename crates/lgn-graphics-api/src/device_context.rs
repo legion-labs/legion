@@ -8,8 +8,7 @@ use lgn_tracing::trace;
 use raw_window_handle::HasRawWindowHandle;
 
 use super::deferred_drop::DeferredDropper;
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanDeviceContext;
+use crate::backends::BackendDeviceContext;
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, DeviceInfo, ExtensionMode, Fence, GfxResult,
@@ -42,7 +41,6 @@ pub enum PhysicalDeviceType {
 }
 
 pub(crate) struct DeviceContextInner {
-    #[cfg(any(feature = "vulkan"))]
     device_info: DeviceInfo,
     deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
@@ -55,8 +53,7 @@ pub(crate) struct DeviceContextInner {
     #[cfg(feature = "track-device-contexts")]
     pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_device_context: VulkanDeviceContext,
+    pub(crate) backend_device_context: BackendDeviceContext,
 }
 
 impl std::fmt::Debug for DeviceContext {
@@ -64,9 +61,9 @@ impl std::fmt::Debug for DeviceContext {
         f.debug_struct("DeviceContext")
             .field(
                 "handle",
-                #[cfg(any(feature = "vulkan"))]
-                &self.vk_device().handle(),
-                #[cfg(not(any(feature = "vulkan")))]
+                //#[cfg(any(feature = "vulkan"))]
+                //&self.vk_device().handle(),
+                //#[cfg(not(any(feature = "vulkan")))]
                 &0,
             )
             .finish()
@@ -79,8 +76,7 @@ impl Drop for DeviceContextInner {
             trace!("destroying device");
             self.deferred_dropper.destroy();
 
-            #[cfg(any(feature = "vulkan"))]
-            self.platform_device_context.destroy();
+            self.backend_device_context.destroy();
 
             //self.surface_loader.destroy_surface(self.surface, None);
             trace!("destroyed device");
@@ -90,8 +86,7 @@ impl Drop for DeviceContextInner {
 
 impl DeviceContextInner {
     pub fn new(
-        #[cfg(not(any(feature = "vulkan")))] instance: &Instance,
-        #[cfg(any(feature = "vulkan"))] instance: &Instance<'_>,
+        instance: &Instance<'_>,
         windowing_mode: ExtensionMode,
         video_mode: ExtensionMode,
     ) -> GfxResult<Self> {
@@ -104,22 +99,15 @@ impl DeviceContextInner {
             all_contexts
         };
 
-        #[cfg(feature = "vulkan")]
-        let (platform_device_context, device_info) =
-            VulkanDeviceContext::new(instance.platform_instance, windowing_mode, video_mode)
-                .map_err(|e| {
-                    lgn_tracing::error!("Error creating device context {:?}", e);
-                    ash::vk::Result::ERROR_UNKNOWN
-                })?;
+        let (backend_device_context, device_info) =
+            BackendDeviceContext::new(instance.backend_instance, windowing_mode, video_mode)?;
 
         Ok(Self {
-            #[cfg(any(feature = "vulkan"))]
             device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
-            #[cfg(any(feature = "vulkan"))]
-            platform_device_context,
+            backend_device_context,
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -184,11 +172,7 @@ impl Drop for DeviceContext {
 }
 
 impl DeviceContext {
-    pub fn new(
-        #[cfg(not(any(feature = "vulkan")))] instance: &Instance,
-        #[cfg(any(feature = "vulkan"))] instance: &Instance<'_>,
-        api_def: &ApiDef,
-    ) -> GfxResult<Self> {
+    pub fn new(instance: &Instance<'_>, api_def: &ApiDef) -> GfxResult<Self> {
         let inner = Arc::new(DeviceContextInner::new(
             instance,
             api_def.windowing_mode,
@@ -287,10 +271,6 @@ impl DeviceContext {
     }
 
     pub fn device_info(&self) -> &DeviceInfo {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
         &self.inner.device_info
     }
 }

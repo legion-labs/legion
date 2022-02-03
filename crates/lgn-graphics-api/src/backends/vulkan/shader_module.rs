@@ -1,6 +1,6 @@
 use ash::vk;
 
-use crate::{DeviceContext, GfxResult, ShaderModuleDef};
+use crate::{DeviceContext, GfxResult, ShaderModule, ShaderModuleDef};
 
 #[derive(Debug)]
 pub(crate) struct VulkanShaderModule {
@@ -23,12 +23,12 @@ impl VulkanShaderModule {
         }
     }
 
-    pub fn new_from_bytes(device_context: &DeviceContext, data: &[u8]) -> GfxResult<Self> {
+    fn new_from_bytes(device_context: &DeviceContext, data: &[u8]) -> GfxResult<Self> {
         let spv = ash::util::read_spv(&mut std::io::Cursor::new(data))?;
         Self::new_from_spv(device_context, &spv)
     }
 
-    pub fn new_from_spv(device_context: &DeviceContext, data: &[u32]) -> GfxResult<Self> {
+    fn new_from_spv(device_context: &DeviceContext, data: &[u32]) -> GfxResult<Self> {
         let create_info = vk::ShaderModuleCreateInfo::builder().code(data);
 
         let shader_module = unsafe {
@@ -39,8 +39,10 @@ impl VulkanShaderModule {
 
         Ok(Self { shader_module })
     }
+}
 
-    pub fn vk_shader_module(&self) -> vk::ShaderModule {
-        self.shader_module
+impl ShaderModule {
+    pub(crate) fn vk_shader_module(&self) -> vk::ShaderModule {
+        self.inner.backend_shader_module.shader_module
     }
 }

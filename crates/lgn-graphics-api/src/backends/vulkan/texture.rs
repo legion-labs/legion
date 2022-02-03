@@ -355,18 +355,18 @@ impl VulkanTexture {
 
 impl Texture {
     pub(crate) fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
-        self.inner.platform_texture.aspect_mask
+        self.inner.backend_texture.aspect_mask
     }
 
     pub(crate) fn vk_image(&self) -> vk::Image {
-        self.inner.platform_texture.image.vk_image
+        self.inner.backend_texture.image.vk_image
     }
 
     pub(crate) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.inner.platform_texture.image.vk_allocation
+        self.inner.backend_texture.image.vk_allocation
     }
 
-    pub(crate) fn map_texture_platform(
+    pub(crate) fn backend_map_texture(
         &self,
         plane: PlaneSlice,
     ) -> GfxResult<TextureSubResource<'_>> {
@@ -395,7 +395,7 @@ impl Texture {
                 .inner
                 .device_context
                 .vk_device()
-                .get_image_subresource_layout(self.inner.platform_texture.image.vk_image, sub_res);
+                .get_image_subresource_layout(self.inner.backend_texture.image.vk_image, sub_res);
 
             Ok(TextureSubResource {
                 data: &*slice_from_raw_parts(
@@ -409,7 +409,7 @@ impl Texture {
         }
     }
 
-    pub(crate) fn unmap_texture_platform(&self) {
+    pub(crate) fn backend_unmap_texture(&self) {
         self.inner
             .device_context
             .vk_allocator()

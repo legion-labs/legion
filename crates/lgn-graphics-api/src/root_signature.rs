@@ -1,5 +1,4 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanRootSignature;
+use crate::backends::BackendRootSignature;
 use crate::deferred_drop::Drc;
 use crate::{DeviceContext, GfxResult, RootSignatureDef};
 
@@ -13,15 +12,12 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 pub(crate) struct RootSignatureInner {
     device_context: DeviceContext,
     definition: RootSignatureDef,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_root_signature: VulkanRootSignature,
+    pub(crate) backend_root_signature: BackendRootSignature,
 }
 
 impl Drop for RootSignatureInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_root_signature.destroy(&self.device_context);
+        self.backend_root_signature.destroy(&self.device_context);
     }
 }
 
@@ -32,19 +28,12 @@ pub struct RootSignature {
 
 impl RootSignature {
     pub fn new(device_context: &DeviceContext, definition: &RootSignatureDef) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_root_signature = VulkanRootSignature::new(device_context, definition)
-            .map_err(|e| {
-                lgn_tracing::error!("Error creating platform root signature {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
+        let backend_root_signature = BackendRootSignature::new(device_context, definition)?;
 
         let inner = RootSignatureInner {
             device_context: device_context.clone(),
             definition: definition.clone(),
-
-            #[cfg(any(feature = "vulkan"))]
-            platform_root_signature,
+            backend_root_signature,
         };
 
         Ok(Self {

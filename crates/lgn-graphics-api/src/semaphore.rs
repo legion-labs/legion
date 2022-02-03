@@ -1,8 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanSemaphore;
-use crate::{deferred_drop::Drc, DeviceContext};
+use crate::{backends::BackendSemaphore, deferred_drop::Drc, DeviceContext};
 
 pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,
@@ -10,9 +8,7 @@ pub(crate) struct SemaphoreInner {
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
     signal_available: AtomicBool,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_semaphore: VulkanSemaphore,
+    pub(crate) backend_semaphore: BackendSemaphore,
 }
 
 pub struct Semaphore {
@@ -21,22 +17,19 @@ pub struct Semaphore {
 
 impl Drop for SemaphoreInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_semaphore.destroy(&self.device_context);
+        self.backend_semaphore.destroy(&self.device_context);
     }
 }
 
 impl Semaphore {
     pub fn new(device_context: &DeviceContext) -> Self {
-        #[cfg(feature = "vulkan")]
-        let platform_semaphore = VulkanSemaphore::new(device_context);
+        let platform_semaphore = BackendSemaphore::new(device_context);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(SemaphoreInner {
                 device_context: device_context.clone(),
                 signal_available: AtomicBool::new(false),
-                #[cfg(any(feature = "vulkan"))]
-                platform_semaphore,
+                backend_semaphore: platform_semaphore,
             }),
         }
     }

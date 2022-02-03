@@ -151,7 +151,7 @@ impl UnifiedStaticBuffer {
         let mut last_semaphore = None;
         let graphics_queue = render_context.graphics_queue();
         if let Some(binding_manager) = &mut inner.binding_manager {
-            last_semaphore = Some(binding_manager.commmit_sparse_bindings(
+            last_semaphore = Some(binding_manager.commit_sparse_bindings(
                 &graphics_queue,
                 prev_frame_semaphore,
                 unbind_semaphore,

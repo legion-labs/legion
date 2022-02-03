@@ -52,6 +52,6 @@ impl VulkanTextureView {
 
 impl TextureView {
     pub(crate) fn vk_image_view(&self) -> vk::ImageView {
-        self.inner.platform_texture_view.vk_image_view
+        self.inner.backend_texture_view.vk_image_view
     }
 }

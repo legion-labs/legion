@@ -30,10 +30,10 @@ impl VulkanSemaphore {
 
 impl Semaphore {
     pub fn vk_semaphore(&self) -> ash::vk::Semaphore {
-        self.inner.platform_semaphore.vk_semaphore
+        self.inner.backend_semaphore.vk_semaphore
     }
 
     pub fn vk_semaphore_ref(&self) -> &ash::vk::Semaphore {
-        &self.inner.platform_semaphore.vk_semaphore
+        &self.inner.backend_semaphore.vk_semaphore
     }
 }

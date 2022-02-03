@@ -1,16 +1,13 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanCommandPool;
 use crate::{
-    CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext, GfxResult, Queue, QueueType,
+    backends::BackendCommandPool, CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext,
+    GfxResult, Queue, QueueType,
 };
 
 pub(crate) struct CommandPoolInner {
     pub(crate) device_context: DeviceContext,
     pub(crate) queue_type: QueueType,
     pub(crate) queue_family_index: u32,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_command_pool: VulkanCommandPool,
+    pub(crate) backend_command_pool: BackendCommandPool,
 }
 
 pub struct CommandPool {
@@ -19,29 +16,22 @@ pub struct CommandPool {
 
 impl Drop for CommandPoolInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_command_pool.destroy(&self.device_context);
+        self.backend_command_pool.destroy(&self.device_context);
     }
 }
 
 impl CommandPool {
     pub fn new(queue: &Queue, command_pool_def: &CommandPoolDef) -> GfxResult<Self> {
         let device_context = queue.device_context().clone();
-        #[cfg(feature = "vulkan")]
-        let platform_command_pool =
-            VulkanCommandPool::new(&device_context, queue.platform_queue(), command_pool_def)
-                .map_err(|e| {
-                    lgn_tracing::error!("Error creating command pool {:?}", e);
-                    ash::vk::Result::ERROR_UNKNOWN
-                })?;
+        let backend_command_pool =
+            BackendCommandPool::new(&device_context, queue, command_pool_def)?;
 
         Ok(Self {
             inner: Box::new(CommandPoolInner {
                 device_context,
                 queue_type: queue.queue_type(),
-                queue_family_index: queue.queue_family_index(),
-                #[cfg(any(feature = "vulkan"))]
-                platform_command_pool,
+                queue_family_index: queue.family_index(),
+                backend_command_pool,
             }),
         })
     }
@@ -54,10 +44,6 @@ impl CommandPool {
     }
 
     pub fn reset_command_pool(&self) -> GfxResult<()> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
         self.reset_command_pool_platform()
     }
 

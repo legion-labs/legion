@@ -42,7 +42,7 @@ impl<'frame> VulkanDescriptorSetWriter<'frame> {
 
 impl<'frame> DescriptorSetWriter<'frame> {
     #[allow(clippy::todo)]
-    pub fn set_descriptors_by_index_platform(
+    pub fn backend_set_descriptors_by_index(
         &mut self,
         descriptor_index: usize,
         update_datas: &[DescriptorRef<'_>],
@@ -57,7 +57,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
             descriptor.shader_resource_type,
         );
         let write_descriptor_builder = vk::WriteDescriptorSet::builder()
-            .dst_set(descriptor_set.vk_type)
+            .dst_set(descriptor_set.backend_descriptor_set_handle)
             .dst_binding(descriptor_binding)
             .descriptor_type(vk_descriptor_type);
 
@@ -68,7 +68,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
                 for update_data in update_datas {
                     if let DescriptorRef::Sampler(sampler) = update_data {
                         let image_info =
-                            &mut self.platform_write.vk_image_infos[next_index as usize];
+                            &mut self.backend_write.vk_image_infos[next_index as usize];
                         image_info.sampler = sampler.vk_sampler();
                         image_info.image_view = vk::ImageView::null();
                         image_info.image_layout = vk::ImageLayout::UNDEFINED;
@@ -79,9 +79,9 @@ impl<'frame> DescriptorSetWriter<'frame> {
                 }
 
                 // Queue a descriptor write
-                self.platform_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
+                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
                     .image_info(
-                        &self.platform_write.vk_image_infos
+                        &self.backend_write.vk_image_infos
                             [descriptor_first_update_data as usize..next_index as usize],
                     )
                     .build();
@@ -96,7 +96,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     if let DescriptorRef::BufferView(buffer_view) = update_data {
                         assert!(buffer_view.is_compatible_with_descriptor(descriptor));
                         let buffer_info =
-                            &mut self.platform_write.vk_buffer_infos[next_index as usize];
+                            &mut self.backend_write.vk_buffer_infos[next_index as usize];
                         buffer_info.buffer = buffer_view.buffer().vk_buffer();
                         buffer_info.offset = buffer_view.offset();
                         buffer_info.range = buffer_view.size();
@@ -106,9 +106,9 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
                 // Queue a descriptor write
-                self.platform_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
+                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
                     .buffer_info(
-                        &self.platform_write.vk_buffer_infos
+                        &self.backend_write.vk_buffer_infos
                             [descriptor_first_update_data as usize..next_index as usize],
                     )
                     .build();
@@ -122,7 +122,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     if let DescriptorRef::TextureView(texture_view) = update_data {
                         assert!(texture_view.is_compatible_with_descriptor(descriptor));
                         let image_info =
-                            &mut self.platform_write.vk_image_infos[next_index as usize];
+                            &mut self.backend_write.vk_image_infos[next_index as usize];
 
                         image_info.sampler = vk::Sampler::null();
                         image_info.image_view = texture_view.vk_image_view();
@@ -133,9 +133,9 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
 
-                self.platform_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
+                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
                     .image_info(
-                        &self.platform_write.vk_image_infos
+                        &self.backend_write.vk_image_infos
                             [descriptor_first_update_data as usize..next_index as usize],
                     )
                     .build();
@@ -147,7 +147,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     if let DescriptorRef::TextureView(texture_view) = update_data {
                         assert!(texture_view.is_compatible_with_descriptor(descriptor));
                         let image_info =
-                            &mut self.platform_write.vk_image_infos[next_index as usize];
+                            &mut self.backend_write.vk_image_infos[next_index as usize];
 
                         image_info.sampler = vk::Sampler::null();
                         image_info.image_view = texture_view.vk_image_view();
@@ -158,9 +158,9 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
 
-                self.platform_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
+                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
                     .image_info(
-                        &self.platform_write.vk_image_infos
+                        &self.backend_write.vk_image_infos
                             [descriptor_first_update_data as usize..next_index as usize],
                     )
                     .build();
@@ -168,11 +168,11 @@ impl<'frame> DescriptorSetWriter<'frame> {
         }
     }
 
-    pub fn flush_platform(&self, device_context: &DeviceContext) {
+    pub fn backend_flush(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .vk_device()
-                .update_descriptor_sets(self.platform_write.vk_pending_writes, &[]);
+                .update_descriptor_sets(self.backend_write.vk_pending_writes, &[]);
         }
     }
 }

@@ -69,7 +69,7 @@ impl<'rc> HLQueue<'rc> {
         self.queue.wait_for_queue_idle()
     }
 
-    pub fn commmit_sparse_bindings<'a>(
+    pub fn commit_sparse_bindings<'a>(
         &self,
         prev_frame_semaphore: &'a Semaphore,
         unbind_pages: &[PagedBufferAllocation],
@@ -77,7 +77,7 @@ impl<'rc> HLQueue<'rc> {
         bind_pages: &[PagedBufferAllocation],
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
-        self.queue.commmit_sparse_bindings(
+        self.queue.commit_sparse_bindings(
             prev_frame_semaphore,
             unbind_pages,
             unbind_semaphore,

@@ -36,19 +36,19 @@ impl BufferView {
         &self.inner.definition
     }
 
-    pub(crate) fn buffer(&self) -> &Buffer {
+    pub fn buffer(&self) -> &Buffer {
         &self.inner.buffer
     }
 
-    pub(crate) fn offset(&self) -> u64 {
+    pub fn offset(&self) -> u64 {
         self.inner.offset
     }
 
-    pub(crate) fn size(&self) -> u64 {
+    pub fn size(&self) -> u64 {
         self.inner.size
     }
 
-    pub(crate) fn is_compatible_with_descriptor(&self, descriptor: &Descriptor) -> bool {
+    pub fn is_compatible_with_descriptor(&self, descriptor: &Descriptor) -> bool {
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
                 self.inner.definition.gpu_view_type == GPUViewType::ConstantBuffer

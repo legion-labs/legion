@@ -12,9 +12,6 @@ use crate::{
     ShaderStageFlags, StencilOp, TextureTiling, VertexAttributeRate,
 };
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VkInstance;
-
 /// Controls if an extension is enabled or not. The requirements/behaviors of
 /// validation is API-specific.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -102,15 +99,6 @@ bitflags::bitflags! {
         const SPARSE_RESIDENCY = 0x0002;
         const SPARSE_ALIASED = 0x0004;
     }
-}
-
-#[cfg(not(any(feature = "vulkan")))]
-pub struct Instance {}
-
-#[cfg(feature = "vulkan")]
-pub struct Instance<'a> {
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_instance: &'a VkInstance,
 }
 
 /// Used to create a `Texture`

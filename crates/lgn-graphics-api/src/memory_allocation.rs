@@ -1,7 +1,8 @@
-use super::buffer_allocation::BufferSubAllocation;
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocation};
-use crate::{deferred_drop::Drc, Buffer, DeviceContext, MemoryUsage};
+use crate::{
+    backends::{BackendMemoryAllocation, BackendMemoryPagesAllocation},
+    deferred_drop::Drc,
+    Buffer, BufferSubAllocation, DeviceContext, MemoryUsage,
+};
 
 pub struct BufferMappingInfo {
     pub allocation: MemoryAllocation,
@@ -37,15 +38,12 @@ impl Default for MemoryAllocationDef {
 
 pub(crate) struct MemoryAllocationInner {
     device_context: DeviceContext,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_allocation: VulkanMemoryAllocation,
+    pub(crate) backend_allocation: BackendMemoryAllocation,
 }
 
 impl Drop for MemoryAllocationInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_allocation.destroy(&self.device_context);
+        self.backend_allocation.destroy(&self.device_context);
     }
 }
 
@@ -60,17 +58,15 @@ impl MemoryAllocation {
         buffer: &Buffer,
         alloc_def: &MemoryAllocationDef,
     ) -> Self {
-        #[cfg(feature = "vulkan")]
-        let platform_allocation =
-            VulkanMemoryAllocation::from_buffer(device_context, buffer, alloc_def);
+        let backend_allocation =
+            BackendMemoryAllocation::from_buffer(device_context, buffer, alloc_def);
 
         Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(MemoryAllocationInner {
                     device_context: device_context.clone(),
-                    #[cfg(any(feature = "vulkan"))]
-                    platform_allocation,
+                    backend_allocation,
                 }),
         }
     }
@@ -91,7 +87,6 @@ impl MemoryAllocation {
     ) {
         let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
 
-        #[cfg(any(feature = "vulkan"))]
         assert!(buffer_byte_offset + data_size_in_bytes <= self.size() as u64);
 
         let src = data.as_ptr().cast::<u8>();
@@ -109,35 +104,19 @@ impl MemoryAllocation {
     }
 
     pub fn map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(feature = "vulkan")]
-        self.map_buffer_platform(device_context)
+        self.backend_map_buffer(device_context)
     }
 
     pub fn unmap_buffer(&self, device_context: &DeviceContext) {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(feature = "vulkan")]
-        self.unmap_buffer_platform(device_context);
+        self.backend_unmap_buffer(device_context);
     }
 
     pub fn mapped_ptr(&self) -> *mut u8 {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(feature = "vulkan")]
-        self.mapped_ptr_platform()
+        self.backend_mapped_ptr()
     }
 
     pub fn size(&self) -> usize {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(feature = "vulkan")]
-        self.size_platform()
+        self.backend_size()
     }
 }
 
@@ -161,15 +140,12 @@ impl Drop for MemoryMappingInfo {
 
 pub(crate) struct MemoryPagesAllocationInner {
     device_context: DeviceContext,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_allocation: VulkanMemoryPagesAllocation,
+    pub(crate) backend_allocation: BackendMemoryPagesAllocation,
 }
 
 impl Drop for MemoryPagesAllocationInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_allocation.destroy(&self.device_context);
+        self.backend_allocation.destroy(&self.device_context);
     }
 }
 
@@ -184,31 +160,27 @@ impl MemoryPagesAllocation {
         buffer: &Buffer,
         page_count: u64,
     ) -> Self {
-        #[cfg(feature = "vulkan")]
-        let platform_allocation =
-            VulkanMemoryPagesAllocation::for_sparse_buffer(device_context, buffer, page_count);
+        let backend_allocation =
+            BackendMemoryPagesAllocation::for_sparse_buffer(device_context, buffer, page_count);
 
         Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(MemoryPagesAllocationInner {
                     device_context: device_context.clone(),
-                    #[cfg(any(feature = "vulkan"))]
-                    platform_allocation,
+                    backend_allocation,
                 }),
         }
     }
 
     pub fn empty_allocation(device_context: &DeviceContext) -> Self {
-        #[cfg(feature = "vulkan")]
-        let platform_allocation = VulkanMemoryPagesAllocation::empty_allocation();
+        let backend_allocation = BackendMemoryPagesAllocation::empty_allocation();
         Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(MemoryPagesAllocationInner {
                     device_context: device_context.clone(),
-                    #[cfg(any(feature = "vulkan"))]
-                    platform_allocation,
+                    backend_allocation,
                 }),
         }
     }

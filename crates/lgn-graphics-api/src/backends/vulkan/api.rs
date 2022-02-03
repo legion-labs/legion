@@ -36,7 +36,7 @@ impl VulkanApi {
 
         let device_context = DeviceContext::new(
             &Instance {
-                platform_instance: &vk_instance,
+                backend_instance: &vk_instance,
             },
             api_def,
         )?;

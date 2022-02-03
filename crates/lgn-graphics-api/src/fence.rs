@@ -1,17 +1,13 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanFence;
-use crate::{DeviceContext, FenceStatus, GfxResult};
+use crate::{backends::BackendFence, DeviceContext, FenceStatus, GfxResult};
 
 pub(crate) struct FenceInner {
     pub(crate) device_context: DeviceContext,
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_fence: VulkanFence,
+    pub(crate) backend_fence: BackendFence,
 }
 
 pub struct Fence {
@@ -20,27 +16,19 @@ pub struct Fence {
 
 impl Drop for Fence {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .platform_fence
-            .destroy(&self.inner.device_context);
+        self.inner.backend_fence.destroy(&self.inner.device_context);
     }
 }
 
 impl Fence {
     pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_fence = VulkanFence::new(device_context).map_err(|e| {
-            lgn_tracing::error!("Error creating platform fence {:?}", e);
-            ash::vk::Result::ERROR_UNKNOWN
-        })?;
+        let backend_fence = BackendFence::new(device_context)?;
 
         Ok(Self {
             inner: Box::new(FenceInner {
                 device_context: device_context.clone(),
                 submitted: AtomicBool::new(false),
-                #[cfg(any(feature = "vulkan"))]
-                platform_fence,
+                backend_fence,
             }),
         })
     }
@@ -66,8 +54,7 @@ impl Fence {
         }
 
         if !fence_list.is_empty() {
-            #[cfg(any(feature = "vulkan"))]
-            Self::wait_for_fences_platform(device_context, fence_list.as_slice())?;
+            Self::backend_wait_for_fences(device_context, fence_list.as_slice())?;
         }
 
         for fence in fences {
@@ -81,17 +68,11 @@ impl Fence {
         if !self.submitted() {
             Ok(FenceStatus::Unsubmitted)
         } else {
-            #[cfg(not(any(feature = "vulkan")))]
-            unimplemented!();
-
-            #[cfg(any(feature = "vulkan"))]
-            {
-                let status = self.get_fence_status_platform();
-                if status.is_ok() && FenceStatus::Complete == status.clone().unwrap() {
-                    self.set_submitted(false);
-                }
-                status
+            let status = self.get_fence_status_platform();
+            if status.is_ok() && FenceStatus::Complete == status.clone().unwrap() {
+                self.set_submitted(false);
             }
+            status
         }
     }
 }

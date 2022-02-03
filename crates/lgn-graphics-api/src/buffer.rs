@@ -1,19 +1,17 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanBuffer;
-use crate::{deferred_drop::Drc, BufferDef, BufferView, BufferViewDef, DeviceContext};
+use crate::{
+    backends::BackendBuffer, deferred_drop::Drc, BufferDef, BufferView, BufferViewDef,
+    DeviceContext,
+};
 
 pub(crate) struct BufferInner {
     pub(crate) buffer_def: BufferDef,
     pub(crate) device_context: DeviceContext,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_buffer: VulkanBuffer,
+    pub(crate) backend_buffer: BackendBuffer,
 }
 
 impl Drop for BufferInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_buffer
+        self.backend_buffer
             .destroy(&self.device_context, &self.buffer_def);
     }
 }
@@ -25,15 +23,13 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
-        #[cfg(feature = "vulkan")]
-        let platform_buffer = VulkanBuffer::new(device_context, buffer_def);
+        let platform_buffer = BackendBuffer::new(device_context, buffer_def);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
                 buffer_def: *buffer_def,
-                #[cfg(any(feature = "vulkan"))]
-                platform_buffer,
+                backend_buffer: platform_buffer,
             }),
         }
     }
@@ -47,11 +43,7 @@ impl Buffer {
     }
 
     pub fn required_alignment(&self) -> u64 {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.required_alignment_platform()
+        self.backend_required_alignment()
     }
 
     pub fn create_view(&self, view_def: &BufferViewDef) -> BufferView {
@@ -59,8 +51,8 @@ impl Buffer {
     }
 }
 
-#[cfg(feature = "vulkan")]
-pub type BufferCopy = ash::vk::BufferCopy;
-
-#[cfg(not(any(feature = "vulkan")))]
-pub struct BufferCopy {}
+pub struct BufferCopy {
+    pub src_offset: u64,
+    pub dst_offset: u64,
+    pub size: u64,
+}

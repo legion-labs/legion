@@ -61,6 +61,6 @@ impl VulkanSampler {
 
 impl Sampler {
     pub fn vk_sampler(&self) -> vk::Sampler {
-        self.inner.platform_sampler.vk_sampler
+        self.inner.backend_sampler.vk_sampler
     }
 }

@@ -1,21 +1,19 @@
 use raw_window_handle::HasRawWindowHandle;
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanSwapchain;
-use crate::{DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainDef, SwapchainImage};
+use crate::{
+    backends::BackendSwapchain, DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainDef,
+    SwapchainImage,
+};
 
 pub struct Swapchain {
-    device_context: DeviceContext,
-    swapchain_def: SwapchainDef,
-
-    #[cfg(feature = "vulkan")]
-    platform_swap_chain: VulkanSwapchain,
+    pub(crate) device_context: DeviceContext,
+    pub(crate) swapchain_def: SwapchainDef,
+    pub(crate) backend_swapchain: BackendSwapchain,
 }
 
 impl Drop for Swapchain {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain.destroy();
+        self.backend_swapchain.destroy();
     }
 }
 
@@ -29,15 +27,13 @@ impl Swapchain {
         // swapchain.swapchain_images.len();
         let swapchain_def = swapchain_def.clone();
 
-        #[cfg(feature = "vulkan")]
-        let platform_swap_chain =
-            VulkanSwapchain::new(device_context, raw_window_handle, &swapchain_def)?;
+        let backend_swapchain =
+            BackendSwapchain::new(device_context, raw_window_handle, &swapchain_def)?;
 
         Ok(Self {
             device_context: device_context.clone(),
             swapchain_def,
-            #[cfg(any(feature = "vulkan"))]
-            platform_swap_chain,
+            backend_swapchain,
         })
     }
 
@@ -46,33 +42,16 @@ impl Swapchain {
     }
 
     pub fn image_count(&self) -> usize {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain.image_count()
+        self.backend_image_count()
     }
 
     pub fn format(&self) -> Format {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain.format()
-    }
-
-    #[cfg(any(feature = "vulkan"))]
-    pub(crate) fn platform_swap_chain(&self) -> &VulkanSwapchain {
-        &self.platform_swap_chain
+        self.backend_format()
     }
 
     //TODO: Return something like PresentResult?
     pub fn acquire_next_image_fence(&mut self, fence: &Fence) -> GfxResult<SwapchainImage> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain.acquire_next_image_fence(fence)
+        self.backend_acquire_next_image_fence(fence)
     }
 
     //TODO: Return something like PresentResult?
@@ -80,21 +59,10 @@ impl Swapchain {
         &mut self,
         semaphore: &Semaphore,
     ) -> GfxResult<SwapchainImage> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain
-            .acquire_next_image_semaphore(semaphore)
+        self.backend_acquire_next_image_semaphore(semaphore)
     }
 
     pub fn rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
-        self.swapchain_def = swapchain_def.clone();
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_swap_chain
-            .rebuild(&self.device_context, swapchain_def)
+        self.backend_rebuild(swapchain_def)
     }
 }

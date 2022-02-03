@@ -55,7 +55,7 @@ impl VulkanMemoryAllocation {
 }
 
 impl MemoryAllocation {
-    pub(crate) fn map_buffer_platform(&self, device_context: &DeviceContext) -> BufferMappingInfo {
+    pub(crate) fn backend_map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
         let ptr = device_context
             .vk_allocator()
             .map_memory(self.vk_allocation())
@@ -67,26 +67,26 @@ impl MemoryAllocation {
         }
     }
 
-    pub(crate) fn unmap_buffer_platform(&self, device_context: &DeviceContext) {
+    pub(crate) fn backend_unmap_buffer(&self, device_context: &DeviceContext) {
         device_context
             .vk_allocator()
             .unmap_memory(self.vk_allocation());
     }
 
-    pub(crate) fn mapped_ptr_platform(&self) -> *mut u8 {
+    pub(crate) fn backend_mapped_ptr(&self) -> *mut u8 {
         self.vk_allocation_info().get_mapped_data()
     }
 
-    pub(crate) fn size_platform(&self) -> usize {
+    pub(crate) fn backend_size(&self) -> usize {
         self.vk_allocation_info().get_size()
     }
 
     pub(crate) fn vk_allocation(&self) -> &vk_mem::Allocation {
-        &self.inner.platform_allocation.vk_allocation
+        &self.inner.backend_allocation.vk_allocation
     }
 
     pub(crate) fn vk_allocation_info(&self) -> &vk_mem::AllocationInfo {
-        &self.inner.platform_allocation.vk_allocation_info
+        &self.inner.backend_allocation.vk_allocation_info
     }
 }
 
@@ -152,7 +152,7 @@ impl VulkanMemoryPagesAllocation {
 
 impl MemoryPagesAllocation {
     pub fn vk_allocated_pages(&self) -> &Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)> {
-        &self.inner.platform_allocation.vk_allocated_pages
+        &self.inner.backend_allocation.vk_allocated_pages
     }
 
     pub fn binding_info(

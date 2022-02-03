@@ -1,10 +1,10 @@
 #![allow(unsafe_code)]
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::{VulkanDescriptorHeap, VulkanDescriptorHeapPartition};
 use crate::{
-    deferred_drop::Drc, DescriptorHeapDef, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter,
-    DeviceContext, GfxResult,
+    backends::{BackendDescriptorHeap, BackendDescriptorHeapPartition, BackendDescriptorSetHandle},
+    deferred_drop::Drc,
+    DescriptorHeapDef, DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext,
+    GfxResult,
 };
 
 //
@@ -16,8 +16,7 @@ pub struct DescriptorSetHandle {
     // referencing the descriptor set layout
     pub layout_uid: u32,
     pub frequency: u32,
-    #[cfg(feature = "vulkan")]
-    pub(crate) vk_type: ash::vk::DescriptorSet,
+    pub(crate) backend_descriptor_set_handle: BackendDescriptorSetHandle,
 }
 
 //
@@ -37,14 +36,12 @@ pub trait DescriptorSetDataProvider {
 pub(crate) struct DescriptorHeapInner {
     pub(crate) device_context: DeviceContext,
 
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_descriptor_heap: VulkanDescriptorHeap,
+    pub(crate) backend_descriptor_heap: BackendDescriptorHeap,
 }
 
 impl Drop for DescriptorHeapInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_descriptor_heap.destroy(&self.device_context);
+        self.backend_descriptor_heap.destroy(&self.device_context);
     }
 }
 
@@ -62,20 +59,14 @@ impl DescriptorHeap {
         device_context: &DeviceContext,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_descriptor_heap = VulkanDescriptorHeap::new(device_context, definition)
-            .map_err(|e| {
-                lgn_tracing::error!("Error creating descriptor heap {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
+        let backend_descriptor_heap = BackendDescriptorHeap::new(device_context, definition)?;
 
         Ok(Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(DescriptorHeapInner {
                     device_context: device_context.clone(),
-                    #[cfg(any(feature = "vulkan"))]
-                    platform_descriptor_heap,
+                    backend_descriptor_heap,
                 }),
         })
     }
@@ -104,15 +95,12 @@ impl DescriptorHeap {
 pub(crate) struct DescriptorHeapPartitionInner {
     pub(crate) heap: DescriptorHeap,
     pub(crate) transient: bool,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_descriptor_heap_partition: VulkanDescriptorHeapPartition,
+    pub(crate) backend_descriptor_heap_partition: BackendDescriptorHeapPartition,
 }
 
 impl Drop for DescriptorHeapPartitionInner {
     fn drop(&mut self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_descriptor_heap_partition
+        self.backend_descriptor_heap_partition
             .destroy(&self.heap.inner.device_context);
     }
 }
@@ -131,32 +119,23 @@ impl DescriptorHeapPartition {
         transient: bool,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
         let platform_descriptor_heap_partition =
-            VulkanDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)
-                .map_err(|e| {
-                lgn_tracing::error!("Error creating descriptor heap {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
-
+            BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)?;
         Ok(Self {
             inner: Box::new(DescriptorHeapPartitionInner {
                 heap,
                 transient,
-                #[cfg(any(feature = "vulkan"))]
-                platform_descriptor_heap_partition,
+                backend_descriptor_heap_partition: platform_descriptor_heap_partition,
             }),
         })
     }
 
     pub fn reset(&self) -> GfxResult<()> {
-        assert!(self.inner.transient);
+        self.backend_reset()
+    }
 
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.reset_platform()
+    pub fn transient(&self) -> bool {
+        self.inner.transient
     }
 
     pub fn get_writer<'frame>(
@@ -164,11 +143,7 @@ impl DescriptorHeapPartition {
         descriptor_set_layout: &DescriptorSetLayout,
         bump: &'frame bumpalo::Bump,
     ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.get_writer_platform(descriptor_set_layout, bump)
+        self.backend_get_writer(descriptor_set_layout, bump)
     }
 
     pub fn write<'frame>(
@@ -176,10 +151,6 @@ impl DescriptorHeapPartition {
         descriptor_set: &impl DescriptorSetDataProvider,
         bump: &'frame bumpalo::Bump,
     ) -> GfxResult<DescriptorSetHandle> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.write_platform(descriptor_set, bump)
+        self.backend_write(descriptor_set, bump)
     }
 }

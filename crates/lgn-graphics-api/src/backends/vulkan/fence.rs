@@ -30,10 +30,10 @@ impl VulkanFence {
 
 impl Fence {
     pub(crate) fn vk_fence(&self) -> vk::Fence {
-        self.inner.platform_fence.vk_fence
+        self.inner.backend_fence.vk_fence
     }
 
-    pub(crate) fn wait_for_fences_platform(
+    pub(crate) fn backend_wait_for_fences(
         device_context: &DeviceContext,
         fence_list: &[&Self],
     ) -> GfxResult<()> {
@@ -53,9 +53,9 @@ impl Fence {
     pub(crate) fn get_fence_status_platform(&self) -> GfxResult<FenceStatus> {
         let device = self.inner.device_context.vk_device();
         unsafe {
-            let is_ready = device.get_fence_status(self.inner.platform_fence.vk_fence)?;
+            let is_ready = device.get_fence_status(self.inner.backend_fence.vk_fence)?;
             if is_ready {
-                device.reset_fences(&[self.inner.platform_fence.vk_fence])?;
+                device.reset_fences(&[self.inner.backend_fence.vk_fence])?;
             }
 
             if is_ready {

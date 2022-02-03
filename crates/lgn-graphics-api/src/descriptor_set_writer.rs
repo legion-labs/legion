@@ -1,24 +1,16 @@
-use std::marker::PhantomData;
-
 use lgn_tracing::error;
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanDescriptorSetWriter;
 use crate::{
-    DescriptorRef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
-    DeviceContext, GfxError, GfxResult, MAX_DESCRIPTOR_BINDINGS,
+    backends::BackendDescriptorSetWriter, DescriptorRef, DescriptorSetDataProvider,
+    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,
+    MAX_DESCRIPTOR_BINDINGS,
 };
 
 pub struct DescriptorSetWriter<'frame> {
     pub(crate) descriptor_set: DescriptorSetHandle,
     pub(crate) descriptor_set_layout: DescriptorSetLayout,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_write: VulkanDescriptorSetWriter<'frame>,
-
+    pub(crate) backend_write: BackendDescriptorSetWriter<'frame>,
     write_mask: u64, // max number of bindings: 64
-
-    _phantom: PhantomData<&'frame usize>,
 }
 
 impl<'frame> DescriptorSetWriter<'frame> {
@@ -27,20 +19,16 @@ impl<'frame> DescriptorSetWriter<'frame> {
         descriptor_set_layout: &DescriptorSetLayout,
         bump: &'frame bumpalo::Bump,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_write = VulkanDescriptorSetWriter::new(descriptor_set_layout, bump)?;
+        let backend_write = BackendDescriptorSetWriter::new(descriptor_set_layout, bump)?;
 
         Ok(Self {
             descriptor_set,
             descriptor_set_layout: descriptor_set_layout.clone(),
-            #[cfg(any(feature = "vulkan"))]
-            platform_write,
+            backend_write,
             write_mask: descriptor_set_layout.binding_mask(),
-            _phantom: PhantomData,
         })
     }
 
-    #[allow(clippy::todo)]
     pub fn set_descriptors_by_name(
         &mut self,
         name: &str,
@@ -51,26 +39,14 @@ impl<'frame> DescriptorSetWriter<'frame> {
             .find_descriptor_index_by_name(name)
             .ok_or_else(|| GfxError::from("Invalid descriptor name"))?;
 
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        {
-            self.set_descriptors_by_index(descriptor_index, update_datas);
-            Ok(())
-        }
+        self.set_descriptors_by_index(descriptor_index, update_datas);
+        Ok(())
     }
 
-    #[allow(clippy::todo)]
     pub fn set_descriptors_by_index(&mut self, index: usize, update_datas: &[DescriptorRef<'_>]) {
         let descriptor = self.descriptor_set_layout.descriptor(index);
         self.write_mask &= !(1u64 << descriptor.binding);
-
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.set_descriptors_by_index_platform(index, update_datas);
+        self.backend_set_descriptors_by_index(index, update_datas);
     }
 
     pub fn set_descriptors(&mut self, descriptor_set: &impl DescriptorSetDataProvider) {
@@ -100,8 +76,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
             panic!();
         }
 
-        #[cfg(any(feature = "vulkan"))]
-        self.flush_platform(device_context);
+        self.backend_flush(device_context);
         self.descriptor_set
     }
 }

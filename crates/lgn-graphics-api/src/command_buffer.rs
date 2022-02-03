@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanCommandBuffer;
+use crate::backends::BackendCommandBuffer;
 use crate::{
     Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
 };
@@ -16,9 +15,7 @@ pub(crate) struct CommandBufferInner {
     pub(crate) queue_type: QueueType,
     pub(crate) queue_family_index: u32,
     has_active_renderpass: AtomicBool,
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) platform_command_buffer: VulkanCommandBuffer,
+    pub(crate) backend_command_buffer: BackendCommandBuffer,
 }
 
 pub struct CommandBuffer {
@@ -31,12 +28,7 @@ impl CommandBuffer {
         command_pool: &CommandPool,
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
-        #[cfg(feature = "vulkan")]
-        let platform_command_buffer = VulkanCommandBuffer::new(command_pool, command_buffer_def)
-            .map_err(|e| {
-                lgn_tracing::error!("Error creating command buffer {:?}", e);
-                ash::vk::Result::ERROR_UNKNOWN
-            })?;
+        let backend_command_buffer = BackendCommandBuffer::new(command_pool, command_buffer_def)?;
 
         Ok(Self {
             inner: Box::new(CommandBufferInner {
@@ -44,31 +36,24 @@ impl CommandBuffer {
                 queue_type: command_pool.queue_type(),
                 queue_family_index: command_pool.queue_family_index(),
                 has_active_renderpass: AtomicBool::new(false),
-                #[cfg(any(feature = "vulkan"))]
-                platform_command_buffer,
+                backend_command_buffer,
             }),
         })
     }
 
     pub fn begin(&self) -> GfxResult<()> {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.begin_platform()
+        self.backend_begin()
     }
 
     pub fn end(&self) -> GfxResult<()> {
         if self.inner.has_active_renderpass.load(Ordering::Relaxed) {
-            #[cfg(any(feature = "vulkan"))]
             self.cmd_end_render_pass();
             self.inner
                 .has_active_renderpass
                 .store(false, Ordering::Relaxed);
         }
 
-        #[cfg(any(feature = "vulkan"))]
-        self.end_platform()?;
+        self.backend_end()?;
 
         Ok(())
     }
@@ -86,8 +71,7 @@ impl CommandBuffer {
             return Err("No color or depth target supplied to cmd_begin_render_pass".into());
         }
 
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_begin_render_pass_platform(color_targets, depth_target)?;
+        self.backend_cmd_begin_render_pass(color_targets, depth_target)?;
 
         self.inner
             .has_active_renderpass
@@ -97,8 +81,7 @@ impl CommandBuffer {
     }
 
     pub fn cmd_end_render_pass(&self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_end_render_pass_platform();
+        self.backend_cmd_end_render_pass();
         self.inner
             .has_active_renderpass
             .store(false, Ordering::Relaxed);
@@ -113,23 +96,19 @@ impl CommandBuffer {
         depth_min: f32,
         depth_max: f32,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_set_viewport_platform(x, y, width, height, depth_min, depth_max);
+        self.backend_cmd_set_viewport(x, y, width, height, depth_min, depth_max);
     }
 
     pub fn cmd_set_scissor(&self, x: u32, y: u32, width: u32, height: u32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_set_scissor_platform(x, y, width, height);
+        self.backend_cmd_set_scissor(x, y, width, height);
     }
 
     pub fn cmd_set_stencil_reference_value(&self, value: u32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_set_stencil_reference_value_platform(value);
+        self.backend_cmd_set_stencil_reference_value(value);
     }
 
     pub fn cmd_bind_pipeline(&self, pipeline: &Pipeline) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_bind_pipeline_platform(pipeline);
+        self.backend_cmd_bind_pipeline(pipeline);
     }
 
     pub fn cmd_bind_vertex_buffers(
@@ -137,13 +116,11 @@ impl CommandBuffer {
         first_binding: u32,
         bindings: &[VertexBufferBinding<'_>],
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_bind_vertex_buffers_platform(first_binding, bindings);
+        self.backend_cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
     pub fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_bind_index_buffer_platform(binding);
+        self.backend_cmd_bind_index_buffer(binding);
     }
 
     pub fn cmd_bind_descriptor_set_handle(
@@ -153,8 +130,7 @@ impl CommandBuffer {
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_bind_descriptor_set_handle_platform(
+        self.backend_cmd_bind_descriptor_set_handle(
             pipeline_type,
             root_signature,
             set_index,
@@ -162,15 +138,12 @@ impl CommandBuffer {
         );
     }
 
-    #[allow(unsafe_code)]
     pub fn cmd_push_constant(&self, root_signature: &RootSignature, data: &[u8]) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_push_constant_platform(root_signature, data);
+        self.backend_cmd_push_constant(root_signature, data);
     }
 
     pub fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_draw_platform(vertex_count, first_vertex);
+        self.backend_cmd_draw(vertex_count, first_vertex);
     }
 
     pub fn cmd_draw_instanced(
@@ -180,18 +153,11 @@ impl CommandBuffer {
         instance_count: u32,
         first_instance: u32,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_draw_instanced_platform(
-            vertex_count,
-            first_vertex,
-            instance_count,
-            first_instance,
-        );
+        self.backend_cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance);
     }
 
     pub fn cmd_draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_draw_indexed_platform(index_count, first_index, vertex_offset);
+        self.backend_cmd_draw_indexed(index_count, first_index, vertex_offset);
     }
 
     pub fn cmd_draw_indexed_instanced(
@@ -202,8 +168,7 @@ impl CommandBuffer {
         first_instance: u32,
         vertex_offset: i32,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_draw_indexed_instanced_platform(
+        self.backend_cmd_draw_indexed_instanced(
             index_count,
             first_index,
             instance_count,
@@ -213,8 +178,7 @@ impl CommandBuffer {
     }
 
     pub fn cmd_dispatch(&self, group_count_x: u32, group_count_y: u32, group_count_z: u32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_dispatch_platform(group_count_x, group_count_y, group_count_z);
+        self.backend_cmd_dispatch(group_count_x, group_count_y, group_count_z);
     }
 
     pub fn cmd_resource_barrier(
@@ -226,13 +190,11 @@ impl CommandBuffer {
             !self.inner.has_active_renderpass.load(Ordering::Relaxed),
             "cmd_resource_barrier may not be called if inside render pass"
         );
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_resource_barrier_platform(buffer_barriers, texture_barriers);
+        self.backedn_cmd_resource_barrier(buffer_barriers, texture_barriers);
     }
 
     pub fn cmd_fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_fill_buffer_platform(dst_buffer, offset, size, data);
+        self.backend_cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 
     pub fn cmd_copy_buffer_to_buffer(
@@ -241,8 +203,7 @@ impl CommandBuffer {
         dst_buffer: &Buffer,
         copy_data: &[BufferCopy],
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_copy_buffer_to_buffer_platform(src_buffer, dst_buffer, copy_data);
+        self.backend_cmd_copy_buffer_to_buffer(src_buffer, dst_buffer, copy_data);
     }
 
     pub fn cmd_copy_buffer_to_texture(
@@ -251,8 +212,7 @@ impl CommandBuffer {
         dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_copy_buffer_to_texture_platform(src_buffer, dst_texture, params);
+        self.backend_cmd_copy_buffer_to_texture(src_buffer, dst_texture, params);
     }
 
     pub fn cmd_blit_texture(
@@ -261,8 +221,7 @@ impl CommandBuffer {
         dst_texture: &Texture,
         params: &CmdBlitParams,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_blit_texture_platform(src_texture, dst_texture, params);
+        self.backend_cmd_blit_texture(src_texture, dst_texture, params);
     }
 
     pub fn cmd_copy_image(
@@ -271,7 +230,6 @@ impl CommandBuffer {
         dst_texture: &Texture,
         params: &CmdCopyTextureParams,
     ) {
-        #[cfg(any(feature = "vulkan"))]
-        self.cmd_copy_image_platform(src_texture, dst_texture, params);
+        self.backend_cmd_copy_image(src_texture, dst_texture, params);
     }
 }

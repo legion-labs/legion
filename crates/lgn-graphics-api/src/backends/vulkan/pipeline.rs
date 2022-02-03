@@ -70,12 +70,7 @@ impl VulkanPipeline {
             stages.push(
                 vk::PipelineShaderStageCreateInfo::builder()
                     .name(entry_point_name)
-                    .module(
-                        stage
-                            .shader_module
-                            .platform_shader_module()
-                            .vk_shader_module(),
-                    )
+                    .module(stage.shader_module.vk_shader_module())
                     .stage(stage.shader_stage.into())
                     .build(),
             );
@@ -208,12 +203,7 @@ impl VulkanPipeline {
         let entry_point_name = CString::new(compute_stage.entry_point.clone()).unwrap();
         let stage = vk::PipelineShaderStageCreateInfo::builder()
             .name(&entry_point_name)
-            .module(
-                compute_stage
-                    .shader_module
-                    .platform_shader_module()
-                    .vk_shader_module(),
-            )
+            .module(compute_stage.shader_module.vk_shader_module())
             .stage(vk::ShaderStageFlags::COMPUTE);
 
         let pipeline_create_info = vk::ComputePipelineCreateInfo::builder()
@@ -248,6 +238,6 @@ impl VulkanPipeline {
 
 impl Pipeline {
     pub fn vk_pipeline(&self) -> vk::Pipeline {
-        self.inner.platform_pipeline.vk_pipeline
+        self.inner.backend_pipeline.vk_pipeline
     }
 }
