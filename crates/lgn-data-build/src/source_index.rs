@@ -67,6 +67,10 @@ impl SourceContent {
         Ok(buffer)
     }
 
+    fn read(buffer: &[u8]) -> Result<Self, Error> {
+        serde_json::from_reader(buffer).map_err(|e| Error::Io(e.into()))
+    }
+
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.pathid_mapping.insert(id.resource_id(), id.clone());
     }
@@ -239,7 +243,7 @@ pub(crate) struct SourceIndex {
     index_keys: IndexKeys,
     current: Option<(String, SourceContent)>,
     file: File,
-    content_store: Box<dyn ContentStore>,
+    content_store: Box<dyn ContentStore + Send>,
 }
 
 impl std::fmt::Debug for SourceIndex {
@@ -254,7 +258,7 @@ impl std::fmt::Debug for SourceIndex {
 impl SourceIndex {
     pub(crate) fn create_new(
         source_index: &Path,
-        content_store: Box<dyn ContentStore>,
+        content_store: Box<dyn ContentStore + Send>,
         version: &str,
     ) -> Result<Self, Error> {
         let source_file = OpenOptions::new()
@@ -279,7 +283,10 @@ impl SourceIndex {
         })
     }
 
-    fn load(path: impl AsRef<Path>, content_store: Box<dyn ContentStore>) -> Result<Self, Error> {
+    fn load(
+        path: impl AsRef<Path>,
+        content_store: Box<dyn ContentStore + Send>,
+    ) -> Result<Self, Error> {
         let source_file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -299,7 +306,7 @@ impl SourceIndex {
 
     pub(crate) fn open(
         source_index: &Path,
-        content_store: Box<dyn ContentStore>,
+        content_store: Box<dyn ContentStore + Send>,
         version: &str,
     ) -> Result<Self, Error> {
         if !source_index.exists() {
@@ -339,42 +346,61 @@ impl SourceIndex {
 
         let root_checksum = project.root_checksum().await?;
 
-        let (_, mut source_index) = self
+        let (current_checksum, mut source_index) = self
             .current
             .take()
             .unwrap_or(("".to_string(), SourceContent::new(version)));
 
-        for resource_id in project.resource_list().await {
-            let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
+        if current_checksum != root_checksum {
+            // this avoids matching using `if let Some()` because of a bug in the compiler:
+            // https://github.com/rust-lang/rust/issues/57017
+            let cached_index = self
+                .index_keys
+                .keys
+                .get(&root_checksum)
+                .and_then(|entry| self.content_store.read(*entry));
 
-            if source_index.update_resource(
-                ResourcePathId::from(ResourceTypeAndId {
-                    id: resource_id,
-                    kind,
-                }),
-                Some(resource_hash),
-                resource_deps.clone(),
-            ) {
-                updated_resources += 1;
-            }
+            if cached_index.is_some() {
+                source_index = SourceContent::read(&cached_index.unwrap())?;
+            } else {
+                for resource_id in project.resource_list().await {
+                    let (kind, resource_hash, resource_deps) =
+                        project.resource_info(resource_id)?;
 
-            // add each derived dependency with it's direct dependency listed in deps.
-            for dependency in resource_deps {
-                if let Some(direct_dependency) = dependency.direct_dependency() {
-                    if source_index.update_resource(dependency, None, vec![direct_dependency]) {
+                    if source_index.update_resource(
+                        ResourcePathId::from(ResourceTypeAndId {
+                            id: resource_id,
+                            kind,
+                        }),
+                        Some(resource_hash),
+                        resource_deps.clone(),
+                    ) {
                         updated_resources += 1;
                     }
+
+                    // add each derived dependency with it's direct dependency listed in deps.
+                    for dependency in resource_deps {
+                        if let Some(direct_dependency) = dependency.direct_dependency() {
+                            if source_index.update_resource(
+                                dependency,
+                                None,
+                                vec![direct_dependency],
+                            ) {
+                                updated_resources += 1;
+                            }
+                        }
+                    }
                 }
+
+                let buffer = source_index.write()?;
+                let checksum = self
+                    .content_store
+                    .store(&buffer)
+                    .ok_or(Error::InvalidContentStore)?;
+
+                self.index_keys.keys.insert(root_checksum.clone(), checksum);
             }
         }
-
-        let buffer = source_index.write()?;
-        let checksum = self
-            .content_store
-            .store(&buffer)
-            .ok_or(Error::InvalidContentStore)?;
-
-        self.index_keys.keys.insert(root_checksum.clone(), checksum);
 
         self.current = Some((root_checksum, source_index));
         Ok(updated_resources)
