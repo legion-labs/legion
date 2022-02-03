@@ -204,6 +204,8 @@ pub enum ShaderStage {
     Compute,
 }
 
+pub const SHADER_STAGE_COUNT: usize = 3;
+
 pub struct ShaderStageEnumerator(usize);
 
 impl Iterator for ShaderStageEnumerator {
@@ -228,6 +230,11 @@ impl Iterator for ShaderStageEnumerator {
 }
 
 impl ShaderStage {
+
+    pub const fn count() -> usize {
+        SHADER_STAGE_COUNT
+    }
+
     pub fn iter() -> ShaderStageEnumerator {
         ShaderStageEnumerator(0)
     }
@@ -244,8 +251,6 @@ impl From<ShaderStage> for ShaderStageFlags {
 }
 
 bitflags::bitflags! {
-    /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
-    /// VkShaderStageFlagBits
     pub struct ShaderStageFlags : u8 {
         const VERTEX_FLAG = 1u8 << ShaderStage::Vertex as u32;
         const FRAGMENT_FLAG = 1u8 << ShaderStage::Fragment as u32;
