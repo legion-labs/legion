@@ -3,7 +3,9 @@
 use lgn_graphics_cgen_runtime::CGenRegistry;
 
 pub mod this_cgen {
-    pub const ID: u64 = 2;
+    use lgn_graphics_cgen_runtime::CGenCrateID;
+
+    pub const ID: CGenCrateID = CGenCrateID(2);
 }
 
 pub mod display_mapper_shader_family {
@@ -29,7 +31,7 @@ pub mod display_mapper_shader_family {
 
     pub const NONE: u64 = 0;
 
-    pub static SHADER_OPTIONS: [&CGenShaderOption; 0] = [];
+    pub static SHADER_OPTIONS: [CGenShaderOption; 0] = [];
 
     pub static SHADER_INSTANCES: [CGenShaderInstance; 1] = [CGenShaderInstance {
         key: CGenShaderKey::make(ID, NONE),

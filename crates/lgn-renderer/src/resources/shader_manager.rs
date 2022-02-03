@@ -59,8 +59,7 @@ impl ShaderManager {
     }
 
     #[span_fn]
-    pub fn get_shader(&self, key: CGenShaderKey) -> Shader {
-        let shader_family_id = key.shader_family_id();
+    pub fn get_shader(&self, key: CGenShaderKey) -> Shader {        
         let shader_option_mask = key.shader_option_mask();
 
         for shader_instance in &self.shader_instances {
@@ -74,9 +73,7 @@ impl ShaderManager {
                     shader_option_mask >>= trailing_zeros + 1;
                     let option_index = trailing_zeros as u8;
                     for shader_option in shader_family.options {
-                        if shader_option.shader_family_id == shader_family_id
-                            && shader_option.index == option_index
-                        {
+                        if shader_option.index == option_index {
                             defines.push(CompileDefine {
                                 name: shader_option.name,
                                 value: None,

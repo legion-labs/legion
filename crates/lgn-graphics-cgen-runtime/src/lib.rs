@@ -326,11 +326,17 @@ pub mod prelude {
     pub use crate::Uint4;
 }
 
+//
+// CGenTypeDef
+//
 pub struct CGenTypeDef {
     pub name: &'static str,
     pub size: usize,
 }
 
+//
+// CGenDescriptorDef
+//
 #[derive(Debug, PartialEq)]
 pub struct CGenDescriptorDef {
     pub name: &'static str,
@@ -338,6 +344,12 @@ pub struct CGenDescriptorDef {
     pub flat_index_start: u32,
     pub flat_index_end: u32,
     pub array_size: u32,
+}
+
+impl CGenDescriptorDef {
+    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
+        wrapper.validate(self)
+    }
 }
 
 pub trait ValueWrapper {
@@ -401,15 +413,6 @@ impl ValueWrapper for &[&TextureView] {
 }
 
 //
-// CGenDescriptorDef
-//
-impl CGenDescriptorDef {
-    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
-        wrapper.validate(self)
-    }
-}
-
-//
 // CGenDescriptorSetDef
 //
 #[derive(Default, Debug, PartialEq)]
@@ -432,30 +435,37 @@ pub struct CGenPipelineLayoutDef {
     pub push_constant_type: Option<u32>,
 }
 
-// //
-// // CGenShaderFamilyID
-// //
+//
+// CGenCrateID
+//
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct CGenShaderFamilyID(pub u64);
+pub struct CGenCrateID(pub u8);
+
+//
+// CGenShaderFamilyID
+//
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct CGenShaderFamilyID(pub u16);
 
 impl CGenShaderFamilyID {
-    pub const fn make(crate_id: u64, family_idx: u64) -> Self {
-        Self((crate_id << 8) | family_idx)
+    pub const fn make(crate_id: CGenCrateID, family_idx: u64) -> Self {
+        let crate_id = crate_id.0 as u16;
+        let family_idx = family_idx as u16;
+        Self(crate_id << 8 | family_idx)
     }
 }
 
 //
-// CGenShaderKey
+// CGenShaderOptionMask
 //
-
 pub type CGenShaderOptionMask = u64;
 
+//
+// CGenShaderKey
+//
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(packed)]
 pub struct CGenShaderKey(u64);
-
-// #[derive(Clone, Copy, PartialEq, Eq)]
-// pub struct CGenShaderOptionMask(pub u64);
 
 impl CGenShaderKey {
     // u16: family_id
@@ -473,25 +483,19 @@ impl CGenShaderKey {
         shader_family_id: CGenShaderFamilyID,
         shader_option_mask: CGenShaderOptionMask,
     ) -> Self {
+        let shader_family_id = shader_family_id.0 as u64;
+        // static_assertions::const_assert_eq!(shader_family_id & Self::SHADER_FAMILY_MASK, 0);
+        let shader_option_mask = shader_option_mask as u64;
+        // static_assertions::const_assert_eq!(shader_option_mask & Self::SHADER_OPTIONS_MASK, 0);
         Self(
-            ((shader_family_id.0 & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
+            ((shader_family_id & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
                 | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
         )
     }
 
-    // #[allow(clippy::needless_pass_by_value)]
-    // pub fn new(
-    //     shader_family_id: CGenShaderFamilyID,
-    //     shader_option_mask: CGenShaderOptionMask,
-    // ) -> Self {
-    //     Self(
-    //         ((shader_family_id.0 & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
-    //             | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
-    //     )
-    // }
-
     pub fn shader_family_id(self) -> CGenShaderFamilyID {
-        CGenShaderFamilyID((self.0 >> Self::SHADER_FAMILY_OFFSET) & Self::SHADER_FAMILY_MASK)
+        let family_id = (self.0 >> Self::SHADER_FAMILY_OFFSET) & Self::SHADER_FAMILY_MASK;
+        CGenShaderFamilyID(family_id.try_into().unwrap())
     }
 
     pub fn shader_option_mask(self) -> CGenShaderOptionMask {
@@ -506,14 +510,14 @@ pub struct CGenShaderFamily {
     pub id: CGenShaderFamilyID,
     pub name: &'static str,
     pub path: &'static str,
-    pub options: &'static [&'static CGenShaderOption],
+    pub options: &'static [CGenShaderOption],
 }
 
 //
 // CGenShaderOption
 //
 pub struct CGenShaderOption {
-    pub shader_family_id: CGenShaderFamilyID,
+    // pub shader_family_id: CGenShaderFamilyID,
     pub index: u8,
     pub name: &'static str,
 }

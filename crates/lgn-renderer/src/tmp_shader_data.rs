@@ -3,7 +3,9 @@
 use lgn_graphics_cgen_runtime::CGenRegistry;
 
 pub mod this_cgen {
-    pub const ID: u64 = 1;
+    use lgn_graphics_cgen_runtime::CGenCrateID;
+
+    pub const ID: CGenCrateID = CGenCrateID(1);
 }
 
 pub mod egui_shader_family {
@@ -27,16 +29,13 @@ pub mod egui_shader_family {
         options: &SHADER_OPTIONS,
     };
 
-    pub const SHADER_OPTION_TOTO: CGenShaderOption = CGenShaderOption {
-        shader_family_id: ID,
+    pub const NONE: u64 = 0;
+    pub const TOTO: u64 = 1u64 << 0;
+
+    pub static SHADER_OPTIONS: [CGenShaderOption; 1] = [CGenShaderOption {        
         index: 0,
         name: "TOTO",
-    };
-
-    pub const NONE: u64 = 0;
-    pub const TOTO: u64 = 1u64 << SHADER_OPTION_TOTO.index;
-
-    pub static SHADER_OPTIONS: [&CGenShaderOption; 1] = [&SHADER_OPTION_TOTO];
+    }];
 
     pub static SHADER_INSTANCES: [CGenShaderInstance; 1] = [CGenShaderInstance {
         key: CGenShaderKey::make(ID, TOTO),
@@ -69,7 +68,7 @@ pub mod shader_shader_family {
 
     pub const NONE: u64 = 0;
 
-    pub static SHADER_OPTIONS: [&CGenShaderOption; 0] = [];
+    pub static SHADER_OPTIONS: [CGenShaderOption; 0] = [];
 
     pub static SHADER_INSTANCES: [CGenShaderInstance; 1] = [CGenShaderInstance {
         key: CGenShaderKey::make(ID, NONE),
@@ -102,7 +101,7 @@ pub mod picking_shader_family {
 
     pub const NONE: u64 = 0;
 
-    pub static SHADER_OPTIONS: [&CGenShaderOption; 0] = [];
+    pub static SHADER_OPTIONS: [CGenShaderOption; 0] = [];
 
     pub static SHADER_INSTANCES: [CGenShaderInstance; 1] = [CGenShaderInstance {
         key: CGenShaderKey::make(ID, NONE),
@@ -135,7 +134,7 @@ pub mod const_color_shader_family {
 
     pub const NONE: u64 = 0;
 
-    pub static SHADER_OPTIONS: [&CGenShaderOption; 0] = [];
+    pub static SHADER_OPTIONS: [CGenShaderOption; 0] = [];
 
     pub static SHADER_INSTANCES: [CGenShaderInstance; 1] = [CGenShaderInstance {
         key: CGenShaderKey::make(ID, NONE),
@@ -147,7 +146,7 @@ pub mod const_color_shader_family {
 
 macro_rules! register_family {
     ($registry:ident,  $family:ident) => {
-        $registry.shader_families.push(&$family::SHADER_FAMILY);        
+        $registry.shader_families.push(&$family::SHADER_FAMILY);
 
         $family::SHADER_INSTANCES
             .iter()

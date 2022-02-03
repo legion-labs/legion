@@ -4584,11 +4584,10 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
- "bumpalo",
  "glam",
  "half",
  "lgn-graphics-api",
- "serde",
+ "static_assertions",
 ]
 
 [[package]]
