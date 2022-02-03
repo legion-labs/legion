@@ -34,7 +34,7 @@
       "StaticMesh": {
         "color": 4278190335,
         "mesh": null,
-        "mesh_id": 0
+        "mesh_id": "Plane"
       }
     },
     {

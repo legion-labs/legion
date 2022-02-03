@@ -1,6 +1,6 @@
 ---
 source: tests/sample-data/tests/build.rs
-assertion_line: 96
+assertion_line: 98
 expression: manifest
 
 ---
@@ -68,8 +68,8 @@ expression: manifest
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",
-      "checksum": "25aed88ca3777d16164c0bea56d21026",
-      "size": 251
+      "checksum": "34bd6cdce88ed691981f1f6bec602dd8",
+      "size": 247
     },
     {
       "path": "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)|e5c099cc30495fed",
@@ -113,12 +113,12 @@ expression: manifest
     },
     {
       "path": "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)|1d9ddd99aad89045",
-      "checksum": "b151ba9de7ca2b7c33cdac5cf4dc7448",
-      "size": 347
+      "checksum": "19d19555b24e0c328565ff6ee36674e9",
+      "size": 343
     },
     {
       "path": "(09cde0390abe0694,db051b98-6ff5-4bac-bea8-50b5a13c3f1b)|e0d46a6b35b5717e",
-      "checksum": "6c4a10536662bd2348a2bde20db3fcaf",
+      "checksum": "5f66d79792641941007cd06bba05ff21",
       "size": 110
     },
     {
