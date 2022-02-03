@@ -1,11 +1,13 @@
 <script lang="ts">
   import clickOutside from "../../actions/clickOutside";
 
+  type Tab = $$Generic;
+
   /** The `string` value is just an identifier that can be used to display any kind of tab label */
-  export let tabs: string[] = [];
+  export let tabs: Tab[] = [];
 
   /** Optionally change the value used as key during the iteration */
-  export let key: (tab: string, index: number) => string = (tab) => tab;
+  export let key: (tab: Tab, index: number) => Tab = (tab) => tab;
 
   export let activeTab = tabs[0];
 
@@ -30,7 +32,7 @@
           class:tab-active={activeTab === tab}
           on:click={() => (activeTab = tab)}
         >
-          <slot name="tab" {tab} {isFocused} />
+          <slot name="tab" {tab} {isFocused} {activeTab} />
         </div>
       {/each}
     </div>

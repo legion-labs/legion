@@ -8,6 +8,7 @@
     propertyIsOption,
     propertyIsQuat,
     propertyIsSpeed,
+    propertyIsScript,
     propertyIsString,
     propertyIsVec,
     propertyIsVec3,
@@ -20,6 +21,7 @@
   import ColorProperty from "./properties/ColorProperty.svelte";
   import NumberProperty from "./properties/NumberProperty.svelte";
   import QuatProperty from "./properties/QuatProperty.svelte";
+  import ScriptProperty from "./properties/ScriptProperty.svelte";
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vec3Property from "./properties/Vec3Property.svelte";
@@ -90,6 +92,12 @@
         bind:value={property.value}
       />
     </div>
+  {:else if propertyIsScript(property)}
+    <ScriptProperty
+      name={property.name}
+      on:input={({ detail }) => onInput({ value: detail })}
+      bind:value={property.value}
+    />
   {:else if propertyIsString(property)}
     <StringProperty
       on:input={({ detail }) => onInput({ value: detail })}

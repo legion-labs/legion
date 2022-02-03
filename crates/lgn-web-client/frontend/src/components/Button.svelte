@@ -6,6 +6,9 @@
   export let size: "default" | "lg" = "default";
 
   export let disabled = false;
+
+  /** Basically an `width: 100%` style so that the parent can control the width */
+  export let fluid = false;
 </script>
 
 <div
@@ -17,6 +20,7 @@
   class:danger={variant === "danger" && !disabled}
   class:default={size === "default" && !disabled}
   class:lg={size === "lg"}
+  class:w-full={fluid}
 >
   <button class="button" on:click {disabled} {type}><slot /></button>
 </div>
