@@ -28,6 +28,7 @@
         "openh264",
         "perfetto",
         "proto",
+        "protoc",
         "protos",
         "Rasterizer",
         "renderpass",
