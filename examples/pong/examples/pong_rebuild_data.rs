@@ -268,7 +268,9 @@ async fn create_offline_data(
     };
 
     // Mun script
-    let _mun_script = build_script(project, resource_registry,
+    let _mun_script = build_script(
+        project,
+        resource_registry,
         "d46d7e71-27bc-4516-9e85-074f5431d29c",
         1,
         "/scene/mun_script",
@@ -283,7 +285,9 @@ async fn create_offline_data(
     .await;
 
     // Rune script
-    let rune_script = build_script(project, resource_registry,
+    let rune_script = build_script(
+        project,
+        resource_registry,
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
         2,
         "/scene/rune_script",
@@ -298,7 +302,9 @@ async fn create_offline_data(
     .await;
 
     // Rhai script
-    let _rhai_script = build_script(project, resource_registry,
+    let _rhai_script = build_script(
+        project,
+        resource_registry,
         "44823dbf-597c-4e5b-90e9-10868ed7cefe",
         3,
         "/scene/rhai_script",

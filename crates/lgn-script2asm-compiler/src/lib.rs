@@ -101,15 +101,11 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resource.get(&resources).unwrap();
 
     let runtime_script = match resource.script_type {
-        1 => {
-            get_compiled_script(&context.source.resource_id(), &resource)
-        }
-        _ => {
-            runtime_data::Script {
-                script_type: resource.script_type,
-                compiled_script: resource.script.as_bytes().to_vec(),
-            }
-        }
+        1 => get_compiled_script(&context.source.resource_id(), &resource),
+        _ => runtime_data::Script {
+            script_type: resource.script_type,
+            compiled_script: resource.script.as_bytes().to_vec(),
+        },
     };
     let result_buffer = bincode::serialize(&runtime_script).unwrap();
 

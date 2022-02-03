@@ -9,7 +9,7 @@ use rune::{
     FromValue, ToValue,
 };
 
-use std::{cell::RefCell, rc::Rc, sync::Arc, fs};
+use std::{cell::RefCell, fs, rc::Rc, sync::Arc};
 
 use crate::runtime::{Script, ScriptComponent};
 use std::str::FromStr;
@@ -92,12 +92,8 @@ impl ScriptingPlugin {
             {
                 let runtime_ref = runtime.1.borrow();
                 let arg = i64::from_str(&runtime.0.input_values[0]).unwrap();
-                let result: i64 = mun_runtime::invoke_fn!(
-                    runtime_ref,
-                    &runtime.0.entry_fn,
-                    arg
-                )
-                .unwrap();
+                let result: i64 =
+                    mun_runtime::invoke_fn!(runtime_ref, &runtime.0.entry_fn, arg).unwrap();
                 println!("Mun: fibonacci({}) = {}", &arg, result);
             }
 
