@@ -4880,6 +4880,7 @@ dependencies = [
  "lz4",
  "path-clean",
  "path-slash",
+ "pathdiff",
  "pin-project",
  "reqwest",
  "serde",
@@ -5343,11 +5344,13 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "atty",
  "clap 3.0.14",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-tracing",
+ "termcolor",
  "tokio",
 ]
 

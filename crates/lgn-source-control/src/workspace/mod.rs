@@ -31,6 +31,29 @@ pub struct Workspace {
     cache_blob_storage: LocalBlobStorage,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Staging {
+    StagedAndUnstaged,
+    StagedOnly,
+    UnstagedOnly,
+}
+
+impl Staging {
+    pub fn from_bool(staged_only: bool, unstaged_only: bool) -> Staging {
+        if staged_only && unstaged_only {
+            panic!("staged_only and unstaged_only cannot both be true");
+        }
+
+        if staged_only {
+            Staging::StagedOnly
+        } else if unstaged_only {
+            Staging::UnstagedOnly
+        } else {
+            Staging::StagedAndUnstaged
+        }
+    }
+}
+
 impl Workspace {
     const LSC_DIR_NAME: &'static str = ".lsc";
 
@@ -124,28 +147,30 @@ impl Workspace {
     /// The method stops whenever a workspace is found or when it reaches the
     /// root folder, whichever comes first.
     pub async fn find(path: impl AsRef<Path>) -> Result<Self> {
-        let path: &Path =
+        let initial_path: &Path =
             &make_path_absolute(path).map_other_err("failed to make path absolute")?;
 
-        let mut path = match tokio::fs::metadata(path).await {
+        let mut path = match tokio::fs::metadata(initial_path).await {
             Ok(metadata) => {
                 if metadata.is_dir() {
-                    path
+                    initial_path
                 } else {
-                    path.parent().ok_or_else(|| Error::not_a_workspace(path))?
+                    initial_path
+                        .parent()
+                        .ok_or_else(|| Error::not_a_workspace(initial_path))?
                 }
             }
             Err(err) => match err.kind() {
                 // If the path doesn't exist, assume we specified a file that
                 // may not exist but still continue the search with its parent
                 // folder if one exists.
-                std::io::ErrorKind::NotFound => {
-                    path.parent().ok_or_else(|| Error::not_a_workspace(path))?
-                }
+                std::io::ErrorKind::NotFound => initial_path
+                    .parent()
+                    .ok_or_else(|| Error::not_a_workspace(initial_path))?,
                 _ => {
                     return Err(Error::Other {
                         source: err.into(),
-                        context: format!("failed to read metadata of `{}`", path.display()),
+                        context: format!("failed to read metadata of `{}`", initial_path.display()),
                     })
                 }
             },
@@ -159,7 +184,7 @@ impl Workspace {
                         if let Some(parent_path) = path.parent() {
                             path = parent_path;
                         } else {
-                            return Err(err);
+                            return Err(Error::not_a_workspace(initial_path));
                         }
                     }
                     _ => return Err(err),
@@ -267,6 +292,23 @@ impl Workspace {
         };
 
         Tree::from_root(&self.root, &tree_filter).await
+    }
+
+    /// Give the current relative path for a given canonical path.
+    pub fn make_relative_path(&self, current_dir: &Path, path: &CanonicalPath) -> String {
+        let abs_path = path.to_path_buf(&self.root);
+
+        match pathdiff::diff_paths(&abs_path, current_dir) {
+            Some(path) => path,
+            None => abs_path,
+        }
+        .display()
+        .to_string()
+    }
+
+    /// Get the current branch and commit.
+    pub async fn get_current_branch_and_commit(&self) -> Result<(String, String)> {
+        self.backend.get_current_branch().await
     }
 
     /// Get the tree of files and directories for the current branch and commit.
@@ -585,6 +627,25 @@ impl Workspace {
             .collect())
     }
 
+    /// Returns the status of the workspace, according to the staging
+    /// preference.
+    pub async fn status(
+        &self,
+        staging: Staging,
+    ) -> Result<(
+        BTreeMap<CanonicalPath, Change>,
+        BTreeMap<CanonicalPath, Change>,
+    )> {
+        Ok(match staging {
+            Staging::StagedAndUnstaged => (
+                self.get_staged_changes().await?,
+                self.get_unstaged_changes().await?,
+            ),
+            Staging::StagedOnly => (self.get_staged_changes().await?, BTreeMap::new()),
+            Staging::UnstagedOnly => (BTreeMap::new(), self.get_unstaged_changes().await?),
+        })
+    }
+
     /// Revert local changes to files and unstage them.
     ///
     /// The list of reverted files is returned. If none of the files had changes
@@ -592,6 +653,7 @@ impl Workspace {
     pub async fn revert_files(
         &self,
         paths: impl IntoIterator<Item = &Path> + Clone,
+        staging: Staging,
     ) -> Result<BTreeSet<CanonicalPath>> {
         debug!(
             "revert_files: {}",
@@ -604,8 +666,7 @@ impl Workspace {
 
         let canonical_paths = self.to_canonical_paths(paths).await?;
 
-        let staged_changes = self.get_staged_changes().await?;
-        let unstaged_changes = self.get_unstaged_changes().await?;
+        let (staged_changes, unstaged_changes) = self.status(staging).await?;
 
         let mut changes_to_clear = vec![];
         let mut changes_to_ignore = vec![];

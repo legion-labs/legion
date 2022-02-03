@@ -41,6 +41,20 @@ impl ChangeType {
             ChangeType::Delete { .. } => None,
         }
     }
+
+    pub fn to_human_string(&self) -> String {
+        match self {
+            ChangeType::Add { .. } => "added".to_string(),
+            ChangeType::Edit { old_info, new_info } => {
+                if old_info != new_info {
+                    "modified".to_string()
+                } else {
+                    "edited".to_string()
+                }
+            }
+            ChangeType::Delete { .. } => "deleted".to_string(),
+        }
+    }
 }
 
 impl Display for ChangeType {

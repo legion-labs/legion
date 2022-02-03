@@ -21,7 +21,6 @@ pub mod lock;
 pub mod sql;
 //pub mod switch_branch;
 //pub mod sync;
-//pub mod tree;
 mod utils;
 pub mod workspace;
 
@@ -42,6 +41,5 @@ pub use lock::*;
 //pub use revert::*;
 //pub use switch_branch::*;
 //pub use sync::*;
-//pub use tree::*;
 pub(crate) use utils::*;
 pub use workspace::*;
