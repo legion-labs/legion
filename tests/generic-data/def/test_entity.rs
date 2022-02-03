@@ -52,6 +52,9 @@ pub struct TestEntity {
 
     test_option_primitive_set: Option<Vec3>,
     test_option_primitive_none: Option<Vec3>,
+
+    #[legion(editor_type = "Script", default = "// DummyScript")]
+    test_script_string: String,
 }
 
 #[component]
