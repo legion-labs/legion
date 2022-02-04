@@ -6,7 +6,6 @@ pub use labels::*;
 use lgn_app::prelude::*;
 use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
-use lgn_math::prelude::*;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
@@ -106,8 +105,7 @@ impl PhysicsPlugin {
     #[span_fn]
     fn sync_transforms(mut query: Query<'_, '_, (&RigidDynamicActor, &mut Transform)>) {
         for (dynamic, mut transform) in query.iter_mut() {
-            // TODO: use into() to convert to glam types
-            *transform = Transform::from_matrix(convert_to_mat4(dynamic.actor.get_global_pose()));
+            *transform = Transform::from_matrix(dynamic.actor.get_global_pose().into());
         }
     }
 
@@ -131,23 +129,6 @@ impl PhysicsPlugin {
 #[derive(Component)]
 struct RigidDynamicActor {
     actor: Owner<PxRigidDynamic>,
-}
-
-// math transforms, until glam feature is public
-
-fn convert_to_vec3(value: PxVec3) -> Vec3 {
-    Vec3::new(value.x(), value.y(), value.z())
-}
-
-fn convert_to_quat(value: PxQuat) -> Quat {
-    Quat::from_xyzw(value.x(), value.y(), value.z(), value.w())
-}
-
-fn convert_to_mat4(value: PxTransform) -> Mat4 {
-    Mat4::from_rotation_translation(
-        convert_to_quat(value.rotation()),
-        convert_to_vec3(value.translation()),
-    )
 }
 
 // callbacks

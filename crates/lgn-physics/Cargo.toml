@@ -18,5 +18,5 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 
 # other
-physx = { version = "0.12.1", features = ["glam"] }
-physx-sys = "0.4.16"
+physx = { git = "https://github.com/R3DP1XL/physx-rs", features = ["glam"] }
+physx-sys = { git = "https://github.com/R3DP1XL/physx-rs" }
