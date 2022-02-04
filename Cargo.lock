@@ -170,6 +170,8 @@ dependencies = [
  "lgn-tracing",
  "lgn-tracing-transit",
  "prost",
+ "reqwest",
+ "serde_json",
  "sqlx",
  "tokio",
  "tonic",

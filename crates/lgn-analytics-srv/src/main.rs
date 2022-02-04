@@ -12,6 +12,7 @@
 //#![allow()]
 
 mod analytics_service;
+mod auth;
 mod cache;
 mod call_tree;
 mod call_tree_store;
@@ -93,7 +94,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             connect_to_remote_data_lake(&db_uri, &s3_url).await?
         }
     };
-
     Server::builder()
         .accept_http1(true)
         .add_service(tonic_web::enable(PerformanceAnalyticsServer::new(service)))
