@@ -212,7 +212,7 @@ async fn build_resource_from_raw(
                         name.clone(),
                         kind.0,
                         kind.1,
-                        id,
+                        id.id,
                         resources.new_resource(kind.1).unwrap(),
                         resources,
                     )
@@ -263,7 +263,7 @@ async fn build_test_entity(
                     name.clone(),
                     kind_name,
                     kind,
-                    id,
+                    id.id,
                     test_entity_handle,
                     resources,
                 )
@@ -329,7 +329,7 @@ async fn build_debug_cubes(
                     name.clone(),
                     DebugCube::TYPENAME,
                     DebugCube::TYPE,
-                    id,
+                    id.id,
                     cube_entity_handle,
                     resources,
                 )

@@ -132,7 +132,7 @@ async fn build_script(
             file_name.into(),
             lgn_scripting::offline::Script::TYPENAME,
             id.kind,
-            id,
+            id.id,
             &handle,
             &mut resources,
         )
@@ -166,7 +166,7 @@ async fn create_offline_data(
                 "/scene/Ground".into(),
                 generic_data::offline::DebugCube::TYPENAME,
                 id.kind,
-                id,
+                id.id,
                 handle,
                 &mut resources,
             )
@@ -196,7 +196,7 @@ async fn create_offline_data(
                 "/scene/Pad Right".into(),
                 generic_data::offline::DebugCube::TYPENAME,
                 id.kind,
-                id,
+                id.id,
                 handle,
                 &mut resources,
             )
@@ -226,7 +226,7 @@ async fn create_offline_data(
                 "/scene/Pad Left".into(),
                 generic_data::offline::DebugCube::TYPENAME,
                 id.kind,
-                id,
+                id.id,
                 handle,
                 &mut resources,
             )
@@ -257,7 +257,7 @@ async fn create_offline_data(
                 "/scene/Ball".into(),
                 generic_data::offline::DebugCube::TYPENAME,
                 id.kind,
-                id,
+                id.id,
                 handle,
                 &mut resources,
             )
@@ -346,7 +346,7 @@ async fn create_offline_data(
                 "/scene.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
-                id,
+                id.id,
                 handle,
                 &mut resources,
             )

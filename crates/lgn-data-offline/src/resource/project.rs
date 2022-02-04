@@ -357,11 +357,7 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let type_id = ResourceTypeAndId {
-            kind,
-            id: ResourceId::new(),
-        };
-        self.add_resource_with_id(name, kind_name, kind, type_id, handle, registry)
+        self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
             .await
     }
 
@@ -378,12 +374,12 @@ impl Project {
         name: ResourcePathName,
         kind_name: &str,
         kind: ResourceType,
-        type_id: ResourceTypeAndId,
+        id: ResourceId,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(type_id.id);
-        let resource_path = self.resource_path(type_id.id);
+        let meta_path = self.metadata_path(id);
+        let resource_path = self.resource_path(id);
 
         let directory = {
             let mut directory = resource_path.clone();
@@ -430,6 +426,8 @@ impl Project {
                 .await
                 .map_err(Error::SourceControl)?;
         }
+
+        let type_id = ResourceTypeAndId { kind, id };
 
         self.db.local_resources.push(type_id);
         Ok(type_id)

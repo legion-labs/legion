@@ -62,7 +62,7 @@ impl TransactionOperation for CloneResourceOperation {
                 source_raw_name,
                 resource_type_name,
                 self.clone_resource_id.kind,
-                self.clone_resource_id,
+                self.clone_resource_id.id,
                 &clone_handle,
                 &mut ctx.resource_registry,
             )

@@ -61,7 +61,7 @@ impl TransactionOperation for CreateResourceOperation {
                     requested_resource_path,
                     resource_type_name,
                     self.resource_id.kind,
-                    self.resource_id,
+                    self.resource_id.id,
                     &handle,
                     &mut ctx.resource_registry,
                 )

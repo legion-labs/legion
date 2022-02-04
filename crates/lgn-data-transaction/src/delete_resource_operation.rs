@@ -69,7 +69,7 @@ impl TransactionOperation for DeleteResourceOperation {
                     old_resource_name.clone(),
                     resource_type_name,
                     self.resource_id.kind,
-                    self.resource_id,
+                    self.resource_id.id,
                     &handle,
                     &mut ctx.resource_registry,
                 )
