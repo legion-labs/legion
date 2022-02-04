@@ -478,8 +478,7 @@ impl CGenShaderKey {
         std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
 
     const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_BITCOUNT;
-    const SHADER_OPTIONS_BITCOUNT: usize =
-        std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
+    const SHADER_OPTIONS_BITCOUNT: usize = Self::MAX_SHADER_OPTIONS;
     const SHADER_OPTIONS_MASK: u64 = (1 << Self::SHADER_OPTIONS_BITCOUNT) - 1;
 
     pub const fn make(
