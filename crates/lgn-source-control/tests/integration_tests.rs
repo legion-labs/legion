@@ -1,180 +1,26 @@
+mod common;
+
+#[allow(clippy::wildcard_imports)]
+use common::*;
+
 use std::path::Path;
 
 use lgn_source_control::{
-    CanonicalPath, Change, ChangeType, Error, FileInfo, Index, MapOtherError, Workspace,
-    WorkspaceConfig, WorkspaceRegistration,
+    Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 
-async fn create_file(workspace: &Workspace, path: &str, content: &str) {
-    let file_path = workspace.root().join(path);
-
-    if let Some(parent) = file_path.parent() {
-        tokio::fs::create_dir_all(parent)
-            .await
-            .map_other_err(format!(
-                "failed to create parent directories for file `{}`",
-                path
-            ))
-            .unwrap();
-    }
-
-    tokio::fs::write(file_path, content)
-        .await
-        .map_other_err(format!("failed to write file `{}`", path))
-        .unwrap();
-}
-
-async fn update_file(workspace: &Workspace, path: &str, content: &str) {
-    let file_path = workspace.root().join(path);
-
-    tokio::fs::write(file_path, content)
-        .await
-        .map_other_err(format!("failed to write file `{}`", path))
-        .unwrap();
-}
-
-async fn assert_file_read_only(workspace: &Workspace, path: &str, readonly: bool) {
-    let file_path = workspace.root().join(path);
-    let metadata = tokio::fs::metadata(&file_path)
-        .await
-        .map_other_err(format!(
-            "failed to get metadata for {}",
-            file_path.display()
-        ))
-        .unwrap();
-
-    let permissions = metadata.permissions();
-
-    assert_eq!(
-        permissions.readonly(),
-        readonly,
-        "expected file {} readonly status to be {}",
-        path,
-        readonly
-    );
-}
-
-async fn assert_path_doesnt_exist(workspace: &Workspace, path: &str) {
-    let file_path = workspace.root().join(path);
-
-    match tokio::fs::metadata(&file_path).await {
-        Ok(_) => panic!("file `{}` should not exist", path),
-        Err(e) => {
-            assert!(
-                !(e.kind() != std::io::ErrorKind::NotFound),
-                "unexpected error: {}",
-                e
-            );
-        }
-    };
-}
-
-async fn assert_file_content(workspace: &Workspace, path: &str, expected_content: &str) {
-    let file_path = workspace.root().join(path);
-
-    let content = tokio::fs::read_to_string(file_path)
-        .await
-        .map_other_err(format!("failed to read file `{}`", path))
-        .unwrap();
-
-    assert_eq!(content, expected_content);
-}
-
-fn cp(s: &str) -> CanonicalPath {
-    CanonicalPath::new(s).unwrap()
-}
-
-fn add(s: &str, new_hash: &str, new_size: u64) -> Change {
-    Change::new(
-        cp(s),
-        ChangeType::Add {
-            new_info: FileInfo {
-                hash: new_hash.to_owned(),
-                size: new_size,
-            },
-        },
-    )
-}
-
-fn edit(s: &str, old_hash: &str, new_hash: &str, old_size: u64, new_size: u64) -> Change {
-    Change::new(
-        cp(s),
-        ChangeType::Edit {
-            old_info: FileInfo {
-                hash: old_hash.to_owned(),
-                size: old_size,
-            },
-            new_info: FileInfo {
-                hash: new_hash.to_owned(),
-                size: new_size,
-            },
-        },
-    )
-}
-
-fn delete(s: &str, old_hash: &str, old_size: u64) -> Change {
-    Change::new(
-        cp(s),
-        ChangeType::Delete {
-            old_info: FileInfo {
-                hash: old_hash.to_owned(),
-                size: old_size,
-            },
-        },
-    )
-}
-
-async fn assert_staged_changes(workspace: &Workspace, expected_changes: &[Change]) {
-    let staged_changes = workspace
-        .get_staged_changes()
-        .await
-        .unwrap()
-        .into_values()
-        .collect::<Vec<_>>();
-
-    assert_eq!(staged_changes, expected_changes);
-}
-
-async fn assert_unstaged_changes(workspace: &Workspace, expected_changes: &[Change]) {
-    let staged_changes = workspace
-        .get_unstaged_changes()
-        .await
-        .unwrap()
-        .into_values()
-        .collect::<Vec<_>>();
-
-    assert_eq!(staged_changes, expected_changes);
-}
-
 #[tokio::test]
-async fn test_full_flow() {
-    //let root = &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/integration");
-    let index_root = tempfile::tempdir().unwrap();
-
-    let index = Index::new(index_root.path().to_str().unwrap()).unwrap();
-
-    // Create the index.
-    index.create().await.unwrap();
-
-    let workspace_root = tempfile::tempdir().unwrap();
-
-    // Initialize the workspace.
-    let config = WorkspaceConfig::new(
-        index_root.path().display().to_string(),
-        WorkspaceRegistration::new_with_current_user(),
-    );
-    let workspace = Workspace::init(&workspace_root.path(), config)
-        .await
-        .unwrap();
+async fn test_add_and_commit() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
 
     // Add some files.
-    create_file(&workspace, "apple.txt", "I am an apple").await;
-    create_file(&workspace, "orange.txt", "I am an orange").await;
-    create_file(&workspace, "vegetables/carrot.txt", "I am a carrot").await;
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
 
-    assert_unstaged_changes(
-        &workspace,
-        &[
+    assert_unstaged_changes!(
+        ws,
+        [
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
@@ -190,12 +36,11 @@ async fn test_full_flow() {
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
                 13,
             ),
-        ],
-    )
-    .await;
-    assert_staged_changes(&workspace, &[]).await;
+        ]
+    );
+    assert_staged_changes!(ws, []);
 
-    let new_added_files = workspace.add_files([Path::new(".")]).await.unwrap();
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(
         new_added_files,
@@ -207,10 +52,10 @@ async fn test_full_flow() {
         .into(),
     );
 
-    assert_unstaged_changes(&workspace, &[]).await;
-    assert_staged_changes(
-        &workspace,
-        &[
+    assert_unstaged_changes!(ws, []);
+    assert_staged_changes!(
+        ws,
+        [
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
@@ -226,18 +71,17 @@ async fn test_full_flow() {
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
                 13,
             ),
-        ],
-    )
-    .await;
+        ]
+    );
 
     // Re-adding the same files should be a no-op.
-    let new_added_files = workspace.add_files([Path::new(".")]).await.unwrap();
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(new_added_files, [].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[
+    assert_staged_changes!(
+        ws,
+        [
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
@@ -253,18 +97,17 @@ async fn test_full_flow() {
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
                 13,
             ),
-        ],
-    )
-    .await;
+        ]
+    );
 
     // Editing the same files should be a no-op.
-    let new_edited_files = workspace.edit_files([Path::new(".")]).await.unwrap();
+    let new_edited_files = workspace_edit_files!(ws, ["."]);
 
     assert_eq!(new_edited_files, [].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[
+    assert_staged_changes!(
+        ws,
+        [
             add(
                 "/apple.txt",
                 "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
@@ -280,150 +123,169 @@ async fn test_full_flow() {
                 "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
                 13,
             ),
-        ],
-    )
-    .await;
+        ]
+    );
 
     // Commit the files.
-    workspace.commit("Added some fruits").await.unwrap();
+    workspace_commit!(ws, "Added some fruits");
 
-    assert_staged_changes(&workspace, &[]).await;
-    assert_file_read_only(&workspace, "apple.txt", true).await;
-    assert_file_content(&workspace, "apple.txt", "I am an apple").await;
-    assert_file_read_only(&workspace, "orange.txt", true).await;
-    assert_file_content(&workspace, "orange.txt", "I am an orange").await;
-    assert_file_read_only(&workspace, "vegetables/carrot.txt", true).await;
-    assert_file_content(&workspace, "vegetables/carrot.txt", "I am a carrot").await;
+    assert_staged_changes!(ws, []);
+    assert_file_read_only!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "I am an apple");
+    assert_file_read_only!(ws, "orange.txt");
+    assert_file_content!(ws, "orange.txt", "I am an orange");
+    assert_file_read_only!(ws, "vegetables/carrot.txt");
+    assert_file_content!(ws, "vegetables/carrot.txt", "I am a carrot");
+
+    // Committing the change should fail, as the commit is empty.
+    workspace_commit_error!(ws, "Edited the carrot", Error::EmptyCommitNotAllowed);
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_edit_and_commit() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's now edit one file.
-    let new_edited_files = workspace
-        .edit_files([Path::new("vegetables")])
-        .await
-        .unwrap();
+    let new_edited_files = ws.edit_files([Path::new("vegetables")]).await.unwrap();
 
     assert_eq!(new_edited_files, [cp("/vegetables/carrot.txt")].into());
 
-    assert_unstaged_changes(&workspace, &[]).await;
-    assert_staged_changes(
-        &workspace,
-        &[edit(
+    assert_unstaged_changes!(ws, []);
+    assert_staged_changes!(
+        ws,
+        [edit(
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             13,
             13,
-        )],
-    )
-    .await;
+        )]
+    );
 
-    assert_file_read_only(&workspace, "vegetables/carrot.txt", false).await;
-    assert_file_content(&workspace, "vegetables/carrot.txt", "I am a carrot").await;
+    assert_file_read_write!(ws, "vegetables/carrot.txt");
+    assert_file_content!(ws, "vegetables/carrot.txt", "I am a carrot");
 
-    update_file(&workspace, "vegetables/carrot.txt", "I am a new carrot").await;
+    update_file!(ws, "vegetables/carrot.txt", "I am a new carrot");
 
-    assert_unstaged_changes(
-        &workspace,
-        &[edit(
+    assert_unstaged_changes!(
+        ws,
+        [edit(
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
             13,
             17,
-        )],
-    )
-    .await;
+        )]
+    );
 
-    // Commit the change should fail, as we have one edited file whose hash
+    // Committing the change should fail, as we have one edited file whose hash
     // changed but the change was not staged.
-    match workspace.commit("Edited the carrot").await {
-        Err(Error::EmptyCommitNotAllowed) => {}
-        Err(err) => {
-            panic!("unexpected error: {:?}", err);
+    match workspace_commit_error!(ws, "Edited the carrot") {
+        Error::UnchangedFilesMarkedForEdition { paths } => {
+            assert_eq!(paths, [cp("/vegetables/carrot.txt")].into());
         }
-        Ok(_) => {
-            panic!("commit should have failed");
-        }
-    }
+        e => panic!("Unexpected error: {:?}", e),
+    };
 
     // Add or edit should work the same here: let's first try with add. We'll test with edit later.
-    let new_added_files = workspace.add_files([Path::new(".")]).await.unwrap();
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(new_added_files, [cp("/vegetables/carrot.txt")].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[edit(
+    assert_staged_changes!(
+        ws,
+        [edit(
             "/vegetables/carrot.txt",
             "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
             13,
             17,
-        )],
-    )
-    .await;
+        )]
+    );
 
     // Commit the files.
-    workspace.commit("Edited the carrot").await.unwrap();
+    workspace_commit!(ws, "Edited the carrot");
 
-    assert_staged_changes(&workspace, &[]).await;
-    assert_file_read_only(&workspace, "vegetables/carrot.txt", true).await;
-    assert_file_content(&workspace, "vegetables/carrot.txt", "I am a new carrot").await;
-    assert_file_content(&workspace, "apple.txt", "I am an apple").await;
+    assert_staged_changes!(ws, []);
+    assert_file_read_only!(ws, "vegetables/carrot.txt");
+    assert_file_content!(ws, "vegetables/carrot.txt", "I am a new carrot");
+    assert_file_content!(ws, "apple.txt", "I am an apple");
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_delete_and_commit() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    create_file!(ws, "vegetables/carrot.txt", "I am a new carrot");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's delete a file.
-    let new_deleted_files = workspace
-        .delete_files([Path::new("vegetables/carrot.txt")])
-        .await
-        .unwrap();
+    let new_deleted_files = workspace_delete_files!(ws, ["vegetables/carrot.txt"]);
 
     assert_eq!(new_deleted_files, [cp("/vegetables/carrot.txt")].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[delete(
+    assert_staged_changes!(
+        ws,
+        [delete(
             "/vegetables/carrot.txt",
             "d041184eda20d2bd0dd05f2fbe96134d1832697ba9cb97d137df76fb6231424c",
             17,
-        )],
-    )
-    .await;
+        )]
+    );
 
-    assert_path_doesnt_exist(&workspace, "vegetables/carrot.txt").await;
-    assert_file_content(&workspace, "apple.txt", "I am an apple").await;
+    assert_path_doesnt_exist!(ws, "vegetables/carrot.txt");
+    assert_file_content!(ws, "apple.txt", "I am an apple");
 
     // Commit the files.
-    workspace.commit("Removed the carrot").await.unwrap();
+    workspace_commit!(ws, "Removed the carrot");
 
-    assert_staged_changes(&workspace, &[]).await;
-    assert_path_doesnt_exist(&workspace, "vegetables/carrot.txt").await;
+    assert_staged_changes!(ws, []);
+    assert_path_doesnt_exist!(ws, "vegetables/carrot.txt");
 
-    create_file(&workspace, "banana.txt", "I am a banana").await;
+    cleanup_test_workspace_and_index!(ws, index);
+}
 
-    let new_added_files = workspace.add_files([Path::new(".")]).await.unwrap();
+#[tokio::test]
+async fn test_add_empty_directory() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
 
-    assert_eq!(new_added_files, [cp("/banana.txt")].into());
+    create_file!(ws, "apple.txt", "I am an apple");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
 
-    let new_deleted_files = workspace
-        .delete_files([Path::new("banana.txt")])
-        .await
-        .unwrap();
-
-    assert_eq!(new_deleted_files, [cp("/banana.txt")].into());
-    assert_path_doesnt_exist(&workspace, "banana.txt").await;
-
-    // The file was not really in the tree: it was just staged for addition. So its removal is actually a no-op.
-    assert_staged_changes(&workspace, &[]).await;
+    create_dir!(ws, "vegetables");
 
     // Adding an empty directory but existing should yield no error and add no files.
-    let new_added_files = workspace
-        .add_files([Path::new("vegetables")])
-        .await
-        .unwrap();
+    let new_added_files = ws.add_files([Path::new("vegetables")]).await.unwrap();
 
     assert_eq!(new_added_files, [].into(),);
 
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_add_non_existing_path() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am an apple");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
     // Adding an non-existing path should fail.
-    match workspace.add_files([Path::new("non/existing/path")]).await {
+    match ws.add_files([Path::new("non/existing/path")]).await {
         Err(Error::UnmatchedPath { .. }) => {}
         Err(err) => {
             panic!("unexpected error: {:?}", err);
@@ -433,121 +295,156 @@ async fn test_full_flow() {
         }
     };
 
-    let new_edited_files = workspace
-        .edit_files([Path::new("apple.txt")])
-        .await
-        .unwrap();
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_add_then_delete() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    create_file!(ws, "banana.txt", "I am a banana");
+
+    let new_added_files = workspace_add_files!(ws, ["."]);
+
+    assert_eq!(new_added_files, [cp("/banana.txt")].into());
+
+    let new_deleted_files = workspace_delete_files!(ws, ["banana.txt"]);
+
+    assert_eq!(new_deleted_files, [cp("/banana.txt")].into());
+    assert_path_doesnt_exist!(ws, "banana.txt");
+
+    // The file was not really in the tree: it was just staged for addition. So its removal is actually a no-op.
+    assert_unstaged_changes!(ws, []);
+    assert_staged_changes!(ws, []);
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[edit(
+    assert_staged_changes!(
+        ws,
+        [edit(
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             13,
             13,
-        )],
-    )
-    .await;
+        )]
+    );
 
-    assert_file_read_only(&workspace, "apple.txt", false).await;
-    assert_file_content(&workspace, "apple.txt", "I am an apple").await;
-    update_file(&workspace, "apple.txt", "I am a new apple").await;
+    assert_file_read_write!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "I am an apple");
+    update_file!(ws, "apple.txt", "I am a new apple");
 
     // The recent change was not staged and thus should not be listed.
-    assert_staged_changes(
-        &workspace,
-        &[edit(
+    assert_staged_changes!(
+        ws,
+        [edit(
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             13,
             13,
-        )],
-    )
-    .await;
+        )]
+    );
 
     // Stage the change, this time using `edit`. Using `add` would have worked as well.
-    let new_edited_files = workspace
-        .edit_files([Path::new("apple.txt")])
-        .await
-        .unwrap();
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
 
-    assert_staged_changes(
-        &workspace,
-        &[edit(
+    assert_staged_changes!(
+        ws,
+        [edit(
             "/apple.txt",
             "bec0c979dad52f98fa6772fd89acfa5c93b856bdc1331d1a73694a194f121181",
             "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
             13,
             16,
-        )],
-    )
-    .await;
+        )]
+    );
 
     // Let's make another change but do not stage it.
-    update_file(&workspace, "apple.txt", "I am an even newer apple").await;
+    update_file!(ws, "apple.txt", "I am an even newer apple");
 
     // Commit the files.
-    workspace.commit("Update the apple").await.unwrap();
+    workspace_commit!(ws, "Update the apple");
 
     // File should not be read only nor unlocked as it has unstaged changes.
-    assert_file_read_only(&workspace, "apple.txt", false).await;
-    assert_file_content(&workspace, "apple.txt", "I am an even newer apple").await;
+    assert_file_read_write!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "I am an even newer apple");
 
     // We should still have some unstaged changes as we did not stage them yet.
-    assert_staged_changes(&workspace, &[]).await;
-    assert_unstaged_changes(
-        &workspace,
-        &[edit(
+    assert_staged_changes!(ws, []);
+    assert_unstaged_changes!(
+        ws,
+        [edit(
             "/apple.txt",
             "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
             "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
             16,
             24,
-        )],
-    )
-    .await;
+        )]
+    );
 
     // Reverting the file with unstaged changes should work.
-    let new_reverted_files = workspace
-        .revert_files([Path::new("apple.txt")])
-        .await
-        .unwrap();
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedAndUnstaged);
 
     assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
 
-    assert_staged_changes(&workspace, &[]).await;
-    assert_unstaged_changes(&workspace, &[]).await;
+    assert_staged_changes!(ws, []);
+    assert_unstaged_changes!(ws, []);
 
-    assert_file_read_only(&workspace, "apple.txt", true).await;
-    assert_file_content(&workspace, "apple.txt", "I am a new apple").await;
+    assert_file_read_only!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "I am a new apple");
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_revert_after_add_and_edit() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am a new apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's make a change but stage it this time.
-    let new_edited_files = workspace
-        .edit_files([Path::new("apple.txt")])
-        .await
-        .unwrap();
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt"),].into());
 
-    update_file(&workspace, "apple.txt", "I am an even newer apple").await;
-    create_file(&workspace, "strawberry.txt", "I am a strawberry").await;
+    update_file!(ws, "apple.txt", "I am an even newer apple");
+    create_file!(ws, "strawberry.txt", "I am a strawberry");
 
-    let new_added_files = workspace.add_files([Path::new(".")]).await.unwrap();
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(
         new_added_files,
         [cp("/apple.txt"), cp("/strawberry.txt")].into()
     );
 
-    assert_staged_changes(
-        &workspace,
-        &[
+    assert_staged_changes!(
+        ws,
+        [
             edit(
                 "/apple.txt",
                 "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
@@ -560,13 +457,12 @@ async fn test_full_flow() {
                 "ee15463ad8b18f1bec0374e55969913f81c205e02cc9fb331e8ca60211344ee2",
                 17,
             ),
-        ],
-    )
-    .await;
-    assert_unstaged_changes(&workspace, &[]).await;
+        ]
+    );
+    assert_unstaged_changes!(ws, []);
 
     // Reverting the file with staged changes should work too.
-    let new_reverted_files = workspace.revert_files([Path::new(".")]).await.unwrap();
+    let new_reverted_files = workspace_revert_files!(ws, ["."], Staging::StagedAndUnstaged);
 
     assert_eq!(
         new_reverted_files,
@@ -574,22 +470,171 @@ async fn test_full_flow() {
     );
 
     // Untracked files that are reverted for add are not deleted.
-    assert_staged_changes(&workspace, &[]).await;
-    assert_unstaged_changes(
-        &workspace,
-        &[add(
+    assert_staged_changes!(ws, []);
+    assert_unstaged_changes!(
+        ws,
+        [add(
             "/strawberry.txt",
             "ee15463ad8b18f1bec0374e55969913f81c205e02cc9fb331e8ca60211344ee2",
             17,
-        )],
-    )
-    .await;
+        )]
+    );
 
-    assert_file_read_only(&workspace, "apple.txt", true).await;
-    assert_file_content(&workspace, "apple.txt", "I am a new apple").await;
-    assert_file_content(&workspace, "strawberry.txt", "I am a strawberry").await;
+    assert_file_read_only!(ws, "apple.txt");
+    assert_file_read_write!(ws, "strawberry.txt");
+    assert_file_content!(ws, "apple.txt", "I am a new apple");
+    assert_file_content!(ws, "strawberry.txt", "I am a strawberry");
 
-    // Destroy the index.
-    #[cfg(not(target_os = "windows"))]
-    index.destroy().await.unwrap();
+    // Let's delete the file: it should not appear unstaged anymore.
+    delete_file!(ws, "strawberry.txt");
+
+    assert_staged_changes!(ws, []);
+    assert_unstaged_changes!(ws, []);
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_revert_staged_only_with_unstaged_changes() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am a new apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    // Let's mark a file for edition, change it but do not stage it. Then let's revert it in staging.
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
+
+    assert_eq!(new_edited_files, [cp("/apple.txt")].into());
+    update_file!(ws, "apple.txt", "I am an even newer apple");
+
+    assert_unstaged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+            16,
+            24,
+        )]
+    );
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )]
+    );
+
+    // The file has unstaged changes, so reverting in staged-only mode should
+    // not affect it.
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedOnly);
+
+    assert_eq!(new_reverted_files, [].into());
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am a new apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
+
+    assert_eq!(new_edited_files, [cp("/apple.txt")].into());
+    update_file!(ws, "apple.txt", "I am an even newer apple");
+
+    let new_added_files = workspace_add_files!(ws, ["apple.txt"]);
+
+    assert_eq!(new_added_files, [cp("/apple.txt"),].into(),);
+
+    assert_unstaged_changes!(ws, []);
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "3ff8d72c2de3847451c2430776f2f9e38abf0e7eae5aabcdc4dfae91dacadc51",
+            16,
+            24,
+        )]
+    );
+
+    update_file!(ws, "apple.txt", "Unstaged modification");
+
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedOnly);
+
+    assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
+
+    assert_file_read_write!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "Unstaged modification");
+
+    assert_unstaged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "d5c062b844a8a2fce186e6552465512dd7f08fbec83f2580d72f560ab51c541e",
+            16,
+            21,
+        )]
+    );
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )]
+    );
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_revert_unstaged_only_with_unstaged_changes() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "I am a new apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    let new_edited_files = workspace_edit_files!(ws, ["apple.txt"]);
+
+    assert_eq!(new_edited_files, [cp("/apple.txt")].into());
+    update_file!(ws, "apple.txt", "Unstaged modification");
+
+    // This time let's only revert unstaged changes.
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::UnstagedOnly);
+
+    assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
+
+    assert_file_read_write!(ws, "apple.txt");
+    assert_file_content!(ws, "apple.txt", "I am a new apple");
+
+    assert_unstaged_changes!(ws, []);
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )]
+    );
+
+    cleanup_test_workspace_and_index!(ws, index);
 }

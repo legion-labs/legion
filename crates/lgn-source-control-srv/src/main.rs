@@ -15,15 +15,14 @@ use lgn_source_control::{
 };
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
-    ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
-    CommitToBranchRequest, CommitToBranchResponse, CountLocksInDomainRequest,
-    CountLocksInDomainResponse, CreateIndexRequest, CreateIndexResponse, DestroyIndexRequest,
-    DestroyIndexResponse, FindBranchRequest, FindBranchResponse, FindBranchesInLockDomainRequest,
-    FindBranchesInLockDomainResponse, FindLockRequest, FindLockResponse, FindLocksInDomainRequest,
-    FindLocksInDomainResponse, GetBlobStorageUrlRequest, GetBlobStorageUrlResponse,
-    IndexExistsRequest, IndexExistsResponse, InsertBranchRequest, InsertBranchResponse,
-    InsertCommitRequest, InsertCommitResponse, InsertLockRequest, InsertLockResponse,
-    ReadBranchesRequest, ReadBranchesResponse, ReadCommitRequest, ReadCommitResponse,
+    ClearLockRequest, ClearLockResponse, CommitToBranchRequest, CommitToBranchResponse,
+    CountLocksInDomainRequest, CountLocksInDomainResponse, CreateIndexRequest, CreateIndexResponse,
+    DestroyIndexRequest, DestroyIndexResponse, FindBranchRequest, FindBranchResponse,
+    FindBranchesInLockDomainRequest, FindBranchesInLockDomainResponse, FindLockRequest,
+    FindLockResponse, FindLocksInDomainRequest, FindLocksInDomainResponse,
+    GetBlobStorageUrlRequest, GetBlobStorageUrlResponse, IndexExistsRequest, IndexExistsResponse,
+    InsertBranchRequest, InsertBranchResponse, InsertLockRequest, InsertLockResponse,
+    ReadBranchesRequest, ReadBranchesResponse, ReadCommitsRequest, ReadCommitsResponse,
     ReadTreeRequest, ReadTreeResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
     SaveTreeRequest, SaveTreeResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
@@ -282,24 +281,24 @@ impl SourceControl for Service {
         }))
     }
 
-    async fn read_commit(
+    async fn read_commits(
         &self,
-        request: tonic::Request<ReadCommitRequest>,
-    ) -> Result<tonic::Response<ReadCommitResponse>, tonic::Status> {
+        request: tonic::Request<ReadCommitsRequest>,
+    ) -> Result<tonic::Response<ReadCommitsResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        let commit = Some(
-            index_backend
-                .read_commit(&request.commit_id)
-                .await
-                .map_err(|e| tonic::Status::unknown(e.to_string()))?
-                .into(),
-        );
+        let commits = index_backend
+            .read_commits(&request.commit_id, request.depth)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?
+            .into_iter()
+            .map(Into::into)
+            .collect();
 
-        Ok(tonic::Response::new(ReadCommitResponse { commit }))
+        Ok(tonic::Response::new(ReadCommitsResponse { commits }))
     }
 
     async fn read_tree(
@@ -397,26 +396,6 @@ impl SourceControl for Service {
         Ok(tonic::Response::new(SaveTreeResponse { tree_id }))
     }
 
-    async fn insert_commit(
-        &self,
-        request: tonic::Request<InsertCommitRequest>,
-    ) -> Result<tonic::Response<InsertCommitResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
-        let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        index_backend
-            .insert_commit(&commit)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(InsertCommitResponse {}))
-    }
-
     async fn commit_to_branch(
         &self,
         request: tonic::Request<CommitToBranchRequest>,
@@ -435,23 +414,6 @@ impl SourceControl for Service {
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
         Ok(tonic::Response::new(CommitToBranchResponse {}))
-    }
-
-    async fn commit_exists(
-        &self,
-        request: tonic::Request<CommitExistsRequest>,
-    ) -> Result<tonic::Response<CommitExistsResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let exists = index_backend
-            .commit_exists(&request.commit_id)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(CommitExistsResponse { exists }))
     }
 
     async fn update_branch(

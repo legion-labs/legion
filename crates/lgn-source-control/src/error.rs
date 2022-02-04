@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use thiserror::Error;
 
@@ -16,6 +16,8 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
+    #[error("the specified commit `{commit_id}` does not exist")]
+    CommitDoesNotExist { commit_id: String },
     #[error("the folder `{path}` is not a workspace")]
     NotAWorkspace { path: PathBuf },
     #[error("the path `{path}` did not match any files")]
@@ -34,6 +36,8 @@ pub enum Error {
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
     EmptyCommitNotAllowed,
+    #[error("some files are marked for edition but no changes are staged for them: please stage your changes or revert the files")]
+    UnchangedFilesMarkedForEdition { paths: BTreeSet<CanonicalPath> },
     #[error("`{canonical_path}` is a directory and cannot be edited")]
     CannotEditDirectory { canonical_path: CanonicalPath },
     #[error(
@@ -89,6 +93,12 @@ impl Error {
         }
     }
 
+    pub fn commit_does_not_exist(commit_id: impl Into<String>) -> Self {
+        Self::CommitDoesNotExist {
+            commit_id: commit_id.into(),
+        }
+    }
+
     pub fn not_a_workspace(path: impl Into<PathBuf>) -> Self {
         Self::NotAWorkspace { path: path.into() }
     }
@@ -126,6 +136,10 @@ impl Error {
             path,
             exclusion_rule,
         }
+    }
+
+    pub fn unchanged_files_marked_for_edition(paths: BTreeSet<CanonicalPath>) -> Self {
+        Self::UnchangedFilesMarkedForEdition { paths }
     }
 
     pub fn cannot_edit_directory(canonical_path: CanonicalPath) -> Self {

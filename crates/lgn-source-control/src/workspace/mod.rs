@@ -31,6 +31,30 @@ pub struct Workspace {
     cache_blob_storage: LocalBlobStorage,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Staging {
+    StagedAndUnstaged,
+    StagedOnly,
+    UnstagedOnly,
+}
+
+impl Staging {
+    pub fn from_bool(staged_only: bool, unstaged_only: bool) -> Self {
+        assert!(
+            !(staged_only && unstaged_only),
+            "staged_only and unstaged_only cannot both be true"
+        );
+
+        if staged_only {
+            Self::StagedOnly
+        } else if unstaged_only {
+            Self::UnstagedOnly
+        } else {
+            Self::StagedAndUnstaged
+        }
+    }
+}
+
 impl Workspace {
     const LSC_DIR_NAME: &'static str = ".lsc";
 
@@ -124,28 +148,30 @@ impl Workspace {
     /// The method stops whenever a workspace is found or when it reaches the
     /// root folder, whichever comes first.
     pub async fn find(path: impl AsRef<Path>) -> Result<Self> {
-        let path: &Path =
+        let initial_path: &Path =
             &make_path_absolute(path).map_other_err("failed to make path absolute")?;
 
-        let mut path = match tokio::fs::metadata(path).await {
+        let mut path = match tokio::fs::metadata(initial_path).await {
             Ok(metadata) => {
                 if metadata.is_dir() {
-                    path
+                    initial_path
                 } else {
-                    path.parent().ok_or_else(|| Error::not_a_workspace(path))?
+                    initial_path
+                        .parent()
+                        .ok_or_else(|| Error::not_a_workspace(initial_path))?
                 }
             }
             Err(err) => match err.kind() {
                 // If the path doesn't exist, assume we specified a file that
                 // may not exist but still continue the search with its parent
                 // folder if one exists.
-                std::io::ErrorKind::NotFound => {
-                    path.parent().ok_or_else(|| Error::not_a_workspace(path))?
-                }
+                std::io::ErrorKind::NotFound => initial_path
+                    .parent()
+                    .ok_or_else(|| Error::not_a_workspace(initial_path))?,
                 _ => {
                     return Err(Error::Other {
                         source: err.into(),
-                        context: format!("failed to read metadata of `{}`", path.display()),
+                        context: format!("failed to read metadata of `{}`", initial_path.display()),
                     })
                 }
             },
@@ -159,7 +185,7 @@ impl Workspace {
                         if let Some(parent_path) = path.parent() {
                             path = parent_path;
                         } else {
-                            return Err(err);
+                            return Err(Error::not_a_workspace(initial_path));
                         }
                     }
                     _ => return Err(err),
@@ -267,6 +293,28 @@ impl Workspace {
         };
 
         Tree::from_root(&self.root, &tree_filter).await
+    }
+
+    /// Give the current relative path for a given canonical path.
+    pub fn make_relative_path(&self, current_dir: &Path, path: &CanonicalPath) -> String {
+        let abs_path = path.to_path_buf(&self.root);
+
+        match pathdiff::diff_paths(&abs_path, current_dir) {
+            Some(path) => path,
+            None => abs_path,
+        }
+        .display()
+        .to_string()
+    }
+
+    /// Get the current branch and commit.
+    pub async fn get_current_branch_and_commit_id(&self) -> Result<(String, String)> {
+        self.backend.get_current_branch().await
+    }
+
+    /// Get the commits chain, starting from the specified commit.
+    pub async fn get_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
+        self.index_backend.read_commits(commit_id, depth).await
     }
 
     /// Get the tree of files and directories for the current branch and commit.
@@ -585,6 +633,25 @@ impl Workspace {
             .collect())
     }
 
+    /// Returns the status of the workspace, according to the staging
+    /// preference.
+    pub async fn status(
+        &self,
+        staging: Staging,
+    ) -> Result<(
+        BTreeMap<CanonicalPath, Change>,
+        BTreeMap<CanonicalPath, Change>,
+    )> {
+        Ok(match staging {
+            Staging::StagedAndUnstaged => (
+                self.get_staged_changes().await?,
+                self.get_unstaged_changes().await?,
+            ),
+            Staging::StagedOnly => (self.get_staged_changes().await?, BTreeMap::new()),
+            Staging::UnstagedOnly => (BTreeMap::new(), self.get_unstaged_changes().await?),
+        })
+    }
+
     /// Revert local changes to files and unstage them.
     ///
     /// The list of reverted files is returned. If none of the files had changes
@@ -592,6 +659,7 @@ impl Workspace {
     pub async fn revert_files(
         &self,
         paths: impl IntoIterator<Item = &Path> + Clone,
+        staging: Staging,
     ) -> Result<BTreeSet<CanonicalPath>> {
         debug!(
             "revert_files: {}",
@@ -604,11 +672,11 @@ impl Workspace {
 
         let canonical_paths = self.to_canonical_paths(paths).await?;
 
-        let staged_changes = self.get_staged_changes().await?;
-        let unstaged_changes = self.get_unstaged_changes().await?;
+        let (staged_changes, unstaged_changes) = self.status(staging).await?;
 
         let mut changes_to_clear = vec![];
         let mut changes_to_ignore = vec![];
+        let mut changes_to_save = vec![];
 
         let is_selected = |path| -> bool {
             for p in &canonical_paths {
@@ -624,13 +692,41 @@ impl Workspace {
             staged_changes.iter().filter(|(path, _)| is_selected(path))
         {
             match staged_change.change_type() {
-                ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
-                    self.download_blob(&old_info.hash, canonical_path).await?;
+                ChangeType::Add { .. } => {
+                    changes_to_clear.push(staged_change.clone());
+                }
+                ChangeType::Edit { old_info, new_info } => {
+                    // Only remove local changes if we are not reverting staged changes only.
+                    match staging {
+                        Staging::UnstagedOnly => {
+                            // We should never end-up here.
+                            unreachable!();
+                        }
+                        Staging::StagedOnly => {
+                            if new_info != old_info {
+                                changes_to_save.push(Change::new(
+                                    canonical_path.clone(),
+                                    ChangeType::Edit {
+                                        old_info: old_info.clone(),
+                                        new_info: old_info.clone(),
+                                    },
+                                ));
+                                changes_to_clear.push(staged_change.clone());
+                            }
+                        }
+                        Staging::StagedAndUnstaged => {
+                            self.download_blob(&old_info.hash, canonical_path, Some(true))
+                                .await?;
+                            changes_to_clear.push(staged_change.clone());
+                        }
+                    }
+                }
+                ChangeType::Delete { old_info } => {
+                    self.download_blob(&old_info.hash, canonical_path, Some(true))
+                        .await?;
+                    changes_to_clear.push(staged_change.clone());
                 }
             }
-
-            changes_to_clear.push(staged_change.clone());
         }
 
         for (canonical_path, unstaged_change) in unstaged_changes
@@ -640,7 +736,14 @@ impl Workspace {
             match unstaged_change.change_type() {
                 ChangeType::Add { .. } => {}
                 ChangeType::Edit { old_info, .. } | ChangeType::Delete { old_info } => {
-                    self.download_blob(&old_info.hash, canonical_path).await?;
+                    let read_only = match staging {
+                        Staging::StagedAndUnstaged => Some(true),
+                        Staging::StagedOnly => unreachable!(),
+                        Staging::UnstagedOnly => None,
+                    };
+
+                    self.download_blob(&old_info.hash, canonical_path, read_only)
+                        .await?;
                 }
             }
 
@@ -650,6 +753,7 @@ impl Workspace {
         }
 
         self.backend.clear_staged_changes(&changes_to_clear).await?;
+        self.backend.save_staged_changes(&changes_to_save).await?;
 
         Ok(changes_to_clear
             .into_iter()
@@ -675,6 +779,23 @@ impl Workspace {
         //for change in &staged_changes {
         //    assert_not_locked(workspace, &abs_path).await?;
         //}
+
+        let unchanged_files_marked_for_edition: BTreeSet<_> = staged_changes
+            .iter()
+            .filter_map(|(path, change)| {
+                if change.change_type().has_modifications() {
+                    None
+                } else {
+                    Some(path.clone())
+                }
+            })
+            .collect();
+
+        if !unchanged_files_marked_for_edition.is_empty() {
+            return Err(Error::unchanged_files_marked_for_edition(
+                unchanged_files_marked_for_edition,
+            ));
+        }
 
         // Upload all the data straight away.
         //
@@ -975,14 +1096,23 @@ impl Workspace {
             .map_other_err(format!("failed to write blob `{}`", hash))
     }
 
-    async fn download_blob(&self, hash: &str, path: &CanonicalPath) -> Result<()> {
+    async fn download_blob(
+        &self,
+        hash: &str,
+        path: &CanonicalPath,
+        read_only: Option<bool>,
+    ) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
         match self.cache_blob_storage.download_blob(&abs_path, hash).await {
             Ok(()) => {
                 debug!("downloaded blob `{}` from cache", hash);
 
-                self.make_file_read_only(abs_path, true).await
+                if let Some(read_only) = read_only {
+                    self.make_file_read_only(abs_path, read_only).await
+                } else {
+                    Ok(())
+                }
             }
             Err(lgn_blob_storage::Error::NoSuchBlob(_)) => match self
                 .blob_storage
@@ -993,7 +1123,11 @@ impl Workspace {
                 Ok(()) => {
                     debug!("downloaded blob `{}` from blob storage", hash);
 
-                    self.make_file_read_only(abs_path, true).await
+                    if let Some(read_only) = read_only {
+                        self.make_file_read_only(abs_path, read_only).await
+                    } else {
+                        Ok(())
+                    }
                 }
                 Err(e) => Err(e),
             },

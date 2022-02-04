@@ -8,12 +8,15 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+atty = "0.2"
+chrono = "0.4"
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 anyhow = "1"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 clap = { version = "3.0", features = ["derive"] }
+termcolor = "1.1.2"
 
 [dev-dependencies]
 lgn-test-utils = { path = "../lgn-test-utils", version = "0.1.0" }

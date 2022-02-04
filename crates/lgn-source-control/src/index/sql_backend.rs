@@ -4,7 +4,7 @@ use chrono::DateTime;
 use reqwest::Url;
 use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
 };
 use tokio::sync::Mutex;
@@ -354,6 +354,130 @@ impl SqlIndexBackend {
         .await
         .map_other_err(&format!("failed to insert the branch `{}`", &branch.name))
         .map(|_| ())
+    }
+
+    async fn read_commits_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        commit_id: &str,
+        mut depth: u32,
+    ) -> Result<Vec<Commit>> {
+        let mut result = Vec::new();
+        result.reserve(1024);
+        let mut next_commit_ids: VecDeque<String> = [commit_id.to_string()].into();
+
+        while let Some(commit_id) = next_commit_ids.pop_front() {
+            if depth == 0 || result.len() >= result.capacity() {
+                break;
+            }
+
+            depth -= 1;
+
+            let changes = sqlx::query(&format!(
+                "SELECT canonical_path, old_hash, new_hash, old_size, new_size
+             FROM `{}`
+             WHERE commit_id = ?;",
+                Self::TABLE_COMMIT_CHANGES,
+            ))
+            .bind(&commit_id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to fetch commit changes for commit `{}`",
+                &commit_id
+            ))?
+            .into_iter()
+            .filter_map(|row| {
+                if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
+                    let old_hash: String = row.get("old_hash");
+
+                    let old_info = if !old_hash.is_empty() {
+                        let old_size: i64 = row.get("old_size");
+
+                        Some(FileInfo {
+                            hash: old_hash,
+                            size: old_size as u64,
+                        })
+                    } else {
+                        None
+                    };
+
+                    let new_hash: String = row.get("new_hash");
+                    let new_info = if !new_hash.is_empty() {
+                        let new_size: i64 = row.get("new_size");
+
+                        Some(FileInfo {
+                            hash: new_hash,
+                            size: new_size as u64,
+                        })
+                    } else {
+                        None
+                    };
+
+                    ChangeType::new(old_info, new_info)
+                        .map(|change_type| Change::new(canonical_path, change_type))
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeSet<_>>();
+
+            let parents: BTreeSet<String> = sqlx::query(&format!(
+                "SELECT parent_id
+             FROM `{}`
+             WHERE id = ?;",
+                Self::TABLE_COMMIT_PARENTS,
+            ))
+            .bind(&commit_id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to fetch parents for commit `{}`",
+                &commit_id
+            ))?
+            .into_iter()
+            .map(|row| row.get("parent_id"))
+            .collect();
+
+            next_commit_ids.extend(parents.iter().cloned());
+
+            result.push(
+                match sqlx::query(&format!(
+                    "SELECT owner, message, root_hash, date_time_utc 
+             FROM `{}`
+             WHERE id = ?;",
+                    Self::TABLE_COMMITS
+                ))
+                .bind(&commit_id)
+                .fetch_one(&mut *transaction)
+                .await
+                {
+                    Ok(row) => {
+                        let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
+                            .unwrap()
+                            .into();
+
+                        Commit::new(
+                            String::from(&commit_id),
+                            row.get("owner"),
+                            row.get("message"),
+                            changes,
+                            row.get("root_hash"),
+                            parents,
+                            timestamp,
+                        )
+                    }
+                    Err(sqlx::Error::RowNotFound) => {
+                        return Err(Error::commit_does_not_exist(commit_id));
+                    }
+                    Err(err) => {
+                        return Err(err)
+                            .map_other_err(format!("failed to fetch commit `{}`", commit_id));
+                    }
+                },
+            );
+        }
+
+        Ok(result)
     }
 
     async fn insert_commit_transactional(
@@ -865,108 +989,17 @@ impl IndexBackend for SqlIndexBackend {
         .collect())
     }
 
-    async fn read_commit(&self, id: &str) -> Result<Commit> {
-        let mut conn = self.get_conn().await?;
-
-        let changes = sqlx::query(&format!(
-            "SELECT canonical_path, old_hash, new_hash, old_size, new_size
-             FROM `{}`
-             WHERE commit_id = ?;",
-            Self::TABLE_COMMIT_CHANGES,
-        ))
-        .bind(id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(format!(
-            "failed to fetch commit changes for commit `{}`",
-            id
-        ))?
-        .into_iter()
-        .filter_map(|row| {
-            if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                let old_hash: String = row.get("old_hash");
-
-                let old_info = if !old_hash.is_empty() {
-                    let old_size: i64 = row.get("old_size");
-
-                    Some(FileInfo {
-                        hash: old_hash,
-                        size: old_size as u64,
-                    })
-                } else {
-                    None
-                };
-
-                let new_hash: String = row.get("new_hash");
-                let new_info = if !new_hash.is_empty() {
-                    let new_size: i64 = row.get("new_size");
-
-                    Some(FileInfo {
-                        hash: new_hash,
-                        size: new_size as u64,
-                    })
-                } else {
-                    None
-                };
-
-                ChangeType::new(old_info, new_info)
-                    .map(|change_type| Change::new(canonical_path, change_type))
-            } else {
-                None
-            }
-        })
-        .collect::<BTreeSet<_>>();
-
-        let parents = sqlx::query(&format!(
-            "SELECT parent_id
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMIT_PARENTS,
-        ))
-        .bind(id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(format!("failed to fetch parents for commit `{}`", id))?
-        .into_iter()
-        .map(|row| row.get("parent_id"))
-        .collect();
-
-        sqlx::query(&format!(
-            "SELECT owner, message, root_hash, date_time_utc 
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to fetch commit `{}`", id))
-        .map(|row| {
-            let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
-                .unwrap()
-                .into();
-
-            Commit::new(
-                String::from(id),
-                row.get("owner"),
-                row.get("message"),
-                changes,
-                row.get("root_hash"),
-                parents,
-                timestamp,
-            )
-        })
-    }
-
-    async fn insert_commit(&self, commit: &Commit) -> Result<()> {
+    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
         let mut transaction = self.get_transaction().await?;
 
-        Self::insert_commit_transactional(&mut transaction, commit).await?;
+        let result = Self::read_commits_transactional(&mut transaction, commit_id, depth).await?;
 
         transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while inserting commit `{}`",
-            &commit.id
-        ))
+            "failed to commit transaction while read commit `{}`",
+            commit_id
+        ))?;
+
+        Ok(result)
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
@@ -991,22 +1024,6 @@ impl IndexBackend for SqlIndexBackend {
             "failed to commit transaction while committing commit `{}` to branch `{}`",
             &commit.id, &branch.name
         ))
-    }
-
-    async fn commit_exists(&self, id: &str) -> Result<bool> {
-        let mut conn = self.get_conn().await?;
-
-        sqlx::query(&format!(
-            "SELECT count(*) as count
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to check if commit `{}` exists", id))
-        .map(|row| row.get::<i32, _>("count") > 0)
     }
 
     async fn read_tree(&self, id: &str) -> Result<Tree> {

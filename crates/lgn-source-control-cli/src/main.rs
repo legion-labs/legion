@@ -9,6 +9,7 @@ use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Legion Source Control
 #[derive(Parser, Debug)]
@@ -21,6 +22,9 @@ struct Cli {
 
     #[clap(name = "debug", short, long, help = "Enable debug logging")]
     debug: bool,
+
+    #[clap(name = "no-color", long, help = "Disable color output")]
+    no_color: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -44,7 +48,7 @@ enum Commands {
         index_url: String,
     },
     /// Initializes a workspace and populates it with the latest version of the main branch
-    #[clap(name = "init-workspace")]
+    #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
         /// lsc workspace directory
         workspace_directory: PathBuf,
@@ -87,8 +91,8 @@ enum Commands {
         paths: Vec<PathBuf>,
     },
     /// Prints all the locks in the current lock domain
-    #[clap(name = "list-locks")]
-    ListLocks,
+    #[clap(name = "locks")]
+    Locks,
     /// Prints difference between local file and specified commit
     #[clap(name = "diff")]
     Diff {
@@ -141,23 +145,41 @@ enum Commands {
         branch_name: String,
     },
     /// Prints a list of all branches
-    #[clap(name = "list-branches")]
-    ListBranches,
-    /// Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.
+    #[clap(name = "branches")]
+    Branches,
+    /// Abandon the local changes made to a file. By default will revert both
+    /// staged and unstaged changes.
     #[clap(name = "revert")]
     Revert {
         #[clap(required = true, parse(from_os_str))]
         paths: Vec<PathBuf>,
+
+        /// Only revert staged changes. Will not modify files on disk. Changed edited files will remain in edit mode.
+        #[clap(long, conflicts_with = "unstaged")]
+        staged: bool,
+
+        /// Only revert unstaged changes.
+        #[clap(long, conflicts_with = "staged")]
+        unstaged: bool,
     },
     /// Lists staged changes in workspace.
-    #[clap(name = "list-staged-changes")]
-    ListStagedChanges,
-    /// Lists unstaged changes in workspace.
-    #[clap(name = "list-unstaged-changes")]
-    ListUnstagedChanges,
+    #[clap(name = "status", alias = "st")]
+    Status {
+        /// Only list staged changes.
+        #[clap(long, conflicts_with = "unstaged")]
+        staged: bool,
+
+        /// Only list unstaged changes.
+        #[clap(long, conflicts_with = "staged")]
+        unstaged: bool,
+    },
     /// Lists commits of the current branch
     #[clap(name = "log")]
-    Log,
+    Log {
+        /// Display the log in short format.
+        #[clap(long)]
+        short: bool,
+    },
     /// Updates the workspace with the latest version of the files
     #[clap(name = "sync")]
     Sync {
@@ -168,12 +190,40 @@ enum Commands {
     #[clap(name = "resolves-pending")]
     ResolvesPending,
     /// Records local changes in the repository as a single transaction
-    #[clap(name = "commit")]
+    #[clap(name = "commit", alias = "ci")]
     Commit {
         /// commit message
         #[clap(short)]
         message: String,
     },
+}
+
+fn binary_name() -> String {
+    "lsc".to_string()
+}
+
+fn green() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Green)).set_intense(true);
+
+    colorspec
+}
+
+fn yellow() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Yellow)).set_intense(true);
+
+    colorspec
+}
+
+fn red() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Red));
+
+    colorspec
 }
 
 #[tokio::main]
@@ -192,6 +242,15 @@ async fn main() -> anyhow::Result<()> {
     };
 
     span_scope!("lsc::main");
+    let choice = if args.no_color {
+        ColorChoice::Never
+    } else if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+
+    let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
         Commands::CreateIndex { index_url } => {
@@ -279,7 +338,7 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::ListLocks => {
+        Commands::Locks => {
             info!("list-locks");
 
             Ok(())
@@ -326,44 +385,122 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::ListBranches => {
+        Commands::Branches => {
             info!("list-branches");
 
             Ok(())
         }
-        Commands::Revert { paths } => {
+        Commands::Revert {
+            paths,
+            staged,
+            unstaged,
+        } => {
             let workspace = Workspace::find_in_current_directory().await?;
+            let staging = Staging::from_bool(staged, unstaged);
 
-            workspace
-                .revert_files(paths.iter().map(PathBuf::as_path))
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
-        }
-        Commands::ListStagedChanges => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let reverted_files = workspace
+                .revert_files(paths.iter().map(PathBuf::as_path), staging)
+                .await?;
 
-            let changes = workspace.get_staged_changes().await?;
+            if reverted_files.is_empty() {
+                println!("Nothing to revert");
+            } else {
+                println!("Reverted files:");
 
-            for (path, change) in changes {
-                println!("{} {}", change.change_type(), path);
+                let current_dir = std::env::current_dir()
+                    .map_other_err("failed to determine current directory")?;
+
+                for file in &reverted_files {
+                    println!("   {}", workspace.make_relative_path(&current_dir, file));
+                }
             }
 
             Ok(())
         }
-        Commands::ListUnstagedChanges => {
+        Commands::Status { staged, unstaged } => {
+            let current_dir =
+                std::env::current_dir().map_other_err("failed to determine current directory")?;
             let workspace = Workspace::find_in_current_directory().await?;
+            let (branch, commit_id) = workspace.get_current_branch_and_commit_id().await?;
+            let staging = Staging::from_bool(staged, unstaged);
+            let (staged_changes, unstaged_changes) = workspace.status(staging).await?;
 
-            let changes = workspace.get_unstaged_changes().await?;
+            println!("On branch {} (@{})", branch, commit_id);
 
-            for (path, change) in changes {
-                println!("{} {}", change.change_type(), path);
+            if !staged_changes.is_empty() {
+                println!("\nChanges staged for commit:");
+
+                for (path, change) in &staged_changes {
+                    if change.change_type().has_modifications() {
+                        stdout.set_color(&green())?;
+                    } else {
+                        stdout.set_color(&yellow())?;
+                    }
+
+                    print!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
+
+                    if !change.change_type().has_modifications() {
+                        stdout.reset()?;
+                        print!(" (no modifications staged yet)");
+                    }
+
+                    println!();
+                }
+
+                stdout.reset()?;
+            }
+
+            if !unstaged_changes.is_empty() {
+                println!("\nChanges not staged for commit:");
+
+                stdout.set_color(&red())?;
+
+                for (path, change) in &unstaged_changes {
+                    println!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
+                }
+
+                stdout.reset()?;
+            }
+
+            if staged_changes.is_empty() && unstaged_changes.is_empty() {
+                println!("\nNo changes to commit");
             }
 
             Ok(())
         }
-        Commands::Log => {
-            info!("log");
+        Commands::Log { short } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+            let (branch, commit_id) = workspace.get_current_branch_and_commit_id().await?;
+            let commits = workspace.get_commits(&commit_id, 50).await?;
+
+            if short {
+                for commit in &commits {
+                    println!("{} {}", commit.id, commit.message);
+                }
+            } else {
+                println!("Displaying commits for branch {} (@{})", branch, commit_id);
+
+                for commit in &commits {
+                    stdout.set_color(&yellow())?;
+                    println!("\ncommit {}", commit.id);
+                    stdout.reset()?;
+                    println!("Author: {}", commit.owner);
+                    println!(
+                        "Date:   {}",
+                        chrono::DateTime::<chrono::Local>::from(commit.timestamp)
+                            .format("%a %b %d %H:%M:%S %Y %z")
+                    );
+                    println!("\n    {}", commit.message);
+                }
+            }
 
             Ok(())
         }
@@ -380,11 +517,35 @@ async fn main() -> anyhow::Result<()> {
         Commands::Commit { message } => {
             let workspace = Workspace::find_in_current_directory().await?;
 
-            workspace
-                .commit(&message)
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
+            match workspace.commit(&message).await {
+                Ok(()) => Ok(()),
+                Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
+                    let current_dir = std::env::current_dir()
+                        .map_other_err("failed to determine current directory")?;
+
+                    println!("The following files are marked for edition but do not have any change staged:");
+                    println!(
+                        "  (use \"{} add <file>...\" to update what will be commited)",
+                        binary_name()
+                    );
+                    println!(
+                        "  (use \"{} revert --staged <file>...\" to remove the edition mark)",
+                        binary_name()
+                    );
+
+                    for path in &paths {
+                        stdout.set_color(&red())?;
+                        print!("\t{}", workspace.make_relative_path(&current_dir, path));
+                        stdout.reset()?;
+                        println!();
+                    }
+
+                    println!();
+
+                    Err(anyhow::anyhow!("refusing to commit"))
+                }
+                Err(err) => Err(err.into()),
+            }
         }
     }
 }

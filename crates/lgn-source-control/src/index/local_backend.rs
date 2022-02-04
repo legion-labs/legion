@@ -140,22 +140,16 @@ impl IndexBackend for LocalIndexBackend {
             .await
     }
 
-    async fn read_commit(&self, commit_id: &str) -> Result<Commit> {
-        self.sql_repository_index.read_commit(commit_id).await
-    }
-
-    async fn insert_commit(&self, commit: &Commit) -> Result<()> {
-        self.sql_repository_index.insert_commit(commit).await
+    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
+        self.sql_repository_index
+            .read_commits(commit_id, depth)
+            .await
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
         self.sql_repository_index
             .commit_to_branch(commit, branch)
             .await
-    }
-
-    async fn commit_exists(&self, commit_id: &str) -> Result<bool> {
-        self.sql_repository_index.commit_exists(commit_id).await
     }
 
     async fn read_tree(&self, id: &str) -> Result<Tree> {
