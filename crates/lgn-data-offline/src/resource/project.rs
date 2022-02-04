@@ -40,6 +40,8 @@ impl ResourceDb {
     }
 }
 
+pub use lgn_source_control::data_types::Tree;
+
 /// A file-backed state of the project
 ///
 /// This structure captures the state of the project. This includes `remote
@@ -682,8 +684,8 @@ impl Project {
         self.flush()
     }
 
-    /// Returns the checksum of the root project directory at the current state.
-    pub async fn root_checksum(&self) -> Result<String, Error> {
+    /// Returns the current state of the workspace that includes staged changes.
+    pub async fn tree(&self) -> Result<Tree, Error> {
         let remote = self
             .workspace
             .get_current_tree()
@@ -699,8 +701,13 @@ impl Project {
         let local = remote
             .with_changes(staged_changes.values())
             .map_err(Error::SourceControl)?;
+        Ok(local)
+    }
 
-        Ok(local.id())
+    /// Returns the checksum of the root project directory at the current state.
+    pub async fn root_checksum(&self) -> Result<String, Error> {
+        let tree = self.tree().await?;
+        Ok(tree.id())
     }
 
     fn pre_serialize(&mut self) {

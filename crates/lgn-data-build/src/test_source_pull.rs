@@ -58,11 +58,7 @@ async fn no_dependencies() {
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 1);
-
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 0);
+    build.source_pull(&project).await.unwrap();
 
     let source_index = build.source_index.current().unwrap();
 
@@ -127,8 +123,7 @@ async fn with_dependency() {
             .await
             .expect("data build");
 
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 2);
+    build.source_pull(&project).await.unwrap();
 
     let source_index = build.source_index.current().unwrap();
 
@@ -139,71 +134,4 @@ async fn with_dependency() {
 
     assert_eq!(child_deps.len(), 0);
     assert_eq!(parent_deps.len(), 1);
-
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 0);
-}
-
-#[tokio::test]
-async fn with_derived_dependency() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (project_dir, output_dir) = setup_dir(&work_dir);
-    let resources = setup_registry();
-    let mut resources = resources.lock().await;
-
-    {
-        let mut project = Project::create_new(&project_dir)
-            .await
-            .expect("failed to create a project");
-
-        let child_id = project
-            .add_resource(
-                ResourcePathName::new("intermediate_child"),
-                refs_resource::TestResource::TYPENAME,
-                refs_resource::TestResource::TYPE,
-                &resources
-                    .new_resource(refs_resource::TestResource::TYPE)
-                    .unwrap(),
-                &mut resources,
-            )
-            .await
-            .unwrap();
-
-        let parent_handle = {
-            let intermediate_id =
-                ResourcePathId::from(child_id).push(refs_resource::TestResource::TYPE);
-
-            let res = resources
-                .new_resource(refs_resource::TestResource::TYPE)
-                .unwrap();
-            res.get_mut::<refs_resource::TestResource>(&mut resources)
-                .unwrap()
-                .build_deps
-                .push(intermediate_id);
-            res
-        };
-        let _parent_id = project
-            .add_resource(
-                ResourcePathName::new("intermetidate_parent"),
-                refs_resource::TestResource::TYPENAME,
-                refs_resource::TestResource::TYPE,
-                &parent_handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-    }
-
-    let (mut build, project) =
-        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from(output_dir))
-            .create_with_project(project_dir)
-            .await
-            .expect("to create index");
-
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 3);
-
-    let updated_count = build.source_pull(&project).await.unwrap();
-    assert_eq!(updated_count, 0);
 }

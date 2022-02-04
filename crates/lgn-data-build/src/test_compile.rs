@@ -328,8 +328,7 @@ async fn intermediate_resource() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).await.expect("successful pull");
-    assert_eq!(pulled, 1);
+    build.source_pull(&project).await.expect("successful pull");
 
     let source_path = ResourcePathId::from(source_id);
     let reversed_path = source_path.push(text_resource::TextResource::TYPE);
@@ -524,8 +523,7 @@ async fn named_path_cache_use() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).await.expect("successful pull");
-    assert_eq!(pulled, 1);
+    build.source_pull(&project).await.expect("successful pull");
 
     let source_path = ResourcePathId::from(source_id);
     let split_text0_path = source_path.push_named(text_resource::TextResource::TYPE, "text_0");
@@ -637,8 +635,7 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).await.expect("pulled change");
-        assert_eq!(pulled, 1);
+        build.source_pull(&project).await.expect("pulled change");
     }
 
     let compile_output = build
@@ -682,8 +679,7 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).await.expect("pulled change");
-        assert_eq!(pulled, 1);
+        build.source_pull(&project).await.expect("pulled change");
     }
 
     // compile from "text_0"

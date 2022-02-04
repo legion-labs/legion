@@ -1,0 +1,33 @@
+{
+  "version": "0.1.0",
+  "resources": [
+    {
+      "id": "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)",
+      "dependencies": [
+        "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f"
+      ],
+      "resource_hash": "ada32114fcecb45c"
+    },
+    {
+      "id": "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f",
+      "dependencies": [
+        "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)"
+      ],
+      "resource_hash": null
+    }
+  ],
+  "pathid_mapping": [
+    [
+      "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)",
+      "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)"
+    ],
+    [
+      "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)",
+      "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)"
+    ],
+    [
+      "(9c9a840b84935d1f,447273b4-1c0a-551d-84bf-2db8ecbcb04f)",
+      "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f"
+    ]
+  ]
+}
