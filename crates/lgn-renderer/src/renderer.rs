@@ -283,7 +283,7 @@ impl Renderer {
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        println!( "Renderer has been dropped"  );
+        println!("Renderer has been dropped");
         {
             let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
             graphics_queue.wait_for_queue_idle().unwrap();

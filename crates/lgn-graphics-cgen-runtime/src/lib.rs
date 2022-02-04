@@ -469,12 +469,13 @@ pub struct CGenShaderKey(u64);
 
 impl CGenShaderKey {
     // u16: family_id
-    // u48: options    
+    // u48: options
     const SHADER_FAMILY_OFFSET: usize = 0;
     const SHADER_FAMILY_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
     const SHADER_FAMILY_MASK: u64 = (1 << Self::SHADER_FAMILY_BITCOUNT) - 1;
-    
-    pub const MAX_SHADER_OPTIONS: usize = std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
+
+    pub const MAX_SHADER_OPTIONS: usize =
+        std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
 
     const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_BITCOUNT;
     const SHADER_OPTIONS_BITCOUNT: usize =
@@ -513,7 +514,7 @@ pub struct CGenShaderFamily {
     pub name: &'static str,
     pub path: &'static str,
     pub options: &'static [CGenShaderOption],
-    pub instances: &'static [CGenShaderInstance]
+    pub instances: &'static [CGenShaderInstance],
 }
 
 //
@@ -541,7 +542,7 @@ pub struct CGenRegistry {
 
     // static
     type_defs: Vec<&'static CGenTypeDef>,
-    pub shader_families: Vec<&'static CGenShaderFamily>,    
+    pub shader_families: Vec<&'static CGenShaderFamily>,
     // dynamic
     descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pipeline_layouts: Vec<RootSignature>,
@@ -554,7 +555,7 @@ impl CGenRegistry {
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),
-            shader_families: Vec::new(),            
+            shader_families: Vec::new(),
         }
     }
 

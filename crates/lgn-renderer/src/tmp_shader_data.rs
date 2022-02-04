@@ -33,7 +33,7 @@ pub mod egui_shader_family {
     pub const NONE: u64 = 0;
     pub const TOTO: u64 = 1u64 << 0;
 
-    pub static SHADER_OPTIONS: [CGenShaderOption; 1] = [CGenShaderOption {        
+    pub static SHADER_OPTIONS: [CGenShaderOption; 1] = [CGenShaderOption {
         index: 0,
         name: "TOTO",
     }];
@@ -154,7 +154,7 @@ macro_rules! register_family {
     };
 }
 
-pub fn patch_cgen_registry(cgen_registry: &mut CGenRegistry) {    
+pub fn patch_cgen_registry(cgen_registry: &mut CGenRegistry) {
     register_family!(cgen_registry, egui_shader_family);
     register_family!(cgen_registry, shader_shader_family);
     register_family!(cgen_registry, picking_shader_family);

@@ -230,7 +230,6 @@ impl Iterator for ShaderStageEnumerator {
 }
 
 impl ShaderStage {
-
     pub const fn count() -> usize {
         SHADER_STAGE_COUNT
     }
