@@ -58,9 +58,8 @@ impl ChangeType {
 
     pub fn has_modifications(&self) -> bool {
         match self {
-            ChangeType::Add { .. } => true,
-            ChangeType::Edit { old_info, new_info } => old_info != new_info,
-            ChangeType::Delete { .. } => true,
+            Self::Add { .. } | Self::Delete { .. } => true,
+            Self::Edit { old_info, new_info } => old_info != new_info,
         }
     }
 }

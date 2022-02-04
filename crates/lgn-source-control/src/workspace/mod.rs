@@ -39,17 +39,18 @@ pub enum Staging {
 }
 
 impl Staging {
-    pub fn from_bool(staged_only: bool, unstaged_only: bool) -> Staging {
-        if staged_only && unstaged_only {
-            panic!("staged_only and unstaged_only cannot both be true");
-        }
+    pub fn from_bool(staged_only: bool, unstaged_only: bool) -> Self {
+        assert!(
+            !(staged_only && unstaged_only),
+            "staged_only and unstaged_only cannot both be true"
+        );
 
         if staged_only {
-            Staging::StagedOnly
+            Self::StagedOnly
         } else if unstaged_only {
-            Staging::UnstagedOnly
+            Self::UnstagedOnly
         } else {
-            Staging::StagedAndUnstaged
+            Self::StagedAndUnstaged
         }
     }
 }
@@ -791,9 +792,9 @@ impl Workspace {
             .collect();
 
         if !unchanged_files_marked_for_edition.is_empty() {
-            return Err(Error::UnchangedFilesMarkedForEdition {
-                paths: unchanged_files_marked_for_edition,
-            });
+            return Err(Error::unchanged_files_marked_for_edition(
+                unchanged_files_marked_for_edition,
+            ));
         }
 
         // Upload all the data straight away.

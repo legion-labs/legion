@@ -138,6 +138,10 @@ impl Error {
         }
     }
 
+    pub fn unchanged_files_marked_for_edition(paths: BTreeSet<CanonicalPath>) -> Self {
+        Self::UnchangedFilesMarkedForEdition { paths }
+    }
+
     pub fn cannot_edit_directory(canonical_path: CanonicalPath) -> Self {
         Self::CannotEditDirectory { canonical_path }
     }

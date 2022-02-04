@@ -225,7 +225,7 @@ impl IndexBackend for GrpcIndexBackend {
             .read_commits(ReadCommitsRequest {
                 repository_name: self.repository_name.clone(),
                 commit_id: commit_id.into(),
-                depth: depth,
+                depth,
             })
             .await
             .map_other_err(format!("failed to read commit `{}`", commit_id))?

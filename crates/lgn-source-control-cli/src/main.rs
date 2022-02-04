@@ -242,15 +242,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     span_scope!("lsc::main");
-    let choice = match args.no_color {
-        true => ColorChoice::Never,
-        false => {
-            if atty::is(atty::Stream::Stdout) {
-                ColorChoice::Auto
-            } else {
-                ColorChoice::Never
-            }
-        }
+    let choice = if args.no_color {
+        ColorChoice::Never
+    } else if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
     };
 
     let mut stdout = StandardStream::stdout(choice);
@@ -451,7 +448,7 @@ async fn main() -> anyhow::Result<()> {
                         print!(" (no modifications staged yet)");
                     }
 
-                    println!("");
+                    println!();
                 }
 
                 stdout.reset()?;
@@ -540,10 +537,10 @@ async fn main() -> anyhow::Result<()> {
                         stdout.set_color(&red())?;
                         print!("\t{}", workspace.make_relative_path(&current_dir, path));
                         stdout.reset()?;
-                        println!("");
+                        println!();
                     }
 
-                    println!("");
+                    println!();
 
                     Err(anyhow::anyhow!("refusing to commit"))
                 }
