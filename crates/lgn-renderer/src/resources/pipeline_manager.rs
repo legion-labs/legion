@@ -11,6 +11,7 @@ use lgn_pso_compiler::{
 use lgn_tracing::span_fn;
 use parking_lot::RwLock;
 use smallvec::SmallVec;
+use strum::{EnumCount, IntoEnumIterator};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PipelineHandle(usize);
@@ -113,7 +114,7 @@ impl PipelineManager {
         }
 
         // build the entrypoint list
-        let mut entry_points: SmallVec<[EntryPoint<'_>; ShaderStage::count()]> = SmallVec::new();
+        let mut entry_points: SmallVec<[EntryPoint<'_>; ShaderStage::COUNT]> = SmallVec::new();
         for shader_stage in ShaderStage::iter() {
             let shader_stage_flag = shader_stage.into();
             if (shader_instance.stage_flags & shader_stage_flag) == shader_stage_flag {
@@ -139,8 +140,7 @@ impl PipelineManager {
             .map_err(|_e| ())?;
 
         // build the final shader
-        let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::count()]> =
-            SmallVec::new();
+        let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::COUNT]> = SmallVec::new();
         let mut entry_point_index = 0;
         for shader_stage in ShaderStage::iter() {
             let shader_stage_flag = shader_stage.into();

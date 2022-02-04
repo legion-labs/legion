@@ -4557,6 +4557,8 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "raw-window-handle 0.4.2",
+ "strum 0.23.0",
+ "strum_macros 0.23.1",
  "vk-mem",
 ]
 

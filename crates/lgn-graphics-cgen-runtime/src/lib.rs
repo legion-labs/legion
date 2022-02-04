@@ -3,8 +3,6 @@
 // crate-specific lint exceptions:
 #![allow(unreachable_code)]
 
-use std::sync::{Arc, Mutex};
-
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
     PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
@@ -636,14 +634,9 @@ impl CGenRegistry {
 //
 // CGenRegistryList
 //
-
-struct CGenRegistryListInner {
-    registry_list: Mutex<Vec<CGenRegistry>>,
-}
-
-#[derive(Clone)]
+#[derive(Default)]
 pub struct CGenRegistryList {
-    inner: Arc<CGenRegistryListInner>,
+    registry_list: Vec<CGenRegistry>,
 }
 
 impl CGenRegistryList {
@@ -652,23 +645,13 @@ impl CGenRegistryList {
     }
 
     pub fn push(&mut self, registry: CGenRegistry) {
-        self.inner.registry_list.lock().unwrap().push(registry);
-    }
-}
-
-impl Default for CGenRegistryList {
-    fn default() -> Self {
-        Self {
-            inner: Arc::new(CGenRegistryListInner {
-                registry_list: Mutex::new(Vec::new()),
-            }),
-        }
+        self.registry_list.push(registry);
     }
 }
 
 impl Drop for CGenRegistryList {
     fn drop(&mut self) {
-        for registry in self.inner.registry_list.lock().unwrap().drain(..) {
+        for registry in self.registry_list.drain(..) {
             registry.shutdown();
         }
     }
