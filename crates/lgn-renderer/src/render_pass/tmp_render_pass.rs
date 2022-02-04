@@ -14,13 +14,13 @@ use crate::{
     cgen,
     components::{RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
-    resources::{ShaderHandle, ShaderManager},
+    resources::{PipelineHandle, PipelineManager},
     tmp_shader_data::shader_shader_family,
     RenderContext,
 };
 
 pub struct TmpRenderPass {
-    shader_handle: ShaderHandle,
+    pipeline_handle: PipelineHandle,
     pub color: [f32; 4],
     pub speed: f32,
 }
@@ -28,7 +28,7 @@ pub struct TmpRenderPass {
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 
 impl TmpRenderPass {
-    pub fn new(shader_manager: &ShaderManager) -> Self {
+    pub fn new(pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -73,7 +73,7 @@ impl TmpRenderPass {
             back_stencil_pass_op: StencilOp::default(),
         };
 
-        let shader_handle = shader_manager.register_pipeline(
+        let pipeline_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(shader_shader_family::ID, shader_shader_family::NONE),
             move |device_context, shader| {
                 device_context
@@ -98,7 +98,7 @@ impl TmpRenderPass {
         //
 
         Self {
-            shader_handle,
+            pipeline_handle,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
             speed: 1.0f32,
         }
@@ -123,8 +123,8 @@ impl TmpRenderPass {
         static_meshes: &[&StaticMesh],
     ) {
         let pipeline = render_context
-            .shader_manager()
-            .get_pipeline(self.shader_handle)
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
             .unwrap();
 
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);

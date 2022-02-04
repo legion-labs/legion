@@ -14,16 +14,16 @@ use crate::tmp_shader_data::egui_shader_family;
 
 use crate::RenderContext;
 
-use crate::resources::{ShaderHandle, ShaderManager};
+use crate::resources::{PipelineHandle, PipelineManager};
 
 pub struct EguiPass {
-    shader_handle: ShaderHandle,
+    pipeline_handle: PipelineHandle,
     texture_data: Option<(u64, Texture, TextureView)>,
     sampler: Sampler,
 }
 
 impl EguiPass {
-    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
+    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -50,7 +50,7 @@ impl EguiPass {
             rate: VertexAttributeRate::Vertex,
         });
 
-        let shader_handle = shader_manager.register_pipeline(
+        let pipeline_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(egui_shader_family::ID, egui_shader_family::TOTO),
             move |device_context, shader| {
                 device_context
@@ -85,7 +85,7 @@ impl EguiPass {
         let sampler = device_context.create_sampler(&sampler_def).unwrap();
 
         Self {
-            shader_handle,
+            pipeline_handle,
             texture_data: None,
             sampler,
         }
@@ -201,8 +201,8 @@ impl EguiPass {
         let transient_allocator = render_context.transient_buffer_allocator();
 
         let pipeline = render_context
-            .shader_manager()
-            .get_pipeline(self.shader_handle)
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
 

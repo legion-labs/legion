@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    resources::{ShaderHandle, ShaderManager},
+    resources::{PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -14,21 +14,19 @@ pub struct OffscreenHelper {
     render_image: Texture,
     render_image_rtv: TextureView,
     copy_image: Texture,
-    shader_handle: ShaderHandle,
+    pipeline_handle: PipelineHandle,
     bilinear_sampler: Sampler,
 }
 
 impl OffscreenHelper {
     pub fn new(
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         device_context: &DeviceContext,
         resolution: RenderSurfaceExtents,
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        // let shader = shader_manager.get_shader(self.shader_handle).unwrap();
-
-        let shader_handle = shader_manager.register_pipeline(
+        let pipeline_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(
                 display_mapper_shader_family::ID,
                 display_mapper_shader_family::NONE,
@@ -103,7 +101,7 @@ impl OffscreenHelper {
             render_image,
             render_image_rtv,
             copy_image,
-            shader_handle,
+            pipeline_handle,
             bilinear_sampler,
         })
     }
@@ -142,8 +140,8 @@ impl OffscreenHelper {
         );
 
         let pipeline = render_context
-            .shader_manager()
-            .get_pipeline(self.shader_handle)
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
 

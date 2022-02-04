@@ -12,7 +12,7 @@ use lgn_graphics_api::DeviceContext;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
-    resources::ShaderManager,
+    resources::PipelineManager,
     RenderContext,
 };
 use lgn_tracing::prelude::*;
@@ -42,13 +42,13 @@ impl VideoStream {
     #[span_fn]
     pub fn new(
         device_context: &DeviceContext,
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         resolution: Resolution,
         video_data_channel: Arc<RTCDataChannel>,
         async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let rgb_to_yuv = RgbToYuvConverter::new(shader_manager, device_context, resolution)?;
+        let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution)?;
 
         Ok(Self {
             async_rt,

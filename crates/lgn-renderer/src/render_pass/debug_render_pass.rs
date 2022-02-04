@@ -14,20 +14,20 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, DefaultMeshes, ShaderHandle, ShaderManager},
+    resources::{DefaultMeshType, DefaultMeshes, PipelineHandle, PipelineManager},
     tmp_shader_data::const_color_shader_family,
     RenderContext,
 };
 
 pub struct DebugRenderPass {
-    solid_pso_depth_handle: ShaderHandle,
-    wire_pso_depth_handle: ShaderHandle,
-    solid_pso_nodepth_handle: ShaderHandle,
-    _wire_pso_nodepth_handle: ShaderHandle,
+    solid_pso_depth_handle: PipelineHandle,
+    wire_pso_depth_handle: PipelineHandle,
+    solid_pso_nodepth_handle: PipelineHandle,
+    _wire_pso_nodepth_handle: PipelineHandle,
 }
 
 impl DebugRenderPass {
-    pub fn new(shader_manager: &ShaderManager) -> Self {
+    pub fn new(pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::ConstColorPipelineLayout::root_signature();
 
         let vertex_layout = VertexLayout::default();
@@ -71,7 +71,7 @@ impl DebugRenderPass {
             ..RasterizerState::default()
         };
 
-        let solid_pso_depth_handle = shader_manager.register_pipeline(
+        let solid_pso_depth_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(
                 const_color_shader_family::ID,
                 const_color_shader_family::NONE,
@@ -94,7 +94,7 @@ impl DebugRenderPass {
             },
         );
 
-        let wire_pso_depth_handle = shader_manager.register_pipeline(
+        let wire_pso_depth_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(
                 const_color_shader_family::ID,
                 const_color_shader_family::NONE,
@@ -117,7 +117,7 @@ impl DebugRenderPass {
             },
         );
 
-        let solid_pso_nodepth_handle = shader_manager.register_pipeline(
+        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(
                 const_color_shader_family::ID,
                 const_color_shader_family::NONE,
@@ -140,7 +140,7 @@ impl DebugRenderPass {
             },
         );
 
-        let wire_pso_nodepth_handle = shader_manager.register_pipeline(
+        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(
                 const_color_shader_family::ID,
                 const_color_shader_family::NONE,
@@ -178,7 +178,7 @@ impl DebugRenderPass {
         default_meshes: &DefaultMeshes,
     ) {
         let wire_pso_depth_pipeline = render_context
-            .shader_manager()
+            .pipeline_manager()
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
@@ -205,11 +205,11 @@ impl DebugRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
         let wire_pso_depth_pipeline = render_context
-            .shader_manager()
+            .pipeline_manager()
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         let solid_pso_depth_pipeline = render_context
-            .shader_manager()
+            .pipeline_manager()
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
         for (_index, (static_mesh_component, transform)) in picked_meshes.iter().enumerate() {
@@ -240,7 +240,7 @@ impl DebugRenderPass {
         default_meshes: &DefaultMeshes,
     ) {
         let pipeline = render_context
-            .shader_manager()
+            .pipeline_manager()
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
@@ -301,7 +301,7 @@ impl DebugRenderPass {
                 color.w = if manipulator.transparent { 0.9 } else { 1.0 };
 
                 let pipeline = render_context
-                    .shader_manager()
+                    .pipeline_manager()
                     .get_pipeline(self.solid_pso_nodepth_handle)
                     .unwrap();
                 cmd_buffer.bind_pipeline(pipeline);

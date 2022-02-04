@@ -22,7 +22,7 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{
-        GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, ShaderHandle, ShaderManager,
+        GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, PipelineHandle, PipelineManager,
     },
     tmp_shader_data::picking_shader_family,
     RenderContext,
@@ -123,7 +123,7 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    shader_handle: ShaderHandle,
+    pipeline_handle: PipelineHandle,
 
     readback_buffer_pools: GpuSafePool<ReadbackBufferPool>,
 
@@ -137,7 +137,7 @@ pub struct PickingRenderPass {
 }
 
 impl PickingRenderPass {
-    pub fn new(device_context: &DeviceContext, shader_manager: &ShaderManager) -> Self {
+    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -168,7 +168,7 @@ impl PickingRenderPass {
             back_stencil_fail_op: StencilOp::default(),
             back_stencil_pass_op: StencilOp::default(),
         };
-        let shader_handle = shader_manager.register_pipeline(
+        let pipeline_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(picking_shader_family::ID, picking_shader_family::NONE),
             move |device_context, shader| {
                 device_context
@@ -187,8 +187,6 @@ impl PickingRenderPass {
                     .unwrap()
             },
         );
-
-        // let shader = shader_manager.get_shader(shader_handle).unwrap();
 
         //
         // Pipeline state
@@ -239,7 +237,7 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
-            shader_handle,
+            pipeline_handle,
             readback_buffer_pools: GpuSafePool::new(3),
             count_buffer,
             _count_allocation: count_allocation,
@@ -288,8 +286,8 @@ impl PickingRenderPass {
             );
 
             let pipeline = render_context
-                .shader_manager()
-                .get_pipeline(self.shader_handle)
+                .pipeline_manager()
+                .get_pipeline(self.pipeline_handle)
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);

@@ -13,14 +13,14 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ShaderHandle(usize);
+pub struct PipelineHandle(usize);
 
 struct PipelineInfo {
     key: CGenShaderKey,
-    create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync>,
+    create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>,
 }
 
-pub struct ShaderManager {
+pub struct PipelineManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
     shader_families: Vec<&'static CGenShaderFamily>,
@@ -28,7 +28,7 @@ pub struct ShaderManager {
     pipelines: Vec<Option<Pipeline>>,
 }
 
-impl ShaderManager {
+impl PipelineManager {
     pub(crate) fn new(device_context: &DeviceContext) -> Self {
         Self {
             device_context: device_context.clone(),
@@ -39,12 +39,12 @@ impl ShaderManager {
         }
     }
 
-    pub fn register_cgen_registry(&mut self, registry: &CGenRegistry) {
+    pub fn register_shader_families(&mut self, registry: &CGenRegistry) {
         self.shader_families
             .extend_from_slice(&registry.shader_families);
     }
 
-    pub fn get_pipeline(&self, handle: ShaderHandle) -> Option<&Pipeline> {
+    pub fn get_pipeline(&self, handle: PipelineHandle) -> Option<&Pipeline> {
         if handle.0 >= self.pipelines.len() {
             None
         } else {
@@ -56,16 +56,15 @@ impl ShaderManager {
         &self,
         key: CGenShaderKey,
         func: F,
-    ) -> ShaderHandle {
-        // check if it exists
-        self.shader_instance(key).unwrap();
+    ) -> PipelineHandle {
+        self.shader_instance(key).expect("Invalid shader key");
         {
             let mut infos = self.infos.write();
             infos.push(PipelineInfo {
                 key,
                 create_pipeline: Box::new(func),
             });
-            ShaderHandle(infos.len() - 1)
+            PipelineHandle(infos.len() - 1)
         }
     }
 
@@ -137,7 +136,7 @@ impl ShaderManager {
                 }],
                 entry_points: &entry_points,
             })
-            .map_err(|_| ())?;
+            .map_err(|_e| ())?;
 
         // build the final shader
         let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::count()]> =
@@ -156,7 +155,7 @@ impl ShaderManager {
                         )
                         .module_def(),
                     )
-                    .map_err(|_| ())?;
+                    .map_err(|_e| ())?;
 
                 shader_stage_defs.push(ShaderStageDef {
                     entry_point: Self::entry_point(shader_stage).to_string(),

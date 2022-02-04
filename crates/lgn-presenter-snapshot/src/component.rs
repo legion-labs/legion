@@ -4,7 +4,7 @@ use lgn_ecs::prelude::Component;
 use lgn_graphics_api::DeviceContext;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
-    resources::ShaderManager,
+    resources::PipelineManager,
     RenderContext,
 };
 
@@ -30,11 +30,11 @@ impl PresenterSnapshot {
         snapshot_name: &str,
         frame_target: i32,
         device_context: &DeviceContext,
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         render_surface_id: RenderSurfaceId,
         resolution: RenderSurfaceExtents,
     ) -> anyhow::Result<Self> {
-        let offscreen_helper = OffscreenHelper::new(shader_manager, device_context, resolution)?;
+        let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution)?;
 
         Ok(Self {
             snapshot_name: snapshot_name.to_string(),

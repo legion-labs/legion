@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
-use crate::resources::ShaderManager;
+use crate::resources::PipelineManager;
 use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
@@ -176,10 +176,10 @@ pub struct RenderSurface {
 impl RenderSurface {
     pub fn new(
         renderer: &Renderer,
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
     ) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, shader_manager, extents)
+        Self::new_with_id(RenderSurfaceId::new(), renderer, pipeline_manager, extents)
     }
 
     pub fn extents(&self) -> RenderSurfaceExtents {
@@ -282,7 +282,7 @@ impl RenderSurface {
     fn new_with_id(
         id: RenderSurfaceId,
         renderer: &Renderer,
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
@@ -300,11 +300,11 @@ impl RenderSurface {
             signal_sems,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(
                 device_context,
-                shader_manager,
+                pipeline_manager,
             ))),
-            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(shader_manager))),
-            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(shader_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, shader_manager))),
+            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(pipeline_manager))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             presenters: Vec::new(),
         }
     }

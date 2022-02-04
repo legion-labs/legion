@@ -18,7 +18,7 @@ use lgn_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, StaticMesh,
     },
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, ShaderManager},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -150,14 +150,14 @@ fn presenter_snapshot_system(
     mut commands: Commands<'_, '_>,
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
-    shader_manager: Res<'_, ShaderManager>,
+    pipeline_manager: Res<'_, PipelineManager>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
         let mut render_surface = RenderSurface::new(
             &renderer,
-            &shader_manager,
+            &pipeline_manager,
             RenderSurfaceExtents::new(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
@@ -170,7 +170,7 @@ fn presenter_snapshot_system(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
                 renderer.device_context(),
-                &shader_manager,
+                &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(
                     snapshot_descriptor.width as u32,

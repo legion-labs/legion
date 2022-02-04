@@ -33,7 +33,7 @@ pub mod resources;
 use resources::{
     DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
-    MaterialManager, ShaderManager,
+    MaterialManager, PipelineManager,
 };
 use tmp_shader_data::patch_cgen_registry;
 
@@ -123,7 +123,7 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(ShaderManager::new(&device_context));
+        app.insert_resource(PipelineManager::new(&device_context));
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
@@ -220,14 +220,14 @@ fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    shader_manager: Res<'_, ShaderManager>,
+    pipeline_manager: Res<'_, PipelineManager>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, &shader_manager, extents);
+        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -289,12 +289,12 @@ fn on_window_close_requested(
 #[allow(clippy::needless_pass_by_value)]
 fn init_cgen(
     renderer: Res<'_, Renderer>,
-    mut shader_manager: ResMut<'_, ShaderManager>,
+    mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let mut cgen_registry = cgen::initialize(renderer.device_context());
     patch_cgen_registry(&mut cgen_registry);
-    shader_manager.register_cgen_registry(&cgen_registry);
+    pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }
 
@@ -475,8 +475,8 @@ fn update_gpu_instance_ids(
     renderer.add_update_job_block(updater.job_blocks());
 }
 
-fn prepare_shaders(mut shader_manager: ResMut<'_, ShaderManager>) {
-    shader_manager.update();
+fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
+    pipeline_manager.update();
 }
 
 #[span_fn]
@@ -487,7 +487,7 @@ fn prepare_shaders(mut shader_manager: ResMut<'_, ShaderManager>) {
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
-    shader_manager: Res<'_, ShaderManager>,
+    pipeline_manager: Res<'_, PipelineManager>,
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
@@ -509,7 +509,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &shader_manager);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
     let q_drawables = q_drawables.iter().collect::<Vec<&StaticMesh>>();
     let q_picked_drawables = q_picked_drawables
         .iter()

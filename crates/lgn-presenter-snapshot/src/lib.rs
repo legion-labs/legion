@@ -17,7 +17,7 @@ mod tmp_shader_data;
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{resources::ShaderManager, Renderer};
+use lgn_renderer::{resources::PipelineManager, Renderer};
 use offscreen_capture::OffscreenHelper;
 use tmp_shader_data::patch_cgen_registry;
 
@@ -33,11 +33,11 @@ impl Plugin for PresenterSnapshotPlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn init_cgen(
     renderer: Res<'_, Renderer>,
-    mut shader_manager: ResMut<'_, ShaderManager>,
+    mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let mut cgen_registry = cgen::initialize(renderer.device_context());
     patch_cgen_registry(&mut cgen_registry);
-    shader_manager.register_cgen_registry(&cgen_registry);
+    pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

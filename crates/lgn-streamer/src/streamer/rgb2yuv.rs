@@ -2,7 +2,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::RenderSurface,
-    resources::{ShaderHandle, ShaderManager},
+    resources::{PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -95,18 +95,18 @@ impl ResolutionDependentResources {
 pub struct RgbToYuvConverter {
     render_frame_count: u32,
     resolution_dependent_resources: ResolutionDependentResources,
-    shader_handle: ShaderHandle,
+    pipeline_handle: PipelineHandle,
 }
 
 impl RgbToYuvConverter {
     pub fn new(
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         device_context: &DeviceContext,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let shader_handle = shader_manager.register_pipeline(
+        let pipeline_handle = pipeline_manager.register_pipeline(
             CGenShaderKey::make(rgb2yuv_shader_family::ID, rgb2yuv_shader_family::NONE),
             |device_context, shader| {
                 device_context
@@ -118,8 +118,6 @@ impl RgbToYuvConverter {
             },
         );
 
-        // let shader = shader_manager.get_shader(shader_handle).unwrap();
-
         ////////////////////////////////////////////////////////////////////////////////
 
         let render_frame_count = 1u32;
@@ -129,7 +127,7 @@ impl RgbToYuvConverter {
         Ok(Self {
             render_frame_count: 1,
             resolution_dependent_resources,
-            shader_handle,
+            pipeline_handle,
         })
     }
 
@@ -189,8 +187,8 @@ impl RgbToYuvConverter {
             );
 
             let pipeline = render_context
-                .shader_manager()
-                .get_pipeline(self.shader_handle)
+                .pipeline_manager()
+                .get_pipeline(self.pipeline_handle)
                 .unwrap();
             cmd_buffer.bind_pipeline(pipeline);
 
