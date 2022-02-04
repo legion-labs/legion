@@ -4587,7 +4587,6 @@ dependencies = [
  "glam",
  "half",
  "lgn-graphics-api",
- "static_assertions",
 ]
 
 [[package]]

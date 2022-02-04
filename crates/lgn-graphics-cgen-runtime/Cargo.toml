@@ -10,4 +10,3 @@ lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 
 glam = "0.20"
 half = "1.8.2"
-static_assertions = "1.1.0"
