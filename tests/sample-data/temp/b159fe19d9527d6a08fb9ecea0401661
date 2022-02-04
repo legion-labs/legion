@@ -1,0 +1,33 @@
+{
+  "version": "0.1.0",
+  "resources": [
+    {
+      "id": "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)|1d9ddd99aad89045",
+      "dependencies": [
+        "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)"
+      ],
+      "resource_hash": null
+    },
+    {
+      "id": "(91dc60590cba171e,181f9358-000f-47db-9583-7c9448c3dba8)",
+      "dependencies": [
+        "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)|1d9ddd99aad89045"
+      ],
+      "resource_hash": "402db5395503258c"
+    }
+  ],
+  "pathid_mapping": [
+    [
+      "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)",
+      "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)"
+    ],
+    [
+      "(1d9ddd99aad89045,06fa9348-b29d-5736-65b0-53df470901a0)",
+      "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)|1d9ddd99aad89045"
+    ],
+    [
+      "(91dc60590cba171e,181f9358-000f-47db-9583-7c9448c3dba8)",
+      "(91dc60590cba171e,181f9358-000f-47db-9583-7c9448c3dba8)"
+    ]
+  ]
+}
