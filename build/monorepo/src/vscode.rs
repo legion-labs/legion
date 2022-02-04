@@ -169,7 +169,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "files.eol": "\n",
         "protoc": {
             "options": [
-                "--proto_path=${workspaceRoot}/crates/lgn-telemetry-proto/protos/",
+                "--proto_path=${workspaceRoot}/crates/*.proto",
             ],
         },
         "rust-analyzer.checkOnSave.command": "vsclippy",
