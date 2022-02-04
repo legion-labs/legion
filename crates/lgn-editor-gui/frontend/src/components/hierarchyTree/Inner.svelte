@@ -14,7 +14,7 @@
 
   const dispatch = createEventDispatcher<{
     highlight: Entry<Item>;
-    nameChange: { entry: Entry<Item>; newName: string };
+    nameEdited: { entry: Entry<Item>; newName: string };
   }>();
 
   // TODO: Temporary extension to icon name map, should be dynamic
@@ -50,11 +50,11 @@
     currentlyRenameEntry = null;
 
     if (nameValue.trim().length) {
-      dispatch("nameChange", { entry, newName: nameValue.trim() });
+      dispatch("nameEdited", { entry, newName: nameValue.trim() });
     }
   }
 
-  function cancelEdition() {
+  function cancelNameEdit() {
     mode = "view";
   }
 
@@ -80,7 +80,7 @@
   $: nameValue = mode === "edit" ? entryName() : "";
 
   $: if (!isHighlighted) {
-    cancelEdition();
+    cancelNameEdit();
   }
 </script>
 
@@ -107,7 +107,7 @@
       {:else}
         <form
           on:submit={renameFile}
-          on:keydown={(event) => event.key === "Escape" && cancelEdition()}
+          on:keydown={(event) => event.key === "Escape" && cancelNameEdit()}
         >
           <TextInput autoFocus autoSelect size="sm" bind:value={nameValue} />
         </form>
@@ -123,7 +123,7 @@
           {highlightedEntry}
           bind:currentlyRenameEntry
           on:highlight
-          on:nameChange
+          on:nameEdited
           let:itemName
         >
           <slot name="name" slot="name" {itemName} />

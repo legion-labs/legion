@@ -157,6 +157,23 @@ export async function createResource({
   });
 }
 
+export async function renameResource({
+  id,
+  newPath,
+}: {
+  id: string;
+  newPath: string;
+}) {
+  return resourceBrowserClient.renameResource({
+    id,
+    newPath,
+  });
+}
+
+export async function removeResource({ id }: { id: string }) {
+  return resourceBrowserClient.deleteResource({ id });
+}
+
 /**
  * Used for logging purpose
  * @param jsonCommand

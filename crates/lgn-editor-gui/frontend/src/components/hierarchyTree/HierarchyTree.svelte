@@ -11,8 +11,12 @@
     name: { itemName: string };
   };
 
-  const dispatch =
-    createEventDispatcher<{ highlight: Entry<Item>; select: Entry<Item> }>();
+  const dispatch = createEventDispatcher<{
+    highlight: Entry<Item>;
+    select: Entry<Item>;
+    nameEdited: { entry: Entry<Item>; newName: string };
+    removed: Entry<Item>;
+  }>();
 
   // Can be extracted if needed
   const keyboardNavigationStore = new KeyboardNavigationStore();
@@ -21,7 +25,7 @@
 
   export let highlightedItem: Item | null = null;
 
-  let currentlyRenameEntry: Entry<Item> | null = null;
+  export let currentlyRenameEntry: Entry<Item> | null = null;
 
   let hierarchyTree: HTMLElement | null;
 
@@ -38,8 +42,7 @@
     focus();
   }
 
-  // TODO: Use props instead of the `edit` function?
-  export function edit(item: Item) {
+  export function startNameEdit(item: Item) {
     const entry = entries.find((entry) => entry.item === item);
 
     if (!entry) {
@@ -49,7 +52,6 @@
     currentlyRenameEntry = entry;
   }
 
-  // TODO: Use props instead of the `remove` function?
   export function remove(item: Item) {
     const entry = entries.find((entry) => entry.item === item);
 
@@ -58,6 +60,8 @@
     }
 
     entries = entries.remove(entry);
+
+    dispatch("removed", entry);
   }
 
   function select() {
@@ -74,6 +78,8 @@
     entries = entries.update((entry) =>
       updatedEntry === entry ? { ...entry, name: newName } : null
     );
+
+    dispatch("nameEdited", { entry: updatedEntry, newName });
   }
 
   function setHighlightedEntry(entry: Entry<Item>) {
@@ -107,7 +113,7 @@
   class="root"
   on:navigation-change={setHighlightedEntryWithIndex}
   on:navigation-select={select}
-  on:navigation-rename={() => highlightedItem && edit(highlightedItem)}
+  on:navigation-rename={() => highlightedItem && startNameEdit(highlightedItem)}
   on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
   use:keyboardNavigation={{
     size: entries.size,
@@ -123,7 +129,7 @@
       bind:currentlyRenameEntry
       on:dblclick={select}
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
-      on:nameChange={setName}
+      on:nameEdited={setName}
       let:itemName
     >
       <slot name="name" slot="name" {itemName} />

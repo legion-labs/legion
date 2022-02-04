@@ -24,7 +24,7 @@ export class Entries<Item> {
    * ## Example
    *
    * ```typescript
-   * const entries = Entries.unflatten([
+   * const entries = Entries.fromArray([
    *   { path: "/foo/bar", value: "hello" },
    *   { path: "/foo/baz", value: "another hello" },
    *   { path: "/foo", value: "another value" },
@@ -39,7 +39,7 @@ export class Entries<Item> {
    * assert(deepEqual(entries.entries, expectedEntries));
    * ```
    */
-  static unflatten<Item extends { path: string }, AltItem>(
+  static fromArray<Item extends { path: string }, AltItem>(
     items: Item[],
     /** This function is called when an `Item` is not present, typically used for "folders" */
     buildItemFromName: (name: string) => Item | AltItem
@@ -113,8 +113,6 @@ export class Entries<Item> {
 
     entries.#sort();
 
-    entries.#setIndices();
-
     return entries;
   }
 
@@ -161,6 +159,8 @@ export class Entries<Item> {
     }
 
     sort(this.entries);
+
+    this.#setIndices();
   }
 
   /**
@@ -256,6 +256,8 @@ export class Entries<Item> {
     }
 
     this.entries = update(this.entries);
+
+    this.#sort();
 
     return this;
   }

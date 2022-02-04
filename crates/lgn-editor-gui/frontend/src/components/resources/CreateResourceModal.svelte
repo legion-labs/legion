@@ -50,7 +50,7 @@
       }
 
       // TODO: As soon as the folder-ish resources are supported, uncomment
-      // const path = join(payload.path, $name.value);
+      // const path = join([payload.path, $name.value]);
       const resourcePath = $name.value;
 
       const resourceType = $type.value.item;
