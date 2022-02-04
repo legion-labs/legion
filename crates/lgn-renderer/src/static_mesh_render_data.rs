@@ -743,6 +743,10 @@ impl StaticMeshRenderData {
     pub fn new_gltf(path: String) -> Vec<Self> {
         mesh_import_export::GltfWrapper::new_mesh(path)
     }
+
+    pub fn new_assimp(path: String) -> Vec<Self> {
+        mesh_import_export::AssimpWrapper::new_mesh(path)
+    }
 }
 
 #[allow(unsafe_code)]

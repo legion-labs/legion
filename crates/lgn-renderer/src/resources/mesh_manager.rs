@@ -133,7 +133,9 @@ impl Default for MeshManagerUIState {
     fn default() -> Self {
         Self {
             path: String::from(
-                "C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
+                //"C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
+                //"C:/work/glTF-Sample-Models/sourceModels/DragonAttenuation/Dragon_Attenuation.blend",
+                "C:/work/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf"
             ),
         }
     }
@@ -149,10 +151,16 @@ pub fn ui_mesh_manager(
 ) {
     egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
         ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
-        if ui.small_button("Load mesh").clicked() {
+        if ui.small_button("Load mesh (gltf)").clicked() {
             mesh_manager.add_meshes(
                 renderer.as_ref(),
                 StaticMeshRenderData::new_gltf(ui_state.path.clone()),
+            );
+        }
+        if ui.small_button("Load mesh (assimp)").clicked() {
+            mesh_manager.add_meshes(
+                renderer.as_ref(),
+                StaticMeshRenderData::new_assimp(ui_state.path.clone()),
             );
         }
         /*for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {

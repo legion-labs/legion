@@ -35,7 +35,7 @@ impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(on_window_created);
 
-        let egui = Egui { ..Egui::default() };
+        let egui = Egui { enable: true, ..Egui::default() };
         //egui.ctx.style().visuals.window_shadow.extrusion = 0.0;
         app.insert_resource(egui);
         app.insert_resource(RawInput::default());
