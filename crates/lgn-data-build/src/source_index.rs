@@ -652,10 +652,8 @@ mod tests {
 
             resource_handle.get_mut(&mut resources).unwrap().content = "hello".to_string();
 
-            let id = ResourceTypeAndId {
-                kind: refs_resource::TestResource::TYPE,
-                id: ResourceId::new_explicit(0xaabbccddeeff0011),
-            };
+            let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
+
             let resource_id = project
                 .add_resource_with_id(
                     ResourcePathName::new("test_source"),
