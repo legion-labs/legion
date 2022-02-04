@@ -209,9 +209,3 @@ impl ShaderManager {
         }
     }
 }
-
-impl Drop for ShaderManager {
-    fn drop(&mut self) {
-        println!( "ShaderManager has been dropped"  );
-    }
-}

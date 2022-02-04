@@ -106,6 +106,21 @@ impl Plugin for RendererPlugin {
         let static_buffer = renderer.static_buffer().clone();
 
         //
+        // Add renderer stages first. It is needed for the plugins.
+        //
+        app.add_stage_after(
+            CoreStage::PostUpdate,
+            RenderStage::Prepare,
+            SystemStage::parallel(),
+        );
+
+        app.add_stage_after(
+            RenderStage::Prepare,
+            RenderStage::Render,
+            SystemStage::parallel(),
+        );
+
+        //
         // Resources
         //
         app.insert_resource(ShaderManager::new(&device_context));
@@ -115,19 +130,17 @@ impl Plugin for RendererPlugin {
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
         app.insert_resource(MaterialManager::new(&static_buffer));
+        app.insert_resource(DebugDisplay::default());
+        app.insert_resource(LightingManager::default());
+        app.add_plugin(EguiPlugin::new());
+        app.add_plugin(PickingPlugin {});
+        app.add_plugin(GpuDataPlugin::new(&static_buffer));
         app.insert_resource(renderer);
-
-        app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightingManager>();
 
         //
         // Events
         //
         app.add_event::<RenderSurfaceCreatedForWindow>();
-
-        //
-        // Systems
-        //
 
         //
         // Stage Startup
@@ -155,13 +168,6 @@ impl Plugin for RendererPlugin {
         //
         // Stage Prepare
         //
-
-        app.add_stage_after(
-            CoreStage::PostUpdate,
-            RenderStage::Prepare,
-            SystemStage::parallel(),
-        );
-
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
@@ -193,12 +199,6 @@ impl Plugin for RendererPlugin {
         //
         // Stage: Render
         //
-        app.add_stage_after(
-            RenderStage::Prepare,
-            RenderStage::Render,
-            SystemStage::parallel(),
-        );
-
         app.add_system_set_to_stage(
             RenderStage::Render,
             SystemSet::new()
@@ -211,13 +211,6 @@ impl Plugin for RendererPlugin {
             RenderStage::Render,
             render_post_update.label(CommandBufferLabel::Submit),
         );
-
-        //
-        // Plugins
-        //
-        app.add_plugin(EguiPlugin::new());
-        app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::new(&static_buffer));
     }
 }
 
