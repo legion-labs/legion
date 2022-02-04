@@ -187,7 +187,7 @@ impl Filesystem for SourceControlFilesystem {
                     .chain(children.iter().map(|(name, child)| {
                         (
                             inode_index
-                                .get_inode_by_path(&parent_path.append(name))
+                                .get_inode_by_path(&parent_path.clone().append(name))
                                 .unwrap(),
                             match child {
                                 Tree::Directory { .. } => FileType::Directory,

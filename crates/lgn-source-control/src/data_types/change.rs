@@ -47,6 +47,20 @@ impl Change {
     pub fn change_type(&self) -> &ChangeType {
         &self.change_type
     }
+
+    pub fn into_invert(self) -> Self {
+        Self {
+            canonical_path: self.canonical_path,
+            change_type: self.change_type.into_invert(),
+        }
+    }
+
+    pub fn with_parent_name(self, parent_name: &str) -> Self {
+        Self {
+            canonical_path: self.canonical_path.prepend(parent_name),
+            change_type: self.change_type,
+        }
+    }
 }
 
 impl Display for Change {

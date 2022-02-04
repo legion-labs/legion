@@ -208,7 +208,7 @@ impl Tree {
                 let children = children
                     .iter()
                     .filter_map(|(name, child)| {
-                        match child.filter_with_root(filter, &root.append(name)) {
+                        match child.filter_with_root(filter, &root.clone().append(name)) {
                             Ok(child) => Some(Ok(child)),
                             Err(Error::PathExcluded { .. } | Error::PathNotIncluded { .. }) => None,
                             Err(err) => Some(Err(err)),
@@ -237,7 +237,7 @@ impl Tree {
     pub fn is_empty(&self) -> bool {
         match self {
             Tree::Directory { children, .. } => children.is_empty(),
-            Tree::File { .. } => true,
+            Tree::File { .. } => false,
         }
     }
 
@@ -486,7 +486,7 @@ impl Tree {
             } else {
                 // The children was not found: end of the search.
                 Err(Error::file_does_not_exist(
-                    canonical_path.prepend(self.name()),
+                    canonical_path.clone().prepend(self.name()),
                 ))
             }
         } else {
@@ -599,8 +599,8 @@ impl Tree {
         }
     }
 
-    /// Set a direct child with the specified tree and returns the old one if
-    /// any.
+    /// Set a direct child with the specified tree and returns a reference to
+    /// it.
     ///
     /// If the node is not a directory node, it becomes one and all file
     /// information is lost.
@@ -611,9 +611,18 @@ impl Tree {
                 Entry::Occupied(entry) => {
                     let old = entry.get();
                     if old != &tree {
-                        Err(Error::file_already_exists(CanonicalPath::new_from_name(
-                            old.name(),
-                        )))
+                        // If the previous child is an empty directy, allow its replacement.
+                        if old.is_empty() {
+                            let value = entry.into_mut();
+
+                            *value = tree;
+
+                            Ok(value)
+                        } else {
+                            Err(Error::file_already_exists(CanonicalPath::new_from_name(
+                                old.name(),
+                            )))
+                        }
                     } else {
                         Ok(entry.into_mut())
                     }
@@ -698,6 +707,148 @@ impl Tree {
 
         Ok(self)
     }
+
+    /// Returns the list of changes to apply to an empty tree, to get to this.
+    pub fn as_forward_changes(&self) -> BTreeSet<Change> {
+        let mut changes = BTreeSet::new();
+
+        match self {
+            Self::File { name, info } => {
+                changes.insert(Change::new(
+                    CanonicalPath::new_from_name(name),
+                    ChangeType::Add {
+                        new_info: info.clone(),
+                    },
+                ));
+            }
+            Self::Directory {
+                name: parent_name,
+                children,
+            } => {
+                changes.extend(
+                    children
+                        .iter()
+                        .flat_map(|(_, child)| child.as_forward_changes())
+                        .map(|change| change.with_parent_name(parent_name)),
+                );
+            }
+        };
+
+        changes
+    }
+
+    /// Returns the list of changes to apply to this tree, to get to an empty one.
+    pub fn as_backward_changes(&self) -> BTreeSet<Change> {
+        self.as_forward_changes()
+            .into_iter()
+            .map(Change::into_invert)
+            .collect()
+    }
+
+    pub fn get_changes_to(&self, tree: &Self) -> BTreeSet<Change> {
+        let mut changes = BTreeSet::new();
+
+        match self {
+            Self::File { name, info } => match tree {
+                Self::File {
+                    name: tree_name,
+                    info: tree_info,
+                } => {
+                    if name == tree_name {
+                        if info == tree_info {
+                            return changes;
+                        }
+
+                        changes.insert(Change::new(
+                            CanonicalPath::new_from_name(name),
+                            ChangeType::Edit {
+                                old_info: info.clone(),
+                                new_info: tree_info.clone(),
+                            },
+                        ));
+                    } else {
+                        changes.insert(Change::new(
+                            CanonicalPath::new_from_name(name),
+                            ChangeType::Delete {
+                                old_info: info.clone(),
+                            },
+                        ));
+                        changes.insert(Change::new(
+                            CanonicalPath::new_from_name(tree_name),
+                            ChangeType::Add {
+                                new_info: tree_info.clone(),
+                            },
+                        ));
+                    }
+                }
+                Self::Directory { .. } => {
+                    changes.insert(Change::new(
+                        CanonicalPath::new_from_name(name),
+                        ChangeType::Delete {
+                            old_info: info.clone(),
+                        },
+                    ));
+                    changes.extend(tree.as_forward_changes());
+                }
+            },
+            Self::Directory { name, children } => match tree {
+                Self::File {
+                    name: tree_name,
+                    info: tree_info,
+                } => {
+                    changes.extend(self.as_backward_changes());
+                    changes.insert(Change::new(
+                        CanonicalPath::new_from_name(tree_name),
+                        ChangeType::Add {
+                            new_info: tree_info.clone(),
+                        },
+                    ));
+                }
+                Self::Directory {
+                    name: tree_name,
+                    children: tree_children,
+                } => {
+                    if name != tree_name {
+                        changes.extend(self.as_backward_changes());
+                        changes.extend(tree.as_forward_changes());
+                    } else {
+                        // First we add deletions for all the children in the current tree that do not exist in the new tree.
+                        for (child_name, child) in children {
+                            if !tree_children.contains_key(child_name) {
+                                changes.extend(
+                                    child
+                                        .as_backward_changes()
+                                        .into_iter()
+                                        .map(|change| change.with_parent_name(name)),
+                                );
+                            }
+                        }
+
+                        // Then we register changes and additions.
+                        for (tree_child_name, tree_child) in tree_children {
+                            if let Some(child) = children.get(tree_child_name) {
+                                changes.extend(
+                                    child
+                                        .get_changes_to(tree_child)
+                                        .into_iter()
+                                        .map(|change| change.with_parent_name(name)),
+                                );
+                            } else {
+                                changes.extend(
+                                    tree_child
+                                        .as_forward_changes()
+                                        .into_iter()
+                                        .map(|change| change.with_parent_name(name)),
+                                );
+                            }
+                        }
+                    }
+                }
+            },
+        }
+
+        changes
+    }
 }
 
 impl<'t> IntoIterator for &'t Tree {
@@ -732,10 +883,10 @@ impl<'t> Iterator for TreeIterator<'t> {
         loop {
             if let Some(node) = self.node.take() {
                 break match node {
-                    Tree::File { name, .. } => Some((self.path.append(name), node)),
+                    Tree::File { name, .. } => Some((self.path.clone().append(name), node)),
                     Tree::Directory { name, children } => {
                         self.stack.push(children.values());
-                        self.path = self.path.append(name);
+                        self.path = self.path.clone().append(name);
 
                         Some((self.path.clone(), node))
                     }
@@ -788,7 +939,7 @@ impl<'t> Iterator for TreeFilesIterator<'t> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(file_node) = self.file_node.take() {
-                break Some((self.path.append(file_node.name()), file_node));
+                break Some((self.path.clone().append(file_node.name()), file_node));
             }
 
             let next_tree = match self.stack.last_mut() {
@@ -818,7 +969,7 @@ impl<'t> Iterator for TreeFilesIterator<'t> {
                 Some((name, children)) => {
                     // We reached a new children iterator: push it and continue.
                     self.stack.push(children.values());
-                    self.path = self.path.append(name);
+                    self.path = self.path.clone().append(name);
                 }
             }
         }
@@ -839,7 +990,7 @@ impl TreeFilter {
     /// A path is excluded if it matches any of the exclusion rules.
     pub fn check_exclusion(&self, canonical_path: &CanonicalPath) -> Result<()> {
         for exclusion_rule in &self.exclusion_rules {
-            if exclusion_rule.matches(canonical_path) {
+            if exclusion_rule.contains(canonical_path) {
                 return Err(Error::path_excluded(
                     canonical_path.clone(),
                     exclusion_rule.clone(),
@@ -899,6 +1050,34 @@ mod tests {
 
     fn cp(s: &str) -> CanonicalPath {
         CanonicalPath::new(s).unwrap()
+    }
+
+    fn add(s: &str, new_hash: &str) -> Change {
+        Change::new(
+            cp(s),
+            ChangeType::Add {
+                new_info: fi(new_hash, 123),
+            },
+        )
+    }
+
+    fn edit(s: &str, old_hash: &str, new_hash: &str) -> Change {
+        Change::new(
+            cp(s),
+            ChangeType::Edit {
+                old_info: fi(old_hash, 123),
+                new_info: fi(new_hash, 123),
+            },
+        )
+    }
+
+    fn delete(s: &str, old_hash: &str) -> Change {
+        Change::new(
+            cp(s),
+            ChangeType::Delete {
+                old_info: fi(old_hash, 123),
+            },
+        )
     }
 
     #[tokio::test]
@@ -1124,7 +1303,8 @@ mod tests {
             Err(Error::FileAlreadyExists { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
-            _ => panic!("expected FileAlreadyExists"),
+            Err(err) => panic!("expected FileAlreadyExists, got: {}", err),
+            Ok(_) => panic!("expected FileAlreadyExists"),
         }
 
         // Cannot add a file to a non-directory, direct.
@@ -1365,5 +1545,161 @@ mod tests {
             tree.filter(&tree_filter).unwrap(),
             d("", [d("a", [d("b", [f("d", "hd")])],)])
         );
+    }
+
+    #[test]
+    fn test_tree_with_changes() {
+        let tree = d(
+            "",
+            [
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                d("b", []),
+                f("c", "hc"),
+                f("d", "hd"),
+                d("e", []),
+                d("f", [d("g", [f("h", "hh")])]),
+                d("h", [f("i", "hi")]),
+            ],
+        );
+
+        let tree_with_changes = tree
+            .with_changes(&[
+                add("/a/f/h", "hh"),
+                add("/b", "hb"),
+                edit("/a/e", "he", "he2"),
+                delete("/c", "hc"),
+                delete("/f/g/h", "hh"),
+                add("/f/g", "gh"),
+                delete("/h/i", "hi"),
+            ])
+            .unwrap();
+
+        assert_eq!(
+            tree_with_changes,
+            d(
+                "",
+                [
+                    d("a", [f("e", "he2"), d("f", [f("g", "hg"), f("h", "hh")])]),
+                    f("b", "hb"),
+                    f("d", "hd"),
+                    d("e", []),
+                    d("f", [f("g", "gh")]),
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn test_tree_as_forward_changes() {
+        let tree = d(
+            "",
+            [
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                d("b", []),
+                f("c", "hc"),
+                f("d", "hd"),
+                d("e", []),
+                d("f", [d("g", [f("h", "hh")])]),
+            ],
+        );
+
+        assert_eq!(
+            tree.as_forward_changes(),
+            [
+                add("/a/e", "he"),
+                add("/a/f/g", "hg"),
+                add("/c", "hc"),
+                add("/d", "hd"),
+                add("/f/g/h", "hh"),
+            ]
+            .into()
+        );
+    }
+
+    #[test]
+    fn test_tree_as_backward_changes() {
+        let tree = d(
+            "",
+            [
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                d("b", []),
+                f("c", "hc"),
+                f("d", "hd"),
+                d("e", []),
+                d("f", [d("g", [f("h", "hh")])]),
+            ],
+        );
+
+        assert_eq!(
+            tree.as_backward_changes(),
+            [
+                delete("/a/e", "he"),
+                delete("/a/f/g", "hg"),
+                delete("/c", "hc"),
+                delete("/d", "hd"),
+                delete("/f/g/h", "hh"),
+            ]
+            .into()
+        );
+    }
+
+    #[test]
+    fn test_tree_changes_to() {
+        let from_tree = d(
+            "",
+            [
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                d("b", []),
+                f("c", "hc"),
+                f("d", "hd"),
+                d("e", []),
+                d("f", [d("g", [f("h", "hh")])]),
+            ],
+        );
+        let to_tree = d(
+            "",
+            [
+                d("a", [f("z", "hz"), d("f", [f("g", "hg2")])]),
+                d("b", []),
+                d("c", []),
+                f("d", "hd"),
+                f("e", "he"),
+                d("f", [d("g", [f("h", "hh")])]),
+            ],
+        );
+
+        let changes = from_tree.get_changes_to(&to_tree);
+
+        assert_eq!(
+            changes,
+            [
+                delete("/a/e", "he"),
+                add("/a/z", "hz"),
+                edit("/a/f/g", "hg", "hg2"),
+                delete("/c", "hc"),
+                add("/e", "he"),
+            ]
+            .into()
+        );
+
+        // Reverse changes.
+        let changes = to_tree.get_changes_to(&from_tree);
+
+        assert_eq!(
+            changes,
+            [
+                add("/a/e", "he"),
+                delete("/a/z", "hz"),
+                edit("/a/f/g", "hg2", "hg"),
+                add("/c", "hc"),
+                delete("/e", "he"),
+            ]
+            .into()
+        );
+
+        // Diffing with self should yield no changes.
+        let changes = from_tree.get_changes_to(&from_tree);
+
+        assert_eq!(changes, [].into(),);
     }
 }

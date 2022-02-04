@@ -392,7 +392,17 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     assert_file_content!(ws, "apple.txt", "I am an even newer apple");
 
     // We should still have some unstaged changes as we did not stage them yet.
-    assert_staged_changes!(ws, []);
+    // Also the file should still be checked out for edition and locked.
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            "669da1806b2e40098034455c9346afe212ac4f258009eda0d2e8903c4569a35a",
+            16,
+            16,
+        )]
+    );
     assert_unstaged_changes!(
         ws,
         [edit(
@@ -635,6 +645,280 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
             16,
         )]
     );
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_sync_forward_and_backward() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "apple version 1");
+    create_file!(ws, "orange.txt", "orange version 1");
+    workspace_add_files!(ws, ["."]);
+    let commit_id_1 = workspace_commit!(ws, "version 1");
+
+    // Update an existing file.
+    workspace_edit_files!(ws, ["apple.txt"]);
+    update_file!(ws, "apple.txt", "apple version 2");
+
+    // Create a new one.
+    create_file!(ws, "pear.txt", "pear version 1");
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
+
+    // And delete an old one.
+    workspace_delete_files!(ws, ["orange.txt"]);
+
+    let commit_id_2 = workspace_commit!(ws, "version 2");
+
+    assert_file_content!(ws, "apple.txt", "apple version 2");
+    assert_file_read_only!(ws, "apple.txt");
+    assert_path_doesnt_exist!(ws, "orange.txt");
+    assert_file_content!(ws, "pear.txt", "pear version 1");
+    assert_file_read_only!(ws, "pear.txt");
+
+    // Try to sync back to the previous commit.
+    let current_commit_id = ws.sync_to(&commit_id_1).await.unwrap();
+    assert_eq!(current_commit_id, commit_id_1);
+
+    assert_path_doesnt_exist!(ws, "pear.txt");
+    assert_file_content!(ws, "apple.txt", "apple version 1");
+    assert_file_read_only!(ws, "apple.txt");
+    assert_file_content!(ws, "orange.txt", "orange version 1");
+    assert_file_read_only!(ws, "orange.txt");
+
+    // Sync back to the latest commit.
+    let current_commit_id = ws.sync().await.unwrap();
+    assert_eq!(current_commit_id, commit_id_2);
+
+    assert_file_content!(ws, "apple.txt", "apple version 2");
+    assert_file_read_only!(ws, "apple.txt");
+    assert_path_doesnt_exist!(ws, "orange.txt");
+    assert_file_content!(ws, "pear.txt", "pear version 1");
+    assert_file_read_only!(ws, "pear.txt");
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_sync_forward_with_non_conflicting_changes() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "tangerine.txt", "tangerine version 1");
+    create_file!(ws, "cantaloupe.txt", "cantaloupe version 1");
+    create_file!(ws, "apple.txt", "apple version 1");
+    create_file!(ws, "orange.txt", "orange version 1");
+    workspace_add_files!(ws, ["."]);
+    let commit_id_1 = workspace_commit!(ws, "version 1");
+
+    // Update an existing file.
+    workspace_edit_files!(ws, ["apple.txt"]);
+    update_file!(ws, "apple.txt", "apple version 2");
+
+    // Create a new one.
+    create_file!(ws, "pear.txt", "pear version 1");
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
+
+    // And delete an old one.
+    workspace_delete_files!(ws, ["orange.txt"]);
+
+    let commit_id_2 = workspace_commit!(ws, "version 2");
+
+    // Make some staged and unstaged changes.
+    workspace_edit_files!(ws, ["tangerine.txt", "cantaloupe.txt"]);
+    update_file!(ws, "tangerine.txt", "tangerine version 2");
+    update_file!(ws, "cantaloupe.txt", "cantaloupe version 2");
+    workspace_add_files!(ws, ["tangerine.txt"]);
+
+    assert_staged_changes!(
+        ws,
+        [
+            edit(
+                "/cantaloupe.txt",
+                "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+                "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+                20,
+                20
+            ),
+            edit(
+                "/tangerine.txt",
+                "c753b9ae0bc47041a91eb967401fdeb5c583f64a5ea55a7c1bf381f4634193f5",
+                "e39d1f2bdd246ab1f4df9666cfa3a8297cf342f0e8c4cb0827b79c3583848369",
+                19,
+                19
+            ),
+        ]
+    );
+    assert_unstaged_changes!(
+        ws,
+        [edit(
+            "/cantaloupe.txt",
+            "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+            "d900c4bbbc5836bc7c0cab9e2d639f11324159fc0c37efbda2e7df5b64e40d4a",
+            20,
+            20
+        )]
+    );
+
+    // Try to sync back to the previous commit: this should work even though we
+    // have local changes as those do not conflict at all.
+    let current_commit_id = ws.sync_to(&commit_id_1).await.unwrap();
+    assert_eq!(current_commit_id, commit_id_1);
+
+    assert_path_doesnt_exist!(ws, "pear.txt");
+    assert_file_content!(ws, "apple.txt", "apple version 1");
+    assert_file_read_only!(ws, "apple.txt");
+    assert_file_content!(ws, "orange.txt", "orange version 1");
+    assert_file_read_only!(ws, "orange.txt");
+    assert_file_content!(ws, "tangerine.txt", "tangerine version 2");
+    assert_file_read_write!(ws, "tangerine.txt");
+    assert_file_content!(ws, "cantaloupe.txt", "cantaloupe version 2");
+    assert_file_read_write!(ws, "cantaloupe.txt");
+
+    // Sync back to the latest commit: this should work too.
+    let current_commit_id = ws.sync().await.unwrap();
+    assert_eq!(current_commit_id, commit_id_2);
+
+    assert_file_content!(ws, "apple.txt", "apple version 2");
+    assert_file_read_only!(ws, "apple.txt");
+    assert_path_doesnt_exist!(ws, "orange.txt");
+    assert_file_content!(ws, "pear.txt", "pear version 1");
+    assert_file_read_only!(ws, "pear.txt");
+    assert_file_content!(ws, "tangerine.txt", "tangerine version 2");
+    assert_file_read_write!(ws, "tangerine.txt");
+    assert_file_content!(ws, "cantaloupe.txt", "cantaloupe version 2");
+    assert_file_read_write!(ws, "cantaloupe.txt");
+
+    // Changes should still be there.
+    assert_staged_changes!(
+        ws,
+        [
+            edit(
+                "/cantaloupe.txt",
+                "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+                "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+                20,
+                20
+            ),
+            edit(
+                "/tangerine.txt",
+                "c753b9ae0bc47041a91eb967401fdeb5c583f64a5ea55a7c1bf381f4634193f5",
+                "e39d1f2bdd246ab1f4df9666cfa3a8297cf342f0e8c4cb0827b79c3583848369",
+                19,
+                19
+            ),
+        ]
+    );
+    assert_unstaged_changes!(
+        ws,
+        [edit(
+            "/cantaloupe.txt",
+            "51cc30f874df85b05976c169c23871ddd1a572a4a266b021bba929427e9f1d33",
+            "d900c4bbbc5836bc7c0cab9e2d639f11324159fc0c37efbda2e7df5b64e40d4a",
+            20,
+            20
+        )]
+    );
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
+async fn test_sync_forward_with_conflicting_changes() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+
+    create_file!(ws, "apple.txt", "apple version 1");
+    create_file!(ws, "orange.txt", "orange version 1");
+    workspace_add_files!(ws, ["."]);
+    let commit_id_1 = workspace_commit!(ws, "version 1");
+
+    // Update an existing file.
+    workspace_edit_files!(ws, ["apple.txt"]);
+    update_file!(ws, "apple.txt", "apple version 2");
+
+    // Create a new one.
+    create_file!(ws, "pear.txt", "pear version 1");
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
+
+    // And delete an old one.
+    workspace_delete_files!(ws, ["orange.txt"]);
+
+    workspace_commit!(ws, "version 2");
+
+    // Make some conflicting change: unstaged first.
+    create_file!(ws, "orange.txt", "orange version 2");
+
+    assert_staged_changes!(ws, []);
+    assert_unstaged_changes!(
+        ws,
+        [add(
+            "/orange.txt",
+            "7b2d4eb0b93dba7b1bc963e6b6f684334b777af220ae6346f8d6355f4da7d80a",
+            16
+        )]
+    );
+
+    // Try to sync back to the previous commit: this should fail as we have
+    // unstaged changes about a file that would be restored as part of the sync.
+    match ws.sync_to(&commit_id_1).await {
+        Err(Error::ConflictingChanges {
+            conflicting_changes,
+        }) => {
+            assert_eq!(
+                conflicting_changes,
+                [add(
+                    "/orange.txt",
+                    "7b2d4eb0b93dba7b1bc963e6b6f684334b777af220ae6346f8d6355f4da7d80a",
+                    16
+                )]
+                .into()
+            );
+        }
+        Err(err) => panic!("Unexpected error: {:?}", err),
+        Ok(_) => panic!("Expected error, but got success"),
+    }
+
+    // Clear the unstaged file.
+    delete_file!(ws, "orange.txt");
+
+    // Now make some other conflicting change: staged.
+    workspace_edit_files!(ws, ["apple.txt"]);
+    update_file!(ws, "apple.txt", "some change");
+    workspace_add_files!(ws, ["apple.txt"]);
+
+    assert_staged_changes!(
+        ws,
+        [edit(
+            "/apple.txt",
+            "0f57832b8352cfebb2d971faca19a2563e3183a53ea935983ae50bcacd8fad76",
+            "37e3987705b6b5b750070cf88336f4e93f26a0c35bcb8632b766d4eedac4ab5d",
+            15,
+            11
+        ),]
+    );
+    assert_unstaged_changes!(ws, []);
+
+    // Try to sync back to the previous commit: this should fail as we have
+    // staged changes about a file that would be restored as part of the sync.
+    match ws.sync_to(&commit_id_1).await {
+        Err(Error::ConflictingChanges {
+            conflicting_changes,
+        }) => {
+            assert_eq!(
+                conflicting_changes,
+                [edit(
+                    "/apple.txt",
+                    "0f57832b8352cfebb2d971faca19a2563e3183a53ea935983ae50bcacd8fad76",
+                    "37e3987705b6b5b750070cf88336f4e93f26a0c35bcb8632b766d4eedac4ab5d",
+                    15,
+                    11
+                )]
+                .into()
+            );
+        }
+        Err(err) => panic!("Unexpected error: {:?}", err),
+        Ok(_) => panic!("Expected error, but got success"),
+    }
 
     cleanup_test_workspace_and_index!(ws, index);
 }

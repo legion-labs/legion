@@ -518,7 +518,7 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             match workspace.commit(&message).await {
-                Ok(()) => Ok(()),
+                Ok(_) => Ok(()),
                 Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
                     let current_dir = std::env::current_dir()
                         .map_other_err("failed to determine current directory")?;

@@ -138,28 +138,24 @@ impl CanonicalPath {
         }
     }
 
-    pub fn prepend(&self, part: impl Into<String>) -> Self {
-        let mut parts = self.parts.clone();
-
+    pub fn prepend(mut self, part: impl Into<String>) -> Self {
         let part = part.into();
 
         if !part.is_empty() {
-            parts.insert(0, part);
+            self.parts.insert(0, part);
         }
 
-        Self { parts }
+        self
     }
 
-    pub fn append(&self, part: impl Into<String>) -> Self {
-        let mut parts = self.parts.clone();
-
+    pub fn append(mut self, part: impl Into<String>) -> Self {
         let part = part.into();
 
         if !part.is_empty() {
-            parts.push(part);
+            self.parts.push(part);
         }
 
-        Self { parts }
+        self
     }
 
     pub fn parent(&self) -> Option<Self> {
@@ -222,11 +218,11 @@ impl CanonicalPath {
     }
 
     pub fn intersects(&self, other: &Self) -> bool {
-        self.matches(other) || other.matches(self)
+        self.contains(other) || other.contains(self)
     }
 
-    pub fn matches(&self, other: &Self) -> bool {
-        // If the other path is longer than this one, it cannot match.
+    pub fn contains(&self, other: &Self) -> bool {
+        // If our path is longer than the other, it cannot match.
         if self.parts.len() > other.parts.len() {
             return false;
         }
@@ -352,10 +348,10 @@ mod tests {
     }
     #[test]
     fn test_canonical_path_matches() {
-        assert!(cp("/a").matches(&cp("/a")));
-        assert!(cp("/a").matches(&cp("/a/b")));
-        assert!(cp("/").matches(&cp("/a")));
-        assert!(!cp("/x").matches(&cp("/a/b")));
-        assert!(!cp("/a/b").matches(&cp("/a")));
+        assert!(cp("/a").contains(&cp("/a")));
+        assert!(cp("/a").contains(&cp("/a/b")));
+        assert!(cp("/").contains(&cp("/a")));
+        assert!(!cp("/x").contains(&cp("/a/b")));
+        assert!(!cp("/a/b").contains(&cp("/a")));
     }
 }

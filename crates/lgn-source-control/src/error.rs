@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, FileInfo, Lock};
+use crate::{Branch, CanonicalPath, Change, FileInfo, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -32,6 +32,10 @@ pub enum Error {
     WorkspaceDirty,
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
     StaleBranch { branch: Branch },
+    #[error("cannot sync with conflicting changes")]
+    ConflictingChanges {
+        conflicting_changes: BTreeSet<Change>,
+    },
     #[error("lock `{}` already exists in domain `{}`", .lock.relative_path, .lock.lock_domain_id)]
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
@@ -123,6 +127,12 @@ impl Error {
         Self::StaleBranch { branch }
     }
 
+    pub fn conflicting_changes(conflicting_changes: BTreeSet<Change>) -> Self {
+        Self::ConflictingChanges {
+            conflicting_changes,
+        }
+    }
+
     pub fn lock_already_exists(lock: Lock) -> Self {
         Self::LockAlreadyExists { lock }
     }
@@ -187,17 +197,17 @@ impl Error {
     /// Used in conjunction with the `WithParent` trait, this is mostly
     /// useful when dealing with recursive tree methods.
     fn with_parent_name(mut self, parent_name: &str) -> Self {
-        if let Some(canonical_path) = match &mut self {
+        match &mut self {
             Self::CannotEditDirectory { canonical_path }
             | Self::FileAlreadyExists { canonical_path }
             | Self::FileDoesNotExist { canonical_path }
             | Self::PathIsNotAFile { canonical_path }
             | Self::PathIsNotADirectory { canonical_path }
-            | Self::FileContentMistmatch { canonical_path, .. } => Some(canonical_path),
-            _ => None,
-        } {
-            *canonical_path = canonical_path.prepend(parent_name);
-        }
+            | Self::FileContentMistmatch { canonical_path, .. } => {
+                *canonical_path = canonical_path.clone().prepend(parent_name);
+            }
+            _ => {}
+        };
 
         self
     }
@@ -208,17 +218,17 @@ impl Error {
     /// Used in conjunction with the `WithParent` trait, this is mostly
     /// useful when dealing with recursive tree methods.
     fn with_parent_path(mut self, parent_path: &CanonicalPath) -> Self {
-        if let Some(canonical_path) = match &mut self {
+        match &mut self {
             Self::CannotEditDirectory { canonical_path }
             | Self::FileAlreadyExists { canonical_path }
             | Self::FileDoesNotExist { canonical_path }
             | Self::PathIsNotAFile { canonical_path }
             | Self::PathIsNotADirectory { canonical_path }
-            | Self::FileContentMistmatch { canonical_path, .. } => Some(canonical_path),
-            _ => None,
-        } {
-            *canonical_path = parent_path.join(canonical_path);
-        }
+            | Self::FileContentMistmatch { canonical_path, .. } => {
+                *canonical_path = parent_path.join(canonical_path);
+            }
+            _ => {}
+        };
 
         self
     }

@@ -672,7 +672,7 @@ impl Workspace {
 
         let canonical_paths = self.to_canonical_paths(paths).await?;
 
-        let (staged_changes, unstaged_changes) = self.status(staging).await?;
+        let (staged_changes, mut unstaged_changes) = self.status(staging).await?;
 
         let mut changes_to_clear = vec![];
         let mut changes_to_ignore = vec![];
@@ -680,7 +680,7 @@ impl Workspace {
 
         let is_selected = |path| -> bool {
             for p in &canonical_paths {
-                if p.matches(path) {
+                if p.contains(path) {
                     return true;
                 }
             }
@@ -718,6 +718,9 @@ impl Workspace {
                             self.download_blob(&old_info.hash, canonical_path, Some(true))
                                 .await?;
                             changes_to_clear.push(staged_change.clone());
+
+                            // Let's avoid reverting things twice.
+                            unstaged_changes.remove(canonical_path);
                         }
                     }
                 }
@@ -762,7 +765,12 @@ impl Workspace {
             .collect())
     }
 
-    pub async fn commit(&self, message: &str) -> Result<()> {
+    /// Commit the changes in the workspace.
+    ///
+    /// # Returns
+    ///
+    /// The commit id.
+    pub async fn commit(&self, message: &str) -> Result<String> {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
@@ -774,7 +782,7 @@ impl Workspace {
             return Err(Error::stale_branch(branch));
         }
 
-        let staged_changes = self.backend.get_staged_changes().await?;
+        let staged_changes = self.get_staged_changes().await?;
 
         //for change in &staged_changes {
         //    assert_not_locked(workspace, &abs_path).await?;
@@ -845,6 +853,8 @@ impl Workspace {
             .set_current_branch(&current_branch_name, &commit.id)
             .await?;
 
+        let mut changes_to_save = Vec::new();
+
         // For all the changes that we commited, we make the files read-only
         // again and release locks, unless said files have unstaged changes on
         // disk.
@@ -866,6 +876,16 @@ impl Workspace {
                                     err
                                 );
                             }
+                        } else {
+                            // The file has some unstaged changes: we will need
+                            // to mark it for edition at the end of the commit.
+                            changes_to_save.push(Change::new(
+                                change.canonical_path().clone(),
+                                ChangeType::Edit {
+                                    old_info: new_info.clone(),
+                                    new_info: new_info.clone(),
+                                },
+                            ));
                         }
                     }
                 }
@@ -882,6 +902,12 @@ impl Workspace {
         // Good enough for now.
         for change in &staged_changes {
             if let Some(new_info) = change.change_type().new_info() {
+                if let Ok(Some(node)) = fs_tree.find(change.canonical_path()) {
+                    if node.info() != new_info {
+                        continue;
+                    }
+                }
+
                 if let Err(err) = self.uncache_blob(&new_info.hash).await {
                     warn!("failed to uncache blob `{}`: {}", &new_info.hash, err);
                 }
@@ -892,7 +918,13 @@ impl Workspace {
             .clear_staged_changes(&staged_changes.into_iter().collect::<Vec<_>>())
             .await?;
 
-        self.backend.clear_pending_branch_merges().await
+        self.backend
+            .save_staged_changes(changes_to_save.as_slice())
+            .await?;
+
+        self.backend.clear_pending_branch_merges().await?;
+
+        Ok(commit.id)
     }
 
     /// Get a list of the currently unstaged changes.
@@ -906,6 +938,15 @@ impl Workspace {
             .with_changes(staged_changes.values())?;
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
+        self.get_unstaged_changes_for_trees(&tree, &fs_tree).await
+    }
+
+    /// Get a list of the currently unstaged changes.
+    pub async fn get_unstaged_changes_for_trees(
+        &self,
+        tree: &Tree,
+        fs_tree: &Tree,
+    ) -> Result<BTreeMap<CanonicalPath, Change>> {
         let mut result = BTreeMap::new();
 
         for (path, node) in fs_tree.files() {
@@ -951,28 +992,58 @@ impl Workspace {
 
     /// Checkout a different branch and updates the current files.
     pub async fn checkout(&self, branch_name: &str) -> Result<()> {
-        let (current_branch_name, _current_commit_id) = self.backend.get_current_branch().await?;
+        let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
 
         if branch_name == current_branch_name {
             return Err(Error::already_on_branch(branch_name.to_string()));
         }
 
-        let staged_changes = self.backend.get_staged_changes().await?;
+        let from_commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
+        let branch = self.index_backend.read_branch(branch_name).await?;
+        let to_commit = self.index_backend.read_commit(&branch.head).await?;
+        let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        if !staged_changes.is_empty() {
-            return Err(Error::WorkspaceDirty);
+        self.checkout_tree(&from, &to).await
+    }
+
+    /// Sync the current branch to its latest commit.
+    ///
+    /// # Returns
+    ///
+    /// The commit id that the workspace was synced to.
+    pub async fn sync(&self) -> Result<String> {
+        let (current_branch_name, _) = self.backend.get_current_branch().await?;
+
+        let branch = self.index_backend.read_branch(&current_branch_name).await?;
+
+        self.sync_to(&branch.head).await
+    }
+
+    /// Sync the current branch with the specified commit.
+    ///
+    /// # Returns
+    ///
+    /// The commit id that the workspace was synced to.
+    pub async fn sync_to(&self, commit_id: &str) -> Result<String> {
+        let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
+
+        if current_commit_id == commit_id {
+            return Ok(commit_id.to_string());
         }
 
-        let branch = self.index_backend.read_branch(branch_name).await?;
-        let commit = self.index_backend.read_commit(&branch.head).await?;
+        let from_commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
+        let to_commit = self.index_backend.read_commit(commit_id).await?;
+        let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        let tree = self.get_tree_for_commit(&commit, [].into()).await?;
-        let fs_tree = self.get_filesystem_tree([].into()).await?;
+        self.checkout_tree(&from, &to).await?;
 
-        println!("{:?}", tree);
-        println!("{:?}", fs_tree);
+        self.backend
+            .set_current_branch(&current_branch_name, commit_id)
+            .await?;
 
-        Ok(())
+        Ok(to_commit.id)
     }
 
     async fn make_file_read_only(&self, path: impl AsRef<Path>, readonly: bool) -> Result<()> {
@@ -1157,45 +1228,77 @@ impl Workspace {
         let tree = self.index_backend.read_tree(&commit.root_tree_id).await?;
 
         // 5. Write the files on disk.
-        self.checkout_tree(None, &tree).await
+        self.checkout_tree(&Tree::empty(), &tree).await
     }
 
-    async fn checkout_tree(&self, from: Option<&Tree>, to: &Tree) -> Result<()> {
-        for (path, node) in to {
-            let abs_path = path.to_path_buf(&self.root);
+    async fn checkout_tree(&self, from: &Tree, to: &Tree) -> Result<()> {
+        let changes_to_apply = from.get_changes_to(to);
 
-            match node {
-                Tree::Directory { .. } => {
-                    tokio::fs::create_dir_all(&abs_path)
-                        .await
-                        .map_other_err(format!(
-                            "failed to create directory at `{}`",
-                            abs_path.display()
-                        ))?;
-                }
-                Tree::File { info, .. } => {
+        // Little optimization: no point in computing all that if we know we are
+        // coming from an empty tree.
+        if !from.is_empty() {
+            let staged_changes = self.get_staged_changes().await?;
+            let unstaged_changes = self.get_unstaged_changes().await?;
+
+            let conflicting_changes = changes_to_apply
+                .iter()
+                .filter_map(|change| {
+                    staged_changes
+                        .get(change.canonical_path())
+                        .or_else(|| unstaged_changes.get(change.canonical_path()))
+                })
+                .cloned()
+                .collect::<BTreeSet<_>>();
+
+            if !conflicting_changes.is_empty() {
+                return Err(Error::conflicting_changes(conflicting_changes));
+            }
+
+            // Process deletions and edits first.
+            for change in &changes_to_apply {
+                match change.change_type() {
+                    ChangeType::Delete { .. } | ChangeType::Edit { .. } => {
+                        let abs_path = change.canonical_path().to_path_buf(&self.root);
+
+                        tokio::fs::remove_file(&abs_path)
+                            .await
+                            .map_other_err(format!("failed to delete `{}`", abs_path.display()))?;
+                    }
+                    ChangeType::Add { .. } => {}
+                };
+            }
+        }
+
+        // Process additions and edits.
+        for change in &changes_to_apply {
+            match change.change_type() {
+                ChangeType::Add { new_info } | ChangeType::Edit { new_info, .. } => {
+                    let abs_path = change.canonical_path().to_path_buf(&self.root);
+
+                    if let Some(parent_abs_path) = abs_path.parent() {
+                        tokio::fs::create_dir_all(&parent_abs_path)
+                            .await
+                            .map_other_err(format!(
+                                "failed to create directory at `{}`",
+                                parent_abs_path.display()
+                            ))?;
+                    }
+
+                    // TODO: If the file is an empty directory, replace it.
+
                     self.blob_storage
-                        .download_blob(&abs_path, &info.hash)
+                        .download_blob(&abs_path, &new_info.hash)
                         .await
                         .map_other_err(format!(
                             "failed to download blob `{}` to {}",
-                            &info.hash,
+                            &new_info.hash,
                             abs_path.display()
                         ))?;
 
                     self.make_file_read_only(&abs_path, true).await?;
                 }
-            }
-        }
-
-        // If a source is provided, remove all the files that were in the source
-        // but are not in the destination anymore.
-        if let Some(from) = from {
-            for (path, _) in from {
-                if let Ok(None) = to.find(&path) {
-                    self.remove_file(&path).await?;
-                }
-            }
+                ChangeType::Delete { .. } => {}
+            };
         }
 
         Ok(())
