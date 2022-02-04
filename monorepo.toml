@@ -193,3 +193,10 @@ on-affected = ["monorepo"]
 mark-changed = "all"
 
 ################################################################################
+
+[npm]
+package-manager = "pnpm"
+build-script = "build"
+excluded-dirs = ["target", "dist", "node_modules"]
+
+################################################################################

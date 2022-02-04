@@ -25,6 +25,7 @@ mod fmt;
 mod git;
 mod hakari;
 mod lint;
+mod npm_build;
 mod run;
 mod test;
 mod tools;
@@ -106,6 +107,12 @@ enum Commands {
     /// Generates VSCode configuration files and performs checks
     #[clap(name = "vscode")]
     VsCode(vscode::Args),
+
+    // NPM related commands:
+    /// Build an npm package that exposes a "build" script.
+    /// Recursively build all packages if no package names are provided.
+    #[clap(name = "npm-build")]
+    NpmBuild(npm_build::Args),
 }
 
 fn main() {
@@ -135,6 +142,8 @@ fn main() {
         Commands::Lint(args) => lint::run(&args, &ctx),
         Commands::Tools(args) => tools::run(&args, &ctx),
         Commands::VsCode(args) => vscode::run(&args, &ctx),
+
+        Commands::NpmBuild(args) => npm_build::run(&args, &ctx),
     }) {
         err.display();
         #[allow(clippy::exit)]
