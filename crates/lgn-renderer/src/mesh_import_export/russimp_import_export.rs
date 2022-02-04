@@ -1,5 +1,4 @@
-use assimp::{Importer, Scene};
-use assimp_sys::AiVector3D;
+use russimp::scene::Scene;
 use lgn_math::Vec4;
 
 use crate::static_mesh_render_data::StaticMeshRenderData;
@@ -31,6 +30,11 @@ impl AssimpWrapper {
     pub fn new_mesh(path: String) -> Vec<StaticMeshRenderData> {
         let importer = Importer::new();
         let mut meshes = Vec::new();
+        let scene = Scene::from_file("myfile.blend",
+            vec![PostProcess::CalcTangentSpace,
+                    PostProcess::Triangulate,
+                    PostProcess::JoinIdenticalVertices,
+                     PostProcess::SortByPType]).unwrap();
 
         if let Ok(scene) = importer.read_file(&path) {
             print_scene_info(&scene);
