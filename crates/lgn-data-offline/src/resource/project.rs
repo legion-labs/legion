@@ -9,7 +9,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    IndexBackend, LocalIndexBackend, Staging, Tree, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -39,6 +39,8 @@ impl ResourceDb {
         self.local_resources.sort();
     }
 }
+
+pub use lgn_source_control::data_types::Tree;
 
 /// A file-backed state of the project
 ///
