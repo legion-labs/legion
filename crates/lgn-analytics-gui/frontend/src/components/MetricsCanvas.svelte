@@ -6,7 +6,7 @@
     ProcessMetricReply,
   } from "@lgn/proto-telemetry/dist/analytics";
   import * as d3 from "d3";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   export let id: string;
 
   interface Point {
@@ -31,6 +31,9 @@
   let points: Point[][] = [];
   let loading = true;
   let updateTime: number;
+  let lod: number;
+  let deltaMs: number;
+  let pixelSizeNs: number;
 
   let x: d3.ScaleTime<number, number, never>;
   let y: d3.ScaleLinear<number, number, never>;
@@ -51,20 +54,33 @@
     }
   }
 
+  const getDeltaMs = () => currentMaxMs - currentMinMs;
+  const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
+  const getLod = () =>
+    Math.max(0, Math.floor(Math.log(getPixelSizeNs()) / Math.log(100)));
+
   onMount(async () => {
     await fetchDataAsync().then(() => (loading = false));
     createChart();
     updateChart();
   });
 
+  function updateLod() {
+    deltaMs = getDeltaMs();
+    pixelSizeNs = getPixelSizeNs();
+    lod = getLod();
+  }
+
   async function fetchDataAsync() {
     const reply = await client.list_process_metrics({ processId: id });
     metricsDesc = reply.metrics;
-    totalMinMs = reply.minTimeMs;
-    totalMaxMs = reply.maxTimeMs;
+    totalMinMs = currentMinMs = reply.minTimeMs;
+    totalMaxMs = currentMaxMs = reply.maxTimeMs;
+    updateLod();
     metrics = await Promise.all(
       metricsDesc.map((m) => {
         return client.fetch_process_metric({
+          lod: lod,
           processId: id,
           metricName: m.name,
           beginMs: totalMinMs,
@@ -120,7 +136,7 @@
 
     const zoom = d3
       .zoom()
-      .scaleExtent([1, width])
+      .scaleExtent([1, getPixelSizeNs()])
       .translateExtent([[0, 0], getTranslateExtent()])
       .on("zoom", (event) => {
         transform = event.transform;
@@ -133,6 +149,8 @@
     if (!container) {
       return;
     }
+
+    updateLod();
 
     var startTime = performance.now();
 
@@ -218,6 +236,18 @@
         <li>
           <span class="font-bold">Zoom</span>
           {transform.k}
+        </li>
+        <li>
+          <span class="font-bold">Lod</span>
+          {lod}
+        </li>
+        <li>
+          <span class="font-bold">Pixel size</span>
+          {formatExecutionTime(pixelSizeNs / 1_000_000)}
+        </li>
+        <li>
+          <span class="font-bold">Delta Ms</span>
+          {formatExecutionTime(deltaMs)}
         </li>
         <br />
         <li>
