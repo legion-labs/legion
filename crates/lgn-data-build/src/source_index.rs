@@ -234,8 +234,8 @@ impl SourceContent {
     }
 }
 
-impl Extend<SourceContent> for SourceContent {
-    fn extend<T: IntoIterator<Item = SourceContent>>(&mut self, iter: T) {
+impl Extend<Self> for SourceContent {
+    fn extend<T: IntoIterator<Item = Self>>(&mut self, iter: T) {
         for e in iter {
             assert_eq!(self.version, e.version);
             self.resources.extend(e.resources);
@@ -436,7 +436,7 @@ impl SourceIndex {
                         (content, uploads)
                     }
                 }
-                _ => panic!(),
+                Tree::File { .. } => panic!(),
             };
 
             Ok((content, uploads))
