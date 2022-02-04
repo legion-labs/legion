@@ -152,6 +152,13 @@ fn internal_find_property<'a>(
             _covariant: std::marker::PhantomData,
         }),
 
+        TypeDefinition::Enum(enum_descriptor) => Ok(ReflectedPtr {
+            base,
+            type_def,
+            base_descriptor: &enum_descriptor.base_descriptor,
+            _covariant: std::marker::PhantomData,
+        }),
+
         TypeDefinition::Option(option_descriptor) => {
             if path.is_empty() {
                 Ok(ReflectedPtr {

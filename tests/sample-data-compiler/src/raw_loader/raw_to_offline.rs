@@ -259,10 +259,24 @@ impl FromRaw<raw_data::Physics> for offline_data::Physics {
     }
 }
 
+use lgn_graphics_data::DefaultMeshType;
+
 impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
     fn from(raw: raw_data::StaticMesh) -> Self {
         Self {
-            mesh_id: raw.mesh_id,
+            mesh_id: match raw.mesh_id {
+                1 => DefaultMeshType::Cube,
+                2 => DefaultMeshType::Pyramid,
+                3 => DefaultMeshType::WireframeCube,
+                4 => DefaultMeshType::GroundPlane,
+                5 => DefaultMeshType::Torus,
+                6 => DefaultMeshType::Cone,
+                7 => DefaultMeshType::Cylinder,
+                8 => DefaultMeshType::Sphere,
+                9 => DefaultMeshType::Arrow,
+                10 => DefaultMeshType::RotationRing,
+                _ => DefaultMeshType::Plane,
+            },
             ..Self::default()
         }
     }

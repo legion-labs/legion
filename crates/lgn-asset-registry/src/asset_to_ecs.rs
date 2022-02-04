@@ -99,7 +99,7 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
                 entity.insert(StaticMesh::from_default_meshes(
                     default_meshes,
-                    static_mesh.mesh_id,
+                    static_mesh.mesh_id as usize,
                     static_mesh.color,
                     DefaultMaterialType::Default,
                 ));

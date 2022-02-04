@@ -1,14 +1,18 @@
+use std::collections::HashMap;
+
+use crate::{struct_meta_info::StructMetaInfo, ModuleMetaInfo};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::DataContainerMetaInfo;
-
 /// Generate Code for Resource Registration
-pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
-    let entries: Vec<_> = structs
+pub(crate) fn generate_registration_code(
+    module_meta_infos: &HashMap<String, ModuleMetaInfo>,
+) -> TokenStream {
+    let entries: Vec<_> = module_meta_infos
         .iter()
+        .flat_map(|(_mod_name, module_meta_info)| &module_meta_info.struct_meta_infos)
         .filter(|struct_meta| struct_meta.is_resource)
-        .map(|struct_meta| format_ident!("{}", &struct_meta.name))
+        .map(|struct_meta| &struct_meta.name)
         .collect();
 
     if !entries.is_empty() {
@@ -36,10 +40,10 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
     }
 }
 
-pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
-    let offline_identifier = format_ident!("{}", data_container_info.name);
-    let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
-    let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
+pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
+    let offline_identifier = format_ident!("{}", resource_struct_info.name);
+    let offline_name = format!("offline_{}", resource_struct_info.name).to_lowercase();
+    let offline_identifier_processor = format_ident!("{}Processor", resource_struct_info.name);
 
     quote! {
 

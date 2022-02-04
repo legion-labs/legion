@@ -86,6 +86,7 @@ where
             array_parent
         }
 
+        TypeDefinition::Enum(_enum_descriptor) => T::new_item(item_info)?,
         TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(item_info)?,
 
         TypeDefinition::Option(option_descriptor) => {

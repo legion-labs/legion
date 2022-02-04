@@ -28,6 +28,9 @@ pub use struct_descriptor::*;
 mod field_descriptor;
 pub use field_descriptor::*;
 
+mod enum_descriptor;
+pub use enum_descriptor::*;
+
 /// Utilities to serializing reflection using `bincode`
 pub mod bincode_utils;
 /// Utilities to collecting reflection

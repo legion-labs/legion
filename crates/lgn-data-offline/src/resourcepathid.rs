@@ -397,7 +397,11 @@ pub fn extract_resource_dependencies(
             if let TypeDefinition::Primitive(primitive_descriptor) = item_info.type_def {
                 if primitive_descriptor.base_descriptor.type_name == "ResourcePathId" {
                     if let Some(file_descriptor) = item_info.field_descriptor {
-                        if file_descriptor.attributes.contains_key("ignore_deps") {
+                        if file_descriptor
+                            .attributes
+                            .as_ref()
+                            .map_or(false, |attr| attr.contains_key("ignore_deps"))
+                        {
                             return Ok(None);
                         }
                     }

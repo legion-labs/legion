@@ -1,8 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
-use crate::GenerationType;
+use crate::{member_meta_info::MemberMetaInfo, struct_meta_info::StructMetaInfo, GenerationType};
 
 /// Generate fields members definition
 fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<TokenStream> {
@@ -16,7 +15,7 @@ fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<
             let member_ident = format_ident!("{}", &m.name);
             let type_id = match gen_type {
                 GenerationType::OfflineFormat => m.type_path.clone(),
-                GenerationType::RuntimeFormat => m.get_runtime_type().unwrap(),
+                GenerationType::RuntimeFormat => m.get_runtime_type(),
             };
             quote! { pub #member_ident : #type_id, }
         })
@@ -34,11 +33,10 @@ fn generate_defaults(members: &[MemberMetaInfo], gen_type: GenerationType) -> Ve
         .map(|m| {
             let member_type = match gen_type {
                 GenerationType::OfflineFormat => m.type_path.clone(),
-                GenerationType::RuntimeFormat => m.get_runtime_type().unwrap(),
+                GenerationType::RuntimeFormat => m.get_runtime_type(),
             };
-
             let member_ident = format_ident!("{}", &m.name);
-            if let Some(default_value) = &m.default_literal {
+            if let Some(default_value) = &m.attributes.default_literal {
                 // If the default is a string literal, add "into()" to convert to String
                 if let Ok(syn::Lit::Str(_) | syn::Lit::ByteStr(_)) =
                     syn::parse2::<syn::Lit>(default_value.clone())
@@ -62,10 +60,10 @@ fn generate_defaults(members: &[MemberMetaInfo], gen_type: GenerationType) -> Ve
 /// Don't serialize members at default values
 /// Skip 'transient' value
 fn generate_fields_descriptors(
-    data_container_info: &DataContainerMetaInfo,
+    struct_info: &StructMetaInfo,
     gen_type: GenerationType,
 ) -> Vec<TokenStream> {
-    data_container_info
+    struct_info
         .members
         .iter()
         .filter(|m| {
@@ -73,57 +71,51 @@ fn generate_fields_descriptors(
                 || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
         })
         .map(|m| {
-            let struct_type_name = format_ident!("{}", &data_container_info.name);
-            let member_ident = format_ident!("{}", &m.name);
-            let prop_name = &m.name;
+            let struct_type_name = &struct_info.name;
+            let member_ident = &m.name;
+            let member_name = m.name.to_string();
 
             let member_type = match gen_type {
                 GenerationType::OfflineFormat => m.type_path.clone(),
-                GenerationType::RuntimeFormat => m.get_runtime_type().unwrap(),
+                GenerationType::RuntimeFormat => m.get_runtime_type(),
             };
-
-            let attributes: Vec<TokenStream> = m
-                .attributes
-                .iter()
-                .map(|(k, v)| {
-                    quote! {  attr.insert(String::from(#k),String::from(#v)); }
-                })
-                .collect();
+            let attribute_impl = m.attributes.generate_descriptor_impl();
 
             quote! {
                 lgn_data_model::FieldDescriptor {
-                    field_name : #prop_name.into(),
+                    field_name : #member_name.into(),
                     offset: memoffset::offset_of!(#struct_type_name, #member_ident),
                     field_type : <#member_type as lgn_data_model::TypeReflection>::get_type_def(),
-                    attributes : {
-                        let mut attr = std::collections::HashMap::new();
-                        #(#attributes)*
-                        attr
-                    }
+                    attributes : #attribute_impl
                 },
             }
         })
         .collect()
 }
 
-pub fn generate_reflection(
-    data_container_info: &DataContainerMetaInfo,
+pub(crate) fn generate_reflection(
+    struct_meta_info: &StructMetaInfo,
     gen_type: GenerationType,
 ) -> TokenStream {
-    let type_identifier = format_ident!("{}", data_container_info.name);
-    let fields = generate_fields(&data_container_info.members, gen_type);
-    let fields_defaults = generate_defaults(&data_container_info.members, gen_type);
-    let default_instance = format_ident!("__{}_DEFAULT", data_container_info.name.to_uppercase());
+    let type_identifier = &struct_meta_info.name;
+    let fields = generate_fields(&struct_meta_info.members, gen_type);
+    let fields_defaults = generate_defaults(&struct_meta_info.members, gen_type);
+    let default_instance = format_ident!(
+        "__{}_DEFAULT",
+        struct_meta_info.name.to_string().to_uppercase()
+    );
 
-    let signature_hash = data_container_info.calculate_hash();
-    let fields_descriptors = generate_fields_descriptors(data_container_info, gen_type);
+    let signature_hash = struct_meta_info.calculate_hash();
+    let fields_descriptors = generate_fields_descriptors(struct_meta_info, gen_type);
 
     let dynamic_derive =
-        if data_container_info.is_component && gen_type == GenerationType::RuntimeFormat {
+        if struct_meta_info.is_component && gen_type == GenerationType::RuntimeFormat {
             quote! { #[derive(lgn_ecs::component::Component, Clone)] }
         } else {
             quote! {}
         };
+
+    let attribute_impl = struct_meta_info.attributes.generate_descriptor_impl();
 
     quote! {
         #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
@@ -159,7 +151,9 @@ pub fn generate_reflection(
             #[allow(unused_mut)]
             #[allow(clippy::let_and_return)]
             fn get_type_def() -> lgn_data_model::TypeDefinition {
-                lgn_data_model::implement_struct_descriptor!(#type_identifier, vec![
+                lgn_data_model::implement_struct_descriptor!(#type_identifier,
+                    #attribute_impl,
+                    vec![
                     #(#fields_descriptors)*
                 ]);
                 lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)

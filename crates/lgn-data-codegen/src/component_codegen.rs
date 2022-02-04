@@ -1,20 +1,20 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 
-use crate::reflection::DataContainerMetaInfo;
+use crate::struct_meta_info::StructMetaInfo;
 use crate::GenerationType;
 
 pub(crate) fn generate_component(
-    data_container_info: &DataContainerMetaInfo,
+    struct_info: &StructMetaInfo,
     gen_type: GenerationType,
 ) -> TokenStream {
-    let type_identifier = format_ident!("{}", data_container_info.name);
-    let type_name = &data_container_info.name;
+    let type_identifier = &struct_info.name;
+    let type_name = struct_info.name.to_string();
 
     let tag_type = if gen_type == GenerationType::OfflineFormat {
-        data_container_info.name.clone()
+        struct_info.name.to_string()
     } else {
-        format!("Runtime_{}", &data_container_info.name)
+        format!("Runtime_{}", &struct_info.name)
     };
 
     // Registry a Factory for offline creation
