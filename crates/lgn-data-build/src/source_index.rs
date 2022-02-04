@@ -341,10 +341,10 @@ impl SourceIndex {
         self.current.as_ref().map(|(_, index)| index)
     }
 
-    pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<i32, Error> {
-        let mut updated_resources = 0;
-
-        let root_checksum = project.root_checksum().await?;
+    pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
+        let tree = project.tree().await?;
+        
+        let root_checksum = tree.id();
 
         let (current_checksum, mut source_index) = self
             .current
@@ -363,34 +363,34 @@ impl SourceIndex {
             if cached_index.is_some() {
                 source_index = SourceContent::read(&cached_index.unwrap())?;
             } else {
-                for resource_id in project.resource_list().await {
-                    let (kind, resource_hash, resource_deps) =
-                        project.resource_info(resource_id)?;
+                source_index = {
+                    let mut source_index = SourceContent::new(version);
+                    for resource_id in project.resource_list().await {
+                        let (kind, resource_hash, resource_deps) =
+                            project.resource_info(resource_id)?;
 
-                    if source_index.update_resource(
-                        ResourcePathId::from(ResourceTypeAndId {
-                            id: resource_id,
-                            kind,
-                        }),
-                        Some(resource_hash),
-                        resource_deps.clone(),
-                    ) {
-                        updated_resources += 1;
-                    }
+                        source_index.update_resource(
+                            ResourcePathId::from(ResourceTypeAndId {
+                                id: resource_id,
+                                kind,
+                            }),
+                            Some(resource_hash),
+                            resource_deps.clone(),
+                        );
 
-                    // add each derived dependency with it's direct dependency listed in deps.
-                    for dependency in resource_deps {
-                        if let Some(direct_dependency) = dependency.direct_dependency() {
-                            if source_index.update_resource(
-                                dependency,
-                                None,
-                                vec![direct_dependency],
-                            ) {
-                                updated_resources += 1;
+                        // add each derived dependency with it's direct dependency listed in deps.
+                        for dependency in resource_deps {
+                            if let Some(direct_dependency) = dependency.direct_dependency() {
+                                source_index.update_resource(
+                                    dependency,
+                                    None,
+                                    vec![direct_dependency],
+                                );
                             }
                         }
                     }
-                }
+                    source_index
+                };
 
                 let buffer = source_index.write()?;
                 let checksum = self
@@ -403,7 +403,7 @@ impl SourceIndex {
         }
 
         self.current = Some((root_checksum, source_index));
-        Ok(updated_resources)
+        Ok(())
     }
 }
 

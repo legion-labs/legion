@@ -9,7 +9,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    IndexBackend, LocalIndexBackend, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Staging, Tree, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -682,8 +682,8 @@ impl Project {
         self.flush()
     }
 
-    /// Returns the checksum of the root project directory at the current state.
-    pub async fn root_checksum(&self) -> Result<String, Error> {
+    /// Returns the current state of the workspace that includes staged changes.
+    pub async fn tree(&self) -> Result<Tree, Error> {
         let remote = self
             .workspace
             .get_current_tree()
@@ -699,8 +699,13 @@ impl Project {
         let local = remote
             .with_changes(staged_changes.values())
             .map_err(Error::SourceControl)?;
+        Ok(local)
+    }
 
-        Ok(local.id())
+    /// Returns the checksum of the root project directory at the current state.
+    pub async fn root_checksum(&self) -> Result<String, Error> {
+        let tree = self.tree().await?;
+        Ok(tree.id())
     }
 
     fn pre_serialize(&mut self) {

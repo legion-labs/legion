@@ -264,7 +264,7 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub async fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
+    pub async fn source_pull(&mut self, project: &Project) -> Result<(), Error> {
         self.source_index
             .source_pull(project, Self::version())
             .await
