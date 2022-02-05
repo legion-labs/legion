@@ -14,7 +14,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, DefaultMeshes, PipelineHandle, PipelineManager},
+    resources::{DefaultMeshType, MeshManager, PipelineHandle, PipelineManager},
     tmp_shader_data::const_color_shader_family,
     RenderContext,
 };

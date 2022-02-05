@@ -18,7 +18,7 @@ use lgn_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, StaticMesh,
     },
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, PipelineManager},
+    resources::{DefaultMaterialType, DefaultMeshType, MeshManager, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
