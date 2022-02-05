@@ -37,8 +37,9 @@ macro_rules! cleanup_test_workspace_and_index {
         // files.
 
         // Destroy the index.
-        #[cfg(not(target_os = "windows"))]
-        $index.destroy().await.unwrap();
+        if cfg!(not(target_os = "windows")) {
+            $index.destroy().await.unwrap();
+        }
 
         // Destroy the workspace.
         #[cfg(not(target_os = "windows"))]
