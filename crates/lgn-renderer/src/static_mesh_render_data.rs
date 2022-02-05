@@ -751,9 +751,10 @@ impl StaticMeshRenderData {
     }
 }
 
+#[allow(unsafe_code)]
 fn calculate_tangents(
-    positions: &Vec<Vec4>,
-    tex_coords: &Vec<Vec2>,
+    positions: &[Vec4],
+    tex_coords: &[Vec2],
     indices: &Option<Vec<u32>>,
 ) -> Vec<Vec4> {
     let length = positions.len();
