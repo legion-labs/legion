@@ -2,7 +2,7 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::{resources::UniformGPUDataUpdater};
+use crate::resources::UniformGPUDataUpdater;
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -184,11 +184,15 @@ impl StaticMeshRenderData {
     pub fn calculate_tangents(&mut self) {
         assert!(self.positions.is_some());
         assert!(self.tex_coords.is_some());
-        self.tangents = Some(calculate_tangents(self.positions.as_ref().unwrap(), self.tex_coords.as_ref().unwrap(), &self.indices));
+        self.tangents = Some(calculate_tangents(
+            self.positions.as_ref().unwrap(),
+            self.tex_coords.as_ref().unwrap(),
+            &self.indices,
+        ));
     }
 
     pub fn num_triangles(&self) -> usize {
-        self.num_vertices()/3
+        self.num_vertices() / 3
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -747,7 +751,11 @@ impl StaticMeshRenderData {
     }
 }
 
-fn calculate_tangents(positions: &Vec<Vec4>, tex_coords: &Vec<Vec2>, indices: &Option<Vec<u32>>) -> Vec<Vec4> {
+fn calculate_tangents(
+    positions: &Vec<Vec4>,
+    tex_coords: &Vec<Vec2>,
+    indices: &Option<Vec<u32>>,
+) -> Vec<Vec4> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);
     //let mut bitangents = Vec::with_capacity(length);
@@ -757,15 +765,27 @@ fn calculate_tangents(positions: &Vec<Vec4>, tex_coords: &Vec<Vec2>, indices: &O
     }
 
     let num_triangles = if let Some(indices) = &indices {
-        indices.len()/3
+        indices.len() / 3
     } else {
-        length/3
+        length / 3
     };
-    
+
     for i in 0..num_triangles {
-        let idx0 = if let Some(indices) = &indices { indices[i*3] as usize } else { i * 3 };
-        let idx1 = if let Some(indices) = &indices { indices[i*3 + 1] as usize } else { i * 3 + 1};
-        let idx2 = if let Some(indices) = &indices { indices[i*3 + 2] as usize } else { i * 3 + 2};
+        let idx0 = if let Some(indices) = &indices {
+            indices[i * 3] as usize
+        } else {
+            i * 3
+        };
+        let idx1 = if let Some(indices) = &indices {
+            indices[i * 3 + 1] as usize
+        } else {
+            i * 3 + 1
+        };
+        let idx2 = if let Some(indices) = &indices {
+            indices[i * 3 + 2] as usize
+        } else {
+            i * 3 + 2
+        };
         let v0 = positions[idx0].truncate();
         let v1 = positions[idx1].truncate();
         let v2 = positions[idx2].truncate();
