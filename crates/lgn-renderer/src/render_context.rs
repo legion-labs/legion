@@ -6,7 +6,9 @@ use lgn_graphics_api::{
 
 use crate::{
     hl_gfx_api::{HLCommandBuffer, HLQueue},
-    resources::{CommandBufferPoolHandle, DescriptorPoolHandle, TransientBufferAllocator},
+    resources::{
+        CommandBufferPoolHandle, DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
+    },
     Renderer,
 };
 
@@ -14,6 +16,7 @@ pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,
+    pipeline_manager: &'frame PipelineManager,
     cmd_buffer_pool: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
@@ -24,11 +27,16 @@ pub struct RenderContext<'frame> {
 }
 
 impl<'frame> RenderContext<'frame> {
-    pub fn new(renderer: &'frame Renderer, bump_allocator_pool: &'frame BumpAllocatorPool) -> Self {
+    pub fn new(
+        renderer: &'frame Renderer,
+        bump_allocator_pool: &'frame BumpAllocatorPool,
+        pipeline_manager: &'frame PipelineManager,
+    ) -> Self {
         let heap_def = default_descriptor_heap_size();
 
         Self {
             renderer,
+            pipeline_manager,
             cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
             transient_buffer_allocator: TransientBufferAllocatorHandle::new(
@@ -46,6 +54,10 @@ impl<'frame> RenderContext<'frame> {
 
     pub fn renderer(&self) -> &Renderer {
         self.renderer
+    }
+
+    pub fn pipeline_manager(&self) -> &PipelineManager {
+        self.pipeline_manager
     }
 
     pub fn graphics_queue(&self) -> HLQueue<'_> {

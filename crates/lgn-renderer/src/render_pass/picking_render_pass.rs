@@ -1,15 +1,16 @@
 use std::slice;
 
 use lgn_core::Handle;
-use lgn_embedded_fs::embedded_watched_file;
+
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
     BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
     Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage,
-    Pipeline, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
     SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
     VertexLayoutBuffer,
 };
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Mat4;
 use lgn_transform::components::GlobalTransform;
 
@@ -20,8 +21,11 @@ use crate::{
     },
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler},
-    RenderContext, Renderer,
+    resources::{
+        GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, PipelineHandle, PipelineManager,
+    },
+    tmp_shader_data::picking_shader_family,
+    RenderContext,
 };
 
 struct ReadbackBufferPool {
@@ -119,7 +123,7 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    pipeline: Pipeline,
+    pipeline_handle: PipelineHandle,
 
     readback_buffer_pools: GpuSafePool<ReadbackBufferPool>,
 
@@ -132,33 +136,21 @@ pub struct PickingRenderPass {
     picked_rw_view: BufferView,
 }
 
-embedded_watched_file!(PICKING_SHADER, "gpu/shaders/picking.hlsl");
-
 impl PickingRenderPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
+    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-        let shader = renderer
-            .shader_manager()
-            .prepare_vs_ps(PICKING_SHADER.path());
 
-        //
-        // Pipeline state
-        //
-        let vertex_layout = VertexLayout {
-            attributes: vec![VertexLayoutAttribute {
-                format: Format::R32_UINT,
-                buffer_index: 0,
-                location: 0,
-                byte_offset: 0,
-                gl_attribute_name: None,
-            }],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 4,
-                rate: VertexAttributeRate::Instance,
-            }],
-        };
+        let mut vertex_layout = VertexLayout::default();
+        vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
+            format: Format::R32_UINT,
+            buffer_index: 0,
+            location: 0,
+            byte_offset: 0,
+        });
+        vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
+            stride: 4,
+            rate: VertexAttributeRate::Instance,
+        });
 
         let depth_state = DepthState {
             depth_test_enable: false,
@@ -176,21 +168,29 @@ impl PickingRenderPass {
             back_stencil_fail_op: StencilOp::default(),
             back_stencil_pass_op: StencilOp::default(),
         };
+        let pipeline_handle = pipeline_manager.register_pipeline(
+            CGenShaderKey::make(picking_shader_family::ID, picking_shader_family::NONE),
+            move |device_context, shader| {
+                device_context
+                    .create_graphics_pipeline(&GraphicsPipelineDef {
+                        shader,
+                        root_signature,
+                        vertex_layout: &vertex_layout,
+                        blend_state: &BlendState::default_alpha_enabled(),
+                        depth_state: &depth_state,
+                        rasterizer_state: &RasterizerState::default(),
+                        color_formats: &[Format::R16G16B16A16_SFLOAT],
+                        sample_count: SampleCount::SampleCount1,
+                        depth_stencil_format: None,
+                        primitive_topology: PrimitiveTopology::TriangleList,
+                    })
+                    .unwrap()
+            },
+        );
 
-        let pipeline = device_context
-            .create_graphics_pipeline(&GraphicsPipelineDef {
-                shader: &shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_enabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &RasterizerState::default(),
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-            .unwrap();
+        //
+        // Pipeline state
+        //
 
         let count_buffer_def = BufferDef {
             size: 4,
@@ -237,7 +237,7 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
-            pipeline,
+            pipeline_handle,
             readback_buffer_pools: GpuSafePool::new(3),
             count_buffer,
             _count_allocation: count_allocation,
@@ -285,7 +285,12 @@ impl PickingRenderPass {
                 &None,
             );
 
-            cmd_buffer.bind_pipeline(&self.pipeline);
+            let pipeline = render_context
+                .pipeline_manager()
+                .get_pipeline(self.pipeline_handle)
+                .unwrap();
+
+            cmd_buffer.bind_pipeline(pipeline);
             cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
             cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 

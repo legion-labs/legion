@@ -63,32 +63,16 @@ impl From<ShaderStageFlags> for vk::ShaderStageFlags {
     fn from(val: ShaderStageFlags) -> Self {
         let mut result = Self::empty();
 
-        if val.intersects(ShaderStageFlags::VERTEX) {
+        if val.intersects(ShaderStageFlags::VERTEX_FLAG) {
             result |= Self::VERTEX;
         }
 
-        if val.intersects(ShaderStageFlags::TESSELLATION_CONTROL) {
-            result |= Self::TESSELLATION_CONTROL;
-        }
-
-        if val.intersects(ShaderStageFlags::TESSELLATION_EVALUATION) {
-            result |= Self::TESSELLATION_EVALUATION;
-        }
-
-        if val.intersects(ShaderStageFlags::GEOMETRY) {
-            result |= Self::GEOMETRY;
-        }
-
-        if val.intersects(ShaderStageFlags::FRAGMENT) {
+        if val.intersects(ShaderStageFlags::FRAGMENT_FLAG) {
             result |= Self::FRAGMENT;
         }
 
-        if val.intersects(ShaderStageFlags::COMPUTE) {
+        if val.intersects(ShaderStageFlags::COMPUTE_FLAG) {
             result |= Self::COMPUTE;
-        }
-
-        if val.contains(ShaderStageFlags::ALL_GRAPHICS) {
-            result |= Self::ALL_GRAPHICS;
         }
 
         result

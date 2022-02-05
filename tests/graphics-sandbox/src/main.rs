@@ -16,9 +16,9 @@ use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
-        RenderSurfaceExtents, RotationComponent, StaticMesh,
+        RenderSurfaceExtents, StaticMesh,
     },
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -150,12 +150,14 @@ fn presenter_snapshot_system(
     mut commands: Commands<'_, '_>,
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
         let mut render_surface = RenderSurface::new(
             &renderer,
+            &pipeline_manager,
             RenderSurfaceExtents::new(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
@@ -167,7 +169,8 @@ fn presenter_snapshot_system(
             PresenterSnapshot::new(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
-                renderer.into_inner(),
+                renderer.device_context(),
+                &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(
                     snapshot_descriptor.width as u32,
@@ -286,10 +289,7 @@ fn init_material_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, D
             DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
             DefaultMaterialType::Gold,
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.4, 0.0, 0.0),
-        });
+        ));
 
     commands
         .spawn()
@@ -372,10 +372,7 @@ fn init_scene(mut commands: Commands<'_, '_>, default_meshes: Res<'_, DefaultMes
             DefaultMeshType::Plane as usize,
             (255, 0, 0).into(),
             DefaultMaterialType::Default,
-        ))
-        .insert(RotationComponent {
-            rotation_speed: (0.4, 0.0, 0.0),
-        });
+        ));
 
     commands
         .spawn()

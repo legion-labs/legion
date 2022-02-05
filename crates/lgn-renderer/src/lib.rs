@@ -16,6 +16,7 @@ use cgen::*;
 
 mod labels;
 use components::MaterialComponent;
+
 pub use labels::*;
 
 mod renderer;
@@ -27,13 +28,14 @@ pub use renderer::*;
 
 mod render_context;
 pub use render_context::*;
+
+pub mod resources;
 use resources::{
     DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
-    MaterialManager,
+    MaterialManager, PipelineManager,
 };
-
-pub mod resources;
+use tmp_shader_data::patch_cgen_registry;
 
 pub mod components;
 
@@ -48,6 +50,8 @@ pub mod hl_gfx_api;
 
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
+
+pub(crate) mod tmp_shader_data;
 
 use crate::{
     components::{
@@ -98,7 +102,12 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new();
+        let device_context = renderer.device_context().clone();
+        let static_buffer = renderer.static_buffer().clone();
 
+        //
+        // Add renderer stages first. It is needed for the plugins.
+        //
         app.add_stage_after(
             CoreStage::PostUpdate,
             RenderStage::Prepare,
@@ -111,28 +120,44 @@ impl Plugin for RendererPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_plugin(EguiPlugin::new());
-        app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::new(renderer.static_buffer()));
-
+        //
+        // Resources
+        //
+        app.insert_resource(PipelineManager::new(&device_context));
         app.insert_resource(ManipulatorManager::new());
-        app.add_startup_system(init_cgen);
-        app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(init_default_materials);
-
-        app.insert_resource(CGenRegistryList::default());
+        app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(DefaultMeshes::new(&renderer));
         app.insert_resource(DefaultMaterials::new());
-        app.insert_resource(MaterialManager::new(renderer.static_buffer()));
+        app.insert_resource(MaterialManager::new(&static_buffer));
+        app.insert_resource(DebugDisplay::default());
+        app.insert_resource(LightingManager::default());
+        app.add_plugin(EguiPlugin::new());
+        app.add_plugin(PickingPlugin {});
+        app.add_plugin(GpuDataPlugin::new(&static_buffer));
         app.insert_resource(renderer);
 
-        app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightingManager>();
+        //
+        // Events
+        //
+        app.add_event::<RenderSurfaceCreatedForWindow>();
+
+        //
+        // Stage Startup
+        //
+        app.add_startup_system(init_cgen);
+        app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(init_default_materials);
         app.add_startup_system(create_camera);
 
-        // Pre-Update
+        //
+        // Stage PreUpdate
+        //
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+
+        //
+        // Stage PostUpdate
+        //
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
         app.add_system_to_stage(
@@ -140,7 +165,9 @@ impl Plugin for RendererPlugin {
             on_window_close_requested.exclusive_system(),
         );
 
-        // Update
+        //
+        // Stage Prepare
+        //
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
@@ -167,7 +194,11 @@ impl Plugin for RendererPlugin {
 
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
+        app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
 
+        //
+        // Stage: Render
+        //
         app.add_system_set_to_stage(
             RenderStage::Render,
             SystemSet::new()
@@ -176,13 +207,10 @@ impl Plugin for RendererPlugin {
                 .label(CommandBufferLabel::Generate),
         );
 
-        // Post-Update
         app.add_system_to_stage(
             RenderStage::Render,
             render_post_update.label(CommandBufferLabel::Submit),
         );
-
-        app.add_event::<RenderSurfaceCreatedForWindow>();
     }
 }
 
@@ -192,13 +220,14 @@ fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, extents);
+        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -228,16 +257,12 @@ fn on_window_resized(
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(
-                    &renderer,
+                    renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                 );
             }
         }
     }
-
-    // drop(wnd_list);
-    // drop(renderer);
-    // drop(render_surfaces);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -259,13 +284,17 @@ fn on_window_close_requested(
         }
         render_surfaces.remove(ev.id);
     }
-
-    // drop(query_render_surface);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(renderer: Res<'_, Renderer>, mut cgen_registries: ResMut<'_, CGenRegistryList>) {
-    let cgen_registry = cgen::initialize(renderer.device_context());
+fn init_cgen(
+    renderer: Res<'_, Renderer>,
+    mut pipeline_manager: ResMut<'_, PipelineManager>,
+    mut cgen_registries: ResMut<'_, CGenRegistryList>,
+) {
+    let mut cgen_registry = cgen::initialize(renderer.device_context());
+    patch_cgen_registry(&mut cgen_registry);
+    pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }
 
@@ -446,6 +475,10 @@ fn update_gpu_instance_ids(
     renderer.add_update_job_block(updater.job_blocks());
 }
 
+fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
+    pipeline_manager.update();
+}
+
 #[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
@@ -454,6 +487,7 @@ fn update_gpu_instance_ids(
 )]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     default_meshes: ResMut<'_, DefaultMeshes>,
     picking_manager: ResMut<'_, PickingManager>,
@@ -475,7 +509,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
     let q_drawables = q_drawables.iter().collect::<Vec<&StaticMesh>>();
     let q_picked_drawables = q_picked_drawables
         .iter()

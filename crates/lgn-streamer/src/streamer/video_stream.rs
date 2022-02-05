@@ -8,10 +8,12 @@ use lgn_codec_api::{
 };
 use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
+use lgn_graphics_api::DeviceContext;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
-    RenderContext, Renderer,
+    resources::PipelineManager,
+    RenderContext,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing::{debug, warn};
@@ -39,17 +41,14 @@ pub struct VideoStream {
 impl VideoStream {
     #[span_fn]
     pub fn new(
-        renderer: &Renderer,
+        device_context: &DeviceContext,
+        pipeline_manager: &PipelineManager,
         resolution: Resolution,
         video_data_channel: Arc<RTCDataChannel>,
         async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let rgb_to_yuv = RgbToYuvConverter::new(
-            renderer.shader_manager(),
-            renderer.device_context(),
-            resolution,
-        )?;
+        let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution)?;
 
         Ok(Self {
             async_rt,
@@ -63,10 +62,9 @@ impl VideoStream {
     #[span_fn]
     pub(crate) fn resize(
         &mut self,
-        renderer: &Renderer,
+        device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
     ) -> anyhow::Result<()> {
-        let device_context = renderer.device_context();
         let resolution = Resolution::new(extents.width(), extents.height());
         if self.rgb_to_yuv.resize(device_context, resolution)? {
             self.encoder = VideoStreamEncoder::new(resolution)?;
@@ -82,6 +80,7 @@ impl VideoStream {
     pub(crate) fn present(
         &mut self,
         render_context: &RenderContext<'_>,
+
         render_surface: &mut RenderSurface,
     ) {
         self.record_frame_id_metric();
@@ -135,8 +134,8 @@ impl VideoStream {
 }
 
 impl Presenter for VideoStream {
-    fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
-        self.resize(renderer, extents).unwrap();
+    fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents) {
+        self.resize(device_context, extents).unwrap();
     }
     fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
         self.present(render_context, render_surface);

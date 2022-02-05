@@ -23,6 +23,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
 
 anyhow = "1.0"
+bitfield = "0.13.2"
 bumpalo = "3.8"
 egui = "0.16.0"
 epaint = "0.16.0"
@@ -32,6 +33,7 @@ smallvec = "1.7"
 static_assertions = "1.1.0"
 dolly = "0.2.0"
 paste = "1.0.6"
+strum = { version = "0.23" }
 
 [build-dependencies]
 lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
@@ -45,3 +47,5 @@ uuid = { version = "0.8", features = ["wasm-bindgen"] }
 [features]
 default = ["lgn-graphics-api/vulkan"]
 vulkan = ["lgn-graphics-api/vulkan"]
+
+

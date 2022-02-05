@@ -12,14 +12,14 @@ use spirv_tools::{opt::Optimizer, TargetEnv};
 
 use crate::file_server::{FileServerIncludeHandler, FileSystem};
 
-pub struct CompileDefine {
-    name: String,
-    value: Option<String>,
+pub struct CompileDefine<'a> {
+    pub name: &'a str,
+    pub value: Option<&'a str>,
 }
 
-pub enum ShaderSource {
-    Code(String),
-    Path(String),
+pub enum ShaderSource<'a> {
+    Code(&'a str),
+    Path(&'a str),
 }
 
 pub enum TargetProfile {
@@ -38,16 +38,16 @@ impl TargetProfile {
     }
 }
 
-pub struct EntryPoint {
-    pub defines: Vec<CompileDefine>,
-    pub name: String,
+pub struct EntryPoint<'a> {
+    pub defines: &'a [CompileDefine<'a>],
+    pub name: &'a str,
     pub target_profile: TargetProfile,
 }
 
-pub struct CompileParams {
-    pub shader_source: ShaderSource,
-    pub global_defines: Vec<CompileDefine>,
-    pub entry_points: Vec<EntryPoint>,
+pub struct CompileParams<'a> {
+    pub shader_source: ShaderSource<'a>,
+    pub global_defines: &'a [CompileDefine<'a>],
+    pub entry_points: &'a [EntryPoint<'a>],
 }
 
 pub struct SpirvBinary {
@@ -93,7 +93,7 @@ impl HlslCompiler {
     /// # Errors
     /// fails if the shader cannot be compiled.
     ///
-    pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
+    pub fn compile<'a>(&self, params: &CompileParams<'a>) -> Result<CompileResult> {
         // For each compilation target
         let mut spirv_binaries = Vec::with_capacity(params.entry_points.len());
         let mut pipeline_reflection = PipelineReflection::default();
@@ -124,7 +124,7 @@ impl HlslCompiler {
 
     fn compile_to_unoptimized_spirv(
         &self,
-        params: &CompileParams,
+        params: &CompileParams<'_>,
         entry_point_idx: usize,
     ) -> Result<SpirvBinary> {
         let shader_product = &params.entry_points[entry_point_idx];
@@ -132,15 +132,10 @@ impl HlslCompiler {
         let mut defines = params
             .global_defines
             .iter()
-            .map(|x| (x.name.as_str(), x.value.as_deref()))
+            .map(|x| (x.name, x.value))
             .collect::<Vec<_>>();
 
-        defines.extend(
-            shader_product
-                .defines
-                .iter()
-                .map(|x| (x.name.as_str(), x.value.as_deref())),
-        );
+        defines.extend(shader_product.defines.iter().map(|x| (x.name, x.value)));
 
         // dxc.exe -Od -spirv -fspv-target-env=vulkan1.1 -I d:\\temp\\ -E main_vs -H -T
         // vs_6_0 shaders\shader.hlsl
@@ -148,7 +143,7 @@ impl HlslCompiler {
         let bytecode = self
             .compile_internal(
                 &params.shader_source,
-                &shader_product.name,
+                shader_product.name,
                 shader_product.target_profile.to_profile_string(),
                 &[
                     "-Od",
@@ -176,7 +171,7 @@ impl HlslCompiler {
 
     fn extract_reflection_info(
         spirv: &SpirvBinary,
-        params: &CompileParams,
+        params: &CompileParams<'_>,
         entry_point_idx: usize,
     ) -> PipelineReflection {
         let shader_product = &params.entry_points[entry_point_idx];
@@ -185,7 +180,7 @@ impl HlslCompiler {
 
         let mut shader_resources = Vec::new();
         for descriptor in &shader_mod
-            .enumerate_descriptor_bindings(Some(&shader_product.name))
+            .enumerate_descriptor_bindings(Some(shader_product.name))
             .unwrap()
         {
             shader_resources.push(Self::to_shader_resource(shader_stage, descriptor));
@@ -193,7 +188,7 @@ impl HlslCompiler {
 
         let mut push_constant = None;
         for push_constant_block in &shader_mod
-            .enumerate_push_constant_blocks(Some(&shader_product.name))
+            .enumerate_push_constant_blocks(Some(shader_product.name))
             .unwrap()
         {
             push_constant = Some(Self::to_push_constant(shader_stage, push_constant_block));
@@ -208,9 +203,9 @@ impl HlslCompiler {
 
     fn to_shader_stage_flags(flags: ReflectShaderStageFlags) -> ShaderStageFlags {
         match flags {
-            ReflectShaderStageFlags::VERTEX => ShaderStageFlags::VERTEX,
-            ReflectShaderStageFlags::FRAGMENT => ShaderStageFlags::FRAGMENT,
-            ReflectShaderStageFlags::COMPUTE => ShaderStageFlags::COMPUTE,
+            ReflectShaderStageFlags::VERTEX => ShaderStageFlags::VERTEX_FLAG,
+            ReflectShaderStageFlags::FRAGMENT => ShaderStageFlags::FRAGMENT_FLAG,
+            ReflectShaderStageFlags::COMPUTE => ShaderStageFlags::COMPUTE_FLAG,
             _ => unimplemented!(),
         }
     }
@@ -317,7 +312,7 @@ impl HlslCompiler {
 
     fn compile_internal(
         &self,
-        shader_source: &ShaderSource,
+        shader_source: &ShaderSource<'_>,
         entry_point: &str,
         target_profile: &str,
         args: &[&str],
@@ -328,7 +323,7 @@ impl HlslCompiler {
         let library = dxc.create_library()?;
 
         let (shader_path, shader_text) = match shader_source {
-            ShaderSource::Code(text) => ("_code.hlsl".to_owned(), text.clone()),
+            ShaderSource::Code(text) => ("_code.hlsl".to_owned(), (*text).to_string()),
             ShaderSource::Path(path) => (
                 self.inner
                     .filesystem
@@ -393,11 +388,11 @@ mod tests {
         );
 
         let compile_params = CompileParams {
-            shader_source: ShaderSource::Path(TEST_SHADER.path().to_owned()),
-            global_defines: Vec::new(),
-            entry_points: vec![EntryPoint {
-                defines: Vec::new(),
-                name: "main_vs".to_owned(),
+            shader_source: ShaderSource::Path(TEST_SHADER.path()),
+            global_defines: &[],
+            entry_points: &[EntryPoint {
+                defines: &[],
+                name: "main_vs",
                 target_profile: TargetProfile::Vertex,
             }],
         };
@@ -413,7 +408,7 @@ mod tests {
         assert_eq!(refl_info.shader_resources[0].set_index, 0);
         assert_eq!(
             refl_info.shader_resources[0].used_in_shader_stages,
-            ShaderStageFlags::VERTEX
+            ShaderStageFlags::VERTEX_FLAG
         );
     }
 
@@ -424,11 +419,11 @@ mod tests {
         );
 
         let compile_params = CompileParams {
-            shader_source: ShaderSource::Path(TEST_SHADER.path().to_owned()),
-            global_defines: Vec::new(),
-            entry_points: vec![EntryPoint {
-                defines: Vec::new(),
-                name: "main_ps".to_owned(),
+            shader_source: ShaderSource::Path(TEST_SHADER.path()),
+            global_defines: &[],
+            entry_points: &[EntryPoint {
+                defines: &[],
+                name: "main_ps",
                 target_profile: TargetProfile::Pixel,
             }],
         };

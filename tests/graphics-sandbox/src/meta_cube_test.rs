@@ -1,10 +1,8 @@
 use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, Plugin};
-use lgn_ecs::prelude::{Commands, Query, Res};
-use lgn_math::{EulerRot, Quat};
-use lgn_renderer::components::{RotationComponent, StaticMesh};
-use lgn_tracing::span_fn;
+use lgn_ecs::prelude::{Commands, Res};
+use lgn_renderer::components::StaticMesh;
 use lgn_transform::components::{GlobalTransform, Transform};
 
 use super::{DefaultMaterialType, DefaultMeshType, DefaultMeshes};
@@ -26,8 +24,6 @@ impl Plugin for MetaCubePlugin {
             app.insert_resource(MetaCubeResource::new(self.meta_cube_size));
 
             app.add_startup_system(init_stress_test);
-
-            app.add_system(update_rotation);
         }
     }
 }
@@ -39,18 +35,6 @@ fn init_stress_test(
     meta_cube: Res<'_, MetaCubeResource>,
 ) {
     meta_cube.initialize(commands, &default_meshes);
-}
-
-#[span_fn]
-fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
-    for (mut transform, rotation) in query.iter_mut() {
-        transform.rotate(Quat::from_euler(
-            EulerRot::XYZ,
-            rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
-            rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
-        ));
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -122,10 +106,7 @@ impl MetaCubeResource {
                             DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
                             DefaultMaterialType::Default,
-                        ))
-                        .insert(RotationComponent {
-                            rotation_speed: (0.0, 0.1 * ((flattened_index % 10) + 1) as f32, 0.0),
-                        });
+                        ));
                 }
             }
         }

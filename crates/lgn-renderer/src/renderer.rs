@@ -11,7 +11,6 @@ use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
-use crate::hl_gfx_api::ShaderManager;
 
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
@@ -36,7 +35,6 @@ pub struct Renderer {
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotLightsStaticBuffer,
-    shader_manager: ShaderManager,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -124,7 +122,6 @@ impl Renderer {
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
-            shader_manager: ShaderManager::new(device_context.clone()),
             api,
         }
     }
@@ -151,10 +148,6 @@ impl Renderer {
     // TMP: change that.
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
-    }
-
-    pub fn shader_manager(&self) -> &ShaderManager {
-        &self.shader_manager
     }
 
     impl_static_buffer_accessor!(

@@ -385,7 +385,7 @@ impl BlendStateVkCreateInfo {
 }
 
 pub(crate) fn blend_state_render_target_to_create_info(
-    blend_state_rt: &BlendStateRenderTarget,
+    blend_state_rt: BlendStateRenderTarget,
 ) -> vk::PipelineColorBlendAttachmentState {
     let blend_enable = blend_state_rt.src_factor != BlendFactor::One
         || blend_state_rt.src_factor_alpha != BlendFactor::One
@@ -420,10 +420,10 @@ pub fn blend_state_to_create_info(
             {
                 if blend_state.independent_blend {
                     blend_state_render_target_to_create_info(
-                        &blend_state.render_target_blend_states[attachment_index],
+                        blend_state.render_target_blend_states[attachment_index],
                     )
                 } else {
-                    blend_state_render_target_to_create_info(first_attachment)
+                    blend_state_render_target_to_create_info(*first_attachment)
                 }
             } else {
                 vk::PipelineColorBlendAttachmentState::default()

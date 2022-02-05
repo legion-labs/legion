@@ -36,3 +36,6 @@ pub(crate) use static_buffer::*;
 
 mod transient_buffer;
 pub(crate) use transient_buffer::*;
+
+mod pipeline_manager;
+pub use pipeline_manager::*;

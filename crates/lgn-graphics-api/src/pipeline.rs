@@ -9,8 +9,10 @@ use crate::{
     VertexAttributeRate,
 };
 
+pub const MAX_VERTEX_ATTRIBUTES: usize = 8;
+
 /// Describes an attribute within a `VertexLayout`
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VertexLayoutAttribute {
     /// Format of the attribute
     pub format: Format,
@@ -20,28 +22,25 @@ pub struct VertexLayoutAttribute {
     pub location: u32,
     /// The byte offset of the attribute within the buffer
     pub byte_offset: u32,
-
-    /// name of the attribute in the shader, only required for GL
-    pub gl_attribute_name: Option<String>,
 }
 
 /// Describes a buffer that provides vertex attribute data (See `VertexLayout`)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VertexLayoutBuffer {
     pub stride: u32,
     pub rate: VertexAttributeRate,
 }
 
 /// Describes how vertex attributes are laid out within one or more buffers
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VertexLayout {
-    pub attributes: Vec<VertexLayoutAttribute>,
-    pub buffers: Vec<VertexLayoutBuffer>,
+    pub attributes: [Option<VertexLayoutAttribute>; MAX_VERTEX_ATTRIBUTES],
+    pub buffers: [Option<VertexLayoutBuffer>; MAX_VERTEX_ATTRIBUTES],
 }
 
 /// Affects depth testing and stencil usage. Commonly used to enable
 /// "Z-buffering".
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DepthState {
     pub depth_test_enable: bool,
     pub depth_write_enable: bool,
@@ -82,7 +81,7 @@ impl Default for DepthState {
 
 /// Affects rasterization, commonly used to enable backface culling or wireframe
 /// rendering
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct RasterizerState {
     pub cull_mode: CullMode,
     pub front_face: FrontFace,
@@ -143,7 +142,7 @@ impl Default for RasterizerState {
 }
 
 /// Configures blend state for a particular render target
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlendStateRenderTarget {
     pub src_factor: BlendFactor,
     pub dst_factor: BlendFactor,
@@ -187,7 +186,7 @@ impl BlendStateRenderTarget {
 }
 
 impl BlendStateRenderTarget {
-    pub fn blend_enabled(&self) -> bool {
+    pub fn blend_enabled(self) -> bool {
         self.src_factor != BlendFactor::One
             || self.src_factor_alpha != BlendFactor::One
             || self.dst_factor != BlendFactor::Zero
