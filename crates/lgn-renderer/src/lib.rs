@@ -31,7 +31,7 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    ui_mesh_manager, DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
+    DefaultMaterials, GpuDataPlugin, GpuInstanceColor, GpuInstanceIdAllocator,
     GpuInstancePickingData, GpuInstanceTransform, GpuInstanceVATable, GpuVaTableForGpuInstance,
     MaterialManager, PipelineManager,
 };
@@ -52,8 +52,6 @@ pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
 pub(crate) mod tmp_shader_data;
-pub(crate) mod mesh_import_export;
-
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
@@ -171,7 +169,6 @@ impl Plugin for RendererPlugin {
         //
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-            app.add_system_to_stage(RenderStage::Prepare, ui_mesh_manager);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
 

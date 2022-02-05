@@ -3,6 +3,7 @@ struct MeshDescription
     uint format;
     uint position_offset;
     uint normal_offset;
+    uint tangent_offset;
     uint tex_coord_offset;
     uint index_offset;
     uint color_offset;
@@ -10,9 +11,10 @@ struct MeshDescription
 
 #define BIT_POSITION 0x0001
 #define BIT_NORMAL 0x0002
-#define BIT_TEX_COORD 0x0004
-#define BIT_INDEX 0x0008
-#define BIT_COLOR 0x0010
+#define BIT_TANGENT 0x0004
+#define BIT_TEX_COORD 0x0008
+#define BIT_INDEX 0x0010
+#define BIT_COLOR 0x0020
 
 bool HasPosition(uint format) 
 {
@@ -22,6 +24,11 @@ bool HasPosition(uint format)
 bool HasNormal(uint format) 
 {
     return format & BIT_NORMAL;
+}
+
+bool HasTangent(uint format) 
+{
+    return format & BIT_TANGENT;
 }
 
 bool HasTexCoord(uint format) 
@@ -46,7 +53,7 @@ TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
         vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
     }
 
-    TVertexIn vertex_in;
+    TVertexIn vertex_in = (TVertexIn)0;
     if (HasPosition(mesh_desc.format))
     {
         vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
@@ -54,6 +61,10 @@ TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
     if (HasNormal(mesh_desc.format))
     {
         vertex_in.normal = static_buffer.Load<float4>(mesh_desc.normal_offset + vertexId * 16);
+    }
+    if (HasTangent(mesh_desc.format))
+    {
+        vertex_in.tangent = static_buffer.Load<float4>(mesh_desc.tangent_offset + vertexId * 16);
     }
     if (HasColor(mesh_desc.format))
     {

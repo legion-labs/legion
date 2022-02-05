@@ -5,6 +5,7 @@
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
+    float4 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };

@@ -2,11 +2,12 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::{mesh_import_export, resources::UniformGPUDataUpdater};
+use crate::{resources::UniformGPUDataUpdater};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
     pub normals: Option<Vec<Vec4>>,
+    pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<Vec4>>,
@@ -16,9 +17,10 @@ bitflags::bitflags! {
     pub struct MeshFormat: u32 {
         const POSITION = 0x0001;
         const NORMAL = 0x0002;
-        const TEX_COORD = 0x0004;
-        const INDEX = 0x0008;
-        const COLOR = 0x0010;
+        const TANGENT = 0x0004;
+        const TEX_COORD = 0x0008;
+        const INDEX = 0x0010;
+        const COLOR = 0x0020;
     }
 }
 
@@ -33,6 +35,7 @@ pub struct MeshInfo {
     pub format: MeshFormat,
     pub position_offset: u32,
     pub normal_offset: u32,
+    pub tangent_offset: u32,
     pub tex_coord_offset: u32,
     pub index_offset: u32,
     pub color_offset: u32,
@@ -56,6 +59,9 @@ impl StaticMeshRenderData {
         }
         if self.normals.is_some() {
             format |= MeshFormat::NORMAL;
+        }
+        if self.tangents.is_some() {
+            format |= MeshFormat::TANGENT;
         }
         if self.tex_coords.is_some() {
             format |= MeshFormat::TEX_COORD;
@@ -90,6 +96,11 @@ impl StaticMeshRenderData {
             updater.add_update_jobs(normals, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
         }
+        if let Some(tangents) = &self.tangents {
+            mesh_info.tangent_offset = offset;
+            updater.add_update_jobs(tangents, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+        }
         if let Some(tex_coords) = &self.tex_coords {
             mesh_info.tex_coord_offset = offset;
             updater.add_update_jobs(tex_coords, u64::from(offset));
@@ -116,6 +127,9 @@ impl StaticMeshRenderData {
         }
         if let Some(normals) = &self.normals {
             size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tangents) = &self.tangents {
+            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
@@ -156,13 +170,25 @@ impl StaticMeshRenderData {
             ));
             tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
         }
+        let tangents = calculate_tangents(&positions, &tex_coords, &None);
         Self {
             positions: Some(positions),
             normals: Some(normals),
+            tangents: Some(tangents),
             tex_coords: Some(tex_coords),
             indices: None,
             colors: Some(colors),
         }
+    }
+
+    pub fn calculate_tangents(&mut self) {
+        assert!(self.positions.is_some());
+        assert!(self.tex_coords.is_some());
+        self.tangents = Some(calculate_tangents(self.positions.as_ref().unwrap(), self.tex_coords.as_ref().unwrap(), &self.indices));
+    }
+
+    pub fn num_triangles(&self) -> usize {
+        self.num_vertices()/3
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -616,6 +642,7 @@ impl StaticMeshRenderData {
         Self {
             positions: Some(positions),
             normals: Some(normals),
+            tangents: None,
             tex_coords: Some(tex_coords),
             colors: Some(colors),
             indices: None,
@@ -718,12 +745,54 @@ impl StaticMeshRenderData {
 
         Self::from_vertex_data(&vertex_data)
     }
+}
 
-    pub fn new_gltf(path: String) -> Vec<Self> {
-        mesh_import_export::GltfWrapper::new_mesh(path)
+fn calculate_tangents(positions: &Vec<Vec4>, tex_coords: &Vec<Vec2>, indices: &Option<Vec<u32>>) -> Vec<Vec4> {
+    let length = positions.len();
+    let mut tangents = Vec::with_capacity(length);
+    //let mut bitangents = Vec::with_capacity(length);
+    unsafe {
+        tangents.set_len(length);
+        //bitangents.set_len(length);
     }
 
-    pub fn new_assimp(path: String) -> Vec<Self> {
-        mesh_import_export::AssimpWrapper::new_mesh(path)
+    let num_triangles = if let Some(indices) = &indices {
+        indices.len()/3
+    } else {
+        length/3
+    };
+    
+    for i in 0..num_triangles {
+        let idx0 = if let Some(indices) = &indices { indices[i*3] as usize } else { i * 3 };
+        let idx1 = if let Some(indices) = &indices { indices[i*3 + 1] as usize } else { i * 3 + 1};
+        let idx2 = if let Some(indices) = &indices { indices[i*3 + 2] as usize } else { i * 3 + 2};
+        let v0 = positions[idx0].truncate();
+        let v1 = positions[idx1].truncate();
+        let v2 = positions[idx2].truncate();
+
+        let uv0 = tex_coords[idx0];
+        let uv1 = tex_coords[idx1];
+        let uv2 = tex_coords[idx2];
+
+        let edge1 = v1 - v0;
+        let edge2 = v2 - v0;
+
+        let delta_uv1 = uv1 - uv0;
+        let delta_uv2 = uv2 - uv0;
+
+        let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
+        //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
+        let t = (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f;
+        let t = t.extend(0.0);
+
+        tangents[idx0] = t;
+        tangents[idx1] = t;
+        tangents[idx2] = t;
+
+        //bitangents[idx0] = b;
+        //bitangents[idx1] = b;
+        //bitangents[idx2] = b;
     }
+
+    tangents
 }

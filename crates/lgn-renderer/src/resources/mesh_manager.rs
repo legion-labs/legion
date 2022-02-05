@@ -1,9 +1,7 @@
-use lgn_ecs::prelude::{Local, Res, ResMut};
 use lgn_graphics_api::PagedBufferAllocation;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{
-    egui::egui_plugin::Egui,
     static_mesh_render_data::{MeshInfo, StaticMeshRenderData},
     Renderer,
 };
@@ -124,66 +122,4 @@ impl MeshManager {
     pub fn max_id(&self) -> usize {
         self.static_meshes.len()
     }
-}
-
-pub struct MeshManagerUIState {
-    path: String,
-}
-
-impl Default for MeshManagerUIState {
-    fn default() -> Self {
-        Self {
-            path: String::from(
-                //"C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
-                //"C:/work/glTF-Sample-Models/sourceModels/DragonAttenuation/Dragon_Attenuation.blend",
-                "C:/work/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf"
-            ),
-        }
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn ui_mesh_manager(
-    egui_ctx: Res<'_, Egui>,
-    renderer: Res<'_, Renderer>,
-    mut mesh_manager: ResMut<'_, MeshManager>,
-    mut ui_state: Local<'_, MeshManagerUIState>,
-    //mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
-) {
-    egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
-        ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
-        if ui.small_button("Load mesh (gltf)").clicked() {
-            mesh_manager.add_meshes(
-                renderer.as_ref(),
-                StaticMeshRenderData::new_gltf(ui_state.path.clone()),
-            );
-        }
-        if ui.small_button("Load mesh (assimp)").clicked() {
-            mesh_manager.add_meshes(
-                renderer.as_ref(),
-                StaticMeshRenderData::new_assimp(ui_state.path.clone()),
-            );
-        }
-        /*for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
-            let mut selected_text = format!("Mesh ID {}", mesh.mesh_id);
-            let mut selected_idx = mesh.mesh_id;
-            egui::ComboBox::from_label(format!("Mesh {}", idx))
-                .selected_text(selected_text)
-                .show_ui(ui, |ui| {
-                    for mesh_id in 0..mesh_manager.max_id() {
-                        ui.selectable_value(
-                            &mut selected_idx,
-                            mesh_id as usize,
-                            format!("Mesh ID {}", mesh_id),
-                        );
-                    }
-                });
-            *mesh.as_mut() = StaticMesh::from_default_meshes(
-                mesh_manager.as_ref(),
-                selected_idx,
-                mesh.color,
-                mesh.material_type,
-            );
-        }*/
-    });
 }
