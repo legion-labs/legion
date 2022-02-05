@@ -40,47 +40,29 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use lgn_build_utils::{run_cmd, Result};
+use lgn_build_utils::Result;
+use std::fs;
 
-/// Handle the copy/validation of the output files
+/// Handle the validation of the output files
 ///
 /// # Errors
 /// Returns a generation error or an IO error
-pub fn build_web_app() -> Result<()> {
-    if let Ok(pnpm_path) = which::which("pnpm") {
-        let frontend_dir = "frontend";
-        let lock = named_lock::NamedLock::create("pnpm_processing").unwrap();
-        let _guard = lock.lock().unwrap();
-        run_cmd(&pnpm_path, &["install", "--unsafe-perm"], frontend_dir)?;
-        run_cmd(&pnpm_path, &["build"], frontend_dir)?;
-
-        // JS ecosystem forces us to have output files in our sources hierarchy
-        // we are filtering files
-        std::fs::read_dir(frontend_dir)
-            .unwrap()
-            .map(|res| res.map(|entry| entry.path()))
-            .filter_map(|path| {
-                if let Ok(path) = path {
-                    if let Some(file_name) = path.file_name() {
-                        if file_name != "dist" && file_name != "node_modules" {
-                            return Some(path);
-                        }
-                    }
-                }
-                None
-            })
-            .for_each(|path| {
-                // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-            });
-    } else {
-        std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write(
+pub fn build_web_app(name: &str) -> Result<()> {
+    // TODO: Should be dynamic based on the metadata in `Cargo.toml`
+    if fs::File::open("frontend/dist/index.html").is_err() {
+        fs::create_dir_all("frontend/dist").unwrap();
+        fs::write(
             "frontend/dist/index.html",
-            "pnpm missing from path, please run a clean build after installing it",
+            format!(
+                "You need to run `pnpm build {name}` or `cargo m npm build -p {name}`",
+                name = name
+            ),
         )
         .unwrap();
         println!("cargo:rerun-if-env-changed=PATH");
+        println!("cargo:rerun-if-changed=frontend/dist");
+        println!("cargo:rerun-if-changed=frontend/dist/index.html");
     }
+
     Ok(())
 }

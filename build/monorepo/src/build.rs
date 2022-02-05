@@ -3,6 +3,7 @@
 use crate::{
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
     context::Context,
+    npm::utils::NpmWorkspace,
     Result,
 };
 
@@ -21,6 +22,12 @@ pub struct Args {
     /// Output the build plan in JSON (unstable)
     #[clap(long)]
     pub(crate) build_plan: bool,
+    /// Skip npm packages build, this will also skips the npm install step
+    #[clap(long)]
+    pub(crate) skip_npm_build: bool,
+    /// Skip npm packages install
+    #[clap(long)]
+    pub(crate) skip_npm_install: bool,
 }
 
 #[span_fn]
@@ -56,5 +63,19 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     } else if let Some(example) = args.build_args.example.first() {
         packages.select_package_from_example(example.as_str(), ctx)?;
     }
+
+    // Npm packages related code
+    if !args.skip_npm_build {
+        let npm_workspace = NpmWorkspace::from_selected_packages(ctx, &packages)?;
+
+        if !npm_workspace.is_empty() {
+            if !args.skip_npm_install {
+                npm_workspace.run_install()?;
+            }
+
+            npm_workspace.run_build(&None)?;
+        }
+    }
+
     cmd.run_on_packages(ctx, &packages)
 }

@@ -25,7 +25,7 @@ mod fmt;
 mod git;
 mod hakari;
 mod lint;
-mod npm_build;
+mod npm;
 mod run;
 mod test;
 mod tools;
@@ -108,11 +108,25 @@ enum Commands {
     #[clap(name = "vscode")]
     VsCode(vscode::Args),
 
-    // NPM related commands:
-    /// Build an npm package that exposes a "build" script.
-    /// Recursively build all packages if no package names are provided.
-    #[clap(name = "npm-build")]
-    NpmBuild(npm_build::Args),
+    /// NPM related commands
+    #[clap(name = "npm", subcommand)]
+    Npm(NpmCommands),
+}
+
+#[derive(Subcommand)]
+enum NpmCommands {
+    /// Install all npm packages recursively
+    Install,
+
+    /// Build an npm package that exposes a "build" script
+    /// Recursively build all packages if no package names are provided
+    #[clap(name = "build")]
+    Build(npm::build::Args),
+
+    /// Check an npm package that exposes a "check" script
+    /// Recursively check all packages if no package names are provided
+    #[clap(name = "check")]
+    Check(npm::check::Args),
 }
 
 fn main() {
@@ -143,7 +157,11 @@ fn main() {
         Commands::Tools(args) => tools::run(&args, &ctx),
         Commands::VsCode(args) => vscode::run(&args, &ctx),
 
-        Commands::NpmBuild(args) => npm_build::run(&args, &ctx),
+        Commands::Npm(npm_command) => match npm_command {
+            NpmCommands::Install => npm::install::run(&ctx),
+            NpmCommands::Build(args) => npm::build::run(&args, &ctx),
+            NpmCommands::Check(args) => npm::check::run(&args, &ctx),
+        },
     }) {
         err.display();
         #[allow(clippy::exit)]
