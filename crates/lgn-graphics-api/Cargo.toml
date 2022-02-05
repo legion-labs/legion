@@ -22,8 +22,7 @@ bumpalo = "3.8"
 crossbeam-channel = "0.5"
 fnv = "1.0"
 raw-window-handle = "0.4"
-strum = "0.23"
-strum_macros = "0.23"
+strum = { version = "0.23", features = ["derive"] }
 
 # vulkan backend
 ash = { version = ">= 0.33", features = ["linked"], optional = true }

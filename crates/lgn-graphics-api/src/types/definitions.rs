@@ -1,6 +1,5 @@
 use std::hash::Hash;
-use strum::Display;
-use strum_macros::IntoStaticStr;
+use strum::{Display, IntoStaticStr};
 
 bitflags::bitflags! {
     pub struct ResourceUsage: u16 {
