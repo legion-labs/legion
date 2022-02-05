@@ -11,7 +11,7 @@ use lgn_source_control::{
 
 #[tokio::test]
 async fn test_add_and_commit() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     // Add some files.
     create_file!(ws, "apple.txt", "I am an apple");
@@ -145,7 +145,7 @@ async fn test_add_and_commit() {
 
 #[tokio::test]
 async fn test_edit_and_commit() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -224,7 +224,7 @@ async fn test_edit_and_commit() {
 
 #[tokio::test]
 async fn test_delete_and_commit() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -260,7 +260,7 @@ async fn test_delete_and_commit() {
 
 #[tokio::test]
 async fn test_add_empty_directory() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, ["."]);
@@ -278,7 +278,7 @@ async fn test_add_empty_directory() {
 
 #[tokio::test]
 async fn test_add_non_existing_path() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, ["."]);
@@ -300,7 +300,7 @@ async fn test_add_non_existing_path() {
 
 #[tokio::test]
 async fn test_add_then_delete() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -327,7 +327,7 @@ async fn test_add_then_delete() {
 
 #[tokio::test]
 async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -420,7 +420,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
 
 #[tokio::test]
 async fn test_revert_after_add_and_edit() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -496,7 +496,7 @@ async fn test_revert_after_add_and_edit() {
 
 #[tokio::test]
 async fn test_revert_staged_only_with_unstaged_changes() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -541,7 +541,7 @@ async fn test_revert_staged_only_with_unstaged_changes() {
 
 #[tokio::test]
 async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -604,7 +604,7 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 
 #[tokio::test]
 async fn test_revert_unstaged_only_with_unstaged_changes() {
-    let (index, ws, _paths) = init_test_workspace_and_index!();
+    let (_index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
