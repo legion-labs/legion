@@ -5,6 +5,7 @@
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
 #include "crate://lgn-renderer/gpu/include/brdf.hsh"
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
 
 struct GpuPipelineVertexIn
 {
@@ -16,6 +17,7 @@ struct GpuPipelineVertexIn
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
+    float4 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -29,20 +31,19 @@ struct VertexOut {
 
 VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
 
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(addresses.vertex_buffer_va + vertexIn.vertexId * 56);
+    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
     GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
     float4x4 world = transpose(transform.world);
 
     float4 pos_view_relative = mul(view_data.view, mul(world, vertex_in.pos));
-    
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
     vertex_out.normal = mul(view_data.view, mul(world, vertex_in.normal)).xyz;
     vertex_out.va_table_address = vertexIn.va_table_address;
-
     return vertex_out;
 }
 

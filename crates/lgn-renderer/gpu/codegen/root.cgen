@@ -38,7 +38,7 @@ struct GpuInstancePickingData {
 }
 
 struct GpuInstanceVATable {
-    vertex_buffer_va: Uint1,
+    mesh_description_va: Uint1,
     world_transform_va: Uint1,
     material_data_va: Uint1,
     instance_color_va: Uint1,
@@ -89,7 +89,7 @@ struct EguiPipelineLayout {
 struct ConstColorPushConstantData {
     world: Float4x4,
     color: Float4,
-    vertex_offset: Uint1,
+    mesh_description_offset: Uint1,
 }
 
 #[PipelineLayout]
@@ -110,7 +110,7 @@ struct PickingData {
 
 struct PickingPushConstantData {
     world: Float4x4,
-    vertex_offset: Uint1,
+    mesh_description_offset: Uint1,
     picking_id: Uint1,
     picking_distance: Float1,
     use_gpu_pipeline: Uint1,

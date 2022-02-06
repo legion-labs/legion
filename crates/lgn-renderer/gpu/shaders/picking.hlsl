@@ -4,6 +4,8 @@
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
+
 struct GpuPipelineVertexIn
 {
     uint vertexId: SV_VertexID;
@@ -14,6 +16,7 @@ struct GpuPipelineVertexIn
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
+    float4 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -32,15 +35,17 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     if (push_constant.use_gpu_pipeline) {
         GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
-    
-        vertex_in = static_buffer.Load<VertexIn>(addresses.vertex_buffer_va + vertexIn.vertexId * 56);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
+        
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
 
         GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
         world = transpose(transform.world);        
     }
     else
     {
-        vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexIn.vertexId * 56);
+        MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     }
 
     float4 world_pos = mul(world, vertex_in.pos);
