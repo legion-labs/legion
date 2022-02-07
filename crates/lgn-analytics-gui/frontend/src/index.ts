@@ -12,7 +12,7 @@ run({
   },
   rootQuerySelector: "#root",
   logLevel: "debug",
-  onPreInit: null,
+  onPreInit: undefined,
 })
   // eslint-disable-next-line no-console
   .catch((error) => console.error("Application couldn't start", error));

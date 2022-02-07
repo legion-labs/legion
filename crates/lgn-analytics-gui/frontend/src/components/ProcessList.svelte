@@ -6,13 +6,14 @@
   } from "@lgn/proto-telemetry/dist/analytics";
   import { onMount } from "svelte";
   import { link } from "svelte-navigator";
+  import log from "@lgn/web-client/src/lib/log";
   import { grpc } from "@improbable-eng/grpc-web";
   import { getAccessToken } from "@lgn/web-client/src/stores/userInfo";
 
-  async function makeGrpcClient(){
+  async function makeGrpcClient() {
     let metadata = new grpc.Metadata();
     const token = await getAccessToken();
-    metadata.set('Authorization', "Bearer " + token);
+    metadata.set("Authorization", "Bearer " + token);
     const options = { metadata: metadata };
     const client = new PerformanceAnalyticsClientImpl(
       new GrpcWebImpl("http://" + location.hostname + ":9090", options)
@@ -20,10 +21,15 @@
     return client;
   }
 
-  let client : PerformanceAnalyticsClientImpl | null = null;
+  let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];
 
   async function getRecentProcesses() {
+    if (!client) {
+      log.error("grpc client not initialized");
+      processList = [];
+      return;
+    }
     const response = await client.list_recent_processes({});
     processList = response.processes;
   }
@@ -31,6 +37,11 @@
   async function onSearchChange(
     evt: Event & { currentTarget: EventTarget & HTMLInputElement }
   ) {
+    if (!client) {
+      log.error("grpc client not initialized");
+      processList = [];
+      return;
+    }
     const searchString = evt.currentTarget.value;
     const response = await client.search_processes({ search: searchString });
     processList = response.processes;
