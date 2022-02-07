@@ -55,9 +55,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
 
         let mut bytes = vec![];
 
-        let _nbytes = proc
-            .write_resource(&output_resource, &mut bytes)
-            .map_err(CompilerError::ResourceWriteFailed)?;
+        let _nbytes = proc.write_resource(&output_resource, &mut bytes)?;
 
         let asset = context.store(
             &bytes,

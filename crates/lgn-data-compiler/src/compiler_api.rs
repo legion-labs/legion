@@ -69,18 +69,13 @@
 // This disables the lint crate-wide as a workaround to allow the doc above.
 #![allow(clippy::needless_doctest_main)]
 
-use std::{
-    env,
-    io::{self, stdout},
-    path::PathBuf,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{env, io::stdout, path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_offline::{ResourcePathId, Transform};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
+use lgn_data_model::ReflectionError;
+use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryError, AssetRegistryOptions};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -207,64 +202,59 @@ pub struct CompilerDescriptor {
 }
 
 /// Compiler error.
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum CompilerError {
     /// Cannot write to stdout.
-    StdoutError,
+    #[error("IOError")]
+    StdoutError(#[from] std::io::Error),
+
     /// Invalid command line arguments.
+    #[error("Invalid Arguments")]
     InvalidArgs,
     /// Invalid resource id.
+    #[error("Invalid Resource Id")]
     InvalidResourceId,
-    /// Resource not found.
-    ResourceNotFound,
     /// Compiler not found for a given transform.
+    #[error("Compiler transform '{0}' not found")]
     CompilerNotFound(Transform),
     /// Invalid input/output resource type pair.
+    #[error("Invalid Transform")]
     InvalidTransform,
     /// Invalid ResourcePathId provided as input.
+    #[error("Invalid ResourcePathId {0}")]
     InvalidResource(ResourcePathId),
     /// Unknown platform.
+    #[error("Invalid Platform")]
     InvalidPlatform,
     /// Unknown target.
+    #[error("Invalid Target")]
     InvalidTarget,
     /// Unknown command.
+    #[error("Unknown Command")]
     UnknownCommand,
     /// Asset read/write failure.
+    #[error("Asset Store Error")]
     AssetStoreError,
     /// IO failure.
-    ResourceReadFailed(io::Error),
-    /// IO failure.
-    ResourceWriteFailed(io::Error),
-    /// Compiler-specific compilation error.
-    CompilationError(&'static str),
-}
 
-impl std::error::Error for CompilerError {}
-impl std::fmt::Display for CompilerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &*self {
-            CompilerError::StdoutError => write!(f, "IOError"),
-            CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
-            CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),
-            CompilerError::ResourceNotFound => write!(f, "ResourceNotFound"),
-            CompilerError::CompilerNotFound(transform) => {
-                f.write_fmt(format_args!("CompilerNotFoud for '{}'", transform))
-            }
-            CompilerError::InvalidTransform => write!(f, "InvalidResourceType"),
-            CompilerError::InvalidResource(resource) => {
-                f.write_fmt(format_args!("InvalidResource '{}'", resource))
-            }
-            CompilerError::InvalidTarget => write!(f, "InvalidTarget"),
-            CompilerError::InvalidPlatform => write!(f, "InvalidPlatform"),
-            CompilerError::UnknownCommand => write!(f, "UnknownCommand"),
-            CompilerError::AssetStoreError => write!(f, "AssetStoreError"),
-            CompilerError::ResourceReadFailed(_) => write!(f, "ResourceReadFailed"),
-            CompilerError::ResourceWriteFailed(_) => write!(f, "ResourceWriteFailed"),
-            CompilerError::CompilationError(content) => {
-                write!(f, "CompilationError: '{}'", content)
-            }
-        }
-    }
+    #[error("Serialization error with serde_json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+
+    /// AssetRegistry fallthrough
+    #[error(transparent)]
+    Reflection(#[from] ReflectionError),
+
+    /// AssetRegistry fallthrough
+    #[error(transparent)]
+    ResourceProcessor(#[from] ResourceProcessorError),
+
+    /// AssetRegistry fallthrough
+    #[error(transparent)]
+    AssetRegistry(#[from] AssetRegistryError),
+
+    /// Compiler-specific compilation error.
+    #[error("{0}")]
+    CompilationError(String),
 }
 
 impl CompilerDescriptor {
@@ -312,8 +302,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
             serde_json::to_writer_pretty(
                 stdout(),
                 &CompilerInfoCmdOutput::from_registry(&compilers),
-            )
-            .map_err(|_e| CompilerError::StdoutError)?;
+            )?;
             Ok(())
         }
         Commands::CompilerHash {
@@ -365,8 +354,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
             };
 
             let output = CompilerHashCmdOutput { compiler_hash_list };
-            serde_json::to_writer_pretty(stdout(), &output)
-                .map_err(|_e| CompilerError::StdoutError)?;
+            serde_json::to_writer_pretty(stdout(), &output)?;
             Ok(())
         }
         Commands::Compile {
@@ -447,8 +435,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
                 compiled_resources: compilation_output.compiled_resources,
                 resource_references: compilation_output.resource_references,
             };
-            serde_json::to_writer_pretty(stdout(), &output)
-                .map_err(|_e| CompilerError::StdoutError)?;
+            serde_json::to_writer_pretty(stdout(), &output)?;
             Ok(())
         }
     }
@@ -544,7 +531,7 @@ pub fn multi_compiler_main(
 
     let result = run(args.command, compilers);
     if let Err(error) = &result {
-        eprintln!("Compiler Failed With: '{:?}'", error);
+        eprintln!("{}", error);
     }
     result
 }

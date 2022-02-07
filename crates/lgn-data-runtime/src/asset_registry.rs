@@ -2,7 +2,6 @@ use std::{
     any::Any,
     cell::{Cell, UnsafeCell},
     collections::HashMap,
-    io,
     ops::{Deref, DerefMut},
     path::Path,
     sync::{
@@ -19,8 +18,56 @@ use lgn_ecs::schedule::SystemLabel;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, Handle, HandleUntyped, Resource, ResourceType, ResourceTypeAndId,
+    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, Resource, ResourceType,
+    ResourceTypeAndId,
 };
+
+/// Error type for Asset Registry
+#[derive(thiserror::Error, Debug)]
+pub enum AssetRegistryError {
+    /// Error when a resource failed to load
+    #[error("Dependent Resource '{resource}' failed loading because '{parent}': {parent_error}")]
+    ResourceDependentLoadFailed {
+        /// Resource try to load
+        resource: ResourceTypeAndId,
+        /// Parent resource that failed
+        parent: ResourceTypeAndId,
+        /// Inner error of the parent
+        parent_error: String,
+    },
+
+    /// Error when a resource is not found
+    #[error("Resource '{0}' was not found")]
+    ResourceNotFound(ResourceTypeAndId),
+
+    /// General IO Error when loading a resource
+    #[error("Resource '{0}' IO error: {1}")]
+    ResourceIOError(ResourceTypeAndId, std::io::Error),
+
+    /// Type mismatched
+    #[error("Resource '{0}' type mistmached: {1} expected {2}")]
+    ResourceTypeMismatch(ResourceTypeAndId, String, String),
+
+    /// Version mismatched
+    #[error("Resource '{0}' type mistmached: {1} expected {2}")]
+    ResourceVersionMismatch(ResourceTypeAndId, u16, u16),
+
+    /// AssetLoader for a type not present
+    #[error("AssetLoader for ResourceType '{0}' not found")]
+    AssetLoaderNotFound(ResourceType),
+
+    /// AssetLoader for a type not present
+    #[error("Resource '{0}' failed to load. {1}")]
+    AssetLoaderFailed(ResourceTypeAndId, AssetLoaderError),
+
+    /// General IO Error
+    #[error("IO Error {0}")]
+    IOError(String),
+
+    /// General IO Error
+    #[error("Invalid Data: {0}")]
+    InvalidData(String),
+}
 
 /// Wraps a borrowed reference to a resource.
 ///
@@ -232,7 +279,7 @@ impl AssetRegistryOptions {
 
 struct Inner {
     assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
-    load_errors: HashMap<ResourceTypeAndId, io::ErrorKind>,
+    load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
 }
 
@@ -273,7 +320,7 @@ pub enum ResourceLoadEvent {
     /// Resource unload event
     Unloaded(ResourceTypeAndId),
     /// Sent when a loading attempt has failed
-    LoadError(ResourceTypeAndId, io::ErrorKind),
+    LoadError(ResourceTypeAndId, String),
     /// Successful resource reload
     Reloaded(HandleUntyped),
 }
@@ -385,8 +432,11 @@ impl AssetRegistry {
                         load_events.push(ResourceLoadEvent::Unloaded(id));
                     }
                     LoaderResult::LoadError(handle, _load_id, error_kind) => {
+                        load_events.push(ResourceLoadEvent::LoadError(
+                            handle.id(),
+                            error_kind.to_string(),
+                        ));
                         inner.load_errors.insert(handle.id(), error_kind);
-                        load_events.push(ResourceLoadEvent::LoadError(handle.id(), error_kind));
                     }
                     LoaderResult::Reloaded(handle, resource) => {
                         let old_resource = inner.assets.insert(handle.id(), resource);
@@ -410,6 +460,11 @@ impl AssetRegistry {
 
     pub(crate) fn is_err(&self, type_id: ResourceTypeAndId) -> bool {
         self.read_inner().load_errors.contains_key(&type_id)
+    }
+
+    /// Returns the last load error for a resource type
+    pub fn retrieve_err(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryError> {
+        self.write_inner().load_errors.remove(&type_id)
     }
 
     /// Subscribe to load events, to know when resources are loaded and
@@ -437,8 +492,8 @@ mod tests {
         use byteorder::{LittleEndian, ReadBytesExt};
 
         use crate::{
-            resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
-            ResourceType, ResourceTypeAndId,
+            resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource,
+            ResourceId, ResourceType, ResourceTypeAndId,
         };
         /// Asset temporarily used for testing.
         ///
@@ -466,10 +521,12 @@ mod tests {
             fn load(
                 &mut self,
                 reader: &mut dyn io::Read,
-            ) -> io::Result<Box<dyn Any + Send + Sync>> {
+            ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
                 let len = reader.read_u64::<LittleEndian>()?;
+
                 let mut content = vec![0; len as usize];
                 reader.read_exact(&mut content)?;
+
                 let reference = read_maybe_reference::<RefsAsset>(reader)?;
                 let asset = Box::new(RefsAsset {
                     content: String::from_utf8(content).unwrap(),

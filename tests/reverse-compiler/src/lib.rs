@@ -43,9 +43,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         };
 
         let processor = text_resource::TextResourceProc {};
-        let _nbytes = processor
-            .write_resource(&output, &mut bytes)
-            .map_err(CompilerError::ResourceWriteFailed)?;
+        let _nbytes = processor.write_resource(&output, &mut bytes)?;
         bytes
     };
 

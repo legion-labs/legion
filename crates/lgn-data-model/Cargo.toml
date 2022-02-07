@@ -6,10 +6,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-anyhow = "1.0"
 thiserror = "1.0"
 lazy_static = "1.4"
 erased-serde = "0.3.12"

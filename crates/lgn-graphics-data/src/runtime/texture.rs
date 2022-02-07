@@ -3,7 +3,7 @@
 use std::{any::Any, io};
 
 use lgn_data_model::implement_primitive_type_def;
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 /// Runtime texture.
 #[resource("runtime_texture")]
@@ -32,7 +32,10 @@ implement_primitive_type_def!(TextureReferenceType);
 pub struct TextureLoader {}
 
 impl AssetLoader for TextureLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let mut rgba: Vec<u8> = vec![];
         reader.read_to_end(&mut rgba)?;
         let texture = Texture { rgba };

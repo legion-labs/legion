@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
+use lgn_data_offline::resource::{
+    Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
+};
 use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{info, warn};
 use thiserror::Error;
@@ -17,7 +19,11 @@ pub enum Error {
 
     ///Resource failed to deserializer from memory
     #[error("ResourceId '{0}' failed to deserialize")]
-    InvalidResourceDeserialization(ResourceTypeAndId),
+    InvalidResourceDeserialization(ResourceTypeAndId, ResourceRegistryError),
+
+    ///Resource failed to deserializer from memory
+    #[error("ResourceId '{0}' failed to serialize")]
+    InvalidResourceSerialization(ResourceTypeAndId, ResourceRegistryError),
 
     /// Resource Id Already Exists
     #[error("Resource '{0}' already exists in the Project")]
@@ -27,25 +33,45 @@ pub enum Error {
     #[error("Resource Path '{0}' already exists in the Project")]
     ResourcePathAlreadyExist(ResourcePathName),
 
+    /// Resource Path Already Exists
+    #[error("Resource Path '{0}' doesn't exists in the Project")]
+    ResourceNameNotFound(ResourcePathName),
+
     /// Invalid Delete Operation
-    #[error("Invalid DeleteOperation on Resource'{0}'")]
+    #[error("Invalid DeleteOperation on Resource '{0}'")]
     InvalidDeleteOperation(ResourceTypeAndId),
 
     /// Invalid Resource
     #[error("ResourceId '{0}' not found")]
     InvalidResource(ResourceTypeAndId),
 
-    /// Resource of type failed to create
-    #[error("Cannot create Resource of type {0}")]
-    ResourceCreationFailed(ResourceType),
-
     /// Invalid Resource Reflection
-    #[error("Resource {0} doesn't have reflection.")]
+    #[error("Resource '{0}' doesn't have reflection.")]
     InvalidTypeReflection(ResourceTypeAndId),
 
     /// Invalid Resource Type
-    #[error("Invalid resource type {0} ")]
+    #[error("Invalid resource type '{0}'")]
     InvalidResourceType(ResourceType),
+
+    /// Project failed to flush itself
+    #[error("Failed to open Project '{0}'")]
+    ProjectFailedOpen(String),
+
+    /// Project failed to flush itself
+    #[error("Project flush failed: {0}")]
+    ProjectFlushFailed(lgn_data_offline::resource::Error),
+
+    /// Project error fallback
+    #[error("Project error resource '{0}': {1}")]
+    Project(ResourceTypeAndId, lgn_data_offline::resource::Error),
+
+    /// Reflection Error fallack
+    #[error("Reflection error on resource '{0}': {1}")]
+    Reflection(ResourceTypeAndId, lgn_data_model::ReflectionError),
+
+    /// Reflection Error fallack
+    #[error("DataBuild failed fro Resource '{0}': {1}")]
+    Databuild(ResourceTypeAndId, lgn_data_build::Error),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -80,13 +106,20 @@ impl DataManager {
     }
 
     /// Build a resource by name
-    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> anyhow::Result<()> {
+    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> Result<(), Error> {
         let mut ctx = LockContext::new(self).await;
-        let resource_id = ctx.project.find_resource(resource_path).await?;
+        let resource_id = ctx
+            .project
+            .find_resource(resource_path)
+            .await
+            .map_err(|_err| Error::ResourceNameNotFound(resource_path.clone()))?;
+
         let (runtime_path_id, _results) = ctx
             .build
             .build_all_derived(resource_id, &ctx.project)
-            .await?;
+            .await
+            .map_err(|err| Error::Databuild(resource_id, err))?;
+
         ctx.asset_registry
             .load_untyped(runtime_path_id.resource_id());
         Ok(())
@@ -120,7 +153,7 @@ impl DataManager {
     }
 
     /// Commit the current pending `Transaction`
-    pub async fn commit_transaction(&mut self, mut transaction: Transaction) -> anyhow::Result<()> {
+    pub async fn commit_transaction(&mut self, mut transaction: Transaction) -> Result<(), Error> {
         transaction
             .apply_transaction(LockContext::new(self).await)
             .await?;
@@ -130,7 +163,7 @@ impl DataManager {
     }
 
     /// Undo the last committed transaction
-    pub async fn undo_transaction(&mut self) -> anyhow::Result<()> {
+    pub async fn undo_transaction(&mut self) -> Result<(), Error> {
         if let Some(mut transaction) = self.commited_transactions.pop() {
             transaction
                 .rollback_transaction(LockContext::new(self).await)
@@ -141,7 +174,7 @@ impl DataManager {
     }
 
     /// Reapply a rollbacked transaction
-    pub async fn redo_transaction(&mut self) -> anyhow::Result<()> {
+    pub async fn redo_transaction(&mut self) -> Result<(), Error> {
         if let Some(mut transaction) = self.rollbacked_transactions.pop() {
             transaction
                 .apply_transaction(LockContext::new(self).await)

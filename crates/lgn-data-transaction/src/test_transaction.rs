@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     build_manager::BuildManager, ArrayOperation, CloneResourceOperation, CreateResourceOperation,
-    DataManager, DeleteResourceOperation, RenameResourceOperation, Transaction,
+    DataManager, DeleteResourceOperation, Error, RenameResourceOperation, Transaction,
     UpdatePropertyOperation,
 };
 
@@ -37,7 +37,7 @@ async fn validate_test_entity(
 async fn test_array_insert_operation(
     resource_id: ResourceTypeAndId,
     data_manager: &mut DataManager,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
         .add_operation(ArrayOperation::insert_element(
@@ -76,7 +76,7 @@ async fn test_array_insert_operation(
 async fn test_array_delete_operation(
     resource_id: ResourceTypeAndId,
     data_manager: &mut DataManager,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
         .add_operation(ArrayOperation::delete_element(resource_id, "test_blob", 3))
@@ -100,7 +100,7 @@ async fn test_array_delete_operation(
 async fn test_array_reorder_operation(
     resource_id: ResourceTypeAndId,
     data_manager: &mut DataManager,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
         .add_operation(ArrayOperation::reorder_element(
@@ -131,7 +131,7 @@ async fn test_array_reorder_operation(
 }
 
 #[tokio::test]
-async fn test_transaction_system() -> anyhow::Result<()> {
+async fn test_transaction_system() -> Result<(), Error> {
     let project_dir = tempfile::tempdir().unwrap();
     let build_dir = project_dir.path().join("temp");
     std::fs::create_dir(&build_dir).unwrap();
@@ -183,7 +183,7 @@ async fn test_transaction_system() -> anyhow::Result<()> {
 
         let ref_path_id =
             ResourcePathId::from(ref_new_id).push(generic_data::runtime::TestEntity::TYPE);
-        let ref_path_id = serde_json::to_value(ref_path_id)?;
+        let ref_path_id = serde_json::to_value(ref_path_id).unwrap();
 
         // Create a new Resource, Edit some properties and Commit it
         let transaction = Transaction::new()

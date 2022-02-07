@@ -7,8 +7,8 @@ use std::{any::Any, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
-    ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource, ResourceId,
+    ResourceType, ResourceTypeAndId,
 };
 /// Asset temporarily used for testing.
 ///
@@ -33,7 +33,10 @@ pub struct RefsAssetLoader {
 }
 
 impl AssetLoader for RefsAssetLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
 
         let mut content = vec![0u8; nbytes as usize];

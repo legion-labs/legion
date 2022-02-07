@@ -2,8 +2,8 @@
 
 use std::{any::Any, io};
 
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor};
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 use crate::offline_texture::{Texture, TextureType};
 
@@ -75,7 +75,10 @@ impl PsdFile {
 pub struct PsdFileProcessor {}
 
 impl AssetLoader for PsdFileProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)?;
         let content = if bytes.is_empty() {
@@ -108,7 +111,7 @@ impl ResourceProcessor for PsdFileProcessor {
         &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
-    ) -> std::io::Result<usize> {
+    ) -> Result<usize, ResourceProcessorError> {
         let psd = resource.downcast_ref::<PsdFile>().unwrap();
         if let Some((_, content)) = &psd.content {
             writer.write_all(content).unwrap();
@@ -121,7 +124,7 @@ impl ResourceProcessor for PsdFileProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        self.load(reader)
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        Ok(self.load(reader)?)
     }
 }

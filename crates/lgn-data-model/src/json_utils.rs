@@ -1,11 +1,11 @@
 use crate::type_reflection::{TypeDefinition, TypeReflection};
-use crate::utils::{deserialize_property_by_name, serialize_property_by_name};
+use crate::utils::{deserialize_property_by_name, serialize_property_by_name, ReflectionError};
 
 /// Read a Property as a json value
 pub fn get_property_as_json_string(
     object: &dyn TypeReflection,
     path: &str,
-) -> anyhow::Result<String> {
+) -> Result<String, ReflectionError> {
     let mut buffer = Vec::new();
     let mut json = serde_json::Serializer::new(&mut buffer);
     let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
@@ -18,7 +18,7 @@ pub fn set_property_from_json_string(
     object: &mut dyn TypeReflection,
     path: &str,
     json_value: &str,
-) -> anyhow::Result<()> {
+) -> Result<(), ReflectionError> {
     let mut json = serde_json::Deserializer::from_str(json_value);
     let mut deserializer = <dyn erased_serde::Deserializer<'_>>::erase(&mut json);
     deserialize_property_by_name(object, path, &mut deserializer)
@@ -28,7 +28,7 @@ pub fn set_property_from_json_string(
 pub fn reflection_save_relative_json<T: Sized + serde::Serialize>(
     entity: &T,
     base_entity: &T,
-) -> anyhow::Result<serde_json::Value> {
+) -> Result<serde_json::Value, ReflectionError> {
     let mut values = serde_json::to_value(&entity)?;
     let base_values = serde_json::to_value(&base_entity)?;
 
@@ -47,7 +47,7 @@ pub fn reflection_save_relative_json<T: Sized + serde::Serialize>(
 pub fn reflection_apply_json_edit<T: TypeReflection>(
     object: &mut T,
     values: &serde_json::Value,
-) -> anyhow::Result<()> {
+) -> Result<(), ReflectionError> {
     internal_apply_json_edit(
         Some((object as *mut dyn TypeReflection).cast::<()>()),
         object.get_type(),
@@ -61,10 +61,12 @@ fn internal_apply_json_edit(
     target: Option<*mut ()>,
     offline_type_def: TypeDefinition,
     json_value: &serde_json::Value,
-) -> anyhow::Result<serde_json::Value> {
+) -> Result<serde_json::Value, ReflectionError> {
     match offline_type_def {
         TypeDefinition::None => {
-            return Err(anyhow::anyhow!("error"));
+            return Err(ReflectionError::InvalidFieldType(
+                offline_type_def.get_type_name().into(),
+            ));
         }
         TypeDefinition::BoxDyn(box_dyn_descriptor) => {
             // Read the 'typetag' map
@@ -72,13 +74,10 @@ fn internal_apply_json_edit(
                 if let Some((k, value)) = object.iter().next() {
                     // Find the dyn Type descriptor using factory
                     if let Some(instance_type) = (box_dyn_descriptor.find_type)(k.as_str()) {
-                        if let Ok(result_json) =
-                            internal_apply_json_edit(None, instance_type, value)
-                        {
-                            // 'typetag' require a wrapper, add a Value::Object()
-                            return Ok(serde_json::json!({ k: result_json }));
-                        }
+                        let result_json = internal_apply_json_edit(None, instance_type, value)?;
+                        return Ok(serde_json::json!({ k: result_json }));
                     }
+                    return Err(ReflectionError::TypeNotFound(k.clone()));
                 }
             }
         }
@@ -89,19 +88,25 @@ fn internal_apply_json_edit(
                 unsafe {
                     (array_descriptor.clear)(array_target);
                 }
-                for (i, value) in array.iter().enumerate() {
+
+                for value in array.iter() {
                     // For each element, apply the values and return the merge json
-                    if let Ok(merged_json) =
-                        internal_apply_json_edit(None, array_descriptor.inner_type, value)
-                    {
-                        // Add the new element into the array using the merged_json result
-                        unsafe {
-                            (array_descriptor.insert_element)(
-                                array_target,
-                                i,
-                                &mut <dyn erased_serde::Deserializer<'_>>::erase(&merged_json),
-                            )?;
+                    match internal_apply_json_edit(None, array_descriptor.inner_type, value) {
+                        Ok(merged_json) => {
+                            // Add the new element into the array using the merged_json result
+                            unsafe {
+                                (array_descriptor.insert_element)(
+                                    array_target,
+                                    None,
+                                    &mut <dyn erased_serde::Deserializer<'_>>::erase(&merged_json),
+                                )?;
+                            }
                         }
+                        Err(ReflectionError::TypeNotFound(type_name)) => {
+                            // Ignore missing type
+                            lgn_tracing::warn!("Skipping unknown type: {}", type_name);
+                        }
+                        Err(error) => return Err(error),
                     }
                 }
             }
@@ -162,7 +167,7 @@ fn internal_apply_json_edit(
             if let Some(target) = target {
                 if let serde_json::Value::Object(object) = json_value {
                     struct_descriptor.fields.iter().try_for_each(
-                        |offline_field| -> anyhow::Result<()> {
+                        |offline_field| -> Result<(), ReflectionError> {
                             if let Some(field_value) = object.get(&offline_field.field_name) {
                                 let field_base = unsafe {
                                     target.cast::<u8>().add(offline_field.offset).cast::<()>()
@@ -171,7 +176,17 @@ fn internal_apply_json_edit(
                                     Some(field_base),
                                     offline_field.field_type,
                                     field_value,
-                                )?;
+                                )
+                                .map_err(|err| {
+                                    ReflectionError::FieldError {
+                                        field_path: format!(
+                                            "{}.{}",
+                                            struct_descriptor.base_descriptor.type_name,
+                                            offline_field.field_name
+                                        ),
+                                        inner_error: err.to_string(),
+                                    }
+                                })?;
                             }
                             Ok(())
                         },
@@ -186,6 +201,7 @@ fn internal_apply_json_edit(
                     ty.get_type(),
                     json_value,
                 )?;
+
                 // Re-serialize the entire struct to generated a merge_json to return to the parent array/option
                 let mut buffer = Vec::new();
                 let mut json = serde_json::Serializer::new(&mut buffer);

@@ -63,12 +63,15 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
         pub struct #offline_identifier_processor {}
 
         impl lgn_data_runtime::AssetLoader for #offline_identifier_processor {
-            fn load(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
                 let mut instance = #offline_identifier::default();
+
                 let values : serde_json::Value = serde_json::from_reader(reader)
-                    .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME,
+                        format!("Error parsing json values ({})", err)))?;
+
                 lgn_data_model::json_utils::reflection_apply_json_edit::<#offline_identifier>(&mut instance, &values)
-                    .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
                 Ok(Box::new(instance))
             }
 
@@ -93,20 +96,19 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
                 Some(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME)
             }
 
-            fn write_resource(&self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
+            fn write_resource(&self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> Result<usize, lgn_data_offline::resource::ResourceProcessorError> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
-                let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).
-                    map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+                let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance())?;
 
                 serde_json::to_writer_pretty(writer, &values).
-                    map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
+                    map_err(|err| lgn_data_offline::resource::ResourceProcessorError::ResourceSerializationFailed(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
                 Ok(1)
             }
 
 
-            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
+            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_offline::resource::ResourceProcessorError> {
                 use lgn_data_runtime::AssetLoader;
-                self.load(reader)
+                Ok(self.load(reader)?)
             }
 
             fn get_resource_reflection<'a>(&self, resource: &'a dyn std::any::Any) -> Option<&'a dyn lgn_data_model::TypeReflection> {

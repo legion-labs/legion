@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
-use lgn_data_model::implement_primitive_type_def;
+use lgn_data_model::{implement_primitive_type_def, ReflectionError};
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
@@ -393,7 +393,7 @@ pub fn extract_resource_dependencies(
 
     impl PropertyCollector for ExtractResourcePathId {
         type Item = Option<Self>;
-        fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
+        fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
             if let TypeDefinition::Primitive(primitive_descriptor) = item_info.type_def {
                 if primitive_descriptor.base_descriptor.type_name == "ResourcePathId" {
                     if let Some(file_descriptor) = item_info.field_descriptor {
@@ -417,6 +417,7 @@ pub fn extract_resource_dependencies(
                     }
 
                     let path = String::from_utf8(output)?;
+
                     if let Ok(res_id) =
                         ResourcePathId::from_str(path.trim_start_matches('"').trim_end_matches('"'))
                     {

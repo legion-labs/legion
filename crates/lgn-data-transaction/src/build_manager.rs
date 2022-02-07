@@ -1,4 +1,4 @@
-use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
@@ -17,7 +17,7 @@ impl BuildManager {
         options: DataBuildOptions,
         project: &Project,
         manifest: Manifest,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, Error> {
         let editor_env = CompilationEnv {
             target: Target::Game,
             platform: Platform::Windows,
@@ -37,7 +37,7 @@ impl BuildManager {
         &mut self,
         resource_id: ResourceTypeAndId,
         project: &Project,
-    ) -> anyhow::Result<(ResourcePathId, Vec<ResourceTypeAndId>)> {
+    ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
         let runtime_type = if resource_id.kind == ResourceType::new(b"offline_debugcube") {
@@ -78,7 +78,7 @@ impl BuildManager {
             }
             Err(e) => {
                 error!("Data Build {} Failed: '{}'", resource_id, e);
-                Err(anyhow::Error::new(e))
+                Err(e)
             }
         }
     }

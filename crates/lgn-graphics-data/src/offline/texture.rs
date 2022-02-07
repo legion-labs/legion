@@ -2,8 +2,8 @@
 
 use std::{any::Any, io};
 
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor};
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Texture type enumeration.
@@ -40,7 +40,10 @@ impl OfflineResource for Texture {
 pub struct TextureProcessor {}
 
 impl AssetLoader for TextureProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let texture: Texture = bincode::deserialize_from(reader).unwrap();
         Ok(Box::new(texture))
     }
@@ -69,7 +72,7 @@ impl ResourceProcessor for TextureProcessor {
         &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
-    ) -> std::io::Result<usize> {
+    ) -> Result<usize, ResourceProcessorError> {
         let texture = resource.downcast_ref::<Texture>().unwrap();
         bincode::serialize_into(writer, texture).unwrap();
         Ok(1)
@@ -78,7 +81,7 @@ impl ResourceProcessor for TextureProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        self.load(reader)
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        Ok(self.load(reader)?)
     }
 }

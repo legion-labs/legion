@@ -1,6 +1,16 @@
-use thiserror::Error;
+use crate::{utils::ReflectionError, BaseDescriptor, TypeDefinition, TypeReflection};
 
-use crate::{BaseDescriptor, TypeDefinition, TypeReflection};
+type DeleteElementFunction = unsafe fn(
+    array: *mut (),
+    index: usize,
+    serializer: Option<&mut dyn ::erased_serde::Serializer>,
+) -> Result<(), ReflectionError>;
+
+type DeleteValueFunction = unsafe fn(
+    array: *mut (),
+    value_to_delete: &mut dyn ::erased_serde::Deserializer<'_>,
+    old_value: Option<&mut dyn ::erased_serde::Serializer>,
+) -> Result<usize, ReflectionError>;
 
 /// Define the reflection of a Array typpe
 pub struct ArrayDescriptor {
@@ -11,46 +21,31 @@ pub struct ArrayDescriptor {
     /// Function to return the array size
     pub len: unsafe fn(array: *const ()) -> usize,
     /// Function to return an element raw pointer
-    pub get: unsafe fn(array: *const (), index: usize) -> anyhow::Result<*const ()>,
+    pub get: unsafe fn(array: *const (), index: usize) -> Result<*const (), ReflectionError>,
     /// Function to return an element mutable raw pointer
-    pub get_mut: unsafe fn(array: *mut (), index: usize) -> anyhow::Result<*mut ()>,
+    pub get_mut: unsafe fn(array: *mut (), index: usize) -> Result<*mut (), ReflectionError>,
     /// Function to clear an array
     pub clear: unsafe fn(array: *mut ()),
 
     /// Function to insert a new defualt element at the specified index
     pub insert_element: unsafe fn(
         array: *mut (),
-        index: usize,
+        index: Option<usize>,
         deserializer: &mut dyn ::erased_serde::Deserializer<'_>,
-    ) -> anyhow::Result<()>,
+    ) -> Result<(), ReflectionError>,
+
     /// Function to insert a new element
-    pub delete_element: unsafe fn(
-        array: *mut (),
-        index: usize,
-        serializer: Option<&mut dyn ::erased_serde::Serializer>,
-    ) -> anyhow::Result<()>,
+    pub delete_element: DeleteElementFunction,
+
     /// Function to reorder an element with an array
-    pub reorder_element:
-        unsafe fn(array: *mut (), old_index: usize, new_index: usize) -> anyhow::Result<()>,
+    pub reorder_element: unsafe fn(
+        array: *mut (),
+        old_index: usize,
+        new_index: usize,
+    ) -> Result<(), ReflectionError>,
 
     /// Function to search and delete a value in an array
-    pub delete_value: unsafe fn(
-        array: *mut (),
-        value_to_delete: &mut dyn ::erased_serde::Deserializer<'_>,
-        old_value: Option<&mut dyn ::erased_serde::Serializer>,
-    ) -> anyhow::Result<usize>,
-}
-
-#[derive(Error, Debug)]
-/// `ArrayDescriptor` Error
-pub enum ArrayDescriptorError {
-    /// Error when accessing out of bounds index
-    #[error("Invalid array index {0} on ArrayDescriptor: '{1}'")]
-    InvalidArrayIndex(usize, &'static str),
-
-    /// Error when accessing out of bounds index
-    #[error("Value not found on ArrayDescriptor: '{0}'")]
-    InvalidArrayValue(&'static str),
+    pub delete_value: DeleteValueFunction,
 }
 
 ///
@@ -77,21 +72,27 @@ macro_rules! implement_array_descriptor {
                 len: |array: *const ()| unsafe { (*(array as *const Vec<$type_id>)).len() },
                 get: |array: *const (), index: usize| unsafe {
                     (*(array as *const Vec<$type_id>))
-                        .get(index).ok_or($crate::ArrayDescriptorError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")).into())
+                        .get(index).ok_or_else(|| $crate::ReflectionError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")))
                         .and_then(|value| Ok((value as *const $type_id).cast::<()>()))
                     },
                 get_mut:|array: *mut (), index: usize| unsafe {
                     (*(array as *mut Vec<$type_id>))
-                        .get_mut(index).ok_or($crate::ArrayDescriptorError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")).into())
+                        .get_mut(index).ok_or_else(|| $crate::ReflectionError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")))
                         .and_then(|value| Ok((value as *mut $type_id).cast::<()>()))
                 },
                 clear:|array: *mut ()| unsafe {
                     (*(array as *mut Vec<$type_id>)).clear();
                 },
 
-                insert_element : |array: *mut(), index : usize, deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
+                insert_element : |array: *mut(), index : Option<usize>, deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
                     let array = &mut (*(array as *mut Vec<$type_id>));
-                    let new_element : $type_id = ::erased_serde::deserialize(deserializer)?;
+                    let new_element : $type_id = ::erased_serde::deserialize(deserializer)
+                        .map_err(|err|$crate::utils::ReflectionError::ErrorErasedSerde(err))?;
+
+                    let index = index.unwrap_or(array.len());
+                    if index > array.len() {
+                        return Err($crate::ReflectionError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")));
+                    }
                     array.insert(index, new_element);
                     Ok(())
                 },
@@ -99,7 +100,8 @@ macro_rules! implement_array_descriptor {
                     let array = &mut (*(array as *mut Vec<$type_id>));
                     let old_value = array.remove(index);
                     if let Some(serializer) = old_value_ser {
-                       ::erased_serde::serialize(&old_value, serializer)?;
+                       ::erased_serde::serialize(&old_value, serializer)
+                       .map_err(|err| $crate::utils::ReflectionError::ErrorErasedSerde(err))?;
                     }
                     Ok(())
                 },
@@ -111,15 +113,19 @@ macro_rules! implement_array_descriptor {
                 },
 
                 delete_value : | array: *mut(), value_de: &mut dyn::erased_serde::Deserializer<'_>, old_value_ser: Option<&mut dyn::erased_serde::Serializer> | unsafe {
-                    let value_to_delete = ::erased_serde::deserialize::<$type_id>(value_de)?;
+                    let value_to_delete = ::erased_serde::deserialize::<$type_id>(value_de)
+                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+
                     let array = &mut (*(array as *mut Vec<$type_id>));
                     if let Some((old_value,index)) = $crate::array_remove_value(array,&value_to_delete) {
                         if let Some(serializer) = old_value_ser {
-                            ::erased_serde::serialize(&old_value, serializer)?;
+                            ::erased_serde::serialize(&old_value, serializer)
+                            .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+
                         }
                         return Ok(index);
                     }
-                    Err($crate::ArrayDescriptorError::InvalidArrayValue(concat!("Vec<",stringify!($type_id),">")).into())
+                    Err($crate::ReflectionError::InvalidArrayValue(concat!("Vec<",stringify!($type_id),">")))
                 }
             };
         }
