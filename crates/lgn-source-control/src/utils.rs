@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
-use lgn_tracing::imetric;
 use std::cell::RefCell;
-use std::fs;
 use std::path::{Path, PathBuf};
 use url::Url;
 
@@ -47,13 +45,6 @@ pub(crate) fn parse_url_or_path(s: &str) -> Result<UrlOrPath> {
         (Err(_), Some(validation)) => Err(anyhow::anyhow!("{}", validation)),
         (Err(_), None) => Ok(UrlOrPath::Path(s.into())),
     }
-}
-
-pub(crate) fn read_text_file(path: &Path) -> Result<String> {
-    let contents =
-        fs::read_to_string(path).context(format!("error reading file: {}", path.display()))?;
-    imetric!("read file size", "bytes", contents.len() as u64);
-    Ok(contents)
 }
 
 pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> Result<PathBuf> {

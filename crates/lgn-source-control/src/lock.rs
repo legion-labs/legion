@@ -19,8 +19,11 @@ pub async fn verify_empty_lock_domain(workspace: &Workspace, lock_domain_id: &st
 
 pub async fn lock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
     let workspace = Workspace::find(path_specified.as_ref()).await?;
-    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
-    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
+    let current_branch = workspace.get_current_branch().await?;
+    let repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch.name)
+        .await?;
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace.root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
@@ -36,8 +39,11 @@ pub async fn lock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
 
 pub async fn unlock_file_command(path_specified: impl AsRef<Path>) -> Result<()> {
     let workspace = Workspace::find(path_specified.as_ref()).await?;
-    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
-    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
+    let current_branch = workspace.get_current_branch().await?;
+    let repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch.name)
+        .await?;
     let relative_path = make_canonical_relative_path(&workspace.root, path_specified)?;
     workspace
         .index_backend
@@ -48,8 +54,11 @@ pub async fn unlock_file_command(path_specified: impl AsRef<Path>) -> Result<()>
 
 pub async fn list_locks_command() -> Result<()> {
     let workspace = Workspace::find_in_current_directory().await?;
-    let (branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
-    let repo_branch = workspace.index_backend.read_branch(&branch_name).await?;
+    let current_branch = workspace.get_current_branch().await?;
+    let repo_branch = workspace
+        .index_backend
+        .read_branch(&current_branch.name)
+        .await?;
     let locks = workspace
         .index_backend
         .find_locks_in_domain(&repo_branch.lock_domain_id)
@@ -67,10 +76,10 @@ pub async fn list_locks_command() -> Result<()> {
 }
 
 pub async fn assert_not_locked(workspace: &Workspace, path_specified: &Path) -> Result<()> {
-    let (current_branch_name, _current_commit) = workspace.backend.get_current_branch().await?;
+    let current_branch = workspace.get_current_branch().await?;
     let repo_branch = workspace
         .index_backend
-        .read_branch(&current_branch_name)
+        .read_branch(&current_branch.name)
         .await?;
     let relative_path = make_canonical_relative_path(&workspace.root, path_specified)?;
 
@@ -83,7 +92,7 @@ pub async fn assert_not_locked(workspace: &Workspace, path_specified: &Path) -> 
             relative_path,
         ))? {
         Some(lock) => {
-            if lock.branch_name == current_branch_name
+            if lock.branch_name == current_branch.name
                 && lock.workspace_id == workspace.registration.id
             {
                 Ok(()) //locked by this workspace on this branch - all good

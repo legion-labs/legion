@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    make_path_absolute, new_index_backend, utils::parse_url_or_path, CanonicalPath, Change,
-    ChangeType, Commit, Error, IndexBackend, MapOtherError, Result, Tree, TreeFilter,
-    WorkspaceRegistration,
+    make_path_absolute, new_index_backend, utils::parse_url_or_path, Branch, BranchTree,
+    CanonicalPath, Change, ChangeType, Commit, Error, IndexBackend, MapOtherError, Result, Tree,
+    TreeFilter, WorkspaceRegistration,
 };
 
 mod backend;
@@ -307,20 +307,21 @@ impl Workspace {
         .to_string()
     }
 
-    /// Get the current branch and commit.
-    pub async fn get_current_branch_and_commit_id(&self) -> Result<(String, String)> {
-        self.backend.get_current_branch().await
-    }
-
     /// Get the commits chain, starting from the specified commit.
     pub async fn get_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
         self.index_backend.read_commits(commit_id, depth).await
     }
 
+    /// Get the current commit.
+    pub async fn get_current_commit(&self) -> Result<Commit> {
+        let current_branch = self.backend.get_current_branch().await?;
+
+        self.index_backend.read_commit(&current_branch.head).await
+    }
+
     /// Get the tree of files and directories for the current branch and commit.
     pub async fn get_current_tree(&self) -> Result<Tree> {
-        let (_, current_commit_id) = self.backend.get_current_branch().await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let commit = self.get_current_commit().await?;
 
         self.get_tree_for_commit(&commit, [].into()).await
     }
@@ -364,9 +365,7 @@ impl Workspace {
         let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
 
         // Also get the current tree to check if the files are already added.
-        let (_, current_commit_id) = self.backend.get_current_branch().await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
-        let tree = self.get_tree_for_commit(&commit, [].into()).await?;
+        let tree = self.get_current_tree().await?;
 
         let staged_changes = self.get_staged_changes().await?;
 
@@ -451,69 +450,28 @@ impl Workspace {
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn edit_files(
+    ///
+    /// Calling this method on newly added files is not an error but does
+    /// nothing.
+    pub async fn checkout_files(
         &self,
         paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
         let canonical_paths = self.to_canonical_paths(paths).await?;
         let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
-        let (_, current_commit_id) = self.backend.get_current_branch().await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let commit = self.get_current_commit().await?;
         let tree = self.get_tree_for_commit(&commit, canonical_paths).await?;
         let staged_changes = self.get_staged_changes().await?;
 
         let mut changes_to_save = vec![];
 
         for (canonical_path, file) in fs_tree.files() {
-            let change = if let Some(staged_change) = staged_changes.get(&canonical_path) {
-                match staged_change.change_type() {
-                    ChangeType::Add { new_info } => {
-                        let info = file.info();
+            if staged_changes.contains_key(&canonical_path) {
+                // The file is already staged, nothing to do.
+                continue;
+            }
 
-                        if new_info == info {
-                            // The file is already staged as add or edit with the correct hash, nothing to do.
-                            continue;
-                        }
-
-                        self.cache_blob(&canonical_path).await?;
-
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Add {
-                                new_info: info.clone(),
-                            },
-                        )
-                    }
-                    ChangeType::Edit { old_info, new_info } => {
-                        let info = file.info();
-
-                        if new_info == info {
-                            // The file is already staged as add or edit with the correct hash, nothing to do.
-                            continue;
-                        }
-
-                        self.cache_blob(&canonical_path).await?;
-
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Edit {
-                                old_info: old_info.clone(),
-                                new_info: info.clone(),
-                            },
-                        )
-                    }
-                    ChangeType::Delete { old_info } => {
-                        // The file was staged for deletion: replace it with an edit.
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Edit {
-                                old_info: old_info.clone(),
-                                new_info: file.info().clone(),
-                            },
-                        )
-                    }
-                }
-            } else if let Some(tree_node) = tree.find(&canonical_path)? {
+            let change = if let Some(tree_node) = tree.find(&canonical_path)? {
                 match tree_node {
                     Tree::Directory { .. } => {
                         // The file is a directory, it cannot be edited.
@@ -528,6 +486,7 @@ impl Workspace {
                     ),
                 }
             } else {
+                // The file is not known to the source-control: assume we mean to add it.
                 Change::new(
                     canonical_path,
                     ChangeType::Add {
@@ -573,8 +532,7 @@ impl Workspace {
         let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
 
         // Also get the current tree to check if the files actually exist in the tree.
-        let (_, current_commit_id) = self.backend.get_current_branch().await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let commit = self.get_current_commit().await?;
         let tree = self.get_tree_for_commit(&commit, canonical_paths).await?;
 
         let staged_changes = self.get_staged_changes().await?;
@@ -773,12 +731,12 @@ impl Workspace {
     pub async fn commit(&self, message: &str) -> Result<String> {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
-        let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
-        let mut branch = self.index_backend.read_branch(&current_branch_name).await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let current_branch = self.backend.get_current_branch().await?;
+        let mut branch = self.index_backend.read_branch(&current_branch.name).await?;
+        let commit = self.index_backend.read_commit(&current_branch.head).await?;
 
         // Early check in case we are out-of-date long before making the commit.
-        if branch.head != current_commit_id {
+        if branch.head != current_branch.head {
             return Err(Error::stale_branch(branch));
         }
 
@@ -828,7 +786,7 @@ impl Workspace {
             .await
             .map_other_err("failed to save tree")?;
 
-        let mut parent_commits = BTreeSet::from([current_commit_id]);
+        let mut parent_commits = BTreeSet::from([current_branch.head]);
 
         for pending_branch_merge in self.backend.read_pending_branch_merges().await? {
             parent_commits.insert(pending_branch_merge.head.clone());
@@ -849,9 +807,7 @@ impl Workspace {
 
         branch.head = commit.id.clone();
 
-        self.backend
-            .set_current_branch(&current_branch_name, &commit.id)
-            .await?;
+        self.backend.set_current_branch(&branch).await?;
 
         let mut changes_to_save = Vec::new();
 
@@ -929,8 +885,7 @@ impl Workspace {
 
     /// Get a list of the currently unstaged changes.
     pub async fn get_unstaged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
-        let (_, current_commit_id) = self.backend.get_current_branch().await?;
-        let commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let commit = self.get_current_commit().await?;
         let staged_changes = self.backend.get_staged_changes().await?;
         let tree = self
             .get_tree_for_commit(&commit, [].into())
@@ -990,60 +945,107 @@ impl Workspace {
         Ok(result)
     }
 
-    /// Checkout a different branch and updates the current files.
-    pub async fn checkout(&self, branch_name: &str) -> Result<()> {
-        let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
+    /// Get the current branch.
+    pub async fn get_current_branch(&self) -> Result<Branch> {
+        self.backend.get_current_branch().await
+    }
 
-        if branch_name == current_branch_name {
+    /// Create a branch with the given name and the current commit as its head.
+    ///
+    /// The newly created branch will be a descendant of the current branch and
+    /// share the same lock domain.
+    pub async fn create_branch(&self, branch_name: &str) -> Result<Branch> {
+        let current_branch = self.backend.get_current_branch().await?;
+
+        if branch_name == current_branch.name {
+            return Err(Error::already_on_branch(current_branch.name));
+        }
+
+        let old_branch = self.index_backend.read_branch(&current_branch.name).await?;
+        let new_branch = old_branch.branch_out(branch_name.to_string());
+
+        self.index_backend.insert_branch(&new_branch).await?;
+        self.backend.set_current_branch(&new_branch).await?;
+
+        Ok(new_branch)
+    }
+
+    /// Get the branches in the repository.
+    pub async fn get_branches(&self) -> Result<BTreeSet<Branch>> {
+        Ok(self
+            .index_backend
+            .read_branches()
+            .await?
+            .into_iter()
+            .collect())
+    }
+
+    /// Get the branches tree in the repository.
+    pub async fn get_branches_tree(&self) -> Result<BTreeSet<BranchTree>> {
+        Ok(BranchTree::from_branches(
+            self.index_backend.read_branches().await?,
+        ))
+    }
+
+    /// Switch to a different branch and updates the current files.
+    ///
+    /// Returns the commit id of the new branch as well as the changes.
+    pub async fn switch(&self, branch_name: &str) -> Result<(String, BTreeSet<Change>)> {
+        let current_branch = self.backend.get_current_branch().await?;
+
+        if branch_name == current_branch.name {
             return Err(Error::already_on_branch(branch_name.to_string()));
         }
 
-        let from_commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let from_commit = self.index_backend.read_commit(&current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
         let branch = self.index_backend.read_branch(branch_name).await?;
         let to_commit = self.index_backend.read_commit(&branch.head).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        self.checkout_tree(&from, &to).await
+        let changes = self.sync_tree(&from, &to).await?;
+
+        Ok((branch.head, changes))
     }
 
     /// Sync the current branch to its latest commit.
     ///
     /// # Returns
     ///
-    /// The commit id that the workspace was synced to.
-    pub async fn sync(&self) -> Result<String> {
-        let (current_branch_name, _) = self.backend.get_current_branch().await?;
+    /// The commit id that the workspace was synced to as well as the changes.
+    pub async fn sync(&self) -> Result<(String, BTreeSet<Change>)> {
+        let current_branch = self.backend.get_current_branch().await?;
 
-        let branch = self.index_backend.read_branch(&current_branch_name).await?;
+        let branch = self.index_backend.read_branch(&current_branch.name).await?;
 
-        self.sync_to(&branch.head).await
+        let changes = self.sync_to(&branch.head).await?;
+
+        Ok((branch.head, changes))
     }
 
     /// Sync the current branch with the specified commit.
     ///
     /// # Returns
     ///
-    /// The commit id that the workspace was synced to.
-    pub async fn sync_to(&self, commit_id: &str) -> Result<String> {
-        let (current_branch_name, current_commit_id) = self.backend.get_current_branch().await?;
+    /// The changes.
+    pub async fn sync_to(&self, commit_id: &str) -> Result<BTreeSet<Change>> {
+        let mut current_branch = self.backend.get_current_branch().await?;
 
-        if current_commit_id == commit_id {
-            return Ok(commit_id.to_string());
+        if current_branch.head == commit_id {
+            return Ok([].into());
         }
 
-        let from_commit = self.index_backend.read_commit(&current_commit_id).await?;
+        let from_commit = self.index_backend.read_commit(&current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
         let to_commit = self.index_backend.read_commit(commit_id).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        self.checkout_tree(&from, &to).await?;
+        let changes = self.sync_tree(&from, &to).await?;
 
-        self.backend
-            .set_current_branch(&current_branch_name, commit_id)
-            .await?;
+        current_branch.head = commit_id.to_string();
+        self.backend.set_current_branch(&current_branch).await?;
 
-        Ok(to_commit.id)
+        Ok(changes)
     }
 
     async fn make_file_read_only(&self, path: impl AsRef<Path>, readonly: bool) -> Result<()> {
@@ -1212,14 +1214,12 @@ impl Workspace {
             .await
     }
 
-    async fn initial_checkout(&self, branch_name: &str) -> Result<()> {
+    async fn initial_checkout(&self, branch_name: &str) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
         let branch = self.index_backend.read_branch(branch_name).await?;
 
         // 2. Mark the branch as the current branch in the workspace backend.
-        self.backend
-            .set_current_branch(&branch.name, &branch.head)
-            .await?;
+        self.backend.set_current_branch(&branch).await?;
 
         // 3. Read the head commit information.
         let commit = self.index_backend.read_commit(&branch.head).await?;
@@ -1228,10 +1228,10 @@ impl Workspace {
         let tree = self.index_backend.read_tree(&commit.root_tree_id).await?;
 
         // 5. Write the files on disk.
-        self.checkout_tree(&Tree::empty(), &tree).await
+        self.sync_tree(&Tree::empty(), &tree).await
     }
 
-    async fn checkout_tree(&self, from: &Tree, to: &Tree) -> Result<()> {
+    async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {
         let changes_to_apply = from.get_changes_to(to);
 
         // Little optimization: no point in computing all that if we know we are
@@ -1258,11 +1258,7 @@ impl Workspace {
             for change in &changes_to_apply {
                 match change.change_type() {
                     ChangeType::Delete { .. } | ChangeType::Edit { .. } => {
-                        let abs_path = change.canonical_path().to_path_buf(&self.root);
-
-                        tokio::fs::remove_file(&abs_path)
-                            .await
-                            .map_other_err(format!("failed to delete `{}`", abs_path.display()))?;
+                        self.remove_file(change.canonical_path()).await?;
                     }
                     ChangeType::Add { .. } => {}
                 };
@@ -1301,7 +1297,7 @@ impl Workspace {
             };
         }
 
-        Ok(())
+        Ok(changes_to_apply)
     }
 
     async fn remove_file(&self, path: &CanonicalPath) -> Result<()> {

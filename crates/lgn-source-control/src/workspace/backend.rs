@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 
-use crate::{CanonicalPath, Change, PendingBranchMerge, ResolvePending, Result};
+use crate::{Branch, CanonicalPath, Change, PendingBranchMerge, ResolvePending, Result};
 
 #[async_trait]
 pub trait WorkspaceBackend: Send + Sync {
-    async fn get_current_branch(&self) -> Result<(String, String)>;
-    async fn set_current_branch(&self, branch_name: &str, commit_id: &str) -> Result<()>;
+    async fn get_current_branch(&self) -> Result<Branch>;
+    async fn set_current_branch(&self, branch: &Branch) -> Result<()>;
     async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>>;
     async fn save_staged_changes(&self, changes: &[Change]) -> Result<()>;
     async fn clear_staged_changes(&self, changes: &[Change]) -> Result<()>;

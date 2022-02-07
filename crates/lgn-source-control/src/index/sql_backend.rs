@@ -276,9 +276,7 @@ impl SqlIndexBackend {
     async fn initialize_repository_data(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     ) -> Result<()> {
-        let lock_domain_id = uuid::Uuid::new_v4().to_string();
         let tree = Tree::empty();
-
         let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
 
         let initial_commit = Commit::new_unique_now(
@@ -291,12 +289,7 @@ impl SqlIndexBackend {
 
         Self::insert_commit_transactional(transaction, &initial_commit).await?;
 
-        let main_branch = Branch::new(
-            String::from("main"),
-            initial_commit.id,
-            String::new(),
-            lock_domain_id,
-        );
+        let main_branch = Branch::new(String::from("main"), initial_commit.id);
 
         Self::insert_branch_transactional(transaction, &main_branch).await?;
 
@@ -330,12 +323,12 @@ impl SqlIndexBackend {
             .await
             .map_other_err("failed to read the branch from MySQL")?;
 
-        Ok(Branch::new(
-            String::from(name),
-            row.get("head"),
-            row.get("parent"),
-            row.get("lock_domain_id"),
-        ))
+        Ok(Branch {
+            name: name.to_string(),
+            head: row.get("head"),
+            parent: row.get("parent"),
+            lock_domain_id: row.get("lock_domain_id"),
+        })
     }
 
     async fn insert_branch_transactional(
@@ -346,10 +339,10 @@ impl SqlIndexBackend {
             "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
             Self::TABLE_BRANCHES
         ))
-        .bind(branch.name.clone())
-        .bind(branch.head.clone())
-        .bind(branch.parent.clone())
-        .bind(branch.lock_domain_id.clone())
+        .bind(&branch.name)
+        .bind(&branch.head)
+        .bind(branch.parent.as_deref().unwrap_or_default())
+        .bind(&branch.lock_domain_id)
         .execute(transaction)
         .await
         .map_other_err(&format!("failed to insert the branch `{}`", &branch.name))
@@ -926,15 +919,12 @@ impl IndexBackend for SqlIndexBackend {
         .map_other_err(format!("error fetching branch `{}`", branch_name))?
         {
             None => Ok(None),
-            Some(row) => {
-                let branch = Branch::new(
-                    String::from(branch_name),
-                    row.get("head"),
-                    row.get("parent"),
-                    row.get("lock_domain_id"),
-                );
-                Ok(Some(branch))
-            }
+            Some(row) => Ok(Some(Branch {
+                name: branch_name.to_string(),
+                head: row.get("head"),
+                parent: row.get("parent"),
+                lock_domain_id: row.get("lock_domain_id"),
+            })),
         }
     }
 
@@ -955,13 +945,11 @@ impl IndexBackend for SqlIndexBackend {
             lock_domain_id
         ))?
         .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                String::from(lock_domain_id),
-            )
+        .map(|row| Branch {
+            name: row.get("name"),
+            head: row.get("head"),
+            parent: row.get("parent"),
+            lock_domain_id: lock_domain_id.to_string(),
         })
         .collect())
     }
@@ -978,13 +966,13 @@ impl IndexBackend for SqlIndexBackend {
         .await
         .map_other_err("error fetching branches")?
         .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                row.get("lock_domain_id"),
-            )
+        .map(|row| Branch {
+            name: row.get("name"),
+            head: row.get("head"),
+            parent: row
+                .get::<Option<String>, _>("parent")
+                .filter(|s| !s.is_empty()),
+            lock_domain_id: row.get("lock_domain_id"),
         })
         .collect())
     }
