@@ -14,21 +14,6 @@ pub struct StaticMeshRenderData {
     pub colors: Option<Vec<Vec4>>,
 }
 
-impl Default for MeshFormat {
-    fn default() -> Self {
-    }
-}
-
-#[derive(Default)]
-pub struct MeshInfo {
-    pub format: MeshFormat,
-    pub position_offset: u32,
-    pub normal_offset: u32,
-    pub tex_coord_offset: u32,
-    pub index_offset: u32,
-    pub color_offset: u32,
-}
-
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
     let mut normal = Vec3::new(pos.x, 0.0, pos.z).normalize();
     if let Some(normal_opt) = normal_opt {
@@ -743,14 +728,10 @@ impl StaticMeshRenderData {
     pub fn new_gltf(path: String) -> Vec<Self> {
         mesh_import_export::GltfWrapper::new_mesh(path)
     }
-
-    pub fn new_assimp(path: String) -> Vec<Self> {
-        mesh_import_export::AssimpWrapper::new_mesh(path)
-    }
 }
 
 #[allow(unsafe_code)]
-fn calculate_tangents(
+pub fn calculate_tangents(
     positions: &[Vec4],
     tex_coords: &[Vec2],
     indices: &Option<Vec<u32>>,

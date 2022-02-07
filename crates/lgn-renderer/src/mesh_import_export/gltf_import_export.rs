@@ -1,7 +1,7 @@
-use gltf::mesh::util::ReadIndices;
-use lgn_math::{Vec3, Vec4};
+use gltf::mesh::util::{ReadIndices, ReadTexCoords};
+use lgn_math::{Vec3, Vec4, Vec2};
 
-use crate::static_mesh_render_data::StaticMeshRenderData;
+use crate::static_mesh_render_data::{StaticMeshRenderData, calculate_tangents};
 
 pub struct GltfWrapper {}
 
@@ -15,6 +15,7 @@ impl GltfWrapper {
             for primitive in mesh.primitives() {
                 let mut positions = Vec::new();
                 let mut normals = Vec::new();
+                let mut tex_coords = Vec::new();
                 let mut indices = Vec::new();
 
                 println!("- Primitive #{}", primitive.index());
@@ -27,6 +28,16 @@ impl GltfWrapper {
                 if let Some(iter) = reader.read_normals() {
                     for normal in iter {
                         normals.push(normal.into());
+                    }
+                }
+                if let Some(tex_coords_option) = reader.read_tex_coords(0) {
+                    match tex_coords_option {
+                        ReadTexCoords::F32(iter) => {
+                            for tex_coord in iter {
+                                tex_coords.push(Vec2::new(tex_coord[0], tex_coord[1]));
+                            }
+                        },
+                        _ => unreachable!("Integer UVs are not supported")
                     }
                 }
                 if let Some(indices_option) = reader.read_indices() {
@@ -48,22 +59,23 @@ impl GltfWrapper {
                         }
                     }
                 }
-
+                
+                let positions = positions
+                .into_iter()
+                .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 1.0))
+                .collect::<Vec<Vec4>>();
+                let normals = normals
+                .into_iter()
+                .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
+                .collect();
+                let indices = Some(indices);
+                let tangents = calculate_tangents(&positions, &tex_coords, &indices);
                 meshes.push(StaticMeshRenderData {
-                    positions: Some(
-                        positions
-                            .into_iter()
-                            .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 1.0))
-                            .collect(),
-                    ),
-                    normals: Some(
-                        normals
-                            .into_iter()
-                            .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
-                            .collect(),
-                    ),
-                    tex_coords: None,
-                    indices: Some(indices),
+                    positions: Some(positions),
+                    normals: Some(normals),
+                    tangents: Some(tangents),
+                    tex_coords: Some(tex_coords),
+                    indices,
                     colors: None,
                 });
             }

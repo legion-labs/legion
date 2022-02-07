@@ -157,12 +157,6 @@ pub fn ui_mesh_manager(
                 StaticMeshRenderData::new_gltf(ui_state.path.clone()),
             );
         }
-        if ui.small_button("Load mesh (assimp)").clicked() {
-            mesh_manager.add_meshes(
-                renderer.as_ref(),
-                StaticMeshRenderData::new_assimp(ui_state.path.clone()),
-            );
-        }
         /*for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
             let mut selected_text = format!("Mesh ID {}", mesh.mesh_id);
             let mut selected_idx = mesh.mesh_id;
