@@ -134,7 +134,7 @@ impl FromStr for Target {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "game" => Ok(Self::Game),
             "server" => Ok(Self::Server),
             "backend" => Ok(Self::Backend),
@@ -168,7 +168,7 @@ impl FromStr for Platform {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "windows" => Ok(Self::Windows),
             "unix" => Ok(Self::Unix),
             "consolex" => Ok(Self::ConsoleX),
