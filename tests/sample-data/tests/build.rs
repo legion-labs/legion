@@ -26,11 +26,13 @@ pub fn data_build_exe() -> PathBuf {
 fn exec_create_build_index(
     path: impl AsRef<Path>,
     project: impl AsRef<Path>,
+    cas: impl AsRef<Path>,
 ) -> std::io::Result<std::process::Output> {
     let mut command = std::process::Command::new(data_build_exe());
     command.arg("create");
     command.arg(path.as_ref().to_str().unwrap());
     command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
+    command.arg(format!("--cas={}", cas.as_ref().to_str().unwrap()));
     let output = command.output()?;
     assert!(output.status.success());
     Ok(output)
@@ -78,9 +80,11 @@ fn incremental_build() {
     let sampledata_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let project = sampledata_dir.join("project.index");
     let buildindex = work_dir.as_ref().to_owned();
+    let temp_dir = work_dir.path().join("temp");
+    std::fs::create_dir(&temp_dir).unwrap();
 
     // create build index and do a source pull
-    exec_create_build_index(&buildindex, &project).expect("new build index");
+    exec_create_build_index(&buildindex, &project, &temp_dir).expect("new build index");
 
     insta::assert_snapshot!("initial_index", read_build_output(&buildindex));
 
@@ -91,8 +95,8 @@ fn incremental_build() {
     //
     // first data build
     //
-    let out = exec_data_compile(root_entity, &buildindex, &project, work_dir.path())
-        .expect("build completed");
+    let out =
+        exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
     let manifest: Manifest = serde_json::from_slice(&out.stdout).expect("valid manifest");
     insta::assert_json_snapshot!("first_manifest", manifest);
@@ -103,8 +107,8 @@ fn incremental_build() {
     //
     // incremental data build
     //
-    let out = exec_data_compile(root_entity, &buildindex, &project, work_dir.path())
-        .expect("build completed");
+    let out =
+        exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
     let incremental_manifest: Manifest =
         serde_json::from_slice(&out.stdout).expect("valid manifest");

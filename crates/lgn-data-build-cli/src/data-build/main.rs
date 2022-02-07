@@ -31,6 +31,9 @@ enum Commands {
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
+        /// Compiled Asset Store addresses where generated source index will be stored.
+        #[clap(long)]
+        cas: String,
     },
     /// Compile input resource
     #[clap(name = "compile")]
@@ -73,10 +76,11 @@ async fn main() -> Result<(), String> {
         Commands::Create {
             build_index,
             project,
+            cas,
         } => {
             let (mut build, project) =
                 DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
-                    .content_store(&ContentStoreAddr::from("."))
+                    .content_store(&ContentStoreAddr::from(&cas[..]))
                     .create_with_project(project)
                     .await
                     .map_err(|e| format!("failed creating build index {}", e))?;
