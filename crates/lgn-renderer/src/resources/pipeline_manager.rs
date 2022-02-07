@@ -8,7 +8,7 @@ use lgn_graphics_cgen_runtime::{
 use lgn_pso_compiler::{
     CompileDefine, CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile,
 };
-use lgn_tracing::span_fn;
+use lgn_tracing::{error, span_fn};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 use strum::{EnumCount, IntoEnumIterator};
@@ -79,7 +79,7 @@ impl PipelineManager {
             if self.pipelines[i].is_none() {
                 let info = &infos[i];
                 let shader = self.create_shader(info.key);
-                if let Ok(shader) = shader {
+                if let Some(shader) = shader {
                     let pipeline = (info.create_pipeline)(&self.device_context, &shader);
                     self.pipelines[i] = Some(pipeline);
                 }
@@ -88,7 +88,7 @@ impl PipelineManager {
     }
 
     #[span_fn]
-    fn create_shader(&self, key: CGenShaderKey) -> Result<Shader, ()> {
+    fn create_shader(&self, key: CGenShaderKey) -> Option<Shader> {
         // get the instance
         let shader_instance = self.shader_instance(key).unwrap();
 
@@ -113,7 +113,7 @@ impl PipelineManager {
             }
         }
 
-        // build the entrypoint list
+        // build the entry point list
         let mut entry_points: SmallVec<[EntryPoint<'_>; ShaderStage::COUNT]> = SmallVec::new();
         for shader_stage in ShaderStage::iter() {
             let shader_stage_flag = shader_stage.into();
@@ -127,17 +127,25 @@ impl PipelineManager {
         }
 
         // compile
-        let shader_build_result = self
-            .shader_compiler
-            .compile(&CompileParams {
-                shader_source: ShaderSource::Path(shader_family.path),
-                global_defines: &[CompileDefine {
-                    name: &shader_family.name.to_uppercase(),
-                    value: None,
-                }],
-                entry_points: &entry_points,
-            })
-            .map_err(|_e| ())?;
+        let shader_build_result = self.shader_compiler.compile(&CompileParams {
+            shader_source: ShaderSource::Path(shader_family.path),
+            global_defines: &[CompileDefine {
+                name: &shader_family.name.to_uppercase(),
+                value: None,
+            }],
+            entry_points: &entry_points,
+        });
+
+        let shader_build_result = match shader_build_result {
+            Ok(r) => r,
+            Err(e) => {
+                error!(
+                    "Failed to compile shader '{}' with error:\n{}",
+                    shader_family.name, e
+                );
+                return None;
+            }
+        };
 
         // build the final shader
         let mut shader_stage_defs: SmallVec<[ShaderStageDef; ShaderStage::COUNT]> = SmallVec::new();
@@ -145,17 +153,24 @@ impl PipelineManager {
         for shader_stage in ShaderStage::iter() {
             let shader_stage_flag = shader_stage.into();
             if (shader_instance.stage_flags & shader_stage_flag) == shader_stage_flag {
-                let shader_module = self
-                    .device_context
-                    .create_shader_module(
-                        ShaderPackage::SpirV(
-                            shader_build_result.spirv_binaries[entry_point_index]
-                                .bytecode
-                                .clone(),
-                        )
-                        .module_def(),
+                let shader_module = self.device_context.create_shader_module(
+                    ShaderPackage::SpirV(
+                        shader_build_result.spirv_binaries[entry_point_index]
+                            .bytecode
+                            .clone(),
                     )
-                    .map_err(|_e| ())?;
+                    .module_def(),
+                );
+                let shader_module = match shader_module {
+                    Ok(r) => r,
+                    Err(e) => {
+                        error!(
+                            "Failed to create module for shader '{}' with error:\n{}",
+                            shader_family.name, e
+                        );
+                        return None;
+                    }
+                };
 
                 shader_stage_defs.push(ShaderStageDef {
                     entry_point: Self::entry_point(shader_stage).to_string(),
@@ -167,9 +182,10 @@ impl PipelineManager {
             }
         }
 
-        Ok(self
-            .device_context
-            .create_shader(shader_stage_defs.to_vec()))
+        Some(
+            self.device_context
+                .create_shader(shader_stage_defs.to_vec()),
+        )
     }
 
     fn shader_family(&self, key: CGenShaderKey) -> Option<&CGenShaderFamily> {
