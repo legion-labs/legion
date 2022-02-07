@@ -582,7 +582,7 @@ impl NullRootSignature {
 pub(crate) struct NullSampler;
 
 impl NullSampler {
-    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> Self {
         unimplemented!()
     }
 
@@ -674,7 +674,7 @@ impl Swapchain {
 pub(crate) struct NullTextureView;
 
 impl NullTextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> GfxResult<Self> {
+    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
         unimplemented!()
     }
 
@@ -697,7 +697,7 @@ impl NullTexture {
         device_context: &DeviceContext,
         existing_image: Option<NullRawImage>,
         texture_def: &TextureDef,
-    ) -> GfxResult<(Self, u32)> {
+    ) -> (Self, u32) {
         unimplemented!()
     }
 
