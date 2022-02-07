@@ -19,6 +19,8 @@ use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
+    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default().unwrap();
+
     let project_dir = PathBuf::from("examples/pong/data");
 
     clean_folders(&project_dir);

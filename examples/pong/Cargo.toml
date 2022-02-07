@@ -17,6 +17,7 @@ runtime-srv = { path = "../../crates/lgn-runtime-srv", version = "0.1.0" }
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "runtime",
 ] }
+lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 
 dolly = "0.2.0"
 rand = "0.8"
