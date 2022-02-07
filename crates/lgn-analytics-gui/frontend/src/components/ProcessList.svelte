@@ -8,18 +8,23 @@
   import { link } from "svelte-navigator";
   import { grpc } from "@improbable-eng/grpc-web";
   import { getAccessToken } from "@lgn/web-client/src/stores/userInfo";
-         
-  const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl("http://" + location.hostname + ":9090", {})
-  );
 
-  let processList: ProcessInstance[] = [];
-
-  async function getRecentProcesses() {
+  async function makeGrpcClient(){
     let metadata = new grpc.Metadata();
     const token = await getAccessToken();
     metadata.set('Authorization', "Bearer " + token);
-    const response = await client.list_recent_processes({}, metadata);
+    const options = { metadata: metadata };
+    const client = new PerformanceAnalyticsClientImpl(
+      new GrpcWebImpl("http://" + location.hostname + ":9090", options)
+    );
+    return client;
+  }
+
+  let client : PerformanceAnalyticsClientImpl | null = null;
+  let processList: ProcessInstance[] = [];
+
+  async function getRecentProcesses() {
+    const response = await client.list_recent_processes({});
     processList = response.processes;
   }
 
@@ -31,7 +36,8 @@
     processList = response.processes;
   }
 
-  onMount(() => {
+  onMount(async () => {
+    client = await makeGrpcClient();
     getRecentProcesses();
   });
 
