@@ -48,7 +48,7 @@ impl VideoStream {
         async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution)?;
+        let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution);
 
         Ok(Self {
             async_rt,

@@ -184,7 +184,6 @@ fn presenter_snapshot_system(
                     snapshot_descriptor.height as u32,
                 ),
             )
-            .unwrap()
         });
 
         commands.spawn().insert(render_surface);

@@ -103,7 +103,7 @@ impl RgbToYuvConverter {
         pipeline_manager: &PipelineManager,
         device_context: &DeviceContext,
         resolution: Resolution,
-    ) -> anyhow::Result<Self> {
+    ) -> Self {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
         let pipeline_handle = pipeline_manager.register_pipeline(
@@ -124,11 +124,11 @@ impl RgbToYuvConverter {
         let resolution_dependent_resources =
             ResolutionDependentResources::new(device_context, render_frame_count, resolution);
 
-        Ok(Self {
+        Self {
             render_frame_count: 1,
             resolution_dependent_resources,
             pipeline_handle,
-        })
+        }
     }
 
     pub fn resize(&mut self, device_context: &DeviceContext, resolution: Resolution) -> bool {

@@ -23,7 +23,7 @@ impl OffscreenHelper {
         pipeline_manager: &PipelineManager,
         device_context: &DeviceContext,
         resolution: RenderSurfaceExtents,
-    ) -> anyhow::Result<Self> {
+    ) -> Self {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
         let pipeline_handle = pipeline_manager.register_pipeline(
@@ -97,13 +97,13 @@ impl OffscreenHelper {
             tiling: TextureTiling::Linear,
         });
 
-        Ok(Self {
+        Self {
             render_image,
             render_image_rtv,
             copy_image,
             pipeline_handle,
             bilinear_sampler,
-        })
+        }
     }
 
     #[span_fn]

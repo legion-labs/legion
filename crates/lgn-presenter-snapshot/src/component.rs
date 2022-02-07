@@ -33,16 +33,16 @@ impl PresenterSnapshot {
         pipeline_manager: &PipelineManager,
         render_surface_id: RenderSurfaceId,
         resolution: RenderSurfaceExtents,
-    ) -> anyhow::Result<Self> {
-        let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution)?;
+    ) -> Self {
+        let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution);
 
-        Ok(Self {
+        Self {
             snapshot_name: snapshot_name.to_string(),
             frame_idx: 0,
             frame_target,
             render_surface_id,
             offscreen_helper,
-        })
+        }
     }
 
     pub(crate) fn present(
