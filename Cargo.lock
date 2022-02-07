@@ -261,6 +261,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-broadcast"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90622698a1218e0b2fb846c97b5f19a0831f6baddee73d9454156365ccfa473b"
+dependencies = ["easy-parallel", "event-listener", "futures-core"]
+
+[[package]]
 name = "async-channel"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -283,6 +290,20 @@ dependencies = [
  "futures-lite",
  "once_cell",
  "slab",
+]
+
+[[package]]
+name = "async-executor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "871f9bb5e0a22eeb7e8cf16641feb87c9dc67032ccf8ff49e772eb9941d3a965"
+dependencies = [
+    "async-task",
+    "concurrent-queue",
+    "fastrand",
+    "futures-lite",
+    "once_cell",
+    "slab",
 ]
 
 [[package]]
