@@ -2,7 +2,7 @@ use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
-use lgn_tracing::{error, trace};
+use lgn_tracing::trace;
 
 use crate::{
     DeviceContext, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Texture,
@@ -57,7 +57,7 @@ impl VulkanTexture {
         device_context: &DeviceContext,
         existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
-    ) -> GfxResult<(Self, u32)> {
+    ) -> (Self, u32) {
         texture_def.verify();
         //
         // Determine desired image type
@@ -163,10 +163,7 @@ impl VulkanTexture {
             let (image, allocation, _allocation_info) = device_context
                 .vk_allocator()
                 .create_image(&image_create_info, &allocation_create_info)
-                .map_err(|_e| {
-                    error!("Error creating image");
-                    vk::Result::ERROR_UNKNOWN
-                })?;
+                .unwrap();
 
             VulkanRawImage {
                 vk_image: image,
@@ -345,7 +342,7 @@ impl VulkanTexture {
         // Used for hashing framebuffers
         let texture_id = NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
-        Ok((Self { image, aspect_mask }, texture_id))
+        (Self { image, aspect_mask }, texture_id)
     }
 
     pub fn destroy(&mut self, device_context: &DeviceContext) {

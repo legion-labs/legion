@@ -10,12 +10,6 @@ pub enum RenderStage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
-pub enum PrepareLabel {
-    AddedStaticMeshes,
-    UpdateInstanceIds,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum CommandBufferLabel {
     Generate,
     Submit,

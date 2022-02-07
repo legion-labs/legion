@@ -1,17 +1,16 @@
 use std::sync::Arc;
 
+use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
     components::StaticMesh,
-    resources::{DefaultMaterialType, MeshManager},
+    resources::{GpuUniformDataContext, MeshManager},
 };
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
-
-use crate::asset_entities::AssetToEntityMap;
 
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceTypeAndId,
@@ -20,6 +19,7 @@ pub(crate) fn load_ecs_asset<T>(
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
     mesh_manager: &Res<'_, MeshManager>,
+    data_context: &mut GpuUniformDataContext<'_>,
 ) -> bool
 where
     T: AssetToECS + Resource + 'static,
@@ -33,6 +33,7 @@ where
                 registry,
                 asset_to_entity_map,
                 mesh_manager,
+                data_context,
             );
 
             if let Some(entity_id) = entity {
@@ -67,6 +68,7 @@ pub(crate) trait AssetToECS {
         _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _mesh_manager: &Res<'_, MeshManager>,
+        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         None
     }
@@ -80,6 +82,7 @@ impl AssetToECS for runtime_data::Entity {
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         mesh_manager: &Res<'_, MeshManager>,
+        data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -101,7 +104,8 @@ impl AssetToECS for runtime_data::Entity {
                     mesh_manager,
                     static_mesh.mesh_id as usize,
                     static_mesh.color,
-                    DefaultMaterialType::Default,
+                    None,
+                    data_context,
                 ));
             } else if let Some(script) =
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
@@ -156,6 +160,7 @@ impl AssetToECS for runtime_data::Instance {
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _mesh_manager: &Res<'_, MeshManager>,
+        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -180,6 +185,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         mesh_manager: &Res<'_, MeshManager>,
+        data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -200,7 +206,8 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             mesh_manager,
             instance.mesh_id,
             instance.color,
-            DefaultMaterialType::Default,
+            None,
+            data_context,
         ));
 
         Some(entity.id())
@@ -214,7 +221,8 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _mesh_manager: &Res<'_, MeshManager>,
+        _mesh_mamager: &Res<'_, MeshManager>,
+        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)

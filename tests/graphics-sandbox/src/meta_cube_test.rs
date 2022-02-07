@@ -2,10 +2,14 @@ use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Res};
-use lgn_renderer::components::StaticMesh;
+use lgn_renderer::{
+    components::StaticMesh,
+    resources::{GpuUniformData, GpuUniformDataContext},
+};
 use lgn_transform::components::{GlobalTransform, Transform};
+use png::OutputInfo;
 
-use super::{DefaultMaterialType, DefaultMeshType, MeshManager};
+use super::{DefaultMeshType, MeshManager};
 
 #[derive(Default)]
 pub struct MetaCubePlugin {
@@ -31,35 +35,30 @@ impl Plugin for MetaCubePlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn init_stress_test(
     commands: Commands<'_, '_>,
+    uniform_data: Res<'_, GpuUniformData>,
     mesh_manager: Res<'_, MeshManager>,
     meta_cube: Res<'_, MetaCubeResource>,
 ) {
-    meta_cube.initialize(commands, &mesh_manager);
+    meta_cube.initialize(commands, uniform_data, &mesh_manager);
 }
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct ColorData {
-    data: Vec<u8>,
-    width: u32,
-    height: u32,
+    pub(crate) data: Vec<u8>,
+    pub(crate) info: OutputInfo,
 }
 
 /// Load the image using `png`
 pub(crate) fn load_image(path: &Path) -> io::Result<ColorData> {
-    use png::ColorType::Rgb;
     let decoder = png::Decoder::new(File::open(path)?);
     let mut reader = decoder.read_info()?;
     let mut img_data = vec![0; reader.output_buffer_size()];
     let info = reader.next_frame(&mut img_data)?;
 
-    match info.color_type {
-        Rgb => Ok(ColorData {
-            data: img_data,
-            width: info.width,
-            height: info.height,
-        }),
-        _ => unreachable!("uncovered color type"),
-    }
+    Ok(ColorData {
+        data: img_data,
+        info,
+    })
 }
 
 struct MetaCubeResource {
@@ -72,7 +71,14 @@ impl MetaCubeResource {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn initialize(&self, mut commands: Commands<'_, '_>, mesh_manager: &MeshManager) {
+    fn initialize(
+        &self,
+        mut commands: Commands<'_, '_>,
+        uniform_data: Res<'_, GpuUniformData>,
+        mesh_manager: &MeshManager,
+    ) {
+        let mut data_context = GpuUniformDataContext::new(&uniform_data);
+
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("refs")
@@ -105,7 +111,8 @@ impl MetaCubeResource {
                             mesh_manager,
                             DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
-                            DefaultMaterialType::Default,
+                            None,
+                            &mut data_context,
                         ));
                 }
             }

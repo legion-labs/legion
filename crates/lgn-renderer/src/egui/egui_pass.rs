@@ -82,7 +82,7 @@ impl EguiPass {
             max_anisotropy: 1.0,
             compare_op: CompareOp::LessOrEqual,
         };
-        let sampler = device_context.create_sampler(&sampler_def).unwrap();
+        let sampler = device_context.create_sampler(&sampler_def);
 
         Self {
             pipeline_handle,
@@ -122,12 +122,10 @@ impl EguiPass {
         let texture = render_context
             .renderer()
             .device_context()
-            .create_texture(&texture_def)
-            .unwrap();
+            .create_texture(&texture_def);
 
-        let texture_view = texture
-            .create_view(&TextureViewDef::as_shader_resource_view(&texture_def))
-            .unwrap();
+        let texture_view =
+            texture.create_view(&TextureViewDef::as_shader_resource_view(&texture_def));
 
         let egui_font_image = Arc::clone(&egui_ctx.font_image());
         let pixels = egui_font_image

@@ -6,14 +6,14 @@ use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
     components::{CameraComponent, ManipulatorComponent, StaticMesh},
-    resources::{DefaultMaterialType, DefaultMeshType, MeshManager},
+    resources::{DefaultMeshType, MeshManager},
 };
 
 use super::{
     position_manipulator::PositionManipulator,
     rotation_manipulator::{RotationComponents, RotationManipulator},
     scale_manipulator::ScaleManipulator,
-    PickingIdBlock, PickingManager,
+    PickingIdContext, PickingManager,
 };
 
 use std::sync::{Arc, Mutex};
@@ -64,18 +64,10 @@ impl ManipulatorPart {
         transform: Transform,
         mesh_id: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
-        picking_block: &mut PickingIdBlock,
+        picking_context: &mut PickingIdContext<'_>,
         mesh_manager: &MeshManager,
     ) -> Self {
-        let mut static_mesh = StaticMesh::from_default_meshes(
-            mesh_manager,
-            mesh_id as usize,
-            color,
-            DefaultMaterialType::Default,
-        );
-
         let mut entity_commands = commands.spawn();
-
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
@@ -89,8 +81,12 @@ impl ManipulatorPart {
             })
             .id();
 
-        let picking_id = picking_block.acquire_picking_id(entity).unwrap();
-        static_mesh.picking_id = picking_id;
+        let static_mesh = StaticMesh::new_cpu_only(
+            color,
+            mesh_id as usize,
+            mesh_manager,
+            picking_context.aquire_picking_id(entity),
+        );
 
         entity_commands.insert(static_mesh);
 
@@ -222,18 +218,19 @@ impl ManipulatorManager {
         picking_manager: Res<'_, PickingManager>,
     ) {
         let mut inner = self.inner.lock().unwrap();
+        let mut picking_context = PickingIdContext::new(&picking_manager);
 
         inner
             .position
-            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
 
         inner
             .rotation
-            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
 
         inner
             .scale
-            .add_manipulator_parts(&mut commands, &mesh_manager, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
     }
 
     pub fn current_manipulator_type(&self) -> ManipulatorType {

@@ -64,7 +64,14 @@ struct Lighting {
     float3 diffuse;
 };
 
-Lighting DefaultBRDF(float3 N, float3 V, float3 L, float NoL, MaterialData material, float3 albedo)
+struct LightingMaterial {
+    float3 albedo;
+    float metalness;
+    float roughness;
+    float reflectance;
+};
+
+Lighting DefaultBRDF(float3 N, float3 V, float3 L, float NoL, LightingMaterial material)
 {
     float3 H = normalize(L + V);
 
@@ -73,11 +80,11 @@ Lighting DefaultBRDF(float3 N, float3 V, float3 L, float NoL, MaterialData mater
     float LoH = saturate(dot(L, H));
     float VoH = saturate(dot(V, H));
 
-    float roughness = material.base_roughness * material.base_roughness;
-    float3 f0 = ComputeF0(material.reflectance, albedo, material.base_metalness);
+    float roughness = material.roughness * material.roughness;
+    float3 f0 = ComputeF0(material.reflectance, material.albedo, material.metalness);
 
     Lighting lighting;
-	lighting.diffuse  = NoL * albedo * Fd_Lambert() * (1.0 - material.base_metalness);
+	lighting.diffuse  = NoL * material.albedo * Fd_Lambert() * (1.0 - material.metalness);
     lighting.specular = NoL * specular(roughness, f0, NoV, NoL, NoH, LoH);
     
     return lighting;

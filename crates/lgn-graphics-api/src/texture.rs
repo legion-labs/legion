@@ -144,7 +144,7 @@ impl Texture {
             .swap(false, Ordering::Relaxed)
     }
 
-    pub fn new(device_context: &DeviceContext, texture_def: &TextureDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, texture_def: &TextureDef) -> Self {
         Self::from_existing(device_context, None, texture_def)
     }
 
@@ -152,11 +152,11 @@ impl Texture {
         device_context: &DeviceContext,
         existing_image: Option<BackendRawImage>,
         texture_def: &TextureDef,
-    ) -> GfxResult<Self> {
+    ) -> Self {
         let (backend_texture, texture_id) =
-            BackendTexture::from_existing(device_context, existing_image, texture_def)?;
+            BackendTexture::from_existing(device_context, existing_image, texture_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(TextureInner {
                 device_context: device_context.clone(),
                 texture_def: *texture_def,
@@ -164,7 +164,7 @@ impl Texture {
                 texture_id,
                 backend_texture,
             }),
-        })
+        }
     }
 
     pub fn definition(&self) -> &TextureDef {
@@ -180,7 +180,7 @@ impl Texture {
         self.backend_unmap_texture();
     }
 
-    pub fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<TextureView> {
+    pub fn create_view(&self, view_def: &TextureViewDef) -> TextureView {
         TextureView::new(self, view_def)
     }
 }

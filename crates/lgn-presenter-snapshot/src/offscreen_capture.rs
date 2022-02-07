@@ -61,7 +61,7 @@ impl OffscreenHelper {
             address_mode_w: AddressMode::ClampToEdge,
             ..SamplerDef::default()
         };
-        let bilinear_sampler = device_context.create_sampler(&sampler_def)?;
+        let bilinear_sampler = device_context.create_sampler(&sampler_def);
 
         let render_image = device_context.create_texture(&TextureDef {
             extents: Extents3D {
@@ -76,11 +76,11 @@ impl OffscreenHelper {
             usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Optimal,
-        })?;
+        });
 
         let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_target_view(
             render_image.definition(),
-        ))?;
+        ));
 
         let copy_image = device_context.create_texture(&TextureDef {
             extents: Extents3D {
@@ -95,7 +95,7 @@ impl OffscreenHelper {
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Linear,
-        })?;
+        });
 
         Ok(Self {
             render_image,

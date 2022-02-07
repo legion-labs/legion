@@ -21,6 +21,16 @@ pub struct PickingIdBlock {
     base_picking_id: u32,
 }
 
+impl Default for PickingIdBlock {
+    fn default() -> Self {
+        Self {
+            picking_ids: Vec::new(),
+            entity_ids: Vec::new(),
+            base_picking_id: u32::MAX,
+        }
+    }
+}
+
 impl PickingIdBlock {
     pub fn new(base_picking_id: u32, block_size: u32) -> Self {
         let mut generation_counts = Vec::with_capacity(block_size as usize);
@@ -72,6 +82,10 @@ impl PickingIdBlock {
 
     pub fn base_picking_id(&self) -> u32 {
         self.base_picking_id
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.picking_ids.is_empty()
     }
 }
 
@@ -350,7 +364,7 @@ impl PickingManager {
                 }
 
                 if !manipulator_picked || is_manipulator {
-                    let mut add_component = commands.get_or_spawn(entity_id);
+                    let mut add_component = commands.entity(entity_id);
                     let mut new_component = PickedComponent::new();
                     new_component.replace_picking_ids(
                         picked_entities[i],
@@ -401,5 +415,40 @@ impl PickingManager {
         let inner = self.inner.lock().unwrap();
 
         inner.manip_entity_base_transform
+    }
+}
+
+pub struct PickingIdContext<'a> {
+    picking_manager: &'a PickingManager,
+    picking_block: PickingIdBlock,
+}
+
+impl<'a> Drop for PickingIdContext<'a> {
+    fn drop(&mut self) {
+        self.picking_manager
+            .release_picking_id_block(std::mem::take(&mut self.picking_block));
+    }
+}
+
+impl<'a> PickingIdContext<'a> {
+    pub fn new(picking_manager: &'a PickingManager) -> Self {
+        Self {
+            picking_manager,
+            picking_block: picking_manager.acquire_picking_id_block(),
+        }
+    }
+
+    pub fn aquire_picking_id(&mut self, entity: Entity) -> u32 {
+        let mut new_picking_id = u32::MAX;
+        while new_picking_id == u32::MAX {
+            if let Some(picking_id) = self.picking_block.acquire_picking_id(entity) {
+                new_picking_id = picking_id;
+            } else {
+                self.picking_manager
+                    .release_picking_id_block(std::mem::take(&mut self.picking_block));
+                self.picking_block = self.picking_manager.acquire_picking_id_block();
+            }
+        }
+        new_picking_id
     }
 }

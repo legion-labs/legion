@@ -116,13 +116,13 @@ impl SizeDependentResources {
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
-        let texture = device_context.create_texture(&texture_def).unwrap();
+        let texture = device_context.create_texture(&texture_def);
 
         let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let texture_srv = texture.create_view(&srv_def).unwrap();
+        let texture_srv = texture.create_view(&srv_def);
 
         let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
-        let texture_rtv = texture.create_view(&rtv_def).unwrap();
+        let texture_rtv = texture.create_view(&rtv_def);
 
         let depth_stencil_def = TextureDef {
             extents: Extents3D {
@@ -139,12 +139,11 @@ impl SizeDependentResources {
             tiling: TextureTiling::Optimal,
         };
 
-        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def).unwrap();
+        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def);
         let depth_stencil_texture_view_def =
             TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
-        let depth_stencil_texture_view = depth_stencil_texture
-            .create_view(&depth_stencil_texture_view_def)
-            .unwrap();
+        let depth_stencil_texture_view =
+            depth_stencil_texture.create_view(&depth_stencil_texture_view_def);
 
         Self {
             texture,

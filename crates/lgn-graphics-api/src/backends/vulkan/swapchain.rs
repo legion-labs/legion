@@ -164,7 +164,7 @@ impl VulkanSwapchain {
         })?;
         command_buffer.begin()?;
 
-        let swapchain_images = swapchain._images()?;
+        let swapchain_images = swapchain._images();
 
         let image_barriers: Vec<_> = swapchain_images
             .iter()
@@ -401,7 +401,7 @@ impl SwapchainVulkanInstance {
         })
     }
 
-    fn _images(&self) -> GfxResult<Vec<SwapchainImage>> {
+    fn _images(&self) -> Vec<SwapchainImage> {
         let mut swapchain_images = Vec::with_capacity(self.swapchain_images.len());
         for (image_index, image) in self.swapchain_images.iter().enumerate() {
             let raw_image = VulkanRawImage {
@@ -429,10 +429,10 @@ impl SwapchainVulkanInstance {
                     mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
                 },
-            )?;
+            );
 
-            let render_target_view = texture
-                .create_view(&TextureViewDef::as_render_target_view(texture.definition()))?;
+            let render_target_view =
+                texture.create_view(&TextureViewDef::as_render_target_view(texture.definition()));
 
             swapchain_images.push(SwapchainImage {
                 texture,
@@ -441,7 +441,7 @@ impl SwapchainVulkanInstance {
             });
         }
 
-        Ok(swapchain_images)
+        swapchain_images
     }
 
     fn query_swapchain_support(

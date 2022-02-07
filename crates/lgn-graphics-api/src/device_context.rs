@@ -233,11 +233,11 @@ impl DeviceContext {
         Swapchain::new(self, raw_window_handle, swapchain_def)
     }
 
-    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<Sampler> {
+    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> Sampler {
         Sampler::new(self, sampler_def)
     }
 
-    pub fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<Texture> {
+    pub fn create_texture(&self, texture_def: &TextureDef) -> Texture {
         Texture::new(self, texture_def)
     }
 
