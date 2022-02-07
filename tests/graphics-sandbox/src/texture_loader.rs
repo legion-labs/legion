@@ -22,8 +22,7 @@ pub fn load_texture(
     let height = raw_data.info.height;
 
     let format = match raw_data.info.color_type {
-        ColorType::Rgb => Format::BC1_RGBA_UNORM_BLOCK,
-        ColorType::Rgba => Format::BC1_RGBA_UNORM_BLOCK,
+        ColorType::Rgb | ColorType::Rgba => Format::BC1_RGBA_UNORM_BLOCK,
         ColorType::Grayscale => Format::BC4_UNORM_BLOCK,
         _ => unreachable!(),
     };
