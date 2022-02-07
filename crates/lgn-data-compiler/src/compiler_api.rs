@@ -86,7 +86,7 @@ use crate::{
         COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
-    CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
+    CompiledResource, CompiledResources, CompilerHash, Locale, Platform, Target,
 };
 
 /// Current version of data pipeline.
@@ -401,7 +401,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
                 let source_store = HddContentStore::open(cas_addr.clone())
                     .ok_or(CompilerError::AssetStoreError)?;
 
-                let manifest = Manifest {
+                let manifest = CompiledResources {
                     compiled_resources: derived_deps.clone(),
                 };
 

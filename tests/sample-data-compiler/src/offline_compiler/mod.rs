@@ -79,8 +79,6 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
         fs::create_dir(&runtime_dir).expect("unable to create runtime sub-folder");
     }
 
-    let offline_manifest_path = temp_dir.join("editor.manifest");
-
     let platform = Platform::Windows;
     let locale = Locale::new("en");
 
@@ -96,7 +94,6 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
         let manifest = build
             .compile(
                 asset_path,
-                Some(offline_manifest_path),
                 &CompilationEnv {
                     target: Target::Server,
                     platform,

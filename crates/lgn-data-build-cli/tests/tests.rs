@@ -86,7 +86,6 @@ async fn build_device() {
     build
         .compile(
             derived.clone(),
-            None,
             &CompilationEnv {
                 target: Target::Game,
                 platform: Platform::Windows,
@@ -167,7 +166,6 @@ async fn no_intermediate_resource() {
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let buildindex_dir = work_dir.path();
-    let manifest_path = work_dir.path().join("output.manifest");
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -220,10 +218,6 @@ async fn no_intermediate_resource() {
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
-        command.arg(format!(
-            "--manifest={}",
-            manifest_path.to_str().expect("valid path")
-        ));
         command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
         command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
@@ -242,7 +236,7 @@ async fn no_intermediate_resource() {
     }
 
     assert!(output.status.success());
-    let _manifest: lgn_data_compiler::Manifest =
+    let _manifest: lgn_data_compiler::CompiledResources =
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }
 
@@ -253,7 +247,6 @@ async fn with_intermediate_resource() {
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let buildindex_dir = work_dir.path();
-    let manifest_path = work_dir.path().join("output.manifest");
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -308,10 +301,6 @@ async fn with_intermediate_resource() {
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
-        command.arg(format!(
-            "--manifest={}",
-            manifest_path.to_str().expect("valid path")
-        ));
         command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
         command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
@@ -330,6 +319,6 @@ async fn with_intermediate_resource() {
     }
 
     assert!(output.status.success());
-    let _manifest: lgn_data_compiler::Manifest =
+    let _manifest: lgn_data_compiler::CompiledResources =
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }

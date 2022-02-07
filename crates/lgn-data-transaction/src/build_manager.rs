@@ -61,10 +61,7 @@ impl BuildManager {
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
         self.build.source_pull(project).await?;
-        match self
-            .build
-            .compile(derived_id.clone(), None, &self.compile_env)
-        {
+        match self.build.compile(derived_id.clone(), &self.compile_env) {
             Ok(output) => {
                 info!(
                     "Data build {} Succeeded ({:?})",

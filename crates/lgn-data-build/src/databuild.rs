@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
-use std::io::Seek;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -11,7 +9,7 @@ use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
 use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
 use lgn_data_compiler::CompilerHash;
-use lgn_data_compiler::{CompiledResource, Manifest};
+use lgn_data_compiler::{CompiledResource, CompiledResources};
 use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
@@ -81,7 +79,6 @@ fn compute_context_hash(
 ///         .create_with_project(".").await.expect("new build index");
 ///
 /// build.source_pull(&project).await.expect("successful source pull");
-/// let manifest_file = &DataBuild::default_output_file();
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let env = CompilationEnv {
@@ -92,7 +89,6 @@ fn compute_context_hash(
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
-///                         Some(manifest_file.to_path_buf()),
 ///                         &env,
 ///                      ).expect("compilation output");
 /// # })
@@ -286,40 +282,10 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         compile_path: ResourcePathId,
-        manifest_file: Option<PathBuf>,
         env: &CompilationEnv,
-    ) -> Result<Manifest, Error> {
+    ) -> Result<CompiledResources, Error> {
         self.output_index.record_pathid(&compile_path);
-
-        let (mut manifest, file) = {
-            if let Some(manifest_file) = manifest_file {
-                if let Ok(file) = OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .append(false)
-                    .open(&manifest_file)
-                {
-                    if file.metadata().unwrap().len() == 0 {
-                        (Manifest::default(), Some(file))
-                    } else {
-                        let manifest_content: Manifest = serde_json::from_reader(&file)
-                            .map_err(|e| Error::InvalidManifest(e.into()))?;
-                        (manifest_content, Some(file))
-                    }
-                } else {
-                    let file = OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create_new(true)
-                        .open(manifest_file)
-                        .map_err(|e| Error::InvalidManifest(e.into()))?;
-
-                    (Manifest::default(), Some(file))
-                }
-            } else {
-                (Manifest::default(), None)
-            }
-        };
+        let mut manifest = CompiledResources::default();
 
         let CompileOutput {
             resources,
@@ -339,14 +305,6 @@ impl DataBuild {
             } else {
                 manifest.compiled_resources.push(asset);
             }
-        }
-
-        if let Some(mut file) = file {
-            file.set_len(0).unwrap();
-            file.seek(std::io::SeekFrom::Start(0)).unwrap();
-            manifest.pre_serialize();
-            serde_json::to_writer_pretty(&file, &manifest)
-                .map_err(|e| Error::InvalidManifest(e.into()))?;
         }
         Ok(manifest)
     }

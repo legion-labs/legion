@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_data_compiler::Manifest;
+use lgn_data_compiler::CompiledResources;
 
 pub fn target_dir() -> PathBuf {
     env::current_exe()
@@ -98,7 +98,7 @@ fn incremental_build() {
     let out =
         exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
-    let manifest: Manifest = serde_json::from_slice(&out.stdout).expect("valid manifest");
+    let manifest: CompiledResources = serde_json::from_slice(&out.stdout).expect("valid manifest");
     insta::assert_json_snapshot!("first_manifest", manifest);
 
     let first_buildindex = read_build_output(&buildindex);
@@ -110,7 +110,7 @@ fn incremental_build() {
     let out =
         exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
-    let incremental_manifest: Manifest =
+    let incremental_manifest: CompiledResources =
         serde_json::from_slice(&out.stdout).expect("valid manifest");
 
     insta::assert_json_snapshot!("incremental_manifest", incremental_manifest);

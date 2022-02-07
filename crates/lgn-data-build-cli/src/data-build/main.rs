@@ -49,9 +49,6 @@ enum Commands {
         /// Compiled Asset Store addresses where assets will be output.
         #[clap(long)]
         cas: String,
-        /// Manifest file path.
-        #[clap(long)]
-        manifest: Option<PathBuf>,
         /// Accept ResourceId as the compilation input and output a runtime manifest.
         #[clap(long = "rt")]
         runtime_flag: bool,
@@ -95,7 +92,6 @@ async fn main() -> Result<(), String> {
             project,
             build_index,
             cas,
-            manifest,
             runtime_flag,
             target,
             platform,
@@ -155,7 +151,6 @@ async fn main() -> Result<(), String> {
             let output = build
                 .compile(
                     derived,
-                    manifest,
                     &CompilationEnv {
                         target,
                         platform,
