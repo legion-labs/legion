@@ -453,8 +453,7 @@ async fn main() -> Result<(), String> {
             let build_index =
                 build_index.unwrap_or_else(|| workspace_dir.join("tests/sample-data/temp/"));
 
-            let project =
-                project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/"));
+            let project = project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/"));
 
             let type_map = {
                 let mut t = BTreeMap::<ResourceType, String>::new();
