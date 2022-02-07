@@ -684,7 +684,7 @@ mod tests {
 
         // committing changes does not create a new entry
         {
-            project.commit().expect("sucessful commit");
+            project.commit("test").await.expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(source_index.index_keys.keys.len(), 1 + 4);
             assert_eq!(current_checksum(&source_index), second_entry_checksum);
@@ -712,7 +712,7 @@ mod tests {
 
         // committing changes does not create a new entry
         {
-            project.commit().expect("sucessful commit");
+            project.commit("test").await.expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(source_index.index_keys.keys.len(), 1 + 4 + 4);
             assert_eq!(current_checksum(&source_index), third_checksum);

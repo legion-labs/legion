@@ -9,7 +9,7 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    IndexBackend, LocalIndexBackend, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -447,19 +447,13 @@ impl Project {
         let metadata_path = self.metadata_path(id);
 
         {
-            // todo: for now this assumes the files are staged but not committed.
+            let files = [metadata_path.as_path(), resource_path.as_path()];
 
             self.workspace
-                .revert_files(
-                    [metadata_path.as_path(), resource_path.as_path()],
-                    Staging::StagedAndUnstaged,
-                )
+                .delete_files(files)
                 .await
                 .map_err(Error::SourceControl)?;
         }
-
-        std::fs::remove_file(&resource_path).map_err(|e| Error::Io(resource_path, e))?;
-        std::fs::remove_file(&metadata_path).map_err(|e| Error::Io(metadata_path, e))?;
 
         self.db.local_resources.retain(|x| x.id != id);
         self.db.remote_resources.retain(|x| x.id != id);
@@ -476,6 +470,8 @@ impl Project {
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
+
+        self.checkout(type_id).await?;
 
         let mut meta_file = OpenOptions::new()
             .read(true)
@@ -513,14 +509,12 @@ impl Project {
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
         {
-            // todo: editing a file just added for 'Add' will fail.
-            // we still must handle other errors.
-            let _result = self
-                .workspace
-                .edit_files([metadata_path.as_path(), resource_path.as_path()])
+            self.workspace
+                .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
                 .await
-                .map_err(Error::SourceControl);
+                .map_err(Error::SourceControl)?;
         }
+
         Ok(())
     }
 
@@ -604,23 +598,27 @@ impl Project {
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
-    pub fn checkout(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
-        if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == type_id) {
+    pub async fn checkout(&mut self, id: ResourceTypeAndId) -> Result<(), Error> {
+        {
+            let metadata_path = self.metadata_path(id.id);
+            let resource_path = self.resource_path(id.id);
+            self.workspace
+                .edit_files([metadata_path.as_path(), resource_path.as_path()])
+                .await
+                .map_err(Error::SourceControl)?;
+        }
+
+        if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == id) {
             return Ok(()); // already checked out
         }
 
-        if let Some(index) = self
-            .db
-            .remote_resources
-            .iter()
-            .position(|res| *res == type_id)
-        {
+        if let Some(index) = self.db.remote_resources.iter().position(|res| *res == id) {
             let resource = self.db.remote_resources.remove(index);
             self.db.local_resources.push(resource);
             return Ok(());
         }
 
-        Err(Error::FileNotFound(type_id.to_string()))
+        Err(Error::FileNotFound(id.to_string()))
     }
 
     fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
@@ -653,13 +651,11 @@ impl Project {
         serde_json::to_writer_pretty(&file, &meta).unwrap();
 
         {
-            // todo: editing a file just added for 'Add' will fail.
-            // we still must handle other errors.
-            let _result = self
-                .workspace
+            self.workspace
                 .edit_files([path.as_path()])
                 .await
-                .map_err(Error::SourceControl);
+                .map_err(Error::SourceControl)
+                .unwrap();
         }
     }
 
@@ -672,7 +668,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        self.checkout(type_id)?;
+        self.checkout(type_id).await?;
 
         let mut old_name: Option<ResourcePathName> = None;
         self.update_meta(type_id.id, |data| {
@@ -683,7 +679,12 @@ impl Project {
     }
 
     /// Moves `local` resources to `remote` resource list.
-    pub fn commit(&mut self) -> Result<(), Error> {
+    pub async fn commit(&mut self, message: &str) -> Result<(), Error> {
+        self.workspace
+            .commit(message)
+            .await
+            .map_err(Error::SourceControl)?;
+
         self.db
             .remote_resources
             .append(&mut self.db.local_resources);
@@ -1047,12 +1048,58 @@ mod tests {
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
-        let _resources = create_actor(&mut project).await;
+        let resources = create_actor(&mut project).await;
+        let mut resources = resources.lock().await;
 
-        project.commit().unwrap();
+        let actor_id = project
+            .find_resource(&ResourcePathName::new("hero.actor"))
+            .await
+            .unwrap();
+
+        assert_eq!(project.db.local_resources.len(), 5);
+        assert_eq!(project.db.remote_resources.len(), 0);
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
+
+        // modify before commit
+        {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            content.content = 8;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+        }
+
+        project.commit("add resources").await.unwrap();
 
         assert_eq!(project.db.local_resources.len(), 0);
         assert_eq!(project.db.remote_resources.len(), 5);
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
+
+        // modify resource
+        {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            assert_eq!(content.content, 8);
+            content.content = 9;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+
+            assert_eq!(project.db.local_resources.len(), 1);
+            assert_eq!(project.db.remote_resources.len(), 4);
+            assert_eq!(project.local_resource_list().await.unwrap().len(), 1);
+        }
+
+        project.commit("update actor").await.unwrap();
+
+        assert_eq!(project.db.local_resources.len(), 0);
+        assert_eq!(project.db.remote_resources.len(), 5);
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
@@ -1094,7 +1141,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
         let resources = create_actor(&mut project).await;
-        assert!(project.commit().is_ok());
+        assert!(project.commit("rename test").await.is_ok());
         create_sky_material(&mut project, &mut *resources.lock().await).await;
 
         rename_assert(
