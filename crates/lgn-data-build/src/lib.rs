@@ -54,7 +54,6 @@
 //!  |   |- a00438b586a19d4f
 //!  |   |- source.index
 //!  |   |- output.index
-//!  | - project.index
 //! ```
 //!
 //! # Data Build Process

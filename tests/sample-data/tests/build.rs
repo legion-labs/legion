@@ -78,7 +78,7 @@ fn read_build_output(buildindex_dir: &Path) -> String {
 fn incremental_build() {
     let work_dir = tempfile::tempdir().unwrap();
     let sampledata_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let project = sampledata_dir.join("project.index");
+    let project = sampledata_dir;
     let buildindex = work_dir.as_ref().to_owned();
     let temp_dir = work_dir.path().join("temp");
     std::fs::create_dir(&temp_dir).unwrap();

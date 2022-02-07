@@ -1,7 +1,4 @@
-use std::{
-    fs::{self, File},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -25,32 +22,12 @@ async fn invalid_project() {
     let buildindex_dir = output_dir.clone();
     let cas_addr = ContentStoreAddr::from(output_dir);
 
-    // no project.index file
-    {
-        let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-            .content_store(&cas_addr)
-            .create_with_project(&project_dir)
-            .await;
+    let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
+        .content_store(&cas_addr)
+        .create_with_project(&project_dir)
+        .await;
 
-        assert!(
-            matches!(build, Err(Error::InvalidProject(_))),
-            "{:?}",
-            build
-        );
-    }
-
-    // corrupted project file
-    {
-        let _invalid_proj =
-            File::create(Project::root_to_index_path(&project_dir)).expect("valid file");
-
-        let build = DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-            .content_store(&cas_addr)
-            .create_with_project(project_dir)
-            .await;
-
-        assert!(matches!(build, Err(Error::Project(_))), "{:?}", build);
-    }
+    assert!(matches!(build, Err(Error::Project(_))), "{:?}", build);
 }
 
 #[tokio::test]
@@ -58,12 +35,9 @@ async fn create() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
 
-    let projectindex_path = {
-        let project = Project::create_new(&project_dir)
-            .await
-            .expect("failed to create a project");
-        project.indexfile_path()
-    };
+    let _project = Project::create_new(&project_dir)
+        .await
+        .expect("failed to create a project");
 
     let buildindex_dir = output_dir.clone();
     let cas_addr = ContentStoreAddr::from(output_dir);
@@ -81,6 +55,4 @@ async fn create() {
         DataBuild::version(),
     )
     .expect("failed to open build index file");
-
-    fs::remove_file(projectindex_path).unwrap();
 }

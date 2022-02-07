@@ -38,19 +38,13 @@ impl<'a> LockContext<'a> {
     }
 
     pub(crate) async fn save_changed_resources(&mut self) -> Result<(), Error> {
-        let mut need_flush = false;
         for resource_id in &self.changed_resources {
             if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
                 self.project
                     .save_resource(*resource_id, &handle, &mut self.resource_registry)
                     .await
                     .map_err(|err| Error::Project(*resource_id, err))?;
-                need_flush = true;
             }
-        }
-
-        if need_flush {
-            self.project.flush().map_err(Error::ProjectFlushFailed)?;
         }
 
         for resource_id in &self.changed_resources {

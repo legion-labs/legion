@@ -65,24 +65,6 @@ impl DataBuildOptions {
         self
     }
 
-    /// `projectindex_path` is either absolute or relative to `buildindex_dir`.
-    fn construct_project_path(
-        buildindex_dir: &Path,
-        projectindex_path: &Path,
-    ) -> Result<PathBuf, Error> {
-        let project_path = if projectindex_path.is_absolute() {
-            projectindex_path.to_owned()
-        } else {
-            buildindex_dir.join(projectindex_path)
-        };
-
-        if !project_path.exists() {
-            Err(Error::InvalidProject(project_path))
-        } else {
-            Ok(project_path)
-        }
-    }
-
     /// Create new build index for a specified project.
     ///
     /// `project_dir` must be either an absolute path or path relative to
@@ -91,11 +73,7 @@ impl DataBuildOptions {
         self,
         project_dir: impl AsRef<Path>,
     ) -> Result<(DataBuild, Project), Error> {
-        let projectindex_path = Project::root_to_index_path(project_dir);
-        let corrected_path =
-            Self::construct_project_path(&self.buildindex_dir, &projectindex_path)?;
-
-        let project = Project::open(corrected_path).await.map_err(Error::from)?;
+        let project = Project::open(project_dir).await.map_err(Error::from)?;
         let build = DataBuild::new(self, &project).await?;
         Ok((build, project))
     }

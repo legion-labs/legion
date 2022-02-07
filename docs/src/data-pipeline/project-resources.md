@@ -18,7 +18,6 @@ Example below illustrates file structure related to **source** and **offline** r
 | | - albedo.texture.meta // meta information of the derived resource (name, dependencies, checksum)
 | | - normal.texture
 | | - normal.texture.meta 
-| - project.index         // index of .meta & .export files
 ```
 ###### NOTE: GUIDs would be used for offline file names; here changed to 'name' to illustrate the example
 

@@ -181,7 +181,7 @@
 //!
 //! Configuration '"D:\\github.com\\legion-labs\\legion\\target\\debug\\scrape-config.json"' created!
 //!     Code Paths: ["D:\\github.com\\legion-labs\\legion\\lib\\", "D:\\github.com\\legion-labs\\legion\\client\\", "D:\\github.com\\legion-labs\\legion\\test\\"].
-//!     Project: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\project.index".
+//!     Project: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\".
 //!     Build Index: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\temp\\".
 //!     Resource Type Count: 20.
 //! ```
@@ -454,7 +454,7 @@ async fn main() -> Result<(), String> {
                 build_index.unwrap_or_else(|| workspace_dir.join("tests/sample-data/temp/"));
 
             let project =
-                project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/project.index"));
+                project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/"));
 
             let type_map = {
                 let mut t = BTreeMap::<ResourceType, String>::new();

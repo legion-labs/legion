@@ -106,7 +106,6 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("offline");
     clean("runtime");
     clean("temp");
-    clean("project.index");
 }
 
 // Script
