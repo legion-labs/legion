@@ -8,7 +8,7 @@ use lgn_math::prelude::*;
 use rhai::Scope;
 use rune::{
     termcolor::{ColorChoice, StandardStream},
-    FromValue, ToValue,
+    ToValue,
 };
 
 use std::{cell::RefCell, fs, rc::Rc, sync::Arc};
@@ -24,19 +24,8 @@ struct RuntimeScripts {
     pub rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
 }
 
-pub struct ScriptingPlugin {
-    mouse_motion: MouseMotion,
-}
-
-impl Default for ScriptingPlugin {
-    fn default() -> Self {
-        Self {
-            mouse_motion: MouseMotion {
-                delta: Vec2::default(),
-            },
-        }
-    }
-}
+#[derive(Default)]
+pub struct ScriptingPlugin {}
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
@@ -57,6 +46,7 @@ impl ScriptingPlugin {
         runtimes: NonSendMut<'_, RuntimeScripts>,
         scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
         registry: Res<'_, Arc<AssetRegistry>>,
+        event_cache: Res<'_, ScriptingEventCache>,
     ) {
         let mun_components = scripts
             .iter()
@@ -69,15 +59,16 @@ impl ScriptingPlugin {
             .filter(|(_entity, s)| s.script_type == 3 /*ScriptType::Rhai*/);
 
         let r = runtimes.into_inner();
-        Self::tick_mun(mun_components, r, &registry);
-        Self::tick_rune(rune_components, r, &registry);
-        Self::tick_rhai(rhai_components, r, &registry);
+        Self::tick_mun(mun_components, r, &registry, &event_cache);
+        Self::tick_rune(rune_components, r, &registry, &event_cache);
+        Self::tick_rhai(rhai_components, r, &registry, &event_cache);
     }
 
     fn tick_mun<'a>(
         mun_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
+        _event_cache: &ScriptingEventCache,
     ) {
         if runtimes.mun_runtimes.is_empty() {
             for (_entity, script) in mun_components {
@@ -120,6 +111,7 @@ impl ScriptingPlugin {
         rune_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
+        event_cache: &ScriptingEventCache,
     ) {
         if runtimes.rune_vm.is_none() {
             for (_entity, script) in rune_components {
@@ -151,13 +143,20 @@ impl ScriptingPlugin {
             }
         } else {
             for (_entity, script) in rune_components {
-                let arg = i64::from_str(&script.input_values[0]).unwrap();
-
-                let args = vec![arg.to_value().unwrap()];
                 let fn_name = &[script.entry_fn.as_str()];
                 let hashed_fn_name = rune::Hash::type_hash(fn_name);
 
-                let result = runtimes
+                let mut args: Vec<rune::Value> = Vec::new();
+                for input in &script.input_values {
+                    if input == "mouse_delta_x" {
+                        args.push(event_cache.mouse_motion.delta.x.to_value().unwrap());
+                    } else {
+                        let value = i64::from_str(input.as_str()).unwrap();
+                        args.push(value.to_value().unwrap());
+                    }
+                }
+
+                let _result = runtimes
                     .rune_vm
                     .as_mut()
                     .unwrap()
@@ -165,8 +164,6 @@ impl ScriptingPlugin {
                     .unwrap()
                     .complete()
                     .unwrap();
-                let result = i64::from_value(result).unwrap();
-                println!("Rune: fibonacci({}) = {}", &arg, result);
             }
         }
     }
@@ -175,6 +172,7 @@ impl ScriptingPlugin {
         rhai_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
+        _event_cache: &ScriptingEventCache,
     ) {
         if runtimes.rhai_eng.is_none() {
             for (_entity, script) in rhai_components {

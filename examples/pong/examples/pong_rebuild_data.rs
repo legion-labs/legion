@@ -153,21 +153,35 @@ async fn create_offline_data(
     let ground_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
-            kind: generic_data::offline::DebugCube::TYPE,
+            kind: sample_data::offline::Entity::TYPE,
             id: ResourceId::from_str("63c338c9-0d03-4636-8a17-8f0cba02b618").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
-        let debug_cube = handle
-            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        debug_cube.color = (208, 255, 208).into();
-        debug_cube.name = "Ground".to_string();
-        debug_cube.position = (0_f32, 0_f32, -0.1_f32).into();
-        debug_cube.scale = (12_f32, 8_f32, 0.01_f32).into();
+        entity.components.push(Box::new(sample_data::offline::Name {
+            name: "Ground".to_string(),
+        }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (0_f32, 0_f32, -0.1_f32).into(),
+                rotation: Quat::default(),
+                scale: (12_f32, 8_f32, 0.01_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (208, 255, 208).into(),
+                mesh: None,
+            }));
         project
             .add_resource_with_id(
                 "/scene/Ground".into(),
-                generic_data::offline::DebugCube::TYPENAME,
+                sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
                 handle,
@@ -176,28 +190,42 @@ async fn create_offline_data(
             .await
             .unwrap();
         let path: ResourcePathId = id.into();
-        path.push(generic_data::runtime::DebugCube::TYPE)
+        path.push(sample_data::runtime::Entity::TYPE)
     };
 
     // pad right
     let pad_right_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
-            kind: generic_data::offline::DebugCube::TYPE,
+            kind: sample_data::offline::Entity::TYPE,
             id: ResourceId::from_str("727eef7f-2544-4a46-be99-9aedd44a098e").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
-        let debug_cube = handle
-            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        debug_cube.color = (0, 255, 255).into();
-        debug_cube.name = "Pad Right".to_string();
-        debug_cube.position = (-2.4_f32, 0_f32, 0_f32).into();
-        debug_cube.scale = (0.4_f32, 2_f32, 0.4_f32).into();
+        entity.components.push(Box::new(sample_data::offline::Name {
+            name: "Pad Right".to_string(),
+        }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (-2.4_f32, 0_f32, 0_f32).into(),
+                rotation: Quat::default(),
+                scale: (0.4_f32, 2_f32, 0.4_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (0, 255, 255).into(),
+                mesh: None,
+            }));
         project
             .add_resource_with_id(
                 "/scene/Pad Right".into(),
-                generic_data::offline::DebugCube::TYPENAME,
+                sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
                 handle,
@@ -206,28 +234,42 @@ async fn create_offline_data(
             .await
             .unwrap();
         let path: ResourcePathId = id.into();
-        path.push(generic_data::runtime::DebugCube::TYPE)
+        path.push(sample_data::runtime::Entity::TYPE)
     };
 
     // pad left
     let pad_left_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
-            kind: generic_data::offline::DebugCube::TYPE,
+            kind: sample_data::offline::Entity::TYPE,
             id: ResourceId::from_str("719c8d5b-d320-4102-a92a-b3fa5240e140").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
-        let debug_cube = handle
-            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        debug_cube.color = (0, 0, 255).into();
-        debug_cube.name = "Pad Left".to_string();
-        debug_cube.position = (2.4_f32, 0_f32, 0_f32).into();
-        debug_cube.scale = (0.4_f32, 2_f32, 0.4_f32).into();
+        entity.components.push(Box::new(sample_data::offline::Name {
+            name: "Pad Left".to_string(),
+        }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (2.4_f32, 0_f32, 0_f32).into(),
+                rotation: Quat::default(),
+                scale: (0.4_f32, 2_f32, 0.4_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (0, 0, 255).into(),
+                mesh: None,
+            }));
         project
             .add_resource_with_id(
                 "/scene/Pad Left".into(),
-                generic_data::offline::DebugCube::TYPENAME,
+                sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
                 handle,
@@ -236,7 +278,7 @@ async fn create_offline_data(
             .await
             .unwrap();
         let path: ResourcePathId = id.into();
-        path.push(generic_data::runtime::DebugCube::TYPE)
+        path.push(sample_data::runtime::Entity::TYPE)
     };
 
     // ball
@@ -268,7 +310,6 @@ async fn create_offline_data(
                 color: (255, 16, 64).into(),
                 mesh: None,
             }));
-        // entity.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
         project
             .add_resource_with_id(
                 "/scene/Ball".into(),

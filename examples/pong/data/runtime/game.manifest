@@ -5,7 +5,18 @@
     "size": 176
   },
   {
+    "resource_id": "(1d9ddd99aad89045,3ecbba67-ee61-5ae4-2e32-d083d26c88ff)",
+    "checksum": "a16b155ea8d50e26afff24194095e3a2",
+    "size": 214
+  },
+  {
+    "resource_id": "(1d9ddd99aad89045,468b01a3-8e51-5ac7-09d5-534456811d2d)",
+    "checksum": "5d5b5ac2999b90e38333465039835792",
+    "size": 216
+  },
+  {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
+<<<<<<< HEAD
     "checksum": "b1a3fbc704c0709dfdf518a402e0ee52",
     "size": 228
   },
@@ -28,5 +39,14 @@
     "resource_id": "(e0d46a6b35b5717e,fe923488-86d9-500c-8151-25ef5f71417d)",
     "checksum": "b9951cf85ea7cf16f60e32208e6b78b2",
     "size": 78
+=======
+    "checksum": "f09ff96bc8d7c8dabf9fa98cfc4e9ce5",
+    "size": 386
+  },
+  {
+    "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",
+    "checksum": "062d1627d82dbfebf25e0e3a15a2a4fa",
+    "size": 217
+>>>>>>> 1fbb8140 (convert all debug-cubes to entities)
   }
 ]
