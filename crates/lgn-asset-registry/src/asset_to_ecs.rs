@@ -182,7 +182,7 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {}
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        instance: &Self,
+        debug_cube: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
@@ -195,19 +195,19 @@ impl AssetToECS for generic_data::runtime::DebugCube {
             commands.spawn()
         };
 
-        if !instance.name.is_empty() {
-            entity.insert(Name::new(instance.name.clone()));
+        if !debug_cube.name.is_empty() {
+            entity.insert(Name::new(debug_cube.name.clone()));
         }
         entity.insert(Transform {
-            translation: instance.position,
-            rotation: instance.rotation,
-            scale: instance.scale,
+            translation: debug_cube.position,
+            rotation: debug_cube.rotation,
+            scale: debug_cube.scale,
         });
         entity.insert(GlobalTransform::default());
         entity.insert(StaticMesh::from_default_meshes(
             mesh_manager,
-            instance.mesh_id,
-            instance.color,
+            debug_cube.mesh_id,
+            debug_cube.color,
             None,
             data_context,
         ));
@@ -216,27 +216,4 @@ impl AssetToECS for generic_data::runtime::DebugCube {
     }
 }
 
-impl AssetToECS for lgn_scripting::runtime::Script {
-    fn create_in_ecs(
-        commands: &mut Commands<'_, '_>,
-        entity: &Self,
-        asset_id: &ResourceTypeAndId,
-        _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _mesh_mamager: &Res<'_, MeshManager>,
-        _data_context: &mut GpuUniformDataContext<'_>,
-    ) -> Option<Entity> {
-        let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
-            commands.entity(entity)
-        } else {
-            commands.spawn()
-        };
-
-        info!(
-            "Loading script resource {} bytes",
-            entity.compiled_script.len()
-        );
-
-        Some(ecs_entity.id())
-    }
-}
+impl AssetToECS for lgn_scripting::runtime::Script {}

@@ -16,14 +16,25 @@ use std::{cell::RefCell, fs, rc::Rc, sync::Arc};
 use crate::runtime::{Script, ScriptComponent};
 use std::str::FromStr;
 
-#[derive(Default)]
 struct RuntimeScripts {
     pub mun_runtimes: Vec<(ScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
+    pub rune_context: rune::Context,
     pub rune_vm: Option<rune::Vm>,
     pub rhai_eng: Option<rhai::Engine>,
     pub rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
 }
 
+impl Default for RuntimeScripts {
+    fn default() -> Self {
+        Self {
+            mun_runtimes: Vec::new(),
+            rune_context: rune_modules::default_context().unwrap(),
+            rune_vm: None,
+            rhai_eng: None,
+            rhai_asts: Vec::new(),
+        }
+    }
+}
 #[derive(Default)]
 pub struct ScriptingPlugin;
 
@@ -115,8 +126,6 @@ impl ScriptingPlugin {
     ) {
         if runtimes.rune_vm.is_none() {
             for (_entity, script) in rune_components {
-                let context = rune_modules::default_context().unwrap();
-
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
                 let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
                 let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
@@ -128,7 +137,7 @@ impl ScriptingPlugin {
                 let mut diagnostics = rune::Diagnostics::new();
 
                 let result = rune::prepare(&mut sources)
-                    .with_context(&context)
+                    .with_context(&runtimes.rune_context)
                     .with_diagnostics(&mut diagnostics)
                     .build();
 
@@ -139,7 +148,10 @@ impl ScriptingPlugin {
 
                 let unit = result.unwrap();
 
-                runtimes.rune_vm = Some(rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit)));
+                runtimes.rune_vm = Some(rune::Vm::new(
+                    Arc::new(runtimes.rune_context.runtime()),
+                    Arc::new(unit),
+                ));
             }
         } else {
             for (_entity, script) in rune_components {
@@ -243,6 +255,11 @@ impl Default for ScriptingEventCache {
         }
     }
 }
+
+// #[derive(Component)]
+// struct RuneComponent {
+//     vm: rune::Vm,
+// }
 
 #[cfg(feature = "offline")]
 fn register_resource_types(world: &mut World) {
