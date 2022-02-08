@@ -294,7 +294,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
-        manifest: Option<Manifest>,
+        manifest: Option<&Manifest>,
     ) -> Result<CompiledResources, Error> {
         self.output_index.record_pathid(&compile_path);
         let mut result = CompiledResources::default();
@@ -467,7 +467,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
-        manifest: Option<Manifest>,
+        manifest: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);

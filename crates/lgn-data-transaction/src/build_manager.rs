@@ -64,7 +64,7 @@ impl BuildManager {
         match self.build.compile_with_manifest(
             derived_id.clone(),
             &self.compile_env,
-            Some(self.manifest.clone()),
+            Some(&self.manifest),
         ) {
             Ok(output) => {
                 info!(
