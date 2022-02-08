@@ -11,4 +11,5 @@ pub struct ManipulatorComponent {
     pub active: bool,
     pub selected: bool,
     pub transparent: bool,
+    pub picking_id: u32,
 }

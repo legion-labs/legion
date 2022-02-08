@@ -483,7 +483,6 @@ fn render_update(
         Color::default(),
         DefaultMeshType::Sphere as usize,
         mesh_manager.as_ref(),
-        u32::MAX,
     );
 
     renderer.flush_update_jobs(&render_context);
