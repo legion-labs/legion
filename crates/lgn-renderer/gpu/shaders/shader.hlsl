@@ -36,7 +36,6 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
-    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
     GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
