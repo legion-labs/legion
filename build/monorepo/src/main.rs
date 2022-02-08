@@ -35,6 +35,7 @@ use clap::{Parser, Subcommand};
 use lgn_tracing::{span_scope, LevelFilter};
 
 use error::{Error, ErrorContext, Result};
+use npm::NpmCommands;
 
 /// Legion CLI
 #[derive(Parser)]
@@ -113,42 +114,6 @@ enum Commands {
     Npm(NpmCommands),
 }
 
-#[derive(Subcommand)]
-enum NpmCommands {
-    /// Install all npm packages recursively
-    Install,
-
-    /// Build an npm package that exposes a "build" script
-    /// Recursively build all packages unless a package name is provided
-    #[clap(name = "build")]
-    Build(npm::build::Args),
-
-    /// Check an npm package that exposes a "check" script
-    /// Recursively check all packages unless a package name is provided
-    #[clap(name = "check")]
-    Check(npm::check::Args),
-
-    /// Clean an npm package that exposes a "clean" script
-    /// Recursively clean all packages unless a package name is provided
-    #[clap(name = "clean")]
-    Clean(npm::clean::Args),
-
-    /// Format an npm package that exposes an "fmt" script
-    /// Recursively format all packages unless a package name is provided
-    #[clap(name = "fmt")]
-    Fmt(npm::fmt::Args),
-
-    /// Lint an npm package that exposes a "lint" script
-    /// Recursively lint all packages unless a package name is provided
-    #[clap(name = "lint")]
-    Lint(npm::lint::Args),
-
-    /// Test an npm package that exposes a "test" script
-    /// Recursively test all packages unless a package name is provided
-    #[clap(name = "test")]
-    Test(npm::test::Args),
-}
-
 fn main() {
     let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
         .unwrap()
@@ -177,15 +142,7 @@ fn main() {
         Commands::Tools(args) => tools::run(&args, &ctx),
         Commands::VsCode(args) => vscode::run(&args, &ctx),
 
-        Commands::Npm(npm_command) => match npm_command {
-            NpmCommands::Install => npm::install::run(&ctx),
-            NpmCommands::Build(args) => npm::build::run(&args, &ctx),
-            NpmCommands::Check(args) => npm::check::run(&args, &ctx),
-            NpmCommands::Clean(args) => npm::clean::run(&args, &ctx),
-            NpmCommands::Fmt(args) => npm::fmt::run(&args, &ctx),
-            NpmCommands::Lint(args) => npm::lint::run(&args, &ctx),
-            NpmCommands::Test(args) => npm::test::run(&args, &ctx),
-        },
+        Commands::Npm(cmd) => npm::run(cmd, &ctx),
     }) {
         err.display();
         #[allow(clippy::exit)]
