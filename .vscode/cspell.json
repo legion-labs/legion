@@ -27,6 +27,7 @@
         "multisample",
         "openh264",
         "perfetto",
+        "physx",
         "proto",
         "protos",
         "Rasterizer",

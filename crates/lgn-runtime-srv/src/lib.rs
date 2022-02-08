@@ -22,6 +22,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
+use lgn_physics::PhysicsPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
@@ -141,6 +142,7 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
+        .add_plugin(PhysicsPlugin::default())
         .add_plugin(GraphicsPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::new(args.egui, true));

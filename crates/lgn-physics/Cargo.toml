@@ -1,0 +1,22 @@
+[package]
+name = "lgn-physics"
+version = "0.1.0"
+edition = "2021"
+description = "Provides integration with physics engine for Legion"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["legion"]
+
+[dependencies]
+# legion
+lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-core = { path = "../lgn-core", version = "0.1.0" }
+lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
+
+# other
+physx = { version = "0.12.2", features = ["glam"] }
+physx-sys = "0.4.16"

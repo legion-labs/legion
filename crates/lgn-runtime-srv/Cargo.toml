@@ -17,7 +17,8 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "runtime",
 ] }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
-lgn-input = { path = "../lgn-input" }
+lgn-input = { path = "../lgn-input", version = "0.1.0" }
+lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0" }
 lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
@@ -37,6 +38,7 @@ generic-data = { path = "../../tests/generic-data", version = "0.1.0", features 
 sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
     "runtime",
 ] }
+
 # other
 clap = { version = "3.0", features = ["derive"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }

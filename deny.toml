@@ -143,6 +143,12 @@ version = "0.8.30"
 expression = "MIT OR Apache-2.0"
 license-files = []
 
+[[licenses.clarify]]
+name = "physx-sys"
+version = "0.4.16"
+expression = "MIT OR Apache-2.0"
+license-files = [{ path = "LICENSE", hash = 0xe326546e }]
+
 [licenses.private]
 # If true, ignores workspace crates that aren't published, or are only
 # published to private registries
