@@ -47,7 +47,7 @@ struct Metadata {
     npm: NpmMetadata,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct PackageJson {
     name: String,
     scripts: HashMap<String, String>,
@@ -60,7 +60,7 @@ impl PackageJson {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NpmPackage {
     /// The path of the npm package
     path: PathBuf,
@@ -88,7 +88,7 @@ impl NpmPackage {
 
         let package_json = serde_json::from_reader::<_, PackageJson>(reader).map_err(|error| {
             Error::new(format!(
-                r#"Invalid {} file at "{}""#,
+                "Invalid {} file ({})",
                 PACKAGE_JSON,
                 path.to_string_lossy()
             ))
@@ -98,7 +98,7 @@ impl NpmPackage {
         Ok(Self::new(path, package_json))
     }
 
-    pub fn run_install(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+    pub fn run_install(&self, config: &NpmWorkspaceConfig) {
         action_step!(
             "Npm Install",
             "{} ({})",
@@ -106,169 +106,75 @@ impl NpmPackage {
             self.path.to_string_lossy()
         );
 
-        let mut cmd = Command::new(&config.package_manager_path);
+        let cmd_name = "Install";
 
-        let cmd = cmd.arg(INSTALL_SCRIPT).current_dir(&self.path);
+        self.print_action_step(cmd_name);
 
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Install",
-                r#"Couldn't install dependencies for "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Install",
-                r#"Couldn't install dependencies for "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
+        self.run_cmd(cmd_name, &config.package_manager_path, &[INSTALL_SCRIPT]);
     }
 
     /// Runs the build script
-    pub fn run_build(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+    pub fn run_build(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(BUILD_SCRIPT) {
-            return Ok(());
+            return;
         }
 
-        action_step!(
-            "Npm Build",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
+        let cmd_name = "Build";
+
+        self.print_action_step(cmd_name);
+
+        self.run_cmd(
+            cmd_name,
+            &config.package_manager_path,
+            &["run", BUILD_SCRIPT],
         );
-
-        let mut cmd = Command::new(&config.package_manager_path);
-
-        let cmd = cmd.args(["run", BUILD_SCRIPT]).current_dir(&self.path);
-
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Build",
-                r#"Couldn't build "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Build",
-                r#"Couldn't build "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
     }
 
     /// Runs the check script
-    pub fn run_check(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+    pub fn run_check(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(CHECK_SCRIPT) {
-            return Ok(());
+            return;
         }
 
-        action_step!(
-            "Npm Check",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
+        let cmd_name = "Check";
+
+        self.print_action_step(cmd_name);
+
+        self.run_cmd(
+            cmd_name,
+            &config.package_manager_path,
+            &["run", CHECK_SCRIPT],
         );
-
-        let mut cmd = Command::new(&config.package_manager_path);
-
-        let cmd = cmd.args(["run", CHECK_SCRIPT]).current_dir(&self.path);
-
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Check",
-                r#"Check failed "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Check",
-                r#"Check failed "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
     }
 
     /// Runs the clean script
-    pub fn run_clean(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+    pub fn run_clean(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(CLEAN_SCRIPT) {
-            return Ok(());
+            return;
         }
 
-        action_step!(
-            "Npm Clean",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
+        let cmd_name = "Clean";
+
+        self.print_action_step(cmd_name);
+
+        self.run_cmd(
+            cmd_name,
+            &config.package_manager_path,
+            &["run", CLEAN_SCRIPT],
         );
-
-        let mut cmd = Command::new(&config.package_manager_path);
-
-        let cmd = cmd.args(["run", CLEAN_SCRIPT]).current_dir(&self.path);
-
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Clean",
-                r#"An error occurred while cleaning "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Clean",
-                r#"An error occurred while cleaning "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
     }
 
     /// Runs the format script
-    pub fn run_format(&self, config: &NpmWorkspaceConfig, check: bool) -> Result<()> {
+    pub fn run_format(&self, config: &NpmWorkspaceConfig, check: bool) {
         if !self.package_json.scripts.contains_key(FORMAT_SCRIPT)
             || !self.package_json.scripts.contains_key(FORMAT_CHECK_SCRIPT)
         {
-            return Ok(());
+            return;
         }
 
-        action_step!(
-            "Npm Format",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
-        );
+        let cmd_name = "Format";
 
-        let mut cmd = Command::new(&config.package_manager_path);
+        self.print_action_step(cmd_name);
 
         let mut args = vec!["run"];
 
@@ -278,47 +184,20 @@ impl NpmPackage {
             args.push(FORMAT_SCRIPT);
         }
 
-        let cmd = cmd.args(&args).current_dir(&self.path);
-
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Format",
-                r#"An error occurred while formatting "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Format",
-                r#"An error occurred while formatting "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
+        self.run_cmd(cmd_name, &config.package_manager_path, &args);
     }
 
     /// Runs the lint script
-    pub fn run_lint(&self, config: &NpmWorkspaceConfig, fix: bool) -> Result<()> {
+    pub fn run_lint(&self, config: &NpmWorkspaceConfig, fix: bool) {
         if !self.package_json.scripts.contains_key(LINT_SCRIPT)
             || !self.package_json.scripts.contains_key(LINT_FIX_SCRIPT)
         {
-            return Ok(());
+            return;
         }
 
-        action_step!(
-            "Npm Lint",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
-        );
+        let cmd_name = "Lint";
 
-        let mut cmd = Command::new(&config.package_manager_path);
+        self.print_action_step(cmd_name);
 
         let mut args = vec!["run"];
 
@@ -328,69 +207,58 @@ impl NpmPackage {
             args.push(LINT_SCRIPT);
         }
 
-        let cmd = cmd.args(&args).current_dir(&self.path);
-
-        match cmd.output() {
-            Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
-            }
-            Ok(output) => error_step!(
-                "Npm Lint",
-                r#"Lint failed "{}": {}"#,
-                self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
-            ),
-            Err(error) => error_step!(
-                "Npm Lint",
-                r#"Lint failed "{}": {}"#,
-                self.package_json.name,
-                error.to_string()
-            ),
-        }
-
-        Ok(())
+        self.run_cmd(cmd_name, &config.package_manager_path, &args);
     }
 
     /// Runs the test script
-    pub fn run_test(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+    pub fn run_test(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(TEST_SCRIPT) {
-            return Ok(());
+            return;
         }
 
+        let cmd_name = "Test";
+
+        self.print_action_step(cmd_name);
+
+        self.run_cmd(
+            cmd_name,
+            &config.package_manager_path,
+            &["run", TEST_SCRIPT],
+        );
+    }
+
+    fn print_action_step(&self, cmd_name: &str) {
         action_step!(
-            "Npm Test",
+            &format!("Npm {}", cmd_name),
             "{} ({})",
             self.package_json.name,
             self.path.to_string_lossy()
         );
+    }
 
-        let mut cmd = Command::new(&config.package_manager_path);
+    fn run_cmd(&self, cmd_name: &str, package_manager_path: &Path, args: &[&str]) {
+        let mut cmd = Command::new(package_manager_path);
 
-        let cmd = cmd.args(["run", TEST_SCRIPT]).current_dir(&self.path);
+        let cmd = cmd.args(args).current_dir(&self.path);
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
                 action_step!("Finished", "{}", self.package_json.name)
             }
             Ok(output) => error_step!(
-                "Npm Test",
-                r#"Tests failed "{}": {}"#,
+                &format!("Npm {}", cmd_name),
+                "{}: {}\n{}",
                 self.package_json.name,
-                // It's not a typo, it seems some package managers
-                // use the stdout channel when an error occurs
-                String::from_utf8(output.stdout).unwrap()
+                String::from_utf8(output.stdout).unwrap(),
+                String::from_utf8(output.stderr).unwrap()
             ),
             Err(error) => error_step!(
-                "Npm Test",
-                r#"Tests failed "{}": {}"#,
+                &format!("Npm {}", cmd_name),
+                "{}: {}",
                 self.package_json.name,
                 error.to_string()
             ),
         }
-
-        Ok(())
     }
 }
 
@@ -502,18 +370,25 @@ impl NpmWorkspace {
         entry.path().is_dir() || PackageJson::is_package_json(entry.file_name())
     }
 
-    pub fn run_install(&self) -> Result<()> {
-        self.root_package.run_install(&self.config)
+    pub fn run_install(&self) {
+        self.root_package.run_install(&self.config);
     }
 
     pub fn run_build(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
-            None => self
-                .packages
-                .par_iter()
-                .try_for_each(|(_, package)| package.run_build(&self.config)),
+            None => {
+                self.packages
+                    .par_iter()
+                    .for_each(|(_, package)| package.run_build(&self.config));
+
+                Ok(())
+            }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_build(&self.config),
+                Some(package) => {
+                    package.run_build(&self.config);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -524,12 +399,19 @@ impl NpmWorkspace {
 
     pub fn run_check(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
-            None => self
-                .packages
-                .par_iter()
-                .try_for_each(|(_, package)| package.run_check(&self.config)),
+            None => {
+                self.packages
+                    .par_iter()
+                    .for_each(|(_, package)| package.run_check(&self.config));
+
+                Ok(())
+            }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_check(&self.config),
+                Some(package) => {
+                    package.run_check(&self.config);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -541,14 +423,20 @@ impl NpmWorkspace {
     pub fn run_clean(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
-                self.root_package.run_clean(&self.config)?;
+                self.root_package.run_clean(&self.config);
 
                 self.packages
                     .par_iter()
-                    .try_for_each(|(_, package)| package.run_clean(&self.config))
+                    .for_each(|(_, package)| package.run_clean(&self.config));
+
+                Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_clean(&self.config),
+                Some(package) => {
+                    package.run_clean(&self.config);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -559,12 +447,19 @@ impl NpmWorkspace {
 
     pub fn run_format(&self, package_name: &Option<String>, check: bool) -> Result<()> {
         match package_name {
-            None => self
-                .packages
-                .par_iter()
-                .try_for_each(|(_, package)| package.run_format(&self.config, check)),
+            None => {
+                self.packages
+                    .par_iter()
+                    .for_each(|(_, package)| package.run_format(&self.config, check));
+
+                Ok(())
+            }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_format(&self.config, check),
+                Some(package) => {
+                    package.run_format(&self.config, check);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -575,12 +470,19 @@ impl NpmWorkspace {
 
     pub fn run_lint(&self, package_name: &Option<String>, fix: bool) -> Result<()> {
         match package_name {
-            None => self
-                .packages
-                .par_iter()
-                .try_for_each(|(_, package)| package.run_lint(&self.config, fix)),
+            None => {
+                self.packages
+                    .par_iter()
+                    .for_each(|(_, package)| package.run_lint(&self.config, fix));
+
+                Ok(())
+            }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_lint(&self.config, fix),
+                Some(package) => {
+                    package.run_lint(&self.config, fix);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -591,12 +493,19 @@ impl NpmWorkspace {
 
     pub fn run_test(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
-            None => self
-                .packages
-                .par_iter()
-                .try_for_each(|(_, package)| package.run_test(&self.config)),
+            None => {
+                self.packages
+                    .par_iter()
+                    .for_each(|(_, package)| package.run_test(&self.config));
+
+                Ok(())
+            }
             Some(package_name) => match self.packages.get(package_name) {
-                Some(package) => package.run_test(&self.config),
+                Some(package) => {
+                    package.run_test(&self.config);
+
+                    Ok(())
+                }
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
@@ -614,6 +523,6 @@ impl NpmWorkspace {
 /// Returns the path to the package manager binary
 pub fn package_manager_path(name: &str) -> Result<PathBuf> {
     which(name).map_err(|error| {
-        Error::new(format!(r#"Package manager "{}" not found in PATH"#, name)).with_source(error)
+        Error::new(format!("Package manager {} not found in PATH", name)).with_source(error)
     })
 }

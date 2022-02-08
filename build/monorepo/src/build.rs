@@ -70,7 +70,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
 
         if !npm_workspace.is_empty() {
             if !args.skip_npm_install {
-                npm_workspace.run_install()?;
+                npm_workspace.run_install();
             }
 
             npm_workspace.run_build(&None)?;

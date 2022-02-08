@@ -8,7 +8,7 @@ use super::utils::NpmWorkspace;
 pub fn run(ctx: &Context) -> Result<()> {
     let npm_workspace = NpmWorkspace::empty(ctx)?;
 
-    npm_workspace.run_install()?;
+    npm_workspace.run_install();
 
     Ok(())
 }
