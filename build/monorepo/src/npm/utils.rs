@@ -226,7 +226,7 @@ impl NpmPackage {
             }
             Ok(output) => error_step!(
                 "Npm Clean",
-                r#"clean failed "{}": {}"#,
+                r#"An error occurred while cleaning "{}": {}"#,
                 self.package_json.name,
                 // It's not a typo, it seems some package managers
                 // use the stdout channel when an error occurs
@@ -234,7 +234,49 @@ impl NpmPackage {
             ),
             Err(error) => error_step!(
                 "Npm Clean",
-                r#"clean failed "{}": {}"#,
+                r#"An error occurred while cleaning "{}": {}"#,
+                self.package_json.name,
+                error.to_string()
+            ),
+        }
+
+        Ok(())
+    }
+
+    /// Runs the test script
+    pub fn run_test(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+        if !self.package_json.scripts.contains_key(&config.test_script) {
+            return Ok(());
+        }
+
+        action_step!(
+            "Npm Test",
+            "{} ({})",
+            self.package_json.name,
+            self.path.to_string_lossy()
+        );
+
+        let mut cmd = Command::new(&config.package_manager_path);
+
+        let cmd = cmd
+            .args(["run", &config.test_script])
+            .current_dir(&self.path);
+
+        match cmd.output() {
+            Ok(output) if output.status.success() => {
+                action_step!("Finished", "{}", self.package_json.name)
+            }
+            Ok(output) => error_step!(
+                "Npm Test",
+                r#"Tests failed "{}": {}"#,
+                self.package_json.name,
+                // It's not a typo, it seems some package managers
+                // use the stdout channel when an error occurs
+                String::from_utf8(output.stdout).unwrap()
+            ),
+            Err(error) => error_step!(
+                "Npm Test",
+                r#"Tests failed "{}": {}"#,
                 self.package_json.name,
                 error.to_string()
             ),
@@ -414,6 +456,22 @@ impl NpmWorkspace {
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => package.run_clean(&self.config),
+                None => Err(Error::new(format!(
+                    "Couldn't find package {}",
+                    package_name
+                ))),
+            },
+        }
+    }
+
+    pub fn run_test(&self, package_name: &Option<String>) -> Result<()> {
+        match package_name {
+            None => self
+                .packages
+                .par_iter()
+                .try_for_each(|(_, package)| package.run_test(&self.config)),
+            Some(package_name) => match self.packages.get(package_name) {
+                Some(package) => package.run_test(&self.config),
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name

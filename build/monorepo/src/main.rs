@@ -128,10 +128,15 @@ enum NpmCommands {
     #[clap(name = "check")]
     Check(npm::check::Args),
 
-    /// Clean an npm package that exposes a "check" script
+    /// Clean an npm package that exposes a "clean" script
     /// Recursively clean all packages unless a package name is provided
     #[clap(name = "clean")]
     Clean(npm::clean::Args),
+
+    /// Test an npm package that exposes a "test" script
+    /// Recursively test all packages unless a package name is provided
+    #[clap(name = "test")]
+    Test(npm::test::Args),
 }
 
 fn main() {
@@ -167,6 +172,7 @@ fn main() {
             NpmCommands::Build(args) => npm::build::run(&args, &ctx),
             NpmCommands::Check(args) => npm::check::run(&args, &ctx),
             NpmCommands::Clean(args) => npm::clean::run(&args, &ctx),
+            NpmCommands::Test(args) => npm::test::run(&args, &ctx),
         },
     }) {
         err.display();
