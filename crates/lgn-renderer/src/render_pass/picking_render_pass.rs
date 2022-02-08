@@ -337,7 +337,7 @@ impl PickingRenderPass {
 
                     render_mesh(
                         &custom_world,
-                        None,
+                        manipulator.picking_id,
                         picking_distance,
                         static_mesh,
                         &cmd_buffer,
@@ -350,7 +350,7 @@ impl PickingRenderPass {
                 let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
                 render_mesh(
                     &custom_world,
-                    Some(light.picking_id),
+                    light.picking_id,
                     picking_distance,
                     light_picking_mesh,
                     &cmd_buffer,
@@ -453,7 +453,7 @@ impl PickingRenderPass {
 }
 fn render_mesh(
     custom_world: &Mat4,
-    picking_id: Option<u32>,
+    picking_id: u32,
     picking_distance: f32,
     static_mesh: &StaticMesh,
     cmd_buffer: &HLCommandBuffer<'_>,
@@ -461,14 +461,7 @@ fn render_mesh(
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     push_constant_data.set_world((*custom_world).into());
     push_constant_data.set_mesh_description_offset(static_mesh.mesh_description_va.into());
-    push_constant_data.set_picking_id(
-        if let Some(id) = picking_id {
-            id
-        } else {
-            static_mesh.picking_id
-        }
-        .into(),
-    );
+    push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 

@@ -71,24 +71,22 @@ impl ManipulatorPart {
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
-            .insert(ManipulatorComponent {
-                part_type,
-                part_num,
-                local_transform: transform,
-                active: false,
-                selected: false,
-                transparent,
-            })
+            .insert(StaticMesh::new_cpu_only(
+                color,
+                mesh_id as usize,
+                mesh_manager,
+            ))
             .id();
 
-        let static_mesh = StaticMesh::new_cpu_only(
-            color,
-            mesh_id as usize,
-            mesh_manager,
-            picking_context.aquire_picking_id(entity),
-        );
-
-        entity_commands.insert(static_mesh);
+        entity_commands.insert(ManipulatorComponent {
+            part_type,
+            part_num,
+            local_transform: transform,
+            active: false,
+            selected: false,
+            transparent,
+            picking_id: picking_context.aquire_picking_id(entity),
+        });
 
         Self { _entity: entity }
     }

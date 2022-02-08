@@ -9,7 +9,6 @@ pub struct StaticMesh {
     pub color: Color,
     pub mesh_id: usize,
     pub num_vertices: u32,
-    pub picking_id: u32,
     pub gpu_instance_id: u32,
 
     // GPU virtual addresses
@@ -60,7 +59,6 @@ impl StaticMesh {
             color,
             mesh_id,
             num_vertices: mesh_manager.mesh_from_id(clamped_mesh_id).num_vertices() as u32,
-            picking_id: u32::MAX,
             gpu_instance_id,
             instance_va_table: va_table_address,
             instance_color_va,
@@ -75,12 +73,7 @@ impl StaticMesh {
         }
     }
 
-    pub fn new_cpu_only(
-        color: Color,
-        mesh_id: usize,
-        mesh_manager: &MeshManager,
-        picking_id: u32,
-    ) -> Self {
+    pub fn new_cpu_only(color: Color, mesh_id: usize, mesh_manager: &MeshManager) -> Self {
         let mut clamped_mesh_id = mesh_id as u32;
         if clamped_mesh_id > mesh_manager.max_id() as u32 {
             clamped_mesh_id = 0;
@@ -90,7 +83,6 @@ impl StaticMesh {
             color,
             mesh_id,
             num_vertices: mesh_manager.mesh_from_id(clamped_mesh_id).num_vertices() as u32,
-            picking_id,
             gpu_instance_id: u32::MAX,
             instance_va_table: u32::MAX,
             instance_color_va: u32::MAX,
