@@ -119,14 +119,19 @@ enum NpmCommands {
     Install,
 
     /// Build an npm package that exposes a "build" script
-    /// Recursively build all packages if no package names are provided
+    /// Recursively build all packages unless a package name is provided
     #[clap(name = "build")]
     Build(npm::build::Args),
 
     /// Check an npm package that exposes a "check" script
-    /// Recursively check all packages if no package names are provided
+    /// Recursively check all packages unless a package name is provided
     #[clap(name = "check")]
     Check(npm::check::Args),
+
+    /// Clean an npm package that exposes a "check" script
+    /// Recursively clean all packages unless a package name is provided
+    #[clap(name = "clean")]
+    Clean(npm::clean::Args),
 }
 
 fn main() {
@@ -161,6 +166,7 @@ fn main() {
             NpmCommands::Install => npm::install::run(&ctx),
             NpmCommands::Build(args) => npm::build::run(&args, &ctx),
             NpmCommands::Check(args) => npm::check::run(&args, &ctx),
+            NpmCommands::Clean(args) => npm::clean::run(&args, &ctx),
         },
     }) {
         err.display();

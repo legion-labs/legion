@@ -200,6 +200,48 @@ impl NpmPackage {
 
         Ok(())
     }
+
+    /// Runs the clean script
+    pub fn run_clean(&self, config: &NpmWorkspaceConfig) -> Result<()> {
+        if !self.package_json.scripts.contains_key(&config.clean_script) {
+            return Ok(());
+        }
+
+        action_step!(
+            "Npm Clean",
+            "{} ({})",
+            self.package_json.name,
+            self.path.to_string_lossy()
+        );
+
+        let mut cmd = Command::new(&config.package_manager_path);
+
+        let cmd = cmd
+            .args(["run", &config.clean_script])
+            .current_dir(&self.path);
+
+        match cmd.output() {
+            Ok(output) if output.status.success() => {
+                action_step!("Finished", "{}", self.package_json.name)
+            }
+            Ok(output) => error_step!(
+                "Npm Clean",
+                r#"clean failed "{}": {}"#,
+                self.package_json.name,
+                // It's not a typo, it seems some package managers
+                // use the stdout channel when an error occurs
+                String::from_utf8(output.stdout).unwrap()
+            ),
+            Err(error) => error_step!(
+                "Npm Clean",
+                r#"clean failed "{}": {}"#,
+                self.package_json.name,
+                error.to_string()
+            ),
+        }
+
+        Ok(())
+    }
 }
 
 /// Contain external data, such as the package manager binary path
@@ -214,6 +256,8 @@ pub struct NpmWorkspaceConfig {
     check_script: String,
     /// The clean script command (typically `clean`)
     clean_script: String,
+    /// The format script command (typically `format`)
+    format_script: String,
     /// The test script command (typically `test`)
     test_script: String,
 }
@@ -244,6 +288,7 @@ impl NpmWorkspace {
             build_script: config.npm.build_script.clone(),
             check_script: config.npm.check_script.clone(),
             clean_script: config.npm.clean_script.clone(),
+            format_script: config.npm.format_script.clone(),
             test_script: config.npm.test_script.clone(),
         };
 
@@ -350,6 +395,25 @@ impl NpmWorkspace {
                 .try_for_each(|(_, package)| package.run_check(&self.config)),
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => package.run_check(&self.config),
+                None => Err(Error::new(format!(
+                    "Couldn't find package {}",
+                    package_name
+                ))),
+            },
+        }
+    }
+
+    pub fn run_clean(&self, package_name: &Option<String>) -> Result<()> {
+        match package_name {
+            None => {
+                self.root_package.run_clean(&self.config)?;
+
+                self.packages
+                    .par_iter()
+                    .try_for_each(|(_, package)| package.run_clean(&self.config))
+            }
+            Some(package_name) => match self.packages.get(package_name) {
+                Some(package) => package.run_clean(&self.config),
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name

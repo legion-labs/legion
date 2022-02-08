@@ -164,6 +164,7 @@ pub struct Npm {
     pub build_script: String,
     pub clean_script: String,
     pub check_script: String,
+    pub format_script: String,
     pub test_script: String,
     #[serde(default)]
     pub excluded_dirs: Vec<String>,
