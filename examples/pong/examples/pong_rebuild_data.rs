@@ -15,6 +15,7 @@ use lgn_data_offline::{
 use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::BuildManager;
+use lgn_math::prelude::*;
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -106,6 +107,7 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("offline");
     clean("runtime");
     clean("temp");
+    clean("project.index");
 }
 
 // Script
@@ -241,22 +243,36 @@ async fn create_offline_data(
     let ball_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
-            kind: generic_data::offline::DebugCube::TYPE,
+            kind: sample_data::offline::Entity::TYPE,
             id: ResourceId::from_str("26b7a335-2d28-489d-882b-f7aae1fb2196").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
-        let debug_cube = handle
-            .get_mut::<generic_data::offline::DebugCube>(&mut resources)
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        debug_cube.color = (255, 16, 64).into();
-        debug_cube.mesh_id = 8;
-        debug_cube.name = "Ball".to_string();
-        debug_cube.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
-        debug_cube.scale = (0.4_f32, 0.4_f32, 0.4_f32).into();
+        entity.components.push(Box::new(sample_data::offline::Name {
+            name: "Ball".to_string(),
+        }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: Vec3::default(),
+                rotation: Quat::default(),
+                scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Sphere,
+                color: (255, 16, 64).into(),
+                mesh: None,
+            }));
+        // entity.rotation_speed = (0.1_f32, 0_f32, 0_f32).into();
         project
             .add_resource_with_id(
                 "/scene/Ball".into(),
-                generic_data::offline::DebugCube::TYPENAME,
+                sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
                 handle,
@@ -265,55 +281,21 @@ async fn create_offline_data(
             .await
             .unwrap();
         let path: ResourcePathId = id.into();
-        path.push(generic_data::runtime::DebugCube::TYPE)
+        path.push(sample_data::runtime::Entity::TYPE)
     };
 
-    // Mun script
-    let _mun_script = build_script(
-        project,
-        resource_registry,
-        "d46d7e71-27bc-4516-9e85-074f5431d29c",
-        1,
-        "/scene/mun_script",
-        r#"pub fn fibonacci(n: i64) -> i64 {
-            if n <= 1 {
-                n
-            } else {
-                fibonacci(n - 1) + fibonacci(n - 2)
-            }
-        }"#,
-    )
-    .await;
-
     // Rune script
-    let rune_script = build_script(
+    let scene_script = build_script(
         project,
         resource_registry,
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
         2,
-        "/scene/rune_script",
+        "/scene/scene_script",
         r#"pub fn fibonacci(n) {
             if n <= 1 {
                 n
             } else {
                 fibonacci(n - 1) + fibonacci(n - 2)
-            }
-        }"#,
-    )
-    .await;
-
-    // Rhai script
-    let _rhai_script = build_script(
-        project,
-        resource_registry,
-        "44823dbf-597c-4e5b-90e9-10868ed7cefe",
-        3,
-        "/scene/rhai_script",
-        r#"fn fibonacci(n) {
-            if n < 2 {
-                n
-            } else {
-                fibonacci(n-1) + fibonacci(n-2)
             }
         }"#,
     )
@@ -338,7 +320,7 @@ async fn create_offline_data(
             script_type: 2, // Rune
             input_values: vec!["10".to_string()],
             entry_fn: "fibonacci".to_string(),
-            script_id: Some(rune_script),
+            script_id: Some(scene_script),
             temp_script: "".to_string(),
         });
         entity.components.push(script_component);

@@ -19,7 +19,7 @@ fn main() {
     let mut app = build_runtime(
         None,
         "examples/pong/data",
-        "", // using game.manifest
+        "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
     );
 
     app.insert_resource(GameState::default())
@@ -96,11 +96,11 @@ fn game_logic(
     let mut right_paddle = 0.0;
     for (entity, _name, mut transform) in entities.iter_mut() {
         if entity.id() == left_paddle_id {
-            transform.translation.y -= state.paddle_delta;
+            // transform.translation.y -= state.paddle_delta;
             transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
             left_paddle = transform.translation.y;
         } else if entity.id() == right_paddle_id {
-            transform.translation.y += state.paddle_delta;
+            // transform.translation.y += state.paddle_delta;
             transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
             right_paddle = transform.translation.y;
         }

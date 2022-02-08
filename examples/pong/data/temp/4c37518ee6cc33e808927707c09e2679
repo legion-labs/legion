@@ -1,0 +1,16 @@
+{
+  "version": "0.1.0",
+  "resources": [
+    {
+      "id": "(1c0ff9e497b0740f,26b7a335-2d28-489d-882b-f7aae1fb2196)",
+      "dependencies": [],
+      "resource_hash": "754d8ab838a2e3c1"
+    }
+  ],
+  "pathid_mapping": [
+    [
+      "(1c0ff9e497b0740f,26b7a335-2d28-489d-882b-f7aae1fb2196)",
+      "(1c0ff9e497b0740f,26b7a335-2d28-489d-882b-f7aae1fb2196)"
+    ]
+  ]
+}

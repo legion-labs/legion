@@ -3,6 +3,8 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_ecs::prelude::*;
+use lgn_input::mouse::MouseMotion;
+use lgn_math::prelude::*;
 use rhai::Scope;
 use rune::{
     termcolor::{ColorChoice, StandardStream},
@@ -22,17 +24,29 @@ struct RuntimeScripts {
     pub rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
 }
 
-#[derive(Default)]
-pub struct ScriptingPlugin;
+pub struct ScriptingPlugin {
+    mouse_motion: MouseMotion,
+}
+
+impl Default for ScriptingPlugin {
+    fn default() -> Self {
+        Self {
+            mouse_motion: MouseMotion {
+                delta: Vec2::default(),
+            },
+        }
+    }
+}
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
         app.add_startup_system(register_resource_types.exclusive_system());
 
-        app.add_startup_system(add_loaders);
-
         app.init_non_send_resource::<RuntimeScripts>()
+            .init_resource::<ScriptingEventCache>()
+            .add_startup_system(add_loaders)
+            .add_system(Self::update_events)
             .add_system(Self::tick_scripts);
     }
 }
@@ -41,18 +55,18 @@ impl ScriptingPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn tick_scripts(
         runtimes: NonSendMut<'_, RuntimeScripts>,
-        scripts: Query<'_, '_, &mut ScriptComponent>,
+        scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
         registry: Res<'_, Arc<AssetRegistry>>,
     ) {
         let mun_components = scripts
             .iter()
-            .filter(|s| s.script_type == 1 /*ScriptType::Mun*/);
+            .filter(|(_entity, s)| s.script_type == 1 /*ScriptType::Mun*/);
         let rune_components = scripts
             .iter()
-            .filter(|s| s.script_type == 2 /*ScriptType::Rune*/);
+            .filter(|(_entity, s)| s.script_type == 2 /*ScriptType::Rune*/);
         let rhai_components = scripts
             .iter()
-            .filter(|s| s.script_type == 3 /*ScriptType::Rhai*/);
+            .filter(|(_entity, s)| s.script_type == 3 /*ScriptType::Rhai*/);
 
         let r = runtimes.into_inner();
         Self::tick_mun(mun_components, r, &registry);
@@ -61,12 +75,12 @@ impl ScriptingPlugin {
     }
 
     fn tick_mun<'a>(
-        mun_components: impl Iterator<Item = &'a ScriptComponent>,
+        mun_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
     ) {
         if runtimes.mun_runtimes.is_empty() {
-            for script in mun_components {
+            for (_entity, script) in mun_components {
                 let script_id = script.script_id.as_ref().unwrap().id();
                 let script_untyped = registry.get_untyped(script_id);
                 let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
@@ -103,12 +117,12 @@ impl ScriptingPlugin {
     }
 
     fn tick_rune<'a>(
-        rune_components: impl Iterator<Item = &'a ScriptComponent>,
+        rune_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
     ) {
         if runtimes.rune_vm.is_none() {
-            for script in rune_components {
+            for (_entity, script) in rune_components {
                 let context = rune_modules::default_context().unwrap();
 
                 let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
@@ -136,7 +150,7 @@ impl ScriptingPlugin {
                 runtimes.rune_vm = Some(rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit)));
             }
         } else {
-            for script in rune_components {
+            for (_entity, script) in rune_components {
                 let arg = i64::from_str(&script.input_values[0]).unwrap();
 
                 let args = vec![arg.to_value().unwrap()];
@@ -158,12 +172,12 @@ impl ScriptingPlugin {
     }
 
     fn tick_rhai<'a>(
-        rhai_components: impl Iterator<Item = &'a ScriptComponent>,
+        rhai_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
     ) {
         if runtimes.rhai_eng.is_none() {
-            for script in rhai_components {
+            for (_entity, script) in rhai_components {
                 if runtimes.rhai_eng.is_none() {
                     runtimes.rhai_eng = Some(rhai::Engine::new());
                     runtimes.rhai_eng.as_mut().unwrap().set_max_call_levels(15);
@@ -200,6 +214,32 @@ impl ScriptingPlugin {
                     .unwrap();
                 println!("Rhai: fibonacci({}) = {}", &arg, result);
             }
+        }
+    }
+
+    pub(crate) fn update_events(
+        mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
+        mut cache: ResMut<'_, ScriptingEventCache>,
+    ) {
+        // aggregate mouse movement
+        let mut mouse_delta = Vec2::ZERO;
+        for event in mouse_motion_events.iter() {
+            mouse_delta += event.delta;
+        }
+        cache.mouse_motion.delta = mouse_delta;
+    }
+}
+
+pub struct ScriptingEventCache {
+    mouse_motion: MouseMotion,
+}
+
+impl Default for ScriptingEventCache {
+    fn default() -> Self {
+        Self {
+            mouse_motion: MouseMotion {
+                delta: Vec2::default(),
+            },
         }
     }
 }

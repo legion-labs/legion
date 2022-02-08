@@ -111,6 +111,8 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
                 entity.insert(script.clone());
+            } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {
+                entity.insert(Name::new(name.name.clone()));
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                 entity.insert(visual.clone());
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
