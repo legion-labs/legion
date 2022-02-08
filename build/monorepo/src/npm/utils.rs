@@ -32,6 +32,10 @@ const FORMAT_CHECK_SCRIPT: &str = "fmt:check";
 
 const TEST_SCRIPT: &str = "test";
 
+const LINT_SCRIPT: &str = "lint";
+
+const LINT_FIX_SCRIPT: &str = "lint:fix";
+
 #[derive(Debug, Deserialize)]
 struct NpmMetadata {
     name: String,
@@ -299,6 +303,56 @@ impl NpmPackage {
         Ok(())
     }
 
+    /// Runs the lint script
+    pub fn run_lint(&self, config: &NpmWorkspaceConfig, fix: bool) -> Result<()> {
+        if !self.package_json.scripts.contains_key(LINT_SCRIPT)
+            || !self.package_json.scripts.contains_key(LINT_FIX_SCRIPT)
+        {
+            return Ok(());
+        }
+
+        action_step!(
+            "Npm Lint",
+            "{} ({})",
+            self.package_json.name,
+            self.path.to_string_lossy()
+        );
+
+        let mut cmd = Command::new(&config.package_manager_path);
+
+        let mut args = vec!["run"];
+
+        if fix {
+            args.push(LINT_FIX_SCRIPT);
+        } else {
+            args.push(LINT_SCRIPT);
+        }
+
+        let cmd = cmd.args(&args).current_dir(&self.path);
+
+        match cmd.output() {
+            Ok(output) if output.status.success() => {
+                action_step!("Finished", "{}", self.package_json.name)
+            }
+            Ok(output) => error_step!(
+                "Npm Lint",
+                r#"Lint failed "{}": {}"#,
+                self.package_json.name,
+                // It's not a typo, it seems some package managers
+                // use the stdout channel when an error occurs
+                String::from_utf8(output.stdout).unwrap()
+            ),
+            Err(error) => error_step!(
+                "Npm Lint",
+                r#"Lint failed "{}": {}"#,
+                self.package_json.name,
+                error.to_string()
+            ),
+        }
+
+        Ok(())
+    }
+
     /// Runs the test script
     pub fn run_test(&self, config: &NpmWorkspaceConfig) -> Result<()> {
         if !self.package_json.scripts.contains_key(TEST_SCRIPT) {
@@ -511,6 +565,22 @@ impl NpmWorkspace {
                 .try_for_each(|(_, package)| package.run_format(&self.config, check)),
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => package.run_format(&self.config, check),
+                None => Err(Error::new(format!(
+                    "Couldn't find package {}",
+                    package_name
+                ))),
+            },
+        }
+    }
+
+    pub fn run_lint(&self, package_name: &Option<String>, fix: bool) -> Result<()> {
+        match package_name {
+            None => self
+                .packages
+                .par_iter()
+                .try_for_each(|(_, package)| package.run_lint(&self.config, fix)),
+            Some(package_name) => match self.packages.get(package_name) {
+                Some(package) => package.run_lint(&self.config, fix),
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name

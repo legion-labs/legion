@@ -138,6 +138,11 @@ enum NpmCommands {
     #[clap(name = "fmt")]
     Fmt(npm::fmt::Args),
 
+    /// Lint an npm package that exposes a "lint" script
+    /// Recursively lint all packages unless a package name is provided
+    #[clap(name = "lint")]
+    Lint(npm::lint::Args),
+
     /// Test an npm package that exposes a "test" script
     /// Recursively test all packages unless a package name is provided
     #[clap(name = "test")]
@@ -178,6 +183,7 @@ fn main() {
             NpmCommands::Check(args) => npm::check::run(&args, &ctx),
             NpmCommands::Clean(args) => npm::clean::run(&args, &ctx),
             NpmCommands::Fmt(args) => npm::fmt::run(&args, &ctx),
+            NpmCommands::Lint(args) => npm::lint::run(&args, &ctx),
             NpmCommands::Test(args) => npm::test::run(&args, &ctx),
         },
     }) {
