@@ -2,6 +2,8 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
+use std::path::Path;
+
 use clap::{AppSettings, Parser};
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
@@ -15,10 +17,12 @@ use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlug
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
-        LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
+        LightComponent, LightType, MaterialComponent, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, StaticMesh,
     },
-    resources::{DefaultMaterialType, DefaultMeshType, MeshManager, PipelineManager},
+    resources::{
+        DefaultMeshType, GpuUniformData, GpuUniformDataContext, MeshManager, PipelineManager,
+    },
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -31,6 +35,9 @@ use sample_data::SampleDataPlugin;
 
 mod meta_cube_test;
 pub(crate) use meta_cube_test::*;
+
+mod texture_loader;
+pub(crate) use texture_loader::*;
 
 struct SnapshotDescriptor {
     setup_name: String,
@@ -113,8 +120,8 @@ fn main() {
             .add_plugin(SampleDataPlugin::default());
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
-    } else if args.setup_name.eq("material_test") {
-        app.add_startup_system(init_material_scene);
+    } else if args.setup_name.eq("texture_test") {
+        app.add_startup_system(init_texture_scene);
     } else if args.meta_cube_size != 0 {
         app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
     } else {
@@ -177,7 +184,6 @@ fn presenter_snapshot_system(
                     snapshot_descriptor.height as u32,
                 ),
             )
-            .unwrap()
         });
 
         commands.spawn().insert(render_surface);
@@ -187,7 +193,13 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
+fn init_light_test(
+    mut commands: Commands<'_, '_>,
+    uniform_data: Res<'_, GpuUniformData>,
+    mesh_manager: Res<'_, MeshManager>,
+) {
+    let mut data_context = GpuUniformDataContext::new(&uniform_data);
+
     // sphere 1
     commands
         .spawn()
@@ -197,7 +209,8 @@ fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshMan
             mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
         ));
 
     // sphere 2
@@ -208,7 +221,8 @@ fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshMan
             mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
         ));
 
     // sphere 3
@@ -220,7 +234,8 @@ fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshMan
             mesh_manager.as_ref(),
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
         ));
 
     // directional light
@@ -278,90 +293,13 @@ fn init_light_test(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshMan
         });
 }
 
-fn init_material_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(-1.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
-            (255, 0, 0).into(),
-            DefaultMaterialType::Gold,
-        ));
+fn init_scene(
+    mut commands: Commands<'_, '_>,
+    uniform_data: Res<'_, GpuUniformData>,
+    mesh_manager: Res<'_, MeshManager>,
+) {
+    let mut data_context = GpuUniformDataContext::new(&uniform_data);
 
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
-            (0, 255, 0).into(),
-            DefaultMaterialType::Silver,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(1.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
-            (0, 0, 255).into(),
-            DefaultMaterialType::Bronze,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(2.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
-            (0, 0, 255).into(),
-            DefaultMaterialType::BluePlastic,
-        ));
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(-2.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
-            (0, 0, 255).into(),
-            DefaultMaterialType::RoughMetal,
-        ));
-
-    // directional light
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(LightComponent {
-            light_type: LightType::Directional,
-            radiance: 20.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
-            enabled: true,
-            ..LightComponent::default()
-        });
-
-    // omnidirectional light
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
-            radiance: 20.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
-            enabled: true,
-            ..LightComponent::default()
-        });
-}
-
-fn init_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
@@ -370,7 +308,8 @@ fn init_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>
             mesh_manager.as_ref(),
             DefaultMeshType::Plane as usize,
             (255, 0, 0).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
         ));
 
     commands
@@ -381,7 +320,8 @@ fn init_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>
             mesh_manager.as_ref(),
             DefaultMeshType::Cube as usize,
             (0, 255, 0).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
         ));
 
     commands
@@ -392,7 +332,59 @@ fn init_scene(mut commands: Commands<'_, '_>, mesh_manager: Res<'_, MeshManager>
             mesh_manager.as_ref(),
             DefaultMeshType::Pyramid as usize,
             (0, 0, 255).into(),
-            DefaultMaterialType::Default,
+            None,
+            &mut data_context,
+        ));
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(GlobalTransform::identity())
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 10.0,
+            color: Vec3::new(0.5, 0.5, 0.5),
+            enabled: true,
+            ..LightComponent::default()
+        });
+}
+
+fn init_texture_scene(
+    mut commands: Commands<'_, '_>,
+    uniform_data: Res<'_, GpuUniformData>,
+    mesh_manager: Res<'_, MeshManager>,
+) {
+    let mut data_context = GpuUniformDataContext::new(&uniform_data);
+
+    let albedo = load_texture(Path::new("old_brass_albedo"), &mut data_context);
+    let normal = load_texture(Path::new("old_brass_normal"), &mut data_context);
+    let metalness = load_texture(Path::new("old_brass_metalness"), &mut data_context);
+    let roughness = load_texture(Path::new("old_brass_roughness"), &mut data_context);
+
+    let mut material = MaterialComponent::new(&mut data_context);
+    material.albedo_texture = albedo.texture_id();
+    material.normal_texture = normal.texture_id();
+    material.metalness_texture = metalness.texture_id();
+    material.roughness_texture = roughness.texture_id();
+
+    commands.spawn().insert(albedo);
+    commands.spawn().insert(normal);
+    commands.spawn().insert(metalness);
+    commands.spawn().insert(roughness);
+
+    commands.spawn().insert(material);
+
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(GlobalTransform::identity())
+        .insert(StaticMesh::from_default_meshes(
+            mesh_manager.as_ref(),
+            DefaultMeshType::Sphere as usize,
+            (0, 255, 0).into(),
+            Some(&material),
+            &mut data_context,
         ));
 
     // omnidirectional light

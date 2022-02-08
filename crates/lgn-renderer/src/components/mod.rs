@@ -18,3 +18,6 @@ pub use render_surface::*;
 
 mod static_mesh;
 pub use static_mesh::*;
+
+mod texture_component;
+pub use texture_component::*;

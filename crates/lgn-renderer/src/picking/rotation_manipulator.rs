@@ -7,7 +7,7 @@ use crate::{
     resources::{DefaultMeshType, MeshManager},
 };
 
-use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingManager};
+use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingIdContext};
 
 #[derive(Clone, Copy, PartialEq)]
 #[allow(clippy::enum_variant_names)]
@@ -42,10 +42,8 @@ impl RotationManipulator {
         &mut self,
         commands: &mut Commands<'_, '_>,
         mesh_manager: &MeshManager,
-        picking_manager: &PickingManager,
+        picking_context: &mut PickingIdContext<'_>,
     ) {
-        let mut picking_block = picking_manager.acquire_picking_id_block();
-
         let rotate_x_pointer =
             Mat4::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f32::consts::PI * 0.5);
         let rotate_y_pointer =
@@ -64,7 +62,7 @@ impl RotationManipulator {
                 Transform::from_matrix(rotate_x_pointer),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
+                picking_context,
                 mesh_manager,
             ),
             ManipulatorPart::new(
@@ -75,7 +73,7 @@ impl RotationManipulator {
                 Transform::from_matrix(rotate_y_pointer),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
+                picking_context,
                 mesh_manager,
             ),
             ManipulatorPart::new(
@@ -86,12 +84,10 @@ impl RotationManipulator {
                 Transform::from_matrix(Mat4::IDENTITY),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
+                picking_context,
                 mesh_manager,
             ),
         ];
-
-        picking_manager.release_picking_id_block(picking_block);
     }
 
     pub(super) fn manipulate_entity(

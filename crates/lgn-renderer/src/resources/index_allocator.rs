@@ -1,8 +1,18 @@
 use std::sync::{Arc, Mutex};
 
-pub(crate) struct IndexBlock {
+#[derive(Clone)]
+pub struct IndexBlock {
     indexes: Vec<u32>,
     base_index: u32,
+}
+
+impl Default for IndexBlock {
+    fn default() -> Self {
+        Self {
+            indexes: Vec::new(),
+            base_index: u32::MAX,
+        }
+    }
 }
 
 impl IndexBlock {
@@ -33,6 +43,10 @@ impl IndexBlock {
     pub fn base_index(&self) -> u32 {
         self.base_index
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.indexes.is_empty()
+    }
 }
 
 pub(crate) struct IndexAllocatorInner {
@@ -41,7 +55,7 @@ pub(crate) struct IndexAllocatorInner {
 }
 
 #[derive(Clone)]
-pub(crate) struct IndexAllocator {
+pub struct IndexAllocator {
     inner: Arc<Mutex<IndexAllocatorInner>>,
 }
 
@@ -106,16 +120,22 @@ impl IndexAllocator {
         }
     }
 
-    pub fn acquire_index(&self, mut index_block: IndexBlock) -> (IndexBlock, u32) {
-        let mut new_index = u32::MAX;
-        while new_index == u32::MAX {
+    pub fn acquire_index(&self, index_block: &mut Option<IndexBlock>) -> u32 {
+        let new_index;
+        if let Some(index_block) = index_block {
             if let Some(index) = index_block.acquire_index() {
                 new_index = index;
             } else {
-                self.release_index_block(index_block);
-                index_block = self.acquire_index_block();
+                let new_index_block = self.acquire_index_block();
+                self.release_index_block(std::mem::replace(index_block, new_index_block));
+                new_index = index_block.acquire_index().unwrap();
             }
+        } else {
+            let mut new_index_block = self.acquire_index_block();
+            new_index = new_index_block.acquire_index().unwrap();
+
+            *index_block = Some(new_index_block);
         }
-        (index_block, new_index)
+        new_index
     }
 }

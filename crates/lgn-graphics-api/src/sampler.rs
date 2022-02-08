@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::backends::BackendSampler;
 use crate::deferred_drop::Drc;
-use crate::{AddressMode, CompareOp, DeviceContext, FilterType, GfxResult, MipMapMode};
+use crate::{AddressMode, CompareOp, DeviceContext, FilterType, MipMapMode};
 
 /// Used to create a `Sampler`
 #[derive(Debug, Clone, Default)]
@@ -66,15 +66,15 @@ pub struct Sampler {
 }
 
 impl Sampler {
-    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> GfxResult<Self> {
-        let platform_sampler = BackendSampler::new(device_context, sampler_def)?;
+    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> Self {
+        let platform_sampler = BackendSampler::new(device_context, sampler_def);
         let inner = SamplerInner {
             device_context: device_context.clone(),
             backend_sampler: platform_sampler,
         };
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(inner),
-        })
+        }
     }
 }

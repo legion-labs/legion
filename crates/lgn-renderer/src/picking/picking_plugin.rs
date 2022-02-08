@@ -10,7 +10,7 @@ use lgn_transform::prelude::{Parent, Transform};
 use lgn_window::WindowResized;
 use std::ops::Deref;
 
-use super::{ManipulatorManager, PickingManager};
+use super::{ManipulatorManager, PickingIdContext, PickingManager};
 use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
@@ -109,13 +109,11 @@ fn lights_added(
         (Added<LightComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    let mut picking_block = picking_manager.acquire_picking_id_block();
+    let mut picking_context = PickingIdContext::new(&picking_manager);
 
     for (entity, mut light) in query.iter_mut() {
-        light.picking_id = picking_block.acquire_picking_id(entity).unwrap();
+        light.picking_id = picking_context.aquire_picking_id(entity);
     }
-
-    picking_manager.release_picking_id_block(picking_block);
 }
 
 #[span_fn]

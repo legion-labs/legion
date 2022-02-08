@@ -1,6 +1,6 @@
 use std::{
     alloc::Layout,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use lgn_graphics_api::{
@@ -210,49 +210,62 @@ impl UnifiedStaticBuffer {
 
 pub struct UniformGPUData<T> {
     static_buffer: UnifiedStaticBuffer,
-    allocated_pages: Vec<PagedBufferAllocation>,
+    allocated_pages: RwLock<Vec<PagedBufferAllocation>>,
     page_size: u64,
     element_size: u64,
     marker: std::marker::PhantomData<T>,
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(static_buffer: &UnifiedStaticBuffer, min_page_size: u64) -> Self {
-        let page = static_buffer.allocate_segment(min_page_size);
+    pub fn new(static_buffer: &UnifiedStaticBuffer, page_size: u64) -> Self {
+        let page = static_buffer.allocate_segment(page_size);
         let page_size = page.size();
         Self {
             static_buffer: static_buffer.clone(),
-            allocated_pages: vec![page],
+            allocated_pages: RwLock::new(vec![page]),
             page_size,
             element_size: std::mem::size_of::<T>() as u64,
             marker: ::std::marker::PhantomData,
         }
     }
 
-    pub fn ensure_index_allocated(&mut self, index: u32) -> u64 {
+    pub fn ensure_index_allocated(&self, index: u32) -> u64 {
         let index_64 = u64::from(index);
         let elements_per_page = self.page_size / self.element_size;
         let required_pages = (index_64 / elements_per_page) + 1;
 
-        while (self.allocated_pages.len() as u64) < required_pages {
-            self.allocated_pages
-                .push(self.static_buffer.allocate_segment(self.page_size));
-        }
-
         let index_of_page = index_64 / elements_per_page;
         let index_in_page = index_64 % elements_per_page;
 
-        self.allocated_pages[index_of_page as usize].offset() + (index_in_page * self.element_size)
+        {
+            let page_read_access = self.allocated_pages.read().unwrap();
+            if page_read_access.len() >= required_pages as usize {
+                return page_read_access[index_of_page as usize].offset()
+                    + (index_in_page * self.element_size);
+            }
+        }
+
+        let mut page_write_access = self.allocated_pages.write().unwrap();
+
+        while (page_write_access.len() as u64) < required_pages {
+            page_write_access.push(self.static_buffer.allocate_segment(self.page_size));
+        }
+
+        page_write_access[index_of_page as usize].offset() + (index_in_page * self.element_size)
     }
 
     pub fn structured_buffer_view(&self, struct_size: u64) -> BufferView {
-        assert!(!self.allocated_pages.is_empty());
-        self.allocated_pages[0].structured_buffer_view(struct_size, true)
+        let page_read_access = self.allocated_pages.read().unwrap();
+
+        assert!(!page_read_access.is_empty());
+        page_read_access[0].structured_buffer_view(struct_size, true)
     }
 
     pub fn offset(&self) -> u64 {
-        assert!(!self.allocated_pages.is_empty());
-        self.allocated_pages[0].offset()
+        let page_read_access = self.allocated_pages.read().unwrap();
+
+        assert!(!page_read_access.is_empty());
+        page_read_access[0].offset()
     }
 }
 

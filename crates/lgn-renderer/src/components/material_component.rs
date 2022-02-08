@@ -2,7 +2,10 @@ use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_math::Vec4;
 
-use crate::{cgen, resources::UniformGPUDataUpdater};
+use crate::{
+    cgen,
+    resources::{GpuUniformDataContext, UniformGPUDataUpdater},
+};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AlphaMode {
@@ -21,44 +24,48 @@ impl Default for AlphaMode {
 
 #[derive(Component, Debug, Copy, Clone)]
 pub struct MaterialComponent {
+    pub albedo_texture: u32,
     pub base_albedo: Color,
+    pub normal_texture: u32,
+    pub metalness_texture: u32,
     pub base_metalness: f32,
     pub reflectance: f32,
+    pub roughness_texture: u32,
     pub base_roughness: f32,
     pub alpha_mode: AlphaMode,
     gpu_index: u32,
     gpu_offset: u64,
 }
 
-impl Default for MaterialComponent {
-    fn default() -> Self {
+impl MaterialComponent {
+    pub fn new(data_context: &mut GpuUniformDataContext<'_>) -> Self {
+        let gpu_index = data_context.aquire_gpu_material_id();
+        let gpu_offset = data_context
+            .uniform_data
+            .gpu_material_data
+            .ensure_index_allocated(gpu_index);
+
         Self {
+            albedo_texture: u32::MAX,
             base_albedo: Color::from((204, 204, 204)),
+            normal_texture: u32::MAX,
+            metalness_texture: u32::MAX,
             base_metalness: 0.0,
             reflectance: 0.5,
+            roughness_texture: u32::MAX,
             base_roughness: 0.4,
             alpha_mode: AlphaMode::Opaque,
-            gpu_index: u32::MAX,
-            gpu_offset: u64::MAX,
+            gpu_index,
+            gpu_offset,
         }
     }
-}
 
-impl MaterialComponent {
+    pub fn gpu_index(&self) -> u32 {
+        self.gpu_index
+    }
+
     pub fn gpu_offset(&self) -> u32 {
         self.gpu_offset as u32
-    }
-
-    pub(crate) fn set_gpu_material_index_offset(&mut self, index: u32, offset: u64) {
-        self.gpu_index = index;
-        self.gpu_offset = offset;
-    }
-
-    pub(crate) fn clear_gpu_material_index_offset(&mut self) -> u32 {
-        let old_index = self.gpu_index;
-        self.gpu_index = u32::MAX;
-        self.gpu_offset = u64::MAX;
-        old_index
     }
 
     pub(crate) fn update_gpu_data(&self, updater: &mut UniformGPUDataUpdater) {
@@ -74,6 +81,10 @@ impl MaterialComponent {
         gpu_material.set_base_metalness(self.base_metalness.into());
         gpu_material.set_reflectance(self.reflectance.into());
         gpu_material.set_base_roughness(self.base_roughness.into());
+        gpu_material.set_albedo_texture(self.albedo_texture.into());
+        gpu_material.set_normal_texture(self.normal_texture.into());
+        gpu_material.set_metalness_texture(self.metalness_texture.into());
+        gpu_material.set_roughness_texture(self.roughness_texture.into());
         //gpu_material.set_alpha(self.alpha.into());
 
         updater.add_update_jobs(&[gpu_material], self.gpu_offset);

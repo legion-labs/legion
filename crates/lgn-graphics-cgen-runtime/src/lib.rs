@@ -406,7 +406,14 @@ impl ValueWrapper for TextureView {
 
 impl ValueWrapper for &[&TextureView] {
     fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
-        false
+        let mut valid = true;
+        for index in 0..self.len() {
+            let res_def = self[index].definition();
+            if res_def.array_size != 1 {
+                valid = false;
+            }
+        }
+        valid
     }
 }
 

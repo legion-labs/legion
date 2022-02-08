@@ -52,6 +52,8 @@ struct FrameDescriptorSet {
     omni_directional_lights: StructuredBuffer<OmniDirectionalLight>,
     spot_lights: StructuredBuffer<SpotLight>,
     static_buffer: ByteAddressBuffer,
+    material_textures: [Texture2D<Float4>; 256],
+    material_sampler: Sampler,
 }
 
 #[DescriptorSet(frequency = 1)]
@@ -149,4 +151,8 @@ struct MaterialData {
     base_metalness: Float1,
     reflectance: Float1,
     base_roughness: Float1,
+    albedo_texture: Uint1,
+    normal_texture: Uint1,
+    metalness_texture: Uint1,
+    roughness_texture: Uint1,
 }
