@@ -1,8 +1,9 @@
-use lgn_ecs::prelude::{Local, Res, ResMut};
+use lgn_ecs::prelude::{Local, Query, Res, ResMut, Without};
 use lgn_graphics_api::PagedBufferAllocation;
 
-use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
+use super::{GpuUniformData, GpuUniformDataContext, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
+    components::{ManipulatorComponent, StaticMesh},
     egui::egui_plugin::Egui,
 
 pub struct MeshManager {
@@ -135,7 +136,7 @@ impl Default for MeshManagerUIState {
             path: String::from(
                 //"C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
                 //"C:/work/glTF-Sample-Models/sourceModels/DragonAttenuation/Dragon_Attenuation.blend",
-                "C:/work/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf"
+                "C:/work/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf",
             ),
         }
     }
@@ -147,8 +148,11 @@ pub fn ui_mesh_manager(
     renderer: Res<'_, Renderer>,
     mut mesh_manager: ResMut<'_, MeshManager>,
     mut ui_state: Local<'_, MeshManagerUIState>,
-    //mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
+    mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
+    uniform_data: Res<'_, GpuUniformData>,
 ) {
+    let mut data_context = GpuUniformDataContext::new(&uniform_data);
+
     egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
         ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
         if ui.small_button("Load mesh (gltf)").clicked() {
@@ -157,8 +161,8 @@ pub fn ui_mesh_manager(
                 StaticMeshRenderData::new_gltf(ui_state.path.clone()),
             );
         }
-        /*for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
-            let mut selected_text = format!("Mesh ID {}", mesh.mesh_id);
+        for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
+            let selected_text = format!("Mesh ID {}", mesh.mesh_id);
             let mut selected_idx = mesh.mesh_id;
             egui::ComboBox::from_label(format!("Mesh {}", idx))
                 .selected_text(selected_text)
@@ -171,12 +175,9 @@ pub fn ui_mesh_manager(
                         );
                     }
                 });
-            *mesh.as_mut() = StaticMesh::from_default_meshes(
-                mesh_manager.as_ref(),
-                selected_idx,
-                mesh.color,
-                mesh.material_type,
-            );
-        }*/
+            if selected_idx != mesh.mesh_id {
+                mesh.set_mesh_id(&mesh_manager, selected_idx);
+            }
+        }
     });
 }

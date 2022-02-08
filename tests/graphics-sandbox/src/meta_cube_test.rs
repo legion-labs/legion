@@ -92,7 +92,7 @@ impl MetaCubeResource {
                             z as f32 * 2.0,
                         )))
                         .insert(VisualComponent::new(
-                            DefaultMeshType::Cube as usize,
+                            DefaultMeshType::Cube,
                             (r, g, b).into(),
                         ));
                 }

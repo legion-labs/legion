@@ -188,7 +188,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
             -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
+            DefaultMeshType::Sphere,
             (255, 0, 0).into(),
         ));
 
@@ -201,7 +201,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh::from_default_meshes(
             mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
+            DefaultMeshType::Sphere,
             (0, 255, 0).into(),
         ));
 
@@ -214,7 +214,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(GlobalTransform::identity())
         .insert(StaticMesh::from_default_meshes(
             mesh_manager.as_ref(),
-            DefaultMeshType::Sphere as usize,
+            DefaultMeshType::Sphere,
             (0, 0, 255).into(),
         ));
 
@@ -284,7 +284,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             -0.5, -0.1, 0.0,
         )))
         .insert(VisualComponent::new(
-            DefaultMeshType::Plane as usize,
+            DefaultMeshType::Plane,
             (255, 0, 0).into(),
         ));
 
@@ -294,7 +294,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             0.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            DefaultMeshType::Cube as usize,
+            DefaultMeshType::Cube,
             (0, 255, 0).into(),
         ));
 
@@ -304,7 +304,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            DefaultMeshType::Pyramid as usize,
+            DefaultMeshType::Pyramid,
             (0, 0, 255).into(),
         ));
 
