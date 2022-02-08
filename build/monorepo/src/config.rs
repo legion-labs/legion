@@ -161,11 +161,6 @@ pub struct Dist {
 #[serde(rename_all = "kebab-case")]
 pub struct Npm {
     pub package_manager: String,
-    pub build_script: String,
-    pub clean_script: String,
-    pub check_script: String,
-    pub format_script: String,
-    pub test_script: String,
     #[serde(default)]
     pub excluded_dirs: Vec<String>,
 }

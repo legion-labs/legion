@@ -196,11 +196,6 @@ mark-changed = "all"
 
 [npm]
 package-manager = "pnpm"
-build-script = "build"
-clean-script = "clean"
-check-script = "check"
-format-script = "fmt"
-test-script = "test"
 excluded-dirs = ["target", "dist", "node_modules"]
 
 ################################################################################

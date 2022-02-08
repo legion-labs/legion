@@ -20,6 +20,18 @@ const PACKAGE_JSON: &str = "package.json";
 
 const INSTALL_SCRIPT: &str = "install";
 
+const BUILD_SCRIPT: &str = "build";
+
+const CHECK_SCRIPT: &str = "check";
+
+const CLEAN_SCRIPT: &str = "clean";
+
+const FORMAT_SCRIPT: &str = "fmt";
+
+const FORMAT_CHECK_SCRIPT: &str = "fmt:check";
+
+const TEST_SCRIPT: &str = "test";
+
 #[derive(Debug, Deserialize)]
 struct NpmMetadata {
     name: String,
@@ -119,7 +131,7 @@ impl NpmPackage {
 
     /// Runs the build script
     pub fn run_build(&self, config: &NpmWorkspaceConfig) -> Result<()> {
-        if !self.package_json.scripts.contains_key(&config.build_script) {
+        if !self.package_json.scripts.contains_key(BUILD_SCRIPT) {
             return Ok(());
         }
 
@@ -132,9 +144,7 @@ impl NpmPackage {
 
         let mut cmd = Command::new(&config.package_manager_path);
 
-        let cmd = cmd
-            .args(["run", &config.build_script])
-            .current_dir(&self.path);
+        let cmd = cmd.args(["run", BUILD_SCRIPT]).current_dir(&self.path);
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
@@ -161,7 +171,7 @@ impl NpmPackage {
 
     /// Runs the check script
     pub fn run_check(&self, config: &NpmWorkspaceConfig) -> Result<()> {
-        if !self.package_json.scripts.contains_key(&config.check_script) {
+        if !self.package_json.scripts.contains_key(CHECK_SCRIPT) {
             return Ok(());
         }
 
@@ -174,9 +184,7 @@ impl NpmPackage {
 
         let mut cmd = Command::new(&config.package_manager_path);
 
-        let cmd = cmd
-            .args(["run", &config.check_script])
-            .current_dir(&self.path);
+        let cmd = cmd.args(["run", CHECK_SCRIPT]).current_dir(&self.path);
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
@@ -203,7 +211,7 @@ impl NpmPackage {
 
     /// Runs the clean script
     pub fn run_clean(&self, config: &NpmWorkspaceConfig) -> Result<()> {
-        if !self.package_json.scripts.contains_key(&config.clean_script) {
+        if !self.package_json.scripts.contains_key(CLEAN_SCRIPT) {
             return Ok(());
         }
 
@@ -216,9 +224,7 @@ impl NpmPackage {
 
         let mut cmd = Command::new(&config.package_manager_path);
 
-        let cmd = cmd
-            .args(["run", &config.clean_script])
-            .current_dir(&self.path);
+        let cmd = cmd.args(["run", CLEAN_SCRIPT]).current_dir(&self.path);
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
@@ -243,9 +249,59 @@ impl NpmPackage {
         Ok(())
     }
 
+    /// Runs the format script
+    pub fn run_format(&self, config: &NpmWorkspaceConfig, check: bool) -> Result<()> {
+        if !self.package_json.scripts.contains_key(FORMAT_SCRIPT)
+            || !self.package_json.scripts.contains_key(FORMAT_CHECK_SCRIPT)
+        {
+            return Ok(());
+        }
+
+        action_step!(
+            "Npm Format",
+            "{} ({})",
+            self.package_json.name,
+            self.path.to_string_lossy()
+        );
+
+        let mut cmd = Command::new(&config.package_manager_path);
+
+        let mut args = vec!["run"];
+
+        if check {
+            args.push(FORMAT_CHECK_SCRIPT);
+        } else {
+            args.push(FORMAT_SCRIPT);
+        }
+
+        let cmd = cmd.args(&args).current_dir(&self.path);
+
+        match cmd.output() {
+            Ok(output) if output.status.success() => {
+                action_step!("Finished", "{}", self.package_json.name)
+            }
+            Ok(output) => error_step!(
+                "Npm Format",
+                r#"An error occurred while formatting "{}": {}"#,
+                self.package_json.name,
+                // It's not a typo, it seems some package managers
+                // use the stdout channel when an error occurs
+                String::from_utf8(output.stdout).unwrap()
+            ),
+            Err(error) => error_step!(
+                "Npm Format",
+                r#"An error occurred while formatting "{}": {}"#,
+                self.package_json.name,
+                error.to_string()
+            ),
+        }
+
+        Ok(())
+    }
+
     /// Runs the test script
     pub fn run_test(&self, config: &NpmWorkspaceConfig) -> Result<()> {
-        if !self.package_json.scripts.contains_key(&config.test_script) {
+        if !self.package_json.scripts.contains_key(TEST_SCRIPT) {
             return Ok(());
         }
 
@@ -258,9 +314,7 @@ impl NpmPackage {
 
         let mut cmd = Command::new(&config.package_manager_path);
 
-        let cmd = cmd
-            .args(["run", &config.test_script])
-            .current_dir(&self.path);
+        let cmd = cmd.args(["run", TEST_SCRIPT]).current_dir(&self.path);
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
@@ -292,16 +346,6 @@ impl NpmPackage {
 pub struct NpmWorkspaceConfig {
     /// The package manager binary path
     package_manager_path: PathBuf,
-    /// The build script command (typically `build`)
-    build_script: String,
-    /// The check script command (typically `check`)
-    check_script: String,
-    /// The clean script command (typically `clean`)
-    clean_script: String,
-    /// The format script command (typically `format`)
-    format_script: String,
-    /// The test script command (typically `test`)
-    test_script: String,
 }
 
 /// References all the npm packages in a workspace
@@ -327,11 +371,6 @@ impl NpmWorkspace {
 
         let config = NpmWorkspaceConfig {
             package_manager_path,
-            build_script: config.npm.build_script.clone(),
-            check_script: config.npm.check_script.clone(),
-            clean_script: config.npm.clean_script.clone(),
-            format_script: config.npm.format_script.clone(),
-            test_script: config.npm.test_script.clone(),
         };
 
         Ok(Self {
@@ -456,6 +495,22 @@ impl NpmWorkspace {
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => package.run_clean(&self.config),
+                None => Err(Error::new(format!(
+                    "Couldn't find package {}",
+                    package_name
+                ))),
+            },
+        }
+    }
+
+    pub fn run_format(&self, package_name: &Option<String>, check: bool) -> Result<()> {
+        match package_name {
+            None => self
+                .packages
+                .par_iter()
+                .try_for_each(|(_, package)| package.run_format(&self.config, check)),
+            Some(package_name) => match self.packages.get(package_name) {
+                Some(package) => package.run_format(&self.config, check),
                 None => Err(Error::new(format!(
                     "Couldn't find package {}",
                     package_name
