@@ -94,6 +94,11 @@ async fn build_device() {
         )
         .expect("successful compilation");
 
+    assert_eq!(
+        build.lookup_pathid(derived.resource_id()).as_ref(),
+        Some(&derived)
+    );
+
     // create resource registry that uses the 'build device'
     let cas_addr = ContentStoreAddr::from(cas);
     let content_store = HddContentStore::open(cas_addr.clone()).expect("valid cas");

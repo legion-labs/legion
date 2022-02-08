@@ -61,7 +61,11 @@ impl BuildManager {
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
         self.build.source_pull(project).await?;
-        match self.build.compile(derived_id.clone(), &self.compile_env) {
+        match self.build.compile_with_manifest(
+            derived_id.clone(),
+            &self.compile_env,
+            Some(self.manifest.clone()),
+        ) {
             Ok(output) => {
                 info!(
                     "Data build {} Succeeded ({:?})",
@@ -70,7 +74,6 @@ impl BuildManager {
                 );
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
                 let built = rt_manifest.resources();
-                self.manifest.extend(rt_manifest);
                 Ok((derived_id, built))
             }
             Err(e) => {

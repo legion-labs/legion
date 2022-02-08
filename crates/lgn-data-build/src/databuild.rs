@@ -12,6 +12,7 @@ use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, CompiledResources};
 use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
+use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
@@ -252,10 +253,11 @@ impl DataBuild {
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
         if let Some(source_index) = self.source_index.current() {
-            source_index.lookup_pathid(id)
-        } else {
-            self.output_index.lookup_pathid(id)
+            if let Some(id) = source_index.lookup_pathid(id) {
+                return Some(id);
+            }
         }
+        self.output_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from
@@ -284,29 +286,39 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompiledResources, Error> {
+        self.compile_with_manifest(compile_path, env, None)
+    }
+
+    /// Same as `compile` but it updates the `manifest` provided as an argument.
+    pub fn compile_with_manifest(
+        &mut self,
+        compile_path: ResourcePathId,
+        env: &CompilationEnv,
+        manifest: Option<Manifest>,
+    ) -> Result<CompiledResources, Error> {
         self.output_index.record_pathid(&compile_path);
-        let mut manifest = CompiledResources::default();
+        let mut result = CompiledResources::default();
 
         let CompileOutput {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(compile_path, env)?;
+        } = self.compile_path(compile_path, env, manifest)?;
 
         let assets = self.link(&resources, &references)?;
 
         for asset in assets {
-            if let Some(existing) = manifest
+            if let Some(existing) = result
                 .compiled_resources
                 .iter_mut()
                 .find(|existing| existing.path == asset.path)
             {
                 *existing = asset;
             } else {
-                manifest.compiled_resources.push(asset);
+                result.compiled_resources.push(asset);
             }
         }
-        Ok(manifest)
+        Ok(result)
     }
 
     /// Compile `compile_node` of the build graph and update *build index* one
@@ -455,6 +467,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
+        manifest: Option<Manifest>,
     ) -> Result<CompileOutput, Error> {
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);
@@ -618,6 +631,19 @@ impl DataBuild {
                     compiler,
                     self.compilers.registry(),
                 )?;
+
+                // update the CAS manifest with new content in order to make new resources
+                // visible to the next compilation node
+                // NOTE: right now all the resources are visible to all compilation nodes.
+                if let Some(manifest) = &manifest {
+                    for r in &resource_infos {
+                        manifest.insert(
+                            r.compiled_path.resource_id(),
+                            r.compiled_checksum,
+                            r.compiled_size,
+                        );
+                    }
+                }
 
                 // registry must be updated to release any resources that are no longer referenced.
                 self.compilers.registry().update();

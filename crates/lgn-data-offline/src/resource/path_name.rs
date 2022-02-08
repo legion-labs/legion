@@ -106,6 +106,22 @@ impl From<String> for ResourcePathName {
     }
 }
 
+impl FromStr for ResourcePathName {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.chars().next() {
+            Some(c) => {
+                if c != SEPARATOR {
+                    return Err(());
+                }
+            }
+            None => return Err(()),
+        }
+        Ok(Self(s.to_owned()))
+    }
+}
+
 impl From<&str> for ResourcePathName {
     fn from(s: &str) -> Self {
         Self::from(s.to_owned())
