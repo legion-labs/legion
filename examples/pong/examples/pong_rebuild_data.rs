@@ -332,12 +332,8 @@ async fn create_offline_data(
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
         2,
         "/scene/scene_script",
-        r#"pub fn fibonacci(n) {
-            if n <= 1 {
-                n
-            } else {
-                fibonacci(n - 1) + fibonacci(n - 2)
-            }
+        r#"pub fn print_mouse_delta(x, y) {
+            println!("[Rune] mouse delta: {}, {}", x, y);
         }"#,
     )
     .await;
@@ -359,8 +355,8 @@ async fn create_offline_data(
         entity.children.push(ball_path_id);
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: 2, // Rune
-            input_values: vec!["10".to_string()],
-            entry_fn: "fibonacci".to_string(),
+            input_values: vec!["mouse_delta_x".to_string(), "mouse_delta_y".to_string()],
+            entry_fn: "print_mouse_delta".to_string(),
             script_id: Some(scene_script),
             temp_script: "".to_string(),
         });

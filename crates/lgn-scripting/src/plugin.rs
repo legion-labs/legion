@@ -25,7 +25,7 @@ struct RuntimeScripts {
 }
 
 #[derive(Default)]
-pub struct ScriptingPlugin {}
+pub struct ScriptingPlugin;
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
@@ -150,6 +150,8 @@ impl ScriptingPlugin {
                 for input in &script.input_values {
                     if input == "mouse_delta_x" {
                         args.push(event_cache.mouse_motion.delta.x.to_value().unwrap());
+                    } else if input == "mouse_delta_y" {
+                        args.push(event_cache.mouse_motion.delta.y.to_value().unwrap());
                     } else {
                         let value = i64::from_str(input.as_str()).unwrap();
                         args.push(value.to_value().unwrap());

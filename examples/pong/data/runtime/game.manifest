@@ -17,6 +17,7 @@
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "checksum": "b1a3fbc704c0709dfdf518a402e0ee52",
     "size": 228
   },
@@ -42,6 +43,10 @@
 =======
     "checksum": "f09ff96bc8d7c8dabf9fa98cfc4e9ce5",
     "size": 386
+=======
+    "checksum": "800e6d01f7514bec51293826765a5344",
+    "size": 426
+>>>>>>> 4ced68e0 (change script to output mouse delta)
   },
   {
     "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",

@@ -8,9 +8,10 @@
   "components": [
     {
       "ScriptComponent": {
-        "entry_fn": "fibonacci",
+        "entry_fn": "print_mouse_delta",
         "input_values": [
-          "10"
+          "mouse_delta_x",
+          "mouse_delta_y"
         ],
         "script_id": "(45307156cdfef705,f7e3757c-22b1-44af-a8d3-5ae080c4fef1)|17bed132bc803773",
         "script_type": 2,
