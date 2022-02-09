@@ -74,6 +74,7 @@ impl BuildManager {
                 );
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
                 let built = rt_manifest.resources();
+                self.manifest.extend(rt_manifest);
                 Ok((derived_id, built))
             }
             Err(e) => {
