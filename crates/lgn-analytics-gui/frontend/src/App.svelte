@@ -4,7 +4,6 @@
   import About from "@/pages/About.svelte";
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
-  import Metrics from "@/pages/Metrics.svelte";
   import Graph from "@/pages/Graph.svelte";
   import MetricsCanvas from "./components/MetricsCanvas.svelte";
 
