@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, FileInfo, Lock};
+use crate::{Branch, CanonicalPath, Change, FileInfo, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -16,8 +16,8 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
-    #[error("the specified commit `{commit_id}` does not exist")]
-    CommitDoesNotExist { commit_id: String },
+    #[error("commit `{commit_id}` was not found")]
+    CommitNotFound { commit_id: String },
     #[error("the folder `{path}` is not a workspace")]
     NotAWorkspace { path: PathBuf },
     #[error("the path `{path}` did not match any files")]
@@ -26,13 +26,22 @@ pub enum Error {
     SymbolicLinkNotSupported { path: PathBuf },
     #[error("branch `{branch_name}` was not found")]
     BranchNotFound { branch_name: String },
+    #[error("lock `{lock_domain_id}/{canonical_path}` was not found")]
+    LockNotFound {
+        lock_domain_id: String,
+        canonical_path: CanonicalPath,
+    },
     #[error("already on branch `{branch_name}`")]
     AlreadyOnBranch { branch_name: String },
     #[error("the workspace is dirty - please commit or stash changes")]
     WorkspaceDirty,
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
     StaleBranch { branch: Branch },
-    #[error("lock `{}` already exists in domain `{}`", .lock.relative_path, .lock.lock_domain_id)]
+    #[error("cannot sync with conflicting changes")]
+    ConflictingChanges {
+        conflicting_changes: BTreeSet<Change>,
+    },
+    #[error("lock `{lock}` already exists")]
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
     EmptyCommitNotAllowed,
@@ -93,8 +102,8 @@ impl Error {
         }
     }
 
-    pub fn commit_does_not_exist(commit_id: impl Into<String>) -> Self {
-        Self::CommitDoesNotExist {
+    pub fn commit_not_found(commit_id: impl Into<String>) -> Self {
+        Self::CommitNotFound {
             commit_id: commit_id.into(),
         }
     }
@@ -115,12 +124,25 @@ impl Error {
         Self::BranchNotFound { branch_name }
     }
 
+    pub fn lock_not_found(lock_domain_id: String, canonical_path: CanonicalPath) -> Self {
+        Self::LockNotFound {
+            lock_domain_id,
+            canonical_path,
+        }
+    }
+
     pub fn already_on_branch(branch_name: String) -> Self {
         Self::AlreadyOnBranch { branch_name }
     }
 
     pub fn stale_branch(branch: Branch) -> Self {
         Self::StaleBranch { branch }
+    }
+
+    pub fn conflicting_changes(conflicting_changes: BTreeSet<Change>) -> Self {
+        Self::ConflictingChanges {
+            conflicting_changes,
+        }
     }
 
     pub fn lock_already_exists(lock: Lock) -> Self {
@@ -187,17 +209,17 @@ impl Error {
     /// Used in conjunction with the `WithParent` trait, this is mostly
     /// useful when dealing with recursive tree methods.
     fn with_parent_name(mut self, parent_name: &str) -> Self {
-        if let Some(canonical_path) = match &mut self {
+        match &mut self {
             Self::CannotEditDirectory { canonical_path }
             | Self::FileAlreadyExists { canonical_path }
             | Self::FileDoesNotExist { canonical_path }
             | Self::PathIsNotAFile { canonical_path }
             | Self::PathIsNotADirectory { canonical_path }
-            | Self::FileContentMistmatch { canonical_path, .. } => Some(canonical_path),
-            _ => None,
-        } {
-            *canonical_path = canonical_path.prepend(parent_name);
-        }
+            | Self::FileContentMistmatch { canonical_path, .. } => {
+                *canonical_path = canonical_path.clone().prepend(parent_name);
+            }
+            _ => {}
+        };
 
         self
     }
@@ -208,17 +230,17 @@ impl Error {
     /// Used in conjunction with the `WithParent` trait, this is mostly
     /// useful when dealing with recursive tree methods.
     fn with_parent_path(mut self, parent_path: &CanonicalPath) -> Self {
-        if let Some(canonical_path) = match &mut self {
+        match &mut self {
             Self::CannotEditDirectory { canonical_path }
             | Self::FileAlreadyExists { canonical_path }
             | Self::FileDoesNotExist { canonical_path }
             | Self::PathIsNotAFile { canonical_path }
             | Self::PathIsNotADirectory { canonical_path }
-            | Self::FileContentMistmatch { canonical_path, .. } => Some(canonical_path),
-            _ => None,
-        } {
-            *canonical_path = parent_path.join(canonical_path);
-        }
+            | Self::FileContentMistmatch { canonical_path, .. } => {
+                *canonical_path = parent_path.join(canonical_path);
+            }
+            _ => {}
+        };
 
         self
     }

@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
-use lgn_tracing::imetric;
 use std::cell::RefCell;
-use std::fs;
 use std::path::{Path, PathBuf};
 use url::Url;
 
@@ -49,13 +47,6 @@ pub(crate) fn parse_url_or_path(s: &str) -> Result<UrlOrPath> {
     }
 }
 
-pub(crate) fn read_text_file(path: &Path) -> Result<String> {
-    let contents =
-        fs::read_to_string(path).context(format!("error reading file: {}", path.display()))?;
-    imetric!("read file size", "bytes", contents.len() as u64);
-    Ok(contents)
-}
-
 pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> Result<PathBuf> {
     //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
     let path = path.as_ref();
@@ -73,22 +64,4 @@ pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> Result<PathBuf> {
                 .context("failed to convert path to string")?,
         ))
     })
-}
-
-pub(crate) fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
-    p.strip_prefix(base).map(Path::to_path_buf).context(format!(
-        "error stripping prefix: {} is not relative to {}",
-        p.display(),
-        base.display()
-    ))
-}
-
-pub(crate) fn make_canonical_relative_path(
-    workspace_root: &Path,
-    path_specified: impl AsRef<Path>,
-) -> Result<String> {
-    let abs_path = make_path_absolute(path_specified)?;
-    let relative_path = path_relative_to(&abs_path, workspace_root)?;
-    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
-    Ok(canonical_relative_path)
 }

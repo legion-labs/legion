@@ -1,7 +1,8 @@
+use crate::{CanonicalPath, Error, Result};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lock {
-    pub relative_path: String, /* needs to have a stable representation across platforms because
-                                * it seeds the hash */
+    pub canonical_path: CanonicalPath,
     pub lock_domain_id: String,
     pub workspace_id: String,
     pub branch_name: String,
@@ -10,7 +11,7 @@ pub struct Lock {
 impl From<Lock> for lgn_source_control_proto::Lock {
     fn from(lock: Lock) -> Self {
         Self {
-            relative_path: lock.relative_path,
+            canonical_path: lock.canonical_path.to_string(),
             lock_domain_id: lock.lock_domain_id,
             workspace_id: lock.workspace_id,
             branch_name: lock.branch_name,
@@ -18,14 +19,22 @@ impl From<Lock> for lgn_source_control_proto::Lock {
     }
 }
 
-impl From<lgn_source_control_proto::Lock> for Lock {
-    fn from(lock: lgn_source_control_proto::Lock) -> Self {
-        Self {
-            relative_path: lock.relative_path,
+impl TryFrom<lgn_source_control_proto::Lock> for Lock {
+    type Error = Error;
+
+    fn try_from(lock: lgn_source_control_proto::Lock) -> Result<Self> {
+        Ok(Self {
+            canonical_path: CanonicalPath::new(&lock.canonical_path)?,
             lock_domain_id: lock.lock_domain_id,
             workspace_id: lock.workspace_id,
             branch_name: lock.branch_name,
-        }
+        })
+    }
+}
+
+impl std::fmt::Display for Lock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.lock_domain_id, self.canonical_path)
     }
 }
 
@@ -36,7 +45,7 @@ mod tests {
     #[test]
     fn test_lock_from_proto() {
         let lock = Lock {
-            relative_path: "relative_path".to_string(),
+            canonical_path: CanonicalPath::new_from_name("canonical_path"),
             lock_domain_id: "lock_domain_id".to_string(),
             workspace_id: "workspace_id".to_string(),
             branch_name: "branch_name".to_string(),
@@ -47,7 +56,7 @@ mod tests {
         assert_eq!(
             proto_lock,
             lgn_source_control_proto::Lock {
-                relative_path: "relative_path".to_string(),
+                canonical_path: "/canonical_path".to_string(),
                 lock_domain_id: "lock_domain_id".to_string(),
                 workspace_id: "workspace_id".to_string(),
                 branch_name: "branch_name".to_string(),
@@ -58,7 +67,7 @@ mod tests {
     #[test]
     fn test_lock_to_proto() {
         let proto_lock = lgn_source_control_proto::Lock {
-            relative_path: "relative_path".to_string(),
+            canonical_path: "/canonical_path".to_string(),
             lock_domain_id: "lock_domain_id".to_string(),
             workspace_id: "workspace_id".to_string(),
             branch_name: "branch_name".to_string(),
@@ -69,7 +78,7 @@ mod tests {
         assert_eq!(
             lock,
             Lock {
-                relative_path: "relative_path".to_string(),
+                canonical_path: CanonicalPath::new_from_name("canonical_path"),
                 lock_domain_id: "lock_domain_id".to_string(),
                 workspace_id: "workspace_id".to_string(),
                 branch_name: "branch_name".to_string(),

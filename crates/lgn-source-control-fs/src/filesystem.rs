@@ -58,9 +58,9 @@ impl SourceControlFilesystem {
     }
 
     async fn read_tree(index_backend: &dyn IndexBackend, branch_name: &str) -> Result<Tree> {
-        let branch = index_backend.read_branch(branch_name).await?;
-        let commit = index_backend.read_commit(&branch.head).await?;
-        index_backend.read_tree(&commit.root_tree_id).await
+        let branch = index_backend.get_branch(branch_name).await?;
+        let commit = index_backend.get_commit(&branch.head).await?;
+        index_backend.get_tree(&commit.root_tree_id).await
     }
 
     fn get_blob(&self, hash: &str) -> Result<Vec<u8>> {
@@ -187,7 +187,7 @@ impl Filesystem for SourceControlFilesystem {
                     .chain(children.iter().map(|(name, child)| {
                         (
                             inode_index
-                                .get_inode_by_path(&parent_path.append(name))
+                                .get_inode_by_path(&parent_path.clone().append(name))
                                 .unwrap(),
                             match child {
                                 Tree::Directory { .. } => FileType::Directory,

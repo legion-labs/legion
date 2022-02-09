@@ -11,7 +11,8 @@ use tokio::sync::Mutex;
 
 use crate::{
     sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
-    Error, FileInfo, IndexBackend, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    Error, FileInfo, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock,
+    MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -238,7 +239,9 @@ impl SqlIndexBackend {
 
     async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64), UNIQUE (name));",
+        "CREATE TABLE `{}` (name VARCHAR(255) PRIMARY KEY, head VARCHAR(255), lock_domain_id VARCHAR(64));
+        CREATE INDEX branches_lock_domain_ids_index on `{}`(lock_domain_id);",
+        Self::TABLE_BRANCHES,
         Self::TABLE_BRANCHES
         );
 
@@ -262,7 +265,7 @@ impl SqlIndexBackend {
 
     async fn create_locks_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (relative_path, lock_domain_id));
+        "CREATE TABLE `{}` (lock_domain_id VARCHAR(64), canonical_path VARCHAR(512), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (lock_domain_id, canonical_path));
         ",
         Self::TABLE_LOCKS
         );
@@ -276,9 +279,7 @@ impl SqlIndexBackend {
     async fn initialize_repository_data(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     ) -> Result<()> {
-        let lock_domain_id = uuid::Uuid::new_v4().to_string();
         let tree = Tree::empty();
-
         let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
 
         let initial_commit = Commit::new_unique_now(
@@ -291,12 +292,7 @@ impl SqlIndexBackend {
 
         Self::insert_commit_transactional(transaction, &initial_commit).await?;
 
-        let main_branch = Branch::new(
-            String::from("main"),
-            initial_commit.id,
-            String::new(),
-            lock_domain_id,
-        );
+        let main_branch = Branch::new(String::from("main"), initial_commit.id);
 
         Self::insert_branch_transactional(transaction, &main_branch).await?;
 
@@ -310,13 +306,13 @@ impl SqlIndexBackend {
     ) -> Result<Branch> {
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
-                "SELECT head, parent, lock_domain_id
+                "SELECT head, lock_domain_id
                      FROM `{}`
                      WHERE name = ?;",
                 Self::TABLE_BRANCHES
             ),
             SqlDatabaseDriver::Mysql(_) => format!(
-                "SELECT head, parent, lock_domain_id
+                "SELECT head, lock_domain_id
                      FROM `{}`
                      WHERE name = ?
                      FOR UPDATE;",
@@ -330,12 +326,11 @@ impl SqlIndexBackend {
             .await
             .map_other_err("failed to read the branch from MySQL")?;
 
-        Ok(Branch::new(
-            String::from(name),
-            row.get("head"),
-            row.get("parent"),
-            row.get("lock_domain_id"),
-        ))
+        Ok(Branch {
+            name: name.to_string(),
+            head: row.get("head"),
+            lock_domain_id: row.get("lock_domain_id"),
+        })
     }
 
     async fn insert_branch_transactional(
@@ -343,34 +338,41 @@ impl SqlIndexBackend {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?, ?);",
             Self::TABLE_BRANCHES
         ))
-        .bind(branch.name.clone())
-        .bind(branch.head.clone())
-        .bind(branch.parent.clone())
-        .bind(branch.lock_domain_id.clone())
+        .bind(&branch.name)
+        .bind(&branch.head)
+        .bind(&branch.lock_domain_id)
         .execute(transaction)
         .await
         .map_other_err(&format!("failed to insert the branch `{}`", &branch.name))
         .map(|_| ())
     }
 
-    async fn read_commits_transactional(
+    async fn list_commits_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        commit_id: &str,
-        mut depth: u32,
+        query: &ListCommitsQuery<'_>,
     ) -> Result<Vec<Commit>> {
         let mut result = Vec::new();
         result.reserve(1024);
-        let mut next_commit_ids: VecDeque<String> = [commit_id.to_string()].into();
+        let mut next_commit_ids: VecDeque<String> =
+            query.commit_ids.iter().copied().map(Into::into).collect();
+
+        let mut depth = Some(query.depth).filter(|d| *d > 0);
 
         while let Some(commit_id) = next_commit_ids.pop_front() {
-            if depth == 0 || result.len() >= result.capacity() {
+            if result.len() >= result.capacity() {
                 break;
             }
 
-            depth -= 1;
+            if let Some(depth) = &mut depth {
+                if *depth == 0 {
+                    break;
+                }
+
+                *depth -= 1;
+            }
 
             let changes = sqlx::query(&format!(
                 "SELECT canonical_path, old_hash, new_hash, old_size, new_size
@@ -467,7 +469,7 @@ impl SqlIndexBackend {
                         )
                     }
                     Err(sqlx::Error::RowNotFound) => {
-                        return Err(Error::commit_does_not_exist(commit_id));
+                        return Err(Error::commit_not_found(commit_id));
                     }
                     Err(err) => {
                         return Err(err)
@@ -563,12 +565,11 @@ impl SqlIndexBackend {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "UPDATE `{}` SET head=?, parent=?, lock_domain_id=?
+            "UPDATE `{}` SET head=?, lock_domain_id=?
              WHERE name=?;",
             Self::TABLE_BRANCHES
         ))
         .bind(branch.head.clone())
-        .bind(branch.parent.clone())
         .bind(branch.lock_domain_id.clone())
         .bind(branch.name.clone())
         .execute(executor)
@@ -666,7 +667,7 @@ impl SqlIndexBackend {
         Ok(id)
     }
 
-    async fn read_tree_transactional(
+    async fn get_tree_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         id: &str,
     ) -> Result<Tree> {
@@ -773,32 +774,38 @@ impl SqlIndexBackend {
         })
     }
 
-    async fn find_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+    async fn get_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
         lock_domain_id: &str,
-        relative_path: &str,
-    ) -> Result<Option<Lock>> {
-        Ok(sqlx::query(&format!(
+        canonical_path: &CanonicalPath,
+    ) -> Result<Lock> {
+        match sqlx::query(&format!(
             "SELECT workspace_id, branch_name
              FROM `{}`
              WHERE lock_domain_id=?
-             AND relative_path=?;",
+             AND canonical_path=?;",
             Self::TABLE_LOCKS,
         ))
         .bind(lock_domain_id)
-        .bind(relative_path)
+        .bind(canonical_path.to_string())
         .fetch_optional(executor)
         .await
         .map_other_err(&format!(
-            "failed to find lock `{}` in domain `{}`",
-            relative_path, lock_domain_id,
+            "failed to find lock `{}/{}`",
+            lock_domain_id, canonical_path,
         ))?
         .map(|row| Lock {
-            relative_path: String::from(relative_path),
-            lock_domain_id: String::from(lock_domain_id),
+            canonical_path: canonical_path.clone(),
+            lock_domain_id: lock_domain_id.to_string(),
             workspace_id: row.get("workspace_id"),
             branch_name: row.get("branch_name"),
-        }))
+        }) {
+            Some(lock) => Ok(lock),
+            None => Err(Error::lock_not_found(
+                lock_domain_id.to_string(),
+                canonical_path.clone(),
+            )),
+        }
     }
 
     pub async fn close(&mut self) {
@@ -911,11 +918,11 @@ impl IndexBackend for SqlIndexBackend {
             .map(|_| ())
     }
 
-    async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>> {
+    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
-            "SELECT head, parent, lock_domain_id 
+            "SELECT head, lock_domain_id 
              FROM `{}`
              WHERE name = ?;",
             Self::TABLE_BRANCHES
@@ -925,79 +932,66 @@ impl IndexBackend for SqlIndexBackend {
         .await
         .map_other_err(format!("error fetching branch `{}`", branch_name))?
         {
-            None => Ok(None),
-            Some(row) => {
-                let branch = Branch::new(
-                    String::from(branch_name),
-                    row.get("head"),
-                    row.get("parent"),
-                    row.get("lock_domain_id"),
-                );
-                Ok(Some(branch))
-            }
+            None => Err(Error::branch_not_found(branch_name.to_string())),
+            Some(row) => Ok(Branch {
+                name: branch_name.to_string(),
+                head: row.get("head"),
+                lock_domain_id: row.get("lock_domain_id"),
+            }),
         }
     }
 
-    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>> {
+    async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
         let mut conn = self.get_conn().await?;
 
-        Ok(sqlx::query(&format!(
-            "SELECT name, head, parent 
+        Ok(match query.lock_domain_id {
+            Some(lock_domain_id) => sqlx::query(&format!(
+                "SELECT name, head 
              FROM `{}`
              WHERE lock_domain_id = ?;",
-            Self::TABLE_BRANCHES
-        ))
-        .bind(lock_domain_id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "error fetching branches in lock domain `{}`",
-            lock_domain_id
-        ))?
-        .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                String::from(lock_domain_id),
-            )
-        })
-        .collect())
-    }
-
-    async fn read_branches(&self) -> Result<Vec<Branch>> {
-        let mut conn = self.get_conn().await?;
-
-        Ok(sqlx::query(&format!(
-            "SELECT name, head, parent, lock_domain_id 
+                Self::TABLE_BRANCHES
+            ))
+            .bind(lock_domain_id)
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err(&format!(
+                "error fetching branches in lock domain `{}`",
+                lock_domain_id
+            ))?
+            .into_iter()
+            .map(|row| Branch {
+                name: row.get("name"),
+                head: row.get("head"),
+                lock_domain_id: lock_domain_id.to_string(),
+            })
+            .collect(),
+            None => sqlx::query(&format!(
+                "SELECT name, head, lock_domain_id 
              FROM `{}`;",
-            Self::TABLE_BRANCHES
-        ))
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err("error fetching branches")?
-        .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                row.get("lock_domain_id"),
-            )
+                Self::TABLE_BRANCHES
+            ))
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err("error fetching branches")?
+            .into_iter()
+            .map(|row| Branch {
+                name: row.get("name"),
+                head: row.get("head"),
+                lock_domain_id: row.get("lock_domain_id"),
+            })
+            .collect(),
         })
-        .collect())
     }
 
-    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
+    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
         let mut transaction = self.get_transaction().await?;
 
-        let result = Self::read_commits_transactional(&mut transaction, commit_id, depth).await?;
+        let result = Self::list_commits_transactional(&mut transaction, query).await?;
 
-        transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while read commit `{}`",
-            commit_id
-        ))?;
+        transaction
+            .commit()
+            .await
+            .map_other_err("failed to commit transaction while listing commits")?;
 
         Ok(result)
     }
@@ -1026,10 +1020,10 @@ impl IndexBackend for SqlIndexBackend {
         ))
     }
 
-    async fn read_tree(&self, id: &str) -> Result<Tree> {
+    async fn get_tree(&self, id: &str) -> Result<Tree> {
         let mut transaction = self.get_transaction().await?;
 
-        Self::read_tree_transactional(&mut transaction, id).await
+        Self::get_tree_transactional(&mut transaction, id).await
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
@@ -1047,111 +1041,159 @@ impl IndexBackend for SqlIndexBackend {
             .map(|_| tree_id)
     }
 
-    async fn insert_lock(&self, lock: &Lock) -> Result<()> {
+    async fn lock(&self, lock: &Lock) -> Result<()> {
         let mut transaction = self.get_transaction().await?;
 
-        if let Some(lock) = Self::find_lock_transactional(
+        match Self::get_lock_transactional(
             &mut transaction,
             &lock.lock_domain_id,
-            &lock.relative_path,
+            &lock.canonical_path,
         )
-        .await?
+        .await
         {
-            return Err(Error::lock_already_exists(lock));
+            Ok(lock) => Err(Error::lock_already_exists(lock)),
+            Err(Error::LockNotFound { .. }) => {
+                sqlx::query(&format!(
+                    "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+                    Self::TABLE_LOCKS
+                ))
+                .bind(lock.canonical_path.to_string())
+                .bind(lock.lock_domain_id.clone())
+                .bind(lock.workspace_id.clone())
+                .bind(lock.branch_name.clone())
+                .execute(&mut transaction)
+                .await
+                .map_other_err(&format!("failed to lock `{}`", lock))?;
+
+                transaction
+                    .commit()
+                    .await
+                    .map_other_err(&format!(
+                        "failed to commit transaction while inserting lock `{}`",
+                        lock
+                    ))
+                    .map(|_| ())
+            }
+            Err(err) => Err(err),
         }
+    }
 
-        sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-            Self::TABLE_LOCKS
-        ))
-        .bind(lock.relative_path.clone())
-        .bind(lock.lock_domain_id.clone())
-        .bind(lock.workspace_id.clone())
-        .bind(lock.branch_name.clone())
-        .execute(&mut transaction)
-        .await
-        .map_other_err(&format!(
-            "failed to insert lock `{}` in domain `{}`",
-            lock.relative_path, lock.lock_domain_id,
-        ))?;
+    async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        let mut conn = self.get_conn().await?;
 
-        transaction
-            .commit()
-            .await
-            .map_other_err(&format!(
-                "failed to commit transaction while inserting lock `{}`",
-                lock.relative_path
+        Self::get_lock_transactional(&mut conn, lock_domain_id, canonical_path).await
+    }
+
+    async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        let mut conn = self.get_conn().await?;
+
+        if !query.lock_domain_ids.is_empty() {
+            let mut locks = Vec::new();
+
+            for lock_domain_id in &query.lock_domain_ids {
+                locks.extend(
+                    sqlx::query(&format!(
+                        "SELECT canonical_path, workspace_id, branch_name
+                        FROM `{}`
+                        WHERE lock_domain_id=?;",
+                        Self::TABLE_LOCKS,
+                    ))
+                    .bind(*lock_domain_id)
+                    .fetch_all(&mut conn)
+                    .await
+                    .map_other_err(&format!(
+                        "failed to find locks in domain `{}`",
+                        *lock_domain_id,
+                    ))?
+                    .into_iter()
+                    .map(|row| {
+                        Ok(Lock {
+                            canonical_path: CanonicalPath::new(
+                                &row.get::<String, _>("canonical_path"),
+                            )?,
+                            lock_domain_id: (*lock_domain_id).to_string(),
+                            workspace_id: row.get("workspace_id"),
+                            branch_name: row.get("branch_name"),
+                        })
+                    }),
+                );
+            }
+
+            locks.into_iter().collect()
+        } else {
+            sqlx::query(&format!(
+                "SELECT lock_domain_id, canonical_path, workspace_id, branch_name
+                FROM `{}`;",
+                Self::TABLE_LOCKS,
             ))
-            .map(|_| ())
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err("failed to list locks")?
+            .into_iter()
+            .map(|row| {
+                Ok(Lock {
+                    canonical_path: CanonicalPath::new(&row.get::<String, _>("canonical_path"))?,
+                    lock_domain_id: row.get("lock_domain_id"),
+                    workspace_id: row.get("workspace_id"),
+                    branch_name: row.get("branch_name"),
+                })
+            })
+            .collect()
+        }
     }
 
-    async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>> {
-        let mut conn = self.get_conn().await?;
-
-        Self::find_lock_transactional(&mut conn, lock_domain_id, relative_path).await
-    }
-
-    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>> {
-        let mut conn = self.get_conn().await?;
-
-        Ok(sqlx::query(&format!(
-            "SELECT relative_path, workspace_id, branch_name
-             FROM `{}`
-             WHERE lock_domain_id=?;",
-            Self::TABLE_LOCKS,
-        ))
-        .bind(lock_domain_id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "failed to find locks in domain `{}`",
-            lock_domain_id,
-        ))?
-        .into_iter()
-        .map(|row| Lock {
-            relative_path: row.get("relative_path"),
-            lock_domain_id: String::from(lock_domain_id),
-            workspace_id: row.get("workspace_id"),
-            branch_name: row.get("branch_name"),
-        })
-        .collect())
-    }
-
-    async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()> {
+    async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
-            "DELETE from `{}` WHERE relative_path=? AND lock_domain_id=?;",
+            "DELETE from `{}` WHERE canonical_path=? AND lock_domain_id=?;",
             Self::TABLE_LOCKS
         ))
-        .bind(relative_path)
+        .bind(canonical_path.to_string())
         .bind(lock_domain_id)
         .execute(&mut conn)
         .await
         .map_other_err(&format!(
-            "failed to clear lock `{}` in domain `{}`",
-            relative_path, lock_domain_id,
+            "failed to clear lock `{}/{}`",
+            lock_domain_id, canonical_path,
         ))
         .map(|_| ())
     }
 
-    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32> {
+    async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
         let mut conn = self.get_conn().await?;
 
-        sqlx::query(&format!(
-            "SELECT count(*) as count
-             FROM `{}`
-             WHERE lock_domain_id = ?;",
-            Self::TABLE_LOCKS,
-        ))
-        .bind(lock_domain_id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "failed to count locks in domain `{}`",
-            lock_domain_id,
-        ))
-        .map(|row| row.get::<i32, _>("count"))
+        if !query.lock_domain_ids.is_empty() {
+            let mut result = 0;
+            for lock_domain_id in &query.lock_domain_ids {
+                result += sqlx::query(&format!(
+                    "SELECT count(*) as count
+                    FROM `{}`
+                    WHERE lock_domain_id = ?;",
+                    Self::TABLE_LOCKS,
+                ))
+                .bind(*lock_domain_id)
+                .fetch_one(&mut conn)
+                .await
+                .map_other_err(&format!(
+                    "failed to count locks in domain `{}`",
+                    *lock_domain_id,
+                ))
+                .map(|row| row.get::<i32, _>("count"))?;
+            }
+
+            Ok(result)
+        } else {
+            sqlx::query(&format!(
+                "SELECT count(*) as count
+                FROM `{}`;",
+                Self::TABLE_LOCKS,
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .map_other_err("failed to count locks")
+            .map(|row| row.get::<i32, _>("count"))
+        }
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {

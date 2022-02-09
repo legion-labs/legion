@@ -62,6 +62,17 @@ impl ChangeType {
             Self::Edit { old_info, new_info } => old_info != new_info,
         }
     }
+
+    pub fn into_invert(self) -> Self {
+        match self {
+            Self::Add { new_info } => Self::Delete { old_info: new_info },
+            Self::Edit { old_info, new_info } => Self::Edit {
+                old_info: new_info,
+                new_info: old_info,
+            },
+            Self::Delete { old_info } => Self::Add { new_info: old_info },
+        }
+    }
 }
 
 impl Display for ChangeType {
@@ -72,7 +83,7 @@ impl Display for ChangeType {
                 if old_info != new_info {
                     write!(f, "M")
                 } else {
-                    write!(f, "E")
+                    write!(f, "C")
                 }
             }
             ChangeType::Delete { .. } => write!(f, "D"),
@@ -239,6 +250,41 @@ mod tests {
             lgn_source_control_proto::ChangeType {
                 old_info: Some(fi("old", 123).into()),
                 new_info: Some(fi("new", 123).into()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_change_type_into_invert() {
+        assert_eq!(
+            ChangeType::Add {
+                new_info: fi("new", 123),
+            }
+            .into_invert(),
+            ChangeType::Delete {
+                old_info: fi("new", 123),
+            }
+        );
+
+        assert_eq!(
+            ChangeType::Edit {
+                old_info: fi("old", 123),
+                new_info: fi("new", 123),
+            }
+            .into_invert(),
+            ChangeType::Edit {
+                old_info: fi("new", 123),
+                new_info: fi("old", 123),
+            }
+        );
+
+        assert_eq!(
+            ChangeType::Delete {
+                old_info: fi("old", 123),
+            }
+            .into_invert(),
+            ChangeType::Add {
+                new_info: fi("old", 123),
             }
         );
     }

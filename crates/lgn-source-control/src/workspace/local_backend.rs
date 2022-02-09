@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use lgn_tracing::span_fn;
-use serde::{Deserialize, Serialize};
 use sqlx::{Connection, Executor, Row};
 use std::{
     collections::BTreeMap,
@@ -9,7 +8,7 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::create_database, CanonicalPath, Change, ChangeType, FileInfo, MapOtherError,
+    sql::create_database, Branch, CanonicalPath, Change, ChangeType, FileInfo, MapOtherError,
     PendingBranchMerge, ResolvePending, Result,
 };
 
@@ -17,12 +16,6 @@ use super::WorkspaceBackend;
 
 pub struct LocalWorkspaceBackend {
     sql_connection: Mutex<sqlx::AnyConnection>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct CurrentBranch {
-    branch_name: String,
-    commit_id: String,
 }
 
 impl LocalWorkspaceBackend {
@@ -139,7 +132,7 @@ impl LocalWorkspaceBackend {
 #[async_trait]
 impl WorkspaceBackend for LocalWorkspaceBackend {
     #[span_fn]
-    async fn get_current_branch(&self) -> Result<(String, String)> {
+    async fn get_current_branch(&self) -> Result<Branch> {
         let sql: &str = &format!("SELECT value FROM `{}` WHERE key = ?;", Self::TABLE_CONFIG);
         let sql = sqlx::query(sql).bind(Self::CONFIG_CURRENT_BRANCH);
 
@@ -150,18 +143,13 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .await
             .map_other_err("failed to get current branch")?;
 
-        let current_branch: CurrentBranch = serde_json::from_str(row.get("value"))
-            .map_other_err("failed to deserialize current branch information")?;
-
-        Ok((current_branch.branch_name, current_branch.commit_id))
+        serde_json::from_str(row.get("value"))
+            .map_other_err("failed to deserialize current branch information")
     }
 
-    async fn set_current_branch(&self, branch_name: &str, commit_id: &str) -> Result<()> {
-        let value = serde_json::to_string(&CurrentBranch {
-            branch_name: branch_name.into(),
-            commit_id: commit_id.into(),
-        })
-        .map_other_err("failed to serialize current branch information")?;
+    async fn set_current_branch(&self, branch: &Branch) -> Result<()> {
+        let value = serde_json::to_string(&branch)
+            .map_other_err("failed to serialize current branch information")?;
 
         let sql: &str = &format!(
             "REPLACE INTO `{}` (key, value) VALUES(?, ?);",

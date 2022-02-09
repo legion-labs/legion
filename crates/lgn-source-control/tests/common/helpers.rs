@@ -112,10 +112,10 @@ macro_rules! workspace_add_files {
     }};
 }
 
-macro_rules! workspace_edit_files {
+macro_rules! workspace_checkout_files {
     ($workspace:expr, $paths:expr) => {{
         $workspace
-            .edit_files($paths.into_iter().map(Path::new))
+            .checkout_files($paths.into_iter().map(Path::new))
             .await
             .expect("failed to edit files")
     }};
@@ -164,6 +164,33 @@ macro_rules! workspace_commit_error {
                 panic!("commit should have failed");
             }
         }
+    }};
+}
+
+macro_rules! workspace_get_current_branch {
+    ($workspace:expr) => {{
+        $workspace
+            .get_current_branch()
+            .await
+            .expect("failed to get current branch")
+    }};
+}
+
+macro_rules! workspace_create_branch {
+    ($workspace:expr, $branch_name:literal) => {{
+        $workspace
+            .create_branch($branch_name)
+            .await
+            .expect("failed to create branch")
+    }};
+}
+
+macro_rules! workspace_switch_branch {
+    ($workspace:expr, $branch_name:literal) => {{
+        $workspace
+            .switch_branch($branch_name)
+            .await
+            .expect("failed to switch branch")
     }};
 }
 
@@ -219,6 +246,7 @@ pub(crate) fn delete(s: &str, old_hash: &str, old_size: u64) -> Change {
 
 pub(crate) use {
     cleanup_test_workspace_and_index, create_dir, create_file, delete_file,
-    init_test_workspace_and_index, update_file, workspace_add_files, workspace_commit,
-    workspace_commit_error, workspace_delete_files, workspace_edit_files, workspace_revert_files,
+    init_test_workspace_and_index, update_file, workspace_add_files, workspace_checkout_files,
+    workspace_commit, workspace_commit_error, workspace_create_branch, workspace_delete_files,
+    workspace_get_current_branch, workspace_revert_files, workspace_switch_branch,
 };

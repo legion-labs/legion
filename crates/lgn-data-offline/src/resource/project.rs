@@ -529,7 +529,7 @@ impl Project {
         let metadata_path = self.metadata_path(id.id);
         let resource_path = self.resource_path(id.id);
         self.workspace
-            .edit_files([metadata_path.as_path(), resource_path.as_path()])
+            .checkout_files([metadata_path.as_path(), resource_path.as_path()])
             .await
             .map_err(Error::SourceControl)
             .map(|_e| ())
@@ -566,7 +566,7 @@ impl Project {
 
         {
             self.workspace
-                .edit_files([path.as_path()])
+                .checkout_files([path.as_path()])
                 .await
                 .map_err(Error::SourceControl)
                 .unwrap();
@@ -598,6 +598,7 @@ impl Project {
             .commit(message)
             .await
             .map_err(Error::SourceControl)
+            .map(|_| ())
     }
 
     /// Returns the current state of the workspace that includes staged changes.
