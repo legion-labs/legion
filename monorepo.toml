@@ -197,16 +197,16 @@ mark-changed = "all"
 [npm]
 package-manager = "pnpm"
 include = [
-    # "npm-pkgs",
-    # "crates/lgn-web-client",
-    # "crates/lgn-analytics-gui",
+    "npm-pkgs",
+    "crates/lgn-web-client",
+    "crates/lgn-analytics-gui",
     "crates/lgn-editor-gui",
-    # "crates/lgn-runtime-gui",
-    # "crates/lgn-runtime-proto",
-    # "crates/lgn-editor-proto",
-    # "crates/lgn-streaming-proto",
-    # "crates/lgn-telemetry-proto",
-    # "crates/lgn-source-control-proto",
+    "crates/lgn-runtime-gui",
+    "crates/lgn-runtime-proto",
+    "crates/lgn-editor-proto",
+    "crates/lgn-streaming-proto",
+    "crates/lgn-telemetry-proto",
+    "crates/lgn-source-control-proto",
 ]
 
 ################################################################################

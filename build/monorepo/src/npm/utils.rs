@@ -390,8 +390,6 @@ impl<'a> NpmWorkspace<'a> {
                     .into_iter()
                     .filter_entry(|entry| self.entry_is_valid(entry))
                     .filter_map(|entry| {
-                        println!("entry {:?}", entry);
-
                         let entry = entry.ok().and_then(|entry| {
                             PackageJson::is_package_json(&entry.file_name()).then(|| entry)
                         })?;

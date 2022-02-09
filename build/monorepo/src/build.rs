@@ -22,12 +22,14 @@ pub struct Args {
     /// Output the build plan in JSON (unstable)
     #[clap(long)]
     pub(crate) build_plan: bool,
-    /// Skip npm packages build, this will also skips the npm install step
+    /// Skip npm packages build,
+    /// this will also skip the npm install step
+    /// even if the --npm-install flag is present
     #[clap(long)]
     pub(crate) skip_npm_build: bool,
-    /// Skip npm packages install
+    /// First install npm packages
     #[clap(long)]
-    pub(crate) skip_npm_install: bool,
+    pub(crate) npm_install: bool,
 }
 
 #[span_fn]
@@ -71,7 +73,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         npm_workspace.load_selected_packages(&packages)?;
 
         if !npm_workspace.is_empty() {
-            if !args.skip_npm_install {
+            if args.npm_install {
                 npm_workspace.install();
             }
 

@@ -23,12 +23,14 @@ pub struct Args {
     ctrace: Option<Option<String>>,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
     args: Vec<OsString>,
-    /// Skip npm packages build, this will also skips the npm install step
+    /// Skip npm packages build,
+    /// this will also skip the npm install step
+    /// even if the --npm-install flag is present
     #[clap(long)]
     pub(crate) skip_npm_build: bool,
-    /// Skip npm packages install
+    /// First install npm packages
     #[clap(long)]
-    pub(crate) skip_npm_install: bool,
+    pub(crate) npm_install: bool,
 }
 
 #[span_fn]
@@ -87,13 +89,14 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         env: env.as_slice(),
     };
 
+    // Npm packages related code
     if !args.skip_npm_build {
         let mut npm_workspace = NpmWorkspace::new(ctx)?;
 
         npm_workspace.load_selected_packages(&packages)?;
 
         if !npm_workspace.is_empty() {
-            if !args.skip_npm_install {
+            if args.npm_install {
                 npm_workspace.install();
             }
 

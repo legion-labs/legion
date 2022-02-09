@@ -10,9 +10,9 @@ pub struct Args {
     /// If provided only this npm package is built
     #[clap(long, short)]
     pub(crate) package: Option<String>,
-    /// If this flag is present the dependencies will not be installed
+    /// If this flag is present the dependencies will be installed
     #[clap(long, short)]
-    pub(crate) no_install: bool,
+    pub(crate) install: bool,
 }
 
 #[span_fn]
@@ -21,7 +21,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     npm_workspace.load_all();
 
-    if !args.no_install {
+    if args.install {
         npm_workspace.install();
     }
 

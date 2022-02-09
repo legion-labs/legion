@@ -14,7 +14,9 @@ pub struct Args {
 
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
-    let npm_workspace = NpmWorkspace::new(ctx)?;
+    let mut npm_workspace = NpmWorkspace::new(ctx)?;
+
+    npm_workspace.load_all();
 
     npm_workspace.test(&args.package)?;
 
