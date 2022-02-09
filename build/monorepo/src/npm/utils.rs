@@ -55,8 +55,8 @@ struct PackageJson {
 
 impl PackageJson {
     /// Takes a string-like value and return true if it's "package.json"
-    fn is_package_json<'a, F: PartialEq<&'a str>>(file_name: F) -> bool {
-        file_name == PACKAGE_JSON
+    fn is_package_json<'a, F: PartialEq<&'a str>>(file_name: &F) -> bool {
+        *file_name == PACKAGE_JSON
     }
 }
 
@@ -243,7 +243,7 @@ impl NpmPackage {
 
         match cmd.output() {
             Ok(output) if output.status.success() => {
-                action_step!("Finished", "{}", self.package_json.name)
+                action_step!("Finished", "{}", self.package_json.name);
             }
             Ok(output) => error_step!(
                 &format!("Npm {}", cmd_name),
@@ -305,7 +305,7 @@ impl NpmWorkspace {
     /// Create a new workspace from the provided [`SelectedPackages`]
     pub fn from_selected_packages(
         ctx: &Context,
-        selected_packages: &SelectedPackages,
+        selected_packages: &SelectedPackages<'_>,
     ) -> Result<Self> {
         let mut workspace = Self::empty(ctx)?;
 
@@ -341,7 +341,7 @@ impl NpmWorkspace {
             })
             .filter_map(|entry| {
                 let entry = entry.ok().and_then(|entry| {
-                    PackageJson::is_package_json(entry.file_name()).then(|| entry)
+                    PackageJson::is_package_json(&entry.file_name()).then(|| entry)
                 })?;
 
                 // The path not having a parent is very unlikely
@@ -367,7 +367,7 @@ impl NpmWorkspace {
             return false;
         }
 
-        entry.path().is_dir() || PackageJson::is_package_json(entry.file_name())
+        entry.path().is_dir() || PackageJson::is_package_json(&entry.file_name())
     }
 
     pub fn run_install(&self) {

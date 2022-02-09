@@ -26,10 +26,8 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 url = "2.2.2"
 
 [build-dependencies]
-cargo_toml = "0.11.3"
 lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
 lgn-build-utils-web = { path = "../lgn-build-utils-web", version = "0.1.0" }
-serde = { version = "1.0.136", features = ["derive"] }
 tauri-build = "1.0.0-beta.4"
 
 [features]

@@ -188,7 +188,6 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cargo_toml",
  "clap 3.0.14",
  "directories",
  "lgn-app",
@@ -197,7 +196,6 @@ dependencies = [
  "lgn-build-utils-web",
  "lgn-online",
  "lgn-tauri",
- "serde",
  "tauri",
  "tauri-build",
  "url",
@@ -2395,7 +2393,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
- "cargo_toml",
  "clap 3.0.14",
  "directories",
  "json",
@@ -4123,8 +4120,10 @@ dependencies = [
 name = "lgn-build-utils-web"
 version = "0.1.0"
 dependencies = [
+ "cargo_toml",
  "lgn-build-utils",
  "named-lock",
+ "serde",
  "which",
 ]
 
@@ -7546,7 +7545,6 @@ name = "runtime-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cargo_toml",
  "clap 3.0.14",
  "directories",
  "lgn-app",
@@ -7557,7 +7555,6 @@ dependencies = [
  "lgn-tauri",
  "lgn-telemetry-sink",
  "lgn-tracing",
- "serde",
  "tauri",
  "tauri-build",
  "url",

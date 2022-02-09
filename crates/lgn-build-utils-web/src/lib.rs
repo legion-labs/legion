@@ -40,25 +40,53 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use lgn_build_utils::Result;
 use std::fs;
+
+use cargo_toml::Manifest;
+use lgn_build_utils::{Error, Result};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct NpmMetadata {
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct Metadata {
+    npm: NpmMetadata,
+}
 
 /// Handle the validation of the output files
 ///
 /// # Errors
-/// Returns a generation error or an IO error
-pub fn build_web_app(name: &str) -> Result<()> {
+/// An error is returned only when the client hasn't been built,
+/// if the default `index.html` cannot be created or if the `Cargo.toml` cannot be read.
+pub fn build_web_app() -> Result<()> {
     // TODO: Should be dynamic based on the metadata in `Cargo.toml`
     if fs::File::open("frontend/dist/index.html").is_err() {
-        fs::create_dir_all("frontend/dist").unwrap();
+        let cargo: Manifest<Metadata> =
+            Manifest::from_path_with_metadata("Cargo.toml").map_err(|error| match error {
+                cargo_toml::Error::Io(error) => Error::Io(error),
+                cargo_toml::Error::Parse(_error) => Error::Unknown,
+            })?;
+
+        let npm = cargo
+            .package
+            .and_then(|p| p.metadata)
+            .map(|m| m.npm)
+            .ok_or_else(|| Error::Build("npm name not found in Cargo.toml".into()))?;
+
+        fs::create_dir_all("frontend/dist").map_err(Error::Io)?;
+
         fs::write(
             "frontend/dist/index.html",
             format!(
                 "You need to run `pnpm build {name}` or `cargo m npm build -p {name}`",
-                name = name
+                name = npm.name
             ),
         )
-        .unwrap();
+        .map_err(Error::Io)?;
+
         println!("cargo:rerun-if-env-changed=PATH");
         println!("cargo:rerun-if-changed=frontend/dist");
         println!("cargo:rerun-if-changed=frontend/dist/index.html");
