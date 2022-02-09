@@ -1,9 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
-    fs::{File, OpenOptions},
     hash::{Hash, Hasher},
-    io::Seek,
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
 };
 
@@ -244,110 +242,26 @@ impl Extend<Self> for SourceContent {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct IndexKeys {
-    keys: BTreeMap<String, Checksum>,
-    version: String,
-}
-
 pub(crate) struct SourceIndex {
-    index_keys: IndexKeys,
     current: Option<(String, SourceContent)>,
-    file: File,
     content_store: Box<dyn ContentStore + Send + Sync>,
 }
 
 impl std::fmt::Debug for SourceIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SourceIndex")
-            .field("index_keys", &self.index_keys)
-            .field("file", &self.file)
+            .field("current", &self.current)
             .finish()
     }
 }
 
 impl SourceIndex {
-    pub(crate) fn create_new(
-        source_index: &Path,
-        content_store: Box<dyn ContentStore + Send + Sync>,
-        version: &str,
-    ) -> Result<Self, Error> {
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(source_index)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        let index_keys = IndexKeys {
-            version: String::from(version),
-            keys: BTreeMap::<String, Checksum>::new(),
-        };
-
-        serde_json::to_writer_pretty(&source_file, &index_keys).map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            index_keys,
+    pub(crate) fn new(content_store: Box<dyn ContentStore + Send + Sync>) -> Self {
+        Self {
             content_store,
             current: None,
-            file: source_file,
-        })
-    }
-
-    fn load(
-        path: impl AsRef<Path>,
-        content_store: Box<dyn ContentStore + Send + Sync>,
-    ) -> Result<Self, Error> {
-        let source_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
-            .map_err(|_e| Error::NotFound)?;
-
-        let index_keys: IndexKeys =
-            serde_json::from_reader(&source_file).map_err(|e| Error::Io(e.into()))?;
-
-        Ok(Self {
-            index_keys,
-            content_store,
-            current: None,
-            file: source_file,
-        })
-    }
-
-    pub(crate) fn open(
-        source_index: &Path,
-        content_store: Box<dyn ContentStore + Send + Sync>,
-        version: &str,
-    ) -> Result<Self, Error> {
-        if !source_index.exists() {
-            return Err(Error::NotFound);
         }
-
-        let source_index = Self::load(source_index, content_store)?;
-
-        if source_index.index_keys.version != version {
-            return Err(Error::VersionMismatch {
-                value: source_index.index_keys.version,
-                expected: version.to_owned(),
-            });
-        }
-
-        Ok(source_index)
     }
-
-    pub(crate) fn flush(&mut self) -> Result<(), Error> {
-        self.file.set_len(0).unwrap();
-        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.index_keys)
-            .map_err(|e| Error::Io(e.into()))?;
-        Ok(())
-    }
-
-    pub(crate) fn source_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
-        buildindex_dir.as_ref().join("source.index")
-    }
-
     pub fn current(&self) -> Option<&SourceContent> {
         self.current.as_ref().map(|(_, index)| index)
     }
@@ -358,16 +272,13 @@ impl SourceIndex {
         directory: Tree,
         project: &Project,
         version: &str,
-        mut uploads: Vec<(String, Vec<u8>)>,
-    ) -> Result<(SourceContent, Vec<(String, Vec<u8>)>), Error> {
-        let dir_checksum = directory.id();
+        mut uploads: Vec<(Checksum, Vec<u8>)>,
+    ) -> Result<(SourceContent, Vec<(Checksum, Vec<u8>)>), Error> {
+        // NOTE: for now, we take only half of the source-control directory checksum as
+        // the content store implementation uses 128bit integer.
+        let dir_checksum = Checksum::from_str(&directory.id()[..32]).unwrap();
 
-        if let Some(cached_data) = self
-            .index_keys
-            .keys
-            .get(&dir_checksum)
-            .and_then(|entry| self.content_store.read(*entry))
-        {
+        if let Some(cached_data) = self.content_store.read(dir_checksum) {
             let source_index = SourceContent::read(&cached_data)?;
             Ok((source_index, uploads))
         } else {
@@ -459,12 +370,9 @@ impl SourceIndex {
                 .await?;
 
             for (dir_checksum, buffer) in uploads {
-                let checksum = self
-                    .content_store
-                    .store(&buffer)
+                self.content_store
+                    .write(dir_checksum, &buffer)
                     .ok_or(Error::InvalidContentStore)?;
-
-                self.index_keys.keys.insert(dir_checksum.clone(), checksum);
             }
 
             source_index = final_content;
@@ -478,7 +386,7 @@ impl SourceIndex {
 #[cfg(test)]
 mod tests {
 
-    use lgn_content_store::{ContentStoreAddr, HddContentStore, RamContentStore};
+    use lgn_content_store::{ContentStoreAddr, HddContentStore};
     use lgn_data_offline::{
         resource::{Project, ResourcePathName, ResourceRegistryOptions},
         ResourcePathId,
@@ -486,28 +394,6 @@ mod tests {
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use crate::source_index::{SourceContent, SourceIndex};
-
-    #[tokio::test]
-    async fn version_check() {
-        let work_dir = tempfile::tempdir().unwrap();
-
-        let buildindex_dir = work_dir.path();
-        {
-            let _source_index = SourceIndex::create_new(
-                &SourceIndex::source_index_file(&buildindex_dir),
-                Box::new(RamContentStore::default()),
-                "0.0.1",
-            )
-            .unwrap();
-        }
-
-        assert!(SourceIndex::open(
-            &SourceIndex::source_index_file(&buildindex_dir),
-            Box::new(RamContentStore::default()),
-            "0.0.2"
-        )
-        .is_err());
-    }
 
     #[tokio::test]
     async fn pathid_records() {
@@ -622,20 +508,10 @@ mod tests {
 
         let version = "0.0.1";
 
-        let mut source_index = SourceIndex::create_new(
-            &SourceIndex::source_index_file(&temp_dir),
-            Box::new(content_store),
-            version,
-        )
-        .unwrap();
+        let mut source_index = SourceIndex::new(Box::new(content_store));
 
-        // repeated source_pull fetches results from cache
         let first_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1);
-
-            source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1);
             current_checksum(&source_index)
         };
 
@@ -678,7 +554,6 @@ mod tests {
         // new resource creates a new cached entry
         let second_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1 + 4);
             current_checksum(&source_index)
         };
 
@@ -686,7 +561,6 @@ mod tests {
         {
             project.commit("test").await.expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1 + 4);
             assert_eq!(current_checksum(&source_index), second_entry_checksum);
         }
 
@@ -706,7 +580,6 @@ mod tests {
                 .expect("successful save");
 
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1 + 4 + 4);
             current_checksum(&source_index)
         };
 
@@ -714,7 +587,6 @@ mod tests {
         {
             project.commit("test").await.expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1 + 4 + 4);
             assert_eq!(current_checksum(&source_index), third_checksum);
         }
 
@@ -725,9 +597,7 @@ mod tests {
                 .await
                 .expect("removed resource");
             source_index.source_pull(&project, version).await.unwrap();
-            assert_eq!(source_index.index_keys.keys.len(), 1 + 4 + 4);
             assert_eq!(current_checksum(&source_index), first_entry_checksum);
         }
-        source_index.flush().unwrap();
     }
 }

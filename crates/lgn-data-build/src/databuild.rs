@@ -127,11 +127,7 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let source_index = SourceIndex::create_new(
-            &SourceIndex::source_index_file(&config.buildindex_dir),
-            Box::new(content_store.clone()),
-            Self::version(),
-        )?;
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
         let output_index = OutputIndex::create_new(
             &OutputIndex::output_index_file(&config.buildindex_dir),
@@ -163,11 +159,7 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let source_index = SourceIndex::open(
-            &SourceIndex::source_index_file(&config.buildindex_dir),
-            Box::new(content_store.clone()),
-            Self::version(),
-        )?;
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
         let output_index = OutputIndex::open(
             &OutputIndex::output_index_file(&config.buildindex_dir),
             Self::version(),
@@ -201,19 +193,7 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let source_index = match SourceIndex::open(
-            &SourceIndex::source_index_file(&config.buildindex_dir),
-            Box::new(content_store.clone()),
-            Self::version(),
-        ) {
-            Ok(source_index) => Ok(source_index),
-            Err(Error::NotFound) => SourceIndex::create_new(
-                &SourceIndex::source_index_file(&config.buildindex_dir),
-                Box::new(content_store.clone()),
-                Self::version(),
-            ),
-            Err(e) => Err(e),
-        }?;
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
         let output_index = match OutputIndex::open(
             &OutputIndex::output_index_file(&config.buildindex_dir),
@@ -748,7 +728,6 @@ impl DataBuild {
 // todo(kstasik): file IO on destructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
-        self.source_index.flush().unwrap();
         self.output_index.flush().unwrap();
     }
 }
