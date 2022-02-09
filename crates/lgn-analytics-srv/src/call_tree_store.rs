@@ -12,12 +12,16 @@ pub struct CallTreeStore {
 }
 
 impl CallTreeStore {
-    pub async fn new(pool: sqlx::AnyPool, blob_storage: Arc<dyn BlobStorage>) -> Result<Self> {
-        Ok(Self {
+    pub fn new(
+        pool: sqlx::AnyPool,
+        blob_storage: Arc<dyn BlobStorage>,
+        cache_storage: Arc<dyn BlobStorage>,
+    ) -> Self {
+        Self {
             pool,
             blob_storage,
-            cache: DiskCache::new().await?,
-        })
+            cache: DiskCache::new(cache_storage),
+        }
     }
 
     pub async fn get_call_tree(

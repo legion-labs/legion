@@ -1,28 +1,16 @@
-use std::path::PathBuf;
+use std::sync::Arc;
 
-use anyhow::Context;
 use anyhow::Result;
-use lgn_blob_storage::{BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter};
+use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
 
 pub struct DiskCache {
-    storage: Lz4BlobStorageAdapter<LocalBlobStorage>,
+    storage: Arc<dyn BlobStorage>,
 }
 
 impl DiskCache {
-    pub async fn new() -> Result<Self> {
-        let folder = std::env::var("LEGION_TELEMETRY_CACHE_DIRECTORY").with_context(|| {
-            String::from("Error reading env variable LEGION_TELEMETRY_CACHE_DIRECTORY")
-        })?;
-        let directory = PathBuf::from(folder);
-        if !directory.exists() {
-            std::fs::create_dir_all(&directory)
-                .with_context(|| format!("Error creating cache folder {}", directory.display()))?;
-        }
-
-        Ok(Self {
-            storage: Lz4BlobStorageAdapter::new(LocalBlobStorage::new(directory).await?),
-        })
+    pub fn new(storage: Arc<dyn BlobStorage>) -> Self {
+        Self { storage }
     }
 
     pub async fn get(&self, name: &str) -> Result<Option<Vec<u8>>> {
