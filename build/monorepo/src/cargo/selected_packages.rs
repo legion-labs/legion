@@ -176,6 +176,43 @@ impl<'a> SelectedPackages<'a> {
         }
     }
 
+    /// if the whole workspace is selected, break it down into an includes list
+    pub fn flatten_bins(self, ctx: &'a Context) -> Result<Vec<&str>> {
+        let workspace = ctx.package_graph()?.workspace();
+        match self.includes {
+            SelectedInclude::Workspace => Ok(workspace
+                .iter()
+                .filter_map(|pkg| {
+                    if !self.excludes.contains(pkg.name())
+                        && pkg.build_targets().any(|build_target| {
+                            matches!(build_target.id(), BuildTargetId::Binary(_))
+                        })
+                    {
+                        Some(pkg.name())
+                    } else {
+                        None
+                    }
+                })
+                .collect()),
+            SelectedInclude::Includes(includes) => Ok(includes
+                .iter()
+                .filter_map(|name| {
+                    let pkg = workspace.member_by_name(name);
+                    if pkg.is_ok()
+                        && !self.excludes.contains(name)
+                        && pkg.unwrap().build_targets().any(|build_target| {
+                            matches!(build_target.id(), BuildTargetId::Binary(_))
+                        })
+                    {
+                        Some(*name)
+                    } else {
+                        None
+                    }
+                })
+                .collect()),
+        }
+    }
+
     pub fn select_package_from_bin(&mut self, bin: &str, ctx: &'a Context) -> Result<()> {
         match self.includes {
             SelectedInclude::Workspace => {

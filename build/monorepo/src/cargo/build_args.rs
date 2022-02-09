@@ -1,8 +1,13 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use camino::Utf8PathBuf;
 use clap::{ArgEnum, Args};
 use std::ffi::OsString;
+use std::process::Command;
+
+use crate::context::Context;
+use crate::{Error, Result};
 
 #[derive(ArgEnum, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Coloring {
@@ -213,5 +218,139 @@ impl BuildArgs {
         if self.offline {
             direct_args.push(OsString::from("--offline"));
         };
+    }
+
+    pub fn mode(&self) -> &str {
+        if let Some(str) = &self.profile {
+            str
+        } else if self.release {
+            "release"
+        } else {
+            "debug"
+        }
+    }
+
+    fn top_level_target_dir(&self) -> Utf8PathBuf {
+        Utf8PathBuf::from(if let Some(target_dir) = &self.target_dir {
+            target_dir.to_string_lossy().to_string()
+        } else {
+            "target".to_string()
+        })
+    }
+}
+
+pub fn target_dir(ctx: &Context, args: &BuildArgs) -> Result<Utf8PathBuf> {
+    let mut path = args.top_level_target_dir();
+    if path.is_relative() {
+        path = ctx.workspace_root().join(path);
+    }
+    if let Some(target) = &args.target {
+        if ctx.target_config()? != target {
+            path.join(target);
+        }
+    }
+    Ok(path.join(args.mode()))
+}
+
+pub fn target_bin(ctx: &Context, args: &BuildArgs, binary: &str) -> Result<Utf8PathBuf> {
+    target_dir(ctx, args).map(|dir| dir.join(append_ext_for_target_cfg(ctx, args, binary).unwrap()))
+}
+
+fn append_ext_for_target_cfg(ctx: &Context, args: &BuildArgs, binary: &str) -> Result<String> {
+    let target = if let Some(target) = &args.target {
+        target
+    } else {
+        ctx.target_config()?
+    };
+
+    Ok(if target.contains("windows") {
+        binary.to_string() + ".exe"
+    } else {
+        binary.to_string()
+    })
+}
+
+pub fn current_target_cfg() -> Result<String> {
+    let output = Command::new("rustc")
+        .args(["--print", "cfg"])
+        .output()
+        .map_err(|err| {
+            Error::new("failed to determine current Rust runtime target").with_source(err)
+        })?
+        .stdout;
+
+    let output = String::from_utf8(output).unwrap();
+
+    let mut arch = None;
+    let mut vendor = None;
+    let mut os = None;
+    let mut env = None;
+
+    for line in output.lines() {
+        if let Some((key, value)) = line.split_once('=') {
+            match key {
+                "target_arch" => {
+                    arch = Some(unquote(value)?);
+                }
+                "target_vendor" => {
+                    vendor = Some(unquote(value)?);
+                }
+                "target_os" => {
+                    os = Some(unquote(value)?);
+                }
+                "target_env" => {
+                    env = Some(unquote(value)?);
+                }
+                _ => (),
+            }
+        }
+    }
+
+    match (arch, vendor, os, env) {
+        (Some(arch), Some(vendor), Some(os), Some(env)) => {
+            let mut target = arch.to_string();
+
+            target.push('-');
+            target.push_str(vendor);
+            target.push('-');
+            target.push_str(os);
+            target.push('-');
+            target.push_str(env);
+
+            Ok(target)
+        }
+        _ => Err(Error::new(
+            "failed to determine current Rust runtime target",
+        )),
+    }
+}
+
+fn unquote(s: &str) -> Result<&str> {
+    if s.starts_with('"') && s.ends_with('"') {
+        Ok(&s[1..s.len() - 1])
+    } else {
+        Err(Error::new("failed to unquote string")
+            .with_output(format!("s: {}", s))
+            .with_explanation("The string was supposed to be quoted but it wasn't."))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_current_target_runtime() {
+        assert!(current_target_cfg().is_ok());
+    }
+
+    #[test]
+    fn test_unquote() {
+        assert_eq!(unquote("\"foo\"").unwrap(), "foo");
+        assert_eq!(unquote("\"f o o\"").unwrap(), "f o o");
+
+        unquote("\"foo").unwrap_err();
+        unquote("foo\"").unwrap_err();
+        unquote("foo").unwrap_err();
     }
 }

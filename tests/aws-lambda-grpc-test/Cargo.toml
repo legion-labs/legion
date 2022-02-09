@@ -25,3 +25,11 @@ lgn-streaming-proto = { path = "../../crates/lgn-streaming-proto", version = "0.
 http = "0.2"
 http-body = "0.4.4"
 bytes = "1.1"
+
+
+[package.metadata.monorepo.tags]
+"0.1.0" = "sha256:fd6683761f5a2cbf6e733c2314a320898fdf70d9442fb50b94f0e93320755ed8"
+
+[package.metadata.monorepo.aws-lambda-grpc-test]
+type = "aws-lambda"
+binary = "aws-lambda-grpc-test"

@@ -15,6 +15,7 @@ pub struct MonorepoConfig {
     pub clippy: Clippy,
     pub rustdoc: RustDoc,
     pub lints: Lints,
+    pub dist: Dist,
     pub determinator: DeterminatorRules,
 }
 
@@ -142,4 +143,15 @@ pub struct VsCode {
     pub compounds: HashMap<String, Vec<String>>,
     pub overrides: HashMap<String, HashMap<String, Vec<String>>>,
     pub disable_prelaunch: bool,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Dist {
+    /// s3 bucket location
+    pub bucket: String,
+    /// prefix to files uploaded in to s3
+    pub prefix: String,
+    /// AWS region of the bucket if necessary.
+    pub region: Option<String>,
 }

@@ -153,6 +153,13 @@ allow = [
 
 ################################################################################
 
+[dist]
+bucket = "legionlabs-ci-artefacts"
+prefix = "releases/legion/"
+region = "ca-central-1"
+
+################################################################################
+
 [[determinator.path-rule]]
 globs = [
     ".github/actions/*",
