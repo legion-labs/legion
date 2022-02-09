@@ -87,7 +87,7 @@ fn main() {
         .cas
         .map_or_else(|| project_folder.join("temp"), PathBuf::from);
 
-    std::fs::create_dir(&content_store_path).unwrap();
+    std::mem::drop(std::fs::create_dir(&content_store_path));
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
