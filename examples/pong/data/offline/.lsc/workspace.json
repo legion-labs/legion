@@ -1,13 +1,1 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-{"index_url":"../remote/","registration":{"id":"10b822aa-b1f9-4a6b-9d48-b7ed6d6312c7","owner":"MarcParenteau"}}
-=======
-{"index_url":"../remote/","registration":{"id":"8c3c3e63-8d43-40d4-b829-4e1ac487579a","owner":"MarcParenteau"}}
->>>>>>> 1fbb8140 (convert all debug-cubes to entities)
-=======
-{"index_url":"../remote/","registration":{"id":"da6809d5-dd3c-4f6e-a701-615a07ff05d6","owner":"MarcParenteau"}}
->>>>>>> 4ced68e0 (change script to output mouse delta)
-=======
-{"index_url":"../remote/","registration":{"id":"fc2ea868-6d1b-45d0-b4f2-f33b62be3383","owner":"MarcParenteau"}}
->>>>>>> 357d2a11 (add scripts for left+right paddles)
+{"index_url":"../remote/","registration":{"id":"75017191-b8fb-491b-ba28-03cf84eb5102","owner":"MarcParenteau"}}
