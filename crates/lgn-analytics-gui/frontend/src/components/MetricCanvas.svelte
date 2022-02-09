@@ -142,7 +142,6 @@
       .scaleExtent([1, getPixelSizeNs()])
       .translateExtent([[0, 0], getTranslateExtent()])
       .on("zoom", (event) => {
-        brush.call(d3.brush().clear);
         transform = event.transform;
       });
 
@@ -175,6 +174,12 @@
   function updateChart() {
     if (!container) {
       return;
+    }
+
+    if (brush) {
+      brush.call(d3.brush().clear);
+      brushStart = -Infinity;
+      brushEnd = Infinity;
     }
 
     updateLod();
