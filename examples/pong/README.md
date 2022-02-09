@@ -9,7 +9,7 @@ cargo mrun --bin pong -- --standalone
 ## Editing data
 
 ```sh
-cargo mrun --bin editor-srv -- --project=examples/pong/data
+cargo mrun --bin editor-srv -- --project=examples/pong/data --scene "/scene.ent"
 cargo mrun --bin editor-client
 ```
 

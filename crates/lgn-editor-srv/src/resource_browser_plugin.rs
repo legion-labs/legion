@@ -31,6 +31,16 @@ pub(crate) struct ResourceBrowserRPC {
     pub(crate) data_manager: Arc<Mutex<DataManager>>,
 }
 
+pub(crate) struct ResourceBrowserSettings {
+    default_scene: String,
+}
+
+impl ResourceBrowserSettings {
+    pub(crate) fn new(default_scene: String) -> Self {
+        Self { default_scene }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ResourceBrowserPlugin {}
 
@@ -75,12 +85,6 @@ impl IndexSnapshot {
     }
 }
 
-impl ResourceBrowserPlugin {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::{ResourceBrowser, ResourceBrowserServer},
     CreateResourceRequest, CreateResourceResponse, ResourceDescription, SearchResourcesResponse,
@@ -101,6 +105,7 @@ impl Plugin for ResourceBrowserPlugin {
 impl ResourceBrowserPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        settings: Res<'_, ResourceBrowserSettings>,
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         data_manager: Res<'_, Arc<Mutex<DataManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
@@ -110,19 +115,18 @@ impl ResourceBrowserPlugin {
         });
         grpc_settings.register_service(resource_browser_service);
 
-        let default_scene = lgn_config::config_get_or!("editor_srv.default_scene", String::new());
-        if !default_scene.is_empty() {
-            lgn_tracing::info!("Opening default scene: {}", default_scene);
+        if !settings.default_scene.is_empty() {
+            lgn_tracing::info!("Opening default scene: {}", settings.default_scene);
             let data_manager = data_manager.clone();
             tokio_runtime.block_on(async move {
                 let data_manager = data_manager.lock().await;
                 if let Err(err) = data_manager
-                    .build_by_name(&default_scene.clone().into())
+                    .build_by_name(&settings.default_scene.clone().into())
                     .await
                 {
                     lgn_tracing::warn!(
                         "Failed to build default_scene '{}': {}",
-                        &default_scene,
+                        &settings.default_scene,
                         err.to_string()
                     );
                 }

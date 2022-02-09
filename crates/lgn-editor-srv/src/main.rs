@@ -28,7 +28,7 @@ use lgn_window::WindowPlugin;
 use property_inspector_plugin::PropertyInspectorPlugin;
 
 mod resource_browser_plugin;
-use resource_browser_plugin::ResourceBrowserPlugin;
+use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
@@ -53,6 +53,9 @@ struct Args {
     /// Path to folder containing the content storage files
     #[clap(long)]
     cas: Option<String>,
+    /// Path to default scene (root asset) to load
+    #[clap(long)]
+    scene: Option<String>,
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
@@ -89,6 +92,10 @@ fn main() {
 
     std::mem::drop(std::fs::create_dir(&content_store_path));
 
+    let default_scene = args
+        .scene
+        .unwrap_or_else(|| settings.get_or("editor_srv.default_scene", String::new()));
+
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
@@ -117,6 +124,7 @@ fn main() {
         .add_plugin(RendererPlugin::new(args.egui, false))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
+        .insert_resource(ResourceBrowserSettings::new(default_scene))
         .add_plugin(ResourceBrowserPlugin::default())
         .add_plugin(PropertyInspectorPlugin::default())
         .add_plugin(TransformPlugin::default())
