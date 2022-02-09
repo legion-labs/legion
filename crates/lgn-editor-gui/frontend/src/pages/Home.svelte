@@ -71,7 +71,6 @@
   let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
 
   $: if ($allResourcesData) {
-    console.log("loading");
     resourceEntriesOrchestrator.load($allResourcesData);
   }
 
