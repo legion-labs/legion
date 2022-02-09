@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { client } from "@/lib/client";
+  import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import {
     MetricDesc,
+    PerformanceAnalyticsClientImpl,
     ProcessMetricReply,
   } from "@lgn/proto-telemetry/dist/analytics";
   import * as d3 from "d3";
   import { onMount } from "svelte";
+  import log from "@lgn/web-client/src/lib/log";
   export let id: string;
 
   interface Point {
@@ -22,6 +24,7 @@
   let mainWidth: number = 0;
   $: width = mainWidth - margin.left - margin.right;
 
+  let client: PerformanceAnalyticsClientImpl | null = null;
   let totalMinMs = -Infinity;
   let totalMaxMs = Infinity;
   let currentMinMs = -Infinity;
@@ -52,19 +55,24 @@
   }
 
   onMount(async () => {
+    client = await makeGrpcClient();
     await fetchDataAsync().then(() => (loading = false));
     createChart();
     updateChart();
   });
 
   async function fetchDataAsync() {
+    if (!client) {
+      log.error("no client in fetchDataAsync");
+      return;
+    }
     const reply = await client.list_process_metrics({ processId: id });
     metricsDesc = reply.metrics;
     totalMinMs = reply.minTimeMs;
     totalMaxMs = reply.maxTimeMs;
     metrics = await Promise.all(
       metricsDesc.map((m) => {
-        return client.fetch_process_metric({
+        return client!.fetch_process_metric({
           processId: id,
           metricName: m.name,
           beginMs: totalMinMs,

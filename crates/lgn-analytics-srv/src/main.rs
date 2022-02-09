@@ -24,6 +24,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
+use auth::AuthLayer;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
@@ -94,9 +95,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             connect_to_remote_data_lake(&db_uri, &s3_url).await?
         }
     };
+
+    let auth_layer = tower::ServiceBuilder::new()
+        .layer(AuthLayer::default())
+        .into_inner();
+
+    let server = PerformanceAnalyticsServer::new(service);
     Server::builder()
         .accept_http1(true)
-        .add_service(tonic_web::enable(PerformanceAnalyticsServer::new(service)))
+        .layer(auth_layer)
+        .add_service(tonic_web::enable(server))
         .serve(args.listen_endpoint)
         .await?;
     Ok(())

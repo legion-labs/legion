@@ -34,7 +34,6 @@ use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
 
-use crate::auth::validate_auth;
 use crate::cache::DiskCache;
 use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
@@ -308,11 +307,10 @@ impl PerformanceAnalytics for AnalyticsService {
 
     async fn list_recent_processes(
         &self,
-        request: Request<RecentProcessesRequest>,
+        _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         let _guard = RequestGuard::new();
         info!("list_recent_processes");
-        validate_auth(&request).await?;
         match self.list_recent_processes_impl().await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };

@@ -1,16 +1,15 @@
 <script lang="ts">
   import { link } from "svelte-navigator";
   import {
-    GrpcWebImpl,
     LogEntry,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { onMount } from "svelte";
+  import { makeGrpcClient } from "@/lib/client";
+  import log from "@lgn/web-client/src/lib/log";
 
-  const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl("http://" + location.hostname + ":9090", {})
-  );
+  let client: PerformanceAnalyticsClientImpl | null = null;
 
   export let id: string;
   const MAX_NB_ENTRIES_IN_PAGE = 1000;
@@ -20,6 +19,10 @@
   let logEntries: LogEntry[] = [];
 
   async function fetchLogEntries() {
+    if (!client) {
+      log.error("no client in fetchLogEntries");
+      return;
+    }
     const { process } = await client.find_process({
       processId: id,
     });
@@ -53,8 +56,9 @@
     logEntries = reply.entries;
   }
 
-  onMount(() => {
-    fetchLogEntries();
+  onMount(async () => {
+    client = await makeGrpcClient();
+    await fetchLogEntries();
   });
 
   function formatTime(ms: number) {

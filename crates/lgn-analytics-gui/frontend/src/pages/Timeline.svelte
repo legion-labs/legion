@@ -46,7 +46,6 @@
   import { link } from "svelte-navigator";
   import {
     BlockSpansReply,
-    GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
@@ -57,6 +56,8 @@
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
   import binarySearch from "binary-search";
+  import { makeGrpcClient } from "@/lib/client";
+  import log from "@lgn/web-client/src/lib/log";
   import {
     DrawSelectedRange,
     NewSelectionState,
@@ -88,12 +89,10 @@
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
   let loadingProgression: LoadingState = { current: 0, total: 0 };
+  let client: PerformanceAnalyticsClientImpl | null = null;
 
-  const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl("http://" + location.hostname + ":9090", {})
-  );
-
-  onMount(() => {
+  onMount(async () => {
+    client = await makeGrpcClient();
     const urlParams = new URLSearchParams(window.location.search);
     const startParam = urlParams.get("timelineStart");
     if (startParam) {
@@ -119,6 +118,10 @@
   });
 
   async function fetchProcessInfo() {
+    if (!client) {
+      log.error("no client in fetchProcessInfo");
+      return;
+    }
     const { process } = await client.find_process({ processId: processId });
     if (!process) {
       throw new Error(`Process ${processId} not found`);
@@ -175,6 +178,10 @@
   }
 
   async function fetchStreams(process: Process) {
+    if (!client) {
+      log.error("no client in fetchStreams");
+      return;
+    }
     const { streams } = await client.list_process_streams({
       processId: process.processId,
     });
@@ -197,6 +204,10 @@
   }
 
   async function fetchChildren() {
+    if (!client) {
+      log.error("no client in fetchChildren");
+      return;
+    }
     const { processes } = await client.list_process_children({
       processId: processId,
     });
@@ -218,6 +229,10 @@
   }
 
   async function fetchBlocks(streamId: string) {
+    if (!client) {
+      log.error("no client in fetchBlocks");
+      return;
+    }
     const response = await client.list_stream_blocks({ streamId });
     response.blocks.forEach((block) => {
       let beginMs = RFC3339ToMs(block.beginTime);
@@ -301,6 +316,10 @@
   }
 
   function fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
+    if (!client) {
+      log.error("no client in fetchBlockSpans");
+      return;
+    }
     const streamId = block.blockDefinition.streamId;
     const process = findStreamProcess(streamId);
     if (!process) {

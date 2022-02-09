@@ -163,6 +163,7 @@ dependencies = [
  "async-recursion 1.0.0",
  "chrono",
  "clap 3.0.14",
+ "http",
  "lgn-analytics",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
@@ -173,10 +174,12 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sqlx",
+ "thiserror",
  "tokio",
  "tonic",
  "tonic-build",
  "tonic-web",
+ "tower",
  "xxhash-rust",
 ]
 

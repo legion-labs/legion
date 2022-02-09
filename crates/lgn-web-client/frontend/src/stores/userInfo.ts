@@ -13,7 +13,6 @@ export async function getAccessToken(): Promise<string | null>{
 }
 
 export async function getUserInfo() {
-  console.log("getUserInfo");
   const awsCognitoAuthenticator = createAwsCognito();
   const accessToken = await getAccessToken();
   if (!accessToken) {
