@@ -18,5 +18,5 @@ tokio = { version = "1.13", features = ["full", "tracing"] }
 clap = { version = "3.0", features = ["derive"] }
 termcolor = "1.1.2"
 
-[dev-dependencies]
-lgn-test-utils = { path = "../lgn-test-utils", version = "0.1.0" }
+# [dev-dependencies]
+# lgn-test-utils = { path = "../lgn-test-utils", version = "0.1.0" }
