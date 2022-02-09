@@ -20,7 +20,7 @@ pub struct Args {
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let npm_workspace = NpmWorkspace::new(ctx)?;
 
-    npm_workspace.run_format(&args.package, args.check)?;
+    npm_workspace.format(&args.package, args.check)?;
 
     Ok(())
 }

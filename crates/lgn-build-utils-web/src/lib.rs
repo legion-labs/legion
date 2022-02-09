@@ -18,7 +18,7 @@
 //! Advantages:
 //! * Improves readability and UX of generated files (Go to definition works in
 //!   VS Code, looking at code from github)
-//! * Allows inclusion of generated files from other systems (Javasctript, hlsl
+//! * Allows inclusion of generated files from other systems (Javascript, hlsl
 //!   in a uniform manner) since `OUT_DIR` is only know during the cargo build
 //!   of a given crate.
 //!

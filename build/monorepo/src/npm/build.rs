@@ -20,10 +20,10 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let npm_workspace = NpmWorkspace::new(ctx)?;
 
     if !args.no_install {
-        npm_workspace.run_install();
+        npm_workspace.install();
     }
 
-    npm_workspace.run_build(&args.package)?;
+    npm_workspace.build(&args.package)?;
 
     Ok(())
 }

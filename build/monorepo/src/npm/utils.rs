@@ -98,7 +98,7 @@ impl NpmPackage {
         Ok(Self::new(path, package_json))
     }
 
-    pub fn run_install(&self, config: &NpmWorkspaceConfig) {
+    pub fn install(&self, config: &NpmWorkspaceConfig) {
         action_step!(
             "Npm Install",
             "{} ({})",
@@ -114,7 +114,7 @@ impl NpmPackage {
     }
 
     /// Runs the build script
-    pub fn run_build(&self, config: &NpmWorkspaceConfig) {
+    pub fn build(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(BUILD_SCRIPT) {
             return;
         }
@@ -131,7 +131,7 @@ impl NpmPackage {
     }
 
     /// Runs the check script
-    pub fn run_check(&self, config: &NpmWorkspaceConfig) {
+    pub fn check(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(CHECK_SCRIPT) {
             return;
         }
@@ -148,7 +148,7 @@ impl NpmPackage {
     }
 
     /// Runs the clean script
-    pub fn run_clean(&self, config: &NpmWorkspaceConfig) {
+    pub fn clean(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(CLEAN_SCRIPT) {
             return;
         }
@@ -165,7 +165,7 @@ impl NpmPackage {
     }
 
     /// Runs the format script
-    pub fn run_format(&self, config: &NpmWorkspaceConfig, check: bool) {
+    pub fn format(&self, config: &NpmWorkspaceConfig, check: bool) {
         if !self.package_json.scripts.contains_key(FORMAT_SCRIPT)
             || !self.package_json.scripts.contains_key(FORMAT_CHECK_SCRIPT)
         {
@@ -188,7 +188,7 @@ impl NpmPackage {
     }
 
     /// Runs the lint script
-    pub fn run_lint(&self, config: &NpmWorkspaceConfig, fix: bool) {
+    pub fn lint(&self, config: &NpmWorkspaceConfig, fix: bool) {
         if !self.package_json.scripts.contains_key(LINT_SCRIPT)
             || !self.package_json.scripts.contains_key(LINT_FIX_SCRIPT)
         {
@@ -211,7 +211,7 @@ impl NpmPackage {
     }
 
     /// Runs the test script
-    pub fn run_test(&self, config: &NpmWorkspaceConfig) {
+    pub fn test(&self, config: &NpmWorkspaceConfig) {
         if !self.package_json.scripts.contains_key(TEST_SCRIPT) {
             return;
         }
@@ -370,22 +370,22 @@ impl NpmWorkspace {
         entry.path().is_dir() || PackageJson::is_package_json(&entry.file_name())
     }
 
-    pub fn run_install(&self) {
-        self.root_package.run_install(&self.config);
+    pub fn install(&self) {
+        self.root_package.install(&self.config);
     }
 
-    pub fn run_build(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn build(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_build(&self.config));
+                    .for_each(|(_, package)| package.build(&self.config));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_build(&self.config);
+                    package.build(&self.config);
 
                     Ok(())
                 }
@@ -397,18 +397,18 @@ impl NpmWorkspace {
         }
     }
 
-    pub fn run_check(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn check(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_check(&self.config));
+                    .for_each(|(_, package)| package.check(&self.config));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_check(&self.config);
+                    package.check(&self.config);
 
                     Ok(())
                 }
@@ -420,20 +420,20 @@ impl NpmWorkspace {
         }
     }
 
-    pub fn run_clean(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn clean(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
-                self.root_package.run_clean(&self.config);
+                self.root_package.clean(&self.config);
 
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_clean(&self.config));
+                    .for_each(|(_, package)| package.clean(&self.config));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_clean(&self.config);
+                    package.clean(&self.config);
 
                     Ok(())
                 }
@@ -445,18 +445,18 @@ impl NpmWorkspace {
         }
     }
 
-    pub fn run_format(&self, package_name: &Option<String>, check: bool) -> Result<()> {
+    pub fn format(&self, package_name: &Option<String>, check: bool) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_format(&self.config, check));
+                    .for_each(|(_, package)| package.format(&self.config, check));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_format(&self.config, check);
+                    package.format(&self.config, check);
 
                     Ok(())
                 }
@@ -468,18 +468,18 @@ impl NpmWorkspace {
         }
     }
 
-    pub fn run_lint(&self, package_name: &Option<String>, fix: bool) -> Result<()> {
+    pub fn lint(&self, package_name: &Option<String>, fix: bool) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_lint(&self.config, fix));
+                    .for_each(|(_, package)| package.lint(&self.config, fix));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_lint(&self.config, fix);
+                    package.lint(&self.config, fix);
 
                     Ok(())
                 }
@@ -491,18 +491,18 @@ impl NpmWorkspace {
         }
     }
 
-    pub fn run_test(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn test(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.run_test(&self.config));
+                    .for_each(|(_, package)| package.test(&self.config));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.run_test(&self.config);
+                    package.test(&self.config);
 
                     Ok(())
                 }

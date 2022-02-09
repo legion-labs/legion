@@ -16,7 +16,7 @@ pub struct Args {
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let npm_workspace = NpmWorkspace::new(ctx)?;
 
-    npm_workspace.run_clean(&args.package)?;
+    npm_workspace.clean(&args.package)?;
 
     Ok(())
 }
