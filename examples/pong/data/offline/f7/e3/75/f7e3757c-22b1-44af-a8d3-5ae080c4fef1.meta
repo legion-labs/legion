@@ -1,7 +1,7 @@
 {
-  "name": "/scene/rune_script",
+  "name": "/scene/scene_script",
   "type_name": "offline_script",
   "type_id": "45307156cdfef705",
   "dependencies": [],
-  "content_checksum": "9e6017fe11af45c06d93eaf6bcd3365e"
+  "content_checksum": "e0b29140d024d65840becdde01180771"
 }

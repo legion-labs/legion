@@ -1,25 +1,39 @@
+use std::{cell::RefCell, fs, rc::Rc, str::FromStr, sync::Arc};
+
 use lgn_app::prelude::*;
 #[cfg(feature = "offline")]
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_ecs::prelude::*;
+use lgn_input::mouse::MouseMotion;
+use lgn_math::prelude::*;
+use lgn_tracing::prelude::*;
 use rhai::Scope;
 use rune::{
     termcolor::{ColorChoice, StandardStream},
-    FromValue, ToValue,
+    ToValue,
 };
 
-use std::{cell::RefCell, fs, rc::Rc, sync::Arc};
-
 use crate::runtime::{Script, ScriptComponent};
-use std::str::FromStr;
 
-#[derive(Default)]
 struct RuntimeScripts {
-    pub mun_runtimes: Vec<(ScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
-    pub rune_vm: Option<rune::Vm>,
-    pub rhai_eng: Option<rhai::Engine>,
-    pub rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
+    mun_runtimes: Vec<(ScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
+    rune_context: rune::Context,
+    rune_vms: RuneVMCollection,
+    rhai_eng: Option<rhai::Engine>,
+    rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
+}
+
+impl Default for RuntimeScripts {
+    fn default() -> Self {
+        Self {
+            mun_runtimes: Vec::new(),
+            rune_context: rune_modules::default_context().unwrap(),
+            rune_vms: RuneVMCollection::default(),
+            rhai_eng: None,
+            rhai_asts: Vec::new(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -30,10 +44,12 @@ impl Plugin for ScriptingPlugin {
         #[cfg(feature = "offline")]
         app.add_startup_system(register_resource_types.exclusive_system());
 
-        app.add_startup_system(add_loaders);
-
         app.init_non_send_resource::<RuntimeScripts>()
-            .add_system(Self::tick_scripts);
+            .init_resource::<ScriptingEventCache>()
+            .add_startup_system(add_loaders)
+            .add_system(Self::update_events)
+            .add_system(Self::tick_scripts)
+            .add_system(Self::tick_rune);
     }
 }
 
@@ -41,32 +57,33 @@ impl ScriptingPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn tick_scripts(
         runtimes: NonSendMut<'_, RuntimeScripts>,
-        scripts: Query<'_, '_, &mut ScriptComponent>,
+        scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
         registry: Res<'_, Arc<AssetRegistry>>,
+        mut commands: Commands<'_, '_>,
     ) {
         let mun_components = scripts
             .iter()
-            .filter(|s| s.script_type == 1 /*ScriptType::Mun*/);
+            .filter(|(_entity, s)| s.script_type == 1 /*ScriptType::Mun*/);
         let rune_components = scripts
             .iter()
-            .filter(|s| s.script_type == 2 /*ScriptType::Rune*/);
+            .filter(|(_entity, s)| s.script_type == 2 /*ScriptType::Rune*/);
         let rhai_components = scripts
             .iter()
-            .filter(|s| s.script_type == 3 /*ScriptType::Rhai*/);
+            .filter(|(_entity, s)| s.script_type == 3 /*ScriptType::Rhai*/);
 
         let r = runtimes.into_inner();
         Self::tick_mun(mun_components, r, &registry);
-        Self::tick_rune(rune_components, r, &registry);
+        Self::compile_rune(rune_components, r, &registry, &mut commands);
         Self::tick_rhai(rhai_components, r, &registry);
     }
 
     fn tick_mun<'a>(
-        mun_components: impl Iterator<Item = &'a ScriptComponent>,
+        mun_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
     ) {
         if runtimes.mun_runtimes.is_empty() {
-            for script in mun_components {
+            for (_entity, script) in mun_components {
                 let script_id = script.script_id.as_ref().unwrap().id();
                 let script_untyped = registry.get_untyped(script_id);
                 let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
@@ -102,68 +119,91 @@ impl ScriptingPlugin {
         }
     }
 
-    fn tick_rune<'a>(
-        rune_components: impl Iterator<Item = &'a ScriptComponent>,
+    fn compile_rune<'a>(
+        rune_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
+        commands: &mut Commands<'_, '_>,
     ) {
-        if runtimes.rune_vm.is_none() {
-            for script in rune_components {
-                let context = rune_modules::default_context().unwrap();
+        for (entity, script) in rune_components {
+            let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
+            let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
+            let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
+            info!("script payload: {}", &source_payload);
 
-                let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-                let script_typed = script_untyped.unwrap().get::<Script>(registry).unwrap();
-                let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
-                println!("{}", &source_payload);
+            let mut sources = rune::Sources::new();
+            sources.insert(rune::Source::new("entry", &source_payload));
 
-                let mut sources = rune::Sources::new();
-                sources.insert(rune::Source::new("entry", &source_payload));
+            let mut diagnostics = rune::Diagnostics::new();
 
-                let mut diagnostics = rune::Diagnostics::new();
+            let result = rune::prepare(&mut sources)
+                .with_context(&runtimes.rune_context)
+                .with_diagnostics(&mut diagnostics)
+                .build();
 
-                let result = rune::prepare(&mut sources)
-                    .with_context(&context)
-                    .with_diagnostics(&mut diagnostics)
-                    .build();
-
-                if !diagnostics.is_empty() {
-                    let mut writer = StandardStream::stderr(ColorChoice::Always);
-                    diagnostics.emit(&mut writer, &sources).unwrap();
-                }
-
-                let unit = result.unwrap();
-
-                runtimes.rune_vm = Some(rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit)));
+            if !diagnostics.is_empty() {
+                let mut writer = StandardStream::stderr(ColorChoice::Always);
+                diagnostics.emit(&mut writer, &sources).unwrap();
             }
-        } else {
-            for script in rune_components {
-                let arg = i64::from_str(&script.input_values[0]).unwrap();
 
-                let args = vec![arg.to_value().unwrap()];
-                let fn_name = &[script.entry_fn.as_str()];
-                let hashed_fn_name = rune::Hash::type_hash(fn_name);
+            let unit = result.unwrap();
 
-                let result = runtimes
-                    .rune_vm
-                    .as_mut()
-                    .unwrap()
-                    .execute(hashed_fn_name, args)
-                    .unwrap()
-                    .complete()
-                    .unwrap();
-                let result = i64::from_value(result).unwrap();
-                println!("Rune: fibonacci({}) = {}", &arg, result);
-            }
+            let vm_index = runtimes
+                .rune_vms
+                .append_new_vm(&runtimes.rune_context, unit);
+
+            let fn_name = &[script.entry_fn.as_str()];
+            let script_exec = RuneScriptExecutionComponent {
+                vm_index,
+                entry_fn: rune::Hash::type_hash(fn_name),
+                input_args: script.input_values.clone(),
+            };
+
+            commands
+                .entity(entity)
+                .insert(script_exec)
+                .remove::<ScriptComponent>();
         }
     }
 
+    fn tick_rune(
+        mut runtimes: NonSendMut<'_, RuntimeScripts>,
+        query: Query<'_, '_, (Entity, &mut RuneScriptExecutionComponent)>,
+        event_cache: Res<'_, ScriptingEventCache>,
+    ) {
+        for (_entity, script) in query.iter() {
+            if let Some(vm) = runtimes.rune_vms.get_mut(script.vm_index) {
+                let mut args: Vec<rune::Value> = Vec::new();
+                for input in &script.input_args {
+                    if input == "mouse_delta_x" {
+                        args.push(event_cache.mouse_motion.delta.x.to_value().unwrap());
+                    } else if input == "mouse_delta_y" {
+                        args.push(event_cache.mouse_motion.delta.y.to_value().unwrap());
+                    } else {
+                        let value = i64::from_str(input.as_str()).unwrap();
+                        args.push(value.to_value().unwrap());
+                    }
+                }
+
+                let _result = vm
+                    .execute(script.entry_fn, args)
+                    .unwrap()
+                    .complete()
+                    .unwrap();
+            }
+        }
+
+        drop(query);
+        drop(event_cache);
+    }
+
     fn tick_rhai<'a>(
-        rhai_components: impl Iterator<Item = &'a ScriptComponent>,
+        rhai_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
     ) {
         if runtimes.rhai_eng.is_none() {
-            for script in rhai_components {
+            for (_entity, script) in rhai_components {
                 if runtimes.rhai_eng.is_none() {
                     runtimes.rhai_eng = Some(rhai::Engine::new());
                     runtimes.rhai_eng.as_mut().unwrap().set_max_call_levels(15);
@@ -201,6 +241,56 @@ impl ScriptingPlugin {
                 println!("Rhai: fibonacci({}) = {}", &arg, result);
             }
         }
+    }
+
+    pub(crate) fn update_events(
+        mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
+        mut cache: ResMut<'_, ScriptingEventCache>,
+    ) {
+        // aggregate mouse movement
+        let mut delta = Vec2::ZERO;
+        for event in mouse_motion_events.iter() {
+            delta += event.delta;
+        }
+        cache.mouse_motion.delta = delta;
+    }
+}
+
+pub struct ScriptingEventCache {
+    mouse_motion: MouseMotion,
+}
+
+impl Default for ScriptingEventCache {
+    fn default() -> Self {
+        Self {
+            mouse_motion: MouseMotion {
+                delta: Vec2::default(),
+            },
+        }
+    }
+}
+
+#[derive(Component)]
+struct RuneScriptExecutionComponent {
+    vm_index: usize,
+    entry_fn: rune::Hash,
+    input_args: Vec<String>,
+}
+
+#[derive(Default)]
+struct RuneVMCollection {
+    vms: Vec<Option<rune::Vm>>,
+}
+
+impl RuneVMCollection {
+    fn append_new_vm(&mut self, context: &rune::Context, unit: rune::Unit) -> usize {
+        let vm = rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit));
+        self.vms.push(Some(vm));
+        self.vms.len() - 1
+    }
+
+    fn get_mut(&mut self, index: usize) -> &mut Option<rune::Vm> {
+        &mut self.vms[index]
     }
 }
 
