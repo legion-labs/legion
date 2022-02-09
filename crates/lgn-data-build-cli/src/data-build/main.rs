@@ -9,8 +9,11 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_offline::{
+    resource::{Project, ResourcePathName},
+    ResourcePathId,
+};
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Data Build")]
@@ -124,21 +127,6 @@ async fn main() -> Result<(), String> {
                 .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
-            let derived = {
-                if runtime_flag {
-                    let id = resource
-                        .parse::<ResourceTypeAndId>()
-                        .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", resource))?;
-                    build.lookup_pathid(id).ok_or(format!(
-                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                        id
-                    ))?
-                } else {
-                    ResourcePathId::from_str(&resource)
-                        .map_err(|_e| format!("Invalid Resource (ResourcePathId) '{}'", resource))?
-                }
-            };
-
             //
             // for now, each time we build we make sure we have a fresh input data indexed
             // by doing a source_pull. this should most likely be executed only on demand.
@@ -147,6 +135,25 @@ async fn main() -> Result<(), String> {
                 .source_pull(&project)
                 .await
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
+
+            let derived = {
+                if let Ok(id) = resource.parse::<ResourceTypeAndId>() {
+                    build.lookup_pathid(id).ok_or(format!(
+                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
+                        resource
+                    ))?
+                } else if let Ok(id) = ResourcePathId::from_str(&resource) {
+                    id
+                } else if let Ok(name) = ResourcePathName::from_str(&resource) {
+                    let id = project
+                        .find_resource(&name)
+                        .await
+                        .map_err(|e| format!("Could not find source resource: '{}'", e))?;
+                    ResourcePathId::from(id).push(ResourceType::new(b"runtime_entity"))
+                } else {
+                    return Err(format!("Could not parse resource input: '{}'", resource));
+                }
+            };
 
             let output = build
                 .compile(

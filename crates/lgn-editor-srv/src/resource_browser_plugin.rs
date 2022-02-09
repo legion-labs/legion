@@ -114,7 +114,7 @@ impl ResourceBrowserPlugin {
         if !default_scene.is_empty() {
             lgn_tracing::info!("Opening default scene: {}", default_scene);
             let data_manager = data_manager.clone();
-            tokio_runtime.start_detached(async move {
+            tokio_runtime.block_on(async move {
                 let data_manager = data_manager.lock().await;
                 if let Err(err) = data_manager
                     .build_by_name(&default_scene.clone().into())
