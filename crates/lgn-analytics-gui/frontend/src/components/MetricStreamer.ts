@@ -6,6 +6,16 @@ import {
 } from "@lgn/proto-telemetry/dist/metric";
 import { Writable, writable } from "svelte/store";
 
+export class MetricState {
+  enabled: boolean;
+  metricDesc: MetricDesc;
+  points: Point[] = [];
+  constructor(metricDesc: MetricDesc, enabled: boolean) {
+    this.metricDesc = metricDesc;
+    this.enabled = enabled;
+  }
+}
+
 export class MetricStreamer {
   private lod: number;
   private totalMin: number;
@@ -14,8 +24,7 @@ export class MetricStreamer {
   private currentMin: number = -Infinity;
   private currentMax: number = Infinity;
   private metrics: MetricDesc[];
-  metricStore: Writable<MetricDesc[]>;
-  points: Writable<Point[][]>;
+  metricStore: Writable<MetricState[]>;
   constructor(
     processId: string,
     lod: number,
@@ -28,7 +37,6 @@ export class MetricStreamer {
     this.totalMax = totalMax;
     this.metrics = [];
     this.metricStore = writable([]);
-    this.points = writable([]);
   }
 
   async initializeAsync() {
@@ -38,9 +46,22 @@ export class MetricStreamer {
       })
     ).metrics;
 
-    this.metricStore.set(this.metrics);
+    this.metricStore.set(this.metrics.map((m) => new MetricState(m, true)));
 
     await this.fetchSelectedMetricsAsync();
+  }
+
+  switchMetric(
+    metricState: MetricState,
+    e: MouseEvent & { currentTarget: EventTarget & HTMLInputElement }
+  ) {
+    this.metricStore.update((data) => {
+      let index = data.indexOf(metricState);
+      let metric = data[index];
+      metric.enabled = e.currentTarget.checked;
+      data[index] = metric;
+      return data;
+    });
   }
 
   tick(lod: number, min: number, max: number) {
@@ -63,17 +84,34 @@ export class MetricStreamer {
 
   async fetchSelectedMetricsAsync() {
     let result = await Promise.all(
-      this.metrics.map((m) => {
-        return client.fetch_process_metric({
+      this.metrics.map(async (m) => {
+        let result = await client.fetch_process_metric({
           lod: this.lod,
           processId: this.processId,
           metricName: m.name,
           beginMs: this.totalMin,
           endMs: this.totalMax,
         });
+        return {
+          result: result,
+          name: m.name,
+        };
       })
     );
 
-    this.points.set(result.map((m) => this.mapToPoints(m)));
+    this.metricStore.update((metrics) => {
+      result.forEach((reply) => {
+        let existingMetric = metrics.filter(
+          (m) => m.metricDesc.name === reply.name
+        )[0];
+        if (existingMetric) {
+          let index = metrics.indexOf(existingMetric);
+          let metric = metrics[index];
+          metric.points = this.mapToPoints(reply.result);
+          metrics[index] = metric;
+        }
+      });
+      return metrics;
+    });
   }
 }

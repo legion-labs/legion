@@ -2,16 +2,15 @@
   import { client } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import { Point } from "@/lib/point";
-  import { MetricDesc } from "@lgn/proto-telemetry/dist/metric";
   import * as d3 from "d3";
   import { onDestroy, onMount } from "svelte";
   import { Unsubscriber, Writable } from "svelte/store";
-  import { MetricStreamer } from "./MetricStreamer";
+  import { MetricState, MetricStreamer } from "./MetricStreamer";
   import TimeRangeDetails from "./TimeRangeDetails.svelte";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
-  let metricStore: Writable<MetricDesc[]>;
+  let metricStore: Writable<MetricState[]>;
   const margin = { top: 20, right: 50, bottom: 60, left: 70 };
 
   const outerHeight = 600;
@@ -26,7 +25,6 @@
   let currentMaxMs = Infinity;
   let brushStart = -Infinity;
   let brushEnd = Infinity;
-  let metricsDesc: MetricDesc[] = [];
   let points: Point[][] = [];
   let loading = true;
   let updateTime: number;
@@ -87,14 +85,13 @@
 
   async function fetchMetricsAsync() {
     const reply = await client.list_process_metrics({ processId: id });
-    metricsDesc = reply.metrics;
     totalMinMs = currentMinMs = reply.minTimeMs;
     totalMaxMs = currentMaxMs = reply.maxTimeMs;
     metricStreamer = new MetricStreamer(id, getLod(), totalMinMs, totalMaxMs);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initializeAsync();
-    pointSubscription = metricStreamer.points.subscribe((newPoints) => {
-      points = newPoints;
+    pointSubscription = metricStore.subscribe((metricState) => {
+      points = metricState.filter((m) => m.enabled).map((m) => m.points);
       updateChart();
     });
     updateLod();
@@ -311,9 +308,15 @@
         <br />
         {#if metricStreamer}
           <ul>
-            {#each $metricStore as md}
+            {#each $metricStore as ms}
               <li>
-                {md.name} (unit: {md.unit})
+                <input
+                  type="checkbox"
+                  id={ms.metricDesc.name + "_select"}
+                  checked={ms.enabled}
+                  on:click={(e) => metricStreamer.switchMetric(ms, e)}
+                />
+                {ms.metricDesc.name} (unit: {ms.metricDesc.unit})
               </li>
             {/each}
           </ul>
