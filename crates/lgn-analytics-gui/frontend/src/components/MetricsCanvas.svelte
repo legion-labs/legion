@@ -1,19 +1,16 @@
 <script lang="ts">
   import { client } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
-  import {
-    MetricDesc,
-    ProcessMetricReply,
-  } from "@lgn/proto-telemetry/dist/analytics";
+  import { Point } from "@/lib/point";
+  import { MetricDesc } from "@lgn/proto-telemetry/dist/metric";
   import * as d3 from "d3";
-  import { onMount, tick } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { Unsubscriber, Writable } from "svelte/store";
+  import { MetricStreamer } from "./MetricStreamer";
   export let id: string;
 
-  interface Point {
-    time: number;
-    value: number;
-  }
-
+  let metricStreamer: MetricStreamer;
+  let metricStore: Writable<MetricDesc[]>;
   const margin = { top: 20, right: 50, bottom: 60, left: 70 };
 
   const outerHeight = 600;
@@ -27,7 +24,6 @@
   let currentMinMs = -Infinity;
   let currentMaxMs = Infinity;
   let metricsDesc: MetricDesc[] = [];
-  let metrics: ProcessMetricReply[] = [];
   let points: Point[][] = [];
   let loading = true;
   let updateTime: number;
@@ -47,6 +43,7 @@
   let context: CanvasRenderingContext2D;
   let transform: d3.ZoomTransform = d3.zoomIdentity;
   let canvas: HTMLCanvasElement;
+  let pointSubscription: Unsubscriber | undefined;
 
   $: {
     if (mainWidth && transform) {
@@ -60,43 +57,43 @@
     Math.max(0, Math.floor(Math.log(getPixelSizeNs()) / Math.log(100)));
 
   onMount(async () => {
-    await fetchDataAsync().then(() => (loading = false));
+    await fetchMetricsAsync().then(() => (loading = false));
     createChart();
     updateChart();
   });
 
+  onDestroy(() => {
+    document.getElementsByClassName("canvas")[0].replaceChildren();
+    if (pointSubscription) {
+      pointSubscription();
+    }
+  });
+
   function updateLod() {
+    if (x) {
+      const scaleX = transform.rescaleX(x);
+      currentMinMs = scaleX.domain()[0].valueOf();
+      currentMaxMs = scaleX.domain()[1].valueOf();
+    }
     deltaMs = getDeltaMs();
     pixelSizeNs = getPixelSizeNs();
     lod = getLod();
+    metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
   }
 
-  async function fetchDataAsync() {
+  async function fetchMetricsAsync() {
     const reply = await client.list_process_metrics({ processId: id });
     metricsDesc = reply.metrics;
     totalMinMs = currentMinMs = reply.minTimeMs;
     totalMaxMs = currentMaxMs = reply.maxTimeMs;
+    metricStreamer = new MetricStreamer(id, getLod(), totalMinMs, totalMaxMs);
+    metricStore = metricStreamer.metricStore;
+    await metricStreamer.initializeAsync();
+    pointSubscription = metricStreamer.points.subscribe((newPoints) => {
+      points = newPoints;
+      updateChart();
+    });
     updateLod();
-    metrics = await Promise.all(
-      metricsDesc.map((m) => {
-        return client.fetch_process_metric({
-          lod: lod,
-          processId: id,
-          metricName: m.name,
-          beginMs: totalMinMs,
-          endMs: totalMaxMs,
-        });
-      })
-    );
-
-    points = metrics.map((m) =>
-      m.points.map((p) => {
-        return <Point>{
-          time: p.timeMs,
-          value: p.value,
-        };
-      })
-    );
   }
 
   function createChart() {
@@ -165,11 +162,15 @@
 
     const yMax = d3.max(
       points.flatMap(
-        (p) =>
+        (newPoints) =>
           d3.max(
-            p
-              .filter((p) => p.time >= currentMinMs && p.time <= currentMaxMs)
-              .map((p) => p.value)
+            newPoints
+              .filter(
+                (newPoints) =>
+                  newPoints.time >= currentMinMs &&
+                  newPoints.time <= currentMaxMs
+              )
+              .map((newPoints) => newPoints.value)
           ) ?? 0
       )
     );
@@ -184,9 +185,6 @@
   function draw() {
     const scaleX = transform.rescaleX(x);
 
-    currentMinMs = scaleX.domain()[0].valueOf();
-    currentMaxMs = scaleX.domain()[1].valueOf();
-
     context.fillStyle = "rgba(0, 0, 0, 0)";
     context.fillRect(0, 0, width, height);
 
@@ -198,7 +196,7 @@
 
     points.forEach((points, i) => {
       context.beginPath();
-      line(points.map((p) => [p.time, p.value]));
+      line(points.map((newPoints) => [newPoints.time, newPoints.value]));
       context.strokeStyle = d3.schemeCategory10[i];
       context.lineWidth = 0.33;
       context.stroke();
@@ -268,13 +266,15 @@
         </li>
       </ul>
       <br />
-      <ul>
-        {#each metricsDesc as md, index}
-          <li>
-            {md.name} (unit: {md.unit}) ({metrics[index].points.length} points)
-          </li>
-        {/each}
-      </ul>
+      {#if metricStreamer}
+        <ul>
+          {#each $metricStore as md}
+            <li>
+              {md.name} (unit: {md.unit})
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {/if}
 </div>

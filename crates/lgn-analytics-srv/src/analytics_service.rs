@@ -39,7 +39,7 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
-use crate::metrics;
+use crate::metrics::{self, MetricHandler};
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -263,23 +263,15 @@ impl AnalyticsService {
         &self,
         process_id: &str,
         metric_name: &str,
-        unit: &str,
         begin_ms: f64,
         end_ms: f64,
+        lod: u32,
     ) -> Result<ProcessMetricReply> {
-        let mut connection = self.pool.acquire().await?;
-        Ok(ProcessMetricReply {
-            points: metrics::fetch_process_metric(
-                &mut connection,
-                self.blob_storage.clone(),
-                process_id,
-                metric_name,
-                unit,
-                begin_ms,
-                end_ms,
-            )
-            .await?,
-        })
+        let metric_handler =
+            MetricHandler::new(Arc::clone(&self.blob_storage), Arc::new(self.pool.clone())).await?;
+        Ok(metric_handler
+            .fetch_metric(process_id, metric_name, begin_ms, end_ms, lod)
+            .await?)
     }
 }
 
@@ -565,9 +557,9 @@ impl PerformanceAnalytics for AnalyticsService {
             .fetch_process_metric_impl(
                 &inner_request.process_id,
                 &inner_request.metric_name,
-                &inner_request.unit,
                 inner_request.begin_ms,
                 inner_request.end_ms,
+                inner_request.lod,
             )
             .await
         {

@@ -1,10 +1,12 @@
 <script lang="ts">
   import {
     GrpcWebImpl,
-    MetricDataPoint,
-    MetricDesc,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
+  import {
+    MetricDataPoint,
+    MetricDesc,
+  } from "@lgn/proto-telemetry/dist/metric";
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";

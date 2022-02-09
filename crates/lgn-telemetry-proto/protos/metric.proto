@@ -23,11 +23,12 @@ message FetchProcessMetricRequest {
   string unit = 3;
   double begin_ms = 4;
   double end_ms = 5;
-  int32 lod = 6;
+  uint32 lod = 6;
 }
 
 message ProcessMetricReply {
   repeated MetricDataPoint points = 1;
+  uint32 lod = 2;
 }
 
 message MetricDataPoint {
