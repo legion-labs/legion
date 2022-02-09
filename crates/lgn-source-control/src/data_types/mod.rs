@@ -1,5 +1,4 @@
 mod branch;
-mod branch_tree;
 mod canonical_path;
 mod change;
 mod change_type;
@@ -12,7 +11,6 @@ mod tree;
 mod workspace_registration;
 
 pub use branch::Branch;
-pub use branch_tree::BranchTree;
 pub use canonical_path::CanonicalPath;
 pub use change::Change;
 pub use change_type::ChangeType;

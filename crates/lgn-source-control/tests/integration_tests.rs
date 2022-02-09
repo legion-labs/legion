@@ -655,7 +655,7 @@ async fn test_sync_forward_and_backward() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, ["."]);
-    let commit_id_1 = workspace_commit!(ws, "version 1");
+    let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
     workspace_checkout_files!(ws, ["apple.txt"]);
@@ -668,7 +668,7 @@ async fn test_sync_forward_and_backward() {
     // And delete an old one.
     workspace_delete_files!(ws, ["orange.txt"]);
 
-    let commit_id_2 = workspace_commit!(ws, "version 2");
+    let commit_2 = workspace_commit!(ws, "version 2");
 
     assert_file_content!(ws, "apple.txt", "apple version 2");
     assert_file_read_only!(ws, "apple.txt");
@@ -677,7 +677,7 @@ async fn test_sync_forward_and_backward() {
     assert_file_read_only!(ws, "pear.txt");
 
     // Try to sync back to the previous commit.
-    let changes = ws.sync_to(&commit_id_1).await.unwrap();
+    let changes = ws.sync_to(&commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -710,9 +710,9 @@ async fn test_sync_forward_and_backward() {
     assert_file_read_only!(ws, "orange.txt");
 
     // Sync back to the latest commit.
-    let (current_commit_id, changes) = ws.sync().await.unwrap();
+    let (branch, changes) = ws.sync().await.unwrap();
 
-    assert_eq!(current_commit_id, commit_id_2);
+    assert_eq!(branch.head, commit_2.id);
     assert_eq!(
         changes,
         [
@@ -755,7 +755,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, ["."]);
-    let commit_id_1 = workspace_commit!(ws, "version 1");
+    let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
     workspace_checkout_files!(ws, ["apple.txt"]);
@@ -768,7 +768,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     // And delete an old one.
     workspace_delete_files!(ws, ["orange.txt"]);
 
-    let commit_id_2 = workspace_commit!(ws, "version 2");
+    let commit_2 = workspace_commit!(ws, "version 2");
 
     // Make some staged and unstaged changes.
     workspace_checkout_files!(ws, ["tangerine.txt", "cantaloupe.txt"]);
@@ -808,7 +808,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should work even though we
     // have local changes as those do not conflict at all.
-    let changes = ws.sync_to(&commit_id_1).await.unwrap();
+    let changes = ws.sync_to(&commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -845,9 +845,9 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     assert_file_read_write!(ws, "cantaloupe.txt");
 
     // Sync back to the latest commit: this should work too.
-    let (current_commit_id, changes) = ws.sync().await.unwrap();
+    let (branch, changes) = ws.sync().await.unwrap();
 
-    assert_eq!(current_commit_id, commit_id_2);
+    assert_eq!(branch.head, commit_2.id);
     assert_eq!(
         changes,
         [
@@ -923,7 +923,7 @@ async fn test_sync_forward_with_conflicting_changes() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, ["."]);
-    let commit_id_1 = workspace_commit!(ws, "version 1");
+    let commit_id_1 = workspace_commit!(ws, "version 1").id;
 
     // Update an existing file.
     workspace_checkout_files!(ws, ["apple.txt"]);
@@ -1026,9 +1026,37 @@ async fn test_create_branch_switch_detach_attach() {
     workspace_commit!(ws, "version 1");
 
     let main = workspace_get_current_branch!(ws);
-    let branch_1 = workspace_create_branch!(ws, "branch1");
+    let mut branch1 = workspace_create_branch!(ws, "branch1");
 
-    assert_eq!(branch_1, main.branch_out("branch1".to_string()),);
+    assert_eq!(branch1, main.branch_out("branch1".to_string()));
+
+    // Make sure we really did switch off to the new branch.
+    assert_workspace_current_branch!(ws, branch1);
+
+    // Make and edit and commit.
+    workspace_checkout_files!(ws, ["apple.txt"]);
+    update_file!(ws, "apple.txt", "apple version 2");
+    workspace_add_files!(ws, ["apple.txt"]);
+
+    branch1.head = workspace_commit!(ws, "version 2").id;
+
+    // Go back to the main branch.
+    workspace_switch_branch!(ws, "main");
+
+    // Make sure we really did switch back to the main branch.
+    assert_workspace_current_branch!(ws, main);
+
+    assert_file_content!(ws, "apple.txt", "apple version 1");
+    assert_file_read_only!(ws, "apple.txt");
+
+    // Go back to the branch1 branch.
+    workspace_switch_branch!(ws, "branch1");
+
+    // Make sure we really did switch back to the main branch.
+    assert_workspace_current_branch!(ws, branch1);
+
+    assert_file_content!(ws, "apple.txt", "apple version 2");
+    assert_file_read_only!(ws, "apple.txt");
 
     cleanup_test_workspace_and_index!(ws, index);
 }

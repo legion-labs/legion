@@ -96,7 +96,15 @@ macro_rules! assert_file_content {
     }};
 }
 
+macro_rules! assert_workspace_current_branch {
+    ($workspace:expr, $branch:expr) => {{
+        let current_branch = $workspace.get_current_branch().await.unwrap();
+
+        assert_eq!(current_branch, $branch);
+    }};
+}
+
 pub(crate) use {
     assert_file_content, assert_file_read_only, assert_file_read_write, assert_path_doesnt_exist,
-    assert_staged_changes, assert_unstaged_changes,
+    assert_staged_changes, assert_unstaged_changes, assert_workspace_current_branch,
 };

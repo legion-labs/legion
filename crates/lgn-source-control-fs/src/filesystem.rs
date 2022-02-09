@@ -58,9 +58,9 @@ impl SourceControlFilesystem {
     }
 
     async fn read_tree(index_backend: &dyn IndexBackend, branch_name: &str) -> Result<Tree> {
-        let branch = index_backend.read_branch(branch_name).await?;
-        let commit = index_backend.read_commit(&branch.head).await?;
-        index_backend.read_tree(&commit.root_tree_id).await
+        let branch = index_backend.get_branch(branch_name).await?;
+        let commit = index_backend.get_commit(&branch.head).await?;
+        index_backend.get_tree(&commit.root_tree_id).await
     }
 
     fn get_blob(&self, hash: &str) -> Result<Vec<u8>> {

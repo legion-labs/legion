@@ -185,6 +185,15 @@ macro_rules! workspace_create_branch {
     }};
 }
 
+macro_rules! workspace_switch_branch {
+    ($workspace:expr, $branch_name:literal) => {{
+        $workspace
+            .switch_branch($branch_name)
+            .await
+            .expect("failed to switch branch")
+    }};
+}
+
 pub(crate) fn cp(s: &str) -> CanonicalPath {
     CanonicalPath::new(s).unwrap()
 }
@@ -239,5 +248,5 @@ pub(crate) use {
     cleanup_test_workspace_and_index, create_dir, create_file, delete_file,
     init_test_workspace_and_index, update_file, workspace_add_files, workspace_checkout_files,
     workspace_commit, workspace_commit_error, workspace_create_branch, workspace_delete_files,
-    workspace_get_current_branch, workspace_revert_files,
+    workspace_get_current_branch, workspace_revert_files, workspace_switch_branch,
 };

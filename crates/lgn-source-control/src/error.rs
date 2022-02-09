@@ -16,8 +16,8 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
-    #[error("the specified commit `{commit_id}` does not exist")]
-    CommitDoesNotExist { commit_id: String },
+    #[error("commit `{commit_id}` was not found")]
+    CommitNotFound { commit_id: String },
     #[error("the folder `{path}` is not a workspace")]
     NotAWorkspace { path: PathBuf },
     #[error("the path `{path}` did not match any files")]
@@ -26,6 +26,11 @@ pub enum Error {
     SymbolicLinkNotSupported { path: PathBuf },
     #[error("branch `{branch_name}` was not found")]
     BranchNotFound { branch_name: String },
+    #[error("lock `{lock_domain_id}/{canonical_path}` was not found")]
+    LockNotFound {
+        lock_domain_id: String,
+        canonical_path: CanonicalPath,
+    },
     #[error("already on branch `{branch_name}`")]
     AlreadyOnBranch { branch_name: String },
     #[error("the workspace is dirty - please commit or stash changes")]
@@ -36,7 +41,7 @@ pub enum Error {
     ConflictingChanges {
         conflicting_changes: BTreeSet<Change>,
     },
-    #[error("lock `{}` already exists in domain `{}`", .lock.relative_path, .lock.lock_domain_id)]
+    #[error("lock `{lock}` already exists")]
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
     EmptyCommitNotAllowed,
@@ -97,8 +102,8 @@ impl Error {
         }
     }
 
-    pub fn commit_does_not_exist(commit_id: impl Into<String>) -> Self {
-        Self::CommitDoesNotExist {
+    pub fn commit_not_found(commit_id: impl Into<String>) -> Self {
+        Self::CommitNotFound {
             commit_id: commit_id.into(),
         }
     }
@@ -117,6 +122,13 @@ impl Error {
 
     pub fn branch_not_found(branch_name: String) -> Self {
         Self::BranchNotFound { branch_name }
+    }
+
+    pub fn lock_not_found(lock_domain_id: String, canonical_path: CanonicalPath) -> Self {
+        Self::LockNotFound {
+            lock_domain_id,
+            canonical_path,
+        }
     }
 
     pub fn already_on_branch(branch_name: String) -> Self {

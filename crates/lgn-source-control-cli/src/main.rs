@@ -3,7 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
@@ -150,10 +150,6 @@ enum Commands {
         /// Displays the full information about the branch
         #[clap(long)]
         full: bool,
-
-        /// Display branches as a tree.
-        #[clap(long)]
-        tree: bool,
     },
     /// Abandon the local changes made to a file. By default will revert both
     /// staged and unstaged changes.
@@ -383,9 +379,13 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Switch { branch_name } => {
-            info!("switch: {}", branch_name);
+            let workspace = Workspace::find_in_current_directory().await?;
 
-            Ok(())
+            let (branch, changes) = workspace.switch_branch(&branch_name).await?;
+
+            println!("Now on branch {}", branch);
+
+            print_changes(&workspace, &mut stdout, &changes)
         }
         Commands::Detach => {
             info!("detach");
@@ -397,27 +397,18 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::Branches { full, tree } => {
+        Commands::Branches { full } => {
             let workspace = Workspace::find_in_current_directory().await?;
 
-            if tree {
-                let branches_tree = workspace.get_branches_tree().await?;
+            let branches = workspace.get_branches().await?;
 
-                for branch_tree in branches_tree {
-                    let tree: termtree::Tree<String> = branch_tree.into();
-                    print!("{}", tree);
+            if full {
+                for branch in branches {
+                    println!("{}", branch);
                 }
             } else {
-                let branches = workspace.get_branches().await?;
-
-                if full {
-                    for branch in branches {
-                        println!("{}", branch);
-                    }
-                } else {
-                    for branch in branches {
-                        println!("{}", branch.name);
-                    }
+                for branch in branches {
+                    println!("{}", branch.name);
                 }
             }
 
@@ -512,7 +503,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Log { short } => {
             let workspace = Workspace::find_in_current_directory().await?;
             let current_branch = workspace.get_current_branch().await?;
-            let commits = workspace.get_commits(&current_branch.head, 50).await?;
+            let commits = workspace
+                .list_commits(&ListCommitsQuery::single(&current_branch.head))
+                .await?;
 
             if short {
                 for commit in &commits {
@@ -545,42 +538,14 @@ async fn main() -> anyhow::Result<()> {
 
                 (commit_id, changes)
             } else {
-                workspace.sync().await?
-            };
+                let (branch, changes) = workspace.sync().await?;
 
-            let current_dir =
-                std::env::current_dir().map_other_err("failed to determine current directory")?;
+                (branch.head, changes)
+            };
 
             println!("Synced to {}", current_commit_id);
 
-            if !changes.is_empty() {
-                println!("\nChanges:");
-
-                for change in &changes {
-                    if change.change_type().has_modifications() {
-                        stdout.set_color(&green())?;
-                    } else {
-                        stdout.set_color(&yellow())?;
-                    }
-
-                    print!(
-                        "\t{:>8}:   {}",
-                        change.change_type().to_human_string(),
-                        workspace.make_relative_path(&current_dir, change.canonical_path()),
-                    );
-
-                    if !change.change_type().has_modifications() {
-                        stdout.reset()?;
-                        print!(" (no modifications staged yet)");
-                    }
-
-                    println!();
-                }
-
-                stdout.reset()?;
-            }
-
-            Ok(())
+            print_changes(&workspace, &mut stdout, &changes)
         }
         Commands::ResolvesPending => {
             info!("resolves-pending");
@@ -621,4 +586,42 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
+}
+
+fn print_changes(
+    workspace: &Workspace,
+    stdout: &mut StandardStream,
+    changes: &BTreeSet<Change>,
+) -> anyhow::Result<()> {
+    if !changes.is_empty() {
+        let current_dir =
+            std::env::current_dir().map_other_err("failed to determine current directory")?;
+
+        println!("\nChanges:");
+
+        for change in changes {
+            if change.change_type().has_modifications() {
+                stdout.set_color(&green())?;
+            } else {
+                stdout.set_color(&yellow())?;
+            }
+
+            print!(
+                "\t{:>8}:   {}",
+                change.change_type().to_human_string(),
+                workspace.make_relative_path(&current_dir, change.canonical_path()),
+            );
+
+            if !change.change_type().has_modifications() {
+                stdout.reset()?;
+                print!(" (no modifications staged yet)");
+            }
+
+            println!();
+        }
+
+        stdout.reset()?;
+    }
+
+    Ok(())
 }

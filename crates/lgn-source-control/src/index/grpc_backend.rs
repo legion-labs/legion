@@ -5,17 +5,16 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use lgn_source_control_proto::{
-    source_control_client::SourceControlClient, ClearLockRequest, CommitToBranchRequest,
-    CountLocksInDomainRequest, CreateIndexRequest, DestroyIndexRequest, FindBranchRequest,
-    FindBranchesInLockDomainRequest, FindLockRequest, FindLocksInDomainRequest,
-    GetBlobStorageUrlRequest, IndexExistsRequest, InsertBranchRequest, InsertLockRequest,
-    ReadBranchesRequest, ReadCommitsRequest, ReadTreeRequest, RegisterWorkspaceRequest,
-    SaveTreeRequest, UpdateBranchRequest,
+    source_control_client::SourceControlClient, CommitToBranchRequest, CountLocksRequest,
+    CreateIndexRequest, DestroyIndexRequest, GetBlobStorageUrlRequest, GetBranchRequest,
+    GetLockRequest, GetTreeRequest, IndexExistsRequest, InsertBranchRequest, ListBranchesRequest,
+    ListCommitsRequest, ListLocksRequest, LockRequest, RegisterWorkspaceRequest, SaveTreeRequest,
+    UnlockRequest, UpdateBranchRequest,
 };
 
 use crate::{
-    BlobStorageUrl, Branch, Commit, Error, IndexBackend, Lock, MapOtherError, Result, Tree,
-    WorkspaceRegistration,
+    BlobStorageUrl, Branch, CanonicalPath, Commit, Error, IndexBackend, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.
@@ -122,6 +121,23 @@ impl IndexBackend for GrpcIndexBackend {
         Ok(resp.exists)
     }
 
+    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
+        let resp = self
+            .client
+            .lock()
+            .await
+            .get_blob_storage_url(GetBlobStorageUrlRequest {
+                repository_name: self.repository_name.clone(),
+            })
+            .await
+            .map_other_err("failed to get blob storage url")?
+            .into_inner();
+
+        resp.blob_storage_url
+            .parse()
+            .map_other_err("failed to parse blob storage url")
+    }
+
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
@@ -141,12 +157,12 @@ impl IndexBackend for GrpcIndexBackend {
             .map(|_| ())
     }
 
-    async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>> {
+    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
         let resp = self
             .client
             .lock()
             .await
-            .find_branch(FindBranchRequest {
+            .get_branch(GetBranchRequest {
                 repository_name: self.repository_name.clone(),
                 branch_name: branch_name.into(),
             })
@@ -154,16 +170,20 @@ impl IndexBackend for GrpcIndexBackend {
             .map_other_err(format!("failed to find branch `{}`", branch_name))?
             .into_inner();
 
-        Ok(resp.branch.map(Into::into))
+        match resp.branch {
+            Some(branch) => Ok(branch.into()),
+            None => Err(Error::branch_not_found(branch_name.to_string())),
+        }
     }
 
-    async fn read_branches(&self) -> Result<Vec<Branch>> {
+    async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
         let resp = self
             .client
             .lock()
             .await
-            .read_branches(ReadBranchesRequest {
+            .list_branches(ListBranchesRequest {
                 repository_name: self.repository_name.clone(),
+                lock_domain_id: query.lock_domain_id.unwrap_or_default().into(),
             })
             .await
             .map_other_err("failed to read branches")?
@@ -198,37 +218,18 @@ impl IndexBackend for GrpcIndexBackend {
             .map(|_| ())
     }
 
-    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>> {
+    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
         let resp = self
             .client
             .lock()
             .await
-            .find_branches_in_lock_domain(FindBranchesInLockDomainRequest {
+            .list_commits(ListCommitsRequest {
                 repository_name: self.repository_name.clone(),
-                lock_domain_id: lock_domain_id.into(),
+                commit_ids: query.commit_ids.iter().copied().map(Into::into).collect(),
+                depth: query.depth,
             })
             .await
-            .map_other_err(format!(
-                "failed to find branches in lock domain `{}`",
-                lock_domain_id
-            ))?
-            .into_inner();
-
-        Ok(resp.branches.into_iter().map(Into::into).collect())
-    }
-
-    async fn read_commits(&self, commit_id: &str, depth: u32) -> Result<Vec<Commit>> {
-        let resp = self
-            .client
-            .lock()
-            .await
-            .read_commits(ReadCommitsRequest {
-                repository_name: self.repository_name.clone(),
-                commit_id: commit_id.into(),
-                depth,
-            })
-            .await
-            .map_other_err(format!("failed to read commit `{}`", commit_id))?
+            .map_other_err("failed to list commits")?
             .into_inner();
 
         resp.commits
@@ -255,17 +256,17 @@ impl IndexBackend for GrpcIndexBackend {
             .map(|_| ())
     }
 
-    async fn read_tree(&self, id: &str) -> Result<Tree> {
+    async fn get_tree(&self, id: &str) -> Result<Tree> {
         let resp = self
             .client
             .lock()
             .await
-            .read_tree(ReadTreeRequest {
+            .get_tree(GetTreeRequest {
                 repository_name: self.repository_name.clone(),
                 tree_id: id.into(),
             })
             .await
-            .map_other_err(format!("failed to read tree `{}`", id))?
+            .map_other_err(format!("failed to get tree `{}`", id))?
             .into_inner();
 
         resp.tree.unwrap_or_default().try_into()
@@ -284,111 +285,104 @@ impl IndexBackend for GrpcIndexBackend {
             .map(|resp| resp.into_inner().tree_id)
     }
 
-    async fn insert_lock(&self, lock: &Lock) -> Result<()> {
+    async fn lock(&self, lock: &Lock) -> Result<()> {
         self.client
             .lock()
             .await
-            .insert_lock(InsertLockRequest {
+            .lock(LockRequest {
                 repository_name: self.repository_name.clone(),
                 lock: Some(lock.clone().into()),
             })
             .await
             .map_other_err(format!(
-                "failed to insert lock `{}` in domain `{}`",
-                lock.relative_path, lock.lock_domain_id
+                "failed to create lock `{}/{}`",
+                lock.lock_domain_id, lock.canonical_path,
             ))
             .map(|_| ())
     }
 
-    async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>> {
+    async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
+        self.client
+            .lock()
+            .await
+            .unlock(UnlockRequest {
+                repository_name: self.repository_name.clone(),
+                lock_domain_id: lock_domain_id.into(),
+                canonical_path: canonical_path.to_string(),
+            })
+            .await
+            .map_other_err(format!(
+                "failed to clear lock `{}/{}`",
+                lock_domain_id, canonical_path,
+            ))
+            .map(|_| ())
+    }
+
+    async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
         let resp = self
             .client
             .lock()
             .await
-            .find_lock(FindLockRequest {
+            .get_lock(GetLockRequest {
                 repository_name: self.repository_name.clone(),
                 lock_domain_id: lock_domain_id.into(),
-                canonical_relative_path: relative_path.into(),
+                canonical_path: canonical_path.to_string(),
             })
             .await
             .map_other_err(format!(
                 "failed to find lock `{}` in lock domain `{}`",
-                relative_path, lock_domain_id
+                canonical_path, lock_domain_id
             ))?
             .into_inner();
 
-        Ok(resp.lock.map(Into::into))
+        match resp.lock {
+            Some(lock) => Ok(lock.try_into()?),
+            None => Err(Error::lock_not_found(
+                lock_domain_id.to_string(),
+                canonical_path.clone(),
+            )),
+        }
     }
 
-    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>> {
+    async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
         let resp = self
             .client
             .lock()
             .await
-            .find_locks_in_domain(FindLocksInDomainRequest {
+            .list_locks(ListLocksRequest {
                 repository_name: self.repository_name.clone(),
-                lock_domain_id: lock_domain_id.into(),
+                lock_domain_ids: query
+                    .lock_domain_ids
+                    .iter()
+                    .copied()
+                    .map(Into::into)
+                    .collect(),
             })
             .await
-            .map_other_err(format!(
-                "failed to find locks in lock domain `{}`",
-                lock_domain_id
-            ))?
+            .map_other_err("failed to list locks")?
             .into_inner();
 
-        Ok(resp.locks.into_iter().map(Into::into).collect())
+        resp.locks.into_iter().map(TryInto::try_into).collect()
     }
 
-    async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()> {
-        self.client
-            .lock()
-            .await
-            .clear_lock(ClearLockRequest {
-                repository_name: self.repository_name.clone(),
-                lock_domain_id: lock_domain_id.into(),
-                canonical_relative_path: relative_path.into(),
-            })
-            .await
-            .map_other_err(format!(
-                "failed to clear lock `{}` in lock domain `{}`",
-                relative_path, lock_domain_id
-            ))
-            .map(|_| ())
-    }
-
-    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32> {
+    async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
         let resp = self
             .client
             .lock()
             .await
-            .count_locks_in_domain(CountLocksInDomainRequest {
+            .count_locks(CountLocksRequest {
                 repository_name: self.repository_name.clone(),
-                lock_domain_id: lock_domain_id.into(),
+                lock_domain_ids: query
+                    .lock_domain_ids
+                    .iter()
+                    .copied()
+                    .map(Into::into)
+                    .collect(),
             })
             .await
-            .map_other_err(format!(
-                "failed to count locks in lock domain `{}`",
-                lock_domain_id
-            ))?
+            .map_other_err("failed to count locks")?
             .into_inner();
 
         Ok(resp.count)
-    }
-
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        let resp = self
-            .client
-            .lock()
-            .await
-            .get_blob_storage_url(GetBlobStorageUrlRequest {
-                repository_name: self.repository_name.clone(),
-            })
-            .await
-            .map_other_err("failed to get blob storage url")?
-            .into_inner();
-
-        resp.blob_storage_url
-            .parse()
-            .map_other_err("failed to parse blob storage url")
     }
 }

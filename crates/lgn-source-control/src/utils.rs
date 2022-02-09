@@ -65,21 +65,3 @@ pub(crate) fn make_path_absolute(path: impl AsRef<Path>) -> Result<PathBuf> {
         ))
     })
 }
-
-pub(crate) fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf> {
-    p.strip_prefix(base).map(Path::to_path_buf).context(format!(
-        "error stripping prefix: {} is not relative to {}",
-        p.display(),
-        base.display()
-    ))
-}
-
-pub(crate) fn make_canonical_relative_path(
-    workspace_root: &Path,
-    path_specified: impl AsRef<Path>,
-) -> Result<String> {
-    let abs_path = make_path_absolute(path_specified)?;
-    let relative_path = path_relative_to(&abs_path, workspace_root)?;
-    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
-    Ok(canonical_relative_path)
-}

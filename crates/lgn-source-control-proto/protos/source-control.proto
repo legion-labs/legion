@@ -14,27 +14,22 @@ service SourceControl {
   rpc RegisterWorkspace(RegisterWorkspaceRequest)
       returns (RegisterWorkspaceResponse) {};
 
-  rpc FindBranch(FindBranchRequest) returns (FindBranchResponse) {};
-  rpc ReadBranches(ReadBranchesRequest) returns (ReadBranchesResponse) {};
+  rpc GetBranch(GetBranchRequest) returns (GetBranchResponse) {};
+  rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse) {};
   rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {};
   rpc InsertBranch(InsertBranchRequest) returns (InsertBranchResponse) {};
 
-  rpc ReadCommits(ReadCommitsRequest) returns (ReadCommitsResponse) {};
+  rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse) {};
   rpc CommitToBranch(CommitToBranchRequest) returns (CommitToBranchResponse) {};
 
-  rpc ReadTree(ReadTreeRequest) returns (ReadTreeResponse) {};
+  rpc GetTree(GetTreeRequest) returns (GetTreeResponse) {};
   rpc SaveTree(SaveTreeRequest) returns (SaveTreeResponse) {};
 
-  rpc InsertLock(InsertLockRequest) returns (InsertLockResponse) {};
-  rpc FindLock(FindLockRequest) returns (FindLockResponse) {};
-  rpc FindLocksInDomain(FindLocksInDomainRequest)
-      returns (FindLocksInDomainResponse) {};
-  rpc ClearLock(ClearLockRequest) returns (ClearLockResponse) {};
-  rpc CountLocksInDomain(CountLocksInDomainRequest)
-      returns (CountLocksInDomainResponse) {};
-  rpc FindBranchesInLockDomain(FindBranchesInLockDomainRequest)
-      returns (FindBranchesInLockDomainResponse) {};
-
+  rpc Lock(LockRequest) returns (LockResponse) {};
+  rpc Unlock(UnlockRequest) returns (UnlockResponse) {};
+  rpc GetLock(GetLockRequest) returns (GetLockResponse) {};
+  rpc ListLocks(ListLocksRequest) returns (ListLocksResponse) {};
+  rpc CountLocks(CountLocksRequest) returns (CountLocksResponse) {};
 }
 
 message IndexExistsRequest { string repository_name = 1; }
@@ -68,38 +63,33 @@ message WorkspaceRegistration {
   string owner = 2;
 }
 
-message FindBranchRequest {
+message GetBranchRequest {
   string repository_name = 1;
   string branch_name = 2;
 }
 
-message FindBranchResponse { optional Branch branch = 1; }
+message GetBranchResponse { optional Branch branch = 1; }
 
 message Branch {
   string name = 1;
   string head = 2;
-  string parent = 3;
-  string lock_domain_id = 4;
+  string lock_domain_id = 3;
 }
 
-message ReadBranchesRequest { string repository_name = 1; }
-
-message ReadBranchesResponse { repeated Branch branches = 1; }
-
-message FindBranchesInLockDomainRequest {
+message ListBranchesRequest {
   string repository_name = 1;
   string lock_domain_id = 2;
 }
 
-message FindBranchesInLockDomainResponse { repeated Branch branches = 1; }
+message ListBranchesResponse { repeated Branch branches = 1; }
 
-message ReadCommitsRequest {
+message ListCommitsRequest {
   string repository_name = 1;
-  string commit_id = 2;
+  repeated string commit_ids = 2;
   uint32 depth = 3;
 }
 
-message ReadCommitsResponse { repeated Commit commits = 1; }
+message ListCommitsResponse { repeated Commit commits = 1; }
 
 message Commit {
   string id = 1;
@@ -126,12 +116,12 @@ message FileInfo {
   uint64 size = 2;
 }
 
-message ReadTreeRequest {
+message GetTreeRequest {
   string repository_name = 1;
   string tree_id = 2;
 }
 
-message ReadTreeResponse { Tree tree = 1; }
+message GetTreeResponse { Tree tree = 1; }
 
 message Tree {
   string name = 1;
@@ -139,34 +129,34 @@ message Tree {
   repeated Tree children = 3;
 }
 
-message InsertLockRequest {
+message LockRequest {
   string repository_name = 1;
   Lock lock = 2;
 }
 
-message InsertLockResponse {}
+message LockResponse {}
 
 message Lock {
-  string relative_path = 1;
+  string canonical_path = 1;
   string lock_domain_id = 2;
   string workspace_id = 3;
   string branch_name = 4;
 }
 
-message FindLockRequest {
+message GetLockRequest {
   string repository_name = 1;
   string lock_domain_id = 2;
-  string canonical_relative_path = 3;
+  string canonical_path = 3;
 }
 
-message FindLockResponse { optional Lock lock = 1; }
+message GetLockResponse { optional Lock lock = 1; }
 
-message FindLocksInDomainRequest {
+message ListLocksRequest {
   string repository_name = 1;
-  string lock_domain_id = 2;
+  repeated string lock_domain_ids = 2;
 }
 
-message FindLocksInDomainResponse { repeated Lock locks = 1; }
+message ListLocksResponse { repeated Lock locks = 1; }
 
 message SaveTreeRequest {
   string repository_name = 1;
@@ -199,17 +189,17 @@ message InsertBranchRequest {
 
 message InsertBranchResponse {}
 
-message ClearLockRequest {
+message UnlockRequest {
   string repository_name = 1;
   string lock_domain_id = 2;
-  string canonical_relative_path = 3;
+  string canonical_path = 3;
 }
 
-message ClearLockResponse {}
+message UnlockResponse {}
 
-message CountLocksInDomainRequest {
+message CountLocksRequest {
   string repository_name = 1;
-  string lock_domain_id = 2;
+  repeated string lock_domain_ids = 2;
 }
 
-message CountLocksInDomainResponse { int32 count = 1; }
+message CountLocksResponse { int32 count = 1; }

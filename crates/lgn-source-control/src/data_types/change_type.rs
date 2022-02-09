@@ -83,7 +83,7 @@ impl Display for ChangeType {
                 if old_info != new_info {
                     write!(f, "M")
                 } else {
-                    write!(f, "E")
+                    write!(f, "C")
                 }
             }
             ChangeType::Delete { .. } => write!(f, "D"),
