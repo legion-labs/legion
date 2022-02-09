@@ -1,20 +1,24 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
-    fs::File,
+    fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
 };
 
 use camino::Utf8PathBuf;
-use monorepo_base::{action_step, error_step};
+use monorepo_base::{action_step, error_step, skip_step};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use walkdir::{DirEntry, WalkDir};
 use which::which;
 
 use crate::{cargo::SelectedPackages, context::Context, error::Error, Result};
+
+const DIST_FOLDER: &str = "dist";
+
+const SRC_FOLDER: &str = "src";
 
 const PACKAGE_JSON: &str = "package.json";
 
@@ -120,6 +124,12 @@ impl NpmPackage {
         }
 
         let cmd_name = "Build";
+
+        if !self.should_build() {
+            self.print_skip_step(cmd_name);
+
+            return;
+        }
 
         self.print_action_step(cmd_name);
 
@@ -236,6 +246,15 @@ impl NpmPackage {
         );
     }
 
+    fn print_skip_step(&self, cmd_name: &str) {
+        skip_step!(
+            &format!("Npm {}", cmd_name),
+            "{} ({})",
+            self.package_json.name,
+            self.path.to_string_lossy()
+        );
+    }
+
     fn run_cmd(&self, cmd_name: &str, package_manager_path: &Path, args: &[&str]) {
         let mut cmd = Command::new(package_manager_path);
 
@@ -259,6 +278,39 @@ impl NpmPackage {
                 error.to_string()
             ),
         }
+    }
+
+    /// Checks whether or not a build is needed.
+    /// In order to check this, the function simply compares
+    /// the last modification date of the `dist` directory and
+    /// the package src directory content. If an error occurs
+    /// in the process, `true` is returned so the build can occur.
+    fn should_build(&self) -> bool {
+        let dist_modified =
+            match fs::metadata(&self.path.join(DIST_FOLDER)).and_then(|m| m.modified()) {
+                Ok(mtime) => mtime,
+                Err(_error) => {
+                    return true;
+                }
+            };
+
+        let package_modified = WalkDir::new(&self.path.join(SRC_FOLDER))
+            .into_iter()
+            .filter_map(|file| {
+                let file = file.ok()?;
+
+                let metadata = fs::metadata(file.path()).ok()?;
+
+                metadata.modified().ok()
+            })
+            .max();
+
+        let package_modified = match package_modified {
+            None => return true,
+            Some(package_modified) => package_modified,
+        };
+
+        dist_modified < package_modified
     }
 }
 

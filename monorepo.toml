@@ -196,6 +196,6 @@ mark-changed = "all"
 
 [npm]
 package-manager = "pnpm"
-excluded-dirs = ["target", "dist", "node_modules"]
+excluded-dirs = ["target", "dist", "node_modules", "build", "examples", "tests"]
 
 ################################################################################
