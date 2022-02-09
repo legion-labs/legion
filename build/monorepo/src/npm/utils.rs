@@ -7,14 +7,16 @@ use std::{
     process::Command,
 };
 
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use monorepo_base::{action_step, error_step, skip_step};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use walkdir::{DirEntry, WalkDir};
 use which::which;
 
-use crate::{cargo::SelectedPackages, context::Context, error::Error, Result};
+use crate::{
+    cargo::SelectedPackages, config::MonorepoConfig, context::Context, error::Error, Result,
+};
 
 const DIST_FOLDER: &str = "dist";
 
@@ -102,7 +104,7 @@ impl NpmPackage {
         Ok(Self::new(path, package_json))
     }
 
-    pub fn install(&self, config: &NpmWorkspaceConfig) {
+    pub fn install<P: AsRef<Path>>(&self, package_manager_path: P) {
         action_step!(
             "Npm Install",
             "{} ({})",
@@ -114,11 +116,11 @@ impl NpmPackage {
 
         self.print_action_step(cmd_name);
 
-        self.run_cmd(cmd_name, &config.package_manager_path, &[INSTALL_SCRIPT]);
+        self.run_cmd(cmd_name, package_manager_path.as_ref(), &[INSTALL_SCRIPT]);
     }
 
     /// Runs the build script
-    pub fn build(&self, config: &NpmWorkspaceConfig) {
+    pub fn build<P: AsRef<Path>>(&self, package_manager_path: P) {
         if !self.package_json.scripts.contains_key(BUILD_SCRIPT) {
             return;
         }
@@ -135,13 +137,13 @@ impl NpmPackage {
 
         self.run_cmd(
             cmd_name,
-            &config.package_manager_path,
+            package_manager_path.as_ref(),
             &["run", BUILD_SCRIPT],
         );
     }
 
     /// Runs the check script
-    pub fn check(&self, config: &NpmWorkspaceConfig) {
+    pub fn check<P: AsRef<Path>>(&self, package_manager_path: P) {
         if !self.package_json.scripts.contains_key(CHECK_SCRIPT) {
             return;
         }
@@ -152,13 +154,13 @@ impl NpmPackage {
 
         self.run_cmd(
             cmd_name,
-            &config.package_manager_path,
+            package_manager_path.as_ref(),
             &["run", CHECK_SCRIPT],
         );
     }
 
     /// Runs the clean script
-    pub fn clean(&self, config: &NpmWorkspaceConfig) {
+    pub fn clean<P: AsRef<Path>>(&self, package_manager_path: P) {
         if !self.package_json.scripts.contains_key(CLEAN_SCRIPT) {
             return;
         }
@@ -169,13 +171,13 @@ impl NpmPackage {
 
         self.run_cmd(
             cmd_name,
-            &config.package_manager_path,
+            package_manager_path.as_ref(),
             &["run", CLEAN_SCRIPT],
         );
     }
 
     /// Runs the format script
-    pub fn format(&self, config: &NpmWorkspaceConfig, check: bool) {
+    pub fn format<P: AsRef<Path>>(&self, package_manager_path: P, check: bool) {
         if !self.package_json.scripts.contains_key(FORMAT_SCRIPT)
             || !self.package_json.scripts.contains_key(FORMAT_CHECK_SCRIPT)
         {
@@ -194,11 +196,11 @@ impl NpmPackage {
             args.push(FORMAT_SCRIPT);
         }
 
-        self.run_cmd(cmd_name, &config.package_manager_path, &args);
+        self.run_cmd(cmd_name, package_manager_path.as_ref(), &args);
     }
 
     /// Runs the lint script
-    pub fn lint(&self, config: &NpmWorkspaceConfig, fix: bool) {
+    pub fn lint<P: AsRef<Path>>(&self, package_manager_path: P, fix: bool) {
         if !self.package_json.scripts.contains_key(LINT_SCRIPT)
             || !self.package_json.scripts.contains_key(LINT_FIX_SCRIPT)
         {
@@ -217,11 +219,11 @@ impl NpmPackage {
             args.push(LINT_SCRIPT);
         }
 
-        self.run_cmd(cmd_name, &config.package_manager_path, &args);
+        self.run_cmd(cmd_name, package_manager_path.as_ref(), &args);
     }
 
     /// Runs the test script
-    pub fn test(&self, config: &NpmWorkspaceConfig) {
+    pub fn test<P: AsRef<Path>>(&self, package_manager_path: P) {
         if !self.package_json.scripts.contains_key(TEST_SCRIPT) {
             return;
         }
@@ -232,7 +234,7 @@ impl NpmPackage {
 
         self.run_cmd(
             cmd_name,
-            &config.package_manager_path,
+            package_manager_path.as_ref(),
             &["run", TEST_SCRIPT],
         );
     }
@@ -314,56 +316,52 @@ impl NpmPackage {
     }
 }
 
-/// Contain external data, such as the package manager binary path
-/// or the build script name, that don't belong to the struct itself
-#[derive(Debug)]
-pub struct NpmWorkspaceConfig {
-    /// The package manager binary path
-    package_manager_path: PathBuf,
-}
-
 /// References all the npm packages in a workspace
-#[derive(Debug)]
-pub struct NpmWorkspace {
-    config: NpmWorkspaceConfig,
+pub struct NpmWorkspace<'a> {
+    /// Borrow the whole context to access
+    /// some data like the root path, the npm config, etc...
+    ctx: &'a Context,
+    /// Owned path to the package manager binary
+    package_manager_path: PathBuf,
     /// The top level npm package
     root_package: NpmPackage,
     /// The npm packages, excluding the top level one
     packages: HashMap<String, NpmPackage>,
 }
 
-impl NpmWorkspace {
+impl<'a> NpmWorkspace<'a> {
     /// Creates an empty workspace.
-    pub fn empty(ctx: &Context) -> Result<Self> {
+    pub fn new(ctx: &'a Context) -> Result<Self> {
         let config = ctx.config();
 
-        let package_manager_path = package_manager_path(&config.npm.package_manager)?;
+        let package_manager_path = which(&config.npm.package_manager).map_err(|error| {
+            Error::new(format!(
+                "Package manager {} not found in PATH",
+                &config.npm.package_manager
+            ))
+            .with_source(error)
+        })?;
 
         let root = ctx.workspace_root();
 
         let root_package = NpmPackage::from_path(root)?;
 
-        let config = NpmWorkspaceConfig {
-            package_manager_path,
-        };
-
         Ok(Self {
-            config,
+            ctx,
+            package_manager_path,
             root_package,
             packages: HashMap::new(),
         })
     }
 
-    /// Create a new workspace from the provided [`SelectedPackages`]
-    pub fn from_selected_packages(
-        ctx: &Context,
+    /// Populates the workspace using the provided [`SelectedPackages`]
+    pub fn load_selected_packages(
+        &mut self,
         selected_packages: &SelectedPackages<'_>,
-    ) -> Result<Self> {
-        let mut workspace = Self::empty(ctx)?;
+    ) -> Result<()> {
+        let packages = selected_packages.get_all_packages_metadata::<Metadata>(self.ctx)?;
 
-        let packages = selected_packages.get_all_packages_metadata::<Metadata>(ctx)?;
-
-        workspace.packages = packages
+        self.packages = packages
             .into_iter()
             .filter_map(|(path, metadata)| {
                 let path = path.join(&metadata.npm.path);
@@ -374,56 +372,56 @@ impl NpmWorkspace {
             })
             .collect::<HashMap<_, _>>();
 
-        Ok(workspace)
+        Ok(())
     }
 
-    /// Recursively searches for all the npm packages
+    /// Recursively searches for all the npm packages to populate the workspace
     /// (folders that contain a `package.json` file)
-    pub fn new(ctx: &Context) -> Result<Self> {
-        let mut workspace = Self::empty(ctx)?;
+    pub fn load_all(&mut self) {
+        let config = self.config();
+        let root = self.root();
 
-        let config = ctx.config();
+        self.packages = config
+            .npm
+            .include
+            .par_iter()
+            .flat_map(|include| {
+                WalkDir::new(root.join(include))
+                    .into_iter()
+                    .filter_entry(|entry| self.entry_is_valid(entry))
+                    .filter_map(|entry| {
+                        println!("entry {:?}", entry);
 
-        let root = ctx.workspace_root();
+                        let entry = entry.ok().and_then(|entry| {
+                            PackageJson::is_package_json(&entry.file_name()).then(|| entry)
+                        })?;
 
-        workspace.packages = WalkDir::new(&root)
-            .into_iter()
-            .filter_entry(|entry| {
-                Self::entry_is_valid(entry, root.as_ref(), &config.npm.excluded_dirs)
-            })
-            .filter_map(|entry| {
-                let entry = entry.ok().and_then(|entry| {
-                    PackageJson::is_package_json(&entry.file_name()).then(|| entry)
-                })?;
+                        // The path not having a parent is very unlikely
+                        let path = entry.path().parent().unwrap();
 
-                // The path not having a parent is very unlikely
-                let path = entry.path().parent().unwrap();
+                        let npm_package = NpmPackage::from_path(path).ok()?;
 
-                let npm_package = NpmPackage::from_path(path).ok()?;
-
-                Some((npm_package.package_json.name.clone(), npm_package))
+                        Some((npm_package.package_json.name.clone(), npm_package))
+                    })
+                    .collect::<HashMap<_, _>>()
             })
             .collect();
-
-        Ok(workspace)
     }
 
-    fn entry_is_valid(entry: &DirEntry, root: &Path, excluded_dirs: &[String]) -> bool {
+    fn entry_is_valid(&self, entry: &DirEntry) -> bool {
+        let root = self.root();
         let path = entry.path();
         let file_name = entry.file_name();
 
-        // ignoring the package.json at the root
-        if path == root.join(&PACKAGE_JSON)
-            || excluded_dirs.iter().any(|dir| file_name == dir.as_str())
-        {
+        if path == root.join(&PACKAGE_JSON) {
             return false;
         }
 
-        entry.path().is_dir() || PackageJson::is_package_json(&entry.file_name())
+        entry.path().is_dir() || PackageJson::is_package_json(&file_name)
     }
 
     pub fn install(&self) {
-        self.root_package.install(&self.config);
+        self.root_package.install(&self.package_manager_path);
     }
 
     pub fn build(&self, package_name: &Option<String>) -> Result<()> {
@@ -431,13 +429,13 @@ impl NpmWorkspace {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.build(&self.config));
+                    .for_each(|(_, package)| package.build(&self.package_manager_path));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.build(&self.config);
+                    package.build(&self.package_manager_path);
 
                     Ok(())
                 }
@@ -454,13 +452,13 @@ impl NpmWorkspace {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.check(&self.config));
+                    .for_each(|(_, package)| package.check(&self.package_manager_path));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.check(&self.config);
+                    package.check(&self.package_manager_path);
 
                     Ok(())
                 }
@@ -475,17 +473,17 @@ impl NpmWorkspace {
     pub fn clean(&self, package_name: &Option<String>) -> Result<()> {
         match package_name {
             None => {
-                self.root_package.clean(&self.config);
+                self.root_package.clean(&self.package_manager_path);
 
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.clean(&self.config));
+                    .for_each(|(_, package)| package.clean(&self.package_manager_path));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.clean(&self.config);
+                    package.clean(&self.package_manager_path);
 
                     Ok(())
                 }
@@ -502,13 +500,13 @@ impl NpmWorkspace {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.format(&self.config, check));
+                    .for_each(|(_, package)| package.format(&self.package_manager_path, check));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.format(&self.config, check);
+                    package.format(&self.package_manager_path, check);
 
                     Ok(())
                 }
@@ -525,13 +523,13 @@ impl NpmWorkspace {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.lint(&self.config, fix));
+                    .for_each(|(_, package)| package.lint(&self.package_manager_path, fix));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.lint(&self.config, fix);
+                    package.lint(&self.package_manager_path, fix);
 
                     Ok(())
                 }
@@ -548,13 +546,13 @@ impl NpmWorkspace {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.test(&self.config));
+                    .for_each(|(_, package)| package.test(&self.package_manager_path));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.test(&self.config);
+                    package.test(&self.package_manager_path);
 
                     Ok(())
                 }
@@ -570,11 +568,12 @@ impl NpmWorkspace {
     pub fn is_empty(&self) -> bool {
         self.packages.is_empty()
     }
-}
 
-/// Returns the path to the package manager binary
-pub fn package_manager_path(name: &str) -> Result<PathBuf> {
-    which(name).map_err(|error| {
-        Error::new(format!("Package manager {} not found in PATH", name)).with_source(error)
-    })
+    fn root(&self) -> &Utf8Path {
+        self.ctx.workspace_root()
+    }
+
+    fn config(&self) -> &MonorepoConfig {
+        self.ctx.config()
+    }
 }

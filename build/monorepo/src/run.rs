@@ -88,7 +88,9 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     };
 
     if !args.skip_npm_build {
-        let npm_workspace = NpmWorkspace::from_selected_packages(ctx, &packages)?;
+        let mut npm_workspace = NpmWorkspace::new(ctx)?;
+
+        npm_workspace.load_selected_packages(&packages)?;
 
         if !npm_workspace.is_empty() {
             if !args.skip_npm_install {

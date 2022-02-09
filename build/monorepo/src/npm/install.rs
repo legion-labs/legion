@@ -6,7 +6,7 @@ use super::utils::NpmWorkspace;
 
 #[span_fn]
 pub fn run(ctx: &Context) -> Result<()> {
-    let npm_workspace = NpmWorkspace::empty(ctx)?;
+    let npm_workspace = NpmWorkspace::new(ctx)?;
 
     npm_workspace.install();
 

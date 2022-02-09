@@ -162,5 +162,5 @@ pub struct Dist {
 pub struct Npm {
     pub package_manager: String,
     #[serde(default)]
-    pub excluded_dirs: Vec<String>,
+    pub include: Vec<String>,
 }
