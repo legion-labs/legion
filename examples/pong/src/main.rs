@@ -19,7 +19,8 @@ fn main() {
     let mut app = build_runtime(
         None,
         "examples/pong/data",
-        "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
+        //        "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
+        "",
     );
 
     app.insert_resource(GameState::default())

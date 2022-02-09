@@ -18,3 +18,10 @@ cargo mrun --bin editor-client
 ```sh
 cargo mrun --example pong_rebuild_data
 ```
+
+## Data exploration
+
+```sh
+cargo mrun --bin data-scrape -- configure --project examples/data --buildindex examples/data/temp
+cargo mrun --bin data-scrape -- asset examples/pong/data/temp
+```
