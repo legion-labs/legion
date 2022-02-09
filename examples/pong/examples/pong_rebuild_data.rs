@@ -59,7 +59,6 @@ async fn main() {
 
     let compilers = CompilerRegistryOptions::default()
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_debugcube::COMPILER_INFO)
         .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
 
     let data_build = DataBuildOptions::new(&build_dir, compilers)
@@ -110,7 +109,6 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("project.index");
 }
 
-// Script
 async fn build_script(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
@@ -157,6 +155,7 @@ async fn create_offline_data(
             id: ResourceId::from_str("63c338c9-0d03-4636-8a17-8f0cba02b618").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
+
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
@@ -178,6 +177,7 @@ async fn create_offline_data(
                 color: (208, 255, 208).into(),
                 mesh: None,
             }));
+
         project
             .add_resource_with_id(
                 "/scene/Ground".into(),
@@ -194,6 +194,21 @@ async fn create_offline_data(
     };
 
     // pad right
+    let pad_right_script = build_script(
+        project,
+        resource_registry,
+        "e93151b6-3635-4a30-9f3e-e6052929d85a",
+        2, // Rune
+        "/scene/pad_right_script",
+        r#"
+            const MOUSE_DELTA_SCALE = 200.0;
+            
+            pub fn move_right_paddle(delta_x) {
+                delta_x /= MOUSE_DELTA_SCALE;
+                println!("[Pad right] delta: {}", delta_x);
+            }"#,
+    )
+    .await;
     let pad_right_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -201,6 +216,7 @@ async fn create_offline_data(
             id: ResourceId::from_str("727eef7f-2544-4a46-be99-9aedd44a098e").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
+
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
@@ -222,6 +238,16 @@ async fn create_offline_data(
                 color: (0, 255, 255).into(),
                 mesh: None,
             }));
+
+        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
+            script_type: 2, // Rune
+            input_values: vec!["mouse_delta_x".to_string()],
+            entry_fn: "move_right_paddle".to_string(),
+            script_id: Some(pad_right_script),
+            temp_script: "".to_string(),
+        });
+        entity.components.push(script_component);
+
         project
             .add_resource_with_id(
                 "/scene/Pad Right".into(),
@@ -238,6 +264,21 @@ async fn create_offline_data(
     };
 
     // pad left
+    let pad_left_script = build_script(
+        project,
+        resource_registry,
+        "968c4926-ae75-4955-81c8-7b7e395d0d3b",
+        2, // Rune
+        "/scene/pad_left_script",
+        r#"
+            const MOUSE_DELTA_SCALE = 200.0;
+            
+            pub fn move_left_paddle(delta_x) {
+                delta_x /= MOUSE_DELTA_SCALE;
+                println!("[Pad left] delta: {}", delta_x);
+            }"#,
+    )
+    .await;
     let pad_left_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -245,6 +286,7 @@ async fn create_offline_data(
             id: ResourceId::from_str("719c8d5b-d320-4102-a92a-b3fa5240e140").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
+
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
@@ -266,6 +308,16 @@ async fn create_offline_data(
                 color: (0, 0, 255).into(),
                 mesh: None,
             }));
+
+        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
+            script_type: 2, // Rune
+            input_values: vec!["mouse_delta_x".to_string()],
+            entry_fn: "move_left_paddle".to_string(),
+            script_id: Some(pad_left_script),
+            temp_script: "".to_string(),
+        });
+        entity.components.push(script_component);
+
         project
             .add_resource_with_id(
                 "/scene/Pad Left".into(),
@@ -289,6 +341,7 @@ async fn create_offline_data(
             id: ResourceId::from_str("26b7a335-2d28-489d-882b-f7aae1fb2196").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
+
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
@@ -310,6 +363,7 @@ async fn create_offline_data(
                 color: (255, 16, 64).into(),
                 mesh: None,
             }));
+
         project
             .add_resource_with_id(
                 "/scene/Ball".into(),
@@ -325,20 +379,18 @@ async fn create_offline_data(
         path.push(sample_data::runtime::Entity::TYPE)
     };
 
-    // Rune script
+    // scene
     let scene_script = build_script(
         project,
         resource_registry,
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
-        2,
+        2, // Rune
         "/scene/scene_script",
-        r#"pub fn print_mouse_delta(x, y) {
-            println!("[Rune] mouse delta: {}, {}", x, y);
+        r#"pub fn update() {
         }"#,
     )
     .await;
 
-    // scene
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -346,21 +398,25 @@ async fn create_offline_data(
             id: ResourceId::from_str("29b8b0d0-ee1e-4792-aca2-3b3a3ce63916").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
+
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity.children.push(ground_path_id);
-        entity.children.push(pad_right_path_id);
-        entity.children.push(pad_left_path_id);
-        entity.children.push(ball_path_id);
+
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: 2, // Rune
-            input_values: vec!["mouse_delta_x".to_string(), "mouse_delta_y".to_string()],
-            entry_fn: "print_mouse_delta".to_string(),
+            input_values: vec![],
+            entry_fn: "update".to_string(),
             script_id: Some(scene_script),
             temp_script: "".to_string(),
         });
         entity.components.push(script_component);
+
+        entity.children.push(ground_path_id);
+        entity.children.push(pad_right_path_id);
+        entity.children.push(pad_left_path_id);
+        entity.children.push(ball_path_id);
+
         project
             .add_resource_with_id(
                 "/scene.ent".into(),

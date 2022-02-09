@@ -1,8 +1,28 @@
 [
   {
     "resource_id": "(17bed132bc803773,2ee0de7f-4bb7-55b6-44e1-6834e842d96b)",
+<<<<<<< HEAD
     "checksum": "a155b7aeb245587599790d36fed9108c",
     "size": 176
+=======
+    "checksum": "a28eff3de139475f7e5711a9e89186c0",
+    "size": 81
+  },
+  {
+    "resource_id": "(17bed132bc803773,7715944e-e078-58a4-bdaa-ab0bce416eb8)",
+    "checksum": "9b76e2bce02898979cbab62c659212dd",
+    "size": 280
+  },
+  {
+    "resource_id": "(17bed132bc803773,865c8645-0384-5477-7c48-c44dfa4b0d56)",
+    "checksum": "a44237ac7d3464760f98bcffdae7f22f",
+    "size": 278
+  },
+  {
+    "resource_id": "(1d9ddd99aad89045,1940748c-72d9-53bb-8f9b-04da4d99fd7e)",
+    "checksum": "f1474867036811f90082ce9ac1bd8a31",
+    "size": 212
+>>>>>>> 357d2a11 (add scripts for left+right paddles)
   },
   {
     "resource_id": "(1d9ddd99aad89045,3ecbba67-ee61-5ae4-2e32-d083d26c88ff)",
@@ -11,11 +31,12 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,468b01a3-8e51-5ac7-09d5-534456811d2d)",
-    "checksum": "5d5b5ac2999b90e38333465039835792",
-    "size": 216
+    "checksum": "c27f83ffa8290465c3662a750cea81b4",
+    "size": 373
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     "checksum": "b1a3fbc704c0709dfdf518a402e0ee52",
@@ -53,5 +74,14 @@
     "checksum": "062d1627d82dbfebf25e0e3a15a2a4fa",
     "size": 217
 >>>>>>> 1fbb8140 (convert all debug-cubes to entities)
+=======
+    "checksum": "e3d43f01f492f47f635512cd90a0ff23",
+    "size": 373
+  },
+  {
+    "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",
+    "checksum": "1eddce5f6fe4208ec53bf9d5ca8660a5",
+    "size": 375
+>>>>>>> 357d2a11 (add scripts for left+right paddles)
   }
 ]

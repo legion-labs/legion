@@ -35,6 +35,7 @@ impl Default for RuntimeScripts {
         }
     }
 }
+
 #[derive(Default)]
 pub struct ScriptingPlugin;
 
@@ -48,7 +49,7 @@ impl Plugin for ScriptingPlugin {
             .add_startup_system(add_loaders)
             .add_system(Self::update_events)
             .add_system(Self::tick_scripts)
-            .add_system(Self::tick_rune_scripts);
+            .add_system(Self::tick_rune);
     }
 }
 
@@ -72,7 +73,7 @@ impl ScriptingPlugin {
 
         let r = runtimes.into_inner();
         Self::tick_mun(mun_components, r, &registry);
-        Self::compile_rune_scripts(&mut commands, rune_components, r, &registry);
+        Self::compile_rune(rune_components, r, &registry, &mut commands);
         Self::tick_rhai(rhai_components, r, &registry);
     }
 
@@ -118,11 +119,11 @@ impl ScriptingPlugin {
         }
     }
 
-    fn compile_rune_scripts<'a>(
-        commands: &mut Commands<'_, '_>,
+    fn compile_rune<'a>(
         rune_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
         registry: &AssetRegistry,
+        commands: &mut Commands<'_, '_>,
     ) {
         for (entity, script) in rune_components {
             let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
@@ -165,7 +166,7 @@ impl ScriptingPlugin {
         }
     }
 
-    fn tick_rune_scripts(
+    fn tick_rune(
         mut runtimes: NonSendMut<'_, RuntimeScripts>,
         query: Query<'_, '_, (Entity, &mut RuneScriptExecutionComponent)>,
         event_cache: Res<'_, ScriptingEventCache>,

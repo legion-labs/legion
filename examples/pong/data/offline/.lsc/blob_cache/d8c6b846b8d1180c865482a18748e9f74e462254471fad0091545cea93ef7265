@@ -1,4 +1,0 @@
-{
-  "script": "pub fn print_mouse_delta(x, y) {\n            println!(\"[Rune] mouse delta: {}, {}\", x, y);\n        }",
-  "script_type": 2
-}
