@@ -7,6 +7,7 @@
   import { onDestroy, onMount } from "svelte";
   import { Unsubscriber, Writable } from "svelte/store";
   import { MetricStreamer } from "./MetricStreamer";
+  import TimeRangeDetails from "./TimeRangeDetails.svelte";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -147,7 +148,12 @@
 
     container.call(zoom as any);
 
-    brush = container.select("svg").append("g");
+    brush = container
+      .select("svg")
+      .append("g")
+      .on("contextmenu", (e) => {
+        e.preventDefault();
+      });
 
     var brushFunction = d3
       .brushX()
@@ -240,72 +246,77 @@
   {#if loading}
     <div>Loading...</div>
   {:else}
-    <div>
-      <div><span class="font-bold">Width</span>: {width}</div>
-      <div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
-      <br />
+    <div class="grid grid-cols-2">
       <div>
-        <span class="font-bold">Update Time</span>: {updateTime} ms
-      </div>
-      <div>
-        <span class="font-bold">Transform</span>
-        <span class="font-bold">X</span>
-        {transform.x.toFixed(2)}
-        <span class="font-bold">Y</span>
-        {transform.y.toFixed(2)}
-      </div>
-      <ul>
-        <li>
-          <span class="font-bold">Zoom</span>
-          {transform.k}
-        </li>
-        <li>
-          <span class="font-bold">Lod</span>
-          {lod}
-        </li>
-        <li>
-          <span class="font-bold">Pixel size</span>
-          {formatExecutionTime(pixelSizeNs / 1_000_000)}
-        </li>
-        <li>
-          <span class="font-bold">Delta Ms</span>
-          {formatExecutionTime(deltaMs)}
-        </li>
+        <div><span class="font-bold">Width</span>: {width}</div>
+        <div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
         <br />
-        <li>
-          <span class="font-bold">Min</span>
-          {totalMinMs.toFixed(2)}
-        </li>
-        <li>
-          <span class="font-bold">Current Min</span>
-          {currentMinMs.toFixed(2)}
-        </li>
-        <li>
-          <span class="font-bold">Max</span>
-          {totalMaxMs.toFixed(2)}
-        </li>
-        <li>
-          <span class="font-bold">Current Max</span>
-          {currentMaxMs.toFixed(2)}
-        </li>
-        <li>
-          <span class="font-bold">BrushStart</span>
-          {brushStart}
-          /
-          <span class="font-bold">BrushEnd</span>
-          {brushEnd}
-        </li>
-      </ul>
-      <br />
-      {#if metricStreamer}
+        <div>
+          <span class="font-bold">Update Time</span>: {updateTime} ms
+        </div>
+        <div>
+          <span class="font-bold">Transform</span>
+          <span class="font-bold">X</span>
+          {transform.x.toFixed(2)}
+          <span class="font-bold">Y</span>
+          {transform.y.toFixed(2)}
+        </div>
         <ul>
-          {#each $metricStore as md}
-            <li>
-              {md.name} (unit: {md.unit})
-            </li>
-          {/each}
+          <li>
+            <span class="font-bold">Zoom</span>
+            {transform.k}
+          </li>
+          <li>
+            <span class="font-bold">Lod</span>
+            {lod}
+          </li>
+          <li>
+            <span class="font-bold">Pixel size</span>
+            {formatExecutionTime(pixelSizeNs / 1_000_000)}
+          </li>
+          <li>
+            <span class="font-bold">Delta Ms</span>
+            {formatExecutionTime(deltaMs)}
+          </li>
+          <br />
+          <li>
+            <span class="font-bold">Min</span>
+            {totalMinMs.toFixed(2)}
+          </li>
+          <li>
+            <span class="font-bold">Current Min</span>
+            {currentMinMs.toFixed(2)}
+          </li>
+          <li>
+            <span class="font-bold">Max</span>
+            {totalMaxMs.toFixed(2)}
+          </li>
+          <li>
+            <span class="font-bold">Current Max</span>
+            {currentMaxMs.toFixed(2)}
+          </li>
+          <li>
+            <span class="font-bold">BrushStart</span>
+            {brushStart}
+            /
+            <span class="font-bold">BrushEnd</span>
+            {brushEnd}
+          </li>
         </ul>
-      {/if}
+        <br />
+        {#if metricStreamer}
+          <ul>
+            {#each $metricStore as md}
+              <li>
+                {md.name} (unit: {md.unit})
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+      <div>
+        <TimeRangeDetails timeRange={[brushStart, brushEnd]} processId={id} />
+      </div>
     </div>
   {/if}
 </div>

@@ -5,7 +5,7 @@
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
   import Graph from "@/pages/Graph.svelte";
-  import MetricsCanvas from "./components/MetricsCanvas.svelte";
+  import MetricsCanvas from "./components/MetricCanvas.svelte";
 
   const historyStore = { subscribe: globalHistory.listen };
 </script>
