@@ -23,6 +23,8 @@
   let totalMaxMs = Infinity;
   let currentMinMs = -Infinity;
   let currentMaxMs = Infinity;
+  let brushStart = -Infinity;
+  let brushEnd = Infinity;
   let metricsDesc: MetricDesc[] = [];
   let points: Point[][] = [];
   let loading = true;
@@ -40,6 +42,7 @@
   let yAxis: d3.Axis<d3.NumberValue>;
 
   let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
+  let brush: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let context: CanvasRenderingContext2D;
   let transform: d3.ZoomTransform = d3.zoomIdentity;
   let canvas: HTMLCanvasElement;
@@ -110,7 +113,8 @@
       .style("top", 0)
       .style("left", 0)
       .style("margin-left", `${margin.left}px`)
-      .style("margin-top", `${margin.top}px`);
+      .style("margin-top", `${margin.top}px`)
+      .style("pointer-events", "none");
 
     canvas = canvasChart.node() as HTMLCanvasElement;
 
@@ -133,13 +137,33 @@
 
     const zoom = d3
       .zoom()
+      .filter((e) => !e.shiftKey)
       .scaleExtent([1, getPixelSizeNs()])
       .translateExtent([[0, 0], getTranslateExtent()])
       .on("zoom", (event) => {
+        brush.call(d3.brush().clear);
         transform = event.transform;
       });
 
     container.call(zoom as any);
+
+    brush = container.select("svg").append("g");
+
+    var brushFunction = d3
+      .brushX()
+      .filter((e) => e.shiftKey)
+      .extent([
+        [margin.left + 1, margin.top],
+        [width, height + margin.top - 1],
+      ])
+      .on("end", (e: d3.D3BrushEvent<number>) => {
+        const scaleX = transform.rescaleX(x);
+        const selection = e.selection as [number, number];
+        brushStart = scaleX.invert(selection[0]).valueOf();
+        brushEnd = scaleX.invert(selection[1]).valueOf();
+      });
+
+    brush.call(brushFunction);
   }
 
   function updateChart() {
@@ -263,6 +287,13 @@
         <li>
           <span class="font-bold">Current Max</span>
           {currentMaxMs.toFixed(2)}
+        </li>
+        <li>
+          <span class="font-bold">BrushStart</span>
+          {brushStart}
+          /
+          <span class="font-bold">BrushEnd</span>
+          {brushEnd}
         </li>
       </ul>
       <br />
