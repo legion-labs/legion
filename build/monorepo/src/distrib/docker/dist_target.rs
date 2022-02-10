@@ -14,7 +14,11 @@ use tinytemplate::TinyTemplate;
 use crate::{
     cargo::target_dir,
     context::Context,
-    distrib::{self, DistPackage},
+    distrib::{
+        self,
+        dist_target::{clean, copy_binaries, copy_extra_files},
+        DistPackage,
+    },
     Error, ErrorContext, Result,
 };
 
@@ -34,19 +38,22 @@ impl Display for DockerDistTarget<'_> {
 }
 
 impl<'g> DockerDistTarget<'g> {
-    pub fn build(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
-        if cfg!(windows) {
-            skip_step!("Unsupported", "Docker build is not supported on Windows");
-            return Ok(());
-        }
+    pub fn name(&self) -> &str {
+        // we are supposed to have filled the name with a default value
+        self.metadata.name.as_ref().unwrap()
+    }
 
-        self.clean(ctx, args)?;
+    pub fn build(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+        let root = self.docker_root(ctx, args)?;
+        let docker_target_bin_dir = self.docker_target_bin_dir(ctx, args)?;
+
+        clean(&root)?;
 
         let binaries = self.package.build_binaries(ctx, args)?;
-        let dockerfile = self.write_dockerfile(ctx, args, &binaries)?;
-        self.copy_binaries(ctx, args, binaries.values())?;
-        self.copy_extra_files(ctx, args)?;
+        copy_binaries(&docker_target_bin_dir, binaries.values())?;
+        copy_extra_files(&self.metadata.extra_files, self.package.root(), &root)?;
 
+        let dockerfile = self.write_dockerfile(ctx, args, &binaries)?;
         self.build_dockerfile(args, &dockerfile)?;
 
         Ok(())
@@ -219,6 +226,11 @@ impl<'g> DockerDistTarget<'g> {
     }
 
     fn build_dockerfile(&self, args: &distrib::Args, docker_file: &Utf8Path) -> Result<()> {
+        if cfg!(windows) {
+            skip_step!("Unsupported", "Docker build is not supported on Windows");
+            return Ok(());
+        }
+
         let mut cmd = Command::new("docker");
         let docker_image_name = self.docker_image_name()?;
 
@@ -290,7 +302,7 @@ impl<'g> DockerDistTarget<'g> {
         Ok(format!(
             "{}/{}:{}",
             self.registry()?,
-            self.package.name(),
+            self.name(),
             self.package.version(),
         ))
     }
@@ -299,12 +311,12 @@ impl<'g> DockerDistTarget<'g> {
         Ok(AwsEcrInformation::from_string(&format!(
             "{}/{}",
             self.registry()?,
-            self.package.name(),
+            self.name(),
         )))
     }
 
     fn docker_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
-        target_dir(ctx, &args.build_args).map(|dir| dir.join("docker").join(self.package.name()))
+        target_dir(ctx, &args.build_args).map(|dir| dir.join("docker").join(self.name()))
     }
 
     fn docker_target_bin_dir(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
@@ -316,63 +328,6 @@ impl<'g> DockerDistTarget<'g> {
 
         self.docker_root(ctx, args)
             .map(|dir| dir.join(relative_target_bin_dir))
-    }
-
-    fn copy_binaries<'p>(
-        &self,
-        ctx: &Context,
-        args: &distrib::Args,
-        source_binaries: impl IntoIterator<Item = &'p Utf8PathBuf>,
-    ) -> Result<()> {
-        debug!("Will now copy all dependant binaries");
-        let docker_target_bin_dir = self.docker_target_bin_dir(ctx, args)?;
-        std::fs::create_dir_all(&docker_target_bin_dir)
-            .map_err(Error::from_source)
-            .with_full_context(
-        "could not create `target_bin_dir` in Docker root",
-        format!("The build process needed to create `{}` but it could not. You may want to verify permissions.", &docker_target_bin_dir),
-            )?;
-
-        for source in source_binaries {
-            let binary = source.file_name().unwrap().to_string();
-            let target = self
-                .docker_target_bin_dir(ctx, args)
-                .map(|dir| dir.join(&binary))?;
-
-            debug!("Copying {} to {}", source, target);
-            std::fs::copy(source, target)
-                .map_err(Error::from_source)
-                .with_full_context(
-                    "failed to copy binary",
-                    format!(
-                        "The binary `{}` could not be copied to the Docker image.",
-                        binary
-                    ),
-                )?;
-        }
-
-        Ok(())
-    }
-
-    fn clean(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
-        debug!("Will now clean the build directory");
-
-        std::fs::remove_dir_all(&self.docker_root(ctx, args)?).or_else(|err| match err.kind() {
-            std::io::ErrorKind::NotFound => Ok(()),
-            _ => Err(Error::new("failed to clean the docker root directory").with_source(err)),
-        })?;
-
-        Ok(())
-    }
-
-    fn copy_extra_files(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
-        debug!("Will now copy all extra files");
-
-        for copy_command in &self.metadata.extra_files {
-            copy_command.copy_files(self.package.root(), &self.docker_root(ctx, args)?)?;
-        }
-
-        Ok(())
     }
 
     fn write_dockerfile(
@@ -433,37 +388,45 @@ impl<'g> DockerDistTarget<'g> {
             .collect();
 
         let copy_all_binaries = {
+            let binaries: Vec<_> = binaries
+                .iter()
+                .map(|(name, binary)| TemplateBinary {
+                    name: name.clone(),
+                    binary: binary.clone(),
+                })
+                .collect();
             let mut tt = TinyTemplate::new();
             tt.add_template(
                 "copy_all_binaries",
                 "
 # Copy all binaries to the Docker image.
-{{ for name, binary in binaries -}}
-# Copy the binary `{{ name }}`.
-ADD {{ binary }} {{ binary }}
+{{ for bin in binaries }}
+# Copy the binary `{ bin.name }`.
+ADD { bin.binary } { bin.binary }
 {{ endfor }}
 # End of copy.",
             )
             .unwrap();
-            tt.render("__template", &binaries)
+            tt.render("copy_all_binaries", &TemplateBinaries { binaries })
                 .unwrap()
                 .trim()
                 .to_owned()
         };
 
         let copy_all_extra_files = {
+            let extra_files: Vec<_> = extra_files.iter().cloned().collect();
             let mut tt = TinyTemplate::new();
             tt.add_template(
                 "copy_all_extra_files",
                 "
 # Copy all extra files to the Docker image.
 {{ for extra_file in extra_files }}
-ADD {{ extra_file }} {{ extra_file }}
+ADD { extra_file } { extra_file }
 {{ endfor }}
 # End of copy.",
             )
             .unwrap();
-            tt.render("__template", &extra_files)
+            tt.render("copy_all_extra_files", &TemplateExtraFiles { extra_files })
                 .unwrap()
                 .trim()
                 .to_owned()
@@ -495,6 +458,22 @@ ADD {{ extra_file }} {{ extra_file }}
             "The specified Dockerfile template could not rendered properly, which may indicate a possible syntax error."
         )
     }
+}
+
+#[derive(Serialize, Clone)]
+struct TemplateBinary {
+    name: String,
+    binary: Utf8PathBuf,
+}
+
+#[derive(Serialize, Clone)]
+struct TemplateBinaries {
+    binaries: Vec<TemplateBinary>,
+}
+
+#[derive(Serialize)]
+struct TemplateExtraFiles {
+    extra_files: Vec<String>,
 }
 
 #[derive(Serialize)]

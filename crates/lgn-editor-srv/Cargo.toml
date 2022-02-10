@@ -76,9 +76,9 @@ type = "docker"
 template = """
 FROM ubuntu:20.04
 
-{{ copy_all }}
+{ copy_all }
 
-CMD ["{{ binaries["editor-srv"] }}"]
+CMD ["{ binaries.editor-srv }"]
 """
 allow-aws-ecr-creation = true
 extra-files = [

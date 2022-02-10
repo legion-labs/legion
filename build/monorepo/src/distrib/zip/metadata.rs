@@ -18,7 +18,7 @@ pub struct ZipMetadata {
 }
 
 impl ZipMetadata {
-    pub(crate) fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
+    pub fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
         DistTarget::Zip(ZipDistTarget {
             package,
             metadata: self,

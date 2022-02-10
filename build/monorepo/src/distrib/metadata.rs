@@ -49,7 +49,7 @@ impl Metadata {
         Ok(metadata)
     }
 
-    pub(crate) fn dist_targets<'g>(&self, package: &'g DistPackage<'g>) -> Vec<DistTarget<'g>> {
+    pub(super) fn dist_targets<'g>(&self, package: &'g DistPackage<'g>) -> Vec<DistTarget<'g>> {
         self.dists
             .iter()
             .map(|dist_metadata| dist_metadata.to_dist_target(package))
@@ -118,7 +118,7 @@ pub(super) enum DistMetadata {
 }
 
 impl DistMetadata {
-    pub(crate) fn to_dist_target<'g>(&self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
+    pub fn to_dist_target<'g>(&self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
         match self {
             Self::Docker(docker) => docker.clone().into_dist_target(package),
             Self::AwsLambda(lambda) => lambda.clone().into_dist_target(package),

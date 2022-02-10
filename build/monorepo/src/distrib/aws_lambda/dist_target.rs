@@ -1,17 +1,25 @@
-use std::{fmt::Display, io::Write, process::Command};
+use std::{collections::HashMap, fmt::Display, process::Command};
 
-use camino::{Utf8Path, Utf8PathBuf};
-use monorepo_base::{action_step, skip_step};
+use camino::Utf8PathBuf;
+use monorepo_base::skip_step;
 
 use lgn_tracing::debug;
-use walkdir::WalkDir;
 
 use super::super::DistPackage;
-use crate::{cargo::target_dir, context::Context, distrib, error::ErrorContext, Error, Result};
+use crate::{
+    cargo::target_dir,
+    context::Context,
+    distrib::{
+        self,
+        dist_target::{
+            build_zip_archive, clean, copy_binaries, copy_extra_files,
+            DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME,
+        },
+    },
+    Error, Result,
+};
 
 use super::AwsLambdaMetadata;
-
-pub const DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME: &str = "CARGO_MONOREPO_AWS_LAMBDA_S3_BUCKET";
 
 pub struct AwsLambdaDistTarget<'g> {
     pub package: &'g DistPackage<'g>,
@@ -25,6 +33,11 @@ impl Display for AwsLambdaDistTarget<'_> {
 }
 
 impl<'g> AwsLambdaDistTarget<'g> {
+    pub fn name(&self) -> &str {
+        // we are supposed to have filled the name with a default value
+        self.metadata.name.as_ref().unwrap()
+    }
+
     pub fn build(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<()> {
         if cfg!(windows) {
             skip_step!(
@@ -34,13 +47,20 @@ impl<'g> AwsLambdaDistTarget<'g> {
             return Ok(());
         }
 
-        self.clean(ctx, args)?;
+        let root = self.lambda_root(ctx, args)?;
+        let archive = self.archive_path(ctx, args)?;
 
-        let binary = self.build_binary(ctx, args)?;
-        self.copy_binary(ctx, args, &binary)?;
-        self.copy_extra_files(ctx, args)?;
+        clean(&root)?;
 
-        self.build_zip_archive(ctx, args)?;
+        let binaries: HashMap<_, _> = self
+            .package
+            .build_binaries(ctx, args)?
+            .into_iter()
+            .filter(|(name, _)| self.metadata.binary == *name)
+            .collect();
+        copy_binaries(&root, binaries.values())?;
+        copy_extra_files(&self.metadata.extra_files, self.package.root(), &root)?;
+        build_zip_archive(&root, &archive)?;
 
         Ok(())
     }
@@ -98,124 +118,11 @@ impl<'g> AwsLambdaDistTarget<'g> {
 
     fn archive_path(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<Utf8PathBuf> {
         self.lambda_root(ctx, args)
-            .map(|dir| dir.join(format!("aws-lambda-{}.zip", self.package.name())))
+            .map(|dir| dir.join(format!("aws-lambda-{}.zip", self.name())))
     }
 
-    fn build_zip_archive(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<()> {
-        let archive_path = self.archive_path(ctx, args)?;
-
-        action_step!("Packaging", "AWS Lambda archive");
-
-        let mut archive = zip::ZipWriter::new(
-            std::fs::File::create(&archive_path)
-                .map_err(|err| Error::new("failed to create zip archive file").with_source(err))?,
-        );
-
-        let lambda_root = &self.lambda_root(ctx, args)?;
-
-        for entry in WalkDir::new(lambda_root) {
-            let entry = entry.map_err(|err| {
-                Error::new("failed to walk lambda root directory").with_source(err)
-            })?;
-
-            let file_path = entry
-                .path()
-                .strip_prefix(lambda_root)
-                .map_err(|err| {
-                    Error::new("failed to strip lambda root directory").with_source(err)
-                })?
-                .display()
-                .to_string();
-
-            let metadata = std::fs::metadata(entry.path())
-                .map_err(|err| Error::new("failed to get metadata").with_source(err))?;
-
-            let options = zip::write::FileOptions::default();
-
-            #[cfg(not(windows))]
-            let options = {
-                use std::os::unix::prelude::PermissionsExt;
-
-                options.unix_permissions(metadata.permissions().mode())
-            };
-
-            if metadata.is_file() {
-                archive.start_file(&file_path, options).map_err(|err| {
-                    Error::new("failed to start writing file in the archive")
-                        .with_source(err)
-                        .with_output(format!("file path: {}", file_path))
-                })?;
-
-                let buf = std::fs::read(entry.path())
-                    .map_err(|err| Error::new("failed to open file").with_source(err))?;
-
-                archive.write_all(&buf).map_err(|err| {
-                    Error::new("failed to write file in the archive")
-                        .with_source(err)
-                        .with_output(format!("file path: {}", file_path))
-                })?;
-            } else if metadata.is_dir() {
-                archive.add_directory(&file_path, options).map_err(|err| {
-                    Error::new("failed to add directory to the archive")
-                        .with_source(err)
-                        .with_output(format!("file path: {}", file_path))
-                })?;
-            }
-        }
-
-        archive
-            .finish()
-            .map_err(|err| Error::new("failed to write zip archive file").with_source(err))?;
-
-        Ok(())
-    }
-
-    fn build_binary(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
-        self.package.build_binaries(ctx, args)?.remove(&self.metadata.binary).ok_or_else(|| {
-            Error::new("failed to find the specified binary in the binaries list")
-                .with_explanation(format!("The configuration requires this AWS Lambda to use the `{}` binary but no such binary is declared in the crate. Was the name perhaps mistyped?", self.metadata.binary))
-        })
-    }
-
-    fn copy_binary(&self, ctx: &Context, args: &distrib::Args, source: &Utf8Path) -> Result<()> {
-        debug!("Will now copy the dependant binary");
-
-        let lambda_root = self.lambda_root(ctx, args)?;
-
-        std::fs::create_dir_all(&lambda_root)
-            .map_err(Error::from_source)
-            .with_full_context(
-        "could not create `lambda_root` in Docker root",
-        format!("The build process needed to create `{}` but it could not. You may want to verify permissions.", lambda_root),
-            )?;
-
-        // The name of the target binary is fixed to "bootstrap" by the folks at AWS.
-        let target = lambda_root.join("bootstrap");
-
-        debug!("Copying {} to {}", source, target);
-
-        std::fs::copy(&source, target)
-            .map_err(Error::from_source)
-            .with_full_context(
-                "failed to copy binary",
-                format!(
-                    "The binary `{}` could not be copied to the Docker image. Has this target been built before attempting its packaging?",
-                    source,
-                ),
-            )?;
-
-        Ok(())
-    }
-
-    fn clean(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
-        debug!("Will now clean the build directory");
-
-        std::fs::remove_dir_all(&self.lambda_root(ctx, args)?).or_else(|err| match err.kind() {
-            std::io::ErrorKind::NotFound => Ok(()),
-            _ => Err(Error::new("failed to clean the lambda root directory").with_source(err)),
-        })?;
-
-        Ok(())
+    fn lambda_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+        target_dir(ctx, &args.build_args).map(|dir| dir.join("aws-lambda").join(self.name()))
     }
 
     fn s3_bucket(&self) -> Result<String> {
@@ -234,21 +141,6 @@ impl<'g> AwsLambdaDistTarget<'g> {
                 }
             }
         }
-    }
-
-    fn lambda_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
-        target_dir(ctx, &args.build_args)
-            .map(|dir| dir.join("aws-lambda").join(self.package.name()))
-    }
-
-    fn copy_extra_files(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
-        debug!("Will now copy all extra files");
-
-        for copy_command in &self.metadata.extra_files {
-            copy_command.copy_files(self.package.root(), &self.lambda_root(ctx, args)?)?;
-        }
-
-        Ok(())
     }
 }
 
