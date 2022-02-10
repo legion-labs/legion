@@ -16,7 +16,7 @@ pub(crate) fn build(app: &mut App) {
 }
 
 fn compile(
-    scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
+    scripts: Query<'_, '_, (Entity, &ScriptComponent)>,
     mut runtime_collection: NonSendMut<'_, RuntimeCollection>,
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
@@ -62,10 +62,10 @@ fn compile(
 }
 
 fn tick(
-    query: Query<'_, '_, (Entity, &mut ScriptExecutionContext)>,
+    query: Query<'_, '_, &ScriptExecutionContext>,
     runtime_collection: NonSend<'_, RuntimeCollection>,
 ) {
-    for (_entity, script) in query.iter() {
+    for script in query.iter() {
         {
             let runtime_ref = runtime_collection.get(script.runtime_index).borrow();
             let arg = i64::from_str(&script.input_values[0]).unwrap();

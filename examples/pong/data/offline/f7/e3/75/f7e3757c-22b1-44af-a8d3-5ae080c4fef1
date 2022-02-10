@@ -1,4 +1,4 @@
 {
-  "script": "pub fn update() {\n        }",
+  "script": "pub fn update() {}",
   "script_type": "Rune"
 }

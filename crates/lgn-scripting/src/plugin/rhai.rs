@@ -21,7 +21,7 @@ pub(crate) fn build(app: &mut App) {
 }
 
 fn compile(
-    scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
+    scripts: Query<'_, '_, (Entity, &ScriptComponent)>,
     rhai_eng: NonSend<'_, rhai::Engine>,
     mut ast_collection: NonSendMut<'_, ASTCollection>,
     registry: Res<'_, Arc<AssetRegistry>>,
@@ -57,11 +57,11 @@ fn compile(
 }
 
 fn tick(
-    query: Query<'_, '_, (Entity, &mut ScriptExecutionContext)>,
+    query: Query<'_, '_, &ScriptExecutionContext>,
     rhai_eng: NonSend<'_, rhai::Engine>,
     ast_collection: NonSend<'_, ASTCollection>,
 ) {
-    for (_entity, script) in query.iter() {
+    for script in query.iter() {
         let mut scope = Scope::new();
         let arg = i64::from_str(script.input_values[0].as_str()).unwrap();
         let result: i64 = rhai_eng

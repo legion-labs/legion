@@ -207,13 +207,14 @@ async fn create_offline_data(
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
         ScriptType::Rune,
         "/scene/pad_right_script",
-        r#"
-            const MOUSE_DELTA_SCALE = 200.0;
-            
-            pub fn move_right_paddle(delta_x) {
-                delta_x /= MOUSE_DELTA_SCALE;
-                println!("[Pad right] delta: {}", delta_x);
-            }"#,
+        r#"use lgn_math::Vec2;
+
+const MOUSE_DELTA_SCALE = 200.0;
+
+pub fn move_right_paddle(delta) {
+    delta.x /= MOUSE_DELTA_SCALE;
+    println!("[Pad right] delta: {}", delta.x);
+}"#,
     )
     .await;
     let pad_right_path_id = {
@@ -248,7 +249,7 @@ async fn create_offline_data(
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec!["mouse_delta_x".to_string()],
+            input_values: vec!["mouse_motion.delta".to_string()],
             entry_fn: "move_right_paddle".to_string(),
             script_id: Some(pad_right_script),
             temp_script: "".to_string(),
@@ -277,13 +278,14 @@ async fn create_offline_data(
         "968c4926-ae75-4955-81c8-7b7e395d0d3b",
         ScriptType::Rune,
         "/scene/pad_left_script",
-        r#"
-            const MOUSE_DELTA_SCALE = 200.0;
-            
-            pub fn move_left_paddle(delta_x) {
-                delta_x /= MOUSE_DELTA_SCALE;
-                println!("[Pad left] delta: {}", delta_x);
-            }"#,
+        r#"use lgn_math::Vec2;
+
+const MOUSE_DELTA_SCALE = 200.0;
+
+pub fn move_left_paddle(delta) {
+delta.x /= MOUSE_DELTA_SCALE;
+println!("[Pad left] delta: {}", delta.x);
+}"#,
     )
     .await;
     let pad_left_path_id = {
@@ -318,7 +320,7 @@ async fn create_offline_data(
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec!["mouse_delta_x".to_string()],
+            input_values: vec!["mouse_motion.delta".to_string()],
             entry_fn: "move_left_paddle".to_string(),
             script_id: Some(pad_left_script),
             temp_script: "".to_string(),
@@ -393,8 +395,7 @@ async fn create_offline_data(
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
         ScriptType::Rune,
         "/scene/scene_script",
-        r#"pub fn update() {
-        }"#,
+        r#"pub fn update() {}"#,
     )
     .await;
 
