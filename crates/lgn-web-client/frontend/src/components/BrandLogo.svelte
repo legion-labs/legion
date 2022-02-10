@@ -1,11 +1,11 @@
 <script lang="ts">
-  interface $$Props {
-    class?: string;
-  }
+  let klass: string | null = null;
+
+  export { klass as class };
 </script>
 
 <svg
-  class={$$props.class}
+  class={klass}
   version="1.1"
   xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -124,8 +124,7 @@
   <g id="RGB">
     <path
       class="st7"
-      d="M114.93,173.86H57.51v-2.5c0-42.79,22.47-62.15,37.33-74.96c13.21-11.39,19.85-17.11,19.85-39.12h57.43
-		c0,48.33-23.94,68.96-39.78,82.62c-12.3,10.6-17.4,14.99-17.4,31.46V173.86z"
+      d="M114.93,173.86H57.51v-2.5c0-42.79,22.47-62.15,37.33-74.96c13.21-11.39,19.85-17.11,19.85-39.12h57.43 c0,48.33-23.94,68.96-39.78,82.62c-12.3,10.6-17.4,14.99-17.4,31.46V173.86z"
     />
     <rect x="114.95" y="173.86" class="st7" width="57.19" height="57.19" />
     <rect class="st8" width="229.42" height="288.44" />
