@@ -247,7 +247,7 @@ async fn create_offline_data(
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: 2, // Rune
+            script_type: ScriptType::Rune,
             input_values: vec!["mouse_delta_x".to_string()],
             entry_fn: "move_right_paddle".to_string(),
             script_id: Some(pad_right_script),
@@ -317,7 +317,7 @@ async fn create_offline_data(
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: 2, // Rune
+            script_type: ScriptType::Rune,
             input_values: vec!["mouse_delta_x".to_string()],
             entry_fn: "move_left_paddle".to_string(),
             script_id: Some(pad_left_script),
@@ -411,7 +411,7 @@ async fn create_offline_data(
             .unwrap();
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: 2, // Rune
+            script_type: ScriptType::Rune,
             input_values: vec![],
             entry_fn: "update".to_string(),
             script_id: Some(scene_script),
