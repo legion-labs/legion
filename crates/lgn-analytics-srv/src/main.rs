@@ -77,7 +77,7 @@ pub async fn connect_to_local_data_lake(
         .connect(&db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    AnalyticsService::new(pool, data_lake_blobs, cache_blobs).await
+    Ok(AnalyticsService::new(pool, data_lake_blobs, cache_blobs))
 }
 
 /// ``connect_to_remote_data_lake`` serves a remote data lake through mysql and s3
@@ -99,7 +99,7 @@ pub async fn connect_to_remote_data_lake(
         .connect(db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    AnalyticsService::new(pool, data_lake_blobs, cache_blobs).await
+    Ok(AnalyticsService::new(pool, data_lake_blobs, cache_blobs))
 }
 
 #[tokio::main]

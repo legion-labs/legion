@@ -3,204 +3,172 @@ import public "process.proto";
 import public "stream.proto";
 import public "block.proto";
 import public "calltree.proto";
+import public "metric.proto";
 
 package analytics;
 
 service PerformanceAnalytics {
-    rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
-    rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest) returns (CumulativeCallGraphReply);
-    rpc find_process(FindProcessRequest) returns (FindProcessReply);
-    rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
-    rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
-    rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
-    rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
-    rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
-    rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
-    rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
-    rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricsReply);
-    rpc fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
+  rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
+  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest) returns (CumulativeCallGraphReply);
+  rpc find_process(FindProcessRequest) returns (FindProcessReply);
+  rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
+  rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
+  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+  rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
+  rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
+  rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
+  rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
+  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricsReply);
+  rpc fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
 }
 
 // find_process
-message FindProcessRequest{
-    string process_id = 1;
+message FindProcessRequest {
+  string process_id = 1;
 }
 
-message FindProcessReply{
-    telemetry.Process process = 1;
+message FindProcessReply {
+  telemetry.Process process = 1;
 }
 
 // list_recent_processes
-message RecentProcessesRequest{
-}
+message RecentProcessesRequest {}
 
-message ProcessInstance{
-    telemetry.Process process_info = 1;
-    uint32 nb_cpu_blocks = 2;
-    uint32 nb_log_blocks = 3;
-    uint32 nb_metric_blocks = 4;
+message ProcessInstance {
+  telemetry.Process process_info = 1;
+  uint32 nb_cpu_blocks = 2;
+  uint32 nb_log_blocks = 3;
+  uint32 nb_metric_blocks = 4;
 }
 
 message ProcessListReply {
-    repeated ProcessInstance processes = 1;
+  repeated ProcessInstance processes = 1;
 }
 
 // search_processes
 message SearchProcessRequest {
-    string search = 1;
+  string search = 1;
 }
 
 // list_process_streams
-message ListProcessStreamsRequest{
-    string process_id = 1;
+message ListProcessStreamsRequest {
+  string process_id = 1;
 }
 
-message ListStreamsReply{
-    repeated telemetry.Stream streams = 1;
+message ListStreamsReply {
+  repeated telemetry.Stream streams = 1;
 }
 
 // list_stream_blocks
-message ListStreamBlocksRequest{
-    string stream_id = 1;
+message ListStreamBlocksRequest {
+  string stream_id = 1;
 }
 
-message ListStreamBlocksReply{
-    repeated telemetry.Block blocks = 1;
+message ListStreamBlocksReply {
+  repeated telemetry.Block blocks = 1;
 }
 
 // block_spans
 // Span: represents a function call instance
-message Span{
-    uint32 scope_hash = 1;
-    double begin_ms = 2;
-    double end_ms = 3;
-    uint32 alpha = 4; //[0-255] non-linear transformation of occupancy for spans that are a lower level of detail
+message Span {
+  uint32 scope_hash = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
+  uint32 alpha = 4;  //[0-255] non-linear transformation of occupancy for spans
+                     // that are a lower level of detail
 }
 
-message BlockSpansRequest{
-    telemetry.Process process = 1;
-    telemetry.Stream stream = 2;
-    string block_id = 3;
-    uint32 lod_id = 4;
+message BlockSpansRequest {
+  telemetry.Process process = 1;
+  telemetry.Stream stream = 2;
+  string block_id = 3;
+  uint32 lod_id = 4;
 }
 
 // one span track contains spans at one height of call stack
-message SpanTrack{
-    repeated Span spans = 1;
+message SpanTrack {
+  repeated Span spans = 1;
 }
 
-message SpanBlockLOD{
-    uint32 lod_id = 1;
-    repeated SpanTrack tracks = 2;
+message SpanBlockLOD {
+  uint32 lod_id = 1;
+  repeated SpanTrack tracks = 2;
 }
 
-message BlockSpansReply{
-    map<uint32,ScopeDesc> scopes = 1;
-    SpanBlockLOD lod = 2;
-    string block_id = 3;
-    double begin_ms = 4;
-    double end_ms = 5;
+message BlockSpansReply {
+  map<uint32, ScopeDesc> scopes = 1;
+  SpanBlockLOD lod = 2;
+  string block_id = 3;
+  double begin_ms = 4;
+  double end_ms = 5;
 }
 
 // process_cumulative_call_graph
-message ProcessCumulativeCallGraphRequest{
-    telemetry.Process process = 1;
-    double begin_ms = 2;
-    double end_ms = 3;
+message ProcessCumulativeCallGraphRequest {
+  telemetry.Process process = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
 }
 
-message NodeStats{
-    double sum = 1;
-    double min = 2;
-    double max = 3;
-    double avg = 4;
-    double median = 5;
-    uint64 count = 6;
+message NodeStats {
+  double sum = 1;
+  double min = 2;
+  double max = 3;
+  double avg = 4;
+  double median = 5;
+  uint64 count = 6;
 }
 
-message CallGraphEdge{
-    uint32 hash = 1;
-    double weight = 2;
+message CallGraphEdge {
+  uint32 hash = 1;
+  double weight = 2;
 }
 
-message CumulativeCallGraphNode{
-    uint32 hash = 1;
-    NodeStats stats = 2;
-    repeated CallGraphEdge callers = 3;
-    repeated CallGraphEdge callees = 4;
+message CumulativeCallGraphNode {
+  uint32 hash = 1;
+  NodeStats stats = 2;
+  repeated CallGraphEdge callers = 3;
+  repeated CallGraphEdge callees = 4;
 }
 
-message CumulativeCallGraphReply{
-    map<uint32,ScopeDesc> scopes = 1;
-    repeated CumulativeCallGraphNode nodes = 2;
+message CumulativeCallGraphReply {
+  map<uint32, ScopeDesc> scopes = 1;
+  repeated CumulativeCallGraphNode nodes = 2;
 }
 
 // list_process_log_entries
-message ProcessLogRequest{
-    telemetry.Process process = 1;
-    uint64 begin = 2; // included
-    uint64 end = 3;   // excluded
+message ProcessLogRequest {
+  telemetry.Process process = 1;
+  uint64 begin = 2;  // included
+  uint64 end = 3;    // excluded
 }
 
-message LogEntry{
-    double time_ms = 1;
-    string msg = 2;
+message LogEntry {
+  double time_ms = 1;
+  string msg = 2;
 }
 
-message ProcessLogReply{
-    repeated LogEntry entries = 1;
-    uint64 begin = 2; // included
-    uint64 end = 3;   // excluded
+message ProcessLogReply {
+  repeated LogEntry entries = 1;
+  uint64 begin = 2;  // included
+  uint64 end = 3;    // excluded
 }
 
-// nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
-message ProcessNbLogEntriesRequest{
-    string process_id = 1;
+// nb_process_log_entries(ProcessNbLogEntriesRequest) returns
+// (ProcessNbLogEntriesReply);
+message ProcessNbLogEntriesRequest {
+  string process_id = 1;
 }
 
-message ProcessNbLogEntriesReply{
-    uint64 count = 1;
+message ProcessNbLogEntriesReply {
+  uint64 count = 1;
 }
 
 // list_process_children
-message ListProcessChildrenRequest{
-    string process_id = 1;
+message ListProcessChildrenRequest {
+  string process_id = 1;
 }
 
-message ProcessChildrenReply{
-    repeated telemetry.Process processes = 1;
-}
-
-// list_process_metrics
-message ListProcessMetricsRequest{
-    string process_id = 1;
-}
-
-message MetricDesc{
-    string name = 1;
-    string unit = 2;
-}
-
-message ProcessMetricsReply{
-    repeated MetricDesc metrics = 1;
-    double min_time_ms = 2;
-    double max_time_ms = 3;
-}
-
-// fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
-message FetchProcessMetricRequest{
-    string process_id = 1;
-    string metric_name = 2;
-    string unit = 3;
-    double begin_ms = 4;
-    double end_ms = 5;
-}
-
-message MetricDataPoint{
-    double time_ms = 1;
-    double value = 2;
-}
-
-message ProcessMetricReply{
-    repeated MetricDataPoint points = 1;
+message ProcessChildrenReply {
+  repeated telemetry.Process processes = 1;
 }

@@ -1,11 +1,12 @@
 {
-    "ignoreRegExpList": [
+  "ignoreRegExpList": [
         "clippy::[a-z_]+",
         "rustdoc::[a-z_]+"
-    ],
-    "words": [
+  ],
+  "words": [
         "asft",
         "bincode",
+        "calltree",
         "bitflags",
         "Blit",
         "chrono",
@@ -30,6 +31,7 @@
         "multisample",
         "openh264",
         "perfetto",
+        "powi",
         "physx",
         "pnpm",
         "proto",
@@ -43,6 +45,7 @@
         "rustfmt",
         "sccache",
         "serde",
+        "sqlx",
         "Swapchain",
         "thiserror",
         "TIMERR_NOERROR",
@@ -55,5 +58,5 @@
         "vulkan",
         "webrtc",
         "xxhash"
-    ]
+  ]
 }
