@@ -20,6 +20,9 @@ struct Cli {
     verbose: bool,
     /// Sets the input file to use
     #[clap(long, short)]
+    crate_name: String,
+    /// Sets the input file to use
+    #[clap(long, short)]
     input: PathBuf,
     /// Sets the output folder for code generation
     #[clap(long, short)]
@@ -61,6 +64,7 @@ fn main_internal() -> Result<CGenBuildResult> {
     let mut ctx_builder = CGenContextBuilder::new();
     ctx_builder.set_root_file(&args.input)?;
     ctx_builder.set_out_dir(&args.output)?;
+    ctx_builder.set_crate_name(&args.crate_name);
 
     // run the generation
     run(&ctx_builder.build())
