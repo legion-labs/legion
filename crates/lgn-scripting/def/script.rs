@@ -6,7 +6,7 @@ pub enum ScriptType {
 
 #[resource]
 struct Script {
-    pub script_type: crate::ScriptType,
+    pub script_type: ScriptType,
 
     #[legion(offline_only, editor_type = "script")]
     pub script: String,
@@ -17,7 +17,7 @@ struct Script {
 
 #[component]
 struct ScriptComponent {
-    pub script_type: crate::ScriptType,
+    pub script_type: ScriptType,
     pub input_values: Vec<String>,
     pub entry_fn: String,
 
