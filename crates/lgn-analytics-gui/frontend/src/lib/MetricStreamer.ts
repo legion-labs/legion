@@ -1,5 +1,6 @@
-import { client } from "@/lib/client";
+import { makeGrpcClient } from "@/lib/client";
 import { Point } from "@/lib/point";
+import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import {
   MetricDesc,
   ProcessMetricReply,
@@ -17,6 +18,7 @@ export class MetricState {
 }
 
 export class MetricStreamer {
+  private client: PerformanceAnalyticsClientImpl | null = null;
   private lod: number;
   private totalMin: number;
   private totalMax: number;
@@ -40,8 +42,9 @@ export class MetricStreamer {
   }
 
   async initializeAsync() {
+    this.client = await makeGrpcClient();
     this.metrics = (
-      await client.list_process_metrics({
+      await this.client.list_process_metrics({
         processId: this.processId,
       })
     ).metrics;
@@ -85,7 +88,7 @@ export class MetricStreamer {
   async fetchSelectedMetricsAsync() {
     let result = await Promise.all(
       this.metrics.map(async (m) => {
-        let result = await client.fetch_process_metric({
+        let result = await this.client!.fetch_process_metric({
           lod: this.lod,
           processId: this.processId,
           metricName: m.name,

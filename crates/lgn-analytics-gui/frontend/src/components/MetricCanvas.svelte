@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { client } from "@/lib/client";
+  import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import { MetricState, MetricStreamer } from "@/lib/MetricStreamer";
   import { Point } from "@/lib/point";
+  import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import * as d3 from "d3";
   import { onDestroy, onMount } from "svelte";
   import { Unsubscriber, Writable } from "svelte/store";
   import TimeRangeDetails from "./TimeRangeDetails.svelte";
+  import log from "@lgn/web-client/src/lib/log";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -19,6 +21,7 @@
   let mainWidth: number = 0;
   $: width = mainWidth - margin.left - margin.right;
 
+  let client: PerformanceAnalyticsClientImpl | null = null;
   let totalMinMs = -Infinity;
   let totalMaxMs = Infinity;
   let currentMinMs = -Infinity;
@@ -59,6 +62,7 @@
     Math.max(0, Math.floor(Math.log(getPixelSizeNs()) / Math.log(100)));
 
   onMount(async () => {
+    client = await makeGrpcClient();
     await fetchMetricsAsync().then(() => (loading = false));
     createChart();
     updateChart();
@@ -84,6 +88,10 @@
   }
 
   async function fetchMetricsAsync() {
+    if (!client) {
+      log.error("no client in fetchDataAsync");
+      return;
+    }
     const reply = await client.list_process_metrics({ processId: id });
     totalMinMs = currentMinMs = reply.minTimeMs;
     totalMaxMs = currentMaxMs = reply.maxTimeMs;
