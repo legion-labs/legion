@@ -2251,15 +2251,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dirs"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4939,9 +4930,7 @@ dependencies = [
  "aws-sdk-s3",
  "bytes",
  "chrono",
- "dirs 4.0.0",
  "futures",
- "glob",
  "http",
  "itertools",
  "lgn-blob-storage",
@@ -5431,7 +5420,7 @@ checksum = "3dfb6b71a9a89cd38b395d994214297447e8e63b1ba5708a9a2b0b1048ceda76"
 dependencies = [
  "cc",
  "chrono",
- "dirs 1.0.5",
+ "dirs",
  "objc-foundation",
 ]
 
