@@ -1,0 +1,31 @@
+pub fn main() {    
+    [
+        #{
+            type: "DescriptorSet",
+            name: "EguiDescriptorSet",
+            frequency: 0,
+            descriptors: [
+                #{name: "font_texture", type: "Texture2D", content:"Float4" },
+                #{name: "font_sampler", type: "Sampler" },    
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "EguiPushConstantData",
+            fields: [
+                #{ name:"scale", ty:"Float2" },
+                #{ name:"translation", ty:"Float2" },
+                #{ name:"width", ty:"Float1" },
+                #{ name:"height", ty:"Float1" },
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "EguiPipelineLayout",
+            descriptor_sets: [ "EguiDescriptorSet" ],
+            push_constant: "EguiPushConstantData"
+        }
+    ]
+}
+
+

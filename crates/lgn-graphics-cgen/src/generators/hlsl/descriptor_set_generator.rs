@@ -42,28 +42,37 @@ fn descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String {
         DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
         DescriptorDef::RWByteAddressBuffer => "RWByteAddressBuffer".to_owned(),
         DescriptorDef::Texture2D(def) => {
-            format!("Texture2D<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!("Texture2D<{}>", def.ty_handle.get(model).to_hlsl_name())
         }
         DescriptorDef::RWTexture2D(def) => {
-            format!("RWTexture2D<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!("RWTexture2D<{}>", def.ty_handle.get(model).to_hlsl_name())
         }
         DescriptorDef::Texture3D(def) => {
-            format!("Texture3D<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!("Texture3D<{}>", def.ty_handle.get(model).to_hlsl_name())
         }
         DescriptorDef::RWTexture3D(def) => {
-            format!("RWTexture3D<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!("RWTexture3D<{}>", def.ty_handle.get(model).to_hlsl_name())
         }
         DescriptorDef::Texture2DArray(def) => {
-            format!("Texture2DArray<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!(
+                "Texture2DArray<{}>",
+                def.ty_handle.get(model).to_hlsl_name()
+            )
         }
         DescriptorDef::RWTexture2DArray(def) => {
-            format!("RWTexture2DArray<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!(
+                "RWTexture2DArray<{}>",
+                def.ty_handle.get(model).to_hlsl_name()
+            )
         }
         DescriptorDef::TextureCube(def) => {
-            format!("TextureCube<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!("TextureCube<{}>", def.ty_handle.get(model).to_hlsl_name())
         }
         DescriptorDef::TextureCubeArray(def) => {
-            format!("TextureCubeArray<{}>", def.ty_ref.get(model).to_hlsl_name())
+            format!(
+                "TextureCubeArray<{}>",
+                def.ty_handle.get(model).to_hlsl_name()
+            )
         }
     };
 

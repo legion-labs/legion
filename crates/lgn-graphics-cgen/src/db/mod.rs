@@ -13,6 +13,9 @@ pub use descriptor_set::{
 mod pipeline_layout;
 pub use pipeline_layout::{PipelineLayout, PipelineLayoutHandle};
 
+mod builder;
+pub use builder::*;
+
 pub fn create() -> Model {
     let mut model = Model::new();
 

@@ -9,7 +9,7 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{self, product::Product, GeneratorContext},
-    parser::from_syn,
+    parser::{from_syn, from_rune},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,6 +140,7 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
 
     let parsing_result = match root_file_ext.to_str().unwrap() {
         "cgen" => from_syn(&context.root_file)?,
+        "rn" => from_rune(&context.root_file)?,
         _ => return Err(anyhow!("Unknown extension")),
     };
 

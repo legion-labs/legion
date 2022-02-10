@@ -7,7 +7,7 @@ use super::{CGenTypeHandle, ModelHandle, ModelObject};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TextureDef {
-    pub ty_ref: CGenTypeHandle,
+    pub ty_handle: CGenTypeHandle,
 }
 
 #[derive(Debug)]
