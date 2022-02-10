@@ -6,13 +6,14 @@ use super::super::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct AwsLambdaMetadata {
+    pub name: Option<String>,
     pub s3_bucket: Option<String>,
     #[serde(default)]
     pub region: Option<String>,
     #[serde(default)]
-    pub s3_bucket_prefix: String,
+    pub s3_bucket_prefix: Option<String>,
     #[serde(default = "default_target_runtime")]
     pub target_runtime: String,
     #[serde(default)]
@@ -25,13 +26,8 @@ fn default_target_runtime() -> String {
 }
 
 impl AwsLambdaMetadata {
-    pub(crate) fn into_dist_target<'g>(
-        self,
-        name: String,
-        package: &'g DistPackage<'g>,
-    ) -> DistTarget<'g> {
+    pub(crate) fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
         DistTarget::AwsLambda(AwsLambdaDistTarget {
-            name,
             package,
             metadata: self,
         })

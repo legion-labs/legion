@@ -24,6 +24,7 @@
         "imetric",
         "itertools",
         "linkme",
+        "metadatas",
         "mlint",
         "MSRV",
         "multisample",

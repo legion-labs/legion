@@ -16,7 +16,6 @@ use crate::{Error, Result};
 use super::ZipMetadata;
 
 pub struct ZipDistTarget<'g> {
-    pub name: String,
     pub package: &'g DistPackage<'g>,
     pub metadata: ZipMetadata,
 }

@@ -1,14 +1,11 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::read_dir,
-};
+use std::{collections::HashMap, fs::read_dir};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use guppy::{graph::PackageMetadata, PackageId};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use super::metadata::DistTargetMetadata;
+use super::metadata::DistMetadata;
 use crate::{Error, Result};
 
 /// A structure whose sole purpose is to help compute a deterministic hash of a
@@ -29,14 +26,14 @@ pub(crate) struct HashSource<'g> {
     links: Option<&'g str>,
     direct_links: Vec<String>,
     sources: String,
-    dist_targets: Option<&'g BTreeMap<String, DistTargetMetadata>>,
+    dist_metadatas: Option<&'g Vec<DistMetadata>>,
 }
 
 impl<'g> HashSource<'g> {
     pub(super) fn hash(
         package: &PackageMetadata<'g>,
         hash_cache: &mut HashMap<PackageId, String>,
-        dist_targets: Option<&'g BTreeMap<String, DistTargetMetadata>>,
+        dist_metadatas: Option<&'g Vec<DistMetadata>>,
     ) -> Result<String> {
         if let Some(hash) = hash_cache.get(package.id()) {
             return Ok(hash.clone());
@@ -69,7 +66,7 @@ impl<'g> HashSource<'g> {
             links: package.links(),
             direct_links,
             sources: Self::compute_hash(package.manifest_path().parent().unwrap())?,
-            dist_targets,
+            dist_metadatas,
         };
         let mut state = Sha256::new();
 

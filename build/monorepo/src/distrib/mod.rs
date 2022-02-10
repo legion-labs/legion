@@ -30,7 +30,7 @@ pub struct Args {
     no_dist: bool,
     /// Tag the new version
     #[clap(long)]
-    tag: bool,
+    update_hash: bool,
     /// Force the distribution of the package
     #[clap(long)]
     force: bool,
@@ -71,7 +71,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             no_dist: args.no_dist,
             force: args.force,
             dry_run: args.dry_run,
-            tag: args.tag,
+            update_hash: args.update_hash,
         };
         pkg.dist(ctx, &args)?;
     }

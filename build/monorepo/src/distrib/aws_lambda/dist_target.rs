@@ -14,7 +14,6 @@ use super::AwsLambdaMetadata;
 pub const DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME: &str = "CARGO_MONOREPO_AWS_LAMBDA_S3_BUCKET";
 
 pub struct AwsLambdaDistTarget<'g> {
-    pub name: String,
     pub package: &'g DistPackage<'g>,
     pub metadata: AwsLambdaMetadata,
 }
@@ -76,7 +75,7 @@ impl<'g> AwsLambdaDistTarget<'g> {
         let s3_key = format!(
             "s3://{}/{}{}/v{}.zip",
             s3_bucket,
-            &self.metadata.s3_bucket_prefix,
+            &self.metadata.s3_bucket_prefix.as_ref().unwrap(),
             self.package.name(),
             self.package.version()
         );

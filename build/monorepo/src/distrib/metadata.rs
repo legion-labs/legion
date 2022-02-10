@@ -1,10 +1,10 @@
 //! Metadata structures for the various targets.
 
-use std::{collections::BTreeMap, fmt::Display};
+use std::fmt::Display;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use lgn_tracing::debug;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use super::{
     aws_lambda::AwsLambdaMetadata, docker::DockerMetadata, zip::ZipMetadata, DistPackage,
@@ -16,10 +16,10 @@ use crate::{context::Context, Error, ErrorContext, Result};
 /// The root metadata structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(super) struct Metadata {
-    #[serde(flatten)]
-    pub dist_targets: BTreeMap<String, DistTargetMetadata>,
-    #[serde(default)]
-    pub tags: BTreeMap<semver::Version, String>,
+    #[serde(rename = "dist")]
+    pub dists: Vec<DistMetadata>,
+    #[serde(default, rename = "dist-hash")]
+    pub dist_hash: Option<HashMetadata>,
 }
 
 impl Metadata {
@@ -44,116 +44,93 @@ impl Metadata {
             .map(|metadata| metadata.monorepo)
             .unwrap_or_default();
 
-        // Add default zip dist target if not exist
-        if !metadata
-            .dist_targets
-            .iter()
-            .any(|(_, dist_target)| matches!(dist_target, DistTargetMetadata::Zip(_)))
-        {
-            metadata.dist_targets.insert(
-                format!("default-{}", package.name()),
-                DistTargetMetadata::Zip(ZipMetadata {
-                    s3_bucket: Some(ctx.config().dist.bucket.clone()),
-                    region: ctx.config().dist.region.clone(),
-                    s3_bucket_prefix: ctx.config().dist.prefix.clone(),
-                    extra_files: vec![],
-                }),
-            );
-        }
+        metadata.set_defaults(ctx, package);
 
         Ok(metadata)
     }
 
     pub(crate) fn dist_targets<'g>(&self, package: &'g DistPackage<'g>) -> Vec<DistTarget<'g>> {
-        self.dist_targets
+        self.dists
             .iter()
-            .map(|(name, dist_target_metadata)| {
-                dist_target_metadata.to_dist_target(name.clone(), package)
-            })
+            .map(|dist_metadata| dist_metadata.to_dist_target(package))
             .collect()
+    }
+
+    fn set_defaults(&mut self, ctx: &Context, package: &guppy::graph::PackageMetadata<'_>) {
+        // Add default zip dist target if not exist
+        if !self
+            .dists
+            .iter()
+            .any(|dist_metadata| matches!(dist_metadata, DistMetadata::Zip(_)))
+        {
+            self.dists.push(DistMetadata::Zip(ZipMetadata {
+                name: Some(package.name().to_owned()),
+                s3_bucket: Some(ctx.config().dist.bucket.clone()),
+                region: ctx.config().dist.region.clone(),
+                s3_bucket_prefix: Some(ctx.config().dist.prefix.clone()),
+                extra_files: vec![],
+            }));
+        }
+
+        for dist_metadata in &mut self.dists {
+            match dist_metadata {
+                DistMetadata::AwsLambda(metadata) => {
+                    metadata.name.get_or_insert(package.name().to_string());
+                    metadata
+                        .s3_bucket
+                        .get_or_insert(ctx.config().dist.bucket.clone());
+                    if let Some(region) = &ctx.config().dist.region {
+                        metadata.region.get_or_insert(region.clone());
+                    }
+                    metadata
+                        .s3_bucket_prefix
+                        .get_or_insert(ctx.config().dist.prefix.clone());
+                }
+                DistMetadata::Docker(metadata) => {
+                    metadata.name.get_or_insert(package.name().to_string());
+                }
+                DistMetadata::Zip(metadata) => {
+                    metadata.name.get_or_insert(package.name().to_string());
+                    metadata
+                        .s3_bucket
+                        .get_or_insert(ctx.config().dist.bucket.clone());
+                    if let Some(region) = &ctx.config().dist.region {
+                        metadata.region.get_or_insert(region.clone());
+                    }
+                    metadata
+                        .s3_bucket_prefix
+                        .get_or_insert(ctx.config().dist.prefix.clone());
+                }
+            }
+        }
     }
 }
 
-#[derive(Debug, Clone)]
-pub(super) enum DistTargetMetadata {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub(super) enum DistMetadata {
+    #[serde(rename = "docker")]
     Docker(DockerMetadata),
+    #[serde(rename = "aws-lambda")]
     AwsLambda(AwsLambdaMetadata),
+    #[serde(rename = "zip")]
     Zip(ZipMetadata),
 }
 
-impl DistTargetMetadata {
-    pub(crate) fn to_dist_target<'g>(
-        &self,
-        name: String,
-        package: &'g DistPackage<'g>,
-    ) -> DistTarget<'g> {
+impl DistMetadata {
+    pub(crate) fn to_dist_target<'g>(&self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
         match self {
-            DistTargetMetadata::Docker(docker) => docker.clone().into_dist_target(name, package),
-            DistTargetMetadata::AwsLambda(lambda) => lambda.clone().into_dist_target(name, package),
-            DistTargetMetadata::Zip(zip) => zip.clone().into_dist_target(name, package),
+            Self::Docker(docker) => docker.clone().into_dist_target(package),
+            Self::AwsLambda(lambda) => lambda.clone().into_dist_target(package),
+            Self::Zip(zip) => zip.clone().into_dist_target(package),
         }
     }
 }
 
-impl Serialize for DistTargetMetadata {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Self::Docker(metadata) => TargetHelper {
-                target_type: TargetType::Docker,
-                data: serde_json::to_value(metadata).map_err(serde::ser::Error::custom)?,
-            },
-            Self::AwsLambda(metadata) => TargetHelper {
-                target_type: TargetType::AwsLambda,
-                data: serde_json::to_value(metadata).map_err(serde::ser::Error::custom)?,
-            },
-            Self::Zip(metadata) => TargetHelper {
-                target_type: TargetType::Zip,
-                data: serde_json::to_value(metadata).map_err(serde::ser::Error::custom)?,
-            },
-        }
-        .serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for DistTargetMetadata {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let helper = TargetHelper::deserialize(deserializer)?;
-        match helper.target_type {
-            TargetType::Docker => DockerMetadata::deserialize(helper.data)
-                .map(DistTargetMetadata::Docker)
-                .map_err(serde::de::Error::custom),
-            TargetType::AwsLambda => AwsLambdaMetadata::deserialize(helper.data)
-                .map(DistTargetMetadata::AwsLambda)
-                .map_err(serde::de::Error::custom),
-            TargetType::Zip => ZipMetadata::deserialize(helper.data)
-                .map(DistTargetMetadata::Zip)
-                .map_err(serde::de::Error::custom),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-enum TargetType {
-    #[serde(rename = "docker")]
-    Docker,
-    #[serde(rename = "aws-lambda")]
-    AwsLambda,
-    #[serde(rename = "zip")]
-    Zip,
-}
-
-#[derive(Serialize, Deserialize)]
-struct TargetHelper {
-    #[serde(rename = "type")]
-    target_type: TargetType,
-    #[serde(flatten)]
-    data: serde_json::Value,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(super) struct HashMetadata {
+    pub version: semver::Version,
+    pub hash: String,
 }
 
 /// A copy command instruction.

@@ -23,7 +23,6 @@ use super::DockerMetadata;
 pub const DEFAULT_DOCKER_REGISTRY_ENV_VAR_NAME: &str = "CARGO_MONOREPO_DOCKER_REGISTRY";
 
 pub struct DockerDistTarget<'g> {
-    pub name: String,
     pub package: &'g DistPackage<'g>,
     pub metadata: DockerMetadata,
 }

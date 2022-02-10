@@ -6,8 +6,9 @@ use crate::distrib::{dist_package::DistPackage, dist_target::DistTarget, metadat
 use super::DockerDistTarget;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct DockerMetadata {
+    pub name: Option<String>,
     pub registry: Option<String>,
     #[serde(default = "default_target_runtime")]
     pub target_runtime: String,
@@ -29,13 +30,8 @@ fn default_target_runtime() -> String {
 }
 
 impl DockerMetadata {
-    pub(crate) fn into_dist_target<'g>(
-        self,
-        name: String,
-        package: &'g DistPackage<'g>,
-    ) -> DistTarget<'g> {
+    pub(crate) fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
         DistTarget::Docker(DockerDistTarget {
-            name,
             package,
             metadata: self,
         })

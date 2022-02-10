@@ -38,3 +38,20 @@ path = "src/main.rs"
 [[bin]]
 name = "telemetry-generator"
 path = "test/generator.rs"
+
+
+[[package.metadata.monorepo.dist]]
+name = "telemetry-ingestion-srv"
+type = "docker"
+template = """
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+{{ copy_all }}
+
+COPY ./telemetry-ingestion-srv /telemetry-ingestion-srv
+
+CMD ["{{ binaries["telemetry-ingestion-srv"] }}"]
+"""
+allow-aws-ecr-creation = true

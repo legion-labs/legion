@@ -36,7 +36,7 @@ impl<'g> DistPackage<'g> {
         );
 
         let metadata = Metadata::new(ctx, &package)?;
-        let hash = HashSource::hash(&package, hash_cache, Some(&metadata.dist_targets))?;
+        let hash = HashSource::hash(&package, hash_cache, Some(&metadata.dists))?;
 
         Ok(Self {
             package,
@@ -76,8 +76,8 @@ impl<'g> DistPackage<'g> {
 
     pub fn dist(&self, ctx: &Context, args: &super::Args) -> Result<()> {
         // if we are tagging just do that and exit
-        if args.tag {
-            return self.tag(args);
+        if args.update_hash {
+            return self.update_hash(args);
         }
         self.build_dist_targets(ctx, args)?;
         if args.no_dist {
@@ -100,7 +100,7 @@ impl<'g> DistPackage<'g> {
 
     pub fn publish_dist_targets(&self, ctx: &Context, args: &super::Args) -> Result<()> {
         let version = self.version();
-        if let Some(current_hash) = self.metadata_tag(version) {
+        if let Some(current_hash) = self.metadata_hash(version) {
             if current_hash != &self.hash {
                 skip_step!(
                     "Skipping",
@@ -152,17 +152,22 @@ impl<'g> DistPackage<'g> {
         Ok(binaries)
     }
 
-    pub fn metadata_tag(&self, version: &semver::Version) -> Option<&String> {
-        self.metadata.tags.get(version)
+    pub fn metadata_hash(&self, version: &semver::Version) -> Option<&String> {
+        if let Some(dist_hash) = &self.metadata.dist_hash {
+            if *version == dist_hash.version {
+                return Some(&dist_hash.hash);
+            }
+        }
+        None
     }
 
     /// Tag the package with its current version and hash.
     ///
     /// If a tag already exist for the version, the call will fail.
-    pub fn tag(&self, args: &super::Args) -> Result<()> {
+    pub fn update_hash(&self, args: &super::Args) -> Result<()> {
         let version = self.version();
 
-        if let Some(current_hash) = self.metadata_tag(version) {
+        if let Some(current_hash) = self.metadata_hash(version) {
             if current_hash == &self.hash {
                 skip_step!(
                     "Skipping",
@@ -210,7 +215,9 @@ impl<'g> DistPackage<'g> {
             .parse::<toml_edit::Document>()
             .map_err(|err| Error::new("failed to parse manifest").with_source(err))?;
 
-        document["package"]["metadata"]["monorepo"]["tags"][&version.to_string()] =
+        document["package"]["metadata"]["monorepo"]["dist-hash"]["version"] =
+            toml_edit::value(&version.to_string());
+        document["package"]["metadata"]["monorepo"]["dist-hash"]["hash"] =
             toml_edit::value(&self.hash);
 
         manifest_file
