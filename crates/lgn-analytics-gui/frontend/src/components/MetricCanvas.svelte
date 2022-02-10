@@ -1,11 +1,11 @@
 <script lang="ts">
   import { client } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
+  import { MetricState, MetricStreamer } from "@/lib/MetricStreamer";
   import { Point } from "@/lib/point";
   import * as d3 from "d3";
   import { onDestroy, onMount } from "svelte";
   import { Unsubscriber, Writable } from "svelte/store";
-  import { MetricState, MetricStreamer } from "./MetricStreamer";
   import TimeRangeDetails from "./TimeRangeDetails.svelte";
   export let id: string;
 
