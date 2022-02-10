@@ -2,19 +2,21 @@ mod model;
 pub use model::{Model, ModelHandle, ModelObject};
 
 mod types;
-pub use types::{build_type_graph, CGenType, CGenTypeHandle, NativeType, StructMember, StructType};
+pub use types::{
+    build_type_graph, CGenType, CGenTypeHandle, NativeType, StructBuilder, StructMember, StructType,
+};
 
 mod descriptor_set;
 pub use descriptor_set::{
-    ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, DescriptorSetHandle,
-    StructuredBufferDef, TextureDef,
+    ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, DescriptorSetBuilder,
+    DescriptorSetHandle, StructuredBufferDef, TextureDef,
 };
 
 mod pipeline_layout;
-pub use pipeline_layout::{PipelineLayout, PipelineLayoutHandle};
+pub use pipeline_layout::{PipelineLayout, PipelineLayoutBuilder, PipelineLayoutHandle};
 
-mod builder;
-pub use builder::*;
+mod shader;
+pub use shader::ShaderBuilder;
 
 pub fn create() -> Model {
     let mut model = Model::new();

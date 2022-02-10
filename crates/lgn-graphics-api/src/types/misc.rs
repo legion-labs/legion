@@ -217,6 +217,7 @@ impl From<ShaderStage> for ShaderStageFlags {
 
 bitflags::bitflags! {
     pub struct ShaderStageFlags : u8 {
+        const NONE = 0;
         const VERTEX_FLAG = 1u8 << ShaderStage::Vertex as u32;
         const FRAGMENT_FLAG = 1u8 << ShaderStage::Fragment as u32;
         const COMPUTE_FLAG = 1u8 << ShaderStage::Compute as u32;

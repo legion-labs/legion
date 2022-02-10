@@ -4,6 +4,8 @@ use petgraph::graphmap::DiGraphMap;
 
 use super::{Model, ModelHandle, ModelObject};
 
+use anyhow::{anyhow, Context, Result};
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CGenType {
     Native(NativeType),
@@ -138,4 +140,60 @@ pub fn build_type_graph(model: &Model) -> TypeGraph {
     }
 
     g
+}
+
+pub struct StructBuilder<'mdl> {
+    mdl: &'mdl Model,
+    product: StructType,
+    names: HashSet<String>,
+}
+
+impl<'mdl> StructBuilder<'mdl> {
+    pub fn new(mdl: &'mdl Model, name: &str) -> Self {
+        StructBuilder {
+            mdl,
+            product: StructType::new(name),
+            names: HashSet::new(),
+        }
+    }
+
+    /// Add struct member
+    ///
+    /// # Errors
+    /// todo
+    pub fn add_member(mut self, name: &str, typ: &str, array_len: Option<u32>) -> Result<Self> {
+        // check member uniqueness
+        if self.names.contains(name) {
+            return Err(anyhow!("Member '{}' already exists", name,));
+        }
+        self.names.insert(name.to_string());
+
+        // check array_len validity
+        if let Some(array_len) = array_len {
+            if array_len == 0 {
+                return Err(anyhow!("Member '{}' can't have a zero array_len", name,));
+            }
+        }
+
+        // get cgen type and check its existence if necessary
+        let ty_ref = self
+            .mdl
+            .get_object_handle::<CGenType>(typ)
+            .context(anyhow!("Member '{}'  has an unknown type '{}'", name, typ))?;
+
+        // done
+        self.product
+            .members
+            .push(StructMember::new(name, ty_ref, array_len));
+        Ok(self)
+    }
+
+    /// Build
+    ///
+    /// # Errors
+    /// todo
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn build(self) -> Result<StructType> {
+        Ok(self.product)
+    }
 }

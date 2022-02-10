@@ -24,6 +24,14 @@ pub fn main() {
             name: "EguiPipelineLayout",
             descriptor_sets: [ "EguiDescriptorSet" ],
             push_constant: "EguiPushConstantData"
+        },
+        #{            
+            type: "Shader",
+            name: "EGui",
+            path: "crate://renderer/gpu/shaders/ui.hlsl",
+            pipeline_layout: "EguiPipelineLayout",
+            stages: [ "VS", "PS" ],
+            defines: [ "TOTO" ],
         }
     ]
 }

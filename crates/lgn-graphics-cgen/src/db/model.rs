@@ -154,14 +154,27 @@ impl<T> ModelHandle<T>
 where
     T: ModelObject,
 {
+    pub fn invalid() -> Self {
+        Self {
+            id: Model::INVALID_ID,
+            _phantom: PhantomData,
+        }
+    }
+
     fn new(id: u32) -> Self {
+        assert!(id != Model::INVALID_ID);
         Self {
             id,
             _phantom: PhantomData,
         }
     }
 
+    pub fn is_valid(self) -> bool {
+        self.id != Model::INVALID_ID
+    }
+
     pub fn get<'model>(&self, model: &'model Model) -> &'model T {
+        assert!(self.id != Model::INVALID_ID);
         model.get_from_id(self.id).unwrap()
     }
 
@@ -284,6 +297,8 @@ pub struct Model {
 }
 
 impl Model {
+    const INVALID_ID: u32 = u32::MAX;
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -329,6 +344,7 @@ impl Model {
     }
 
     pub fn get_from_id<T: ModelObject>(&self, id: u32) -> Option<&T> {
+        assert!(id != Self::INVALID_ID);
         let container = self.get_container::<T>()?;
         let ptr = container.get_object_ref(id as usize).cast::<T>();
         unsafe { ptr.as_ref() }
