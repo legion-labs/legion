@@ -3,6 +3,10 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
+#[cfg(not(feature = "offline"))]
+use lgn_input::mouse::MouseMotion;
+#[cfg(not(feature = "offline"))]
+use lgn_math::prelude::*;
 
 #[cfg(not(feature = "offline"))]
 mod mun;
