@@ -4804,6 +4804,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-gltf-compiler"
+version = "0.1.0"
+
+[[package]]
 name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
@@ -5092,7 +5096,6 @@ dependencies = [
  "dolly",
  "egui",
  "epaint",
- "gltf",
  "lgn-app",
  "lgn-core",
  "lgn-data-runtime",

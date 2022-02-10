@@ -3,7 +3,7 @@ use std::ops::Mul;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
-use crate::{mesh_import_export, resources::UniformGPUDataUpdater};
+use crate::resources::UniformGPUDataUpdater;
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -723,10 +723,6 @@ impl StaticMeshRenderData {
         }
 
         Self::from_vertex_data(&vertex_data)
-    }
-
-    pub fn new_gltf(path: String) -> Vec<Self> {
-        mesh_import_export::GltfWrapper::new_mesh(path)
     }
 }
 

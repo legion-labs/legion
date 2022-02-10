@@ -16,7 +16,7 @@ use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_graphics_data::{offline_png::PngFile, offline_psd::PsdFile};
+use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
@@ -34,7 +34,7 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
             let (mut project, resources) = setup_project(root_folder).await;
             let mut resources = resources.lock().await;
 
-            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd", "png"]);
+            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd", "png", "gltf"]);
 
             let file_paths_guids = file_paths
                 .iter()
@@ -107,6 +107,9 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                     "png" => {
                         load_png_resource(resource_id, path, &mut project, &mut resources).await;
                     }
+                    "gltf" => {
+                        load_gltf_resource(resource_id, path, &mut project, &mut resources).await;
+                    }
                     _ => panic!(),
                 }
 
@@ -138,6 +141,7 @@ async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegist
         .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
         .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>()
         .add_type_mut::<lgn_graphics_data::offline_png::PngFile>();
+        .add_type_mut::<lgn_graphics_data::offline_gltf::GltfFile>();
     generic_data::offline::register_resource_types(&mut registry);
     let registry = registry.create_async_registry();
 
@@ -163,6 +167,10 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
         "png" => (
             lgn_graphics_data::offline_png::PngFile::TYPENAME,
             lgn_graphics_data::offline_png::PngFile::TYPE,
+        }
+        "gltf" => (
+            lgn_graphics_data::offline_gltf::GltfFile::TYPENAME,
+            lgn_graphics_data::offline_gltf::GltfFile::TYPE,
         ),
         _ => panic!(),
     }
@@ -463,6 +471,29 @@ async fn load_png_resource(
         .ok()?;
     project
         .save_resource(resource_id, handle, resources)
+        .await
+        .unwrap();
+    Some(resource_id)
+}
+
+async fn load_gltf_resource(
+    resource_id: ResourceTypeAndId,
+    file: &Path,
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+) -> Option<ResourceTypeAndId> {
+    let loaded_mesh = GltfFile::from_path(file);
+
+    let resource = project
+        .load_resource(resource_id, resources)
+        .unwrap()
+        .typed::<GltfFile>();
+
+    let initial_resource = resource.get_mut(resources).unwrap();
+    *initial_resource = loaded_mesh;
+
+    project
+        .save_resource(resource_id, resource, resources)
         .await
         .unwrap();
     Some(resource_id)

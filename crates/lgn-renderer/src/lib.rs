@@ -54,7 +54,6 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
-pub(crate) mod mesh_import_export;
 pub(crate) mod tmp_shader_data;
 
 use crate::{

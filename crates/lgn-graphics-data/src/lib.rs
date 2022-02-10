@@ -39,3 +39,11 @@ pub mod offline_psd;
 #[cfg(feature = "offline")]
 #[path = "offline/texture.rs"]
 pub mod offline_texture;
+
+#[cfg(feature = "offline")]
+#[path = "offline/mesh.rs"]
+pub mod offline_mesh;
+
+#[cfg(feature = "offline")]
+#[path = "offline/gltf.rs"]
+pub mod offline_gltf;
