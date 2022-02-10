@@ -9,6 +9,7 @@ use lgn_input::mouse::MouseMotion;
 use lgn_math::prelude::*;
 use lgn_tracing::prelude::*;
 use rhai::Scope;
+#[cfg(not(feature = "offline"))]
 use rune::{
     termcolor::{ColorChoice, StandardStream},
     ToValue,
@@ -18,17 +19,22 @@ use crate::runtime::{Script, ScriptComponent};
 
 struct RuntimeScripts {
     mun_runtimes: Vec<(ScriptComponent, Rc<RefCell<mun_runtime::Runtime>>)>,
+    #[cfg(not(feature = "offline"))]
     rune_context: rune::Context,
+    #[cfg(not(feature = "offline"))]
     rune_vms: RuneVMCollection,
     rhai_eng: Option<rhai::Engine>,
     rhai_asts: Vec<(ScriptComponent, Rc<RefCell<rhai::AST>>)>,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for RuntimeScripts {
     fn default() -> Self {
         Self {
             mun_runtimes: Vec::new(),
+            #[cfg(not(feature = "offline"))]
             rune_context: rune_modules::default_context().unwrap(),
+            #[cfg(not(feature = "offline"))]
             rune_vms: RuneVMCollection::default(),
             rhai_eng: None,
             rhai_asts: Vec::new(),
@@ -48,8 +54,16 @@ impl Plugin for ScriptingPlugin {
             .init_resource::<ScriptingEventCache>()
             .add_startup_system(add_loaders)
             .add_system(Self::update_events)
-            .add_system(Self::tick_scripts)
-            .add_system(Self::tick_rune);
+            .add_system(Self::tick_scripts);
+
+        #[cfg(not(feature = "offline"))]
+        app.add_system(Self::tick_rune);
+
+        #[cfg(feature = "offline")]
+        info!("ScriptingPlugin will not execute scripts");
+
+        #[cfg(not(feature = "offline"))]
+        info!("ScriptingPlugin will execute scripts");
     }
 }
 
@@ -59,11 +73,12 @@ impl ScriptingPlugin {
         runtimes: NonSendMut<'_, RuntimeScripts>,
         scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
         registry: Res<'_, Arc<AssetRegistry>>,
-        mut commands: Commands<'_, '_>,
+        #[cfg(not(feature = "offline"))] mut commands: Commands<'_, '_>,
     ) {
         let mun_components = scripts
             .iter()
             .filter(|(_entity, s)| s.script_type == 1 /*ScriptType::Mun*/);
+        #[cfg(not(feature = "offline"))]
         let rune_components = scripts
             .iter()
             .filter(|(_entity, s)| s.script_type == 2 /*ScriptType::Rune*/);
@@ -73,6 +88,7 @@ impl ScriptingPlugin {
 
         let r = runtimes.into_inner();
         Self::tick_mun(mun_components, r, &registry);
+        #[cfg(not(feature = "offline"))]
         Self::compile_rune(rune_components, r, &registry, &mut commands);
         Self::tick_rhai(rhai_components, r, &registry);
     }
@@ -119,6 +135,7 @@ impl ScriptingPlugin {
         }
     }
 
+    #[cfg(not(feature = "offline"))]
     fn compile_rune<'a>(
         rune_components: impl Iterator<Item = (Entity, &'a ScriptComponent)>,
         runtimes: &mut RuntimeScripts,
@@ -166,6 +183,7 @@ impl ScriptingPlugin {
         }
     }
 
+    #[cfg(not(feature = "offline"))]
     fn tick_rune(
         mut runtimes: NonSendMut<'_, RuntimeScripts>,
         query: Query<'_, '_, (Entity, &mut RuneScriptExecutionComponent)>,
@@ -270,6 +288,7 @@ impl Default for ScriptingEventCache {
     }
 }
 
+#[cfg(not(feature = "offline"))]
 #[derive(Component)]
 struct RuneScriptExecutionComponent {
     vm_index: usize,
@@ -277,11 +296,13 @@ struct RuneScriptExecutionComponent {
     input_args: Vec<String>,
 }
 
+#[cfg(not(feature = "offline"))]
 #[derive(Default)]
 struct RuneVMCollection {
     vms: Vec<Option<rune::Vm>>,
 }
 
+#[cfg(not(feature = "offline"))]
 impl RuneVMCollection {
     fn append_new_vm(&mut self, context: &rune::Context, unit: rune::Unit) -> usize {
         let vm = rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit));
