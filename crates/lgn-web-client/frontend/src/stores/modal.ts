@@ -1,9 +1,14 @@
-import { SvelteComponent } from "svelte";
+import { SvelteComponentTyped } from "svelte";
 import { Writable } from "../lib/store";
+
+export class Content extends SvelteComponentTyped<{
+  close(): void;
+  payload: unknown;
+}> {}
 
 export type OpenModalEvent<Payload> = CustomEvent<{
   id: symbol;
-  content: SvelteComponent;
+  content: Content;
   payload?: Payload;
 }>;
 
@@ -11,10 +16,7 @@ export type CloseModalEvent = CustomEvent<{
   id: symbol;
 }>;
 
-export type Value = Record<
-  symbol,
-  { content: SvelteComponent; payload?: unknown }
->;
+export type Value = Record<symbol, { content: Content; payload?: unknown }>;
 
 export default class extends Writable<Value> {
   constructor() {
@@ -22,7 +24,7 @@ export default class extends Writable<Value> {
   }
 
   /** Opens a modal with the provided content and payload */
-  open(id: symbol, content: SvelteComponent, payload?: unknown) {
+  open(id: symbol, content: Content, payload?: unknown) {
     if (id in this.value) {
       return;
     }

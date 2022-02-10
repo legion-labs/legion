@@ -18,6 +18,7 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 
 {#each ids as id (id)}
   {@const { content, payload } = $store[id]}
+
   <div class="root" class:with-lg-margin={window.__TAURI__}>
     <div>
       <svelte:component

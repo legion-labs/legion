@@ -115,11 +115,11 @@
     </div>
   </div>
   {#if entry.subEntries && isExpanded}
-    {#each entry.subEntries || [] as entry (entry.index)}
+    {#each entry.subEntries || [] as subEntry (subEntry.index)}
       <div class="sub-entries">
         <svelte:self
-          index={entry.index}
-          {entry}
+          index={subEntry.index}
+          entry={subEntry}
           {highlightedEntry}
           bind:currentlyRenameEntry
           on:highlight

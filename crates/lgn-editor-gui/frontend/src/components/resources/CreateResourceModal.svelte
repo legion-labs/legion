@@ -16,7 +16,7 @@
     ResourceDescription,
   } from "@lgn/proto-editor/dist/resource_browser";
   import allResourcesStore from "@/stores/allResources";
-  import { join } from "@/lib/path";
+  // import { join } from "@/lib/path";
   import Field from "../Field.svelte";
 
   const createResourceStore = new AsyncStoreOrchestrator();
@@ -38,7 +38,8 @@
 
   // We don't get any payload when the user tries to create
   // a resource at the top level
-  export let payload: ResourceDescription | null;
+  // TODO: Switch from const to let to get the payload
+  export const payload: ResourceDescription | null = null;
 
   async function createResource(event: SubmitEvent) {
     event.preventDefault();
@@ -145,9 +146,9 @@
 
   .footer {
     @apply flex flex-row justify-end w-full;
+  }
 
-    .buttons {
-      @apply flex flex-row space-x-2;
-    }
+  .footer .buttons {
+    @apply flex flex-row space-x-2;
   }
 </style>

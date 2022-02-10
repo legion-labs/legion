@@ -31,7 +31,6 @@
   } from "@lgn/web-client/src/types/contextMenu";
   import ModalStore from "@lgn/web-client/src/stores/modal";
   import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
-  import { SvelteComponent } from "svelte";
   import allResourcesStore from "@/stores/allResources";
   import viewportOrchestrator from "@/stores/viewport";
   import notificationsStore from "@/stores/notifications";
@@ -72,7 +71,9 @@
 
   let allResourcesPromise = allResourcesStore.run(getAllResources);
 
-  let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
+  let resourceHierarchyTree: HierarchyTree<
+    ResourceDescription | symbol
+  > | null = null;
 
   $: if ($allResourcesData) {
     resourceEntriesOrchestrator.load($allResourcesData);
@@ -168,6 +169,7 @@
   async function handleResourceRename({
     detail: { action, entrySetName },
   }: ContextMenuActionEvent<
+    "resource" | "resourcePanel",
     Pick<ContextMenuEntryRecord, "resource" | "resourcePanel">
   >) {
     switch (action) {
@@ -194,8 +196,7 @@
       case "new": {
         modalStore.open(
           createResourceModalId,
-          // TODO: Fix the typings
-          CreateResourceModal as unknown as SvelteComponent,
+          CreateResourceModal,
           entrySetName === "resource" ? currentResourceDescription : null
         );
       }
@@ -225,9 +226,9 @@
     <div class="content">
       <div class="secondary-contents">
         <div class="scene-explorer">
-          <Panel let:isFocused tabs={["Scene Explorer"]}>
+          <Panel tabs={["Scene Explorer"]}>
             <div slot="tab" let:tab>{tab}</div>
-            <div slot="content" class="scene-explorer-content">
+            <div slot="content" class="scene-explorer-content" let:isFocused>
               {#await allResourcesPromise}
                 <div class="scene-explorer-loading">Loading...</div>
               {:then resources}
@@ -313,10 +314,10 @@
 <style lang="postcss">
   .root {
     @apply h-screen w-full;
+  }
 
-    .content-wrapper {
-      @apply h-[calc(100vh-4rem)] w-full overflow-auto;
-    }
+  .root .content-wrapper {
+    @apply h-[calc(100vh-4rem)] w-full overflow-auto;
   }
 
   .content {

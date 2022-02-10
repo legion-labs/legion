@@ -40,7 +40,9 @@
     {/if}
   </div>
   <div class="content" slot="content" let:activeTab>
-    {#if activeTab.type === "video"}
+    {#if !activeTab}
+      <div />
+    {:else if activeTab.type === "video"}
       {#if activeTab.name === "editor" || activeTab.name === "runtime"}
         {#key activeTab}
           <RemoteWindow

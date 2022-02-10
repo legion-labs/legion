@@ -130,9 +130,8 @@
       on:dblclick={select}
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
       on:nameEdited={setName}
-      let:itemName
     >
-      <slot name="name" slot="name" {itemName} />
+      <slot name="name" slot="name" let:itemName {itemName} />
     </Inner>
   {/each}
 </div>
