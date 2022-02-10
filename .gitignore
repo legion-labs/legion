@@ -41,6 +41,3 @@ trace-*.json
 
 # Symlinks we use for debugging build scripts output
 **/out_dir
-
-# sample-data generated data.
-/tests/sample-data/temp/*
