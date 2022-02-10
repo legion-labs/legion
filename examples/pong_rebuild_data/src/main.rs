@@ -1,3 +1,9 @@
+//! Utility to regenerate the data for the pong demo.
+//! All the data is created from scratch with this source code, i.e. no corresponding "raw" data
+
+// crate-specific lint exceptions:
+//#![allow()]
+
 use std::{
     fs::OpenOptions,
     path::{Path, PathBuf},
