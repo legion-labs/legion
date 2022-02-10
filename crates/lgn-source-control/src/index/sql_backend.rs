@@ -11,8 +11,8 @@ use tokio::sync::Mutex;
 
 use crate::{
     sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
-    Error, FileInfo, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock,
-    MapOtherError, Result, Tree, WorkspaceRegistration,
+    CommitId, Error, FileInfo, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery,
+    Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -201,10 +201,10 @@ impl SqlIndexBackend {
 
     async fn create_commits_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), UNIQUE (id));
-         CREATE TABLE `{}` (id VARCHAR(255), parent_id TEXT);
+        "CREATE TABLE `{}` (id INTEGER NOT NULL PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
+         CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id VARCHAR(255) NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER);
+         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER);
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
          Self::TABLE_COMMIT_PARENTS,
@@ -239,7 +239,7 @@ impl SqlIndexBackend {
 
     async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255) PRIMARY KEY, head VARCHAR(255), lock_domain_id VARCHAR(64));
+        "CREATE TABLE `{}` (name VARCHAR(255) PRIMARY KEY, head INTEGER NOT NULL, lock_domain_id VARCHAR(64));
         CREATE INDEX branches_lock_domain_ids_index on `{}`(lock_domain_id);",
         Self::TABLE_BRANCHES,
         Self::TABLE_BRANCHES
@@ -290,9 +290,9 @@ impl SqlIndexBackend {
             BTreeSet::new(),
         );
 
-        Self::insert_commit_transactional(transaction, &initial_commit).await?;
+        let commit_id = Self::insert_commit_transactional(transaction, &initial_commit).await?;
 
-        let main_branch = Branch::new(String::from("main"), initial_commit.id);
+        let main_branch = Branch::new(String::from("main"), commit_id);
 
         Self::insert_branch_transactional(transaction, &main_branch).await?;
 
@@ -328,7 +328,11 @@ impl SqlIndexBackend {
 
         Ok(Branch {
             name: name.to_string(),
-            head: row.get("head"),
+            head: CommitId(
+                row.get::<i64, _>("head")
+                    .try_into()
+                    .map_other_err("failed to read the head")?,
+            ),
             lock_domain_id: row.get("lock_domain_id"),
         })
     }
@@ -337,12 +341,18 @@ impl SqlIndexBackend {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         branch: &Branch,
     ) -> Result<()> {
+        let head: i64 = branch
+            .head
+            .0
+            .try_into()
+            .map_other_err("failed to convert the head")?;
+
         sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, ?, ?);",
             Self::TABLE_BRANCHES
         ))
         .bind(&branch.name)
-        .bind(&branch.head)
+        .bind(head)
         .bind(&branch.lock_domain_id)
         .execute(transaction)
         .await
@@ -352,12 +362,19 @@ impl SqlIndexBackend {
 
     async fn list_commits_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        query: &ListCommitsQuery<'_>,
+        query: &ListCommitsQuery,
     ) -> Result<Vec<Commit>> {
         let mut result = Vec::new();
         result.reserve(1024);
-        let mut next_commit_ids: VecDeque<String> =
-            query.commit_ids.iter().copied().map(Into::into).collect();
+
+        let mut next_commit_ids: VecDeque<i64> = query
+            .commit_ids
+            .iter()
+            .map(|id| {
+                id.0.try_into()
+                    .map_other_err("failed to convert the commit id")
+            })
+            .collect::<Result<VecDeque<_>>>()?;
 
         let mut depth = Some(query.depth).filter(|d| *d > 0);
 
@@ -423,10 +440,10 @@ impl SqlIndexBackend {
             })
             .collect::<BTreeSet<_>>();
 
-            let parents: BTreeSet<String> = sqlx::query(&format!(
+            let parents: BTreeSet<i64> = sqlx::query(&format!(
                 "SELECT parent_id
-             FROM `{}`
-             WHERE id = ?;",
+                FROM `{}`
+                WHERE id = ?;",
                 Self::TABLE_COMMIT_PARENTS,
             ))
             .bind(&commit_id)
@@ -440,7 +457,7 @@ impl SqlIndexBackend {
             .map(|row| row.get("parent_id"))
             .collect();
 
-            next_commit_ids.extend(parents.iter().cloned());
+            next_commit_ids.extend(&parents);
 
             result.push(
                 match sqlx::query(&format!(
@@ -458,8 +475,21 @@ impl SqlIndexBackend {
                             .unwrap()
                             .into();
 
+                        let parents = parents
+                            .into_iter()
+                            .map(|id| {
+                                Ok(CommitId(
+                                    id.try_into().map_other_err("failed to convert commit id")?,
+                                ))
+                            })
+                            .collect::<Result<BTreeSet<_>>>()?;
+
                         Commit::new(
-                            String::from(&commit_id),
+                            CommitId(
+                                commit_id
+                                    .try_into()
+                                    .map_other_err("failed to convert the commit id")?,
+                            ),
                             row.get("owner"),
                             row.get("message"),
                             changes,
@@ -469,7 +499,9 @@ impl SqlIndexBackend {
                         )
                     }
                     Err(sqlx::Error::RowNotFound) => {
-                        return Err(Error::commit_not_found(commit_id));
+                        return Err(Error::commit_not_found(CommitId(
+                            commit_id.try_into().unwrap_or_default(),
+                        )));
                     }
                     Err(err) => {
                         return Err(err)
@@ -485,27 +517,33 @@ impl SqlIndexBackend {
     async fn insert_commit_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         commit: &Commit,
-    ) -> Result<()> {
-        sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?);",
+    ) -> Result<CommitId> {
+        let result = sqlx::query(&format!(
+            "INSERT INTO `{}` VALUES(NULL, ?, ?, ?, ?);",
             Self::TABLE_COMMITS
         ))
-        .bind(commit.id.clone())
         .bind(commit.owner.clone())
         .bind(commit.message.clone())
         .bind(commit.root_tree_id.clone())
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await
-        .map_other_err(format!("failed to insert the commit `{}`", &commit.id))?;
+        .map_other_err("failed to insert the commit")?;
+
+        let commit_id = result.last_insert_id().unwrap();
 
         for parent_id in &commit.parents {
+            let parent_id: i64 = parent_id
+                .0
+                .try_into()
+                .map_other_err("failed to convert commit id")?;
+
             sqlx::query(&format!(
                 "INSERT INTO `{}` VALUES(?, ?);",
                 Self::TABLE_COMMIT_PARENTS
             ))
-            .bind(commit.id.clone())
-            .bind(parent_id.clone())
+            .bind(commit_id)
+            .bind(parent_id)
             .execute(&mut *transaction)
             .await
             .map_other_err(format!(
@@ -519,7 +557,7 @@ impl SqlIndexBackend {
                 "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?, ?);",
                 Self::TABLE_COMMIT_CHANGES
             ))
-            .bind(commit.id.clone())
+            .bind(commit_id)
             .bind(change.canonical_path().to_string())
             .bind(
                 change
@@ -557,19 +595,28 @@ impl SqlIndexBackend {
             ))?;
         }
 
-        Ok(())
+        Ok(CommitId(
+            commit_id
+                .try_into()
+                .map_other_err("failed to convert commit id")?,
+        ))
     }
 
     async fn update_branch_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
         branch: &Branch,
     ) -> Result<()> {
+        let head: i64 = branch
+            .head
+            .0
+            .try_into()
+            .map_other_err("failed to convert commit id")?;
         sqlx::query(&format!(
             "UPDATE `{}` SET head=?, lock_domain_id=?
              WHERE name=?;",
             Self::TABLE_BRANCHES
         ))
-        .bind(branch.head.clone())
+        .bind(head)
         .bind(branch.lock_domain_id.clone())
         .bind(branch.name.clone())
         .execute(executor)
@@ -935,7 +982,11 @@ impl IndexBackend for SqlIndexBackend {
             None => Err(Error::branch_not_found(branch_name.to_string())),
             Some(row) => Ok(Branch {
                 name: branch_name.to_string(),
-                head: row.get("head"),
+                head: CommitId(
+                    row.get::<i64, _>("head")
+                        .try_into()
+                        .map_other_err("failed to convert head")?,
+                ),
                 lock_domain_id: row.get("lock_domain_id"),
             }),
         }
@@ -944,7 +995,7 @@ impl IndexBackend for SqlIndexBackend {
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
         let mut conn = self.get_conn().await?;
 
-        Ok(match query.lock_domain_id {
+        match query.lock_domain_id {
             Some(lock_domain_id) => sqlx::query(&format!(
                 "SELECT name, head 
              FROM `{}`
@@ -959,10 +1010,16 @@ impl IndexBackend for SqlIndexBackend {
                 lock_domain_id
             ))?
             .into_iter()
-            .map(|row| Branch {
-                name: row.get("name"),
-                head: row.get("head"),
-                lock_domain_id: lock_domain_id.to_string(),
+            .map(|row| {
+                Ok(Branch {
+                    name: row.get("name"),
+                    head: CommitId(
+                        row.get::<i64, _>("head")
+                            .try_into()
+                            .map_other_err("failed to convert head")?,
+                    ),
+                    lock_domain_id: lock_domain_id.to_string(),
+                })
             })
             .collect(),
             None => sqlx::query(&format!(
@@ -974,16 +1031,22 @@ impl IndexBackend for SqlIndexBackend {
             .await
             .map_other_err("error fetching branches")?
             .into_iter()
-            .map(|row| Branch {
-                name: row.get("name"),
-                head: row.get("head"),
-                lock_domain_id: row.get("lock_domain_id"),
+            .map(|row| {
+                Ok(Branch {
+                    name: row.get("name"),
+                    head: CommitId(
+                        row.get::<i64, _>("head")
+                            .try_into()
+                            .map_other_err("failed to convert head")?,
+                    ),
+                    lock_domain_id: row.get("lock_domain_id"),
+                })
             })
             .collect(),
-        })
+        }
     }
 
-    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
+    async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         let mut transaction = self.get_transaction().await?;
 
         let result = Self::list_commits_transactional(&mut transaction, query).await?;
@@ -996,7 +1059,7 @@ impl IndexBackend for SqlIndexBackend {
         Ok(result)
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
         let mut transaction = self.get_transaction().await?;
 
         let stored_branch = self
@@ -1007,17 +1070,17 @@ impl IndexBackend for SqlIndexBackend {
             return Err(Error::stale_branch(stored_branch));
         }
 
-        Self::insert_commit_transactional(&mut transaction, commit).await?;
-
-        let mut new_branch = branch.clone();
-        new_branch.head = commit.id.clone();
+        let new_branch =
+            branch.advance(Self::insert_commit_transactional(&mut transaction, commit).await?);
 
         Self::update_branch_transactional(&mut transaction, &new_branch).await?;
 
         transaction.commit().await.map_other_err(&format!(
             "failed to commit transaction while committing commit `{}` to branch `{}`",
             &commit.id, &branch.name
-        ))
+        ))?;
+
+        Ok(new_branch.head)
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {
