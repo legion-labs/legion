@@ -6882,11 +6882,27 @@ dependencies = [
  "dolly",
  "generic-data",
  "lgn-app",
- "lgn-compiler-debugcube",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-input",
+ "lgn-math",
+ "lgn-renderer",
+ "lgn-telemetry-sink",
+ "lgn-transform",
+ "rand 0.8.4",
+ "runtime-srv",
+]
+
+[[package]]
+name = "pong-rebuild-data"
+version = "0.1.0"
+dependencies = [
+ "generic-data",
+ "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-script2asm",
  "lgn-content-store",
- "lgn-core",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -6896,12 +6912,9 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
- "lgn-renderer",
  "lgn-scripting",
  "lgn-telemetry-sink",
- "lgn-transform",
  "rand 0.8.4",
- "runtime-srv",
  "sample-data",
  "serde_json",
  "tokio",

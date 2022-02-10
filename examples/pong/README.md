@@ -16,7 +16,7 @@ cargo mrun --bin editor-client
 ## Data regeneration
 
 ```sh
-cargo mrun --example pong_rebuild_data
+cargo mrun --bin pong_rebuild_data
 ```
 
 ## Data exploration
