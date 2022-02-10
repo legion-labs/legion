@@ -1,0 +1,18 @@
+pub fn main() {
+    [
+        #{
+            type: "DescriptorSet",
+            name: "DisplayMapperDescriptorSet",
+            frequency: 0,
+            descriptors: [
+                #{ name:"hdr_image", type: "Texture2D", content: "Float4" },
+                #{ name:"hdr_sampler", type: "Sampler" },                
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "DisplayMapperPipelineLayout",
+            descriptor_sets: [ "DisplayMapperDescriptorSet" ]
+        }
+    ]
+}
