@@ -300,9 +300,9 @@ impl Model {
     /// # Errors
     /// todo
     pub fn add<T: ModelObject>(&mut self, key: &str, value: T) -> Result<ModelHandle<T>> {
-        let key = ModelKey::new(key);
-        if self.key_map.contains_key(&key) {
-            return Err(anyhow!("Object not unique"));
+        let model_key = ModelKey::new(key);
+        if self.key_map.contains_key(&model_key) {
+            return Err(anyhow!("Object '{}' not unique", key));
         }
         let type_index = self.get_or_create_container::<T>();
         let value_ptr = (&value as *const T).cast::<u8>();
@@ -310,7 +310,7 @@ impl Model {
         forget(value);
         let object_index = u32::try_from(object_index).unwrap();
         let object_id = PairTypeId::new(u32::try_from(type_index).unwrap(), object_index);
-        self.key_map.insert(key, object_id);
+        self.key_map.insert(model_key, object_id);
 
         Ok(ModelHandle::new(object_index))
     }

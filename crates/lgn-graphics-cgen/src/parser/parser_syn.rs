@@ -10,9 +10,8 @@ use relative_path::RelativePath;
 use syn::{File, Item, ItemMod, ItemStruct, Lit, NestedMeta};
 
 use super::ParsingResult;
-use crate::{
-    builder::{DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder},
-    db::{self, CGenType, Model},
+use crate::db::{
+    self, CGenType, DescriptorSetBuilder, Model, PipelineLayoutBuilder, StructBuilder,
 };
 
 pub(crate) fn from_syn(file_path: &Path) -> Result<ParsingResult> {

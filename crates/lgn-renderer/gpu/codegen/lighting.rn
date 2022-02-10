@@ -1,0 +1,37 @@
+
+pub fn main() {
+    [
+        #{ 
+            type: "Struct",
+            name: "OmniDirectionalLight",
+            fields: [
+                #{ name:"pos", ty:"Float3" },
+                #{ name:"radiance", ty:"Float1" },
+                #{ name:"color", ty:"Float3" },
+                #{ name:"pad", ty:"Uint1" },            
+            ]
+        },
+        #{ 
+            type: "Struct",
+            name: "DirectionalLight",
+            fields: [
+                #{ name:"dir", ty:"Float3" },
+                #{ name:"radiance", ty:"Float1" },
+                #{ name:"color", ty:"Float3" },
+                #{ name:"pad", ty:"Uint1" },            
+            ]
+        },                  
+        #{ 
+            type: "Struct",
+            name: "SpotLight",
+            fields: [
+                #{ name:"pos", ty:"Float3" },
+                #{ name:"radiance", ty:"Float1" },
+                #{ name:"dir", ty:"Float3" },
+                #{ name:"cone_angle", ty:"Float1" },
+                #{ name:"color", ty:"Float3" },
+                #{ name:"pad", ty:"Uint1", array_len:5 },            
+            ]
+        },    
+    ]
+}

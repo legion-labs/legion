@@ -1,0 +1,40 @@
+pub fn main(frame_descriptor_set, view_descriptor_set ) {    
+    [        
+        #{
+            type: "Struct",
+            name: "PickingData",
+            fields: [
+                #{ name:"picking_pos", ty:"Float3" },
+                #{ name:"picking_id", ty:"Uint1" },
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "PickingPushConstantData",
+            fields: [
+                #{ name:"world", ty:"Float4x4" },
+                #{ name:"mesh_description_offset", ty:"Uint1" },
+                #{ name:"picking_id", ty:"Uint1" },
+                #{ name:"picking_distance", ty:"Float1" },
+                #{ name:"use_gpu_pipeline", ty:"Uint1" },
+            ]
+        },
+        #{
+            type: "DescriptorSet",
+            name: "PickingDescriptorSet",
+            frequency: 2,
+            descriptors: [
+                #{ name: "picked_count", type: "RWStructuredBuffer", content: "Uint1" },
+                #{ name: "picked_objects", type: "RWStructuredBuffer", content: "PickingData" },
+            ]        
+        },
+        #{
+            type: "PipelineLayout",
+            name: "PickingPipelineLayout",
+            descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name, "PickingDescriptorSet" ],
+            push_constant: "PickingPushConstantData"
+        }
+    ]
+}
+
+
