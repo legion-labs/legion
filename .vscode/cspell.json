@@ -33,6 +33,7 @@
         "physx",
         "pnpm",
         "proto",
+        "protoc",
         "protos",
         "Rasterizer",
         "renderpass",
