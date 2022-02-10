@@ -132,7 +132,7 @@ pub(crate) fn generate_reflection(
                     default_literal.clone()
                 } else if let Some(variant) = enum_meta_info.variants.get(0) {
                     let variant_name = &variant.name;
-                    quote! { #enum_name::#variant_name}
+                    quote! { Self::#variant_name}
                 } else {
                     quote! {}
                 };
