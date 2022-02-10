@@ -106,7 +106,7 @@ fn get_lod_cache_key(process_id: &str, metric_name: &str, lod: u32) -> String {
 
 pub struct MetricHandler {
     blob_storage: Arc<dyn BlobStorage>,
-    pool: Arc<sqlx::any::AnyPool>,
+    pool: sqlx::any::AnyPool,
     cache: Arc<DiskCache>,
 }
 
@@ -114,7 +114,7 @@ impl MetricHandler {
     pub fn new(
         blob_storage: Arc<dyn BlobStorage>,
         cache: Arc<DiskCache>,
-        pool: Arc<sqlx::any::AnyPool>,
+        pool: sqlx::any::AnyPool,
     ) -> Self {
         Self {
             blob_storage,

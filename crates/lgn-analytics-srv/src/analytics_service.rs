@@ -277,7 +277,7 @@ impl AnalyticsService {
         let metric_handler = MetricHandler::new(
             Arc::clone(&self.data_lake_blobs),
             Arc::clone(&self.cache),
-            Arc::new(self.pool.clone()),
+            self.pool.clone(),
         );
         Ok(metric_handler
             .fetch_metric(process_id, metric_name, begin_ms, end_ms, lod)
