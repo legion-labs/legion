@@ -5,7 +5,10 @@ use std::{any::Any, io};
 use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
-use crate::offline_texture::{Texture, TextureType};
+use crate::{
+    bcn_encoder::{ColorChannels, CompressionQuality, TextureFormat},
+    offline_texture::{Texture, TextureType},
+};
 
 /// Photoshop Document file.
 #[resource("psd")]
@@ -48,8 +51,11 @@ impl PsdFile {
 
         let texture = Texture {
             kind: TextureType::_2D,
+            format: TextureFormat::BC1,
+            quality: CompressionQuality::Fast,
             width: psd.width(),
             height: psd.height(),
+            color_channels: ColorChannels::Rgba,
             rgba: layer.rgba(),
         };
         Some(texture)
@@ -61,8 +67,11 @@ impl PsdFile {
 
         let texture = Texture {
             kind: TextureType::_2D,
+            format: TextureFormat::BC1,
+            quality: CompressionQuality::Fast,
             width: psd.width(),
             height: psd.height(),
+            color_channels: ColorChannels::Rgba,
             rgba: psd.rgba(),
         };
 

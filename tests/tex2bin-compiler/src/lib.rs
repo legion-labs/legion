@@ -11,6 +11,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::Transform;
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_graphics_data::runtime_texture;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -37,7 +38,16 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .load_sync::<lgn_graphics_data::offline_texture::Texture>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
-    let compiled_asset = resource.rgba.clone();
+    let mut compiled_asset = vec![];
+    runtime_texture::Texture::compile_from_offline(
+        resource.width,
+        resource.height,
+        resource.format,
+        resource.quality,
+        resource.color_channels,
+        &resource.rgba,
+        &mut compiled_asset,
+    );
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
