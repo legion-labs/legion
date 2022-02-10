@@ -271,14 +271,13 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         array_len: Option<u32>,
         def: DescriptorDef,
     ) -> Result<Self> {
-
         if let Some(array_len) = array_len {
             if array_len == 0 {
                 return Err(anyhow!(
                     "Descriptor '{}' in DescriptorSet '{}' have array len set to 0",
                     name,
                     self.product.name
-                ));    
+                ));
             }
         }
 

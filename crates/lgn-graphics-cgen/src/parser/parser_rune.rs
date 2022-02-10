@@ -34,7 +34,7 @@ fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
         let mut sources = Sources::new();
         sources.insert(source);
         sources
-    };    
+    };
 
     // Initialize context
     let context = rune::Context::with_default_modules()?;

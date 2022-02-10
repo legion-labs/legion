@@ -9,7 +9,7 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{self, product::Product, GeneratorContext},
-    parser::{from_syn, from_rune},
+    parser::{from_rune, from_syn},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
