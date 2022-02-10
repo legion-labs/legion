@@ -1,0 +1,20 @@
+pub fn main() {
+    [
+        #{
+            type: "DescriptorSet",
+            name: "RGB2YUVDescriptorSet",
+            frequency: 0,
+            descriptors: [
+                #{ name:"hdr_image", type: "Texture2D", content: "Float4" },
+                #{ name:"y_image", type: "RWTexture2D", content: "Float1" },
+                #{ name:"u_image", type: "RWTexture2D", content: "Float1" },
+                #{ name:"v_image", type: "RWTexture2D", content: "Float1" },
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "RGB2YUVPipelineLayout",
+            descriptor_sets: [ "RGB2YUVDescriptorSet" ]
+        }
+    ]
+}
