@@ -7,6 +7,7 @@
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import {
+    cloneResource,
     getAllResources,
     getResourceProperties,
     removeResource,
@@ -65,11 +66,15 @@
     currentlyRenameEntry: currentlyRenameResourceStore,
   } = resourceEntriesOrchestrator;
 
-  let allResourcesData = allResourcesStore.data;
+  let {
+    data: allResourcesData,
+    error: allResourcesError,
+    loading: allResourcesLoading,
+  } = allResourcesStore;
+
+  allResourcesStore.run(getAllResources);
 
   let currentResourceDescription: ResourceDescription | null = null;
-
-  let allResourcesPromise = allResourcesStore.run(getAllResources);
 
   let resourceHierarchyTree: HierarchyTree<
     ResourceDescription | symbol
@@ -160,10 +165,10 @@
     }
   }
 
-  function tryAgain() {
+  async function tryAgain() {
     $currentResourceData = null;
     currentResourceDescription = null;
-    allResourcesPromise = allResourcesStore.run(getAllResources);
+    await allResourcesStore.run(getAllResources);
   }
 
   async function handleResourceRename({
@@ -173,6 +178,18 @@
     Pick<ContextMenuEntryRecord, "resource" | "resourcePanel">
   >) {
     switch (action) {
+      case "clone": {
+        if (!resourceHierarchyTree || !currentResourceDescription) {
+          return;
+        }
+
+        await cloneResource({ sourceId: currentResourceDescription.id });
+
+        await allResourcesStore.run(getAllResources);
+
+        return;
+      }
+
       case "rename": {
         if (!resourceHierarchyTree || !currentResourceDescription) {
           return;
@@ -229,12 +246,10 @@
           <Panel tabs={["Scene Explorer"]}>
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="scene-explorer-content" let:isFocused>
-              {#await allResourcesPromise}
-                <div class="scene-explorer-loading">Loading...</div>
-              {:then resources}
+              {#if $allResourcesData}
                 <PanelList
                   key="id"
-                  items={resources}
+                  items={$allResourcesData || []}
                   panelIsFocused={isFocused}
                   on:select={fetchCurrentResourceDescription}
                   bind:highlightedItem={currentResourceDescription}
@@ -243,14 +258,16 @@
                     {resource.path}
                   </div>
                 </PanelList>
-              {:catch}
+              {:else if $allResourcesLoading}
+                <div class="scene-explorer-loading">Loading...</div>
+              {:else if $allResourcesError}
                 <div class="scene-explorer-error">
                   An error occured while fetching the scene explorer
                   <span class="scene-explorer-try-again" on:click={tryAgain}>
                     try again
                   </span>
                 </div>
-              {/await}
+              {/if}
             </div>
           </Panel>
         </div>
@@ -264,8 +281,6 @@
               use:contextMenu={"resourcePanel"}
             >
               {#if $allResourcesData}
-                <!-- Works as expected, the type error seems to be related to Svelte
-                     https://github.com/sveltejs/svelte/issues/7225 -->
                 <HierarchyTree
                   on:select={fetchCurrentResourceDescription}
                   on:nameEdited={saveEditedResourceProperty}
@@ -284,6 +299,15 @@
                     {itemName}
                   </div>
                 </HierarchyTree>
+              {:else if $allResourcesLoading}
+                <div class="scene-explorer-loading">Loading...</div>
+              {:else if $allResourcesError}
+                <div class="scene-explorer-error">
+                  An error occured while fetching the scene explorer
+                  <span class="scene-explorer-try-again" on:click={tryAgain}>
+                    try again
+                  </span>
+                </div>
               {/if}
             </div>
           </Panel>
