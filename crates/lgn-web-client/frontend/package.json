@@ -15,7 +15,7 @@
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
-    "svelte:check": "tsc --noEmit && svelte-check",
+    "svelte:check": "tsc && svelte-check --use-new-transformation",
     "clean": "rimraf node_modules",
     "test": "jest"
   },

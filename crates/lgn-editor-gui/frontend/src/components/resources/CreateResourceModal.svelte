@@ -36,7 +36,9 @@
 
   export let close: () => void;
 
-  export let payload: ResourceDescription;
+  // We don't get any payload when the user tries to create
+  // a resource at the top level
+  export let payload: ResourceDescription | null;
 
   async function createResource(event: SubmitEvent) {
     event.preventDefault();

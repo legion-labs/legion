@@ -174,6 +174,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
           "unresolved-macro-call"
         ],
         "css.lint.unknownAtRules": "ignore",
+        "svelte.plugin.svelte.useNewTransformation": true,
         "[html]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },

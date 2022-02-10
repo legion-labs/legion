@@ -16,7 +16,7 @@
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
-    "svelte:check": "tsc && svelte-check",
+    "svelte:check": "tsc && svelte-check --use-new-transformation",
     "clean": "rimraf node_modules dist",
     "test": "jest",
     "benchmark": "vite build --mode development -c benchmarks/vite.config.js && node dist/benchmarks/index.js"
