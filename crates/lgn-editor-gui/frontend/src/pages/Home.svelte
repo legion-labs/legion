@@ -23,7 +23,7 @@
   import contextMenuStore, {
     ContextMenuEntryRecord,
   } from "@/stores/contextMenu";
-  import contextMenuEntries from "@/data/contextMenu";
+  import * as contextMenuEntries from "@/data/contextMenu";
   import {
     autoClose,
     Event as ContextMenuActionEvent,
@@ -37,7 +37,11 @@
   import notificationsStore from "@/stores/notifications";
   import { components, join } from "@/lib/path";
 
-  contextMenuStore.register("resource", contextMenuEntries);
+  contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
+  contextMenuStore.register(
+    "resourcePanel",
+    contextMenuEntries.resourcePanelEntries
+  );
 
   const editorViewportKey = Symbol();
 
@@ -162,15 +166,13 @@
   }
 
   async function handleResourceRename({
-    detail: { action },
-  }: ContextMenuActionEvent<Pick<ContextMenuEntryRecord, "resource">>) {
-    if (!currentResourceDescription) {
-      return;
-    }
-
+    detail: { action, entrySetName },
+  }: ContextMenuActionEvent<
+    Pick<ContextMenuEntryRecord, "resource" | "resourcePanel">
+  >) {
     switch (action) {
       case "rename": {
-        if (!resourceHierarchyTree) {
+        if (!resourceHierarchyTree || !currentResourceDescription) {
           return;
         }
 
@@ -180,7 +182,7 @@
       }
 
       case "remove": {
-        if (!resourceHierarchyTree) {
+        if (!resourceHierarchyTree || !currentResourceDescription) {
           return;
         }
 
@@ -194,7 +196,7 @@
           createResourceModalId,
           // TODO: Fix the typings
           CreateResourceModal as unknown as SvelteComponent,
-          currentResourceDescription
+          entrySetName === "resource" ? currentResourceDescription : null
         );
       }
 
@@ -212,7 +214,9 @@
 <Notifications store={notificationsStore} />
 
 <svelte:window
-  on:contextmenu-action={autoClose(select(handleResourceRename, "resource"))}
+  on:contextmenu-action={autoClose(
+    select(handleResourceRename, "resource", "resourcePanel")
+  )}
 />
 
 <div class="root">
@@ -253,7 +257,11 @@
         <div class="resource-browser">
           <Panel tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
-            <div slot="content" class="resource-browser-content">
+            <div
+              slot="content"
+              class="resource-browser-content"
+              use:contextMenu={"resourcePanel"}
+            >
               {#if $allResourcesData}
                 <!-- Works as expected, the type error seems to be related to Svelte
                      https://github.com/sveltejs/svelte/issues/7225 -->

@@ -62,10 +62,10 @@ export function select<
   Name extends keyof EntryRecord
 >(
   handler: EventHandler<Pick<EntryRecord, Name>>,
-  entrySetName: Name
+  ...entrySetNames: Name[]
 ): EventHandler<EntryRecord> {
   return function innerHandler(event) {
-    if (entrySetName !== event.detail.entrySetName) {
+    if (!entrySetNames.includes(event.detail.entrySetName as Name)) {
       return;
     }
 
