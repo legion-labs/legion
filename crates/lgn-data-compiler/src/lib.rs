@@ -60,22 +60,22 @@ impl FromStr for CompiledResource {
 
 /// The output of data compilation.
 ///
-/// `Manifest` contains the list of compiled resources.
+/// `CompiledResources` contains the list of compiled resources.
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Manifest {
+pub struct CompiledResources {
     /// The description of all compiled resources.
     pub compiled_resources: Vec<CompiledResource>,
 }
 
-impl Manifest {
-    /// Prepare manifest for serialization.
+impl CompiledResources {
+    /// Prepare for serialization.
     /// Will sort contents to guarantee that the serialization is deterministic
     pub fn pre_serialize(&mut self) {
         self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
     }
 
     /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an
-    /// offline [`Manifest`].
+    /// offline [`CompiledResources`].
     ///
     /// Provided filter functor will be used to determine if a given asset
     /// should be included in the manifest.
@@ -134,7 +134,7 @@ impl FromStr for Target {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "game" => Ok(Self::Game),
             "server" => Ok(Self::Server),
             "backend" => Ok(Self::Backend),
@@ -168,7 +168,7 @@ impl FromStr for Platform {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "windows" => Ok(Self::Windows),
             "unix" => Ok(Self::Unix),
             "consolex" => Ok(Self::ConsoleX),

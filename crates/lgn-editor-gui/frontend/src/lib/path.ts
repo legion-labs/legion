@@ -60,7 +60,18 @@ export function extension(path: Path): string | null {
   return pathFileNameParts.reverse()[0];
 }
 
-/** Joins the path compenents into a `Path` using the provided main separator */
+/**
+ * Joins path parts using the detected main separator.
+ *
+ * A custom main separator can be provided if needed.
+ *
+ * If no custom separators are provided `"/"` is used by default.
+ */
+export function join(parts: string[], separator = "/"): Path {
+  return parts.join(separator);
+}
+
+/** Joins the path components into a `Path` using the provided main separator */
 export function absolute(
   components: string[],
   mainSeparator: MainSeparator

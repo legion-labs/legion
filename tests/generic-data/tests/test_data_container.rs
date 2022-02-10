@@ -6,7 +6,7 @@ use std::io::Cursor;
 use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
 use lgn_data_model::collector::{collect_properties, ItemInfo, PropertyCollector};
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
-use lgn_data_model::TypeReflection;
+use lgn_data_model::{ReflectionError, TypeReflection};
 use lgn_data_runtime::AssetLoader;
 use lgn_math::prelude::*;
 
@@ -141,12 +141,12 @@ fn test_collector() {
         name: String,
         ptype: String,
         sub_properties: Vec<PropertyBag>,
-        attributes: HashMap<String, String>,
+        attributes: Option<HashMap<String, String>>,
     }
 
     impl PropertyCollector for PropertyBag {
         type Item = Self;
-        fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
+        fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
             Ok(Self::Item {
                 name: item_info
                     .field_descriptor
@@ -156,14 +156,16 @@ fn test_collector() {
                 sub_properties: Vec::new(),
                 attributes: item_info
                     .field_descriptor
-                    .map_or(HashMap::new(), |field| field.attributes.clone()),
+                    .and_then(|field| field.attributes.clone()),
             })
         }
         fn add_child(parent: &mut Self::Item, child: Self::Item) {
             let sub_properties = &mut parent.sub_properties;
 
             // If there's a 'Group' attribute, find or create a PropertyBag for the Group within the parent
-            if let Some(group_name) = child.attributes.get("group") {
+            if let Some(Some(group_name)) =
+                child.attributes.as_ref().map(|attrs| attrs.get("group"))
+            {
                 // Search for the Group within the Parent SubProperties
 
                 let group_bag = if let Some(group_bag) = sub_properties
@@ -177,7 +179,7 @@ fn test_collector() {
                         name: group_name.into(),
                         ptype: "_group_".into(),
                         sub_properties: Vec::new(),
-                        attributes: std::collections::HashMap::new(),
+                        attributes: None,
                     });
                     sub_properties.last_mut().unwrap()
                 };
@@ -194,7 +196,7 @@ fn test_collector() {
     let entity = TestEntity::default();
     let output = collect_properties::<PropertyBag>(&entity).unwrap();
     assert_eq!(output.ptype, "TestEntity");
-    assert_eq!(output.sub_properties.len(), 12);
+    assert_eq!(output.sub_properties.len(), 13);
     assert_eq!(output.sub_properties[0].name, "test_string");
     assert_eq!(output.sub_properties[0].ptype, "String");
     assert_eq!(output.sub_properties[1].name, "GroupTest1");

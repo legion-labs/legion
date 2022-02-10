@@ -4,12 +4,12 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::CameraComponent,
-    resources::{DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, MeshManager},
 };
 
 use super::{
     new_world_point_for_cursor, plane_normal_for_camera_pos, AxisComponents, ManipulatorPart,
-    ManipulatorType, PickingManager,
+    ManipulatorType, PickingIdContext,
 };
 
 pub(super) struct ScaleManipulator {
@@ -25,11 +25,9 @@ impl ScaleManipulator {
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,
-        default_meshes: &DefaultMeshes,
-        picking_manager: &PickingManager,
+        mesh_manager: &MeshManager,
+        picking_context: &mut PickingIdContext<'_>,
     ) {
-        let mut picking_block = picking_manager.acquire_picking_id_block();
-
         let rotate_x_pointer =
             Mat4::from_axis_angle(Vec3::new(-1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
         let rotate_z_pointer =
@@ -60,8 +58,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_z_pointer * cube_offset).with_scale(cube_scale),
                 DefaultMeshType::Cube,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -71,8 +69,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_z_pointer).with_scale(cylinder_scale),
                 DefaultMeshType::Cylinder,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -82,8 +80,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(cube_offset).with_scale(cube_scale),
                 DefaultMeshType::Cube,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -93,8 +91,8 @@ impl ScaleManipulator {
                 Transform::from_scale(cylinder_scale),
                 DefaultMeshType::Cylinder,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -104,8 +102,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_x_pointer * cube_offset).with_scale(cube_scale),
                 DefaultMeshType::Cube,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -115,8 +113,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_x_pointer).with_scale(cylinder_scale),
                 DefaultMeshType::Cylinder,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -126,8 +124,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -137,8 +135,8 @@ impl ScaleManipulator {
                 Transform::from_matrix(plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -148,12 +146,10 @@ impl ScaleManipulator {
                 Transform::from_matrix(rotate_yz_plane * plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
         ];
-
-        picking_manager.release_picking_id_block(picking_block);
     }
 
     pub(super) fn manipulate_entity(

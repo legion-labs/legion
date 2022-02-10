@@ -61,7 +61,6 @@ fn clean_folders(project_dir: &str) {
     test("offline");
     test("runtime");
     test("temp");
-    test("project.index");
 
     if !can_clean {
         println!("Cannot clean folders in path {}", project_dir);
@@ -80,6 +79,5 @@ fn clean_folders(project_dir: &str) {
         delete("offline", true);
         delete("runtime", true);
         delete("temp", true);
-        delete("project.index", false);
     }
 }

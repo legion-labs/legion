@@ -6,7 +6,7 @@ use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;
 
-use crate::{BuildManager, DataManager};
+use crate::{BuildManager, DataManager, Error};
 
 /// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
 pub struct LockContext<'a> {
@@ -37,19 +37,14 @@ impl<'a> LockContext<'a> {
         }
     }
 
-    pub(crate) async fn save_changed_resources(&mut self) -> anyhow::Result<()> {
-        let mut need_flush = false;
+    pub(crate) async fn save_changed_resources(&mut self) -> Result<(), Error> {
         for resource_id in &self.changed_resources {
             if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
                 self.project
                     .save_resource(*resource_id, &handle, &mut self.resource_registry)
-                    .await?;
-                need_flush = true;
+                    .await
+                    .map_err(|err| Error::Project(*resource_id, err))?;
             }
-        }
-
-        if need_flush {
-            self.project.flush()?;
         }
 
         for resource_id in &self.changed_resources {

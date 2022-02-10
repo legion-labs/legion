@@ -23,14 +23,14 @@ impl SparseBindingManager {
         self.sparse_buffer_unbindings.push(unbinding);
     }
 
-    pub fn commmit_sparse_bindings<'a>(
+    pub fn commit_sparse_bindings<'a>(
         &mut self,
         queue: &HLQueue<'_>,
         prev_frame_semaphore: &'a Semaphore,
         unbind_semaphore: &'a Semaphore,
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
-        let result = queue.commmit_sparse_bindings(
+        let result = queue.commit_sparse_bindings(
             prev_frame_semaphore,
             &self.sparse_buffer_unbindings,
             unbind_semaphore,

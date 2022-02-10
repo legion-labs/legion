@@ -1,0 +1,4 @@
+{
+  "script": "\n            const MOUSE_DELTA_SCALE = 200.0;\n            \n            pub fn move_right_paddle(delta_x) {\n                delta_x /= MOUSE_DELTA_SCALE;\n                println!(\"[Pad right] delta: {}\", delta_x);\n            }",
+  "script_type": 2
+}

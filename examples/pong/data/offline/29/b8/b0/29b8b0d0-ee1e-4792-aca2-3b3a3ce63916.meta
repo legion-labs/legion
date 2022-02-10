@@ -3,11 +3,11 @@
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": [
-    "(09cde0390abe0694,26b7a335-2d28-489d-882b-f7aae1fb2196)|e0d46a6b35b5717e",
-    "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e",
-    "(09cde0390abe0694,719c8d5b-d320-4102-a92a-b3fa5240e140)|e0d46a6b35b5717e",
-    "(09cde0390abe0694,727eef7f-2544-4a46-be99-9aedd44a098e)|e0d46a6b35b5717e",
-    "(45307156cdfef705,d46d7e71-27bc-4516-9e85-074f5431d29c)|17bed132bc803773"
+    "(1c0ff9e497b0740f,26b7a335-2d28-489d-882b-f7aae1fb2196)|1d9ddd99aad89045",
+    "(1c0ff9e497b0740f,63c338c9-0d03-4636-8a17-8f0cba02b618)|1d9ddd99aad89045",
+    "(1c0ff9e497b0740f,719c8d5b-d320-4102-a92a-b3fa5240e140)|1d9ddd99aad89045",
+    "(1c0ff9e497b0740f,727eef7f-2544-4a46-be99-9aedd44a098e)|1d9ddd99aad89045",
+    "(45307156cdfef705,f7e3757c-22b1-44af-a8d3-5ae080c4fef1)|17bed132bc803773"
   ],
-  "content_checksum": "e8e6d4b1d6445d139bb14d7712b71413"
+  "content_checksum": "ec29af55d8172a57f384c38da7daf2b0"
 }

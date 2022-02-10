@@ -42,7 +42,6 @@ notice = "warn"
 ignore = [
   "RUSTSEC-2020-0113",
   "RUSTSEC-2020-0159",
-  "RUSTSEC-2021-0119",
   "RUSTSEC-2020-0071",
   "RUSTSEC-2021-0060",
   "RUSTSEC-2021-0059",
@@ -51,6 +50,7 @@ ignore = [
   "RUSTSEC-2020-0070",
   "RUSTSEC-2020-0016",
   "RUSTSEC-2021-0127", # serde_cbor is unmaintained
+  "RUSTSEC-2022-0008", # windows crate unsound advisory
 ] #"RUSTSEC-0000-0000",
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -141,6 +141,12 @@ name = "encoding_rs"
 version = "0.8.30"
 expression = "MIT OR Apache-2.0"
 license-files = []
+
+[[licenses.clarify]]
+name = "physx-sys"
+version = "0.4.16"
+expression = "MIT OR Apache-2.0"
+license-files = [{ path = "LICENSE", hash = 0xe326546e }]
 
 [licenses.private]
 # If true, ignores workspace crates that aren't published, or are only

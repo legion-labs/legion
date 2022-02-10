@@ -1,22 +1,17 @@
 use ash::vk;
 use lgn_tracing::trace;
 
-use super::VulkanSwapchain;
 use super::{internal::VkQueue, SparseBindingInfo};
 use crate::{
     CommandBuffer, DeviceContext, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult,
-    QueueType, Semaphore, Swapchain,
+    Queue, QueueType, Semaphore, Swapchain,
 };
 
 pub(crate) struct VulkanQueue {
-    queue: VkQueue,
+    pub(crate) queue: VkQueue,
 }
 
 impl VulkanQueue {
-    pub fn vk_queue(&self) -> &VkQueue {
-        &self.queue
-    }
-
     pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         let queue = match queue_type {
             QueueType::Graphics => device_context
@@ -39,12 +34,23 @@ impl VulkanQueue {
 
         Ok(Self { queue })
     }
+}
+
+impl Queue {
+    #[inline]
+    pub(crate) fn vk_queue(&self) -> &VkQueue {
+        &self.inner.backend_queue.queue
+    }
+
+    pub(crate) fn backend_family_index(&self) -> u32 {
+        self.vk_queue().queue_family_index()
+    }
 
     // Make sure we always use the dedicated queue if it exists
-    pub(self) fn present_to_given_or_dedicated_queue(
+    fn present_to_given_or_dedicated_queue(
         &self,
         device_context: &DeviceContext,
-        swapchain: &VulkanSwapchain,
+        swapchain: &Swapchain,
         present_info: &vk::PresentInfoKHR,
     ) -> GfxResult<bool> {
         let is_suboptimal =
@@ -66,7 +72,7 @@ impl VulkanQueue {
                         .queue_present(dedicated_present_queue, present_info)?
                 }
             } else {
-                let queue = self.queue.queue().lock().unwrap();
+                let queue = self.vk_queue().queue().lock().unwrap();
                 trace!("present to dedicated present queue {:?}", *queue);
                 unsafe {
                     swapchain
@@ -78,11 +84,7 @@ impl VulkanQueue {
         Ok(is_suboptimal)
     }
 
-    pub fn queue_family_index(&self) -> u32 {
-        self.queue.queue_family_index()
-    }
-
-    pub fn submit(
+    pub fn backend_submit(
         &self,
         command_buffers: &[&CommandBuffer],
         wait_semaphores: &[&Semaphore],
@@ -125,16 +127,17 @@ impl VulkanQueue {
 
         let fence = signal_fence.map_or(vk::Fence::null(), Fence::vk_fence);
         unsafe {
-            let queue = self.queue.queue().lock().unwrap();
+            let queue = self.vk_queue().queue().lock().unwrap();
             trace!(
                 "submit {} command buffers to queue {:?}",
                 command_buffer_list.len(),
                 *queue
             );
-            self.queue
-                .device_context()
-                .vk_device()
-                .queue_submit(*queue, &[*submit_info], fence)?;
+            self.vk_queue().device_context().vk_device().queue_submit(
+                *queue,
+                &[*submit_info],
+                fence,
+            )?;
         }
 
         if let Some(signal_fence) = signal_fence {
@@ -144,7 +147,7 @@ impl VulkanQueue {
         Ok(())
     }
 
-    pub fn present(
+    pub fn backend_present(
         &self,
         device_context: &DeviceContext,
         swapchain: &Swapchain,
@@ -159,7 +162,7 @@ impl VulkanQueue {
             }
         }
 
-        let swapchains = [swapchain.platform_swap_chain().vk_swapchain()];
+        let swapchains = [swapchain.vk_swapchain()];
         let image_indices = [image_index];
         let present_info = vk::PresentInfoKHR::builder()
             .wait_semaphores(&wait_semaphore_list)
@@ -169,11 +172,8 @@ impl VulkanQueue {
         //TODO: PresentInfoKHRBuilder::results() is only useful for presenting multiple
         // swapchains - presumably that's for multiwindow cases.
 
-        let result = self.present_to_given_or_dedicated_queue(
-            device_context,
-            swapchain.platform_swap_chain(),
-            &*present_info,
-        );
+        let result =
+            self.present_to_given_or_dedicated_queue(device_context, swapchain, &*present_info);
 
         match result {
             Ok(is_suboptimial) => {
@@ -193,10 +193,10 @@ impl VulkanQueue {
         }
     }
 
-    pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
-        let queue = self.queue.queue().lock().unwrap();
+    pub fn backend_wait_for_queue_idle(&self) -> GfxResult<()> {
+        let queue = self.vk_queue().queue().lock().unwrap();
         unsafe {
-            self.queue
+            self.vk_queue()
                 .device_context()
                 .vk_device()
                 .queue_wait_idle(*queue)?;
@@ -205,7 +205,7 @@ impl VulkanQueue {
         Ok(())
     }
 
-    pub fn commmit_sparse_bindings<'a>(
+    pub fn backend_commit_sparse_bindings<'a>(
         &self,
         prev_frame_semaphore: &'a Semaphore,
         unbind_pages: &[PagedBufferAllocation],
@@ -213,7 +213,7 @@ impl VulkanQueue {
         bind_pages: &[PagedBufferAllocation],
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
-        let queue = self.queue.queue().lock().unwrap();
+        let queue = self.vk_queue().queue().lock().unwrap();
 
         let mut vk_prev_frame_semaphore = Vec::new();
         if prev_frame_semaphore.signal_available() {
@@ -246,7 +246,7 @@ impl VulkanQueue {
                 .wait_semaphores(&vk_prev_frame_semaphore);
 
             unsafe {
-                self.queue
+                self.vk_queue()
                     .device_context()
                     .vk_device()
                     .queue_bind_sparse(*queue, &[*unbind_info_builder], vk::Fence::null())
@@ -281,7 +281,7 @@ impl VulkanQueue {
             }
 
             unsafe {
-                self.queue
+                self.vk_queue()
                     .device_context()
                     .vk_device()
                     .queue_bind_sparse(*queue, &[*bind_info_builder], vk::Fence::null())

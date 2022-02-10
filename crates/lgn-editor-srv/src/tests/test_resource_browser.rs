@@ -8,6 +8,7 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, ResourceTypeAndId};
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Vec3;
 
 use lgn_data_transaction::{ArrayOperation, BuildManager, DataManager, Transaction};
@@ -111,7 +112,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Da
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
     //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
-    //std::fs::remove_file(project_dir.join("project.index")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 
     {
@@ -170,7 +170,16 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         // Creat an Hierarchy of Child->SubChild with increment_name
         {
             let offsets: Vec<f32> = vec![-1.0, 0.0, 1.0];
-            let mesh_ids: Vec<usize> = vec![1, 2, 5, 6, 7, 8, 9];
+            let mesh_ids: Vec<lgn_graphics_data::DefaultMeshType> = vec![
+                DefaultMeshType::Cube,
+                DefaultMeshType::Pyramid,
+                DefaultMeshType::Torus,
+                DefaultMeshType::Cone,
+                DefaultMeshType::Cylinder,
+                DefaultMeshType::Sphere,
+                DefaultMeshType::Arrow,
+            ];
+
             let colors: Vec<lgn_graphics_data::Color> = vec![
                 (255, 0, 0).into(),
                 (0, 255, 0).into(),
@@ -237,7 +246,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         "components",
                         None,
                         json!({ "StaticMesh": sample_data::offline::StaticMesh {
-                            mesh_id: mesh_ids[mesh_id],
+                            mesh_id: mesh_ids[mesh_id ],
                             color : colors[color_id],
                             mesh : None,
                         }})

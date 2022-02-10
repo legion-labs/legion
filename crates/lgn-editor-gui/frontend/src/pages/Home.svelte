@@ -1,21 +1,24 @@
 <script lang="ts">
-  import { ServerType } from "@lgn/frontend/src/api";
-  import { Resolution } from "@lgn/frontend/src/lib/types";
-  import { Panel, PanelList } from "@lgn/frontend/src/components/panel";
-  import ContextMenu from "@lgn/frontend/src/components/ContextMenu.svelte";
-  import ModalContainer from "@lgn/frontend/src/components/modal/ModalContainer.svelte";
-  import TopBar from "@lgn/frontend/src/components/TopBar.svelte";
-  import StatusBar from "@lgn/frontend/src/components/StatusBar.svelte";
-  import RemoteWindow from "@lgn/frontend/src/components/RemoteWindow.svelte";
-  import { getAllResources, getResourceProperties } from "@/api";
+  import { Panel, PanelList } from "@lgn/web-client/src/components/panel";
+  import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
+  import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
+  import ViewportPanel from "@lgn/web-client/src/components/panel/ViewportPanel.svelte";
+  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
+  import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
+  import {
+    getAllResources,
+    getResourceProperties,
+    removeResource,
+    renameResource,
+  } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
-  import currentResource from "@/stores/currentResource";
+  import currentResourceStore from "@/stores/currentResource";
+  import HierarchyTreeOrchestrator from "@/stores/hierarchyTree";
   import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import ScriptEditor from "@/components/ScriptEditor.svelte";
   import HierarchyTree from "@/components/hierarchyTree/HierarchyTree.svelte";
-  import log from "@lgn/frontend/src/lib/log";
-  import { Entries } from "@/lib/hierarchyTree";
-  import { AsyncStoreOrchestratorList } from "@lgn/frontend/src/stores/asyncStore";
+  import log from "@lgn/web-client/src/lib/log";
+  import { Entry } from "@/lib/hierarchyTree";
   import contextMenu from "@/actions/contextMenu";
   import contextMenuStore, {
     ContextMenuEntryRecord,
@@ -25,30 +28,52 @@
     autoClose,
     Event as ContextMenuActionEvent,
     select,
-  } from "@lgn/frontend/src/types/contextMenu";
-  import { openModal } from "@lgn/frontend/src/lib/modal";
+  } from "@lgn/web-client/src/types/contextMenu";
+  import ModalStore from "@lgn/web-client/src/stores/modal";
   import CreateResourceModal from "@/components/resources/CreateResourceModal.svelte";
   import { SvelteComponent } from "svelte";
+  import allResourcesStore from "@/stores/allResources";
+  import viewportOrchestrator from "@/stores/viewport";
+  import notificationsStore from "@/stores/notifications";
+  import { components, join } from "@/lib/path";
 
   contextMenuStore.register("resource", contextMenuEntries);
 
-  const { data: currentResourceData } = currentResource;
+  const editorViewportKey = Symbol();
 
-  const allResourcesStore = new AsyncStoreOrchestratorList<
-    ResourceDescription[]
-  >();
+  viewportOrchestrator.addAllViewport(
+    [editorViewportKey, { type: "video", name: "editor" }],
+    [Symbol(), { type: "video", name: "runtime" }]
+  );
+
+  viewportOrchestrator.activate(editorViewportKey);
+
+  const modalStore = new ModalStore();
+
+  const { data: currentResourceData } = currentResourceStore;
+
+  const createResourceModalId = Symbol();
+
+  const resourceEntriesOrchestrator =
+    new HierarchyTreeOrchestrator<ResourceDescription>();
+
+  const {
+    entries: resourceEntriesStore,
+    currentlyRenameEntry: currentlyRenameResourceStore,
+  } = resourceEntriesOrchestrator;
 
   let allResourcesData = allResourcesStore.data;
 
   let currentResourceDescription: ResourceDescription | null = null;
 
-  let desiredVideoResolution: Resolution | null;
-
-  let editorActiveTab: ServerType;
-
   let allResourcesPromise = allResourcesStore.run(getAllResources);
 
   let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
+
+  $: if ($allResourcesData) {
+    console.log("loading");
+    resourceEntriesOrchestrator.load($allResourcesData);
+  }
 
   function fetchCurrentResourceDescription() {
     if (!currentResourceDescription) {
@@ -56,7 +81,7 @@
     }
 
     try {
-      currentResource.run(() => {
+      currentResourceStore.run(() => {
         if (!currentResourceDescription) {
           throw new Error("Current resource description not found");
         }
@@ -64,8 +89,69 @@
         return getResourceProperties(currentResourceDescription);
       });
     } catch (error) {
+      notificationsStore.push(Symbol(), {
+        type: "error",
+        title: "Resources",
+        message: "An error occured while loading the resource",
+      });
+
       log.error(
         log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`
+      );
+    }
+  }
+
+  async function saveEditedResourceProperty({
+    detail: { entry, newName },
+  }: CustomEvent<{
+    entry: Entry<ResourceDescription | symbol>;
+    newName: string;
+  }>) {
+    if (typeof entry.item === "symbol") {
+      return;
+    }
+
+    const pathComponents = components(entry.item.path);
+
+    if (!pathComponents) {
+      return;
+    }
+
+    const newPath = join([...pathComponents.slice(0, -1), newName]);
+
+    try {
+      await renameResource({ id: entry.item.id, newPath });
+    } catch (error) {
+      notificationsStore.push(Symbol(), {
+        type: "error",
+        title: "Resources",
+        message: "An error occured while renaming the resource",
+      });
+
+      log.error(
+        log.json`An error occured while renaming the resource ${entry.item}: ${error}`
+      );
+    }
+  }
+
+  async function removeResourceProperty({
+    detail: entry,
+  }: CustomEvent<Entry<ResourceDescription | symbol>>) {
+    if (typeof entry.item === "symbol") {
+      return;
+    }
+
+    try {
+      await removeResource({ id: entry.item.id });
+    } catch (error) {
+      notificationsStore.push(Symbol(), {
+        type: "error",
+        title: "Resources",
+        message: "An error occured while removing the resource",
+      });
+
+      log.error(
+        log.json`An error occured while removing the resource ${entry.item}: ${error}`
       );
     }
   }
@@ -76,7 +162,7 @@
     allResourcesPromise = allResourcesStore.run(getAllResources);
   }
 
-  function handleResourceRename({
+  async function handleResourceRename({
     detail: { action },
   }: ContextMenuActionEvent<Pick<ContextMenuEntryRecord, "resource">>) {
     if (!currentResourceDescription) {
@@ -89,7 +175,7 @@
           return;
         }
 
-        resourceHierarchyTree.edit(currentResourceDescription);
+        resourceHierarchyTree.startNameEdit(currentResourceDescription);
 
         return;
       }
@@ -105,8 +191,12 @@
       }
 
       case "new": {
-        // TODO: Fix the typings
-        openModal(CreateResourceModal as unknown as SvelteComponent);
+        modalStore.open(
+          createResourceModalId,
+          // TODO: Fix the typings
+          CreateResourceModal as unknown as SvelteComponent,
+          currentResourceDescription
+        );
       }
 
       default: {
@@ -116,9 +206,11 @@
   }
 </script>
 
-<ModalContainer />
+<ModalContainer store={modalStore} />
 
-<ContextMenu {contextMenuStore} />
+<ContextMenu store={contextMenuStore} />
+
+<Notifications store={notificationsStore} />
 
 <svelte:window
   on:contextmenu-action={autoClose(select(handleResourceRename, "resource"))}
@@ -164,9 +256,14 @@
             <div slot="tab" let:tab>{tab}</div>
             <div slot="content" class="resource-browser-content">
               {#if $allResourcesData}
+                <!-- Works as expected, the type error seems to be related to Svelte
+                     https://github.com/sveltejs/svelte/issues/7225 -->
                 <HierarchyTree
-                  entries={Entries.unflatten($allResourcesData, Symbol)}
                   on:select={fetchCurrentResourceDescription}
+                  on:nameEdited={saveEditedResourceProperty}
+                  on:removed={removeResourceProperty}
+                  bind:entries={$resourceEntriesStore}
+                  bind:currentlyRenameEntry={$currentlyRenameResourceStore}
                   bind:highlightedItem={currentResourceDescription}
                   bind:this={resourceHierarchyTree}
                 >
@@ -186,35 +283,7 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <Panel
-          tabs={["editor", "runtime", "script"]}
-          bind:activeTab={editorActiveTab}
-        >
-          <div slot="tab" let:tab>
-            {#if tab === "editor" || tab === "runtime"}
-              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
-              {#if desiredVideoResolution}
-                <span>
-                  - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-                </span>
-              {/if}
-            {:else if tab === "script"}
-              Script
-            {/if}
-          </div>
-          <div class="video-container" slot="content">
-            {#if editorActiveTab === "editor" || editorActiveTab === "runtime"}
-              {#key editorActiveTab}
-                <RemoteWindow
-                  serverType={editorActiveTab}
-                  bind:desiredResolution={desiredVideoResolution}
-                />
-              {/key}
-            {:else if editorActiveTab === "script"}
-              <ScriptEditor theme="vs-dark" />
-            {/if}
-          </div>
-        </Panel>
+        <ViewportPanel orchestrator={viewportOrchestrator} />
       </div>
       <div class="v-separator" />
       <div class="secondary-contents">
@@ -249,10 +318,6 @@
 
   .main-content {
     @apply flex flex-col w-full;
-  }
-
-  .video-container {
-    @apply h-full w-full;
   }
 
   .v-separator {

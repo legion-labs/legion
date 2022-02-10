@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
-use std::io::Seek;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -11,15 +9,17 @@ use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
 use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
 use lgn_data_compiler::CompilerHash;
-use lgn_data_compiler::{CompiledResource, Manifest};
+use lgn_data_compiler::{CompiledResource, CompiledResources};
 use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
+use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
-use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceReference};
+use crate::output_index::{CompiledResourceInfo, CompiledResourceReference, OutputIndex};
+use crate::source_index::SourceIndex;
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
@@ -80,7 +80,6 @@ fn compute_context_hash(
 ///         .create_with_project(".").await.expect("new build index");
 ///
 /// build.source_pull(&project).await.expect("successful source pull");
-/// let manifest_file = &DataBuild::default_output_file();
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let env = CompilationEnv {
@@ -91,15 +90,14 @@ fn compute_context_hash(
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
-///                         Some(manifest_file.to_path_buf()),
 ///                         &env,
 ///                      ).expect("compilation output");
 /// # })
 /// ```
 #[derive(Debug)]
 pub struct DataBuild {
-    build_index: BuildIndex,
-    //project: Arc<Mutex<Project>>,
+    source_index: SourceIndex,
+    output_index: OutputIndex,
     resource_dir: PathBuf,
     content_store: HddContentStore,
     compilers: CompilerNode,
@@ -125,66 +123,16 @@ impl DataBuild {
         Ok(options.create())
     }
 
-    // todo: should not return the Project
-    pub(crate) async fn new(
-        config: DataBuildOptions,
-        project_dir: &Path,
-    ) -> Result<(Self, Project), Error> {
-        let projectindex_path = Project::root_to_index_path(project_dir);
-        let corrected_path =
-            BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
-
-        let project = Self::open_project(&corrected_path).await?;
-
-        let build_index = BuildIndex::create_new(
-            &config.buildindex_dir,
-            &Project::root_to_index_path(project_dir),
-            Self::version(),
-        )
-        .map_err(|_e| Error::Io)?;
-
+    pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    config.contentstore_path.clone(),
-                    &compilers,
-                )
-            },
-            Ok,
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
+
+        let output_index = OutputIndex::create_new(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
         )?;
-
-        Ok((
-            Self {
-                build_index,
-                //project: Arc::new(Mutex::new(project)),
-                resource_dir: project.resource_dir(),
-                content_store,
-                compilers: CompilerNode::new(compilers, registry),
-            },
-            project,
-        ))
-    }
-
-    pub(crate) async fn new_with_proj(
-        config: DataBuildOptions,
-        project: &Project,
-    ) -> Result<Self, Error> {
-        let project_dir = project.project_dir();
-
-        let build_index = BuildIndex::create_new(
-            &config.buildindex_dir,
-            &Project::root_to_index_path(project_dir),
-            Self::version(),
-        )
-        .map_err(|_e| Error::Io)?;
-
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -199,53 +147,23 @@ impl DataBuild {
         )?;
 
         Ok(Self {
-            build_index,
+            source_index,
+            output_index,
             resource_dir: project.resource_dir(),
             content_store,
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
-    pub(crate) async fn open(config: DataBuildOptions) -> Result<(Self, Project), Error> {
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        let project = build_index.open_project().await?;
-
+    pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    config.contentstore_path.clone(),
-                    &compilers,
-                )
-            },
-            Ok,
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
+        let output_index = OutputIndex::open(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
         )?;
-
-        Ok((
-            Self {
-                build_index,
-                resource_dir: project.resource_dir(),
-                content_store,
-                compilers: CompilerNode::new(compilers, registry),
-            },
-            project,
-        ))
-    }
-
-    pub(crate) async fn open_with_proj(
-        config: DataBuildOptions,
-        project: &Project,
-    ) -> Result<Self, Error> {
-        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
-        // todo: validate project path
-        //let project = build_index.open_project().await?;
-
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -260,134 +178,74 @@ impl DataBuild {
         )?;
 
         Ok(Self {
-            build_index,
+            source_index,
+            output_index,
             resource_dir: project.resource_dir(),
             content_store,
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
-    /// Opens the existing build index.
-    ///
-    /// If the build index does not exist it creates one if a project is present
-    /// in the directory.
     pub(crate) async fn open_or_create(
         config: DataBuildOptions,
-        project_dir: &Path,
-    ) -> Result<(Self, Project), Error> {
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
-            .ok_or(Error::InvalidContentStore)?;
-        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
-            Ok(build_index) => {
-                let project = build_index.open_project().await?;
-
-                let compilers = config.compiler_options.create();
-                let registry = config.registry.map_or_else(
-                    || {
-                        Self::default_asset_registry(
-                            &project.resource_dir(),
-                            config.contentstore_path.clone(),
-                            &compilers,
-                        )
-                    },
-                    Ok,
-                )?;
-
-                Ok((
-                    Self {
-                        build_index,
-                        resource_dir: project.resource_dir(),
-                        content_store,
-                        compilers: CompilerNode::new(compilers, registry),
-                    },
-                    project,
-                ))
-            }
-            Err(Error::NotFound) => Self::new(config, project_dir).await,
-            Err(e) => Err(e),
-        }
-    }
-
-    pub(crate) async fn open_or_create_with_proj(
-        config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
-        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
-            Ok(build_index) => {
-                // todo: validate the two paths
-                //let p = build_index.project_path();
-                //let p2 = project.project_dir();
 
-                let compilers = config.compiler_options.create();
-                let registry = config.registry.map_or_else(
-                    || {
-                        Self::default_asset_registry(
-                            &project.resource_dir(),
-                            config.contentstore_path.clone(),
-                            &compilers,
-                        )
-                    },
-                    Ok,
-                )?;
+        let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-                Ok(Self {
-                    build_index,
-                    resource_dir: project.resource_dir(),
-                    content_store,
-                    compilers: CompilerNode::new(compilers, registry),
-                })
-            }
-            Err(Error::NotFound) => Self::new_with_proj(config, project).await,
+        let output_index = match OutputIndex::open(
+            &OutputIndex::output_index_file(&config.buildindex_dir),
+            Self::version(),
+        ) {
+            Ok(output_index) => Ok(output_index),
+            Err(Error::NotFound) => OutputIndex::create_new(
+                &OutputIndex::output_index_file(&config.buildindex_dir),
+                Self::version(),
+            ),
             Err(e) => Err(e),
-        }
-    }
+        }?;
 
-    async fn open_project(project_dir: &Path) -> Result<Project, Error> {
-        Project::open(project_dir).await.map_err(Error::from)
+        let compilers = config.compiler_options.create();
+        let registry = config.registry.map_or_else(
+            || {
+                Self::default_asset_registry(
+                    &project.resource_dir(),
+                    config.contentstore_path.clone(),
+                    &compilers,
+                )
+            },
+            Ok,
+        )?;
+
+        Ok(Self {
+            source_index,
+            output_index,
+            resource_dir: project.resource_dir(),
+            content_store,
+            compilers: CompilerNode::new(compilers, registry),
+        })
     }
 
     /// Returns a source of a resource id.
     ///
     /// It will return None if the build never recorded a source for a given id.
     pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.build_index.lookup_pathid(id)
+        if let Some(source_index) = self.source_index.current() {
+            if let Some(id) = source_index.lookup_pathid(id) {
+                return Some(id);
+            }
+        }
+        self.output_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub async fn source_pull(&mut self, project: &Project) -> Result<i32, Error> {
-        let mut updated_resources = 0;
-
-        for resource_id in project.resource_list().await {
-            let (kind, resource_hash, resource_deps) = project.resource_info(resource_id)?;
-
-            if self.build_index.update_resource(
-                ResourcePathId::from(ResourceTypeAndId {
-                    id: resource_id,
-                    kind,
-                }),
-                Some(resource_hash),
-                resource_deps.clone(),
-            ) {
-                updated_resources += 1;
-            }
-
-            // add each derived dependency with it's direct dependency listed in deps.
-            for dependency in resource_deps {
-                if let Some(direct_dependency) = dependency.direct_dependency() {
-                    if self
-                        .build_index
-                        .update_resource(dependency, None, vec![direct_dependency])
-                    {
-                        updated_resources += 1;
-                    }
-                }
-            }
-        }
-
-        Ok(updated_resources)
+    pub async fn source_pull(&mut self, project: &Project) -> Result<(), Error> {
+        self.source_index
+            .source_pull(project, Self::version())
+            .await
     }
 
     /// Compile `compile_path` resource and all its dependencies in the build
@@ -406,67 +264,41 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         compile_path: ResourcePathId,
-        manifest_file: Option<PathBuf>,
         env: &CompilationEnv,
-    ) -> Result<Manifest, Error> {
-        let (mut manifest, file) = {
-            if let Some(manifest_file) = manifest_file {
-                if let Ok(file) = OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .append(false)
-                    .open(&manifest_file)
-                {
-                    if file.metadata().unwrap().len() == 0 {
-                        (Manifest::default(), Some(file))
-                    } else {
-                        let manifest_content: Manifest = serde_json::from_reader(&file)
-                            .map_err(|e| Error::InvalidManifest(e.into()))?;
-                        (manifest_content, Some(file))
-                    }
-                } else {
-                    let file = OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create_new(true)
-                        .open(manifest_file)
-                        .map_err(|e| Error::InvalidManifest(e.into()))?;
+    ) -> Result<CompiledResources, Error> {
+        self.compile_with_manifest(compile_path, env, None)
+    }
 
-                    (Manifest::default(), Some(file))
-                }
-            } else {
-                (Manifest::default(), None)
-            }
-        };
+    /// Same as `compile` but it updates the `manifest` provided as an argument.
+    pub fn compile_with_manifest(
+        &mut self,
+        compile_path: ResourcePathId,
+        env: &CompilationEnv,
+        manifest: Option<&Manifest>,
+    ) -> Result<CompiledResources, Error> {
+        self.output_index.record_pathid(&compile_path);
+        let mut result = CompiledResources::default();
 
         let CompileOutput {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(compile_path, env)?;
+        } = self.compile_path(compile_path, env, manifest)?;
 
         let assets = self.link(&resources, &references)?;
 
         for asset in assets {
-            if let Some(existing) = manifest
+            if let Some(existing) = result
                 .compiled_resources
                 .iter_mut()
                 .find(|existing| existing.path == asset.path)
             {
                 *existing = asset;
             } else {
-                manifest.compiled_resources.push(asset);
+                result.compiled_resources.push(asset);
             }
         }
-
-        if let Some(mut file) = file {
-            file.set_len(0).unwrap();
-            file.seek(std::io::SeekFrom::Start(0)).unwrap();
-            manifest.pre_serialize();
-            serde_json::to_writer_pretty(&file, &manifest)
-                .map_err(|e| Error::InvalidManifest(e.into()))?;
-        }
-        Ok(manifest)
+        Ok(result)
     }
 
     /// Compile `compile_node` of the build graph and update *build index* one
@@ -474,7 +306,7 @@ impl DataBuild {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
-        build_index: &mut BuildIndex,
+        output_index: &mut OutputIndex,
         cas_addr: ContentStoreAddr,
         project_dir: &Path,
         compile_node: &ResourcePathId,
@@ -500,7 +332,7 @@ impl DataBuild {
         ) = {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
-                build_index.find_compiled(compile_node, context_hash, source_hash)
+                output_index.find_compiled(compile_node, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -529,7 +361,7 @@ impl DataBuild {
                     )
                     .map_err(Error::Compiler)?;
 
-                build_index.insert_compiled(
+                output_index.insert_compiled(
                     compile_node,
                     context_hash,
                     source_hash,
@@ -583,20 +415,24 @@ impl DataBuild {
         compile_path: ResourcePathId,
         name_parser: impl Fn(&ResourcePathId) -> String,
     ) -> String {
-        let build_graph = self.build_index.generate_build_graph(compile_path);
-        #[rustfmt::skip]
+        if let Some(source_index) = self.source_index.current() {
+            let build_graph = source_index.generate_build_graph(compile_path);
+            #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
             format!("label = \"{}\"", (name_parser)(nr.1))
         };
-        let dot = petgraph::dot::Dot::with_attr_getters(
-            &build_graph,
-            &[petgraph::dot::Config::EdgeNoLabel],
-            &|_, _| String::new(),
-            &inner_getter,
-        );
+            let dot = petgraph::dot::Dot::with_attr_getters(
+                &build_graph,
+                &[petgraph::dot::Config::EdgeNoLabel],
+                &|_, _| String::new(),
+                &inner_getter,
+            );
 
-        format!("{:?}", dot)
+            format!("{:?}", dot)
+        } else {
+            String::new()
+        }
     }
 
     /// Compile a resource identified by [`ResourcePathId`] and all its
@@ -611,10 +447,14 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
+        manifest: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
-        self.build_index.record_pathid(&compile_path);
+        if self.source_index.current().is_none() {
+            return Err(Error::SourceIndex);
+        }
+        let source_index = self.source_index.current().unwrap();
 
-        let build_graph = self.build_index.generate_build_graph(compile_path);
+        let build_graph = source_index.generate_build_graph(compile_path);
 
         let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
             eprintln!("{:?}", build_graph);
@@ -649,7 +489,7 @@ impl DataBuild {
                         .ok_or(Error::CompilerNotFound)?;
                     let compiler_hash = compiler
                         .compiler_hash(transform, env)
-                        .map_err(|_e| Error::Io)?;
+                        .map_err(|e| Error::Io(e.into()))?;
                     Ok((transform, (compiler, compiler_hash)))
                 })
                 .collect::<Result<HashMap<_, _>, Error>>()?
@@ -700,8 +540,7 @@ impl DataBuild {
                 //
                 // this has to be reevaluated in the future.
                 //
-                let dependencies = self
-                    .build_index
+                let dependencies = source_index
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
@@ -719,9 +558,7 @@ impl DataBuild {
                         // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
-                        self.build_index
-                            .compute_source_hash(compile_node.clone())
-                            .get()
+                        source_index.compute_source_hash(compile_node.clone()).get()
                     } else {
                         //
                         // since this is a path-derived resource its hash is equal to the
@@ -736,7 +573,7 @@ impl DataBuild {
 
                         // we can assume there are results of compilation of the `direct_dependency`
                         let compiled = self
-                            .build_index
+                            .output_index
                             .find_compiled(
                                 &direct_dependency.to_unnamed(),
                                 *dep_context_hash,
@@ -762,7 +599,7 @@ impl DataBuild {
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
                 let (resource_infos, resource_references, stats) = Self::compile_node(
-                    &mut self.build_index,
+                    &mut self.output_index,
                     self.content_store.address(),
                     &self.resource_dir,
                     &compile_node,
@@ -774,6 +611,19 @@ impl DataBuild {
                     compiler,
                     self.compilers.registry(),
                 )?;
+
+                // update the CAS manifest with new content in order to make new resources
+                // visible to the next compilation node
+                // NOTE: right now all the resources are visible to all compilation nodes.
+                if let Some(manifest) = &manifest {
+                    for r in &resource_infos {
+                        manifest.insert(
+                            r.compiled_path.resource_id(),
+                            r.compiled_checksum,
+                            r.compiled_size,
+                        );
+                    }
+                }
 
                 // registry must be updated to release any resources that are no longer referenced.
                 self.compilers.registry().update();
@@ -878,7 +728,7 @@ impl DataBuild {
 // todo(kstasik): file IO on destructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
-        self.build_index.flush().unwrap();
+        self.output_index.flush().unwrap();
     }
 }
 

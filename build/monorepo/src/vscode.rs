@@ -23,7 +23,10 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         .iter()
         .filter(|package| {
             package.build_targets().any(|bt| {
-                bt.kind() == BuildTargetKind::Binary && matches!(bt.id(), BuildTargetId::Binary(_))
+                (bt.kind() == BuildTargetKind::Binary
+                    && matches!(bt.id(), BuildTargetId::Binary(_)))
+                    || (matches!(bt.kind(), BuildTargetKind::LibraryOrExample(_))
+                        && matches!(bt.id(), BuildTargetId::Example(_)))
             })
         })
         .collect();
@@ -61,58 +64,80 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let toolchain = toolchain_location().unwrap_or_else(|_| "not_found".into());
     for package in bin_packages {
         for target in package.build_targets() {
-            if let BuildTargetId::Binary(name) = target.id() {
-                let label = format!("build: {}", name);
-                tasks.push(json!({
-                    "type": "cargo",
-                    "command": "mbuild",
-                    "args": [
-                        "--package",
-                        package.name(),
-                        "--bin",
-                        name,
-                    ],
-                    "problemMatcher": [
-                        "$rustc"
-                    ],
-                    "label": label,
-                    "presentation": {
-                        "echo": true,
-                        "reveal": "always",
-                        "focus": false,
-                        "panel": "shared",
-                        "showReuseMessage": true,
-                        "clear": true
-                      }
-                }));
-                // part of the source map is still hardcoded
-                let prelaunch_task = if vscode_config.disable_prelaunch {
-                    ""
-                } else {
-                    label.as_str()
-                };
-                configurations.push(json!({
-                    "name": name,
-                    "type": debugger_type,
-                    "request": "launch",
-                    "program": format!("${{workspaceFolder}}/target/debug/{}.exe", name),
-                    "args": vscode_config.overrides.get(package.name()).map_or_else(
-                        std::vec::Vec::new,
-                        |dict| dict.get("args").unwrap_or(&vec![]).clone()
-                    ),
-                    "stopAtEntry": false,
-                    "cwd": "${workspaceFolder}",
-                    "environment": [],
-                    "console": "integratedTerminal",
-                    "sourceFileMap": {
-                        "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
-                    },
-                    "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
-                    "preLaunchTask":  prelaunch_task,
-                    "visualizerFile": "${workspaceFolder}/.vscode/legionlabs.natvis",
-                    "showDisplayString": true
-                }));
+            if !matches!(target.id(), BuildTargetId::Binary(_))
+                && !matches!(target.id(), BuildTargetId::Example(_))
+            {
+                continue;
             }
+            let (name, display_name) = if let BuildTargetId::Binary(name) = target.id() {
+                (name, name.to_string())
+            } else if let BuildTargetId::Example(name) = target.id() {
+                (name, format!("{} (example)", name))
+            } else {
+                unreachable!();
+            };
+
+            let label = format!("build: {}", display_name);
+            tasks.push(json!({
+                "type": "cargo",
+                "command": "mbuild",
+                "args": [
+                    "--package",
+                    package.name(),
+                    if let BuildTargetId::Example(_name) = target.id() {
+                        "--example"
+                    } else {
+                        "--bin"
+                    },
+                    name,
+                ],
+                "problemMatcher": [
+                    "$rustc"
+                ],
+                "label": label,
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": true
+                    }
+            }));
+            // part of the source map is still hardcoded
+            let prelaunch_task = if vscode_config.disable_prelaunch {
+                ""
+            } else {
+                label.as_str()
+            };
+            configurations.push(json!({
+                "name": display_name,
+                "type": debugger_type,
+                "request": "launch",
+                "program": format!("${{workspaceFolder}}/target/debug{}/{}.exe",
+                    if let BuildTargetId::Example(_name) = target.id() {
+                        "/examples"
+                    } else {
+                        ""
+                    },
+                    name
+                ),
+                "args": vscode_config.overrides.get(package.name()).map_or_else(
+                    std::vec::Vec::new,
+                    |dict| dict.get("args").unwrap_or(&vec![]).clone()
+                ),
+                "stopAtEntry": false,
+                "cwd": "${workspaceFolder}",
+                "environment": [],
+                "console": "integratedTerminal",
+                "sourceFileMap": {
+                    "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
+                },
+                "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
+                "preLaunchTask":  prelaunch_task,
+                "visualizerFile": "${workspaceFolder}/.vscode/legionlabs.natvis",
+                "showDisplayString": true
+            }));
         }
     }
 

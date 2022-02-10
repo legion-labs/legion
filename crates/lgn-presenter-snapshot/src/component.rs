@@ -1,9 +1,11 @@
 #![allow(clippy::missing_errors_doc)]
 
 use lgn_ecs::prelude::Component;
+use lgn_graphics_api::DeviceContext;
 use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
-    RenderContext, Renderer,
+    resources::PipelineManager,
+    RenderContext,
 };
 
 use crate::OffscreenHelper;
@@ -27,23 +29,20 @@ impl PresenterSnapshot {
     pub fn new(
         snapshot_name: &str,
         frame_target: i32,
-        renderer: &Renderer,
+        device_context: &DeviceContext,
+        pipeline_manager: &PipelineManager,
         render_surface_id: RenderSurfaceId,
         resolution: RenderSurfaceExtents,
-    ) -> anyhow::Result<Self> {
-        let offscreen_helper = OffscreenHelper::new(
-            renderer.shader_manager(),
-            renderer.device_context(),
-            resolution,
-        )?;
+    ) -> Self {
+        let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution);
 
-        Ok(Self {
+        Self {
             snapshot_name: snapshot_name.to_string(),
             frame_idx: 0,
             frame_target,
             render_surface_id,
             offscreen_helper,
-        })
+        }
     }
 
     pub(crate) fn present(
@@ -93,7 +92,7 @@ impl PresenterSnapshot {
 impl Presenter for PresenterSnapshot {
     fn resize(
         &mut self,
-        _renderer: &Renderer,
+        _device_context: &DeviceContext,
         _extents: lgn_renderer::components::RenderSurfaceExtents,
     ) {
         unreachable!();

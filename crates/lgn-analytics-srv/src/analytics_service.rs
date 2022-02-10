@@ -68,18 +68,22 @@ impl Drop for RequestGuard {
 
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
-    blob_storage: Arc<dyn BlobStorage>,
+    data_lake_blobs: Arc<dyn BlobStorage>,
     cache: DiskCache,
     call_trees: CallTreeStore,
 }
 
 impl AnalyticsService {
-    pub async fn new(pool: sqlx::AnyPool, blob_storage: Arc<dyn BlobStorage>) -> Result<Self> {
+    pub async fn new(
+        pool: sqlx::AnyPool,
+        data_lake_blobs: Arc<dyn BlobStorage>,
+        cache_blobs: Arc<dyn BlobStorage>,
+    ) -> Result<Self> {
         Ok(Self {
             pool: pool.clone(),
-            blob_storage: blob_storage.clone(),
-            cache: DiskCache::new().await?,
-            call_trees: CallTreeStore::new(pool, blob_storage).await?,
+            data_lake_blobs: data_lake_blobs.clone(),
+            cache: DiskCache::new(cache_blobs.clone()),
+            call_trees: CallTreeStore::new(pool, data_lake_blobs, cache_blobs),
         })
     }
 
@@ -192,7 +196,7 @@ impl AnalyticsService {
                 } else {
                     for_each_log_entry_in_block(
                         &mut connection,
-                        self.blob_storage.clone(),
+                        self.data_lake_blobs.clone(),
                         &stream,
                         &block,
                         |ts, entry| {
@@ -247,9 +251,12 @@ impl AnalyticsService {
 
     async fn list_process_metrics_impl(&self, process_id: &str) -> Result<ProcessMetricsReply> {
         let mut connection = self.pool.acquire().await?;
-        let m =
-            metrics::list_process_metrics(&mut connection, self.blob_storage.clone(), process_id)
-                .await?;
+        let m = metrics::list_process_metrics(
+            &mut connection,
+            self.data_lake_blobs.clone(),
+            process_id,
+        )
+        .await?;
         let time_range =
             metrics::get_process_metrics_time_range(&mut connection, process_id).await?;
         Ok(ProcessMetricsReply {
@@ -268,7 +275,7 @@ impl AnalyticsService {
         lod: u32,
     ) -> Result<ProcessMetricReply> {
         let metric_handler =
-            MetricHandler::new(Arc::clone(&self.blob_storage), Arc::new(self.pool.clone())).await?;
+            MetricHandler::new(Arc::clone(&self.data_lake_blobs), Arc::new(self.pool.clone())).await?;
         Ok(metric_handler
             .fetch_metric(process_id, metric_name, begin_ms, end_ms, lod)
             .await?)

@@ -6,14 +6,14 @@ use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
     components::{CameraComponent, ManipulatorComponent, StaticMesh},
-    resources::{DefaultMaterialType, DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, MeshManager},
 };
 
 use super::{
     position_manipulator::PositionManipulator,
     rotation_manipulator::{RotationComponents, RotationManipulator},
     scale_manipulator::ScaleManipulator,
-    PickingIdBlock, PickingManager,
+    PickingIdContext, PickingManager,
 };
 
 use std::sync::{Arc, Mutex};
@@ -64,35 +64,29 @@ impl ManipulatorPart {
         transform: Transform,
         mesh_id: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
-        picking_block: &mut PickingIdBlock,
-        default_meshes: &DefaultMeshes,
+        picking_context: &mut PickingIdContext<'_>,
+        mesh_manager: &MeshManager,
     ) -> Self {
-        let mut static_mesh = StaticMesh::from_default_meshes(
-            default_meshes,
-            mesh_id as usize,
-            color,
-            DefaultMaterialType::Default,
-        );
-
         let mut entity_commands = commands.spawn();
-
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
-            .insert(ManipulatorComponent {
-                part_type,
-                part_num,
-                local_transform: transform,
-                active: false,
-                selected: false,
-                transparent,
-            })
+            .insert(StaticMesh::new_cpu_only(
+                color,
+                mesh_id as usize,
+                mesh_manager,
+            ))
             .id();
 
-        let picking_id = picking_block.acquire_picking_id(entity).unwrap();
-        static_mesh.picking_id = picking_id;
-
-        entity_commands.insert(static_mesh);
+        entity_commands.insert(ManipulatorComponent {
+            part_type,
+            part_num,
+            local_transform: transform,
+            active: false,
+            selected: false,
+            transparent,
+            picking_id: picking_context.aquire_picking_id(entity),
+        });
 
         Self { _entity: entity }
     }
@@ -218,22 +212,23 @@ impl ManipulatorManager {
     pub fn initialize(
         &mut self,
         mut commands: Commands<'_, '_>,
-        default_meshes: Res<'_, DefaultMeshes>,
+        mesh_manager: Res<'_, MeshManager>,
         picking_manager: Res<'_, PickingManager>,
     ) {
         let mut inner = self.inner.lock().unwrap();
+        let mut picking_context = PickingIdContext::new(&picking_manager);
 
         inner
             .position
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
 
         inner
             .rotation
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
 
         inner
             .scale
-            .add_manipulator_parts(&mut commands, &default_meshes, &picking_manager);
+            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
     }
 
     pub fn current_manipulator_type(&self) -> ManipulatorType {

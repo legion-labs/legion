@@ -1,6 +1,6 @@
 use ash::vk;
 
-use crate::{DeviceContext, GfxResult, Texture, TextureView, TextureViewDef};
+use crate::{DeviceContext, Texture, TextureView, TextureViewDef};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanTextureView {
@@ -8,7 +8,7 @@ pub(crate) struct VulkanTextureView {
 }
 
 impl VulkanTextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> GfxResult<Self> {
+    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
         view_def.verify(texture.definition());
 
         let device_context = texture.device_context();
@@ -36,9 +36,9 @@ impl VulkanTextureView {
             .view_type(view_def.view_dimension.into())
             .format(texture_def.format.into())
             .subresource_range(subresource_range.build());
-        let vk_image_view = unsafe { device.create_image_view(&builder.build(), None)? };
+        let vk_image_view = unsafe { device.create_image_view(&builder.build(), None).unwrap() };
 
-        Ok(Self { vk_image_view })
+        Self { vk_image_view }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {
@@ -52,6 +52,6 @@ impl VulkanTextureView {
 
 impl TextureView {
     pub(crate) fn vk_image_view(&self) -> vk::ImageView {
-        self.inner.platform_texture_view.vk_image_view
+        self.inner.backend_texture_view.vk_image_view
     }
 }

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_data_compiler::Manifest;
+use lgn_data_compiler::CompiledResources;
 
 pub fn target_dir() -> PathBuf {
     env::current_exe()
@@ -26,11 +26,13 @@ pub fn data_build_exe() -> PathBuf {
 fn exec_create_build_index(
     path: impl AsRef<Path>,
     project: impl AsRef<Path>,
+    cas: impl AsRef<Path>,
 ) -> std::io::Result<std::process::Output> {
     let mut command = std::process::Command::new(data_build_exe());
     command.arg("create");
     command.arg(path.as_ref().to_str().unwrap());
     command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
+    command.arg(format!("--cas={}", cas.as_ref().to_str().unwrap()));
     let output = command.output()?;
     assert!(output.status.success());
     Ok(output)
@@ -39,6 +41,7 @@ fn exec_create_build_index(
 fn exec_data_compile(
     compile_path: &str,
     buildindex_dir: &Path,
+    project: &Path,
     destination: &Path,
 ) -> std::io::Result<std::process::Output> {
     let target = "game";
@@ -52,6 +55,7 @@ fn exec_data_compile(
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
     command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+    command.arg(format!("--project={}", project.to_str().unwrap()));
     let output = command.output()?;
     if !output.status.success() {
         println!("'{}'", std::str::from_utf8(&output.stdout).unwrap());
@@ -74,11 +78,13 @@ fn read_build_output(buildindex_dir: &Path) -> String {
 fn incremental_build() {
     let work_dir = tempfile::tempdir().unwrap();
     let sampledata_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let project = sampledata_dir.join("project.index");
+    let project = sampledata_dir;
     let buildindex = work_dir.as_ref().to_owned();
+    let temp_dir = work_dir.path().join("temp");
+    std::fs::create_dir(&temp_dir).unwrap();
 
     // create build index and do a source pull
-    exec_create_build_index(&buildindex, project).expect("new build index");
+    exec_create_build_index(&buildindex, &project, &temp_dir).expect("new build index");
 
     insta::assert_snapshot!("initial_index", read_build_output(&buildindex));
 
@@ -90,9 +96,9 @@ fn incremental_build() {
     // first data build
     //
     let out =
-        exec_data_compile(root_entity, &buildindex, work_dir.path()).expect("build completed");
+        exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
-    let manifest: Manifest = serde_json::from_slice(&out.stdout).expect("valid manifest");
+    let manifest: CompiledResources = serde_json::from_slice(&out.stdout).expect("valid manifest");
     insta::assert_json_snapshot!("first_manifest", manifest);
 
     let first_buildindex = read_build_output(&buildindex);
@@ -102,9 +108,9 @@ fn incremental_build() {
     // incremental data build
     //
     let out =
-        exec_data_compile(root_entity, &buildindex, work_dir.path()).expect("build completed");
+        exec_data_compile(root_entity, &buildindex, &project, &temp_dir).expect("build completed");
 
-    let incremental_manifest: Manifest =
+    let incremental_manifest: CompiledResources =
         serde_json::from_slice(&out.stdout).expect("valid manifest");
 
     insta::assert_json_snapshot!("incremental_manifest", incremental_manifest);

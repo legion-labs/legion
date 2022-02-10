@@ -1,20 +1,25 @@
 #include "crate://lgn-renderer/gpu/pipeline_layout/const_color_pipeline_layout.hlsl"
 
+#include "crate://lgn-renderer/gpu/include/mesh_description.hsh"
+
 struct VertexIn {
     float4 pos : POSITION;
     float4 normal : NORMAL;
+    float4 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
 
-struct VertexOut {  
+struct VertexOut {
     float4 hpos : SV_POSITION;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
-    VertexIn vertex_in = static_buffer.Load<VertexIn>(push_constant.vertex_offset + vertexId * 56);
+    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
+
+    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;
 
     float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, vertex_in.pos));

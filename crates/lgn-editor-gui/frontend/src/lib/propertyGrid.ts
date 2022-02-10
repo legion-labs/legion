@@ -140,6 +140,17 @@ export function propertyIsColor(
   return property.ptype === "Color";
 }
 
+/**
+ * Will return `true` (and implicitly cast) the provided property as a `StringProperty`.
+ * There is no such thing as a `ScriptProperty`, a script property is basically a `StringProperty`
+ * that contains an `editor_type` attribute.
+ */
+export function propertyIsScript(
+  property: ResourceProperty
+): property is StringProperty {
+  return property.ptype === "String" && !!property.attributes.editor_type;
+}
+
 export function propertyIsString(
   property: ResourceProperty
 ): property is StringProperty {

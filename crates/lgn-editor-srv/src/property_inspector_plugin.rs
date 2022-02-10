@@ -2,12 +2,12 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
 use lgn_app::prelude::*;
-use lgn_data_model::collector::collect_properties;
+use lgn_data_model::{collector::collect_properties, ReflectionError};
 use lgn_editor_proto::property_inspector::{
     property_inspector_server::{PropertyInspector, PropertyInspectorServer},
     DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
@@ -75,38 +75,79 @@ impl PropertyInspectorPlugin {
 struct ResourcePropertyCollector;
 impl PropertyCollector for ResourcePropertyCollector {
     type Item = ResourceProperty;
-    fn new_item(item_info: &ItemInfo<'_>) -> anyhow::Result<Self::Item> {
-        let json_value = if let TypeDefinition::Primitive(primitive_descriptor) = item_info.type_def
-        {
-            let mut output = Vec::new();
-            let mut json = serde_json::Serializer::new(&mut output);
+    fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
+        let mut name = item_info
+            .field_descriptor
+            .map_or(String::new(), |field| field.field_name.clone())
+            + item_info.suffix.unwrap_or_default();
 
-            let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
-            #[allow(unsafe_code)]
-            unsafe {
-                (primitive_descriptor.base_descriptor.dynamic_serialize)(
-                    item_info.base,
-                    &mut serializer,
-                )?;
+        let mut ptype: String = item_info.type_def.get_type_name().into();
+        let mut sub_properties = Vec::new();
+        let mut attributes = None;
+        if let Some(field_desc) = &item_info.field_descriptor {
+            attributes = field_desc.attributes.as_ref().cloned();
+        }
+
+        let mut json_value: Option<String> = None;
+
+        match item_info.type_def {
+            TypeDefinition::Struct(struct_descriptor) => {
+                attributes = struct_descriptor.attributes.as_ref().cloned();
             }
-            Some(String::from_utf8(output).unwrap())
-        } else {
-            None
-        };
+
+            TypeDefinition::Primitive(primitive_descriptor) => {
+                let mut output = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut output);
+
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                #[allow(unsafe_code)]
+                unsafe {
+                    (primitive_descriptor.base_descriptor.dynamic_serialize)(
+                        item_info.base,
+                        &mut serializer,
+                    )?;
+                }
+                json_value = Some(String::from_utf8(output).unwrap());
+            }
+            TypeDefinition::Enum(enum_descriptor) => {
+                let mut output = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut output);
+
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                #[allow(unsafe_code)]
+                unsafe {
+                    (enum_descriptor.base_descriptor.dynamic_serialize)(
+                        item_info.base,
+                        &mut serializer,
+                    )?;
+                }
+                json_value = Some(String::from_utf8(output).unwrap());
+                ptype = format!("_enum_:{}", ptype);
+
+                sub_properties = enum_descriptor
+                    .variants
+                    .iter()
+                    .map(|enum_variant| Self::Item {
+                        name: enum_variant.variant_name.clone(),
+                        ptype: "_enumvariant_".into(),
+                        json_value: Some(serde_json::json!(enum_variant.variant_name).to_string()),
+                        sub_properties: Vec::new(),
+                        attributes: enum_variant.attributes.as_ref().map_or(
+                            std::collections::HashMap::default(),
+                            std::clone::Clone::clone,
+                        ),
+                    })
+                    .collect();
+            }
+            _ => {}
+        }
 
         Ok(Self::Item {
-            name: item_info
-                .field_descriptor
-                .map_or(String::new(), |field| field.field_name.clone())
-                + item_info.suffix.unwrap_or_default(),
-            ptype: item_info.type_def.get_type_name().into(),
+            name,
+            ptype,
             json_value,
-            sub_properties: Vec::new(),
-            attributes: item_info
-                .field_descriptor
-                .map_or(std::collections::HashMap::default(), |field| {
-                    field.attributes.clone()
-                }),
+            sub_properties,
+            attributes: attributes.unwrap_or_default(),
         })
     }
     fn add_child(parent: &mut Self::Item, child: Self::Item) {
@@ -159,7 +200,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             .resource_registry
             .get_resource_reflection(resource_id.kind, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID format: {}", request.id)))
-            .map(|reflection| -> anyhow::Result<ResourceProperty> {
+            .map(|reflection| -> Result<ResourceProperty, ReflectionError> {
                 collect_properties::<ResourcePropertyCollector>(reflection)
             })?
             .map_err(|err| Status::internal(err.to_string()))?;

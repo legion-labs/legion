@@ -2,8 +2,9 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage,
-    Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    DeviceContext, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
+    ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
+    TextureViewDef,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -13,10 +14,11 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
+use crate::resources::PipelineManager;
 use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
-    fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
+    fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);
     fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface);
 }
 
@@ -97,8 +99,7 @@ struct SizeDependentResources {
 }
 
 impl SizeDependentResources {
-    fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
-        let device_context = renderer.device_context();
+    fn new(device_context: &DeviceContext, extents: RenderSurfaceExtents) -> Self {
         let texture_def = TextureDef {
             extents: Extents3D {
                 width: extents.width(),
@@ -115,13 +116,13 @@ impl SizeDependentResources {
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
-        let texture = device_context.create_texture(&texture_def).unwrap();
+        let texture = device_context.create_texture(&texture_def);
 
         let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let texture_srv = texture.create_view(&srv_def).unwrap();
+        let texture_srv = texture.create_view(&srv_def);
 
         let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
-        let texture_rtv = texture.create_view(&rtv_def).unwrap();
+        let texture_rtv = texture.create_view(&rtv_def);
 
         let depth_stencil_def = TextureDef {
             extents: Extents3D {
@@ -138,12 +139,11 @@ impl SizeDependentResources {
             tiling: TextureTiling::Optimal,
         };
 
-        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def).unwrap();
+        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def);
         let depth_stencil_texture_view_def =
             TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
-        let depth_stencil_texture_view = depth_stencil_texture
-            .create_view(&depth_stencil_texture_view_def)
-            .unwrap();
+        let depth_stencil_texture_view =
+            depth_stencil_texture.create_view(&depth_stencil_texture_view_def);
 
         Self {
             texture,
@@ -173,8 +173,12 @@ pub struct RenderSurface {
 }
 
 impl RenderSurface {
-    pub fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)
+    pub fn new(
+        renderer: &Renderer,
+        pipeline_manager: &PipelineManager,
+        extents: RenderSurfaceExtents,
+    ) -> Self {
+        Self::new_with_id(RenderSurfaceId::new(), renderer, pipeline_manager, extents)
     }
 
     pub fn extents(&self) -> RenderSurfaceExtents {
@@ -197,11 +201,11 @@ impl RenderSurface {
         self.egui_renderpass.clone()
     }
 
-    pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
+    pub fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents) {
         if self.extents != extents {
-            self.resources = SizeDependentResources::new(renderer, extents);
+            self.resources = SizeDependentResources::new(device_context, extents);
             for presenter in &mut self.presenters {
-                presenter.resize(renderer, extents);
+                presenter.resize(device_context, extents);
             }
             self.extents = extents;
         }
@@ -277,6 +281,7 @@ impl RenderSurface {
     fn new_with_id(
         id: RenderSurfaceId,
         renderer: &Renderer,
+        pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
@@ -288,14 +293,17 @@ impl RenderSurface {
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(renderer, extents),
+            resources: SizeDependentResources::new(device_context, extents),
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(renderer))),
-            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
-            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(renderer))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(
+                device_context,
+                pipeline_manager,
+            ))),
+            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(pipeline_manager))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             presenters: Vec::new(),
         }
     }

@@ -3,5 +3,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lgn_build_utils_web::build_web_app()?;
 
     tauri_build::build();
+
     Ok(())
 }

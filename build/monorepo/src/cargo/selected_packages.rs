@@ -3,9 +3,11 @@
 
 use std::collections::BTreeSet;
 
+use camino::Utf8Path;
 use clap::Args;
 use guppy::graph::{BuildTargetId, DependencyDirection};
 use lgn_tracing::{span_fn, warn};
+use serde::Deserialize;
 
 use crate::changed_since::changed_since_impl;
 use crate::context::Context;
@@ -144,6 +146,44 @@ impl<'a> SelectedPackages<'a> {
         }
     }
 
+    /// Tries to deserialize all the packages metadata (in the workspace),
+    /// if deserialization works, the package metadata and its path are returned in a Vec
+    pub fn get_all_packages_metadata<M: Deserialize<'a>>(
+        &self,
+        ctx: &'a Context,
+    ) -> Result<Vec<(&'a Utf8Path, M)>> {
+        // TODO: The exclude option is ignored for now
+
+        let packages = match self.includes {
+            SelectedInclude::Workspace => ctx
+                .package_graph()?
+                .workspace()
+                .iter_by_path()
+                .filter_map(|(path, package)| {
+                    M::deserialize(package.metadata_table())
+                        .map(|metadata| (path, metadata))
+                        .ok()
+                })
+                .collect(),
+            SelectedInclude::Includes(ref includes) => ctx
+                .package_graph()?
+                .workspace()
+                .iter_by_path()
+                .filter_map(|(path, package)| {
+                    if !includes.contains(package.name()) {
+                        return None;
+                    };
+
+                    M::deserialize(package.metadata_table())
+                        .map(|metadata| (path, metadata))
+                        .ok()
+                })
+                .collect(),
+        };
+
+        Ok(packages)
+    }
+
     /// Adds excludes for this `SelectedPackages`.
     pub fn add_excludes(&mut self, exclude_names: impl IntoIterator<Item = &'a str>) -> &mut Self {
         self.excludes.extend(exclude_names);
@@ -173,6 +213,43 @@ impl<'a> SelectedPackages<'a> {
                     .iter()
                     .any(|p| !self.excludes.contains(p) && *p == package)
             }
+        }
+    }
+
+    /// if the whole workspace is selected, break it down into an includes list
+    pub fn flatten_bins(self, ctx: &'a Context) -> Result<Vec<&str>> {
+        let workspace = ctx.package_graph()?.workspace();
+        match self.includes {
+            SelectedInclude::Workspace => Ok(workspace
+                .iter()
+                .filter_map(|pkg| {
+                    if !self.excludes.contains(pkg.name())
+                        && pkg.build_targets().any(|build_target| {
+                            matches!(build_target.id(), BuildTargetId::Binary(_))
+                        })
+                    {
+                        Some(pkg.name())
+                    } else {
+                        None
+                    }
+                })
+                .collect()),
+            SelectedInclude::Includes(includes) => Ok(includes
+                .iter()
+                .filter_map(|name| {
+                    let pkg = workspace.member_by_name(name);
+                    if pkg.is_ok()
+                        && !self.excludes.contains(name)
+                        && pkg.unwrap().build_targets().any(|build_target| {
+                            matches!(build_target.id(), BuildTargetId::Binary(_))
+                        })
+                    {
+                        Some(*name)
+                    } else {
+                        None
+                    }
+                })
+                .collect()),
         }
     }
 

@@ -5,8 +5,8 @@
 
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
-    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType, TextureView,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
+    ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 use half::prelude::*;
@@ -324,11 +324,17 @@ pub mod prelude {
     pub use crate::Uint4;
 }
 
+//
+// CGenTypeDef
+//
 pub struct CGenTypeDef {
     pub name: &'static str,
     pub size: usize,
 }
 
+//
+// CGenDescriptorDef
+//
 #[derive(Debug, PartialEq)]
 pub struct CGenDescriptorDef {
     pub name: &'static str,
@@ -336,6 +342,12 @@ pub struct CGenDescriptorDef {
     pub flat_index_start: u32,
     pub flat_index_end: u32,
     pub array_size: u32,
+}
+
+impl CGenDescriptorDef {
+    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
+        wrapper.validate(self)
+    }
 }
 
 pub trait ValueWrapper {
@@ -348,10 +360,10 @@ impl ValueWrapper for BufferView {
             ShaderResourceType::ConstantBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
             }
-            ShaderResourceType::ByteAdressBuffer | ShaderResourceType::StructuredBuffer => {
+            ShaderResourceType::ByteAddressBuffer | ShaderResourceType::StructuredBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
             }
-            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAddressBuffer => {
                 self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::UnorderedAccess
             }
             ShaderResourceType::Sampler
@@ -394,16 +406,14 @@ impl ValueWrapper for TextureView {
 
 impl ValueWrapper for &[&TextureView] {
     fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
-        false
-    }
-}
-
-//
-// CGenDescriptorDef
-//
-impl CGenDescriptorDef {
-    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
-        wrapper.validate(self)
+        let mut valid = true;
+        for index in 0..self.len() {
+            let res_def = self[index].definition();
+            if res_def.array_size != 1 {
+                valid = false;
+            }
+        }
+        valid
     }
 }
 
@@ -431,17 +441,113 @@ pub struct CGenPipelineLayoutDef {
 }
 
 //
-// CGenShaderDef
+// CGenCrateID
 //
-#[derive(Default, Debug, PartialEq)]
-pub struct CGenShaderDef {}
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct CGenCrateID(pub u8);
+
+//
+// CGenShaderFamilyID
+//
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct CGenShaderFamilyID(pub u16);
+
+impl CGenShaderFamilyID {
+    pub const fn make(crate_id: CGenCrateID, family_idx: u64) -> Self {
+        let crate_id = crate_id.0 as u16;
+        let family_idx = family_idx as u16;
+        Self(crate_id << 8 | family_idx)
+    }
+}
+
+//
+// CGenShaderOptionMask
+//
+pub type CGenShaderOptionMask = u64;
+
+//
+// CGenShaderKey
+//
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(packed)]
+pub struct CGenShaderKey(u64);
+
+impl CGenShaderKey {
+    // u16: family_id
+    // u48: options
+    const SHADER_FAMILY_OFFSET: usize = 0;
+    const SHADER_FAMILY_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
+    const SHADER_FAMILY_MASK: u64 = (1 << Self::SHADER_FAMILY_BITCOUNT) - 1;
+
+    pub const MAX_SHADER_OPTIONS: usize =
+        std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
+
+    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_BITCOUNT;
+    const SHADER_OPTIONS_BITCOUNT: usize = Self::MAX_SHADER_OPTIONS;
+    const SHADER_OPTIONS_MASK: u64 = (1 << Self::SHADER_OPTIONS_BITCOUNT) - 1;
+
+    pub const fn make(
+        shader_family_id: CGenShaderFamilyID,
+        shader_option_mask: CGenShaderOptionMask,
+    ) -> Self {
+        let shader_family_id = shader_family_id.0 as u64;
+        // static_assertions::const_assert_eq!(shader_family_id & Self::SHADER_FAMILY_MASK, 0);
+        let shader_option_mask = shader_option_mask as u64;
+        // static_assertions::const_assert_eq!(shader_option_mask & Self::SHADER_OPTIONS_MASK, 0);
+        Self(
+            ((shader_family_id & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
+                | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
+        )
+    }
+
+    pub fn shader_family_id(self) -> CGenShaderFamilyID {
+        let family_id = (self.0 >> Self::SHADER_FAMILY_OFFSET) & Self::SHADER_FAMILY_MASK;
+        CGenShaderFamilyID(family_id.try_into().unwrap())
+    }
+
+    pub fn shader_option_mask(self) -> CGenShaderOptionMask {
+        (self.0 >> Self::SHADER_OPTIONS_OFFSET) & Self::SHADER_OPTIONS_MASK
+    }
+}
+
+//
+// CGenShaderFamily
+//
+pub struct CGenShaderFamily {
+    pub id: CGenShaderFamilyID,
+    pub name: &'static str,
+    pub path: &'static str,
+    pub options: &'static [CGenShaderOption],
+    pub instances: &'static [CGenShaderInstance],
+}
+
+//
+// CGenShaderOption
+//
+pub struct CGenShaderOption {
+    // pub shader_family_id: CGenShaderFamilyID,
+    pub index: u8,
+    pub name: &'static str,
+}
+
+//
+// CGenShaderInstance
+//
+pub struct CGenShaderInstance {
+    pub key: CGenShaderKey,
+    pub stage_flags: ShaderStageFlags,
+}
 
 //
 // CGenRegistry
 //
 pub struct CGenRegistry {
     shutdown_fn: fn(),
+
+    // static
     type_defs: Vec<&'static CGenTypeDef>,
+    pub shader_families: Vec<&'static CGenShaderFamily>,
+    // dynamic
     descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pipeline_layouts: Vec<RootSignature>,
 }
@@ -453,6 +559,7 @@ impl CGenRegistry {
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),
+            shader_families: Vec::new(),
         }
     }
 
@@ -534,13 +641,16 @@ impl CGenRegistry {
 //
 // CGenRegistryList
 //
-
 #[derive(Default)]
 pub struct CGenRegistryList {
     registry_list: Vec<CGenRegistry>,
 }
 
 impl CGenRegistryList {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn push(&mut self, registry: CGenRegistry) {
         self.registry_list.push(registry);
     }

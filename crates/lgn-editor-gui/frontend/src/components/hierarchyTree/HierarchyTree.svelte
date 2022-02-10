@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { Entry, Entries } from "@/lib/hierarchyTree";
-  import keyboardNavigation from "@lgn/frontend/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/frontend/src/stores/keyboardNavigation";
+  import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
+  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import Inner from "./Inner.svelte";
 
   type Item = $$Generic;
@@ -11,8 +11,12 @@
     name: { itemName: string };
   };
 
-  const dispatch =
-    createEventDispatcher<{ highlight: Entry<Item>; select: Entry<Item> }>();
+  const dispatch = createEventDispatcher<{
+    highlight: Entry<Item>;
+    select: Entry<Item>;
+    nameEdited: { entry: Entry<Item>; newName: string };
+    removed: Entry<Item>;
+  }>();
 
   // Can be extracted if needed
   const keyboardNavigationStore = new KeyboardNavigationStore();
@@ -21,7 +25,9 @@
 
   export let highlightedItem: Item | null = null;
 
-  let currentlyRenameEntry: Entry<Item> | null = null;
+  export let currentlyRenameEntry: Entry<Item> | null = null;
+
+  let hierarchyTree: HTMLElement | null;
 
   $: highlightedEntry =
     entries.find((entry) => entry.item === highlightedItem) || null;
@@ -32,8 +38,11 @@
       )
     : null;
 
-  // TODO: Use props instead of the `edit` function?
-  export function edit(item: Item) {
+  $: if (!currentlyRenameEntry) {
+    focus();
+  }
+
+  export function startNameEdit(item: Item) {
     const entry = entries.find((entry) => entry.item === item);
 
     if (!entry) {
@@ -43,7 +52,6 @@
     currentlyRenameEntry = entry;
   }
 
-  // TODO: Use props instead of the `remove` function?
   export function remove(item: Item) {
     const entry = entries.find((entry) => entry.item === item);
 
@@ -52,10 +60,12 @@
     }
 
     entries = entries.remove(entry);
+
+    dispatch("removed", entry);
   }
 
   function select() {
-    if (!highlightedEntry) {
+    if (!highlightedEntry || currentlyRenameEntry) {
       return;
     }
 
@@ -68,6 +78,8 @@
     entries = entries.update((entry) =>
       updatedEntry === entry ? { ...entry, name: newName } : null
     );
+
+    dispatch("nameEdited", { entry: updatedEntry, newName });
   }
 
   function setHighlightedEntry(entry: Entry<Item>) {
@@ -81,7 +93,7 @@
   function setHighlightedEntryWithIndex({
     detail: index,
   }: CustomEvent<number>) {
-    const entry = entries.find((entry) => entry.index === index);
+    const entry = entries.getFromIndex(index);
 
     if (!entry) {
       return;
@@ -89,25 +101,35 @@
 
     setHighlightedEntry(entry);
   }
+
+  function focus() {
+    if (hierarchyTree) {
+      hierarchyTree.focus();
+    }
+  }
 </script>
 
 <div
   class="root"
   on:navigation-change={setHighlightedEntryWithIndex}
   on:navigation-select={select}
+  on:navigation-rename={() => highlightedItem && startNameEdit(highlightedItem)}
+  on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
   use:keyboardNavigation={{
     size: entries.size,
     store: keyboardNavigationStore,
   }}
+  bind:this={hierarchyTree}
 >
-  {#each entries.entries as entry (entry.name)}
+  {#each entries.entries as entry (entry.index)}
     <Inner
+      index={entry.index}
       {entry}
       {highlightedEntry}
       bind:currentlyRenameEntry
       on:dblclick={select}
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
-      on:nameChange={setName}
+      on:nameEdited={setName}
       let:itemName
     >
       <slot name="name" slot="name" {itemName} />

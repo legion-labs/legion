@@ -1,6 +1,6 @@
 ---
 source: tests/sample-data/tests/build.rs
-assertion_line: 110
+assertion_line: 112
 expression: incremental_manifest
 
 ---
@@ -68,8 +68,8 @@ expression: incremental_manifest
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",
-      "checksum": "897d7a1dbc4b6cb0ac2289c9086d3783",
-      "size": 251
+      "checksum": "34bd6cdce88ed691981f1f6bec602dd8",
+      "size": 247
     },
     {
       "path": "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)|e5c099cc30495fed",
@@ -113,8 +113,8 @@ expression: incremental_manifest
     },
     {
       "path": "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)|1d9ddd99aad89045",
-      "checksum": "1d715d8f22da820eb0d512cff2f03411",
-      "size": 347
+      "checksum": "19d19555b24e0c328565ff6ee36674e9",
+      "size": 343
     },
     {
       "path": "(09cde0390abe0694,db051b98-6ff5-4bac-bea8-50b5a13c3f1b)|e0d46a6b35b5717e",

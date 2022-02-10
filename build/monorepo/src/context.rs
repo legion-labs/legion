@@ -9,6 +9,7 @@ use monorepo_base::config::MONOREPO_DEPTH;
 use monorepo_base::installer::Installer;
 use once_cell::sync::OnceCell;
 
+use crate::cargo::current_target_cfg;
 use crate::config::MonorepoConfig;
 use crate::git::GitCli;
 use crate::Error;
@@ -22,6 +23,7 @@ pub struct Context {
     installer: Installer,
     package_graph: OnceCell<PackageGraph>,
     git_cli: OnceCell<GitCli>,
+    target_config: OnceCell<String>,
 }
 
 impl Context {
@@ -58,6 +60,7 @@ impl Context {
             installer,
             package_graph: OnceCell::new(),
             git_cli: OnceCell::new(),
+            target_config: OnceCell::new(),
         })
     }
     pub fn config(&self) -> &MonorepoConfig {
@@ -88,6 +91,13 @@ impl Context {
 
     pub fn workspace_root(&self) -> &'static Utf8Path {
         self.workspace_root
+    }
+
+    pub fn target_config(&self) -> Result<&String> {
+        self.target_config.get_or_try_init(|| {
+            span_scope!("Context::target_config::init");
+            current_target_cfg()
+        })
     }
 
     /// Returns the current working directory for this process.

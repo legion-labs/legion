@@ -18,7 +18,7 @@ lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
 lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
 lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
 lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
-lgn-browser = { path = "../lgn-browser", version = "0.1.0" }
+lgn-web-client = { path = "../lgn-web-client", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 anyhow = "1.0.44"
@@ -57,3 +57,7 @@ custom-protocol = ["tauri/custom-protocol"]
 [[bin]]
 name = "perf-report"
 path = "perf-report/src/main.rs"
+
+[package.metadata.npm]
+name = "editor"
+path = "frontend"

@@ -22,7 +22,7 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_renderer::resources::DefaultMeshes;
+use lgn_renderer::resources::{GpuUniformData, GpuUniformDataContext, MeshManager};
 use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data::runtime as runtime_data;
@@ -81,6 +81,7 @@ impl AssetRegistryPlugin {
                 manifest.clone(),
                 &databuild_config.build_bin,
                 &databuild_config.buildindex,
+                &databuild_config.project,
                 false,
             );
         } else {
@@ -126,13 +127,16 @@ impl AssetRegistryPlugin {
 
     #[allow(clippy::needless_pass_by_value)]
     fn update_assets(
-        registry: ResMut<'_, Arc<AssetRegistry>>,
+        registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
         mut commands: Commands<'_, '_>,
-        default_meshes: Res<'_, DefaultMeshes>,
+        mesh_manager: Res<'_, MeshManager>,
+        uniform_data: Res<'_, GpuUniformData>,
     ) {
+        let mut data_context = GpuUniformDataContext::new(&uniform_data);
+
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
@@ -144,49 +148,56 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_scripting::runtime::Script>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &default_meshes,
+                            &mesh_manager,
+                            &mut data_context,
                         ) {
                             error!(
                                 "Unhandled runtime type: {}, asset: {}",

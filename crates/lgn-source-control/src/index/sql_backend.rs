@@ -1,15 +1,18 @@
-use core::fmt;
-use std::sync::Arc;
-
+use async_recursion::async_recursion;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use reqwest::Url;
 use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    sync::Arc,
+};
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::SqlConnectionPool, BlobStorageUrl, Branch, ChangeType, Commit, Error, HashedChange,
-    IndexBackend, Lock, MapOtherError, Result, Tree, TreeNode, TreeNodeType, WorkspaceRegistration,
+    sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
+    Error, FileInfo, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock,
+    MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -86,8 +89,8 @@ pub struct SqlIndexBackend {
     blob_storage_url: BlobStorageUrl,
 }
 
-impl fmt::Debug for SqlIndexBackend {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for SqlIndexBackend {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SqlIndexBackend")
             .field("driver", &self.driver)
             .field("blob_storage_url", &self.blob_storage_url)
@@ -100,6 +103,7 @@ impl SqlIndexBackend {
     const TABLE_COMMIT_PARENTS: &'static str = "commit_parents";
     const TABLE_COMMIT_CHANGES: &'static str = "commit_changes";
     const TABLE_FOREST: &'static str = "forest";
+    const TABLE_FOREST_LINKS: &'static str = "forest_links";
     const TABLE_BRANCHES: &'static str = "branches";
     const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
     const TABLE_LOCKS: &'static str = "locks";
@@ -197,10 +201,10 @@ impl SqlIndexBackend {
 
     async fn create_commits_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), unique (id));
+        "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), UNIQUE (id));
          CREATE TABLE `{}` (id VARCHAR(255), parent_id TEXT);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
+         CREATE TABLE `{}` (commit_id VARCHAR(255) NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER);
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
          Self::TABLE_COMMIT_PARENTS,
@@ -216,11 +220,15 @@ impl SqlIndexBackend {
     }
 
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
-        let sql: &str=  &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255), hash CHAR(64), parent_tree_hash CHAR(64), node_type INTEGER);
-         CREATE INDEX tree on {}(parent_tree_hash);",
-         Self::TABLE_FOREST,
-         Self::TABLE_FOREST
+        let sql: &str = &format!(
+            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), hash VARCHAR(255), size INTEGER);
+            CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id), FOREIGN KEY (child_id) REFERENCES `{}`(id));
+            CREATE INDEX forest_links_index on `{}`(id);",
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST_LINKS,
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST,
+            Self::TABLE_FOREST_LINKS,
         );
 
         conn.execute(sql)
@@ -231,7 +239,9 @@ impl SqlIndexBackend {
 
     async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64), unique (name));",
+        "CREATE TABLE `{}` (name VARCHAR(255) PRIMARY KEY, head VARCHAR(255), lock_domain_id VARCHAR(64));
+        CREATE INDEX branches_lock_domain_ids_index on `{}`(lock_domain_id);",
+        Self::TABLE_BRANCHES,
         Self::TABLE_BRANCHES
         );
 
@@ -243,7 +253,7 @@ impl SqlIndexBackend {
 
     async fn create_workspace_registrations_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), unique (id));",
+            "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), UNIQUE (id));",
             Self::TABLE_WORKSPACE_REGISTRATIONS,
         );
 
@@ -255,7 +265,7 @@ impl SqlIndexBackend {
 
     async fn create_locks_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255), unique (relative_path, lock_domain_id));
+        "CREATE TABLE `{}` (lock_domain_id VARCHAR(64), canonical_path VARCHAR(512), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (lock_domain_id, canonical_path));
         ",
         Self::TABLE_LOCKS
         );
@@ -269,32 +279,20 @@ impl SqlIndexBackend {
     async fn initialize_repository_data(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     ) -> Result<()> {
-        let lock_domain_id = uuid::Uuid::new_v4().to_string();
-        let root_tree = Tree::empty();
-        let root_hash = root_tree.hash();
+        let tree = Tree::empty();
+        let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
 
-        Self::save_tree_transactional(transaction, &root_tree, &root_hash).await?;
-
-        let id = uuid::Uuid::new_v4().to_string();
-        let timestamp = Utc::now();
-        let initial_commit = Commit::new(
-            id,
+        let initial_commit = Commit::new_unique_now(
             whoami::username(),
             String::from("initial commit"),
-            Vec::new(),
-            root_hash,
-            Vec::new(),
-            timestamp,
+            BTreeSet::new(),
+            tree_id,
+            BTreeSet::new(),
         );
 
         Self::insert_commit_transactional(transaction, &initial_commit).await?;
 
-        let main_branch = Branch::new(
-            String::from("main"),
-            initial_commit.id,
-            String::new(),
-            lock_domain_id,
-        );
+        let main_branch = Branch::new(String::from("main"), initial_commit.id);
 
         Self::insert_branch_transactional(transaction, &main_branch).await?;
 
@@ -308,13 +306,13 @@ impl SqlIndexBackend {
     ) -> Result<Branch> {
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
-                "SELECT head, parent, lock_domain_id
+                "SELECT head, lock_domain_id
                      FROM `{}`
                      WHERE name = ?;",
                 Self::TABLE_BRANCHES
             ),
             SqlDatabaseDriver::Mysql(_) => format!(
-                "SELECT head, parent, lock_domain_id
+                "SELECT head, lock_domain_id
                      FROM `{}`
                      WHERE name = ?
                      FOR UPDATE;",
@@ -328,12 +326,11 @@ impl SqlIndexBackend {
             .await
             .map_other_err("failed to read the branch from MySQL")?;
 
-        Ok(Branch::new(
-            String::from(name),
-            row.get("head"),
-            row.get("parent"),
-            row.get("lock_domain_id"),
-        ))
+        Ok(Branch {
+            name: name.to_string(),
+            head: row.get("head"),
+            lock_domain_id: row.get("lock_domain_id"),
+        })
     }
 
     async fn insert_branch_transactional(
@@ -341,17 +338,148 @@ impl SqlIndexBackend {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, ?, ?);",
             Self::TABLE_BRANCHES
         ))
-        .bind(branch.name.clone())
-        .bind(branch.head.clone())
-        .bind(branch.parent.clone())
-        .bind(branch.lock_domain_id.clone())
+        .bind(&branch.name)
+        .bind(&branch.head)
+        .bind(&branch.lock_domain_id)
         .execute(transaction)
         .await
         .map_other_err(&format!("failed to insert the branch `{}`", &branch.name))
         .map(|_| ())
+    }
+
+    async fn list_commits_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        query: &ListCommitsQuery<'_>,
+    ) -> Result<Vec<Commit>> {
+        let mut result = Vec::new();
+        result.reserve(1024);
+        let mut next_commit_ids: VecDeque<String> =
+            query.commit_ids.iter().copied().map(Into::into).collect();
+
+        let mut depth = Some(query.depth).filter(|d| *d > 0);
+
+        while let Some(commit_id) = next_commit_ids.pop_front() {
+            if result.len() >= result.capacity() {
+                break;
+            }
+
+            if let Some(depth) = &mut depth {
+                if *depth == 0 {
+                    break;
+                }
+
+                *depth -= 1;
+            }
+
+            let changes = sqlx::query(&format!(
+                "SELECT canonical_path, old_hash, new_hash, old_size, new_size
+             FROM `{}`
+             WHERE commit_id = ?;",
+                Self::TABLE_COMMIT_CHANGES,
+            ))
+            .bind(&commit_id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to fetch commit changes for commit `{}`",
+                &commit_id
+            ))?
+            .into_iter()
+            .filter_map(|row| {
+                if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
+                    let old_hash: String = row.get("old_hash");
+
+                    let old_info = if !old_hash.is_empty() {
+                        let old_size: i64 = row.get("old_size");
+
+                        Some(FileInfo {
+                            hash: old_hash,
+                            size: old_size as u64,
+                        })
+                    } else {
+                        None
+                    };
+
+                    let new_hash: String = row.get("new_hash");
+                    let new_info = if !new_hash.is_empty() {
+                        let new_size: i64 = row.get("new_size");
+
+                        Some(FileInfo {
+                            hash: new_hash,
+                            size: new_size as u64,
+                        })
+                    } else {
+                        None
+                    };
+
+                    ChangeType::new(old_info, new_info)
+                        .map(|change_type| Change::new(canonical_path, change_type))
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeSet<_>>();
+
+            let parents: BTreeSet<String> = sqlx::query(&format!(
+                "SELECT parent_id
+             FROM `{}`
+             WHERE id = ?;",
+                Self::TABLE_COMMIT_PARENTS,
+            ))
+            .bind(&commit_id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to fetch parents for commit `{}`",
+                &commit_id
+            ))?
+            .into_iter()
+            .map(|row| row.get("parent_id"))
+            .collect();
+
+            next_commit_ids.extend(parents.iter().cloned());
+
+            result.push(
+                match sqlx::query(&format!(
+                    "SELECT owner, message, root_hash, date_time_utc 
+             FROM `{}`
+             WHERE id = ?;",
+                    Self::TABLE_COMMITS
+                ))
+                .bind(&commit_id)
+                .fetch_one(&mut *transaction)
+                .await
+                {
+                    Ok(row) => {
+                        let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
+                            .unwrap()
+                            .into();
+
+                        Commit::new(
+                            String::from(&commit_id),
+                            row.get("owner"),
+                            row.get("message"),
+                            changes,
+                            row.get("root_hash"),
+                            parents,
+                            timestamp,
+                        )
+                    }
+                    Err(sqlx::Error::RowNotFound) => {
+                        return Err(Error::commit_not_found(commit_id));
+                    }
+                    Err(err) => {
+                        return Err(err)
+                            .map_other_err(format!("failed to fetch commit `{}`", commit_id));
+                    }
+                },
+            );
+        }
+
+        Ok(result)
     }
 
     async fn insert_commit_transactional(
@@ -365,7 +493,7 @@ impl SqlIndexBackend {
         .bind(commit.id.clone())
         .bind(commit.owner.clone())
         .bind(commit.message.clone())
-        .bind(commit.root_hash.clone())
+        .bind(commit.root_tree_id.clone())
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await
@@ -388,13 +516,39 @@ impl SqlIndexBackend {
 
         for change in &commit.changes {
             sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?, ?);",
                 Self::TABLE_COMMIT_CHANGES
             ))
             .bind(commit.id.clone())
-            .bind(change.relative_path.clone())
-            .bind(change.hash.clone())
-            .bind(change.change_type.clone() as i64)
+            .bind(change.canonical_path().to_string())
+            .bind(
+                change
+                    .change_type()
+                    .old_info()
+                    .map(|info| info.hash.as_str())
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .new_info()
+                    .map(|info| info.hash.as_str())
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .old_info()
+                    .map(|info| i64::try_from(info.size).unwrap_or(0))
+                    .unwrap_or_default(),
+            )
+            .bind(
+                change
+                    .change_type()
+                    .new_info()
+                    .map(|info| i64::try_from(info.size).unwrap_or(0))
+                    .unwrap_or_default(),
+            )
             .execute(&mut *transaction)
             .await
             .map_other_err(format!(
@@ -411,12 +565,11 @@ impl SqlIndexBackend {
         branch: &Branch,
     ) -> Result<()> {
         sqlx::query(&format!(
-            "UPDATE `{}` SET head=?, parent=?, lock_domain_id=?
+            "UPDATE `{}` SET head=?, lock_domain_id=?
              WHERE name=?;",
             Self::TABLE_BRANCHES
         ))
         .bind(branch.head.clone())
-        .bind(branch.parent.clone())
         .bind(branch.lock_domain_id.clone())
         .bind(branch.name.clone())
         .execute(executor)
@@ -429,118 +582,230 @@ impl SqlIndexBackend {
     async fn save_tree_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         tree: &Tree,
-        hash: &str,
-    ) -> Result<()> {
-        let tree_in_db = Self::read_tree_transactional(&mut *transaction, hash).await?;
-
-        if !tree.is_empty() && !tree_in_db.is_empty() {
-            return Ok(());
-        }
-
-        for file_node in &tree.file_nodes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                Self::TABLE_FOREST,
-            ))
-            .bind(file_node.name.clone())
-            .bind(file_node.hash.clone())
-            .bind(hash)
-            .bind(TreeNodeType::File as i64)
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(&format!(
-                "failed to insert file node `{}` into tree `{}`",
-                file_node.name, hash
-            ))?;
-        }
-
-        for dir_node in &tree.directory_nodes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                Self::TABLE_FOREST
-            ))
-            .bind(dir_node.name.clone())
-            .bind(dir_node.hash.clone())
-            .bind(hash)
-            .bind(TreeNodeType::Directory as i64)
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(&format!(
-                "failed to insert directory node `{}` into tree `{}`",
-                dir_node.name, hash
-            ))?;
-        }
-
-        Ok(())
+    ) -> Result<String> {
+        Self::save_tree_node_transactional(transaction, None, tree).await
     }
 
-    async fn read_tree_transactional(
+    async fn tree_node_exists(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-        tree_hash: &str,
-    ) -> Result<Tree> {
-        let mut directory_nodes: Vec<TreeNode> = Vec::new();
-        let mut file_nodes: Vec<TreeNode> = Vec::new();
-
-        let rows = sqlx::query(&format!(
-            "SELECT name, hash, node_type
-             FROM `{}`
-             WHERE parent_tree_hash = ?
-             ORDER BY name;",
+        id: &str,
+    ) -> Result<bool> {
+        Ok(sqlx::query(&format!(
+            "SELECT COUNT(1) FROM `{}` WHERE id = ?",
             Self::TABLE_FOREST
         ))
-        .bind(tree_hash)
-        .fetch_all(transaction)
+        .bind(&id)
+        .fetch_one(&mut *transaction)
         .await
-        .map_other_err(&format!(
-            "failed to fetch tree nodes for tree `{}`",
-            tree_hash
-        ))?;
+        .map_other_err(format!("failed to check for tree node `{}` existence", id))
+        .map(|row| row.get::<i32, _>(0))?
+            > 0)
+    }
 
-        for row in rows {
-            let name: String = row.get("name");
-            let hash: String = row.get("hash");
-            let node_type: i64 = row.get("node_type");
-            let node = TreeNode { name, hash };
+    #[async_recursion]
+    async fn save_tree_node_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        parent_id: Option<&'async_recursion str>,
+        tree: &Tree,
+    ) -> Result<String> {
+        let id = tree.id();
 
-            if node_type == TreeNodeType::Directory as i64 {
-                directory_nodes.push(node);
-            } else if node_type == TreeNodeType::File as i64 {
-                file_nodes.push(node);
+        // We only insert the tree node if it doesn't exist already.
+        if !Self::tree_node_exists(&mut *transaction, &id).await? {
+            let sql = &format!(
+                "INSERT INTO `{}` (id, name, hash, size) VALUES(?, ?, ?, ?);",
+                Self::TABLE_FOREST,
+            );
+
+            match tree {
+                Tree::Directory { name, children } => {
+                    sqlx::query(sql)
+                        .bind(&id)
+                        .bind(name)
+                        .bind(Option::<String>::None)
+                        .bind(Option::<i64>::None)
+                        .execute(&mut *transaction)
+                        .await
+                        .map_other_err(&format!(
+                            "failed to insert tree directory node `{}`",
+                            &id
+                        ))?;
+
+                    for child in children.values() {
+                        Self::save_tree_node_transactional(transaction, Some(&id), child).await?;
+                    }
+                }
+                Tree::File { name, info } => {
+                    sqlx::query(sql)
+                        .bind(&id)
+                        .bind(name)
+                        .bind(Some(&info.hash))
+                        .bind(Some(i64::try_from(info.size).unwrap_or(0)))
+                        .execute(&mut *transaction)
+                        .await
+                        .map_other_err(&format!("failed to insert tree file node `{}`", &id))?;
+                }
             }
         }
 
-        Ok(Tree {
-            directory_nodes,
-            file_nodes,
+        // Even if the tree node existed, the relationship should not exist already.
+        if let Some(parent_id) = parent_id {
+            sqlx::query(&format!(
+                "INSERT INTO `{}` (id, child_id) VALUES(?, ?);",
+                Self::TABLE_FOREST_LINKS,
+            ))
+            .bind(parent_id)
+            .bind(&id)
+            .execute(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to create link between node {} and its parent {}",
+                id, parent_id
+            ))?;
+        }
+
+        Ok(id)
+    }
+
+    async fn get_tree_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        id: &str,
+    ) -> Result<Tree> {
+        let row = sqlx::query(&format!(
+            "SELECT name, hash, size
+             FROM `{}`
+             WHERE id = ?;",
+            Self::TABLE_FOREST
+        ))
+        .bind(id)
+        .fetch_one(&mut *transaction)
+        .await
+        .map_other_err(format!("failed to fetch tree node `{}`", id))?;
+
+        let name = row.get("name");
+        let hash: String = row.get("hash");
+
+        let info = if !hash.is_empty() {
+            let size: i64 = row.get("size");
+
+            Some(FileInfo {
+                hash,
+                size: size as u64,
+            })
+        } else {
+            None
+        };
+
+        let tree = Self::read_tree_node_transactional(transaction, id, name, info).await?;
+
+        #[cfg(debug_assertions)]
+        assert!(
+            !(tree.id() != id),
+            "tree node `{}` was not saved correctly",
+            id
+        );
+
+        Ok(tree)
+    }
+
+    #[async_recursion]
+    async fn read_tree_node_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        id: &str,
+        name: String,
+        info: Option<FileInfo>,
+    ) -> Result<Tree> {
+        Ok(if let Some(info) = info {
+            Tree::File { info, name }
+        } else {
+            let child_ids = sqlx::query(&format!(
+                "SELECT child_id
+                 FROM `{}`
+                 WHERE id = ?;",
+                Self::TABLE_FOREST_LINKS
+            ))
+            .bind(&id)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_other_err(format!("failed to fetch children for tree node `{}`", &id))?
+            .into_iter()
+            .map(|row| row.get::<String, _>("child_id"))
+            .collect::<Vec<String>>();
+
+            let mut children = BTreeMap::new();
+
+            for child_id in child_ids {
+                let row = sqlx::query(&format!(
+                    "SELECT name, hash, size
+                    FROM `{}`
+                    WHERE id = ?;",
+                    Self::TABLE_FOREST
+                ))
+                .bind(&child_id)
+                .fetch_one(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to fetch children for tree node data `{}`",
+                    &child_id
+                ))?;
+
+                let name: String = row.get("name");
+                let hash: String = row.get("hash");
+
+                let info = if !hash.is_empty() {
+                    let size: i64 = row.get("size");
+
+                    Some(FileInfo {
+                        hash,
+                        size: size as u64,
+                    })
+                } else {
+                    None
+                };
+
+                let child =
+                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, info)
+                        .await?;
+
+                children.insert(child.name().to_string(), child);
+            }
+
+            Tree::Directory { name, children }
         })
     }
 
-    async fn find_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+    async fn get_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
         lock_domain_id: &str,
-        relative_path: &str,
-    ) -> Result<Option<Lock>> {
-        Ok(sqlx::query(&format!(
+        canonical_path: &CanonicalPath,
+    ) -> Result<Lock> {
+        match sqlx::query(&format!(
             "SELECT workspace_id, branch_name
              FROM `{}`
              WHERE lock_domain_id=?
-             AND relative_path=?;",
+             AND canonical_path=?;",
             Self::TABLE_LOCKS,
         ))
         .bind(lock_domain_id)
-        .bind(relative_path)
+        .bind(canonical_path.to_string())
         .fetch_optional(executor)
         .await
         .map_other_err(&format!(
-            "failed to find lock `{}` in domain `{}`",
-            relative_path, lock_domain_id,
+            "failed to find lock `{}/{}`",
+            lock_domain_id, canonical_path,
         ))?
         .map(|row| Lock {
-            relative_path: String::from(relative_path),
-            lock_domain_id: String::from(lock_domain_id),
+            canonical_path: canonical_path.clone(),
+            lock_domain_id: lock_domain_id.to_string(),
             workspace_id: row.get("workspace_id"),
             branch_name: row.get("branch_name"),
-        }))
+        }) {
+            Some(lock) => Ok(lock),
+            None => Err(Error::lock_not_found(
+                lock_domain_id.to_string(),
+                canonical_path.clone(),
+            )),
+        }
     }
 
     pub async fn close(&mut self) {
@@ -653,11 +918,11 @@ impl IndexBackend for SqlIndexBackend {
             .map(|_| ())
     }
 
-    async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>> {
+    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
-            "SELECT head, parent, lock_domain_id 
+            "SELECT head, lock_domain_id 
              FROM `{}`
              WHERE name = ?;",
             Self::TABLE_BRANCHES
@@ -667,147 +932,68 @@ impl IndexBackend for SqlIndexBackend {
         .await
         .map_other_err(format!("error fetching branch `{}`", branch_name))?
         {
-            None => Ok(None),
-            Some(row) => {
-                let branch = Branch::new(
-                    String::from(branch_name),
-                    row.get("head"),
-                    row.get("parent"),
-                    row.get("lock_domain_id"),
-                );
-                Ok(Some(branch))
-            }
+            None => Err(Error::branch_not_found(branch_name.to_string())),
+            Some(row) => Ok(Branch {
+                name: branch_name.to_string(),
+                head: row.get("head"),
+                lock_domain_id: row.get("lock_domain_id"),
+            }),
         }
     }
 
-    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>> {
+    async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
         let mut conn = self.get_conn().await?;
 
-        Ok(sqlx::query(&format!(
-            "SELECT name, head, parent 
+        Ok(match query.lock_domain_id {
+            Some(lock_domain_id) => sqlx::query(&format!(
+                "SELECT name, head 
              FROM `{}`
              WHERE lock_domain_id = ?;",
-            Self::TABLE_BRANCHES
-        ))
-        .bind(lock_domain_id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "error fetching branches in lock domain `{}`",
-            lock_domain_id
-        ))?
-        .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                String::from(lock_domain_id),
-            )
-        })
-        .collect())
-    }
-
-    async fn read_branches(&self) -> Result<Vec<Branch>> {
-        let mut conn = self.get_conn().await?;
-
-        Ok(sqlx::query(&format!(
-            "SELECT name, head, parent, lock_domain_id 
+                Self::TABLE_BRANCHES
+            ))
+            .bind(lock_domain_id)
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err(&format!(
+                "error fetching branches in lock domain `{}`",
+                lock_domain_id
+            ))?
+            .into_iter()
+            .map(|row| Branch {
+                name: row.get("name"),
+                head: row.get("head"),
+                lock_domain_id: lock_domain_id.to_string(),
+            })
+            .collect(),
+            None => sqlx::query(&format!(
+                "SELECT name, head, lock_domain_id 
              FROM `{}`;",
-            Self::TABLE_BRANCHES
-        ))
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err("error fetching branches")?
-        .into_iter()
-        .map(|row| {
-            Branch::new(
-                row.get("name"),
-                row.get("head"),
-                row.get("parent"),
-                row.get("lock_domain_id"),
-            )
-        })
-        .collect())
-    }
-
-    async fn read_commit(&self, id: &str) -> Result<Commit> {
-        let mut conn = self.get_conn().await?;
-
-        let changes = sqlx::query(&format!(
-            "SELECT relative_path, hash, change_type
-             FROM `{}`
-             WHERE commit_id = ?;",
-            Self::TABLE_COMMIT_CHANGES,
-        ))
-        .bind(id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(format!(
-            "failed to fetch commit changes for commit `{}`",
-            id
-        ))?
-        .into_iter()
-        .map(|row| {
-            let change_type_int: i64 = row.get("change_type");
-            HashedChange {
-                relative_path: row.get("relative_path"),
-                hash: row.get("hash"),
-                change_type: ChangeType::from_int(change_type_int).unwrap(),
-            }
-        })
-        .collect();
-
-        let parents = sqlx::query(&format!(
-            "SELECT parent_id
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMIT_PARENTS,
-        ))
-        .bind(id)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(format!("failed to fetch parents for commit `{}`", id))?
-        .into_iter()
-        .map(|row| row.get("parent_id"))
-        .collect();
-
-        sqlx::query(&format!(
-            "SELECT owner, message, root_hash, date_time_utc 
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to fetch commit `{}`", id))
-        .map(|row| {
-            let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
-                .unwrap()
-                .into();
-
-            Commit::new(
-                String::from(id),
-                row.get("owner"),
-                row.get("message"),
-                changes,
-                row.get("root_hash"),
-                parents,
-                timestamp,
-            )
+                Self::TABLE_BRANCHES
+            ))
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err("error fetching branches")?
+            .into_iter()
+            .map(|row| Branch {
+                name: row.get("name"),
+                head: row.get("head"),
+                lock_domain_id: row.get("lock_domain_id"),
+            })
+            .collect(),
         })
     }
 
-    async fn insert_commit(&self, commit: &Commit) -> Result<()> {
+    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
         let mut transaction = self.get_transaction().await?;
 
-        Self::insert_commit_transactional(&mut transaction, commit).await?;
+        let result = Self::list_commits_transactional(&mut transaction, query).await?;
 
-        transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while inserting commit `{}`",
-            &commit.id
-        ))
+        transaction
+            .commit()
+            .await
+            .map_other_err("failed to commit transaction while listing commits")?;
+
+        Ok(result)
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
@@ -834,177 +1020,180 @@ impl IndexBackend for SqlIndexBackend {
         ))
     }
 
-    async fn commit_exists(&self, id: &str) -> Result<bool> {
-        let mut conn = self.get_conn().await?;
-
-        sqlx::query(&format!(
-            "SELECT count(*) as count
-             FROM `{}`
-             WHERE id = ?;",
-            Self::TABLE_COMMITS
-        ))
-        .bind(id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!("failed to check if commit `{}` exists", id))
-        .map(|row| row.get::<i32, _>("count") > 0)
-    }
-
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree> {
-        let mut conn = self.get_conn().await?;
-        let mut directory_nodes: Vec<TreeNode> = Vec::new();
-        let mut file_nodes: Vec<TreeNode> = Vec::new();
-
-        let rows = sqlx::query(&format!(
-            "SELECT name, hash, node_type
-             FROM `{}`
-             WHERE parent_tree_hash = ?
-             ORDER BY name;",
-            Self::TABLE_FOREST
-        ))
-        .bind(tree_hash)
-        .fetch_all(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "failed to fetch tree nodes for tree `{}`",
-            tree_hash
-        ))?;
-
-        for row in rows {
-            let name: String = row.get("name");
-            let hash: String = row.get("hash");
-            let node_type: i64 = row.get("node_type");
-            let node = TreeNode { name, hash };
-
-            if node_type == TreeNodeType::Directory as i64 {
-                directory_nodes.push(node);
-            } else if node_type == TreeNodeType::File as i64 {
-                file_nodes.push(node);
-            }
-        }
-
-        Ok(Tree {
-            directory_nodes,
-            file_nodes,
-        })
-    }
-
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()> {
+    async fn get_tree(&self, id: &str) -> Result<Tree> {
         let mut transaction = self.get_transaction().await?;
 
-        Self::save_tree_transactional(&mut transaction, tree, hash).await?;
-
-        transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while saving tree `{}`",
-            hash
-        ))
+        Self::get_tree_transactional(&mut transaction, id).await
     }
 
-    async fn insert_lock(&self, lock: &Lock) -> Result<()> {
+    async fn save_tree(&self, tree: &Tree) -> Result<String> {
         let mut transaction = self.get_transaction().await?;
 
-        if let Some(lock) = Self::find_lock_transactional(
-            &mut transaction,
-            &lock.lock_domain_id,
-            &lock.relative_path,
-        )
-        .await?
-        {
-            return Err(Error::lock_already_exists(lock));
-        }
-
-        sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-            Self::TABLE_LOCKS
-        ))
-        .bind(lock.relative_path.clone())
-        .bind(lock.lock_domain_id.clone())
-        .bind(lock.workspace_id.clone())
-        .bind(lock.branch_name.clone())
-        .execute(&mut transaction)
-        .await
-        .map_other_err(&format!(
-            "failed to insert lock `{}` in domain `{}`",
-            lock.relative_path, lock.lock_domain_id,
-        ))?;
+        let tree_id = Self::save_tree_transactional(&mut transaction, tree).await?;
 
         transaction
             .commit()
             .await
             .map_other_err(&format!(
-                "failed to commit transaction while inserting lock `{}`",
-                lock.relative_path
+                "failed to commit transaction while saving tree `{}`",
+                &tree_id,
             ))
-            .map(|_| ())
+            .map(|_| tree_id)
     }
 
-    async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>> {
-        let mut conn = self.get_conn().await?;
+    async fn lock(&self, lock: &Lock) -> Result<()> {
+        let mut transaction = self.get_transaction().await?;
 
-        Self::find_lock_transactional(&mut conn, lock_domain_id, relative_path).await
-    }
-
-    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>> {
-        let mut conn = self.get_conn().await?;
-
-        Ok(sqlx::query(&format!(
-            "SELECT relative_path, workspace_id, branch_name
-             FROM `{}`
-             WHERE lock_domain_id=?;",
-            Self::TABLE_LOCKS,
-        ))
-        .bind(lock_domain_id)
-        .fetch_all(&mut conn)
+        match Self::get_lock_transactional(
+            &mut transaction,
+            &lock.lock_domain_id,
+            &lock.canonical_path,
+        )
         .await
-        .map_other_err(&format!(
-            "failed to find locks in domain `{}`",
-            lock_domain_id,
-        ))?
-        .into_iter()
-        .map(|row| Lock {
-            relative_path: row.get("relative_path"),
-            lock_domain_id: String::from(lock_domain_id),
-            workspace_id: row.get("workspace_id"),
-            branch_name: row.get("branch_name"),
-        })
-        .collect())
+        {
+            Ok(lock) => Err(Error::lock_already_exists(lock)),
+            Err(Error::LockNotFound { .. }) => {
+                sqlx::query(&format!(
+                    "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+                    Self::TABLE_LOCKS
+                ))
+                .bind(lock.canonical_path.to_string())
+                .bind(lock.lock_domain_id.clone())
+                .bind(lock.workspace_id.clone())
+                .bind(lock.branch_name.clone())
+                .execute(&mut transaction)
+                .await
+                .map_other_err(&format!("failed to lock `{}`", lock))?;
+
+                transaction
+                    .commit()
+                    .await
+                    .map_other_err(&format!(
+                        "failed to commit transaction while inserting lock `{}`",
+                        lock
+                    ))
+                    .map(|_| ())
+            }
+            Err(err) => Err(err),
+        }
     }
 
-    async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()> {
+    async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        let mut conn = self.get_conn().await?;
+
+        Self::get_lock_transactional(&mut conn, lock_domain_id, canonical_path).await
+    }
+
+    async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        let mut conn = self.get_conn().await?;
+
+        if !query.lock_domain_ids.is_empty() {
+            let mut locks = Vec::new();
+
+            for lock_domain_id in &query.lock_domain_ids {
+                locks.extend(
+                    sqlx::query(&format!(
+                        "SELECT canonical_path, workspace_id, branch_name
+                        FROM `{}`
+                        WHERE lock_domain_id=?;",
+                        Self::TABLE_LOCKS,
+                    ))
+                    .bind(*lock_domain_id)
+                    .fetch_all(&mut conn)
+                    .await
+                    .map_other_err(&format!(
+                        "failed to find locks in domain `{}`",
+                        *lock_domain_id,
+                    ))?
+                    .into_iter()
+                    .map(|row| {
+                        Ok(Lock {
+                            canonical_path: CanonicalPath::new(
+                                &row.get::<String, _>("canonical_path"),
+                            )?,
+                            lock_domain_id: (*lock_domain_id).to_string(),
+                            workspace_id: row.get("workspace_id"),
+                            branch_name: row.get("branch_name"),
+                        })
+                    }),
+                );
+            }
+
+            locks.into_iter().collect()
+        } else {
+            sqlx::query(&format!(
+                "SELECT lock_domain_id, canonical_path, workspace_id, branch_name
+                FROM `{}`;",
+                Self::TABLE_LOCKS,
+            ))
+            .fetch_all(&mut conn)
+            .await
+            .map_other_err("failed to list locks")?
+            .into_iter()
+            .map(|row| {
+                Ok(Lock {
+                    canonical_path: CanonicalPath::new(&row.get::<String, _>("canonical_path"))?,
+                    lock_domain_id: row.get("lock_domain_id"),
+                    workspace_id: row.get("workspace_id"),
+                    branch_name: row.get("branch_name"),
+                })
+            })
+            .collect()
+        }
+    }
+
+    async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
-            "DELETE from `{}` WHERE relative_path=? AND lock_domain_id=?;",
+            "DELETE from `{}` WHERE canonical_path=? AND lock_domain_id=?;",
             Self::TABLE_LOCKS
         ))
-        .bind(relative_path)
+        .bind(canonical_path.to_string())
         .bind(lock_domain_id)
         .execute(&mut conn)
         .await
         .map_other_err(&format!(
-            "failed to clear lock `{}` in domain `{}`",
-            relative_path, lock_domain_id,
+            "failed to clear lock `{}/{}`",
+            lock_domain_id, canonical_path,
         ))
         .map(|_| ())
     }
 
-    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32> {
+    async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
         let mut conn = self.get_conn().await?;
 
-        sqlx::query(&format!(
-            "SELECT count(*) as count
-             FROM `{}`
-             WHERE lock_domain_id = ?;",
-            Self::TABLE_LOCKS,
-        ))
-        .bind(lock_domain_id)
-        .fetch_one(&mut conn)
-        .await
-        .map_other_err(&format!(
-            "failed to count locks in domain `{}`",
-            lock_domain_id,
-        ))
-        .map(|row| row.get::<i32, _>("count"))
+        if !query.lock_domain_ids.is_empty() {
+            let mut result = 0;
+            for lock_domain_id in &query.lock_domain_ids {
+                result += sqlx::query(&format!(
+                    "SELECT count(*) as count
+                    FROM `{}`
+                    WHERE lock_domain_id = ?;",
+                    Self::TABLE_LOCKS,
+                ))
+                .bind(*lock_domain_id)
+                .fetch_one(&mut conn)
+                .await
+                .map_other_err(&format!(
+                    "failed to count locks in domain `{}`",
+                    *lock_domain_id,
+                ))
+                .map(|row| row.get::<i32, _>("count"))?;
+            }
+
+            Ok(result)
+        } else {
+            sqlx::query(&format!(
+                "SELECT count(*) as count
+                FROM `{}`;",
+                Self::TABLE_LOCKS,
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .map_other_err("failed to count locks")
+            .map(|row| row.get::<i32, _>("count"))
+        }
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {

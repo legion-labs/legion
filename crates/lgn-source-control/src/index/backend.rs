@@ -2,9 +2,37 @@ use async_trait::async_trait;
 
 use crate::{
     utils::{parse_url_or_path, UrlOrPath},
-    BlobStorageUrl, Branch, Commit, Error, GrpcIndexBackend, LocalIndexBackend, Lock,
-    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, CanonicalPath, Commit, Error, GrpcIndexBackend, LocalIndexBackend,
+    Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
+
+/// The query options for the `list_branches` method.
+#[derive(Default, Clone, Debug)]
+pub struct ListBranchesQuery<'q> {
+    pub lock_domain_id: Option<&'q str>,
+}
+
+/// The query options for the `list_commits` method.
+#[derive(Default, Clone, Debug)]
+pub struct ListCommitsQuery<'q> {
+    pub commit_ids: Vec<&'q str>,
+    pub depth: u32,
+}
+
+impl<'q> ListCommitsQuery<'q> {
+    pub fn single(commit_id: &'q str) -> Self {
+        Self {
+            commit_ids: vec![commit_id],
+            ..Self::default()
+        }
+    }
+}
+
+/// The query options for the `list_locks` method.
+#[derive(Default, Clone, Debug)]
+pub struct ListLocksQuery<'q> {
+    pub lock_domain_ids: Vec<&'q str>,
+}
 
 #[async_trait]
 pub trait IndexBackend: Send + Sync {
@@ -12,34 +40,40 @@ pub trait IndexBackend: Send + Sync {
     async fn create_index(&self) -> Result<BlobStorageUrl>;
     async fn destroy_index(&self) -> Result<()>;
     async fn index_exists(&self) -> Result<bool>;
+
+    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl>;
+
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()>;
-    async fn read_branch(&self, branch_name: &str) -> Result<Branch> {
-        self.find_branch(branch_name)
-            .await?
-            .ok_or_else(|| Error::BranchNotFound {
-                branch_name: branch_name.to_string(),
-            })
-    }
+
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;
     async fn update_branch(&self, branch: &Branch) -> Result<()>;
-    async fn find_branch(&self, branch_name: &str) -> Result<Option<Branch>>;
-    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>>;
-    async fn read_branches(&self) -> Result<Vec<Branch>>;
-    async fn read_commit(&self, commit_id: &str) -> Result<Commit>;
-    async fn insert_commit(&self, commit: &Commit) -> Result<()>;
+    async fn get_branch(&self, branch_name: &str) -> Result<Branch>;
+    async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>>;
+
+    async fn get_commit(&self, commit_id: &str) -> Result<Commit> {
+        self.list_commits(&ListCommitsQuery {
+            commit_ids: vec![commit_id],
+            depth: 1,
+        })
+        .await?
+        .pop()
+        .ok_or_else(|| Error::commit_not_found(commit_id.to_string()))
+    }
+
+    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>>;
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()>;
-    async fn commit_exists(&self, commit_id: &str) -> Result<bool>;
-    async fn read_tree(&self, tree_hash: &str) -> Result<Tree>;
-    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<()>;
-    async fn insert_lock(&self, lock: &Lock) -> Result<()>;
-    async fn find_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<Option<Lock>>;
-    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>>;
-    async fn clear_lock(&self, lock_domain_id: &str, relative_path: &str) -> Result<()>;
-    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32>;
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl>;
+
+    async fn get_tree(&self, id: &str) -> Result<Tree>;
+    async fn save_tree(&self, tree: &Tree) -> Result<String>;
+
+    async fn lock(&self, lock: &Lock) -> Result<()>;
+    async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()>;
+    async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock>;
+    async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>>;
+    async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32>;
 }
 
 pub fn new_index_backend(url: &str) -> Result<Box<dyn IndexBackend>> {

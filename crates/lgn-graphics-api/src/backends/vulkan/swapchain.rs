@@ -11,8 +11,8 @@ use super::VulkanRawImage;
 use crate::{
     deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContext, Extents3D, Fence, Format,
     GfxError, GfxResult, MemoryUsage, QueueType, ResourceFlags, ResourceState, ResourceUsage,
-    Semaphore, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling,
-    TextureViewDef,
+    Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
+    TextureTiling, TextureViewDef,
 };
 
 /// Used to select which `PresentMode` is preferred. Some of this is
@@ -153,19 +153,7 @@ impl VulkanSwapchain {
         trace!("destroyed VulkanSwapchain");
     }
 
-    pub fn dedicated_present_queue(&self) -> Option<vk::Queue> {
-        self.swapchain.dedicated_present_queue
-    }
-
-    pub fn vk_swapchain(&self) -> vk::SwapchainKHR {
-        self.swapchain.swapchain
-    }
-
-    pub fn vk_swapchain_loader(&self) -> &khr::Swapchain {
-        &*self.swapchain.swapchain_loader
-    }
-
-    pub fn setup_swapchain_images(
+    fn setup_swapchain_images(
         device_context: &DeviceContext,
         swapchain: &SwapchainVulkanInstance,
     ) -> GfxResult<Vec<SwapchainImage>> {
@@ -176,7 +164,7 @@ impl VulkanSwapchain {
         })?;
         command_buffer.begin()?;
 
-        let swapchain_images = swapchain._images()?;
+        let swapchain_images = swapchain._images();
 
         let image_barriers: Vec<_> = swapchain_images
             .iter()
@@ -193,37 +181,63 @@ impl VulkanSwapchain {
 
         command_buffer.end()?;
         queue.submit(&[&command_buffer], &[], &[], None)?;
-        queue.platform_queue().wait_for_queue_idle()?;
+        queue.wait_for_queue_idle()?;
         Ok(swapchain_images)
     }
+}
 
-    pub fn image_count(&self) -> usize {
-        self.swapchain.swapchain_images.len()
+impl Swapchain {
+    pub(crate) fn dedicated_present_queue(&self) -> Option<vk::Queue> {
+        self.backend_swapchain.swapchain.dedicated_present_queue
     }
 
-    pub fn format(&self) -> Format {
-        self.swapchain.swapchain_info.surface_format.format.into()
+    pub(crate) fn vk_swapchain(&self) -> vk::SwapchainKHR {
+        self.backend_swapchain.swapchain.swapchain
+    }
+
+    pub(crate) fn vk_swapchain_loader(&self) -> &khr::Swapchain {
+        &*self.backend_swapchain.swapchain.swapchain_loader
+    }
+
+    pub(crate) fn backend_image_count(&self) -> usize {
+        self.backend_swapchain.swapchain.swapchain_images.len()
+    }
+
+    pub(crate) fn backend_format(&self) -> Format {
+        self.backend_swapchain
+            .swapchain
+            .swapchain_info
+            .surface_format
+            .format
+            .into()
     }
 
     //TODO: Return something like PresentResult?
-    pub fn acquire_next_image_fence(&mut self, fence: &Fence) -> GfxResult<SwapchainImage> {
+    pub(crate) fn backend_acquire_next_image_fence(
+        &mut self,
+        fence: &Fence,
+    ) -> GfxResult<SwapchainImage> {
         let result = unsafe {
-            self.swapchain.swapchain_loader.acquire_next_image(
-                self.swapchain.swapchain,
-                std::u64::MAX,
-                vk::Semaphore::null(),
-                fence.vk_fence(),
-            )
+            self.backend_swapchain
+                .swapchain
+                .swapchain_loader
+                .acquire_next_image(
+                    self.backend_swapchain.swapchain.swapchain,
+                    std::u64::MAX,
+                    vk::Semaphore::null(),
+                    fence.vk_fence(),
+                )
         };
 
         if let Ok((present_index, is_suboptimal)) = result {
-            self.last_image_suboptimal = is_suboptimal;
+            self.backend_swapchain.last_image_suboptimal = is_suboptimal;
             fence.set_submitted(true);
-            Ok(self.swapchain_images[present_index as usize].clone())
+            Ok(self.backend_swapchain.swapchain_images[present_index as usize].clone())
         } else {
-            self.last_image_suboptimal = false;
+            self.backend_swapchain.last_image_suboptimal = false;
             unsafe {
-                self.swapchain
+                self.backend_swapchain
+                    .swapchain
                     .device_context
                     .vk_device()
                     .reset_fences(&[fence.vk_fence()])?;
@@ -235,43 +249,44 @@ impl VulkanSwapchain {
     }
 
     //TODO: Return something like PresentResult?
-    pub fn acquire_next_image_semaphore(
+    pub(crate) fn backend_acquire_next_image_semaphore(
         &mut self,
         semaphore: &Semaphore,
     ) -> GfxResult<SwapchainImage> {
         let result = unsafe {
-            self.swapchain.swapchain_loader.acquire_next_image(
-                self.swapchain.swapchain,
-                std::u64::MAX,
-                semaphore.vk_semaphore(),
-                vk::Fence::null(),
-            )
+            self.backend_swapchain
+                .swapchain
+                .swapchain_loader
+                .acquire_next_image(
+                    self.backend_swapchain.swapchain.swapchain,
+                    std::u64::MAX,
+                    semaphore.vk_semaphore(),
+                    vk::Fence::null(),
+                )
         };
 
         if let Ok((present_index, is_suboptimal)) = result {
-            self.last_image_suboptimal = is_suboptimal;
+            self.backend_swapchain.last_image_suboptimal = is_suboptimal;
             semaphore.set_signal_available(true);
-            Ok(self.swapchain_images[present_index as usize].clone())
+            Ok(self.backend_swapchain.swapchain_images[present_index as usize].clone())
         } else {
-            self.last_image_suboptimal = false;
+            self.backend_swapchain.last_image_suboptimal = false;
             semaphore.set_signal_available(false);
             // todo(jal)
             Err(GfxError::String("GfxError::VkError(e)".to_string()))
         }
     }
 
-    pub fn rebuild(
-        &mut self,
-        device_context: &DeviceContext,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<()> {
-        let present_mode_priority = present_mode_priority(swapchain_def);
+    pub(crate) fn backend_rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
+        self.swapchain_def = swapchain_def.clone();
 
+        let present_mode_priority = present_mode_priority(swapchain_def);
+        let device_context = &self.device_context;
         let new_swapchain = SwapchainVulkanInstance::new(
             device_context,
-            self.surface,
-            &self.surface_loader,
-            Some(self.swapchain.swapchain),
+            self.backend_swapchain.surface,
+            &self.backend_swapchain.surface_loader,
+            Some(self.backend_swapchain.swapchain.swapchain),
             present_mode_priority,
             vk::Extent2D {
                 width: swapchain_def.width,
@@ -280,12 +295,15 @@ impl VulkanSwapchain {
         )?;
 
         unsafe {
-            ManuallyDrop::drop(&mut self.swapchain);
+            ManuallyDrop::drop(&mut self.backend_swapchain.swapchain);
         }
-        self.swapchain = ManuallyDrop::new(new_swapchain);
+        self.backend_swapchain.swapchain = ManuallyDrop::new(new_swapchain);
 
-        self.last_image_suboptimal = false;
-        self.swapchain_images = Self::setup_swapchain_images(device_context, &self.swapchain)?;
+        self.backend_swapchain.last_image_suboptimal = false;
+        self.backend_swapchain.swapchain_images = VulkanSwapchain::setup_swapchain_images(
+            device_context,
+            &self.backend_swapchain.swapchain,
+        )?;
         Ok(())
     }
 }
@@ -383,7 +401,7 @@ impl SwapchainVulkanInstance {
         })
     }
 
-    fn _images(&self) -> GfxResult<Vec<SwapchainImage>> {
+    fn _images(&self) -> Vec<SwapchainImage> {
         let mut swapchain_images = Vec::with_capacity(self.swapchain_images.len());
         for (image_index, image) in self.swapchain_images.iter().enumerate() {
             let raw_image = VulkanRawImage {
@@ -411,10 +429,10 @@ impl SwapchainVulkanInstance {
                     mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
                 },
-            )?;
+            );
 
-            let render_target_view = texture
-                .create_view(&TextureViewDef::as_render_target_view(texture.definition()))?;
+            let render_target_view =
+                texture.create_view(&TextureViewDef::as_render_target_view(texture.definition()));
 
             swapchain_images.push(SwapchainImage {
                 texture,
@@ -423,7 +441,7 @@ impl SwapchainVulkanInstance {
             });
         }
 
-        Ok(swapchain_images)
+        swapchain_images
     }
 
     fn query_swapchain_support(

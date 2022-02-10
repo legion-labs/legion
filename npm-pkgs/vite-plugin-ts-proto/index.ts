@@ -7,7 +7,7 @@ import os from "os";
 import { existsSync } from "fs";
 
 /**
- * Recursively searchs the ts-proto binary path from a base directory
+ * Recursively searches the ts-proto binary path from a base directory
  */
 function resolveTsProtoPath(binName: string, baseDir: string) {
   function search(pathParts: string[]): string | null {

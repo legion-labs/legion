@@ -212,7 +212,7 @@ impl Cargo {
             });
             info!("Executing: {:?}", &self.inner);
         }
-        // process enviroment additions, removing Options that are none...
+        // process environment additions, removing Options that are none...
         for (key, option_value) in &self.env_additions {
             if let Some(value) = option_value {
                 self.inner.env(key, value);

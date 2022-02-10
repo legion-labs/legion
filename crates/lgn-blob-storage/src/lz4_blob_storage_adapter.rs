@@ -113,4 +113,8 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
 
         Ok(())
     }
+
+    async fn delete_blob(&self, name: &str) -> super::Result<()> {
+        self.inner.delete_blob(name).await
+    }
 }

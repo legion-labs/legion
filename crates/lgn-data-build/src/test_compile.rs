@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{env, vec};
@@ -8,7 +6,7 @@ use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_compiler::compiler_api::CompilationEnv;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_compiler::{Locale, Manifest, Platform, Target};
+use lgn_data_compiler::{Locale, Platform, Target};
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
@@ -20,8 +18,7 @@ use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
 
 use crate::databuild::CompileOutput;
-use crate::Error;
-use crate::{databuild::DataBuild, DataBuildOptions};
+use crate::DataBuildOptions;
 
 fn setup_registry() -> Arc<tokio::sync::Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
@@ -155,7 +152,9 @@ async fn compile_change_no_deps() {
             .await
             .expect("failed to pull from project");
 
-        let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
+        let compile_output = build
+            .compile_path(target.clone(), &test_env(), None)
+            .unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
         assert_eq!(compile_output.references.len(), 0);
@@ -176,7 +175,7 @@ async fn compile_change_no_deps() {
 
     // ..change resource..
     {
-        let mut project = Project::open(project_dir)
+        let mut project = Project::open(&project_dir)
             .await
             .expect("failed to open project");
 
@@ -194,12 +193,18 @@ async fn compile_change_no_deps() {
             DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
                 .content_store(&contentstore_path);
 
-        let (mut build, project) = config.open_with_project().await.expect("to open index");
+        let project = Project::open(project_dir)
+            .await
+            .expect("failed to open project");
+
+        let mut build = config.open(&project).await.expect("to open index");
         build
             .source_pull(&project)
             .await
             .expect("failed to pull from project");
-        let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
+        let compile_output = build
+            .compile_path(target.clone(), &test_env(), None)
+            .unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
         assert_eq!(compile_output.resources[0].compile_path, target);
@@ -324,15 +329,14 @@ async fn intermediate_resource() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).await.expect("successful pull");
-    assert_eq!(pulled, 1);
+    build.source_pull(&project).await.expect("successful pull");
 
     let source_path = ResourcePathId::from(source_id);
     let reversed_path = source_path.push(text_resource::TextResource::TYPE);
     let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
     let compile_output = build
-        .compile_path(integer_path.clone(), &test_env())
+        .compile_path(integer_path.clone(), &test_env(), None)
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), 2); // intermediate and final result
@@ -418,7 +422,7 @@ async fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &test_env())
+            .compile_path(target.clone(), &test_env(), None)
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -433,7 +437,7 @@ async fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &test_env())
+            .compile_path(target.clone(), &test_env(), None)
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -451,7 +455,7 @@ async fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &test_env())
+            .compile_path(target.clone(), &test_env(), None)
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -470,7 +474,7 @@ async fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target, &test_env())
+            .compile_path(target, &test_env(), None)
             .expect("successful compilation");
 
         assert_eq!(resources.len(), 5);
@@ -520,8 +524,7 @@ async fn named_path_cache_use() {
             .await
             .expect("new build index");
 
-    let pulled = build.source_pull(&project).await.expect("successful pull");
-    assert_eq!(pulled, 1);
+    build.source_pull(&project).await.expect("successful pull");
 
     let source_path = ResourcePathId::from(source_id);
     let split_text0_path = source_path.push_named(text_resource::TextResource::TYPE, "text_0");
@@ -537,7 +540,7 @@ async fn named_path_cache_use() {
 
     // compile "integer path 0"
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &test_env())
+        .compile_path(integer_path_0.clone(), &test_env(), None)
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -584,7 +587,7 @@ async fn named_path_cache_use() {
 
     // compile "integer path 1"
     let compile_output = build
-        .compile_path(integer_path_1.clone(), &test_env())
+        .compile_path(integer_path_1.clone(), &test_env(), None)
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -603,7 +606,7 @@ async fn named_path_cache_use() {
 
     // recompile "integer path 0" - all from cache
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &test_env())
+        .compile_path(integer_path_0.clone(), &test_env(), None)
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -633,12 +636,11 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).await.expect("pulled change");
-        assert_eq!(pulled, 1);
+        build.source_pull(&project).await.expect("pulled change");
     }
 
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &test_env())
+        .compile_path(integer_path_0.clone(), &test_env(), None)
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1
@@ -678,13 +680,12 @@ async fn named_path_cache_use() {
             .await
             .expect("successful save");
 
-        let pulled = build.source_pull(&project).await.expect("pulled change");
-        assert_eq!(pulled, 1);
+        build.source_pull(&project).await.expect("pulled change");
     }
 
     // compile from "text_0"
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &test_env())
+        .compile_path(integer_path_0.clone(), &test_env(), None)
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1, text_0 -> integer
@@ -704,7 +705,9 @@ async fn named_path_cache_use() {
         .all(|r| !r.compile_path.is_named()));
 
     // compile from "text_1"
-    let compile_output = build.compile_path(integer_path_1, &test_env()).unwrap();
+    let compile_output = build
+        .compile_path(integer_path_1, &test_env(), None)
+        .unwrap();
 
     // ..recompiled: text_1 -> integer
     // ..from cache: multitext -> text_0, text_1
@@ -790,7 +793,7 @@ async fn link() {
 
     let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
-        .compile_path(target, &test_env())
+        .compile_path(target, &test_env(), None)
         .expect("successful compilation");
 
     assert_eq!(compile_output.resources.len(), 2);
@@ -880,16 +883,8 @@ async fn verify_manifest() {
 
     build.source_pull(&project).await.unwrap();
 
-    let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
-
     let compile_path = ResourcePathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
-    let manifest = build
-        .compile(
-            compile_path.clone(),
-            Some(output_manifest_file.clone()),
-            &test_env(),
-        )
-        .unwrap();
+    let manifest = build.compile(compile_path, &test_env()).unwrap();
 
     // both test(child_id) and test(parent_id) are separate resources.
     assert_eq!(manifest.compiled_resources.len(), 2);
@@ -897,38 +892,5 @@ async fn verify_manifest() {
     let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
     for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
         assert!(content_store.exists(checksum));
-    }
-
-    assert!(output_manifest_file.exists());
-    let read_manifest: Manifest = {
-        let manifest_file = File::open(&output_manifest_file).unwrap();
-        serde_json::from_reader(&manifest_file).unwrap()
-    };
-
-    assert_eq!(
-        read_manifest.compiled_resources.len(),
-        manifest.compiled_resources.len()
-    );
-
-    for resource in read_manifest.compiled_resources {
-        assert!(manifest
-            .compiled_resources
-            .iter()
-            .any(|res| res.checksum == resource.checksum));
-    }
-
-    // malformed manifest as input.
-    {
-        let invalid_manifest_file = work_dir.path().join("invalid.manifest");
-        let mut file = File::create(&invalid_manifest_file).expect("create empty file");
-        file.write_all(b"junk")
-            .expect("to write junk into manifest");
-
-        let invalid = build.compile(compile_path, Some(invalid_manifest_file), &test_env());
-        assert!(
-            matches!(invalid, Err(Error::InvalidManifest(_))),
-            "{:?}",
-            invalid
-        );
     }
 }

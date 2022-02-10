@@ -73,6 +73,6 @@ impl VulkanRootSignature {
 
 impl RootSignature {
     pub(crate) fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
-        self.inner.platform_root_signature.vk_pipeline_layout
+        self.inner.backend_root_signature.vk_pipeline_layout
     }
 }

@@ -64,6 +64,12 @@ type AuthClientType = TelemetryIngestionClient<
     lgn_online::grpc::AuthenticatedClient<lgn_online::grpc::GrpcClient, StaticApiKey>,
 >;
 
+fn connect_grpc_client(uri: Uri) -> AuthClientType {
+    let grpc_client = lgn_online::grpc::GrpcClient::new(uri);
+    let auth_client = lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {});
+    TelemetryIngestionClient::new(auth_client)
+}
+
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
     sender: Mutex<Option<std::sync::mpsc::Sender<SinkEvent>>>,
@@ -136,43 +142,60 @@ impl GRPCEventSink {
         queue_size: Arc<AtomicIsize>,
         max_queue_size: isize,
     ) {
-        let uri = addr.parse::<Uri>();
-        if let Err(e) = uri {
+        let parsed_uri = addr.parse::<Uri>();
+        if let Err(e) = parsed_uri {
             println!("Error parsing telemetry uri {}: {}", addr, e);
             return;
         }
-        let grpc_client = lgn_online::grpc::GrpcClient::new(uri.unwrap());
-        let auth_client = lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {});
-        let mut client = TelemetryIngestionClient::new(auth_client);
+        let uri = parsed_uri.unwrap();
+        // eagerly connect, a new process message is sure to follow if it's not already in queue
+        let mut client_store = Some(connect_grpc_client(uri.clone()));
         loop {
             match receiver.recv() {
-                Ok(message) => match message {
-                    SinkEvent::Startup(process_info) => {
-                        match client.insert_process(process_info).await {
-                            Ok(_response) => {}
-                            Err(e) => {
-                                debug!("insert_process failed: {}", e);
+                Ok(message) => {
+                    let mut client = match client_store {
+                        Some(c) => c,
+                        None => connect_grpc_client(uri.clone()),
+                    };
+                    client_store = None;
+
+                    match message {
+                        SinkEvent::Startup(process_info) => {
+                            match client.insert_process(process_info).await {
+                                Ok(_response) => {}
+                                Err(e) => {
+                                    debug!("insert_process failed: {}", e);
+                                }
                             }
                         }
-                    }
-                    SinkEvent::InitStream(stream_info) => {
-                        match client.insert_stream(stream_info).await {
-                            Ok(_response) => {}
-                            Err(e) => {
-                                debug!("insert_stream failed: {}", e);
+                        SinkEvent::InitStream(stream_info) => {
+                            match client.insert_stream(stream_info).await {
+                                Ok(_response) => {}
+                                Err(e) => {
+                                    debug!("insert_stream failed: {}", e);
+                                }
                             }
                         }
+                        SinkEvent::ProcessLogBlock(buffer) => {
+                            Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size)
+                                .await;
+                        }
+                        SinkEvent::ProcessMetricsBlock(buffer) => {
+                            Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size)
+                                .await;
+                        }
+                        SinkEvent::ProcessThreadBlock(buffer) => {
+                            Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size)
+                                .await;
+                        }
                     }
-                    SinkEvent::ProcessLogBlock(buffer) => {
-                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
+
+                    if queue_size.load(Ordering::Relaxed) >= 2 {
+                        // don't keep the connection alive if there is nothing to send anymore.
+                        // idle connections can be dropped on the server-side
+                        client_store = Some(client);
                     }
-                    SinkEvent::ProcessMetricsBlock(buffer) => {
-                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
-                    }
-                    SinkEvent::ProcessThreadBlock(buffer) => {
-                        Self::push_block(&mut client, &*buffer, &*queue_size, max_queue_size).await;
-                    }
-                },
+                }
                 Err(_e) => {
                     // can only fail when the sending half is disconnected
                     // println!("Error in telemetry thread: {}", e);

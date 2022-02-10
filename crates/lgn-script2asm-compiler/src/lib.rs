@@ -75,6 +75,7 @@ fn get_compiled_script(
                 .expect("Cannot build mun project");
         }
         runtime_data::Script {
+            script_type: 1, // Mun
             compiled_script: {
                 let mut src_path = std::path::PathBuf::from(&temp_crate);
                 src_path.push("target");
@@ -88,6 +89,7 @@ fn get_compiled_script(
     #[cfg(not(target_os = "windows"))]
     {
         runtime_data::Script {
+            script_type: 1, // Mun
             compiled_script: Vec::new(),
         }
     }
@@ -99,9 +101,15 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resources.load_sync::<offline_data::Script>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
-    let runtime_script = get_compiled_script(&context.source.resource_id(), &resource);
-
+    let runtime_script = match resource.script_type {
+        1 => get_compiled_script(&context.source.resource_id(), &resource),
+        _ => runtime_data::Script {
+            script_type: resource.script_type,
+            compiled_script: resource.script.as_bytes().to_vec(),
+        },
+    };
     let result_buffer = bincode::serialize(&runtime_script).unwrap();
+
     let asset = context.store(&result_buffer, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {

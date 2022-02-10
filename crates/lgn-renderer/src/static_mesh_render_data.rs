@@ -1,9 +1,44 @@
 use std::ops::Mul;
 
-use lgn_math::{Mat4, Vec3, Vec4};
+use lgn_math::{Mat4, Vec2, Vec3, Vec4};
+
+use crate::resources::UniformGPUDataUpdater;
 
 pub struct StaticMeshRenderData {
-    pub vertices: Vec<f32>,
+    pub positions: Option<Vec<Vec4>>,
+    pub normals: Option<Vec<Vec4>>,
+    pub tangents: Option<Vec<Vec4>>,
+    pub tex_coords: Option<Vec<Vec2>>,
+    pub indices: Option<Vec<u32>>,
+    pub colors: Option<Vec<Vec4>>,
+}
+
+bitflags::bitflags! {
+    pub struct MeshFormat: u32 {
+        const POSITION = 0x0001;
+        const NORMAL = 0x0002;
+        const TANGENT = 0x0004;
+        const TEX_COORD = 0x0008;
+        const INDEX = 0x0010;
+        const COLOR = 0x0020;
+    }
+}
+
+impl Default for MeshFormat {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+#[derive(Default)]
+pub struct MeshInfo {
+    pub format: MeshFormat,
+    pub position_offset: u32,
+    pub normal_offset: u32,
+    pub tangent_offset: u32,
+    pub tex_coord_offset: u32,
+    pub index_offset: u32,
+    pub color_offset: u32,
 }
 
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
@@ -17,14 +52,157 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
 }
 
 impl StaticMeshRenderData {
+    pub fn get_mesh_format(&self) -> MeshFormat {
+        let mut format = MeshFormat::empty();
+        if self.positions.is_some() {
+            format |= MeshFormat::POSITION;
+        }
+        if self.normals.is_some() {
+            format |= MeshFormat::NORMAL;
+        }
+        if self.tangents.is_some() {
+            format |= MeshFormat::TANGENT;
+        }
+        if self.tex_coords.is_some() {
+            format |= MeshFormat::TEX_COORD;
+        }
+        if self.indices.is_some() {
+            format |= MeshFormat::INDEX;
+        }
+        if self.colors.is_some() {
+            format |= MeshFormat::COLOR;
+        }
+        format
+    }
+
+    pub fn make_gpu_update_job(
+        &self,
+        updater: &mut UniformGPUDataUpdater,
+        offset: u32,
+    ) -> (u32, MeshInfo) {
+        let mut mesh_info = MeshInfo {
+            format: self.get_mesh_format(),
+            ..MeshInfo::default()
+        };
+        let mut offset = offset;
+
+        if let Some(positions) = &self.positions {
+            mesh_info.position_offset = offset;
+            updater.add_update_jobs(positions, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
+        }
+        if let Some(normals) = &self.normals {
+            mesh_info.normal_offset = offset;
+            updater.add_update_jobs(normals, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tangents) = &self.tangents {
+            mesh_info.tangent_offset = offset;
+            updater.add_update_jobs(tangents, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            mesh_info.tex_coord_offset = offset;
+            updater.add_update_jobs(tex_coords, u64::from(offset));
+            offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
+        }
+        if let Some(indices) = &self.indices {
+            mesh_info.index_offset = offset;
+            updater.add_update_jobs(indices, u64::from(offset));
+            offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
+        }
+        if let Some(colors) = &self.colors {
+            mesh_info.color_offset = offset;
+            updater.add_update_jobs(colors, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+        }
+        (offset, mesh_info)
+    }
+
+    pub fn size_in_bytes(&self) -> u32 {
+        let mut size = 0;
+
+        if let Some(positions) = &self.positions {
+            size += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
+        }
+        if let Some(normals) = &self.normals {
+            size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tangents) = &self.tangents {
+            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
+        }
+        if let Some(indices) = &self.indices {
+            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
+        }
+        if let Some(colors) = &self.colors {
+            size += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+        }
+        size
+    }
+
     fn from_vertex_data(vertex_data: &[f32]) -> Self {
+        let mut positions = Vec::new();
+        let mut normals = Vec::new();
+        let mut colors = Vec::new();
+        let mut tex_coords = Vec::new();
+        for i in 0..vertex_data.len() / 14 {
+            let idx = i * 14;
+            positions.push(Vec4::new(
+                vertex_data[idx],
+                vertex_data[idx + 1],
+                vertex_data[idx + 2],
+                vertex_data[idx + 3],
+            ));
+            normals.push(Vec4::new(
+                vertex_data[idx + 4],
+                vertex_data[idx + 5],
+                vertex_data[idx + 6],
+                vertex_data[idx + 7],
+            ));
+            colors.push(Vec4::new(
+                vertex_data[idx + 8],
+                vertex_data[idx + 9],
+                vertex_data[idx + 10],
+                vertex_data[idx + 11],
+            ));
+            tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
+        }
+        let tangents = calculate_tangents(&positions, &tex_coords, &None);
         Self {
-            vertices: vertex_data.to_vec(),
+            positions: Some(positions),
+            normals: Some(normals),
+            tangents: Some(tangents),
+            tex_coords: Some(tex_coords),
+            indices: None,
+            colors: Some(colors),
         }
     }
 
+    pub fn calculate_tangents(&mut self) {
+        assert!(self.positions.is_some());
+        assert!(self.tex_coords.is_some());
+        self.tangents = Some(calculate_tangents(
+            self.positions.as_ref().unwrap(),
+            self.tex_coords.as_ref().unwrap(),
+            &self.indices,
+        ));
+    }
+
+    pub fn num_triangles(&self) -> usize {
+        self.num_vertices() / 3
+    }
+
     pub fn num_vertices(&self) -> usize {
-        self.vertices.len() / 14
+        if let Some(indices) = &self.indices {
+            return indices.len();
+        }
+        if let Some(positions) = &self.positions {
+            return positions.len();
+        }
+        unreachable!()
     }
 
     pub fn new_cube(size: f32) -> Self {
@@ -32,47 +210,47 @@ impl StaticMeshRenderData {
         #[rustfmt::skip]
         let vertex_data = [
             // +x
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -x
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // +y
-             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // -y
-             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // +z
-             half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
             // -z
-             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
         ];
         Self::from_vertex_data(&vertex_data)
     }
@@ -440,26 +618,55 @@ impl StaticMeshRenderData {
     }
 
     pub fn new_arrow() -> Self {
-        let mut cylinder = Self::new_cylinder(0.01, 0.3, 10);
+        let arrow = Self::new_cylinder(0.01, 0.3, 10);
         let cone = Self::new_cone(0.025, 0.1, 10);
-        let mut cone_vertices = cone
-            .vertices
-            .into_iter()
-            .enumerate()
-            .map(|(idx, v)| if idx % 14 == 1 { -v } else { v })
-            .collect::<Vec<f32>>();
-        cone_vertices.append(&mut cylinder.vertices);
-        Self::from_vertex_data(&cone_vertices)
+        let mut positions = arrow.positions.unwrap();
+        positions.append(
+            &mut cone
+                .positions
+                .unwrap()
+                .into_iter()
+                .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
+                .collect(),
+        );
+        let mut normals = arrow.normals.unwrap();
+        normals.append(
+            &mut cone
+                .normals
+                .unwrap()
+                .into_iter()
+                .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
+                .collect(),
+        );
+        let mut tex_coords = arrow.tex_coords.unwrap();
+        tex_coords.append(&mut cone.tex_coords.unwrap());
+        let mut colors = arrow.colors.unwrap();
+        colors.append(&mut cone.colors.unwrap());
+
+        Self {
+            positions: Some(positions),
+            normals: Some(normals),
+            tangents: None,
+            tex_coords: Some(tex_coords),
+            colors: Some(colors),
+            indices: None,
+        }
     }
 
     pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {
         let mut vertex_data = Vec::new();
         let slice_size = 2.0 * radius / slices as f32;
         let angle = 2.0 * std::f32::consts::PI / sails as f32;
+        let v_delta = 1.0 / slices as f32;
+        let u_delta = 1.0 / slices as f32;
         for slice in 0..slices {
             let y0 = -radius + slice as f32 * slice_size;
             let y1 = -radius + (slice + 1) as f32 * slice_size;
+            let v0 = slice as f32 * v_delta;
+            let v1 = (slice + 1) as f32 * v_delta;
             for sail in 0..sails {
+                let u0 = sail as f32 * u_delta;
+                let u1 = (sail + 1) as f32 * u_delta;
                 if slice == 0 {
                     let pole = Vec3::new(0.0, y0, 0.0);
                     let lr = (radius * radius - y1 * y1).sqrt();
@@ -472,15 +679,15 @@ impl StaticMeshRenderData {
                     vertex_data.append(&mut pole.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, -1.0, 0.0]);
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
                 } else if slice == slices - 1 {
                     let pole = Vec3::new(0.0, y1, 0.0);
                     let lr = (radius * radius - y0 * y0).sqrt();
@@ -493,15 +700,15 @@ impl StaticMeshRenderData {
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
                     vertex_data.append(&mut pole.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
                 } else {
                     let lr = (radius * radius - y0 * y0).sqrt();
                     let langle = angle * (sail as f32);
@@ -513,11 +720,11 @@ impl StaticMeshRenderData {
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * (sail as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
@@ -525,15 +732,15 @@ impl StaticMeshRenderData {
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * ((sail + 1) as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
@@ -541,11 +748,78 @@ impl StaticMeshRenderData {
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
                 }
             }
         }
 
         Self::from_vertex_data(&vertex_data)
     }
+}
+
+#[allow(unsafe_code)]
+fn calculate_tangents(
+    positions: &[Vec4],
+    tex_coords: &[Vec2],
+    indices: &Option<Vec<u32>>,
+) -> Vec<Vec4> {
+    let length = positions.len();
+    let mut tangents = Vec::with_capacity(length);
+    //let mut bitangents = Vec::with_capacity(length);
+    unsafe {
+        tangents.set_len(length);
+        //bitangents.set_len(length);
+    }
+
+    let num_triangles = if let Some(indices) = &indices {
+        indices.len() / 3
+    } else {
+        length / 3
+    };
+
+    for i in 0..num_triangles {
+        let idx0 = if let Some(indices) = &indices {
+            indices[i * 3] as usize
+        } else {
+            i * 3
+        };
+        let idx1 = if let Some(indices) = &indices {
+            indices[i * 3 + 1] as usize
+        } else {
+            i * 3 + 1
+        };
+        let idx2 = if let Some(indices) = &indices {
+            indices[i * 3 + 2] as usize
+        } else {
+            i * 3 + 2
+        };
+        let v0 = positions[idx0].truncate();
+        let v1 = positions[idx1].truncate();
+        let v2 = positions[idx2].truncate();
+
+        let uv0 = tex_coords[idx0];
+        let uv1 = tex_coords[idx1];
+        let uv2 = tex_coords[idx2];
+
+        let edge1 = v1 - v0;
+        let edge2 = v2 - v0;
+
+        let delta_uv1 = uv1 - uv0;
+        let delta_uv2 = uv2 - uv0;
+
+        let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
+        //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
+        let t = (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f;
+        let t = t.extend(0.0);
+
+        tangents[idx0] = t;
+        tangents[idx1] = t;
+        tangents[idx2] = t;
+
+        //bitangents[idx0] = b;
+        //bitangents[idx1] = b;
+        //bitangents[idx2] = b;
+    }
+
+    tangents
 }

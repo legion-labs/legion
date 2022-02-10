@@ -10,8 +10,8 @@
 use config::Config;
 use lgn_app::prelude::*;
 use lgn_async::AsyncPlugin;
-use lgn_browser::BrowserPlugin;
 use lgn_tauri::{TauriPlugin, TauriPluginSettings};
+use lgn_web_client::BrowserPlugin;
 
 mod config;
 

@@ -7,7 +7,7 @@
   } from "@/api";
   import { propertyIsGroup } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
-  import log from "@lgn/frontend/src/lib/log";
+  import log from "@lgn/web-client/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
   import {
     AddVectorSubPropertyEvent,

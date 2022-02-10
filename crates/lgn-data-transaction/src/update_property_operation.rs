@@ -32,7 +32,7 @@ impl UpdatePropertyOperation {
 
 #[async_trait]
 impl TransactionOperation for UpdatePropertyOperation {
-    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         let resource_handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
@@ -44,22 +44,24 @@ impl TransactionOperation for UpdatePropertyOperation {
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         if self.old_value.is_none() {
-            self.old_value = Some(get_property_as_json_string(
-                reflection,
-                self.property_name.as_str(),
-            )?);
+            self.old_value = Some(
+                get_property_as_json_string(reflection, self.property_name.as_str())
+                    .map_err(|err| Error::Reflection(self.resource_id, err))?,
+            );
         }
 
         set_property_from_json_string(
             reflection,
             self.property_name.as_str(),
             self.new_value.as_str(),
-        )?;
+        )
+        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+
         ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
-    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if let Some(old_value) = &self.old_value {
             let handle = ctx
                 .loaded_resource_handles
@@ -75,7 +77,9 @@ impl TransactionOperation for UpdatePropertyOperation {
                 reflection,
                 self.property_name.as_str(),
                 old_value.as_str(),
-            )?;
+            )
+            .map_err(|err| Error::Reflection(self.resource_id, err))?;
+
             ctx.changed_resources.insert(self.resource_id);
         }
         Ok(())

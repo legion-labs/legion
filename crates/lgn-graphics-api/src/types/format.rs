@@ -5,7 +5,6 @@ use ash::vk;
 
 /// Describes the encoding of an image or buffer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Format {

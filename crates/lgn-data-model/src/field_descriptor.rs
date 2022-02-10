@@ -9,5 +9,5 @@ pub struct FieldDescriptor {
     /// Type of the field
     pub field_type: TypeDefinition,
     /// List of Attributes for the Field
-    pub attributes: HashMap<String, String>,
+    pub attributes: Option<HashMap<String, String>>,
 }

@@ -4,53 +4,58 @@ use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
-    Pipeline, PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
+    PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
     VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
     components::{RenderSurface, StaticMesh},
     hl_gfx_api::HLCommandBuffer,
-    RenderContext, Renderer,
+    resources::{PipelineHandle, PipelineManager},
+    tmp_shader_data::shader_shader_family,
+    RenderContext,
 };
 
 pub struct TmpRenderPass {
-    pipeline: Pipeline,
+    pipeline_handle: PipelineHandle,
     pub color: [f32; 4],
     pub speed: f32,
 }
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
-embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
+embedded_watched_file!(INCLUDE_MESH_DESCRIPTION, "gpu/include/mesh_description.hsh");
 
 impl TmpRenderPass {
-    pub fn new(renderer: &Renderer) -> Self {
-        let device_context = renderer.device_context();
-
+    pub fn new(pipeline_manager: &PipelineManager) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
-        let shader = renderer
-            .shader_manager()
-            .prepare_vs_ps(SHADER_SHADER.path());
+        let mut vertex_layout = VertexLayout::default();
+        vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
+            format: Format::R32_UINT,
+            buffer_index: 0,
+            location: 0,
+            byte_offset: 0,
+        });
+        vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
+            stride: 4,
+            rate: VertexAttributeRate::Instance,
+        });
 
-        //
-        // Pipeline state
-        //
-        let vertex_layout = VertexLayout {
-            attributes: vec![VertexLayoutAttribute {
-                format: Format::R32_UINT,
-                buffer_index: 0,
-                location: 0,
-                byte_offset: 0,
-                gl_attribute_name: None,
-            }],
-            buffers: vec![VertexLayoutBuffer {
-                stride: 4,
-                rate: VertexAttributeRate::Instance,
-            }],
-        };
+        // let vertex_layout = VertexLayout {
+        //     attributes: vec![VertexLayoutAttribute {
+        //         format: Format::R32_UINT,
+        //         buffer_index: 0,
+        //         location: 0,
+        //         byte_offset: 0,
+        //     }],
+        //     buffers: vec![VertexLayoutBuffer {
+        //         stride: 4,
+        //         rate: VertexAttributeRate::Instance,
+        //     }],
+        // };
 
         let depth_state = DepthState {
             depth_test_enable: true,
@@ -69,23 +74,32 @@ impl TmpRenderPass {
             back_stencil_pass_op: StencilOp::default(),
         };
 
-        let pipeline = device_context
-            .create_graphics_pipeline(&GraphicsPipelineDef {
-                shader: &shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_enabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &RasterizerState::default(),
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: Some(Format::D32_SFLOAT),
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-            .unwrap();
+        let pipeline_handle = pipeline_manager.register_pipeline(
+            CGenShaderKey::make(shader_shader_family::ID, shader_shader_family::NONE),
+            move |device_context, shader| {
+                device_context
+                    .create_graphics_pipeline(&GraphicsPipelineDef {
+                        shader,
+                        root_signature,
+                        vertex_layout: &vertex_layout,
+                        blend_state: &BlendState::default_alpha_enabled(),
+                        depth_state: &depth_state,
+                        rasterizer_state: &RasterizerState::default(),
+                        color_formats: &[Format::R16G16B16A16_SFLOAT],
+                        sample_count: SampleCount::SampleCount1,
+                        depth_stencil_format: Some(Format::D32_SFLOAT),
+                        primitive_topology: PrimitiveTopology::TriangleList,
+                    })
+                    .unwrap()
+            },
+        );
+
+        //
+        // Pipeline state
+        //
 
         Self {
-            pipeline,
+            pipeline_handle,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
             speed: 1.0f32,
         }
@@ -105,9 +119,15 @@ impl TmpRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
+
         render_surface: &mut RenderSurface,
         static_meshes: &[&StaticMesh],
     ) {
+        let pipeline = render_context
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
+            .unwrap();
+
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer.begin_render_pass(
@@ -130,7 +150,7 @@ impl TmpRenderPass {
             }),
         );
 
-        cmd_buffer.bind_pipeline(&self.pipeline);
+        cmd_buffer.bind_pipeline(pipeline);
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 

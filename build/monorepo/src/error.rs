@@ -149,7 +149,10 @@ impl Error {
     }
 }
 
-pub(crate) trait ErrorContext {
+/// A convenience type alias to return `Error`s from functions.
+pub type Result<T> = std::result::Result<T, Error>;
+
+pub trait ErrorContext {
     fn with_context(self, description: impl Into<String>) -> Self;
     fn with_full_context(
         self,
@@ -158,7 +161,7 @@ pub(crate) trait ErrorContext {
     ) -> Self;
 }
 
-impl<T> ErrorContext for crate::Result<T> {
+impl<T> ErrorContext for Result<T> {
     fn with_context(self, description: impl Into<String>) -> Self {
         self.map_err(|e| e.with_context(description))
     }

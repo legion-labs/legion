@@ -1,6 +1,6 @@
 import "./assets/index.css";
 
-import { defaultAuthUserConfig, run } from "@lgn/frontend";
+import { defaultAuthUserConfig, run } from "@lgn/web-client";
 import App from "@/App.svelte";
 import "@/workers/editorWorker";
 //import initWasmLogger, { debug } from "@lgn/simple-wasm-logger";

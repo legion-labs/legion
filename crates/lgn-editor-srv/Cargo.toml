@@ -69,3 +69,25 @@ lgn-compiler-script2asm = { path = "../lgn-script2asm-compiler", version = "0.1.
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
     "vulkan",
 ] }
+
+
+[[package.metadata.monorepo.dist]]
+type = "docker"
+template = """
+FROM ubuntu:20.04
+
+{ copy_all }
+
+CMD ["{ binaries.editor-srv }"]
+"""
+allow-aws-ecr-creation = true
+extra-files = [
+    { source = "../../tests/sample-data/*", destination = "/usr/src/app/" },
+]
+
+[[package.metadata.monorepo.dist]]
+type = "zip"
+extra-files = [
+    { source = "../../tests/sample-data/*", destination = "tests/sample-data" },
+    { source = "../../legion.toml", destination = "legion.toml" },
+]

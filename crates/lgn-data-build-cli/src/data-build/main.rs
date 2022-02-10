@@ -9,8 +9,11 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_offline::{
+    resource::{Project, ResourcePathName},
+    ResourcePathId,
+};
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Data Build")]
@@ -31,21 +34,24 @@ enum Commands {
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
+        /// Compiled Asset Store addresses where generated source index will be stored.
+        #[clap(long)]
+        cas: String,
     },
     /// Compile input resource
     #[clap(name = "compile")]
     Compile {
         /// Path in build graph to compile.
         resource: String,
-        /// BBuild index file.
+        /// Source project path.
+        #[clap(long = "project")]
+        project: PathBuf,
+        /// Build index file.
         #[clap(long = "buildindex")]
         build_index: PathBuf,
         /// Compiled Asset Store addresses where assets will be output.
         #[clap(long)]
         cas: String,
-        /// Manifest file path.
-        #[clap(long)]
-        manifest: Option<PathBuf>,
         /// Accept ResourceId as the compilation input and output a runtime manifest.
         #[clap(long = "rt")]
         runtime_flag: bool,
@@ -70,10 +76,11 @@ async fn main() -> Result<(), String> {
         Commands::Create {
             build_index,
             project,
+            cas,
         } => {
             let (mut build, project) =
                 DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
-                    .content_store(&ContentStoreAddr::from("."))
+                    .content_store(&ContentStoreAddr::from(&cas[..]))
                     .create_with_project(project)
                     .await
                     .map_err(|e| format!("failed creating build index {}", e))?;
@@ -85,9 +92,9 @@ async fn main() -> Result<(), String> {
         }
         Commands::Compile {
             resource,
+            project,
             build_index,
             cas,
-            manifest,
             runtime_flag,
             target,
             platform,
@@ -112,26 +119,13 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let (mut build, project) = DataBuildOptions::new(build_index, compilers)
+            let project = Project::open(&project).await.map_err(|e| e.to_string())?;
+
+            let mut build = DataBuildOptions::new(build_index, compilers)
                 .content_store(&content_store_path)
-                .open_with_project()
+                .open(&project)
                 .await
                 .map_err(|e| format!("Failed to open build index: '{}'", e))?;
-
-            let derived = {
-                if runtime_flag {
-                    let id = resource
-                        .parse::<ResourceTypeAndId>()
-                        .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", resource))?;
-                    build.lookup_pathid(id).ok_or(format!(
-                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                        id
-                    ))?
-                } else {
-                    ResourcePathId::from_str(&resource)
-                        .map_err(|_e| format!("Invalid Resource (ResourcePathId) '{}'", resource))?
-                }
-            };
 
             //
             // for now, each time we build we make sure we have a fresh input data indexed
@@ -142,10 +136,28 @@ async fn main() -> Result<(), String> {
                 .await
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
+            let derived = {
+                if let Ok(id) = resource.parse::<ResourceTypeAndId>() {
+                    build.lookup_pathid(id).ok_or(format!(
+                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
+                        resource
+                    ))?
+                } else if let Ok(id) = ResourcePathId::from_str(&resource) {
+                    id
+                } else if let Ok(name) = ResourcePathName::from_str(&resource) {
+                    let id = project
+                        .find_resource(&name)
+                        .await
+                        .map_err(|e| format!("Could not find source resource: '{}'", e))?;
+                    ResourcePathId::from(id).push(ResourceType::new(b"runtime_entity"))
+                } else {
+                    return Err(format!("Could not parse resource input: '{}'", resource));
+                }
+            };
+
             let output = build
                 .compile(
                     derived,
-                    manifest,
                     &CompilationEnv {
                         target,
                         platform,

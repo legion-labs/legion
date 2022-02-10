@@ -8,18 +8,20 @@
     propertyIsOption,
     propertyIsQuat,
     propertyIsSpeed,
+    propertyIsScript,
     propertyIsString,
     propertyIsVec,
     propertyIsVec3,
     ResourceProperty,
   } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
-  import log from "@lgn/frontend/src/lib/log";
+  import log from "@lgn/web-client/src/lib/log";
   import { createEventDispatcher } from "svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
   import NumberProperty from "./properties/NumberProperty.svelte";
   import QuatProperty from "./properties/QuatProperty.svelte";
+  import ScriptProperty from "./properties/ScriptProperty.svelte";
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vec3Property from "./properties/Vec3Property.svelte";
@@ -90,6 +92,12 @@
         bind:value={property.value}
       />
     </div>
+  {:else if propertyIsScript(property)}
+    <ScriptProperty
+      name={property.name}
+      on:input={({ detail }) => onInput({ value: detail })}
+      bind:value={property.value}
+    />
   {:else if propertyIsString(property)}
     <StringProperty
       on:input={({ detail }) => onInput({ value: detail })}

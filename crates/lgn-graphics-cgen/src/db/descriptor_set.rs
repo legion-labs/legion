@@ -65,8 +65,10 @@ impl DescriptorDef {
             crate::db::DescriptorDef::RWStructuredBuffer(_) => {
                 ShaderResourceType::RWStructuredBuffer
             }
-            crate::db::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAdressBuffer,
-            crate::db::DescriptorDef::RWByteAddressBuffer => ShaderResourceType::RWByteAdressBuffer,
+            crate::db::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAddressBuffer,
+            crate::db::DescriptorDef::RWByteAddressBuffer => {
+                ShaderResourceType::RWByteAddressBuffer
+            }
             crate::db::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
             crate::db::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
             crate::db::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
-use crate::{LockContext, TransactionOperation};
+use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to rename a Resource
 pub struct ReparentResourceOperation {
@@ -26,9 +26,12 @@ impl ReparentResourceOperation {
 
 #[async_trait]
 impl TransactionOperation for ReparentResourceOperation {
-    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
-        let mut raw_name = ctx.project.raw_resource_name(self.resource_id.id)?;
+        let mut raw_name = ctx
+            .project
+            .raw_resource_name(self.resource_id.id)
+            .map_err(|err| Error::Project(self.resource_id, err))?;
 
         raw_name.replace_parent_info(Some(self.new_parent), None);
 
@@ -36,16 +39,18 @@ impl TransactionOperation for ReparentResourceOperation {
         self.old_path = Some(
             ctx.project
                 .rename_resource(self.resource_id, &raw_name)
-                .await?,
+                .await
+                .map_err(|err| Error::Project(self.resource_id, err))?,
         );
         Ok(())
     }
 
-    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if let Some(old_path) = &self.old_path {
             ctx.project
                 .rename_resource(self.resource_id, old_path)
-                .await?;
+                .await
+                .map_err(|err| Error::Project(self.resource_id, err))?;
         }
         Ok(())
     }

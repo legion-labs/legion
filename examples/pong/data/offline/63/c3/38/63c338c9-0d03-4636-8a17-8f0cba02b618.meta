@@ -1,7 +1,7 @@
 {
   "name": "/scene/Ground",
-  "type_name": "offline_debugcube",
-  "type_id": "09cde0390abe0694",
+  "type_name": "offline_entity",
+  "type_id": "1c0ff9e497b0740f",
   "dependencies": [],
-  "content_checksum": "7bf8d4a191be5651a2a7958227fe0817"
+  "content_checksum": "d1dc8f1cea2f2b2ee95da605764f6c57"
 }

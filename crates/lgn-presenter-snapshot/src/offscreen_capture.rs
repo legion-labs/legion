@@ -1,50 +1,56 @@
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::prelude::*;
 
+use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    hl_gfx_api::ShaderManager,
+    resources::{PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
 
-use crate::cgen;
+use crate::{cgen, tmp_shader_data::display_mapper_shader_family};
 
 pub struct OffscreenHelper {
     render_image: Texture,
     render_image_rtv: TextureView,
     copy_image: Texture,
-    pipeline: Pipeline,
+    pipeline_handle: PipelineHandle,
     bilinear_sampler: Sampler,
 }
 
-embedded_watched_file!(DISPLAY_MAPPER_SHADER, "shaders/display_mapper.hlsl");
-
 impl OffscreenHelper {
     pub fn new(
-        shader_manager: &ShaderManager,
+        pipeline_manager: &PipelineManager,
         device_context: &DeviceContext,
         resolution: RenderSurfaceExtents,
-    ) -> anyhow::Result<Self> {
+    ) -> Self {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let shader = shader_manager.prepare_vs_ps(DISPLAY_MAPPER_SHADER.path());
-
-        let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
-            shader: &shader,
-            root_signature,
-            vertex_layout: &VertexLayout::default(),
-            blend_state: &BlendState::default(),
-            depth_state: &DepthState::default(),
-            rasterizer_state: &RasterizerState {
-                cull_mode: CullMode::Back,
-                ..RasterizerState::default()
+        let pipeline_handle = pipeline_manager.register_pipeline(
+            CGenShaderKey::make(
+                display_mapper_shader_family::ID,
+                display_mapper_shader_family::NONE,
+            ),
+            |device_context, shader| {
+                device_context
+                    .create_graphics_pipeline(&GraphicsPipelineDef {
+                        shader,
+                        root_signature,
+                        vertex_layout: &VertexLayout::default(),
+                        blend_state: &BlendState::default(),
+                        depth_state: &DepthState::default(),
+                        rasterizer_state: &RasterizerState {
+                            cull_mode: CullMode::Back,
+                            ..RasterizerState::default()
+                        },
+                        primitive_topology: PrimitiveTopology::TriangleList,
+                        color_formats: &[Format::R8G8B8A8_UNORM],
+                        depth_stencil_format: None,
+                        sample_count: SampleCount::SampleCount1,
+                    })
+                    .unwrap()
             },
-            primitive_topology: PrimitiveTopology::TriangleList,
-            color_formats: &[Format::R8G8B8A8_UNORM],
-            depth_stencil_format: None,
-            sample_count: SampleCount::SampleCount1,
-        })?;
+        );
 
         let sampler_def = SamplerDef {
             min_filter: FilterType::Linear,
@@ -55,7 +61,7 @@ impl OffscreenHelper {
             address_mode_w: AddressMode::ClampToEdge,
             ..SamplerDef::default()
         };
-        let bilinear_sampler = device_context.create_sampler(&sampler_def)?;
+        let bilinear_sampler = device_context.create_sampler(&sampler_def);
 
         let render_image = device_context.create_texture(&TextureDef {
             extents: Extents3D {
@@ -70,11 +76,11 @@ impl OffscreenHelper {
             usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Optimal,
-        })?;
+        });
 
         let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_target_view(
             render_image.definition(),
-        ))?;
+        ));
 
         let copy_image = device_context.create_texture(&TextureDef {
             extents: Extents3D {
@@ -89,15 +95,15 @@ impl OffscreenHelper {
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Linear,
-        })?;
+        });
 
-        Ok(Self {
+        Self {
             render_image,
             render_image_rtv,
             copy_image,
-            pipeline,
+            pipeline_handle,
             bilinear_sampler,
-        })
+        }
     }
 
     #[span_fn]
@@ -133,7 +139,11 @@ impl OffscreenHelper {
             &None,
         );
 
-        cmd_buffer.bind_pipeline(&self.pipeline);
+        let pipeline = render_context
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
+            .unwrap();
+        cmd_buffer.bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
         descriptor_set.set_hdr_image(render_surface.shader_resource_view());

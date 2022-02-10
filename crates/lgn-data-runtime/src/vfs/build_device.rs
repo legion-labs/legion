@@ -19,6 +19,7 @@ pub(crate) struct BuildDevice {
     databuild_bin: PathBuf,
     cas_addr: ContentStoreAddr,
     buildindex: PathBuf,
+    project: PathBuf,
     force_recompile: bool,
 }
 
@@ -29,6 +30,7 @@ impl BuildDevice {
         cas_addr: ContentStoreAddr,
         build_bin: impl AsRef<Path>,
         buildindex: impl AsRef<Path>,
+        project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
         Self {
@@ -37,6 +39,7 @@ impl BuildDevice {
             databuild_bin: build_bin.as_ref().to_owned(),
             cas_addr,
             buildindex: buildindex.as_ref().to_owned(),
+            project: project.as_ref().to_owned(),
             force_recompile,
         }
     }
@@ -72,6 +75,7 @@ impl BuildDevice {
             resource_id,
             &self.cas_addr,
             &self.buildindex,
+            &self.project,
         );
 
         info!("Running DataBuild for ResourceId: {}", resource_id);
@@ -121,6 +125,7 @@ fn build_command(
     resource_id: ResourceTypeAndId,
     cas: &ContentStoreAddr,
     buildindex_dir: impl AsRef<Path>,
+    project: impl AsRef<Path>,
 ) -> std::process::Command {
     let target = "game";
     let platform = "windows";
@@ -137,5 +142,6 @@ fn build_command(
         "--buildindex={}",
         buildindex_dir.as_ref().to_str().unwrap()
     ));
+    command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
     command
 }

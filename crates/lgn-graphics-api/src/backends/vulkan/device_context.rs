@@ -180,50 +180,50 @@ impl VulkanDeviceContext {
 
 impl DeviceContext {
     pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
-        &self.inner.platform_device_context.resource_cache
+        &self.inner.backend_device_context.resource_cache
     }
 
     pub(crate) fn vk_entry(&self) -> &ash::Entry {
-        &*self.inner.platform_device_context.entry
+        &*self.inner.backend_device_context.entry
     }
 
     pub(crate) fn vk_instance(&self) -> &ash::Instance {
-        &self.inner.platform_device_context.instance
+        &self.inner.backend_device_context.instance
     }
 
     pub(crate) fn vk_device(&self) -> &ash::Device {
-        &self.inner.platform_device_context.vk_device
+        &self.inner.backend_device_context.vk_device
     }
 
     pub(crate) fn vk_physical_device(&self) -> vk::PhysicalDevice {
-        self.inner.platform_device_context.vk_physical_device
+        self.inner.backend_device_context.vk_physical_device
     }
 
     pub(crate) fn physical_device_info(&self) -> &PhysicalDeviceInfo {
-        &self.inner.platform_device_context.physical_device_info
+        &self.inner.backend_device_context.physical_device_info
     }
 
     pub(crate) fn limits(&self) -> &vk::PhysicalDeviceLimits {
         &self
             .inner
-            .platform_device_context
+            .backend_device_context
             .physical_device_info
             .properties
             .limits
     }
 
     pub(crate) fn vk_allocator(&self) -> &vk_mem::Allocator {
-        &self.inner.platform_device_context.vk_allocator
+        &self.inner.backend_device_context.vk_allocator
     }
 
     pub(crate) fn queue_allocator(&self) -> &VkQueueAllocatorSet {
-        &self.inner.platform_device_context.queue_allocator
+        &self.inner.backend_device_context.queue_allocator
     }
 
     pub(crate) fn vk_queue_family_indices(&self) -> &VkQueueFamilyIndices {
         &self
             .inner
-            .platform_device_context
+            .backend_device_context
             .physical_device_info
             .queue_family_indices
     }
@@ -231,7 +231,7 @@ impl DeviceContext {
     pub(crate) fn dedicated_present_queue_lock(&self) -> &Mutex<()> {
         &self
             .inner
-            .platform_device_context
+            .backend_device_context
             .dedicated_present_queue_lock
     }
 

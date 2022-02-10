@@ -9,23 +9,22 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::Result;
 use clap::Parser;
-use lgn_source_control::{new_index_backend, Error};
-use lgn_source_control::{BlobStorageUrl, Commit, IndexBackend};
+use lgn_source_control::{
+    new_index_backend, BlobStorageUrl, CanonicalPath, Commit, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
+};
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
-    ClearLockRequest, ClearLockResponse, CommitExistsRequest, CommitExistsResponse,
-    CommitToBranchRequest, CommitToBranchResponse, CountLocksInDomainRequest,
-    CountLocksInDomainResponse, CreateIndexRequest, CreateIndexResponse, DestroyIndexRequest,
-    DestroyIndexResponse, FindBranchRequest, FindBranchResponse, FindBranchesInLockDomainRequest,
-    FindBranchesInLockDomainResponse, FindLockRequest, FindLockResponse, FindLocksInDomainRequest,
-    FindLocksInDomainResponse, GetBlobStorageUrlRequest, GetBlobStorageUrlResponse,
-    IndexExistsRequest, IndexExistsResponse, InsertBranchRequest, InsertBranchResponse,
-    InsertCommitRequest, InsertCommitResponse, InsertLockRequest, InsertLockResponse,
-    ReadBranchesRequest, ReadBranchesResponse, ReadCommitRequest, ReadCommitResponse,
-    ReadTreeRequest, ReadTreeResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
-    SaveTreeRequest, SaveTreeResponse, UpdateBranchRequest, UpdateBranchResponse,
+    CommitToBranchRequest, CommitToBranchResponse, CountLocksRequest, CountLocksResponse,
+    CreateIndexRequest, CreateIndexResponse, DestroyIndexRequest, DestroyIndexResponse,
+    GetBlobStorageUrlRequest, GetBlobStorageUrlResponse, GetBranchRequest, GetBranchResponse,
+    GetLockRequest, GetLockResponse, GetTreeRequest, GetTreeResponse, IndexExistsRequest,
+    IndexExistsResponse, InsertBranchRequest, InsertBranchResponse, ListBranchesRequest,
+    ListBranchesResponse, ListCommitsRequest, ListCommitsResponse, ListLocksRequest,
+    ListLocksResponse, LockRequest, LockResponse, RegisterWorkspaceRequest,
+    RegisterWorkspaceResponse, SaveTreeRequest, SaveTreeResponse, UnlockRequest, UnlockResponse,
+    UpdateBranchRequest, UpdateBranchResponse,
 };
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::{debug, info, warn, LevelFilter};
@@ -226,86 +225,76 @@ impl SourceControl for Service {
         Ok(tonic::Response::new(RegisterWorkspaceResponse {}))
     }
 
-    async fn find_branch(
+    async fn get_branch(
         &self,
-        request: tonic::Request<FindBranchRequest>,
-    ) -> Result<tonic::Response<FindBranchResponse>, tonic::Status> {
+        request: tonic::Request<GetBranchRequest>,
+    ) -> Result<tonic::Response<GetBranchResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        let branch = index_backend
-            .find_branch(&request.branch_name)
+        let branch = match index_backend.get_branch(&request.branch_name).await {
+            Ok(branch) => Some(branch.into()),
+            Err(Error::BranchNotFound { .. }) => None,
+            Err(err) => return Err(tonic::Status::unknown(err.to_string())),
+        };
+
+        Ok(tonic::Response::new(GetBranchResponse { branch }))
+    }
+
+    async fn list_branches(
+        &self,
+        request: tonic::Request<ListBranchesRequest>,
+    ) -> Result<tonic::Response<ListBranchesResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
+
+        let query = ListBranchesQuery {
+            lock_domain_id: Some(request.lock_domain_id.as_str()).filter(|s| !s.is_empty()),
+        };
+
+        let branches = index_backend
+            .list_branches(&query)
+            .await
+            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        Ok(tonic::Response::new(ListBranchesResponse {
+            branches: branches.into_iter().map(Into::into).collect(),
+        }))
+    }
+
+    async fn list_commits(
+        &self,
+        request: tonic::Request<ListCommitsRequest>,
+    ) -> Result<tonic::Response<ListCommitsResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let index_backend = self
+            .get_index_backend_for_repository(&request.repository_name)
+            .await?;
+
+        let query = ListCommitsQuery {
+            commit_ids: request.commit_ids.iter().map(String::as_str).collect(),
+            depth: request.depth,
+        };
+
+        let commits = index_backend
+            .list_commits(&query)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?
-            .map(Into::into);
+            .into_iter()
+            .map(Into::into)
+            .collect();
 
-        Ok(tonic::Response::new(FindBranchResponse { branch }))
+        Ok(tonic::Response::new(ListCommitsResponse { commits }))
     }
 
-    async fn read_branches(
+    async fn get_tree(
         &self,
-        request: tonic::Request<ReadBranchesRequest>,
-    ) -> Result<tonic::Response<ReadBranchesResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let branches = index_backend
-            .read_branches()
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(ReadBranchesResponse {
-            branches: branches.into_iter().map(Into::into).collect(),
-        }))
-    }
-
-    async fn find_branches_in_lock_domain(
-        &self,
-        request: tonic::Request<FindBranchesInLockDomainRequest>,
-    ) -> Result<tonic::Response<FindBranchesInLockDomainResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let branches = index_backend
-            .find_branches_in_lock_domain(&request.lock_domain_id)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(FindBranchesInLockDomainResponse {
-            branches: branches.into_iter().map(Into::into).collect(),
-        }))
-    }
-
-    async fn read_commit(
-        &self,
-        request: tonic::Request<ReadCommitRequest>,
-    ) -> Result<tonic::Response<ReadCommitResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let commit = Some(
-            index_backend
-                .read_commit(&request.commit_id)
-                .await
-                .map_err(|e| tonic::Status::unknown(e.to_string()))?
-                .into(),
-        );
-
-        Ok(tonic::Response::new(ReadCommitResponse { commit }))
-    }
-
-    async fn read_tree(
-        &self,
-        request: tonic::Request<ReadTreeRequest>,
-    ) -> Result<tonic::Response<ReadTreeResponse>, tonic::Status> {
+        request: tonic::Request<GetTreeRequest>,
+    ) -> Result<tonic::Response<GetTreeResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
@@ -313,68 +302,82 @@ impl SourceControl for Service {
 
         let tree = Some(
             index_backend
-                .read_tree(&request.tree_hash)
+                .get_tree(&request.tree_id)
                 .await
                 .map_err(|e| tonic::Status::unknown(e.to_string()))?
                 .into(),
         );
 
-        Ok(tonic::Response::new(ReadTreeResponse { tree }))
+        Ok(tonic::Response::new(GetTreeResponse { tree }))
     }
 
-    async fn insert_lock(
+    async fn lock(
         &self,
-        request: tonic::Request<InsertLockRequest>,
-    ) -> Result<tonic::Response<InsertLockResponse>, tonic::Status> {
+        request: tonic::Request<LockRequest>,
+    ) -> Result<tonic::Response<LockResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
+        let lock: Result<Lock> = request.lock.unwrap_or_default().try_into();
+        let lock = lock.map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
         index_backend
-            .insert_lock(&request.lock.unwrap_or_default().into())
+            .lock(&lock)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(InsertLockResponse {}))
+        Ok(tonic::Response::new(LockResponse {}))
     }
 
-    async fn find_lock(
+    async fn get_lock(
         &self,
-        request: tonic::Request<FindLockRequest>,
-    ) -> Result<tonic::Response<FindLockResponse>, tonic::Status> {
+        request: tonic::Request<GetLockRequest>,
+    ) -> Result<tonic::Response<GetLockResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        let lock = index_backend
-            .find_lock(&request.lock_domain_id, &request.canonical_relative_path)
+        let lock = match index_backend
+            .get_lock(
+                &request.lock_domain_id,
+                &CanonicalPath::new(&request.canonical_path)
+                    .map_err(|e| tonic::Status::unknown(e.to_string()))?,
+            )
             .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?
-            .map(Into::into);
+        {
+            Ok(lock) => Some(lock.into()),
+            Err(Error::LockNotFound { .. }) => None,
+            Err(err) => return Err(tonic::Status::unknown(err.to_string())),
+        };
 
-        Ok(tonic::Response::new(FindLockResponse { lock }))
+        Ok(tonic::Response::new(GetLockResponse { lock }))
     }
 
-    async fn find_locks_in_domain(
+    async fn list_locks(
         &self,
-        request: tonic::Request<FindLocksInDomainRequest>,
-    ) -> Result<tonic::Response<FindLocksInDomainResponse>, tonic::Status> {
+        request: tonic::Request<ListLocksRequest>,
+    ) -> Result<tonic::Response<ListLocksResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
+
+        let query = ListLocksQuery {
+            lock_domain_ids: request.lock_domain_ids.iter().map(String::as_str).collect(),
+        };
 
         let locks = index_backend
-            .find_locks_in_domain(&request.lock_domain_id)
+            .list_locks(&query)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?
             .into_iter()
             .map(Into::into)
             .collect();
 
-        Ok(tonic::Response::new(FindLocksInDomainResponse { locks }))
+        Ok(tonic::Response::new(ListLocksResponse { locks }))
     }
 
     async fn save_tree(
@@ -386,32 +389,15 @@ impl SourceControl for Service {
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        index_backend
-            .save_tree(&request.tree.unwrap_or_default().into(), &request.hash)
+        let tree: Result<Tree> = request.tree.unwrap_or_default().try_into();
+        let tree = tree.map_err(|e| tonic::Status::unknown(e.to_string()))?;
+
+        let tree_id = index_backend
+            .save_tree(&tree)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(SaveTreeResponse {}))
-    }
-
-    async fn insert_commit(
-        &self,
-        request: tonic::Request<InsertCommitRequest>,
-    ) -> Result<tonic::Response<InsertCommitResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
-        let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        index_backend
-            .insert_commit(&commit)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(InsertCommitResponse {}))
+        Ok(tonic::Response::new(SaveTreeResponse { tree_id }))
     }
 
     async fn commit_to_branch(
@@ -432,23 +418,6 @@ impl SourceControl for Service {
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
         Ok(tonic::Response::new(CommitToBranchResponse {}))
-    }
-
-    async fn commit_exists(
-        &self,
-        request: tonic::Request<CommitExistsRequest>,
-    ) -> Result<tonic::Response<CommitExistsResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let index_backend = self
-            .get_index_backend_for_repository(&request.repository_name)
-            .await?;
-
-        let exists = index_backend
-            .commit_exists(&request.commit_id)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(CommitExistsResponse { exists }))
     }
 
     async fn update_branch(
@@ -485,38 +454,46 @@ impl SourceControl for Service {
         Ok(tonic::Response::new(InsertBranchResponse {}))
     }
 
-    async fn clear_lock(
+    async fn unlock(
         &self,
-        request: tonic::Request<ClearLockRequest>,
-    ) -> Result<tonic::Response<ClearLockResponse>, tonic::Status> {
+        request: tonic::Request<UnlockRequest>,
+    ) -> Result<tonic::Response<UnlockResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
         index_backend
-            .clear_lock(&request.lock_domain_id, &request.canonical_relative_path)
+            .unlock(
+                &request.lock_domain_id,
+                &CanonicalPath::new(&request.canonical_path)
+                    .map_err(|e| tonic::Status::unknown(e.to_string()))?,
+            )
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(ClearLockResponse {}))
+        Ok(tonic::Response::new(UnlockResponse {}))
     }
 
-    async fn count_locks_in_domain(
+    async fn count_locks(
         &self,
-        request: tonic::Request<CountLocksInDomainRequest>,
-    ) -> Result<tonic::Response<CountLocksInDomainResponse>, tonic::Status> {
+        request: tonic::Request<CountLocksRequest>,
+    ) -> Result<tonic::Response<CountLocksResponse>, tonic::Status> {
         let request = request.into_inner();
         let index_backend = self
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
+        let query = ListLocksQuery {
+            lock_domain_ids: request.lock_domain_ids.iter().map(String::as_str).collect(),
+        };
+
         let count = index_backend
-            .count_locks_in_domain(&request.lock_domain_id)
+            .count_locks(&query)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(CountLocksInDomainResponse { count }))
+        Ok(tonic::Response::new(CountLocksResponse { count }))
     }
 }
 

@@ -3,12 +3,13 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_source_control::*;
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Legion Source Control
 #[derive(Parser, Debug)]
@@ -21,6 +22,9 @@ struct Cli {
 
     #[clap(name = "debug", short, long, help = "Enable debug logging")]
     debug: bool,
+
+    #[clap(name = "no-color", long, help = "Disable color output")]
+    no_color: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -44,7 +48,7 @@ enum Commands {
         index_url: String,
     },
     /// Initializes a workspace and populates it with the latest version of the main branch
-    #[clap(name = "init-workspace")]
+    #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
         /// lsc workspace directory
         workspace_directory: PathBuf,
@@ -52,46 +56,53 @@ enum Commands {
         index_url: String,
     },
     /// Adds local file to the set of pending changes
-    #[clap(name = "add")]
+    #[clap(name = "add", alias = "a")]
     Add {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to add.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Makes file writable and adds it to the set of pending changes
-    #[clap(name = "edit")]
-    Edit {
-        /// local path within a workspace
-        path: PathBuf,
+    #[clap(name = "checkout", alias = "co")]
+    Checkout {
+        /// A list of paths for files to edit.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Deletes the local file and records the pending change
-    #[clap(name = "delete")]
+    #[clap(name = "delete", alias = "d")]
     Delete {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to delete.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Prevent others from modifying the specified file. Locks apply throught all related branches
     #[clap(name = "lock")]
     Lock {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to lock.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Releases a lock, allowing others to modify or lock the file
     #[clap(name = "unlock")]
     Unlock {
-        /// local path within a workspace
-        path: PathBuf,
+        /// A list of paths for files to unlock.
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Prints all the locks in the current lock domain
-    #[clap(name = "list-locks")]
-    ListLocks,
+    #[clap(name = "locks")]
+    Locks,
     /// Prints difference between local file and specified commit
     #[clap(name = "diff")]
     Diff {
         /// ignores diff tool config and prints a patch on stdout
         #[clap(long)]
-        notool: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        no_tool: bool,
+
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
+
         /// reference version: a commit id, base or latest
         #[clap(default_value = "base")]
         reference: String,
@@ -101,55 +112,78 @@ enum Commands {
     Resolve {
         /// ignores diff tool config and prints a patch on stdout
         #[clap(long)]
-        notool: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        no_tool: bool,
+
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
     },
     /// Creates a new branch based on the state of the workspace
     #[clap(name = "create-branch")]
     CreateBranch {
         /// name of the new branch
-        name: String,
+        branch_name: String,
     },
     /// Merge the specified branch into the current one
-    #[clap(name = "merge-branch")]
-    MergeBranch {
+    #[clap(name = "merge")]
+    Merge {
         /// name of the branch to merge
-        name: String,
+        branch_name: String,
     },
-    /// Syncs workspace to specified branch
-    #[clap(name = "switch-branch")]
-    SwitchBranch {
+    /// Switch to another branch.
+    #[clap(name = "switch")]
+    Switch {
         /// name of the existing branch to sync to
-        name: String,
+        branch_name: String,
     },
     /// Move the current branch and its descendance to a new lock domain
-    #[clap(name = "detach-branch")]
-    DetachBranch,
+    #[clap(name = "detach")]
+    Detach,
     /// Merges the lock domains of the two branches
-    #[clap(name = "attach-branch")]
-    AttachBranches {
+    #[clap(name = "attach")]
+    Attach {
         /// name of the existing branch to set as parent
-        parent_branch_name: String,
+        branch_name: String,
     },
     /// Prints a list of all branches
-    #[clap(name = "list-branches")]
-    ListBranches,
-    /// Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.
+    #[clap(name = "branches", alias = "br")]
+    Branches {
+        /// Displays the full information about the branch
+        #[clap(long)]
+        full: bool,
+    },
+    /// Abandon the local changes made to a file. By default will revert both
+    /// staged and unstaged changes.
     #[clap(name = "revert")]
     Revert {
-        /// revert all the local changes that match the specified pattern
-        #[clap(long)]
-        glob: bool,
-        /// local path within a workspace
-        path: PathBuf,
+        #[clap(required = true, parse(from_os_str))]
+        paths: Vec<PathBuf>,
+
+        /// Only revert staged changes. Will not modify files on disk. Changed edited files will remain in edit mode.
+        #[clap(long, conflicts_with = "unstaged")]
+        staged: bool,
+
+        /// Only revert unstaged changes.
+        #[clap(long, conflicts_with = "staged")]
+        unstaged: bool,
     },
-    /// Lists changes in workspace lsc knows about
-    #[clap(name = "local-changes")]
-    LocalChanges,
+    /// Lists staged changes in workspace.
+    #[clap(name = "status", alias = "st")]
+    Status {
+        /// Only list staged changes.
+        #[clap(long, conflicts_with = "unstaged")]
+        staged: bool,
+
+        /// Only list unstaged changes.
+        #[clap(long, conflicts_with = "staged")]
+        unstaged: bool,
+    },
     /// Lists commits of the current branch
     #[clap(name = "log")]
-    Log,
+    Log {
+        /// Display the log in short format.
+        #[clap(long)]
+        short: bool,
+    },
     /// Updates the workspace with the latest version of the files
     #[clap(name = "sync")]
     Sync {
@@ -160,23 +194,40 @@ enum Commands {
     #[clap(name = "resolves-pending")]
     ResolvesPending,
     /// Records local changes in the repository as a single transaction
-    #[clap(name = "commit")]
+    #[clap(name = "commit", alias = "ci")]
     Commit {
         /// commit message
-        #[clap(short, value_delimiter = '\"')]
-        message: Vec<String>,
+        #[clap(short)]
+        message: String,
     },
-    /// Prints the path to the configuration file and its content
-    #[clap(name = "config")]
-    Config,
-    /// Replicates branches and commits from a git repo
-    #[clap(name = "import-git-branch")]
-    ImportGitBranch {
-        /// Path to the root of a git repository. Should contain a .git subfolder
-        path: PathBuf,
-        /// Name of the branch to import
-        branch: String,
-    },
+}
+
+fn binary_name() -> String {
+    "lsc".to_string()
+}
+
+fn green() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Green)).set_intense(true);
+
+    colorspec
+}
+
+fn yellow() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Yellow)).set_intense(true);
+
+    colorspec
+}
+
+fn red() -> ColorSpec {
+    let mut colorspec = ColorSpec::new();
+
+    colorspec.set_fg(Some(Color::Red));
+
+    colorspec
 }
 
 #[tokio::main]
@@ -195,6 +246,15 @@ async fn main() -> anyhow::Result<()> {
     };
 
     span_scope!("lsc::main");
+    let choice = if args.no_color {
+        ColorChoice::Never
+    } else if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+
+    let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
         Commands::CreateIndex { index_url } => {
@@ -237,135 +297,331 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("init-workspace");
 
-            let config = WorkspaceConfig {
-                index_url: index_url.clone(),
-                registration: WorkspaceRegistration::new_with_current_user(),
-            };
+            let config =
+                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user());
 
             Workspace::init(&workspace_directory, config)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
         }
-        Commands::Add { path } => track_new_file_command(path).await,
-        Commands::Edit { path } => edit_file_command(path).await,
-        Commands::Delete { path } => {
-            info!("delete");
-            delete_file_command(path).await
+        Commands::Add { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .add_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::Lock { path } => {
-            info!("lock");
-            lock_file_command(path).await
+        Commands::Checkout { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .checkout_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::Unlock { path } => {
-            info!("unlock");
-            unlock_file_command(path).await
+        Commands::Delete { paths } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            workspace
+                .delete_files(paths.iter().map(PathBuf::as_path))
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
-        Commands::ListLocks => {
+        Commands::Lock { paths } => {
+            info!("lock {:?}", paths);
+
+            Ok(())
+        }
+        Commands::Unlock { paths } => {
+            info!("unlock {:?}", paths);
+
+            Ok(())
+        }
+        Commands::Locks => {
             info!("list-locks");
-            list_locks_command().await
+
+            Ok(())
         }
         Commands::Diff {
-            notool,
-            path,
-            reference,
+            no_tool: _,
+            paths: _,
+            reference: _,
         } => {
             info!("diff");
-            diff_file_command(path, &reference, !notool).await
+
+            Ok(())
         }
-        Commands::Resolve { notool, path } => {
+        Commands::Resolve {
+            no_tool: _,
+            paths: _,
+        } => {
             info!("resolve");
-            resolve_file_command(path, !notool).await
+
+            Ok(())
         }
-        Commands::CreateBranch { name } => {
-            info!("create-branch");
-            create_branch_command(&name).await
+        Commands::CreateBranch { branch_name } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let branch = workspace.create_branch(&branch_name).await?;
+
+            println!("Now on branch {}", branch);
+
+            Ok(())
         }
-        Commands::MergeBranch { name } => {
-            info!("merge-branch");
-            merge_branch_command(&name).await
+        Commands::Merge { branch_name } => {
+            info!("merge: {}", branch_name);
+
+            Ok(())
         }
-        Commands::SwitchBranch { name } => {
-            info!("switch-branch");
-            switch_branch_command(&name).await
+        Commands::Switch { branch_name } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let (branch, changes) = workspace.switch_branch(&branch_name).await?;
+
+            println!("Now on branch {}", branch);
+
+            print_changes(&workspace, &mut stdout, &changes)
         }
-        Commands::DetachBranch => {
-            info!("detach-branch");
-            detach_branch_command().await
+        Commands::Detach => {
+            info!("detach");
+
+            Ok(())
         }
-        Commands::AttachBranches { parent_branch_name } => {
-            info!("attach-branch {}", parent_branch_name);
-            attach_branch_command(&parent_branch_name).await
+        Commands::Attach { branch_name } => {
+            info!("attach {}", branch_name);
+
+            Ok(())
         }
-        Commands::ListBranches => {
-            info!("list-branches");
-            list_branches_command().await
-        }
-        Commands::Revert { glob, path } => {
-            if glob {
-                revert_glob_command(path.to_str().unwrap()).await
+        Commands::Branches { full } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let branches = workspace.get_branches().await?;
+
+            if full {
+                for branch in branches {
+                    println!("{}", branch);
+                }
             } else {
-                revert_file_command(path).await
+                for branch in branches {
+                    println!("{}", branch.name);
+                }
             }
+
+            Ok(())
         }
-        Commands::LocalChanges => {
-            info!("local-changes");
-            find_local_changes_command().await.map(|changes| {
-                if changes.is_empty() {
-                    println!("No local changes");
+        Commands::Revert {
+            paths,
+            staged,
+            unstaged,
+        } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+            let staging = Staging::from_bool(staged, unstaged);
+
+            let reverted_files = workspace
+                .revert_files(paths.iter().map(PathBuf::as_path), staging)
+                .await?;
+
+            if reverted_files.is_empty() {
+                println!("Nothing to revert");
+            } else {
+                println!("Reverted files:");
+
+                let current_dir = std::env::current_dir()
+                    .map_other_err("failed to determine current directory")?;
+
+                for file in &reverted_files {
+                    println!("   {}", workspace.make_relative_path(&current_dir, file));
+                }
+            }
+
+            Ok(())
+        }
+        Commands::Status { staged, unstaged } => {
+            let current_dir =
+                std::env::current_dir().map_other_err("failed to determine current directory")?;
+            let workspace = Workspace::find_in_current_directory().await?;
+            let current_branch = workspace.get_current_branch().await?;
+            let staging = Staging::from_bool(staged, unstaged);
+            let (staged_changes, unstaged_changes) = workspace.status(staging).await?;
+
+            println!("On branch {}", current_branch);
+
+            if !staged_changes.is_empty() {
+                println!("\nChanges staged for commit:");
+
+                for (path, change) in &staged_changes {
+                    if change.change_type().has_modifications() {
+                        stdout.set_color(&green())?;
+                    } else {
+                        stdout.set_color(&yellow())?;
+                    }
+
+                    print!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
+
+                    if !change.change_type().has_modifications() {
+                        stdout.reset()?;
+                        print!(" (no modifications staged yet)");
+                    }
+
+                    println!();
                 }
 
-                for change in changes {
-                    println!("{:?} {}", change.change_type, change.relative_path);
-                }
-            })
-        }
-        Commands::Log => {
-            info!("log");
+                stdout.reset()?;
+            }
 
-            log_command().await
+            if !unstaged_changes.is_empty() {
+                println!("\nChanges not staged for commit:");
+
+                stdout.set_color(&red())?;
+
+                for (path, change) in &unstaged_changes {
+                    println!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
+                }
+
+                stdout.reset()?;
+            }
+
+            if staged_changes.is_empty() && unstaged_changes.is_empty() {
+                println!("\nNo changes to commit");
+            }
+
+            Ok(())
+        }
+        Commands::Log { short } => {
+            let workspace = Workspace::find_in_current_directory().await?;
+            let current_branch = workspace.get_current_branch().await?;
+            let commits = workspace
+                .list_commits(&ListCommitsQuery::single(&current_branch.head))
+                .await?;
+
+            if short {
+                for commit in &commits {
+                    println!("{} {}", commit.id, commit.message);
+                }
+            } else {
+                println!("Displaying commits for branch {}", current_branch);
+
+                for commit in &commits {
+                    stdout.set_color(&yellow())?;
+                    println!("\ncommit {}", commit.id);
+                    stdout.reset()?;
+                    println!("Author: {}", commit.owner);
+                    println!(
+                        "Date:   {}",
+                        chrono::DateTime::<chrono::Local>::from(commit.timestamp)
+                            .format("%a %b %d %H:%M:%S %Y %z")
+                    );
+                    println!("\n    {}", commit.message);
+                }
+            }
+
+            Ok(())
         }
         Commands::Sync { commit_id } => {
-            info!("sync");
-            match commit_id {
-                Some(commit_id) => sync_to_command(&commit_id).await,
-                None => sync_command().await,
-            }
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
+                let changes = workspace.sync_to(&commit_id).await?;
+
+                (commit_id, changes)
+            } else {
+                let (branch, changes) = workspace.sync().await?;
+
+                (branch.head, changes)
+            };
+
+            println!("Synced to {}", current_commit_id);
+
+            print_changes(&workspace, &mut stdout, &changes)
         }
         Commands::ResolvesPending => {
             info!("resolves-pending");
 
-            find_resolves_pending_command()
-                .await
-                .map(|resolves_pending| {
-                    if resolves_pending.is_empty() {
-                        println!("No local changes need to be resolved");
-                    }
-
-                    for m in resolves_pending {
-                        println!(
-                            "{} {} {}",
-                            m.relative_path, &m.base_commit_id, &m.theirs_commit_id
-                        );
-                    }
-                })
+            Ok(())
         }
         Commands::Commit { message } => {
-            let mut aggregate_message = String::from("");
-            for item in message {
-                aggregate_message += &item;
+            let workspace = Workspace::find_in_current_directory().await?;
+
+            match workspace.commit(&message).await {
+                Ok(_) => Ok(()),
+                Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
+                    let current_dir = std::env::current_dir()
+                        .map_other_err("failed to determine current directory")?;
+
+                    println!("The following files are marked for edition but do not have any change staged:");
+                    println!(
+                        "  (use \"{} add <file>...\" to update what will be commited)",
+                        binary_name()
+                    );
+                    println!(
+                        "  (use \"{} revert --staged <file>...\" to remove the edition mark)",
+                        binary_name()
+                    );
+
+                    for path in &paths {
+                        stdout.set_color(&red())?;
+                        print!("\t{}", workspace.make_relative_path(&current_dir, path));
+                        stdout.reset()?;
+                        println!();
+                    }
+
+                    println!();
+
+                    Err(anyhow::anyhow!("refusing to commit"))
+                }
+                Err(err) => Err(err.into()),
             }
-            info!("commit {:?}", aggregate_message);
-
-            commit_command(&aggregate_message).await
-        }
-        Commands::Config => {
-            info!("config");
-
-            print_config_command()
-        }
-        Commands::ImportGitBranch { path, branch } => {
-            import_git_branch_command(path, &branch).await
         }
     }
+}
+
+fn print_changes(
+    workspace: &Workspace,
+    stdout: &mut StandardStream,
+    changes: &BTreeSet<Change>,
+) -> anyhow::Result<()> {
+    if !changes.is_empty() {
+        let current_dir =
+            std::env::current_dir().map_other_err("failed to determine current directory")?;
+
+        println!("\nChanges:");
+
+        for change in changes {
+            if change.change_type().has_modifications() {
+                stdout.set_color(&green())?;
+            } else {
+                stdout.set_color(&yellow())?;
+            }
+
+            print!(
+                "\t{:>8}:   {}",
+                change.change_type().to_human_string(),
+                workspace.make_relative_path(&current_dir, change.canonical_path()),
+            );
+
+            if !change.change_type().has_modifications() {
+                stdout.reset()?;
+                print!(" (no modifications staged yet)");
+            }
+
+            println!();
+        }
+
+        stdout.reset()?;
+    }
+
+    Ok(())
 }

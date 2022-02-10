@@ -1,7 +1,7 @@
 {
   "name": "/scene/Ball",
-  "type_name": "offline_debugcube",
-  "type_id": "09cde0390abe0694",
+  "type_name": "offline_entity",
+  "type_id": "1c0ff9e497b0740f",
   "dependencies": [],
-  "content_checksum": "4829a2f046e51336b57adc142e9f4220"
+  "content_checksum": "a9b68d75afe096487ee3ba3612e6b410"
 }

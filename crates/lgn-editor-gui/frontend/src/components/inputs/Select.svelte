@@ -1,15 +1,19 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import clickOutside from "@lgn/frontend/src/actions/clickOutside";
+  import clickOutside from "@lgn/web-client/src/actions/clickOutside";
   import keyboardNavigation, {
     keyboardNavigationItem,
     keyboardNavigationContainer,
-  } from "@lgn/frontend/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/frontend/src/stores/keyboardNavigation";
+  } from "@lgn/web-client/src/actions/keyboardNavigation";
+  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
 
-  type Option = $$Generic<{ id: string; value: string }>;
+  type Item = $$Generic;
+
+  type Option = { value: string; item: Item };
 
   const keyboardNavigationStore = new KeyboardNavigationStore();
+
+  export let status: "default" | "error" = "default";
 
   export let size: "default" | "lg" = "default";
 
@@ -79,6 +83,7 @@
   class:disabled
   class:default={size === "default"}
   class:lg={size === "lg"}
+  class:error={status === "error" && !disabled}
 >
   <div
     class="select"
@@ -120,11 +125,10 @@
           <slot name="unselect" />
         </div>
       {/if}
-      {#each options as option, index (option.id)}
+      {#each options as option, index (option.value)}
         {@const actualIndex = $$slots.unselect ? index + 1 : index}
 
         <div
-          id={`option-${option.id}`}
           class="option"
           class:bg-gray-500={highlightedOptionIndex === actualIndex}
           on:mousemove={() => setHighlightedItem(actualIndex)}
@@ -144,7 +148,7 @@
       <slot name="unselect" />
     </option>
   {/if}
-  {#each options as option (option.id)}
+  {#each options as option (option.value)}
     <option value={option.value}>
       <slot {option} />
     </option>
@@ -166,6 +170,10 @@
 
   .root.lg {
     @apply h-10;
+  }
+
+  .root.error {
+    @apply border border-red-700;
   }
 
   .select {

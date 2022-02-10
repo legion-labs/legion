@@ -224,7 +224,7 @@ fn test_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
     {
         let args = build::Args {
             package_args: SelectedPackageArgs {
-                package: vec!["lgn-compiler-*".into()],
+                package: vec!["lgn-data-build*".into(), "lgn-compiler-*".into()],
                 ..SelectedPackageArgs::default()
             },
             build_args: BuildArgs::default(),

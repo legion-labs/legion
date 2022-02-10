@@ -1,15 +1,20 @@
+use std::collections::HashMap;
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::reflection::DataContainerMetaInfo;
+use crate::{struct_meta_info::StructMetaInfo, ModuleMetaInfo};
 
 /// Generate code `AssetLoader` Runtime Registration
-pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
-    let entries: Vec<TokenStream> = structs
+pub(crate) fn generate_registration_code(
+    module_meta_infos: &HashMap<String, ModuleMetaInfo>,
+) -> TokenStream {
+    let entries: Vec<_> = module_meta_infos
         .iter()
+        .flat_map(|(_mod_name, module_meta_info)| &module_meta_info.struct_meta_infos)
         .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
-            let type_name = format_ident!("{}", &struct_meta.name);
+            let type_name = &struct_meta.name;
             quote! { .add_loader_mut::<#type_name>() }
         })
         .collect();
@@ -26,13 +31,13 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
     }
 }
 
-pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
-    let runtime_identifier = format_ident!("{}", data_container_info.name);
-    let runtime_name = format!("runtime_{}", data_container_info.name).to_lowercase();
-    let runtime_loader = format_ident!("{}Loader", data_container_info.name);
-    let runtime_reftype = format_ident!("{}ReferenceType", data_container_info.name);
+pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
+    let runtime_identifier = &struct_info.name;
+    let runtime_name = format!("runtime_{}", struct_info.name).to_lowercase();
+    let runtime_loader = format_ident!("{}Loader", struct_info.name);
+    let runtime_reftype = format_ident!("{}ReferenceType", struct_info.name);
 
-    let life_time = if data_container_info.need_life_time() {
+    let life_time = if struct_info.need_life_time() {
         quote! {<'r>}
     } else {
         quote! {}
@@ -60,9 +65,10 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         pub struct #runtime_loader {}
 
         impl lgn_data_runtime::AssetLoader for #runtime_loader {
-            fn load(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn std::any::Any + Send + Sync>> {
-                let output : #runtime_identifier = bincode::deserialize_from(reader).map_err(|_err|
-                    std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse"))?;
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
+                let output : #runtime_identifier = bincode::deserialize_from(reader)
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#runtime_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
+
                 Ok(Box::new(output))
             }
 

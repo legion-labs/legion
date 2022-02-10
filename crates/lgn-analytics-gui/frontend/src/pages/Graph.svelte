@@ -11,17 +11,16 @@
   import { onMount } from "svelte";
   import {
     CumulativeCallGraphNode,
-    GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { formatExecutionTime } from "@/lib/format";
+  import { makeGrpcClient } from "@/lib/client";
+  import log from "@lgn/web-client/src/lib/log";
 
   const locationStore = useLocation();
-  const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl("http://" + location.hostname + ":9090", {})
-  );
+  let client: PerformanceAnalyticsClientImpl | null = null;
   let processInfo: Process | null = null;
   let scopes: Record<number, ScopeDesc> = {};
   let nodes: CumulativeCallGraphNode[] | null = null;
@@ -50,6 +49,10 @@
   }
 
   async function fetchData() {
+    if (!client) {
+      log.error("no client in fetchData");
+      return;
+    }
     const params = getUrlParams();
     const { process } = await client.find_process({
       processId: params.processId,
@@ -135,8 +138,9 @@
     return node.stats!.count.toString();
   }
 
-  onMount(() => {
-    fetchData();
+  onMount(async () => {
+    client = await makeGrpcClient();
+    await fetchData();
   });
 </script>
 

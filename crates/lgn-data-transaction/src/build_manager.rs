@@ -1,10 +1,10 @@
-use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 
-/// Builds necessary derived resources based on source resources chnaged.
+/// Builds necessary derived resources based on source resources changed.
 pub struct BuildManager {
     build: DataBuild,
     compile_env: CompilationEnv,
@@ -17,7 +17,7 @@ impl BuildManager {
         options: DataBuildOptions,
         project: &Project,
         manifest: Manifest,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, Error> {
         let editor_env = CompilationEnv {
             target: Target::Game,
             platform: Platform::Windows,
@@ -32,12 +32,12 @@ impl BuildManager {
         })
     }
 
-    /// Builds derived resources based on changed source resoure.
+    /// Builds derived resources based on changed source resource.
     pub async fn build_all_derived(
         &mut self,
         resource_id: ResourceTypeAndId,
         project: &Project,
-    ) -> anyhow::Result<(ResourcePathId, Vec<ResourceTypeAndId>)> {
+    ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
         // TODO HACK. Assume DebugCube until proper mapping is exposed
         let runtime_type = if resource_id.kind == ResourceType::new(b"offline_debugcube") {
@@ -61,10 +61,11 @@ impl BuildManager {
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
 
         self.build.source_pull(project).await?;
-        match self
-            .build
-            .compile(derived_id.clone(), None, &self.compile_env)
-        {
+        match self.build.compile_with_manifest(
+            derived_id.clone(),
+            &self.compile_env,
+            Some(&self.manifest),
+        ) {
             Ok(output) => {
                 info!(
                     "Data build {} Succeeded ({:?})",
@@ -78,8 +79,13 @@ impl BuildManager {
             }
             Err(e) => {
                 error!("Data Build {} Failed: '{}'", resource_id, e);
-                Err(anyhow::Error::new(e))
+                Err(e)
             }
         }
+    }
+
+    /// Runtime manifest
+    pub fn get_manifest(&self) -> &Manifest {
+        &self.manifest
     }
 }

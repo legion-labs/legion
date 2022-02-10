@@ -18,7 +18,7 @@
 //! Advantages:
 //! * Improves readability and UX of generated files (Go to definition works in
 //!   VS Code, looking at code from github)
-//! * Allows inclusion of generated files from other systems (Javasctript, hlsl
+//! * Allows inclusion of generated files from other systems (Javascript, hlsl
 //!   in a uniform manner) since `OUT_DIR` is only know during the cargo build
 //!   of a given crate.
 //!
@@ -40,47 +40,57 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use lgn_build_utils::{run_cmd, Result};
+use std::fs;
 
-/// Handle the copy/validation of the output files
+use cargo_toml::Manifest;
+use lgn_build_utils::{Error, Result};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct NpmMetadata {
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct Metadata {
+    npm: NpmMetadata,
+}
+
+/// Handle the validation of the output files
 ///
 /// # Errors
-/// Returns a generation error or an IO error
+/// An error is returned only when the client hasn't been built,
+/// if the default `index.html` cannot be created or if the `Cargo.toml` cannot be read.
 pub fn build_web_app() -> Result<()> {
-    if let Ok(pnpm_path) = which::which("pnpm") {
-        let frontend_dir = "frontend";
-        let lock = named_lock::NamedLock::create("pnpm_processing").unwrap();
-        let _guard = lock.lock().unwrap();
-        run_cmd(&pnpm_path, &["install", "--unsafe-perm"], frontend_dir)?;
-        run_cmd(&pnpm_path, &["build"], frontend_dir)?;
+    // TODO: Should be dynamic based on the metadata in `Cargo.toml`
+    if fs::File::open("frontend/dist/index.html").is_err() {
+        let cargo: Manifest<Metadata> =
+            Manifest::from_path_with_metadata("Cargo.toml").map_err(|error| match error {
+                cargo_toml::Error::Io(error) => Error::Io(error),
+                cargo_toml::Error::Parse(_error) => Error::Unknown,
+            })?;
 
-        // JS ecosystem forces us to have output files in our sources hierarchy
-        // we are filtering files
-        std::fs::read_dir(frontend_dir)
-            .unwrap()
-            .map(|res| res.map(|entry| entry.path()))
-            .filter_map(|path| {
-                if let Ok(path) = path {
-                    if let Some(file_name) = path.file_name() {
-                        if file_name != "dist" && file_name != "node_modules" {
-                            return Some(path);
-                        }
-                    }
-                }
-                None
-            })
-            .for_each(|path| {
-                // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-            });
-    } else {
-        std::fs::create_dir_all("frontend/dist").unwrap();
-        std::fs::write(
+        let npm = cargo
+            .package
+            .and_then(|p| p.metadata)
+            .map(|m| m.npm)
+            .ok_or_else(|| Error::Build("npm name not found in Cargo.toml".into()))?;
+
+        fs::create_dir_all("frontend/dist").map_err(Error::Io)?;
+
+        fs::write(
             "frontend/dist/index.html",
-            "pnpm missing from path, please run a clean build after installing it",
+            format!(
+                "You need to run `pnpm build {name}` or `cargo m npm build -p {name}`",
+                name = npm.name
+            ),
         )
-        .unwrap();
+        .map_err(Error::Io)?;
+
         println!("cargo:rerun-if-env-changed=PATH");
+        println!("cargo:rerun-if-changed=frontend/dist");
+        println!("cargo:rerun-if-changed=frontend/dist/index.html");
     }
+
     Ok(())
 }

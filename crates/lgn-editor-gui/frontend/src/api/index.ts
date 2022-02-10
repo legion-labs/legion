@@ -1,4 +1,4 @@
-import log from "@lgn/frontend/src/lib/log";
+import log from "@lgn/web-client/src/lib/log";
 import {
   GrpcWebImpl as EditorResourceBrowserWebImpl,
   ResourceBrowserClientImpl,
@@ -138,6 +138,40 @@ export async function removeVectorSubProperty(
     arrayPath: path,
     indices,
   });
+}
+
+export async function getResourceTypes() {
+  return resourceBrowserClient.getResourceTypeNames({});
+}
+
+export async function createResource({
+  resourcePath,
+  resourceType,
+}: {
+  resourcePath: string;
+  resourceType: string;
+}) {
+  return resourceBrowserClient.createResource({
+    resourcePath,
+    resourceType,
+  });
+}
+
+export async function renameResource({
+  id,
+  newPath,
+}: {
+  id: string;
+  newPath: string;
+}) {
+  return resourceBrowserClient.renameResource({
+    id,
+    newPath,
+  });
+}
+
+export async function removeResource({ id }: { id: string }) {
+  return resourceBrowserClient.deleteResource({ id });
 }
 
 /**

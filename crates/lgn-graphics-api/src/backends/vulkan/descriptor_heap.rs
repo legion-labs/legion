@@ -243,19 +243,19 @@ impl VulkanDescriptorHeapPartition {
 }
 
 impl DescriptorHeapPartition {
-    pub(crate) fn reset_platform(&self) -> GfxResult<()> {
+    pub(crate) fn backend_reset(&self) -> GfxResult<()> {
         let device = self.inner.heap.inner.device_context.vk_device();
         unsafe {
             device
                 .reset_descriptor_pool(
-                    self.inner.platform_descriptor_heap_partition.vk_pool,
+                    self.inner.backend_descriptor_heap_partition.vk_pool,
                     ash::vk::DescriptorPoolResetFlags::default(),
                 )
                 .map_err(Into::into)
         }
     }
 
-    pub(crate) fn get_writer_platform<'frame>(
+    pub(crate) fn backend_get_writer<'frame>(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
         bump: &'frame bumpalo::Bump,
@@ -263,7 +263,7 @@ impl DescriptorHeapPartition {
         let device = self.inner.heap.inner.device_context.vk_device();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[descriptor_set_layout.vk_layout()])
-            .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
+            .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
@@ -272,14 +272,14 @@ impl DescriptorHeapPartition {
             DescriptorSetHandle {
                 layout_uid: descriptor_set_layout.uid(),
                 frequency: descriptor_set_layout.frequency(),
-                vk_type: result[0],
+                backend_descriptor_set_handle: result[0],
             },
             descriptor_set_layout,
             bump,
         )
     }
 
-    pub(crate) fn write_platform<'frame>(
+    pub(crate) fn backend_write<'frame>(
         &self,
         descriptor_set: &impl DescriptorSetDataProvider,
         bump: &'frame bumpalo::Bump,
@@ -289,7 +289,7 @@ impl DescriptorHeapPartition {
         let descriptor_set_layout = descriptor_set.layout();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[descriptor_set_layout.vk_layout()])
-            .descriptor_pool(self.inner.platform_descriptor_heap_partition.vk_pool)
+            .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
@@ -298,7 +298,7 @@ impl DescriptorHeapPartition {
             DescriptorSetHandle {
                 layout_uid: descriptor_set_layout.uid(),
                 frequency: descriptor_set_layout.frequency(),
-                vk_type: result[0],
+                backend_descriptor_set_handle: result[0],
             },
             descriptor_set_layout,
             bump,

@@ -1,10 +1,10 @@
 use std::{any::Any, io};
 
 use lgn_data_offline::{
-    resource::{OfflineResource, ResourceProcessor},
+    resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
     ResourcePathId,
 };
-use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
 #[resource("text")]
@@ -25,7 +25,10 @@ impl OfflineResource for TextResource {
 pub struct TextResourceProc {}
 
 impl AssetLoader for TextResourceProc {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let resource: TextResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)
@@ -49,7 +52,7 @@ impl ResourceProcessor for TextResourceProc {
         &self,
         resource: &dyn Any,
         writer: &mut dyn std::io::Write,
-    ) -> std::io::Result<usize> {
+    ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<TextResource>().unwrap();
         serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
@@ -58,7 +61,7 @@ impl ResourceProcessor for TextResourceProc {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        self.load(reader)
+    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        Ok(self.load(reader)?)
     }
 }

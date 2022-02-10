@@ -54,7 +54,6 @@
 //!  |   |- a00438b586a19d4f
 //!  |   |- source.index
 //!  |   |- output.index
-//!  | - project.index
 //! ```
 //!
 //! # Data Build Process
@@ -141,7 +140,8 @@ use thiserror::Error;
 pub enum Error {
     /// Project-related error.
     #[error("Project-related error: '{0}")]
-    Project(#[source] lgn_data_offline::resource::Error),
+    Project(#[from] lgn_data_offline::resource::Error),
+
     /// Not found.
     #[error("Not found.")]
     NotFound,
@@ -150,7 +150,7 @@ pub enum Error {
     CompilerNotFound,
     /// IO error.
     #[error("IO error.")]
-    Io,
+    Io(Box<dyn std::error::Error + Send + Sync>),
     /// Circular dependency in build graph.
     #[error("Circular dependency in build graph.")]
     CircularDependency,
@@ -180,21 +180,16 @@ pub enum Error {
     /// Compiler returned an error.
     #[error("Compiler returned an error: '{0}'")]
     Compiler(#[source] CompilerError),
-}
-
-impl From<lgn_data_offline::resource::Error> for Error {
-    fn from(err: lgn_data_offline::resource::Error) -> Self {
-        match err {
-            lgn_data_offline::resource::Error::NotFound => Self::NotFound,
-            _ => Self::Project(err),
-        }
-    }
+    /// Source Index error.
+    #[error("Source Index error")]
+    SourceIndex,
 }
 
 mod asset_file_writer;
-mod buildindex;
 mod databuild;
 mod options;
+mod output_index;
+mod source_index;
 
 pub use databuild::*;
 pub use options::*;

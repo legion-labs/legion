@@ -4,10 +4,10 @@ use lgn_transform::components::Transform;
 
 use crate::{
     components::CameraComponent,
-    resources::{DefaultMeshType, DefaultMeshes},
+    resources::{DefaultMeshType, MeshManager},
 };
 
-use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingManager};
+use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingIdContext};
 
 #[derive(Clone, Copy, PartialEq)]
 #[allow(clippy::enum_variant_names)]
@@ -41,11 +41,9 @@ impl RotationManipulator {
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,
-        default_meshes: &DefaultMeshes,
-        picking_manager: &PickingManager,
+        mesh_manager: &MeshManager,
+        picking_context: &mut PickingIdContext<'_>,
     ) {
-        let mut picking_block = picking_manager.acquire_picking_id_block();
-
         let rotate_x_pointer =
             Mat4::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f32::consts::PI * 0.5);
         let rotate_y_pointer =
@@ -64,8 +62,8 @@ impl RotationManipulator {
                 Transform::from_matrix(rotate_x_pointer),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -75,8 +73,8 @@ impl RotationManipulator {
                 Transform::from_matrix(rotate_y_pointer),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -86,12 +84,10 @@ impl RotationManipulator {
                 Transform::from_matrix(Mat4::IDENTITY),
                 DefaultMeshType::RotationRing,
                 commands,
-                &mut picking_block,
-                default_meshes,
+                picking_context,
+                mesh_manager,
             ),
         ];
-
-        picking_manager.release_picking_id_block(picking_block);
     }
 
     pub(super) fn manipulate_entity(

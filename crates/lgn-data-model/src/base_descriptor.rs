@@ -1,3 +1,5 @@
+use crate::ReflectionError;
+
 /// Define the reflection of a Primitive type
 pub struct BaseDescriptor {
     /// Type of the Property
@@ -8,12 +10,12 @@ pub struct BaseDescriptor {
     pub dynamic_serialize: unsafe fn(
         property: *const (),
         format: &mut dyn erased_serde::Serializer,
-    ) -> anyhow::Result<()>,
+    ) -> Result<(), ReflectionError>,
     /// Function to dynamically deserialize the Primitive from a raw ptr
     pub dynamic_deserialize: unsafe fn(
         property: *mut (),
         format: &mut dyn erased_serde::Deserializer<'_>,
-    ) -> anyhow::Result<()>,
+    ) -> Result<(), ReflectionError>,
 }
 
 /// Create the instantiate a `BaseDescriptor` with basic serde accessor
@@ -25,12 +27,14 @@ macro_rules! create_base_descriptor {
             size: std::mem::size_of::<$type_id>(),
             dynamic_serialize:
                 |property: *const (), serializer: &mut dyn::erased_serde::Serializer| unsafe {
-                    ::erased_serde::serialize(&(*property.cast::<$type_id>()), serializer)?;
+                    ::erased_serde::serialize(&(*property.cast::<$type_id>()), serializer)
+                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
                     Ok(())
                 },
             dynamic_deserialize:
                 |property: *mut (), deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
-                    *(property.cast::<$type_id>()) = ::erased_serde::deserialize(deserializer)?;
+                    *(property.cast::<$type_id>()) = ::erased_serde::deserialize(deserializer)
+                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
                     Ok(())
                 },
         }

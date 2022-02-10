@@ -236,6 +236,25 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
 
         Ok(Some(Box::pin(writer)))
     }
+
+    async fn delete_blob(&self, name: &str) -> Result<()> {
+        let key = self.blob_key(name);
+
+        match self
+            .client
+            .delete_object()
+            .bucket(&self.url.bucket_name)
+            .key(&key)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Error::forward_with_context(
+                err,
+                format!("unexpected SDK error while deleting AWS object: {}", key),
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

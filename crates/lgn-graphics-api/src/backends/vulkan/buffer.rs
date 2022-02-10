@@ -1,6 +1,6 @@
 use lgn_tracing::trace;
 
-use crate::{Buffer, BufferDef, DeviceContext, ResourceUsage};
+use crate::{Buffer, BufferCopy, BufferDef, DeviceContext, ResourceUsage};
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
@@ -90,10 +90,20 @@ impl VulkanBuffer {
 
 impl Buffer {
     pub(crate) fn vk_buffer(&self) -> ash::vk::Buffer {
-        self.inner.platform_buffer.vk_buffer
+        self.inner.backend_buffer.vk_buffer
     }
 
-    pub(crate) fn required_alignment_platform(&self) -> u64 {
-        self.inner.platform_buffer.vk_mem_requirements.alignment
+    pub(crate) fn backend_required_alignment(&self) -> u64 {
+        self.inner.backend_buffer.vk_mem_requirements.alignment
+    }
+}
+
+impl From<&BufferCopy> for ash::vk::BufferCopy {
+    fn from(src: &BufferCopy) -> Self {
+        Self::builder()
+            .src_offset(src.src_offset)
+            .dst_offset(src.dst_offset)
+            .size(src.size)
+            .build()
     }
 }

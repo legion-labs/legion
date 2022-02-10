@@ -9,10 +9,8 @@ use std::{
 use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    edit_file, find_local_changes, list_remote_files, revert_file, track_new_file, IndexBackend,
-    LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::resource::{
@@ -23,25 +21,9 @@ use crate::ResourcePathId;
 
 const METADATA_EXT: &str = "meta";
 
-/// A project exists always within a given directory and this file
-/// will be created directly in that directory.
-const PROJECT_INDEX_FILENAME: &str = "project.index";
+pub use lgn_source_control::data_types::Tree;
 
-#[derive(Serialize, Deserialize, Default)]
-struct ResourceDb {
-    remote_resources: Vec<ResourceTypeAndId>,
-    local_resources: Vec<ResourceTypeAndId>,
-}
-
-impl ResourceDb {
-    // sort contents so serialization is deterministic
-    fn pre_serialize(&mut self) {
-        self.remote_resources.sort();
-        self.local_resources.sort();
-    }
-}
-
-/// A file-backed state of the project
+/// A source-control-backed state of the project
 ///
 /// This structure captures the state of the project. This includes `remote
 /// resources` pulled from `source-control` as well as `local resources`
@@ -69,11 +51,11 @@ impl ResourceDb {
 /// ```markdown
 ///  ./
 ///  | + offline/
+///  | |- .lsc/
 ///  | |- a81fb4498cd04368
 ///  | |- a81fb4498cd04368.meta
 ///  | |- 8063daaf864780d6
 ///  | |- 8063daaf864780d6.meta
-///  |- project.index
 /// ```
 ///
 /// ## Resource `.meta` file
@@ -89,8 +71,6 @@ impl ResourceDb {
 /// For more about loading, saving and managing resources in memory see
 /// [`ResourceRegistry`]
 pub struct Project {
-    file: std::fs::File,
-    db: ResourceDb,
     project_dir: PathBuf,
     resource_dir: PathBuf,
     local_remote: Option<LocalIndexBackend>,
@@ -104,36 +84,23 @@ pub enum Error {
     #[error("Parsing '{0}' failed with {1}")]
     Parse(PathBuf, #[source] serde_json::error::Error),
     /// Not found.
-    #[error("Not found")]
-    NotFound,
+    #[error("File {0} not found")]
+    FileNotFound(String),
     /// IO error on the project index file.
     #[error("IO on '{0}' failed with {1}")]
     Io(PathBuf, #[source] std::io::Error),
     /// Source Control related error.
     #[error("Source Control Error: '{0}'")]
     SourceControl(#[source] lgn_source_control::Error),
+    /// RegistryRegistry Error
+    #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
+    ResourceRegistry(
+        ResourceTypeAndId,
+        #[source] crate::resource::ResourceRegistryError,
+    ),
 }
 
 impl Project {
-    /// Returns the default location of the index file in a given directory.
-    ///
-    /// This method replaces the filename in `work_dir` (if one exists) with
-    /// the file name of the project index.
-    pub fn root_to_index_path(project_dir: impl AsRef<Path>) -> PathBuf {
-        let mut path = project_dir.as_ref().to_owned();
-        if path.is_dir() {
-            path.push(PROJECT_INDEX_FILENAME);
-        } else {
-            path.set_file_name(PROJECT_INDEX_FILENAME);
-        }
-        path
-    }
-
-    /// Returns the path to project's index file.
-    pub fn indexfile_path(&self) -> PathBuf {
-        Self::root_to_index_path(&self.project_dir)
-    }
-
     /// Returns directory the project is in, relative to CWD.
     pub fn project_dir(&self) -> &Path {
         &self.project_dir
@@ -142,26 +109,13 @@ impl Project {
     /// Creates a new project index file turning the containing directory into a
     /// project.
     pub async fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(project_dir.as_ref());
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(&index_path)
-            .map_err(|e| Error::Io(index_path.clone(), e))?;
-
-        let db = ResourceDb::default();
-        serde_json::to_writer_pretty(&file, &db)
-            .map_err(|e| Error::Parse(index_path.clone(), e))?;
-
-        let project_dir = index_path.parent().unwrap().to_owned();
-        let resource_dir = project_dir.join("offline");
+        let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
         let remote = {
-            let remote_dir = project_dir.join("remote");
+            let remote_dir = project_dir.as_ref().join("remote");
             let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
             let _res = remote.create_index().await.map_err(Error::SourceControl)?;
             remote
@@ -169,10 +123,10 @@ impl Project {
 
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig {
-                index_url: "../remote/".to_string(),
-                registration: WorkspaceRegistration::new_with_current_user(),
-            },
+            WorkspaceConfig::new(
+                "../remote/".to_string(),
+                WorkspaceRegistration::new_with_current_user(),
+            ),
         )
         .await
         .map_err(|e| {
@@ -183,9 +137,7 @@ impl Project {
         })?;
 
         Ok(Self {
-            file,
-            db,
-            project_dir,
+            project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             local_remote: Some(remote),
             workspace,
@@ -194,18 +146,7 @@ impl Project {
 
     /// Opens the project index specified
     pub async fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(project_dir.as_ref());
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .append(false)
-            .open(&index_path)
-            .map_err(|_e| Error::NotFound)?;
-
-        let db = serde_json::from_reader(&file).map_err(|e| Error::Parse(index_path.clone(), e))?;
-
-        let project_dir = index_path.parent().unwrap().to_owned();
-        let resource_dir = project_dir.join("offline");
+        let resource_dir = project_dir.as_ref().join("offline");
 
         let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
             Error::SourceControl(lgn_source_control::Error::Other {
@@ -215,9 +156,7 @@ impl Project {
         })?;
 
         Ok(Self {
-            file,
-            db,
-            project_dir,
+            project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             local_remote: None,
             workspace,
@@ -227,8 +166,6 @@ impl Project {
     /// Deletes the project by deleting the index file.
     pub async fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
-        let index_path = self.indexfile_path();
-        let _res = fs::remove_file(index_path);
 
         if let Some(remote) = &self.local_remote {
             remote.destroy_index().await.unwrap();
@@ -236,35 +173,36 @@ impl Project {
     }
 
     async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let local_changes = find_local_changes(&self.workspace).await.map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: e,
-                context: "local_resource_list".to_string(),
-            })
-        })?;
+        let local_changes = self
+            .workspace
+            .get_staged_changes()
+            .await
+            .map_err(Error::SourceControl)?;
+
         let changes = local_changes
             .iter()
-            .map(|change| PathBuf::from(&change.relative_path))
+            .map(|(path, _)| PathBuf::from(path.to_string()))
             .filter(|path| path.extension().is_none())
             .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
             .collect::<Vec<_>>();
+
         Ok(changes)
     }
 
     async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let files = list_remote_files(&self.workspace).await.map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: e,
-                context: "remote_resource_list".to_string(),
-            })
-        })?;
+        let tree = self
+            .workspace
+            .get_current_tree()
+            .await
+            .map_err(Error::SourceControl)?;
 
-        let files = files
-            .iter()
-            .map(|file| PathBuf::from(&file))
+        let files = tree
+            .files()
+            .map(|(path, _)| PathBuf::from(path.to_string()))
             .filter(|path| path.extension().is_none())
             .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
             .collect::<Vec<_>>();
+
         Ok(files)
     }
 
@@ -300,7 +238,7 @@ impl Project {
             });
 
         match res {
-            None => Err(Error::NotFound),
+            None => Err(Error::FileNotFound(name.to_string())),
             Some(e) => e,
         }
     }
@@ -357,11 +295,7 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let type_id = ResourceTypeAndId {
-            kind,
-            id: ResourceId::new(),
-        };
-        self.add_resource_with_id(name, kind_name, kind, type_id, handle, registry)
+        self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
             .await
     }
 
@@ -378,12 +312,12 @@ impl Project {
         name: ResourcePathName,
         kind_name: &str,
         kind: ResourceType,
-        type_id: ResourceTypeAndId,
+        id: ResourceId,
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(type_id.id);
-        let resource_path = self.resource_path(type_id.id);
+        let meta_path = self.metadata_path(id);
+        let resource_path = self.resource_path(id);
 
         let directory = {
             let mut directory = resource_path.clone();
@@ -399,7 +333,7 @@ impl Project {
 
             let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
+                .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
             build_deps
         };
 
@@ -425,26 +359,14 @@ impl Project {
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         {
-            track_new_file(&self.workspace, &meta_path)
+            self.workspace
+                .add_files([meta_path.as_path(), resource_path.as_path()])
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "add resource".to_string(),
-                    })
-                })?;
-
-            track_new_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "add resource".to_string(),
-                    })
-                })?;
+                .map_err(Error::SourceControl)?;
         }
 
-        self.db.local_resources.push(type_id);
+        let type_id = ResourceTypeAndId { kind, id };
+
         Ok(type_id)
     }
 
@@ -454,32 +376,14 @@ impl Project {
         let metadata_path = self.metadata_path(id);
 
         {
-            // todo: for now this assumes the files are staged but not committed.
+            let files = [metadata_path.as_path(), resource_path.as_path()];
 
-            revert_file(&self.workspace, &metadata_path)
+            self.workspace
+                .delete_files(files)
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "delete_resource".to_string(),
-                    })
-                })?;
-
-            revert_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "delete_resource".to_string(),
-                    })
-                })?;
+                .map_err(Error::SourceControl)?;
         }
 
-        std::fs::remove_file(&resource_path).map_err(|e| Error::Io(resource_path, e))?;
-        std::fs::remove_file(&metadata_path).map_err(|e| Error::Io(metadata_path, e))?;
-
-        self.db.local_resources.retain(|x| x.id != id);
-        self.db.remote_resources.retain(|x| x.id != id);
         Ok(())
     }
 
@@ -493,6 +397,8 @@ impl Project {
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
+
+        self.checkout(type_id).await?;
 
         let mut meta_file = OpenOptions::new()
             .read(true)
@@ -511,7 +417,7 @@ impl Project {
 
             let (_written, build_deps) = resources
                 .serialize_resource(type_id.kind, handle, &mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
+                .map_err(|e| Error::ResourceRegistry(type_id, e))?;
             build_deps
         };
 
@@ -530,25 +436,12 @@ impl Project {
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
         {
-            // todo: editing a file just added for 'Add' will fail.
-            // we still must handle other errors.
-            let _result = edit_file(&self.workspace, &metadata_path)
+            self.workspace
+                .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
                 .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "save_resource".to_string(),
-                    })
-                });
-            let _result = edit_file(&self.workspace, &resource_path)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: e,
-                        context: "save_resource".to_string(),
-                    })
-                });
+                .map_err(Error::SourceControl)?;
         }
+
         Ok(())
     }
 
@@ -568,7 +461,7 @@ impl Project {
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
         let handle = resources
             .deserialize_resource(type_id.kind, &mut resource_file)
-            .map_err(|e| Error::Io(resource_path, e))?;
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
         Ok(handle)
     }
 
@@ -632,23 +525,14 @@ impl Project {
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
-    pub fn checkout(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
-        if let Some(_resource) = self.db.local_resources.iter().find(|&res| *res == type_id) {
-            return Ok(()); // already checked out
-        }
-
-        if let Some(index) = self
-            .db
-            .remote_resources
-            .iter()
-            .position(|res| *res == type_id)
-        {
-            let resource = self.db.remote_resources.remove(index);
-            self.db.local_resources.push(resource);
-            return Ok(());
-        }
-
-        Err(Error::NotFound)
+    pub async fn checkout(&mut self, id: ResourceTypeAndId) -> Result<(), Error> {
+        let metadata_path = self.metadata_path(id.id);
+        let resource_path = self.resource_path(id.id);
+        self.workspace
+            .checkout_files([metadata_path.as_path(), resource_path.as_path()])
+            .await
+            .map_err(Error::SourceControl)
+            .map(|_e| ())
     }
 
     fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
@@ -681,14 +565,11 @@ impl Project {
         serde_json::to_writer_pretty(&file, &meta).unwrap();
 
         {
-            // todo: editing a file just added for 'Add' will fail.
-            // we still must handle other errors.
-            let _result = edit_file(&self.workspace, &path).await.map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: e,
-                    context: "update_meta".to_string(),
-                })
-            });
+            self.workspace
+                .checkout_files([path.as_path()])
+                .await
+                .map_err(Error::SourceControl)
+                .unwrap();
         }
     }
 
@@ -701,7 +582,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        self.checkout(type_id)?;
+        self.checkout(type_id).await?;
 
         let mut old_name: Option<ResourcePathName> = None;
         self.update_meta(type_id.id, |data| {
@@ -712,31 +593,38 @@ impl Project {
     }
 
     /// Moves `local` resources to `remote` resource list.
-    pub fn commit(&mut self) -> Result<(), Error> {
-        self.db
-            .remote_resources
-            .append(&mut self.db.local_resources);
-        self.flush()
+    pub async fn commit(&mut self, message: &str) -> Result<(), Error> {
+        self.workspace
+            .commit(message)
+            .await
+            .map_err(Error::SourceControl)
+            .map(|_| ())
     }
 
-    fn pre_serialize(&mut self) {
-        self.db.pre_serialize();
+    /// Returns the current state of the workspace that includes staged changes.
+    pub async fn tree(&self) -> Result<Tree, Error> {
+        let remote = self
+            .workspace
+            .get_current_tree()
+            .await
+            .map_err(Error::SourceControl)?;
+
+        let staged_changes = self
+            .workspace
+            .get_staged_changes()
+            .await
+            .map_err(Error::SourceControl)?;
+
+        let local = remote
+            .with_changes(staged_changes.values())
+            .map_err(Error::SourceControl)?;
+        Ok(local)
     }
 
-    /// Flush the db to the project.index
-    pub fn flush(&mut self) -> Result<(), Error> {
-        self.file.set_len(0).unwrap();
-        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        self.pre_serialize();
-        serde_json::to_writer_pretty(&self.file, &self.db)
-            .map_err(|e| Error::Parse(self.indexfile_path(), e))
-    }
-}
-
-impl Drop for Project {
-    fn drop(&mut self) {
-        // todo(kstasik): writing to a file on drop can be problematic
-        self.flush().unwrap();
+    /// Returns the checksum of the root project directory at the current state.
+    pub async fn root_checksum(&self) -> Result<String, Error> {
+        let tree = self.tree().await?;
+        Ok(tree.id())
     }
 }
 
@@ -750,17 +638,17 @@ impl fmt::Debug for Project {
 #[cfg(test)]
 mod tests {
     use std::any::Any;
+    use std::str::FromStr;
     use std::sync::Arc;
-    use std::{fs::File, str::FromStr};
 
     use lgn_data_runtime::{resource, Resource, ResourceType};
     use tokio::sync::Mutex;
 
     use crate::resource::project::Project;
-    use crate::resource::Error;
     use crate::{
         resource::{
-            ResourcePathName, ResourceProcessor, ResourceRegistry, ResourceRegistryOptions,
+            ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceRegistry,
+            ResourceRegistryOptions,
         },
         ResourcePathId,
     };
@@ -798,7 +686,7 @@ mod tests {
             &self,
             resource: &dyn Any,
             writer: &mut dyn std::io::Write,
-        ) -> std::io::Result<usize> {
+        ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
@@ -826,7 +714,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 
@@ -1025,36 +913,62 @@ mod tests {
     }*/
 
     #[tokio::test]
-    async fn proj_open() {
-        let root = tempfile::tempdir().unwrap();
-
-        let proj_path = root.path().join("project.index");
-        let _fake_project = File::create(proj_path);
-
-        let project = Project::open(root.path()).await;
-        assert!(matches!(project.unwrap_err(), Error::Parse(_, _)));
-    }
-
-    #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
         let _resources = create_actor(&mut project).await;
 
-        assert_eq!(project.db.local_resources.len(), 5);
-        assert_eq!(project.db.remote_resources.len(), 0);
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
     }
 
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
-        let _resources = create_actor(&mut project).await;
+        let resources = create_actor(&mut project).await;
+        let mut resources = resources.lock().await;
 
-        project.commit().unwrap();
+        let actor_id = project
+            .find_resource(&ResourcePathName::new("hero.actor"))
+            .await
+            .unwrap();
 
-        assert_eq!(project.db.local_resources.len(), 0);
-        assert_eq!(project.db.remote_resources.len(), 5);
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
+
+        // modify before commit
+        {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            content.content = 8;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+        }
+
+        project.commit("add resources").await.unwrap();
+
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
+
+        // modify resource
+        {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            assert_eq!(content.content, 8);
+            content.content = 9;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+
+            assert_eq!(project.local_resource_list().await.unwrap().len(), 1);
+        }
+
+        project.commit("update actor").await.unwrap();
+
+        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
@@ -1096,7 +1010,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
         let resources = create_actor(&mut project).await;
-        assert!(project.commit().is_ok());
+        assert!(project.commit("rename test").await.is_ok());
         create_sky_material(&mut project, &mut *resources.lock().await).await;
 
         rename_assert(

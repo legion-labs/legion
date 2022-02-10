@@ -5,7 +5,7 @@
 
 use std::{any::Any, io};
 
-use crate::{resource, Asset, AssetLoader, Resource};
+use crate::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 /// Asset temporarily used for testing.
 ///
@@ -27,7 +27,10 @@ impl Asset for TestAsset {
 pub struct TestAssetLoader {}
 
 impl AssetLoader for TestAssetLoader {
-    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
         let asset = Box::new(TestAsset { content });
