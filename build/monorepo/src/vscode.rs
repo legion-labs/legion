@@ -181,6 +181,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
+        "[json]": {
+          "editor.defaultFormatter": "vscode.json-language-features",
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "vscode.json-language-features",
+        },
         "search.exclude": {
           "pnpm-lock.yaml": true,
           "Cargo.lock": true,
