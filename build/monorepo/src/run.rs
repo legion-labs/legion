@@ -6,6 +6,7 @@ use lgn_tracing::span_fn;
 use crate::{
     cargo::{BuildArgs, CargoCommand, SelectedPackageArgs},
     context::Context,
+    npm::utils::NpmWorkspace,
     Result,
 };
 use std::ffi::OsString;
@@ -22,6 +23,14 @@ pub struct Args {
     ctrace: Option<Option<String>>,
     #[clap(name = "ARGS", parse(from_os_str), last = true)]
     args: Vec<OsString>,
+    /// Skip npm packages build,
+    /// this will also skip the npm install step
+    /// even if the --npm-install flag is present
+    #[clap(long)]
+    pub(crate) skip_npm_build: bool,
+    /// First install npm packages
+    #[clap(long)]
+    pub(crate) npm_install: bool,
 }
 
 #[span_fn]
@@ -79,5 +88,21 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         args: &pass_through_args,
         env: env.as_slice(),
     };
+
+    // Npm packages related code
+    if !args.skip_npm_build {
+        let mut npm_workspace = NpmWorkspace::new(ctx)?;
+
+        npm_workspace.load_selected_packages(&packages)?;
+
+        if !npm_workspace.is_empty() {
+            if args.npm_install {
+                npm_workspace.install();
+            }
+
+            npm_workspace.build(&None)?;
+        }
+    }
+
     cmd.run_on_packages(ctx, &packages)
 }

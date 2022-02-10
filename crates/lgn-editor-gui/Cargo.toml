@@ -57,3 +57,7 @@ custom-protocol = ["tauri/custom-protocol"]
 [[bin]]
 name = "perf-report"
 path = "perf-report/src/main.rs"
+
+[package.metadata.npm]
+name = "editor"
+path = "frontend"

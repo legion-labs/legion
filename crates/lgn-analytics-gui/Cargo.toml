@@ -28,3 +28,7 @@ tauri-build = "1.0.0-beta.4"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[package.metadata.npm]
+name = "analytics-web"
+path = "frontend"

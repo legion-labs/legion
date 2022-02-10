@@ -17,6 +17,7 @@ pub struct MonorepoConfig {
     pub lints: Lints,
     pub dist: Dist,
     pub determinator: DeterminatorRules,
+    pub npm: Npm,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
@@ -154,4 +155,12 @@ pub struct Dist {
     pub prefix: String,
     /// AWS region of the bucket if necessary.
     pub region: Option<String>,
+}
+
+#[derive(Clone, Default, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Npm {
+    pub package_manager: String,
+    #[serde(default)]
+    pub include: Vec<String>,
 }

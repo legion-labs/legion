@@ -3,9 +3,11 @@
 
 use std::collections::BTreeSet;
 
+use camino::Utf8Path;
 use clap::Args;
 use guppy::graph::{BuildTargetId, DependencyDirection};
 use lgn_tracing::{span_fn, warn};
+use serde::Deserialize;
 
 use crate::changed_since::changed_since_impl;
 use crate::context::Context;
@@ -142,6 +144,44 @@ impl<'a> SelectedPackages<'a> {
             includes,
             excludes: BTreeSet::new(),
         }
+    }
+
+    /// Tries to deserialize all the packages metadata (in the workspace),
+    /// if deserialization works, the package metadata and its path are returned in a Vec
+    pub fn get_all_packages_metadata<M: Deserialize<'a>>(
+        &self,
+        ctx: &'a Context,
+    ) -> Result<Vec<(&'a Utf8Path, M)>> {
+        // TODO: The exclude option is ignored for now
+
+        let packages = match self.includes {
+            SelectedInclude::Workspace => ctx
+                .package_graph()?
+                .workspace()
+                .iter_by_path()
+                .filter_map(|(path, package)| {
+                    M::deserialize(package.metadata_table())
+                        .map(|metadata| (path, metadata))
+                        .ok()
+                })
+                .collect(),
+            SelectedInclude::Includes(ref includes) => ctx
+                .package_graph()?
+                .workspace()
+                .iter_by_path()
+                .filter_map(|(path, package)| {
+                    if !includes.contains(package.name()) {
+                        return None;
+                    };
+
+                    M::deserialize(package.metadata_table())
+                        .map(|metadata| (path, metadata))
+                        .ok()
+                })
+                .collect(),
+        };
+
+        Ok(packages)
     }
 
     /// Adds excludes for this `SelectedPackages`.

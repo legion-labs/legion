@@ -1129,6 +1129,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo_toml"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e270ef0cd868745878982f7ce470aa898d0d4bb248af67f0cf66f54617913ef"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "toml",
+]
+
+[[package]]
 name = "cast"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4100,8 +4111,10 @@ dependencies = [
 name = "lgn-build-utils-web"
 version = "0.1.0"
 dependencies = [
+ "cargo_toml",
  "lgn-build-utils",
  "named-lock",
+ "serde",
  "which",
 ]
 
@@ -5664,6 +5677,7 @@ dependencies = [
  "toml",
  "toml_edit",
  "walkdir",
+ "which",
  "zip",
 ]
 

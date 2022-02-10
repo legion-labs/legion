@@ -25,6 +25,7 @@ mod fmt;
 mod git;
 mod hakari;
 mod lint;
+mod npm;
 mod run;
 mod test;
 mod tools;
@@ -34,6 +35,7 @@ use clap::{Parser, Subcommand};
 use lgn_tracing::{span_scope, LevelFilter};
 
 use error::{Error, ErrorContext, Result};
+use npm::NpmCommands;
 
 /// Legion CLI
 #[derive(Parser)]
@@ -106,6 +108,10 @@ enum Commands {
     /// Generates VSCode configuration files and performs checks
     #[clap(name = "vscode")]
     VsCode(vscode::Args),
+
+    /// NPM related commands
+    #[clap(name = "npm", subcommand)]
+    Npm(NpmCommands),
 }
 
 fn main() {
@@ -135,6 +141,8 @@ fn main() {
         Commands::Lint(args) => lint::run(&args, &ctx),
         Commands::Tools(args) => tools::run(&args, &ctx),
         Commands::VsCode(args) => vscode::run(&args, &ctx),
+
+        Commands::Npm(cmd) => npm::run(cmd, &ctx),
     }) {
         err.display();
         #[allow(clippy::exit)]
