@@ -26,6 +26,7 @@ lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", featur
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
+    "offline",
     "runtime",
 ] }
 sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
