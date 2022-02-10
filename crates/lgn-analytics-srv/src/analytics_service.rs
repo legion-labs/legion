@@ -69,22 +69,22 @@ impl Drop for RequestGuard {
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_lake_blobs: Arc<dyn BlobStorage>,
-    cache: DiskCache,
+    cache: Arc<DiskCache>,
     call_trees: CallTreeStore,
 }
 
 impl AnalyticsService {
-    pub async fn new(
+    pub fn new(
         pool: sqlx::AnyPool,
         data_lake_blobs: Arc<dyn BlobStorage>,
         cache_blobs: Arc<dyn BlobStorage>,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             pool: pool.clone(),
             data_lake_blobs: data_lake_blobs.clone(),
-            cache: DiskCache::new(cache_blobs.clone()),
+            cache: Arc::new(DiskCache::new(cache_blobs.clone())),
             call_trees: CallTreeStore::new(pool, data_lake_blobs, cache_blobs),
-        })
+        }
     }
 
     async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
@@ -274,8 +274,11 @@ impl AnalyticsService {
         end_ms: f64,
         lod: u32,
     ) -> Result<ProcessMetricReply> {
-        let metric_handler =
-            MetricHandler::new(Arc::clone(&self.data_lake_blobs), Arc::new(self.pool.clone())).await?;
+        let metric_handler = MetricHandler::new(
+            Arc::clone(&self.data_lake_blobs),
+            Arc::clone(&self.cache),
+            Arc::new(self.pool.clone()),
+        );
         Ok(metric_handler
             .fetch_metric(process_id, metric_name, begin_ms, end_ms, lod)
             .await?)
