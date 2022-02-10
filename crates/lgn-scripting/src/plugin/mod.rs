@@ -19,18 +19,22 @@ impl Plugin for ScriptingPlugin {
         #[cfg(feature = "offline")]
         app.add_startup_system(register_resource_types.exclusive_system());
 
-        app.init_resource::<ScriptingEventCache>()
-            .add_startup_system(add_loaders)
-            .add_system(Self::update_events);
+        app.add_startup_system(add_loaders);
 
-        mun::build(app);
         #[cfg(not(feature = "offline"))]
-        rune::build(app);
-        rhai::build(app);
+        {
+            app.init_resource::<ScriptingEventCache>()
+                .add_system(Self::update_events);
+
+            mun::build(app);
+            rune::build(app);
+            rhai::build(app);
+        }
     }
 }
 
 impl ScriptingPlugin {
+    #[cfg(not(feature = "offline"))]
     pub(crate) fn update_events(
         mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
         mut cache: ResMut<'_, ScriptingEventCache>,
@@ -44,10 +48,12 @@ impl ScriptingPlugin {
     }
 }
 
+#[cfg(not(feature = "offline"))]
 pub struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
 
+#[cfg(not(feature = "offline"))]
 impl Default for ScriptingEventCache {
     fn default() -> Self {
         Self {
