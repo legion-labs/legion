@@ -41,11 +41,20 @@ async fn main() {
         clean_folders(&args.root);
     }
 
+    let absolute_root = {
+        let root_path = PathBuf::from(args.root);
+        if root_path.is_absolute() {
+            root_path
+        } else {
+            std::env::current_dir().unwrap().join(root_path)
+        }
+    };
+
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(&args.root).await;
+    raw_loader::build_offline(&absolute_root).await;
 
     // compile offline resources to runtime assets
-    offline_compiler::build(&args.root, &ResourcePathName::from(&args.resource)).await;
+    offline_compiler::build(&absolute_root, &ResourcePathName::from(&args.resource)).await;
 }
 
 fn clean_folders(project_dir: &str) {
