@@ -17,6 +17,7 @@ use lgn_data_offline::Transform;
 use lgn_data_runtime::{AssetRegistryOptions, Resource, ResourceTypeAndId};
 use lgn_scripting::offline as offline_data;
 use lgn_scripting::runtime as runtime_data;
+use lgn_scripting::ScriptType;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -75,7 +76,7 @@ fn get_compiled_script(
                 .expect("Cannot build mun project");
         }
         runtime_data::Script {
-            script_type: 1, // Mun
+            script_type: ScriptType::Mun,
             compiled_script: {
                 let mut src_path = std::path::PathBuf::from(&temp_crate);
                 src_path.push("target");
@@ -102,7 +103,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resource.get(&resources).unwrap();
 
     let runtime_script = match resource.script_type {
-        1 => get_compiled_script(&context.source.resource_id(), &resource),
+        ScriptType::Mun => get_compiled_script(&context.source.resource_id(), &resource),
         _ => runtime_data::Script {
             script_type: resource.script_type,
             compiled_script: resource.script.as_bytes().to_vec(),

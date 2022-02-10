@@ -22,6 +22,7 @@ use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::BuildManager;
 use lgn_math::prelude::*;
+use lgn_scripting::ScriptType;
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -119,7 +120,7 @@ async fn build_script(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
     guid: &str,
-    script_type: usize,
+    script_type: ScriptType,
     file_name: &str,
     script_text: &str,
 ) -> ResourcePathId {
@@ -204,7 +205,7 @@ async fn create_offline_data(
         project,
         resource_registry,
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
-        2, // Rune
+        ScriptType::Rune,
         "/scene/pad_right_script",
         r#"
             const MOUSE_DELTA_SCALE = 200.0;
@@ -274,7 +275,7 @@ async fn create_offline_data(
         project,
         resource_registry,
         "968c4926-ae75-4955-81c8-7b7e395d0d3b",
-        2, // Rune
+        ScriptType::Rune,
         "/scene/pad_left_script",
         r#"
             const MOUSE_DELTA_SCALE = 200.0;
@@ -390,7 +391,7 @@ async fn create_offline_data(
         project,
         resource_registry,
         "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
-        2, // Rune
+        ScriptType::Rune,
         "/scene/scene_script",
         r#"pub fn update() {
         }"#,
