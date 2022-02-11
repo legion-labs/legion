@@ -11,8 +11,8 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     make_path_absolute, new_index_backend, utils::parse_url_or_path, Branch, CanonicalPath, Change,
-    ChangeType, Commit, Error, IndexBackend, ListBranchesQuery, ListCommitsQuery, MapOtherError,
-    Result, Tree, TreeFilter, WorkspaceRegistration,
+    ChangeType, Commit, CommitId, Error, IndexBackend, ListBranchesQuery, ListCommitsQuery,
+    MapOtherError, Result, Tree, TreeFilter, WorkspaceRegistration,
 };
 
 mod backend;
@@ -308,7 +308,7 @@ impl Workspace {
     }
 
     /// Get the commits chain, starting from the specified commit.
-    pub async fn list_commits<'q>(&self, query: &ListCommitsQuery<'q>) -> Result<Vec<Commit>> {
+    pub async fn list_commits<'q>(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         self.index_backend.list_commits(query).await
     }
 
@@ -316,7 +316,7 @@ impl Workspace {
     pub async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.backend.get_current_branch().await?;
 
-        self.index_backend.get_commit(&current_branch.head).await
+        self.index_backend.get_commit(current_branch.head).await
     }
 
     /// Get the tree of files and directories for the current branch and commit.
@@ -733,7 +733,7 @@ impl Workspace {
 
         let current_branch = self.backend.get_current_branch().await?;
         let mut branch = self.index_backend.get_branch(&current_branch.name).await?;
-        let commit = self.index_backend.get_commit(&current_branch.head).await?;
+        let commit = self.index_backend.get_commit(current_branch.head).await?;
 
         // Early check in case we are out-of-date long before making the commit.
         if branch.head != current_branch.head {
@@ -789,11 +789,11 @@ impl Workspace {
         let mut parent_commits = BTreeSet::from([current_branch.head]);
 
         for pending_branch_merge in self.backend.read_pending_branch_merges().await? {
-            parent_commits.insert(pending_branch_merge.head.clone());
+            parent_commits.insert(pending_branch_merge.head);
         }
 
         let staged_changes = staged_changes.into_values().collect::<BTreeSet<_>>();
-        let commit = Commit::new_unique_now(
+        let mut commit = Commit::new_unique_now(
             whoami::username(),
             message,
             staged_changes.clone(),
@@ -801,11 +801,12 @@ impl Workspace {
             parent_commits,
         );
 
-        self.index_backend
+        commit.id = self
+            .index_backend
             .commit_to_branch(&commit, &branch)
             .await?;
 
-        branch.head = commit.id.clone();
+        branch.head = commit.id;
 
         self.backend.set_current_branch(&branch).await?;
 
@@ -1024,10 +1025,10 @@ impl Workspace {
             return Err(Error::already_on_branch(branch_name.to_string()));
         }
 
-        let from_commit = self.index_backend.get_commit(&current_branch.head).await?;
+        let from_commit = self.index_backend.get_commit(current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
         let branch = self.index_backend.get_branch(branch_name).await?;
-        let to_commit = self.index_backend.get_commit(&branch.head).await?;
+        let to_commit = self.index_backend.get_commit(branch.head).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
         let changes = self.sync_tree(&from, &to).await?;
@@ -1047,7 +1048,7 @@ impl Workspace {
 
         let branch = self.index_backend.get_branch(&current_branch.name).await?;
 
-        let changes = self.sync_to(&branch.head).await?;
+        let changes = self.sync_to(branch.head).await?;
 
         Ok((branch, changes))
     }
@@ -1057,21 +1058,22 @@ impl Workspace {
     /// # Returns
     ///
     /// The changes.
-    pub async fn sync_to(&self, commit_id: &str) -> Result<BTreeSet<Change>> {
+    pub async fn sync_to(&self, commit_id: CommitId) -> Result<BTreeSet<Change>> {
         let mut current_branch = self.backend.get_current_branch().await?;
 
         if current_branch.head == commit_id {
             return Ok([].into());
         }
 
-        let from_commit = self.index_backend.get_commit(&current_branch.head).await?;
+        let from_commit = self.index_backend.get_commit(current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
         let to_commit = self.index_backend.get_commit(commit_id).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
         let changes = self.sync_tree(&from, &to).await?;
 
-        current_branch.head = commit_id.to_string();
+        current_branch.head = commit_id;
+
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(changes)
@@ -1251,7 +1253,7 @@ impl Workspace {
         self.backend.set_current_branch(&branch).await?;
 
         // 3. Read the head commit information.
-        let commit = self.index_backend.get_commit(&branch.head).await?;
+        let commit = self.index_backend.get_commit(branch.head).await?;
 
         // 4. Read the tree.
         let tree = self.index_backend.get_tree(&commit.root_tree_id).await?;

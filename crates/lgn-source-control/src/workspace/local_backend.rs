@@ -8,8 +8,8 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::create_database, Branch, CanonicalPath, Change, ChangeType, FileInfo, MapOtherError,
-    PendingBranchMerge, ResolvePending, Result,
+    sql::create_database, Branch, CanonicalPath, Change, ChangeType, CommitId, FileInfo,
+    MapOtherError, PendingBranchMerge, ResolvePending, Result,
 };
 
 use super::WorkspaceBackend;
@@ -115,7 +115,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_branch_merges_pending_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(name VARCHAR(255) NOT NULL PRIMARY KEY, head VARCHAR(255), unique(name));",
+            "CREATE TABLE `{}`(name VARCHAR(255) NOT NULL PRIMARY KEY, head INTEGER, unique(name));",
             Self::TABLE_BRANCH_MERGES_PENDING,
         );
 
@@ -324,16 +324,21 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
 
         let mut conn = self.sql_connection.lock().await;
 
-        Ok(conn
-            .fetch_all(sql)
+        conn.fetch_all(sql)
             .await
             .map_other_err("failed to read pending branch merges")?
             .into_iter()
-            .map(|row| PendingBranchMerge {
-                name: row.get("name"),
-                head: row.get("head"),
+            .map(|row| {
+                Ok(PendingBranchMerge {
+                    name: row.get("name"),
+                    head: CommitId(
+                        row.get::<i64, _>("head")
+                            .try_into()
+                            .map_other_err("failed to read commit head")?,
+                    ),
+                })
             })
-            .collect())
+            .collect()
     }
 
     async fn clear_pending_branch_merges(&self) -> Result<()> {
@@ -352,9 +357,14 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             "INSERT OR REPLACE into {} VALUES(?,?);",
             Self::TABLE_BRANCH_MERGES_PENDING
         );
-        let sql = sqlx::query(sql)
-            .bind(merge_spec.name.clone())
-            .bind(merge_spec.head.clone());
+
+        let head: i64 = merge_spec
+            .head
+            .0
+            .try_into()
+            .map_other_err("failed to read commit head")?;
+
+        let sql = sqlx::query(sql).bind(merge_spec.name.clone()).bind(head);
 
         let mut conn = self.sql_connection.lock().await;
 
