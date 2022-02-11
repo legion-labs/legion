@@ -218,6 +218,7 @@ impl<'g> DockerDistTarget<'g> {
             .status()
             .map_err(|err| Error::new("failed to run `docker login`").with_source(err))?;
         if exit_status.success() {
+            debug!("Successfully logged in to Docker");
             Ok(())
         } else {
             Err(Error::new("failed to login to the docker registry"))
