@@ -1,8 +1,8 @@
 #![allow(unsafe_code)]
 
+use lgn_utils::DefaultHasher;
 use std::alloc::Layout;
 use std::any::TypeId;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -19,7 +19,7 @@ struct ModelKey(u64);
 
 impl ModelKey {
     fn new(s: &str) -> Self {
-        let mut hasher = DefaultHasher::default();
+        let mut hasher = DefaultHasher::new();
         s.hash(&mut hasher);
         Self(hasher.finish())
     }

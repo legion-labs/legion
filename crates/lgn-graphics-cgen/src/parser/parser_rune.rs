@@ -221,16 +221,20 @@ fn add_shader(model: &mut db::Model, data: &ShaderData) -> Result<()> {
 fn add_shader_internal(model: &mut db::Model, data: &ShaderData) -> Result<()> {
     let mut builder = ShaderBuilder::new(&*model, &data.name);
 
-    builder = builder.set_path(&data.path)?;
-    for stage in &data.stages {
-        builder = builder.add_stage(stage)?;
-    }
+    builder = builder.set_path(&data.path);
     builder = builder.set_pipeline_layout(&data.pipeline_layout)?;
-    for define in &data.defines {
-        builder = builder.add_define(define)?;
+
+    for option in &data.options {
+        builder = builder.add_option(option);
     }
-    let shader = builder.build()?;
+
+    for shader_instance in &data.instances {
+        builder = builder.add_instance(&shader_instance.key, &shader_instance.stages)?;
+    }
+
+    let shader = builder.build();
     model.add(&data.name, shader)?;
+
     Ok(())
 }
 
@@ -400,8 +404,15 @@ struct PipelineLayoutData {
 struct ShaderData {
     name: String,
     path: String,
-    stages: Vec<String>,
     pipeline_layout: String,
     #[serde(default)]
-    defines: Vec<String>,
+    options: Vec<String>,
+    instances: Vec<ShaderInstance>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ShaderInstance {
+    #[serde(default)]
+    key: Vec<String>,
+    stages: Vec<String>,
 }

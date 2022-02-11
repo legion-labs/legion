@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::RangeBounds};
+use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
 use lgn_graphics_api::ShaderStageFlags;
@@ -7,11 +7,11 @@ use super::{Model, ModelObject, PipelineLayout, PipelineLayoutHandle};
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Shader {
-    name: String,
-    path: String,
-    stages: ShaderStageFlags,
-    pipeline_layout: PipelineLayoutHandle,
-    defines: Vec<String>,
+    pub name: String,
+    pub path: String,
+    pub pipeline_layout: PipelineLayoutHandle,
+    pub options: Vec<String>,
+    pub instances: Vec<ShaderInstance>,
 }
 
 impl Shader {
@@ -19,11 +19,17 @@ impl Shader {
         Self {
             name: name.to_owned(),
             path: String::new(),
-            stages: ShaderStageFlags::NONE,
             pipeline_layout: PipelineLayoutHandle::invalid(),
-            defines: Vec::new(),
+            options: Vec::new(),
+            instances: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub struct ShaderInstance {
+    pub stages: ShaderStageFlags,
+    pub key: Vec<u8>,
 }
 
 impl ModelObject for Shader {
@@ -50,33 +56,9 @@ impl<'mdl> ShaderBuilder<'mdl> {
         }
     }
 
-    pub fn set_path(mut self, path: &str) -> Result<Self> {
+    pub fn set_path(mut self, path: &str) -> Self {
         self.product.path = path.to_owned();
-        Ok(self)
-    }
-
-    pub fn add_stage(mut self, stage: &str) -> Result<Self> {
-        match stage {
-            "VS" => self.product.stages |= ShaderStageFlags::VERTEX_FLAG,
-            "PS" => self.product.stages |= ShaderStageFlags::FRAGMENT_FLAG,
-            "CS" => self.product.stages |= ShaderStageFlags::COMPUTE_FLAG,
-            _ => {
-                return Err(anyhow!("Invalid shader stage '{stage}'"));
-            }
-        }
-
-        let use_graphic_pipeline = (self.product.stages
-            & (ShaderStageFlags::VERTEX_FLAG | ShaderStageFlags::FRAGMENT_FLAG))
-            != ShaderStageFlags::NONE;
-
-        let use_compute_pipeline =
-            (self.product.stages & ShaderStageFlags::COMPUTE_FLAG) != ShaderStageFlags::NONE;
-
-        if use_graphic_pipeline && use_compute_pipeline {
-            return Err(anyhow!("Conflicting shader stage '{stage}'"));
-        }
-
-        Ok(self)
+        self
     }
 
     pub fn set_pipeline_layout(mut self, pipeline_layout: &str) -> Result<Self> {
@@ -90,15 +72,63 @@ impl<'mdl> ShaderBuilder<'mdl> {
         Ok(self)
     }
 
-    pub fn add_define(mut self, define: &str) -> Result<Self> {
+    pub fn add_option(mut self, define: &str) -> Self {
         if !self.define_set.contains(define) {
             self.define_set.insert(define.to_owned());
-            self.product.defines.push(define.to_owned());
+            self.product.options.push(define.to_owned());
         }
+        self
+    }
+
+    pub fn add_instance(mut self, option_list: &Vec<String>, stages: &Vec<String>) -> Result<Self> {
+        let mut index_list = Vec::new();
+
+        for (i, option) in option_list.iter().enumerate() {
+            if !self.product.options.contains(option) {
+                return Err(anyhow!("Invalid option '{option}'"));
+            }
+            index_list.push(u8::try_from(i).unwrap());
+        }
+
+        self.product.instances.push(ShaderInstance {
+            stages: Self::stages_from_string_list(stages)?,
+            key: index_list,
+        });
+
         Ok(self)
     }
 
-    pub fn build(mut self) -> Result<Shader> {
-        Ok(self.product)
+    fn stages_from_string_list(stages: &Vec<String>) -> Result<ShaderStageFlags> {
+        let mut result = ShaderStageFlags::NONE;
+
+        for stage in stages {
+            match stage.as_str() {
+                "VS" => result |= ShaderStageFlags::VERTEX_FLAG,
+                "PS" => result |= ShaderStageFlags::FRAGMENT_FLAG,
+                "CS" => result |= ShaderStageFlags::COMPUTE_FLAG,
+                _ => {
+                    return Err(anyhow!("Invalid shader stage '{stage}'"));
+                }
+            }
+
+            let use_graphic_pipeline = (result
+                & (ShaderStageFlags::VERTEX_FLAG | ShaderStageFlags::FRAGMENT_FLAG))
+                != ShaderStageFlags::NONE;
+
+            let use_compute_pipeline =
+                (result & ShaderStageFlags::COMPUTE_FLAG) != ShaderStageFlags::NONE;
+
+            if use_graphic_pipeline && use_compute_pipeline {
+                return Err(anyhow!("Conflicting shader stages '{result}'"));
+            }
+        }
+
+        println!("{}", result);
+
+        Ok(result)
+    }
+
+    pub fn build(self) -> Shader {
+        self.product
     }
 }

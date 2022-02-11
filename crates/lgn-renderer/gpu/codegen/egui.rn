@@ -27,11 +27,23 @@ pub fn main() {
         },
         #{            
             type: "Shader",
-            name: "EGui",
-            path: "crate://renderer/gpu/shaders/ui.hlsl",
+            name: "Egui",
+            path: "gpu/shaders/ui.hlsl",
             pipeline_layout: "EguiPipelineLayout",
-            stages: [ "VS", "PS" ],
-            defines: [ "TOTO" ],
+            options: [ "TOTO", "TITI" ],
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },
+                #{  
+                    key: [ "TOTO" ],
+                    stages: [ "VS", "PS" ],
+                },
+                #{  
+                    key: [ "TITI" ],
+                    stages: [ "VS", "PS" ],
+                },
+            ]            
         }
     ]
 }

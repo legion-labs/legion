@@ -444,7 +444,7 @@ pub struct CGenPipelineLayoutDef {
 // CGenCrateID
 //
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct CGenCrateID(pub u8);
+pub struct CGenCrateID(pub u64);
 
 //
 // CGenShaderFamilyID

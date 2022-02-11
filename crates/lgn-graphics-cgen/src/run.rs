@@ -157,6 +157,7 @@ fn run_internal(context: &CGenContext) -> Result<CGenBuildResult> {
         generators::rust::type_generator::run,
         generators::rust::descriptor_set_generator::run,
         generators::rust::pipeline_layout_generator::run,
+        generators::rust::shader_generator::run,
     ];
     let mut products = Vec::<Product>::new();
     for generator in generators {

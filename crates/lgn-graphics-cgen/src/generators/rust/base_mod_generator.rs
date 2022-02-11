@@ -1,7 +1,7 @@
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 
 use crate::{
-    db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
+    db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout, Shader},
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
@@ -23,8 +23,18 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     // write dependencies
     let model = ctx.model;
     writer.add_line("use lgn_graphics_api::DeviceContext;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenRegistry;");
+    writer.add_line("use lgn_graphics_cgen_runtime::{CGenCrateID,CGenRegistry};");
     writer.new_line();
+
+    // crate id
+    {
+        writer.add_line(format!(
+            "const CRATE_ID : CGenCrateID = CGenCrateID({:#X});",
+            ctx.crate_id
+        ));
+        writer.new_line();
+    }
+
     // fn initialize
     {
         let mut writer = writer.add_block(
@@ -166,6 +176,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     write_mod::<CGenType>(model, &mut writer);
     write_mod::<DescriptorSet>(model, &mut writer);
     write_mod::<PipelineLayout>(model, &mut writer);
+    write_mod::<Shader>(model, &mut writer);
 
     writer.build()
 }
@@ -183,6 +194,7 @@ impl SkipInclude for CGenType {
 }
 impl SkipInclude for DescriptorSet {}
 impl SkipInclude for PipelineLayout {}
+impl SkipInclude for Shader {}
 
 fn write_mod<T>(model: &Model, writer: &mut FileWriter)
 where
@@ -214,7 +226,7 @@ where
             }
             writer.add_lines(&[
                 "#[allow(unused_imports)]".to_string(),
-                format!("pub use {}::*;", mod_name),
+                format!("pub use self::{}::*;", mod_name),
             ]);
         }
     }
