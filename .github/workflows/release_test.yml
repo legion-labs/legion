@@ -1,0 +1,22 @@
+name: Release Test
+
+on:
+  push:
+    paths-ignore:
+      - "docs/**"
+      - ".github/workflows/ci_book.yml"
+    branches:
+      - main
+
+jobs:
+  build_release:
+    name: Building release binaries
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Build
+        run: cargo m dist --release -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv
