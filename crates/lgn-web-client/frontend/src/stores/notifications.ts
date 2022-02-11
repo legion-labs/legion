@@ -16,10 +16,6 @@ type Value = Notification & {
 
 const intervalMs = 16;
 
-function p(partialValue: number, totalValue: number) {
-  return (100 * partialValue) / totalValue;
-}
-
 export default class extends Writable<Record<symbol, Value>> {
   #timeout: number;
 
@@ -45,7 +41,7 @@ export default class extends Writable<Record<symbol, Value>> {
           const notification = notifications[key];
 
           const percentage =
-            100 - p(Date.now() - notification.started, timeout);
+            100 - (100 * (Date.now() - notification.started)) / timeout;
 
           return {
             ...notifications,

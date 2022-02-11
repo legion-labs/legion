@@ -9,6 +9,7 @@ Once mounted it will listen to the `open-modal` custom event (which you can easi
 using the `openModal` function provided by the `lib/modal.ts` module) and open up accordingly.
 -->
 <script lang="ts">
+  import { fade } from "svelte/transition";
   import ModalStore from "../../stores/modal";
 
   export let store: ModalStore;
@@ -19,7 +20,11 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 {#each ids as id (id)}
   {@const { content, payload } = $store[id]}
 
-  <div class="root" class:with-lg-margin={window.__TAURI__}>
+  <div
+    class="root"
+    class:with-lg-margin={window.__TAURI__}
+    transition:fade={{ duration: 100 }}
+  >
     <div>
       <svelte:component
         this={content}
