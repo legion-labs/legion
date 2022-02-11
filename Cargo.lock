@@ -4294,6 +4294,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-compiler-gltf"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+]
+
+[[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
@@ -4802,10 +4812,6 @@ dependencies = [
  "linkme",
  "notify",
 ]
-
-[[package]]
-name = "lgn-gltf-compiler"
-version = "0.1.0"
 
 [[package]]
 name = "lgn-graphics-api"
@@ -5438,6 +5444,7 @@ dependencies = [
 name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
+ "lgn-compiler-gltf",
  "lgn-compiler-material",
  "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",

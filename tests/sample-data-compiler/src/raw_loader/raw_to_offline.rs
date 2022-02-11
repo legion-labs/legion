@@ -138,7 +138,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
                 raw_data::Component::StaticMesh(raw) => {
-                    components.push(Box::new(Into::<offline_data::StaticMesh>::into(raw)));
+                    components.push(Box::new(offline_data::StaticMesh::from_raw(
+                        raw, references,
+                    )));
                 }
             }
         }
@@ -246,8 +248,11 @@ impl From<raw_data::Light> for offline_data::Light {
 
 use lgn_graphics_data::DefaultMeshType;
 
-impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
-    fn from(raw: raw_data::StaticMesh) -> Self {
+impl FromRaw<raw_data::StaticMesh> for offline_data::StaticMesh {
+    fn from_raw(
+        raw: raw_data::StaticMesh,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
+    ) -> Self {
         Self {
             mesh_id: match raw.mesh_id {
                 1 => DefaultMeshType::Cube,
@@ -261,6 +266,11 @@ impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
                 9 => DefaultMeshType::Arrow,
                 10 => DefaultMeshType::RotationRing,
                 _ => DefaultMeshType::Plane,
+            },
+            mesh: if let Some(path) = &raw.mesh_asset_path {
+                lookup_asset_path(references, path)
+            } else {
+                None
             },
             ..Self::default()
         }

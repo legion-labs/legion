@@ -1,14 +1,16 @@
 use std::{any::Any, io, path::Path};
 
+use crate::runtime_mesh::Mesh;
 use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     Document, Gltf,
 };
 use lgn_math::{Vec2, Vec3, Vec4};
-//use crate::static_mesh_render_data::{StaticMeshRenderData, calculate_tangents};
 
 use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
+
+use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
 
 #[resource("gltf")]
 #[derive(Default)]
@@ -28,9 +30,8 @@ impl GltfFile {
         }
     }
 
-    pub fn new_mesh(&self) {
-        //path: String) -> Vec<StaticMeshRenderData> {
-        //let mut meshes = Vec::new();
+    pub fn new_mesh(&self) -> Vec<(Mesh, String)> {
+        let mut meshes = Vec::new();
         for mesh in self.document.as_ref().unwrap().meshes() {
             println!("Mesh #{:?}", mesh);
             for primitive in mesh.primitives() {
@@ -81,27 +82,30 @@ impl GltfFile {
                     }
                 }
 
-                //let positions = positions
-                //    .into_iter()
-                //    .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 1.0))
-                //    .collect::<Vec<Vec4>>();
-                //let normals = normals
-                //    .into_iter()
-                //    .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
-                //    .collect();
-                //let indices = Some(indices);
-                //let tangents = calculate_tangents(&positions, &tex_coords, &indices);
-                //meshes.push(StaticMeshRenderData {
-                //    positions: Some(positions),
-                //    normals: Some(normals),
-                //    tangents: Some(tangents),
-                //    tex_coords: Some(tex_coords),
-                //    indices,
-                //    colors: None,
-                //});
+                let positions = positions
+                    .into_iter()
+                    .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 1.0))
+                    .collect::<Vec<Vec4>>();
+                let normals = normals
+                    .into_iter()
+                    .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
+                    .collect();
+                let indices = Some(indices);
+                let tangents = calculate_tangents(&positions, &tex_coords, &indices);
+                meshes.push((
+                    Mesh {
+                        positions: Some(positions),
+                        normals: Some(normals),
+                        tangents: Some(tangents),
+                        tex_coords: Some(tex_coords),
+                        indices,
+                        colors: None,
+                    },
+                    String::from(mesh.name().unwrap()),
+                ));
             }
         }
-        //meshes
+        meshes
     }
 }
 
@@ -113,31 +117,6 @@ impl OfflineResource for GltfFile {
     type Processor = GltfFileProcessor;
 }
 
-fn read_usize(reader: &mut dyn io::Read) -> io::Result<usize> {
-    let mut byte_size = 0usize.to_ne_bytes();
-    reader.read_exact(&mut byte_size)?;
-    Ok(usize::from_ne_bytes(byte_size))
-}
-
-fn write_usize(writer: &mut dyn std::io::Write, v: usize) -> io::Result<usize> {
-    let bytes = v.to_ne_bytes();
-    writer.write_all(&bytes)?;
-    Ok(bytes.len())
-}
-
-fn read_usize_and_buffer(reader: &mut dyn io::Read) -> io::Result<Vec<u8>> {
-    let size = read_usize(reader)?;
-    let mut bytes = vec![0; size];
-    reader.read_exact(&mut bytes)?;
-    Ok(bytes)
-}
-
-fn write_usize_and_buffer(writer: &mut dyn std::io::Write, v: &[u8]) -> io::Result<usize> {
-    let written = write_usize(writer, v.len())?;
-    writer.write_all(v)?;
-    Ok(written + v.len())
-}
-
 #[derive(Default)]
 pub struct GltfFileProcessor {}
 
@@ -146,7 +125,11 @@ impl AssetLoader for GltfFileProcessor {
         &mut self,
         reader: &mut dyn io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
-        let mut document_bytes = read_usize_and_buffer(reader)?;
+        let result = read_usize_and_buffer(reader);
+        if result.is_err() {
+            return Ok(Box::new(GltfFile::default()));
+        }
+        let mut document_bytes = result.unwrap();
         let buffers_length = read_usize(reader)?;
         let mut buffers = Vec::new();
         for i in 0..buffers_length {
@@ -212,4 +195,71 @@ impl ResourceProcessor for GltfFileProcessor {
     ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
+}
+
+#[allow(unsafe_code, clippy::uninit_vec)]
+fn calculate_tangents(
+    positions: &[Vec4],
+    tex_coords: &[Vec2],
+    indices: &Option<Vec<u32>>,
+) -> Vec<Vec4> {
+    let length = positions.len();
+    let mut tangents = Vec::with_capacity(length);
+    //let mut bitangents = Vec::with_capacity(length);
+    unsafe {
+        tangents.set_len(length);
+        //bitangents.set_len(length);
+    }
+
+    let num_triangles = if let Some(indices) = &indices {
+        indices.len() / 3
+    } else {
+        length / 3
+    };
+
+    for i in 0..num_triangles {
+        let idx0 = if let Some(indices) = &indices {
+            indices[i * 3] as usize
+        } else {
+            i * 3
+        };
+        let idx1 = if let Some(indices) = &indices {
+            indices[i * 3 + 1] as usize
+        } else {
+            i * 3 + 1
+        };
+        let idx2 = if let Some(indices) = &indices {
+            indices[i * 3 + 2] as usize
+        } else {
+            i * 3 + 2
+        };
+        let v0 = positions[idx0].truncate();
+        let v1 = positions[idx1].truncate();
+        let v2 = positions[idx2].truncate();
+
+        let uv0 = tex_coords[idx0];
+        let uv1 = tex_coords[idx1];
+        let uv2 = tex_coords[idx2];
+
+        let edge1 = v1 - v0;
+        let edge2 = v2 - v0;
+
+        let delta_uv1 = uv1 - uv0;
+        let delta_uv2 = uv2 - uv0;
+
+        let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
+        //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
+        let t = (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f;
+        let t = t.extend(0.0);
+
+        tangents[idx0] = t;
+        tangents[idx1] = t;
+        tangents[idx2] = t;
+
+        //bitangents[idx0] = b;
+        //bitangents[idx1] = b;
+        //bitangents[idx2] = b;
+    }
+
+    tangents
 }

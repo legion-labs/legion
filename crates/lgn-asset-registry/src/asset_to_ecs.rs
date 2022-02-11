@@ -221,6 +221,22 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     }
 }
 
+impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        mesh: &Self,
+        asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        mesh_manager: &Res<'_, MeshManager>,
+        data_context: &mut GpuUniformDataContext<'_>,
+    ) -> Option<Entity> {
+        println!("mesh loaded!");
+        None
+    }
+}
+
+
 impl AssetToECS for lgn_scripting::runtime::Script {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,

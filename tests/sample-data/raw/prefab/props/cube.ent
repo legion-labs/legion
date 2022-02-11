@@ -16,6 +16,7 @@
             gi_contribution: 0,
         )),
         StaticMesh((
+            mesh_asset_path: Some("test_mesh(mesh/FlightHelmet.gltf, 'Hose_low')"),
             mesh_id: 1,
         )),
     ],

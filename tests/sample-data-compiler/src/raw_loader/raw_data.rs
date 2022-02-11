@@ -62,6 +62,7 @@ pub struct Light {}
 
 #[derive(Serialize, Deserialize)]
 pub struct StaticMesh {
+    pub mesh_asset_path: Option<String>,
     pub mesh_id: usize,
 }
 
