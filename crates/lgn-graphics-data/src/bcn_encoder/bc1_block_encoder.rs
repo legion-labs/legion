@@ -14,16 +14,15 @@ pub(crate) struct Bc1Block {
 
 impl Bc1Block {
     pub fn write_block(&self, encoded_data: &mut Vec<u8>) {
-        encoded_data.push((self.color_0.data >> 8) as u8);
-        encoded_data.push((self.color_0.data) as u8);
-
-        encoded_data.push((self.color_1.data >> 8) as u8);
         encoded_data.push((self.color_1.data) as u8);
+        encoded_data.push((self.color_1.data >> 8) as u8);
+        encoded_data.push((self.color_0.data) as u8);
+        encoded_data.push((self.color_0.data >> 8) as u8);
 
-        encoded_data.push((self.color_indices >> 24) as u8);
-        encoded_data.push((self.color_indices >> 16) as u8);
-        encoded_data.push((self.color_indices >> 8) as u8);
         encoded_data.push((self.color_indices) as u8);
+        encoded_data.push((self.color_indices >> 8) as u8);
+        encoded_data.push((self.color_indices >> 16) as u8);
+        encoded_data.push((self.color_indices >> 24) as u8);
     }
 }
 

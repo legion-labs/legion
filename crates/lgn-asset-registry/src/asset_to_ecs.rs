@@ -5,7 +5,7 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
-    components::StaticMesh,
+    components::{StaticMesh, TextureComponent},
     resources::{GpuUniformDataContext, MeshManager},
 };
 use lgn_tracing::info;
@@ -177,7 +177,33 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {}
 
 impl AssetToECS for runtime_data::Mesh {}
 
-impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {}
+impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        texture: &Self,
+        asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _mesh_manager: &Res<'_, MeshManager>,
+        data_context: &mut GpuUniformDataContext<'_>,
+    ) -> Option<Entity> {
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        entity.insert(TextureComponent::new(
+            texture.texture_data.clone(),
+            texture.format,
+            texture.width,
+            texture.height,
+            data_context,
+        ));
+
+        Some(entity.id())
+    }
+}
 
 impl AssetToECS for generic_data::runtime::DebugCube {
     fn create_in_ecs(

@@ -47,14 +47,32 @@ impl RawBlock4X4Rgba32 {
         height_stride: usize,
         width_start: usize,
         width_stride: usize,
+        color_channels: ColorChannels,
     ) -> Self {
         let mut block_data = [Color::from((0, 0, 0)); 16];
         for height_index in height_start..height_start + 4 {
             for width_index in width_start..width_start + 4 {
                 let r = rgba[height_index * height_stride + width_index * width_stride];
-                let g = rgba[height_index * height_stride + width_index * width_stride + 1];
-                let b = rgba[height_index * height_stride + width_index * width_stride + 2];
-                let a = rgba[height_index * height_stride + width_index * width_stride + 3];
+                let g = match color_channels {
+                    ColorChannels::R | ColorChannels::Ra => r,
+                    ColorChannels::Rgb | ColorChannels::Rgba => {
+                        rgba[height_index * height_stride + width_index * width_stride + 1]
+                    }
+                };
+
+                let b = match color_channels {
+                    ColorChannels::R | ColorChannels::Ra => r,
+                    ColorChannels::Rgb | ColorChannels::Rgba => {
+                        rgba[height_index * height_stride + width_index * width_stride + 2]
+                    }
+                };
+
+                let a = match color_channels {
+                    ColorChannels::R | ColorChannels::Rgb => 1,
+                    ColorChannels::Ra | ColorChannels::Rgba => {
+                        rgba[height_index * height_stride + width_index * width_stride + 3]
+                    }
+                };
 
                 let block_index = (height_index - height_start) * 4 + width_index - width_start;
                 block_data[block_index] = Color::from((r, g, b, a));
@@ -156,12 +174,20 @@ pub(crate) fn encode_mip_chain_from_offline_texture(
     let mip_width_in_blocks = width / 4;
     let mip_height_in_blocks = height / 4;
 
-    if width == 2048 {
-        panic!();
-    }
-
     let mut mip_data =
         Vec::with_capacity(mip_height_in_blocks * mip_width_in_blocks * block_byte_size);
+
+    #[allow(unsafe_code)]
+    let mip_data_comp = unsafe {
+        tbc::encode_image_bc1_conv_u8(
+            std::slice::from_raw_parts(
+                rgba.as_ptr().cast::<tbc::color::Rgb8>(),
+                rgba.len() / std::mem::size_of::<tbc::color::Rgb8>(),
+            ),
+            width,
+            height,
+        )
+    };
 
     let pixel_width = match color_channels {
         ColorChannels::R => 1usize,
@@ -182,6 +208,7 @@ pub(crate) fn encode_mip_chain_from_offline_texture(
                 height_stride,
                 block_width_index * 4,
                 width_stride,
+                color_channels,
             );
 
             match format {
@@ -193,5 +220,5 @@ pub(crate) fn encode_mip_chain_from_offline_texture(
         }
     }
 
-    vec![]
+    vec![mip_data_comp]
 }

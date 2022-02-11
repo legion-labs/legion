@@ -1,6 +1,0 @@
-(
-    albedo: "runtime_texture(offline_texture(old_brass_albedo.png, 'albedo'))",
-    normal: "runtime_texture(offline_texture(image/ground.psd, 'normal'))",
-    roughness: "runtime_texture(offline_texture(image/ground.psd, 'roughness'))",
-    metalness: "runtime_texture(offline_texture(image/ground.psd, 'metalness'))",
-)

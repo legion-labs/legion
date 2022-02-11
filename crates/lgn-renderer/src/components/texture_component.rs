@@ -4,6 +4,7 @@ use lgn_graphics_api::{
     MemoryAllocationDef, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture,
     TextureBarrier, TextureDef, TextureTiling,
 };
+use lgn_graphics_data::bcn_encoder::TextureFormat;
 
 use crate::{hl_gfx_api::HLCommandBuffer, resources::GpuUniformDataContext};
 
@@ -26,12 +27,18 @@ impl TextureComponent {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         texture_data: Vec<Vec<u8>>,
-        format: Format,
+        format: TextureFormat,
         width: u32,
         height: u32,
-        mip_count: u32,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Self {
+        let format = match format {
+            TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
+            TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
+            TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
+            TextureFormat::BC5 => Format::BC5_UNORM_BLOCK,
+        };
+
         let texture_def = TextureDef {
             extents: Extents3D {
                 width,
@@ -39,7 +46,7 @@ impl TextureComponent {
                 depth: 1,
             },
             array_length: 1,
-            mip_count,
+            mip_count: texture_data.len() as u32,
             format,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),

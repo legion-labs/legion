@@ -44,7 +44,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .write_resource(&texture, &mut content)
         .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
 
-    let output = context.store(&texture.rgba, context.target_unnamed.clone())?;
+    let output = context.store(&content, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {
         compiled_resources: vec![output],
