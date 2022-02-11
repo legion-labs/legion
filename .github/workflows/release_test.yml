@@ -8,6 +8,9 @@ on:
         required: false
         default: "preflight"
 
+env:
+  LEGION_TELEMETRY_URL: http://telemetry-ingestion-nlb-d60c0374061bf84a.elb.ca-central-1.amazonaws.com:8080
+
 jobs:
   build_release:
     name: Building release binaries
