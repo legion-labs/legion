@@ -11,4 +11,6 @@ service TelemetryIngestion {
   rpc insert_block(telemetry.Block) returns (InsertReply);
 }
 
-message InsertReply { string msg = 1; }
+message InsertReply {
+  string msg = 1;
+}

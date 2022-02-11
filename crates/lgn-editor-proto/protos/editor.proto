@@ -7,7 +7,15 @@ service Editor {
   rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
 }
 
-message UndoTransactionRequest { int32 id = 1; }
-message UndoTransactionResponse { int32 id = 1; }
-message RedoTransactionRequest { int32 id = 1; }
-message RedoTransactionResponse { int32 id = 1; }
+message UndoTransactionRequest {
+  int32 id = 1;
+}
+message UndoTransactionResponse {
+  int32 id = 1;
+}
+message RedoTransactionRequest {
+  int32 id = 1;
+}
+message RedoTransactionResponse {
+  int32 id = 1;
+}

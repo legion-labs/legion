@@ -4,23 +4,21 @@ package property_inspector;
 //////////////////////////////////////////////////////////////////////////////////////
 
 service PropertyInspector {
-  rpc GetResourceProperties(GetResourcePropertiesRequest)
-      returns (GetResourcePropertiesResponse);
+  rpc GetResourceProperties(GetResourcePropertiesRequest) returns (GetResourcePropertiesResponse);
 
   rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
       returns (UpdateResourcePropertiesResponse);
 
-  rpc DeleteArrayElement(DeleteArrayElementRequest)
-      returns (DeleteArrayElementResponse);
+  rpc DeleteArrayElement(DeleteArrayElementRequest) returns (DeleteArrayElementResponse);
 
-  rpc InsertNewArrayElement(InsertNewArrayElementRequest)
-      returns (InsertNewArrayElementResponse);
+  rpc InsertNewArrayElement(InsertNewArrayElementRequest) returns (InsertNewArrayElementResponse);
 
-  rpc ReorderArrayElement(ReorderArrayElementRequest)
-      returns (ReorderArrayElementResponse);
+  rpc ReorderArrayElement(ReorderArrayElementRequest) returns (ReorderArrayElementResponse);
 }
 
-message GetResourcePropertiesRequest { string id = 1; }
+message GetResourcePropertiesRequest {
+  string id = 1;
+}
 
 message ResourceDescription {
   string id = 1;

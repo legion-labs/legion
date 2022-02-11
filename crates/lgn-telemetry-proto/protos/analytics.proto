@@ -9,7 +9,8 @@ package analytics;
 
 service PerformanceAnalytics {
   rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
-  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest) returns (CumulativeCallGraphReply);
+  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest)
+      returns (CumulativeCallGraphReply);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
