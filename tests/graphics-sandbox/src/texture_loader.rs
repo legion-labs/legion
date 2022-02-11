@@ -1,4 +1,4 @@
-use lgn_graphics_api::Format;
+use lgn_graphics_data::bcn_encoder::TextureFormat;
 use lgn_renderer::{components::TextureComponent, resources::GpuUniformDataContext};
 use png::{ColorType, OutputInfo};
 
@@ -22,8 +22,8 @@ pub fn load_texture(
     let height = raw_data.info.height;
 
     let format = match raw_data.info.color_type {
-        ColorType::Rgb | ColorType::Rgba => Format::BC1_RGBA_UNORM_BLOCK,
-        ColorType::Grayscale => Format::BC4_UNORM_BLOCK,
+        ColorType::Rgb | ColorType::Rgba => TextureFormat::BC1,
+        ColorType::Grayscale => TextureFormat::BC4,
         _ => unreachable!(),
     };
 
@@ -112,6 +112,5 @@ pub fn load_texture(
         }
     }
 
-    let mip_count = mip_chain.len() as u32;
-    TextureComponent::new(mip_chain, format, width, height, mip_count, data_context)
+    TextureComponent::new(mip_chain, format, width, height, data_context)
 }
