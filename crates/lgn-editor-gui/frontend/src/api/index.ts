@@ -174,6 +174,16 @@ export async function removeResource({ id }: { id: string }) {
   return resourceBrowserClient.deleteResource({ id });
 }
 
+export async function cloneResource({
+  sourceId,
+  targetParentId,
+}: {
+  sourceId: string;
+  targetParentId?: string;
+}) {
+  return resourceBrowserClient.cloneResource({ sourceId, targetParentId });
+}
+
 /**
  * Used for logging purpose
  * @param jsonCommand

@@ -1,10 +1,8 @@
-import { prependIfNonPresent } from "./array";
 import { components } from "./path";
 
 export type Entry<Item> = {
   name: string;
   index: number;
-  depth: number;
   item: Item;
   subEntries: Entry<Item>[] | null;
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -39,77 +37,54 @@ export class Entries<Item> {
    * assert(deepEqual(entries.entries, expectedEntries));
    * ```
    */
-  static fromArray<Item extends { path: string }, AltItem>(
-    items: Item[],
+  static fromArray<PItem extends { path: string }, AltItem>(
+    items: PItem[],
     /** This function is called when an `Item` is not present, typically used for "folders" */
-    buildItemFromName: (name: string) => Item | AltItem
-  ): Entries<Item | AltItem> {
+    buildItemFromName: (name: string) => PItem | AltItem
+  ): Entries<PItem | AltItem> {
     if (!items.length) {
       return new Entries([]);
     }
 
-    function buildEntriesFromPathComponents(
-      [pathComponent, ...otherPathComponents]: string[],
-      item: Item,
-      entries: Entry<Item | AltItem>[],
-      depth = 0
-    ): Entry<Item | AltItem>[] {
-      const extendedEntries = prependIfNonPresent(
-        entries,
-        (entry) => entry.name === pathComponent,
-        () => ({
-          depth,
-          // Dumb index, will be set again properly later
-          index: -1,
-          name: pathComponent,
-          item: otherPathComponents.length
-            ? buildItemFromName(pathComponent)
-            : item,
-          subEntries: null,
-        })
-      );
+    type Ref = {
+      [key: string]: Ref;
+    } & { subEntries: Entry<PItem | AltItem>[] | null };
 
-      return extendedEntries.map((entry) => {
-        if (entry.name !== pathComponent) {
-          return entry;
-        }
+    const entriesArray: Entry<PItem>[] = [];
+    const ref = { subEntries: entriesArray } as Ref;
 
-        return {
-          ...entry,
-          subEntries: otherPathComponents.length
-            ? buildEntriesFromPathComponents(
-                otherPathComponents,
-                item,
-                entry.subEntries || [],
-                depth + 1
-              )
-            : entry.subEntries || null,
-        };
-      });
-    }
-
-    function buildEntriesFromItems(
-      [item, ...otherItems]: Item[],
-      entries: Entry<Item | AltItem>[] = []
-    ): Entry<Item | AltItem>[] {
+    items.forEach((item) => {
       const pathComponents = components(item.path);
 
-      if (!pathComponents.length) {
-        return entries;
-      }
+      pathComponents.reduce((ref, name, index) => {
+        if (!ref[name]) {
+          ref[name] = {
+            subEntries: index === pathComponents.length - 1 ? null : [],
+          } as Ref;
 
-      const populatedEntries = buildEntriesFromPathComponents(
-        pathComponents,
-        item,
-        entries
-      );
+          const entry = {
+            name,
+            // Dumb index, will be set again properly later
+            index: -1,
+            item:
+              index < pathComponents.length - 1
+                ? buildItemFromName(name)
+                : item,
+            subEntries: ref[name].subEntries,
+          };
 
-      return otherItems.length
-        ? buildEntriesFromItems(otherItems, populatedEntries)
-        : populatedEntries;
-    }
+          if (ref.subEntries) {
+            ref.subEntries.push(entry);
+          } else {
+            ref.subEntries = [entry];
+          }
+        }
 
-    const entries = new Entries(buildEntriesFromItems(items));
+        return ref[name];
+      }, ref);
+    });
+
+    const entries = new Entries(entriesArray);
 
     entries.#sort();
 
@@ -258,6 +233,48 @@ export class Entries<Item> {
     this.entries = update(this.entries);
 
     this.#sort();
+
+    return this;
+  }
+
+  insert<PItem extends { path: string }>(item: PItem): this {
+    function insert(
+      [part, ...parts]: string[],
+      entries: Entry<Item>[]
+    ): Entry<Item>[] {
+      if (!parts.length) {
+        const newEntry: Entry<Item> = {
+          index: -1,
+          item: item as unknown as Item,
+          name: part,
+          subEntries: null,
+        };
+
+        return [...entries, newEntry];
+      }
+
+      const entry = entries.find((entry) => entry.name === part);
+
+      if (!entry) {
+        return entries;
+      }
+
+      entry.subEntries = insert(parts, entry.subEntries || []);
+
+      return entries;
+    }
+
+    this.entries = components(item.path).reduce((acc, part) => {
+      acc;
+
+      return acc;
+    }, this.entries);
+
+    this.entries = insert(components(item.path), this.entries);
+
+    this.#sort();
+
+    this.#size = null;
 
     return this;
   }
