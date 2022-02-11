@@ -1,12 +1,12 @@
 name: Release Test
 
 on:
-  push:
-    paths-ignore:
-      - "docs/**"
-      - ".github/workflows/ci_book.yml"
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Release tag"
+        required: false
+        default: "preflight"
 
 jobs:
   build_release:
