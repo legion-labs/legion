@@ -6,10 +6,8 @@ use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
-use lgn_telemetry_proto::analytics::FetchProcessMetricRequest;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
@@ -19,17 +17,18 @@ use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
 use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
 use lgn_telemetry_proto::analytics::ListStreamsReply;
 use lgn_telemetry_proto::analytics::LogEntry;
+use lgn_telemetry_proto::analytics::MetricBlockRequest;
 use lgn_telemetry_proto::analytics::ProcessChildrenReply;
 use lgn_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
 use lgn_telemetry_proto::analytics::ProcessListReply;
 use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
-use lgn_telemetry_proto::analytics::ProcessMetricReply;
-use lgn_telemetry_proto::analytics::ProcessMetricsReply;
+use lgn_telemetry_proto::analytics::ProcessMetricManifestReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use lgn_telemetry_proto::analytics::{BlockSpansReply, ProcessMetricReply};
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
@@ -39,7 +38,7 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
-use crate::metrics::{self, MetricHandler};
+use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -249,39 +248,30 @@ impl AnalyticsService {
         })
     }
 
-    async fn list_process_metrics_impl(&self, process_id: &str) -> Result<ProcessMetricsReply> {
-        let mut connection = self.pool.acquire().await?;
-        let m = metrics::list_process_metrics(
-            &mut connection,
-            self.data_lake_blobs.clone(),
-            process_id,
-        )
-        .await?;
-        let time_range =
-            metrics::get_process_metrics_time_range(&mut connection, process_id).await?;
-        Ok(ProcessMetricsReply {
-            metrics: m,
-            min_time_ms: time_range.0,
-            max_time_ms: time_range.1,
+    async fn list_process_metrics_impl(
+        &self,
+        process_id: &str,
+    ) -> Result<ProcessMetricManifestReply> {
+        let metric_handler = MetricHandler::new(
+            Arc::clone(&self.data_lake_blobs),
+            Arc::clone(&self.cache),
+            self.pool.clone(),
+        );
+        Ok(ProcessMetricManifestReply {
+            metrics: metric_handler.list_process_metrics(process_id).await?,
         })
     }
 
     async fn fetch_process_metric_impl(
         &self,
-        process_id: &str,
-        metric_name: &str,
-        begin_ms: f64,
-        end_ms: f64,
-        lod: u32,
+        request: MetricBlockRequest,
     ) -> Result<ProcessMetricReply> {
         let metric_handler = MetricHandler::new(
             Arc::clone(&self.data_lake_blobs),
             Arc::clone(&self.cache),
             self.pool.clone(),
         );
-        Ok(metric_handler
-            .fetch_metric(process_id, metric_name, begin_ms, end_ms, lod)
-            .await?)
+        Ok(metric_handler.fetch_metric(request).await?)
     }
 }
 
@@ -532,7 +522,7 @@ impl PerformanceAnalytics for AnalyticsService {
     async fn list_process_metrics(
         &self,
         request: Request<ListProcessMetricsRequest>,
-    ) -> Result<Response<ProcessMetricsReply>, Status> {
+    ) -> Result<Response<ProcessMetricManifestReply>, Status> {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
@@ -554,25 +544,18 @@ impl PerformanceAnalytics for AnalyticsService {
 
     async fn fetch_process_metric(
         &self,
-        request: Request<FetchProcessMetricRequest>,
+        request: Request<MetricBlockRequest>,
     ) -> Result<Response<ProcessMetricReply>, Status> {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
-        if inner_request.process_id.is_empty() {
+        if inner_request.params.is_none()
+            || inner_request.params.as_ref().unwrap().process_id.is_empty()
+        {
             return Err(Status::internal(String::from(
                 "Missing process_id in fetch_process_metric",
             )));
         }
-        match self
-            .fetch_process_metric_impl(
-                &inner_request.process_id,
-                &inner_request.metric_name,
-                inner_request.begin_ms,
-                inner_request.end_ms,
-                inner_request.lod,
-            )
-            .await
-        {
+        match self.fetch_process_metric_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in fetch_process_metric: {}",

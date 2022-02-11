@@ -9,17 +9,23 @@ package analytics;
 
 service PerformanceAnalytics {
   rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
-  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest) returns (CumulativeCallGraphReply);
+  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest)
+      returns (CumulativeCallGraphReply);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
-  rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
+  rpc list_process_children(ListProcessChildrenRequest)
+      returns (ProcessChildrenReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
-  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
-  rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
+  rpc nb_process_log_entries(ProcessNbLogEntriesRequest)
+      returns (ProcessNbLogEntriesReply);
+  rpc list_process_streams(ListProcessStreamsRequest)
+      returns (ListStreamsReply);
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
-  rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
-  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricsReply);
-  rpc fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
+  rpc list_stream_blocks(ListStreamBlocksRequest)
+      returns (ListStreamBlocksReply);
+  rpc list_process_metrics(ListProcessMetricsRequest)
+      returns (ProcessMetricManifestReply);
+  rpc fetch_process_metric(MetricBlockRequest) returns (ProcessMetricReply);
 }
 
 // find_process

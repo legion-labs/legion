@@ -6,15 +6,8 @@ message ListProcessMetricsRequest {
   string process_id = 1;
 }
 
-message ProcessMetricsReply {
-  repeated MetricDesc metrics = 1;
-  double min_time_ms = 2;
-  double max_time_ms = 3;
-}
-
-message MetricDesc {
-  string name = 1;
-  string unit = 2;
+message ProcessMetricManifestReply {
+  repeated MetricManifest metrics = 1;
 }
 
 message FetchProcessMetricRequest {
@@ -27,8 +20,56 @@ message FetchProcessMetricRequest {
 }
 
 message ProcessMetricReply {
-  repeated MetricDataPoint points = 1;
+  repeated MetricBlockData blocks = 1;
+}
+
+message MetricBlockRequest {
+  MetricRequestParams params = 1;
+  repeated MetricBlockItem blocks = 2;
+}
+
+message MetricRequestParams {
+  string process_id = 1;
+  int64 process_start_ticks = 2;
+  int64 tsc_frequency = 3;
+  string metric_name = 4;
+  uint32 lod = 5;
+}
+
+message MetricBlockItem {
+  string block_id = 1;
+  string stream_id = 2;
+}
+
+message MetricManifest {
+  string name = 1;
+  string unit = 2;
+  repeated MetricBlockDesc blocks = 3;
+}
+
+message MetricBlockDesc {
+  string block_id = 1;
+  string stream_id = 2;
+  double begin_time_ms = 3;
+  int64 begin_ticks = 4;
+  double end_time_ms = 5;
+  int64 end_ticks = 6;
+}
+
+message BlockManifest {
+  MetricBlockDesc desc = 1;
+  repeated MetricDesc metrics = 2;
+}
+
+message MetricDesc {
+  string name = 1;
+  string unit = 2;
+}
+
+message MetricBlockData {
+  string block_id = 1;
   uint32 lod = 2;
+  repeated MetricDataPoint points = 3;
 }
 
 message MetricDataPoint {
