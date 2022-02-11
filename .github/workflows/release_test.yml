@@ -19,4 +19,6 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Build
-        run: cargo m dist --release -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: cargo m dist --release -p telemetry-ingestion-srv
