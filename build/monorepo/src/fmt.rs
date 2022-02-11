@@ -54,19 +54,15 @@ fn proto_fmt(ctx: &Context, check: bool) -> Result<()> {
         .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
         .filter(|e| {
-            let node_modules = e
-                .path()
-                .as_os_str()
-                .to_string_lossy()
-                .contains("node_modules");
-            let proto = e
-                .file_name()
-                .to_string_lossy()
-                .rsplit('.')
+            // ideally we would parse the .gitignore file and use it to filter
+            let path = e.path().as_os_str().to_string_lossy().replace("\\", "/");
+            if path.contains("/node_modules/") || path.contains("/target/") {
+                return false;
+            }
+            path.rsplit('.')
                 .next()
                 .map(|ext| ext.eq_ignore_ascii_case("proto"))
-                == Some(true);
-            !node_modules && proto
+                == Some(true)
         })
         .map(|e| e.path().to_owned())
         .collect();
