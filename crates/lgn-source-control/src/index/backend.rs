@@ -2,8 +2,8 @@ use async_trait::async_trait;
 
 use crate::{
     utils::{parse_url_or_path, UrlOrPath},
-    BlobStorageUrl, Branch, CanonicalPath, Commit, Error, GrpcIndexBackend, LocalIndexBackend,
-    Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, GrpcIndexBackend,
+    LocalIndexBackend, Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 /// The query options for the `list_branches` method.
@@ -14,13 +14,13 @@ pub struct ListBranchesQuery<'q> {
 
 /// The query options for the `list_commits` method.
 #[derive(Default, Clone, Debug)]
-pub struct ListCommitsQuery<'q> {
-    pub commit_ids: Vec<&'q str>,
+pub struct ListCommitsQuery {
+    pub commit_ids: Vec<CommitId>,
     pub depth: u32,
 }
 
-impl<'q> ListCommitsQuery<'q> {
-    pub fn single(commit_id: &'q str) -> Self {
+impl ListCommitsQuery {
+    pub fn single(commit_id: CommitId) -> Self {
         Self {
             commit_ids: vec![commit_id],
             ..Self::default()
@@ -53,18 +53,18 @@ pub trait IndexBackend: Send + Sync {
     async fn get_branch(&self, branch_name: &str) -> Result<Branch>;
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>>;
 
-    async fn get_commit(&self, commit_id: &str) -> Result<Commit> {
+    async fn get_commit(&self, commit_id: CommitId) -> Result<Commit> {
         self.list_commits(&ListCommitsQuery {
             commit_ids: vec![commit_id],
             depth: 1,
         })
         .await?
         .pop()
-        .ok_or_else(|| Error::commit_not_found(commit_id.to_string()))
+        .ok_or_else(|| Error::commit_not_found(commit_id))
     }
 
-    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>>;
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()>;
+    async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>>;
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId>;
 
     async fn get_tree(&self, id: &str) -> Result<Tree>;
     async fn save_tree(&self, tree: &Tree) -> Result<String>;

@@ -3,9 +3,9 @@ use lgn_tracing::info;
 use std::path::{Path, PathBuf};
 
 use crate::{
-    BlobStorageUrl, Branch, CanonicalPath, Commit, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, SqlIndexBackend, Tree,
-    WorkspaceRegistration,
+    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
+    SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -135,11 +135,11 @@ impl IndexBackend for LocalIndexBackend {
         self.sql_repository_index.update_branch(branch).await
     }
 
-    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
+    async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         self.sql_repository_index.list_commits(query).await
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
         self.sql_repository_index
             .commit_to_branch(commit, branch)
             .await

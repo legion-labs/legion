@@ -4,7 +4,7 @@ use std::process::Command;
 use camino::Utf8PathBuf;
 use lgn_tracing::debug;
 
-use crate::cargo::target_dir;
+use crate::cargo::{target_config, target_dir};
 use crate::context::Context;
 use crate::distrib::dist_target::{
     build_zip_archive, clean, copy_binaries, copy_extra_files,
@@ -53,10 +53,12 @@ impl<'g> ZipDistTarget<'g> {
         let region = self.metadata.region.clone();
         let s3_bucket = self.s3_bucket()?;
         let s3_key = format!(
-            "s3://{}/{}{}/v{}.zip",
+            "s3://{}/{}{}/{}-{}-v{}.zip",
             s3_bucket,
             &self.metadata.s3_bucket_prefix.as_ref().unwrap(),
             self.package.name(),
+            self.name(),
+            target_config(ctx, &args.build_args)?,
             self.package.version()
         );
         let mut cmd = Command::new("aws");

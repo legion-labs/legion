@@ -14,7 +14,7 @@ pub use branch::Branch;
 pub use canonical_path::CanonicalPath;
 pub use change::Change;
 pub use change_type::ChangeType;
-pub use commit::Commit;
+pub use commit::{Commit, CommitId};
 pub use file_info::FileInfo;
 pub use lock::Lock;
 pub use pending_branch_merge::PendingBranchMerge;
