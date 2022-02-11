@@ -23,7 +23,7 @@
 </script>
 
 <div class="root">
-  <div class="header">
+  <div class="tabs-container">
     <div class="tabs">
       {#each tabs as tab, index (key(tab, index))}
         <div
@@ -44,6 +44,10 @@
     </div>
   </div>
 
+  {#if $$slots.header}
+    <div class="header"><slot name="header" /></div>
+  {/if}
+
   <div
     class="content"
     on:mousedown={focus}
@@ -59,7 +63,7 @@
     @apply flex flex-col w-full h-full;
   }
 
-  .header {
+  .tabs-container {
     /* TODO: Instead of hiding the overflow we should display it properly */
     @apply flex flex-row flex-shrink-0 h-8 overflow-hidden;
   }
@@ -69,15 +73,15 @@
   }
 
   .tab {
-    @apply flex flex-row relative items-center bg-gray-700 px-2 cursor-pointer first:rounded-tl-sm last:rounded-tr-sm;
+    @apply flex flex-row relative items-center bg-gray-700 px-2 cursor-pointer first:rounded-tl-sm last:rounded-tr-sm border-b-2 border-transparent;
   }
 
   .tab-inactive {
-    @apply relative bg-gray-500 text-white;
+    @apply relative bg-gray-500 bg-opacity-20 hover:bg-gray-700 hover:border-orange-700 text-white;
   }
 
   .tab-active {
-    @apply relative z-10 border-b-2 border-orange-700;
+    @apply relative z-10 border-orange-700;
   }
 
   .tabs-filler-bg {
@@ -90,6 +94,10 @@
 
   .tabs-filler {
     @apply bg-black rounded-tr-sm w-full;
+  }
+
+  .header {
+    @apply w-full bg-gray-500 bg-opacity-50 border-b border-gray-800;
   }
 
   .content {

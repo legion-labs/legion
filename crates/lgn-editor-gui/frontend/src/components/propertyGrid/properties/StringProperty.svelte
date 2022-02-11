@@ -7,4 +7,4 @@
 </script>
 
 <!-- For now the string property is only a TextInput but it might change -->
-<TextInput on:input bind:value fullWidth autoSelect {disabled} />
+<TextInput on:input bind:value fluid autoSelect {disabled} />

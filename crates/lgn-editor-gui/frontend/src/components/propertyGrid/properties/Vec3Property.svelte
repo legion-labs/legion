@@ -20,7 +20,7 @@
       on:input={(event) => updateVectorAt(0, event)}
       bind:value={value[0]}
       noArrow
-      fullWidth
+      fluid
       autoSelect
       {disabled}
     />
@@ -30,7 +30,7 @@
       on:input={(event) => updateVectorAt(1, event)}
       bind:value={value[1]}
       noArrow
-      fullWidth
+      fluid
       autoSelect
       {disabled}
     />
@@ -40,7 +40,7 @@
       on:input={(event) => updateVectorAt(2, event)}
       bind:value={value[2]}
       noArrow
-      fullWidth
+      fluid
       autoSelect
       {disabled}
     />

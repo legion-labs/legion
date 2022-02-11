@@ -17,7 +17,8 @@
 
   export let size: Size = "default";
 
-  export let fullWidth = false;
+  /** Basically an `width: 100%` style so that the parent can control the width */
+  export let fluid = false;
 
   export let noArrow = false;
 
@@ -60,7 +61,7 @@
   class="input"
   class:default={size === "default"}
   class:disabled
-  class:w-full={fullWidth}
+  class:w-full={fluid}
   class:no-arrow={noArrow}
   class:text-right={align === "right"}
   autocomplete="none"
