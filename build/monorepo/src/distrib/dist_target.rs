@@ -66,7 +66,8 @@ pub fn build_zip_archive(root: &Utf8Path, archive: &Utf8Path) -> Result<()> {
             .strip_prefix(root)
             .map_err(|err| Error::new("failed to strip lambda root directory").with_source(err))?
             .display()
-            .to_string();
+            .to_string()
+            .replace("\\", "/");
 
         let metadata = std::fs::metadata(entry.path())
             .map_err(|err| Error::new("failed to get metadata").with_source(err))?;
@@ -168,4 +169,4 @@ pub fn copy_extra_files(
     Ok(())
 }
 
-pub const DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME: &str = "CARGO_MONOREPO_AWS_LAMBDA_S3_BUCKET";
+pub const DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME: &str = "MONOREPO_AWS_LAMBDA_S3_BUCKET";

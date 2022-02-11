@@ -239,6 +239,14 @@ impl BuildArgs {
     }
 }
 
+pub fn target_config(ctx: &Context, args: &BuildArgs) -> Result<String> {
+    if let Some(target) = &args.target {
+        Ok(target.clone())
+    } else {
+        ctx.target_config().map(Clone::clone)
+    }
+}
+
 pub fn target_dir(ctx: &Context, args: &BuildArgs) -> Result<Utf8PathBuf> {
     let mut path = args.top_level_target_dir();
     if path.is_relative() {
