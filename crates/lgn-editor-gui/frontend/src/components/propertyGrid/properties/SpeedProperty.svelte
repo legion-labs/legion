@@ -10,7 +10,7 @@
 <Range
   min={-10}
   max={10}
-  fullWidth
+  fluid
   withNumberInput
   on:input
   bind:value

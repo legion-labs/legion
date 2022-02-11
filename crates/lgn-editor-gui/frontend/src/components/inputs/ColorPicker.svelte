@@ -239,7 +239,7 @@ It also supports manual RGBA edition with 4 different inputs.
           <NumberInput
             autoSelect
             noArrow
-            fullWidth
+            fluid
             min={0}
             max={255}
             value={colors.rgba.r}
@@ -250,7 +250,7 @@ It also supports manual RGBA edition with 4 different inputs.
           <NumberInput
             autoSelect
             noArrow
-            fullWidth
+            fluid
             min={0}
             max={255}
             value={colors.rgba.g}
@@ -261,7 +261,7 @@ It also supports manual RGBA edition with 4 different inputs.
           <NumberInput
             autoSelect
             noArrow
-            fullWidth
+            fluid
             min={0}
             max={255}
             value={colors.rgba.b}
@@ -272,7 +272,7 @@ It also supports manual RGBA edition with 4 different inputs.
           <NumberInput
             autoSelect
             noArrow
-            fullWidth
+            fluid
             min={0}
             max={255}
             value={colors.rgba.a}

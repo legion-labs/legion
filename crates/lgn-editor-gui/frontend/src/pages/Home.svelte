@@ -36,6 +36,7 @@
   import viewportOrchestrator from "@/stores/viewport";
   import notificationsStore from "@/stores/notifications";
   import { components, join } from "@/lib/path";
+  import ResourceFilter from "@/components/resources/ResourceFilter.svelte";
 
   contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
   contextMenuStore.register(
@@ -66,13 +67,11 @@
     currentlyRenameEntry: currentlyRenameResourceStore,
   } = resourceEntriesOrchestrator;
 
-  let {
+  const {
     data: allResourcesData,
     error: allResourcesError,
     loading: allResourcesLoading,
   } = allResourcesStore;
-
-  allResourcesStore.run(getAllResources);
 
   let currentResourceDescription: ResourceDescription | null = null;
 
@@ -83,6 +82,8 @@
   $: if ($allResourcesData) {
     resourceEntriesOrchestrator.load($allResourcesData);
   }
+
+  allResourcesStore.run(getAllResources);
 
   function fetchCurrentResourceDescription() {
     if (!currentResourceDescription) {
@@ -275,6 +276,12 @@
         <div class="resource-browser">
           <Panel tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
+            <div slot="header">
+              <ResourceFilter
+                on:filter={({ detail: { name } }) =>
+                  allResourcesStore.run(() => getAllResources(name))}
+              />
+            </div>
             <div
               slot="content"
               class="resource-browser-content"

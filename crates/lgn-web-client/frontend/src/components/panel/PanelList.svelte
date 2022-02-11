@@ -9,9 +9,9 @@
 
   type Key = keyof Item;
 
-  interface $$Slots {
+  type $$Slots = {
     default: { item: Item };
-  }
+  };
 
   const dispatch = createEventDispatcher<{ highlight: Item; select: Item }>();
 

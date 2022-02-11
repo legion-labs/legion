@@ -7,7 +7,8 @@
 
   export let value: number;
 
-  export let fullWidth = false;
+  /** Basically an `width: 100%` style so that the parent can control the width */
+  export let fluid = false;
 
   export let withNumberInput = false;
 
@@ -30,7 +31,7 @@
   }
 </script>
 
-<div class="root" class:disabled class:w-full={fullWidth}>
+<div class="root" class:disabled class:w-full={fluid}>
   <div class="slider-container group">
     <div>{min}</div>
     <input
@@ -52,7 +53,7 @@
         {max}
         on:input={onNumberInput}
         noArrow
-        fullWidth
+        fluid
         {disabled}
       />
     </div>

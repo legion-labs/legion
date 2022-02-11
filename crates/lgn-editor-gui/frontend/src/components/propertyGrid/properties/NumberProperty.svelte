@@ -12,7 +12,7 @@
   on:input
   bind:value
   noArrow
-  fullWidth
+  fluid
   autoSelect
   {disabled}
 />
