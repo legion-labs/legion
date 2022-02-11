@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
@@ -14,18 +16,23 @@
       "svelte",
       "jest",
       "vite/client",
-      "@lgn/web-client/src/types/tauri"
+      "@lgn/web-client/src/types/tauri",
+      "@lgn/web-client/src/types/custom-events"
     ],
     "baseUrl": ".",
     "paths": {
+      "@/resources/*": ["tests/resources/*"],
       "@/*": ["src/*"]
     }
   },
   "include": [
+    // Source
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.svelte",
+    // Tests
     "tests/**/*.ts",
-    "proto/**/*.ts"
+    // Benchmarks
+    "benchmarks/**/*.ts"
   ]
 }

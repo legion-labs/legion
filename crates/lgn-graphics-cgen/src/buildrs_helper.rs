@@ -44,7 +44,7 @@ pub fn run_graphics_cgen(
         .as_ref()
         .join("gpu")
         .join("codegen")
-        .join("root.cgen");
+        .join("root.rn");
 
     // build context
     let mut ctx_builder = run::CGenContextBuilder::new();

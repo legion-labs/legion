@@ -13,15 +13,17 @@
   <div class="content-wrapper">
     <div class="content">
       <div class="main-content">
-        <Panel>
-          <span slot="header">
-            <span>Main Stream</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
-            {/if}
-          </span>
+        <Panel tabs={["Main Stream"]}>
+          <div class="tab" slot="tab" let:tab>
+            <div class="title">
+              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
+              {#if desiredVideoResolution}
+                <span>
+                  - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+                </span>
+              {/if}
+            </div>
+          </div>
           <div class="video-container" slot="content">
             <RemoteWindow
               serverType="runtime"

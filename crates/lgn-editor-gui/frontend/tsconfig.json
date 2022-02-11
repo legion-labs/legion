@@ -16,7 +16,8 @@
       "svelte",
       "jest",
       "vite/client",
-      "@lgn/web-client/src/types/tauri"
+      "@lgn/web-client/src/types/tauri",
+      "@lgn/web-client/src/types/custom-events"
     ],
     "baseUrl": ".",
     "paths": {

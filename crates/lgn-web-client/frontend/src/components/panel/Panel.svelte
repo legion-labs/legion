@@ -7,9 +7,9 @@
   export let tabs: Tab[] = [];
 
   /** Optionally change the value used as key during the iteration */
-  export let key: (tab: Tab, index: number) => Tab = (tab) => tab;
+  export let key: (tab: Tab) => Tab = (tab) => tab;
 
-  export let activeTab = tabs[0];
+  export let activeTab: Tab | null | undefined = tabs[0];
 
   let isFocused = false;
 

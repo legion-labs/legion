@@ -1,0 +1,21 @@
+pub fn main(frame_descriptor_set, view_descriptor_set ) {    
+    [        
+        #{
+            type: "Struct",
+            name: "ConstColorPushConstantData",
+            fields: [
+                #{ name:"world", ty:"Float4x4" },
+                #{ name:"color", ty:"Float4" },
+                #{ name:"mesh_description_offset", ty:"Uint1" },                
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "ConstColorPipelineLayout",
+            descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name ],
+            push_constant: "ConstColorPushConstantData"
+        }
+    ]
+}
+
+

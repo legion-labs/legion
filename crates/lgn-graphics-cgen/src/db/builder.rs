@@ -37,6 +37,17 @@ impl<'mdl> StructBuilder<'mdl> {
         }
         self.names.insert(name.to_string());
 
+        // check array_len validity
+        if let Some(array_len) = array_len {
+            if array_len == 0 {
+                return Err(anyhow!(
+                    "Member '{}' in struct '{}' can't have a zero array_len",
+                    name,
+                    self.product.name
+                ));
+            }
+        }
+
         // get cgen type and check its existence if necessary
         let ty_ref = self
             .mdl
@@ -95,7 +106,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     /// todo
     pub fn add_constant_buffer(self, name: &str, inner_type: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
-        let ty_ref = self
+        let ty_handle = self
             .mdl
             .get_object_handle::<CGenType>(inner_type)
             .context(anyhow!(
@@ -107,7 +118,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(
             name,
             None,
-            DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_handle: ty_ref }),
+            DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_handle }),
         )
     }
 
@@ -123,7 +134,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         read_write: bool,
     ) -> Result<Self> {
         // get cgen type and check its existence if necessary
-        let ty_ref = self
+        let ty_handle = self
             .mdl
             .get_object_handle::<CGenType>(inner_ty)
             .context(anyhow!(
@@ -132,7 +143,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                 self.product.name,
                 inner_ty
             ))?;
-        let def = StructuredBufferDef { ty_handle: ty_ref };
+        let def = StructuredBufferDef { ty_handle };
         let def = if read_write {
             DescriptorDef::RWStructuredBuffer(def)
         } else {
@@ -196,7 +207,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                 self.product.name
             ));
         }
-        let def = TextureDef { ty_ref: ty_handle };
+        let def = TextureDef { ty_handle };
         let ds = match tex_type {
             "2D" => {
                 if read_write {
@@ -260,6 +271,16 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         array_len: Option<u32>,
         def: DescriptorDef,
     ) -> Result<Self> {
+        if let Some(array_len) = array_len {
+            if array_len == 0 {
+                return Err(anyhow!(
+                    "Descriptor '{}' in DescriptorSet '{}' have array len set to 0",
+                    name,
+                    self.product.name
+                ));
+            }
+        }
+
         if self.names.contains(name) {
             return Err(anyhow!(
                 "Descriptor '{}' in DescriptorSet '{}' already exists",

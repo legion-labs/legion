@@ -1,0 +1,136 @@
+mod lighting;
+mod egui;
+mod const_color;
+mod picking;
+mod default_shader;
+
+pub fn main() {
+
+    let products = [];
+
+    let view_data = #{
+        type: "Struct",
+        name: "ViewData",
+        fields: [
+            #{ name:"view", ty:"Float4x4" },
+            #{ name:"inv_view", ty:"Float4x4" },
+            #{ name:"projection", ty:"Float4x4" },
+            #{ name:"inv_projection", ty:"Float4x4" },
+            #{ name:"projection_view", ty:"Float4x4" },
+            #{ name:"inv_projection_view", ty:"Float4x4" },
+            #{ name:"screen_size", ty:"Float4" },
+            #{ name:"cursor_pos", ty:"Float2" },
+        ]
+    };
+    products.push( view_data );
+
+    let lighting_data = #{
+        type: "Struct",
+        name: "LightingData",
+        fields: [
+            #{ name: "num_directional_lights", ty:"Uint1" },
+            #{ name: "num_omni_directional_lights", ty:"Uint1" },
+            #{ name: "num_spot_lights", ty:"Uint1" },
+            #{ name: "diffuse", ty:"Uint1" },
+            #{ name: "specular", ty:"Uint1" },
+            #{ name: "specular_reflection", ty:"Float1" },
+            #{ name: "diffuse_reflection", ty:"Float1" },
+            #{ name: "ambient_reflection", ty:"Float1" },
+            #{ name: "shininess", ty:"Float1" },
+            #{ name: "pad_", ty:"Uint3" },
+        ]
+    };
+    products.push( lighting_data );
+
+    let gpu_instance_transform = #{
+        type: "Struct",
+        name: "GpuInstanceTransform",
+        fields: [
+            #{ name:"world", ty:"Float4x4" }
+        ]
+    };
+    products.push( gpu_instance_transform );
+
+    let gpu_instance_color = #{
+        type: "Struct",
+        name: "GpuInstanceColor",
+        fields: [
+            #{ name:"color", ty:"Float4" },
+            #{ name:"color_blend", ty:"Float1" },
+        ]
+    };
+    products.push( gpu_instance_color );
+
+    let gpu_instance_picking_data = #{
+        type: "Struct",
+        name: "GpuInstancePickingData",
+        fields: [
+            #{ name:"picking_id", ty:"Uint1" },            
+        ]
+    };
+    products.push( gpu_instance_picking_data );
+
+    let gpu_instance_va_table = #{
+        type: "Struct",
+        name: "GpuInstanceVATable",
+        fields: [
+            #{ name:"mesh_description_va", ty:"Uint1" },
+            #{ name:"world_transform_va", ty:"Uint1" },
+            #{ name:"material_data_va", ty:"Uint1" },
+            #{ name:"instance_color_va", ty:"Uint1" },
+            #{ name:"picking_data_va", ty:"Uint1" },
+        ]
+    };
+    products.push( gpu_instance_va_table );    
+
+    let material_data = #{
+        type: "Struct",
+        name: "MaterialData",
+        fields: [
+            #{ name:"base_albedo", ty:"Float4" },
+            #{ name:"base_metalness", ty:"Float1" },
+            #{ name:"reflectance", ty:"Float1" },
+            #{ name:"base_roughness", ty:"Float1" },
+            #{ name:"albedo_texture", ty:"Uint1" },
+            #{ name:"normal_texture", ty:"Uint1" },
+            #{ name:"metalness_texture", ty:"Uint1" },
+            #{ name:"roughness_texture", ty:"Uint1" },
+        ]
+    };
+    products.push( material_data );    
+
+    products.extend( lighting::main() );
+
+    let frame_descriptor_set = #{
+        type: "DescriptorSet",
+        name: "FrameDescriptorSet",
+        frequency: 0,
+        descriptors: [
+            #{ type:"ConstantBuffer", name:"lighting_data", content:"LightingData" },
+            #{ type:"StructuredBuffer", name:"directional_lights", content:"DirectionalLight" },
+            #{ type:"StructuredBuffer", name:"omni_directional_lights", content:"OmniDirectionalLight" },
+            #{ type:"StructuredBuffer", name:"spot_lights", content:"SpotLight" },
+            #{ type:"ByteAddressBuffer", name:"static_buffer" },
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256 },
+            #{ type:"Sampler", name:"material_sampler" },
+        ]
+    };
+    products.push( frame_descriptor_set );
+
+    let view_descriptor_set = #{
+        type: "DescriptorSet",
+        name: "ViewDescriptorSet",
+        frequency: 1,
+        descriptors: [
+            #{ type:"ConstantBuffer", name:"view_data", content:"ViewData" },            
+        ]
+    };
+    products.push( view_descriptor_set );
+
+    products.extend( egui::main() );
+    products.extend( const_color::main(frame_descriptor_set, view_descriptor_set) );    
+    products.extend( picking::main(frame_descriptor_set, view_descriptor_set) );    
+    products.extend( default_shader::main(frame_descriptor_set, view_descriptor_set) );        
+
+    products
+}

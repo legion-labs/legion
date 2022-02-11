@@ -21,6 +21,9 @@
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
 
+  // TODO: Optional property bags are disabled until they're properly supported
+  const disabledOptionalProperty = true;
+
   // Option resource property can be groups
   export let property: BagResourceProperty;
 
@@ -48,8 +51,7 @@
   {#if property.name}
     <div class="property-name" title={property.name}>
       <div class="truncate">{property.name}</div>
-      <!-- TODO: Optional property bags are disabled until they're properly supported -->
-      {#if false && propertyIsOption(property)}
+      {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />
         </div>

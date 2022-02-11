@@ -5,6 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "./protos/block.proto",
         "./protos/calltree.proto",
         "./protos/ingestion.proto",
+        "./protos/metric.proto",
         "./protos/process.proto",
         "./protos/stream.proto",
     ];
