@@ -21,4 +21,4 @@ jobs:
       - name: Build
         env:
           MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
-        run: cargo m dist --release -p telemetry-ingestion-srv
+        run: cargo m dist --release -v -p telemetry-ingestion-srv

@@ -18,6 +18,7 @@ mod zip;
 
 use dist_package::DistPackage;
 use dist_target::DistTarget;
+use lgn_tracing::{set_max_level, LevelFilter};
 
 #[derive(Debug, clap::Args, Default)]
 pub struct Args {
@@ -41,6 +42,10 @@ pub struct Args {
 
 //#[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
+    if args.build_args.verbose > 0 {
+        set_max_level(LevelFilter::Debug);
+    }
+
     let selected_packages = args
         .package_args
         .to_selected_packages(ctx)?
