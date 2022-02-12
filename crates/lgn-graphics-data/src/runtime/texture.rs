@@ -6,9 +6,7 @@ use lgn_data_model::implement_primitive_type_def;
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
-use crate::bcn_encoder::{
-    encode_mip_chain_from_offline_texture, ColorChannels, CompressionQuality, TextureFormat,
-};
+use crate::{encode_mip_chain_from_offline_texture, TextureFormat};
 
 /// Runtime texture.
 #[resource("runtime_texture")]
@@ -33,8 +31,7 @@ impl Texture {
         width: u32,
         height: u32,
         format: TextureFormat,
-        quality: CompressionQuality,
-        color_channels: ColorChannels,
+        alpha_blended: bool,
         rgba: &[u8],
         writer: &mut dyn std::io::Write,
     ) {
@@ -43,11 +40,10 @@ impl Texture {
             height,
             format,
             texture_data: encode_mip_chain_from_offline_texture(
-                width as usize,
-                height as usize,
+                width,
+                height,
                 format,
-                quality,
-                color_channels,
+                alpha_blended,
                 rgba,
             ),
         };

@@ -5,19 +5,22 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::{
-    components::{StaticMesh, TextureComponent},
+    components::{MaterialComponent, StaticMesh, TextureComponent},
     resources::{GpuUniformDataContext, MeshManager},
+    EntityToGpuDataIdMap,
 };
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceTypeAndId,
     handle: &HandleUntyped,
     registry: &Res<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+    entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
     mesh_manager: &Res<'_, MeshManager>,
     data_context: &mut GpuUniformDataContext<'_>,
 ) -> bool
@@ -32,6 +35,7 @@ where
                 asset_id,
                 registry,
                 asset_to_entity_map,
+                entity_to_id_map,
                 mesh_manager,
                 data_context,
             );
@@ -60,6 +64,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) trait AssetToECS {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
@@ -67,6 +72,7 @@ pub(crate) trait AssetToECS {
         _asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         _mesh_manager: &Res<'_, MeshManager>,
         _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
@@ -81,6 +87,7 @@ impl AssetToECS for runtime_data::Entity {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
@@ -161,6 +168,7 @@ impl AssetToECS for runtime_data::Instance {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         _mesh_manager: &Res<'_, MeshManager>,
         _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
@@ -173,7 +181,57 @@ impl AssetToECS for runtime_data::Instance {
     }
 }
 
-impl AssetToECS for lgn_graphics_data::runtime::Material {}
+impl AssetToECS for lgn_graphics_data::runtime::Material {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        material: &Self,
+        asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
+        _mesh_manager: &Res<'_, MeshManager>,
+        data_context: &mut GpuUniformDataContext<'_>,
+    ) -> Option<Entity> {
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let mut material_component = MaterialComponent::new(data_context);
+        if let Some(albedo_id) = material.albedo.as_ref() {
+            if let Some(albedo) = asset_to_entity_map.get(albedo_id.id()) {
+                if let Some(texture_id) = entity_to_id_map.get(albedo) {
+                    material_component.albedo_texture = texture_id;
+                }
+            }
+        }
+        if let Some(normal_id) = material.normal.as_ref() {
+            if let Some(normal) = asset_to_entity_map.get(normal_id.id()) {
+                if let Some(texture_id) = entity_to_id_map.get(normal) {
+                    material_component.normal_texture = texture_id;
+                }
+            }
+        }
+        if let Some(metalness_id) = material.metalness.as_ref() {
+            if let Some(metalness) = asset_to_entity_map.get(metalness_id.id()) {
+                if let Some(texture_id) = entity_to_id_map.get(metalness) {
+                    material_component.metalness_texture = texture_id;
+                }
+            }
+        }
+        if let Some(roughness_id) = material.roughness.as_ref() {
+            if let Some(roughness) = asset_to_entity_map.get(roughness_id.id()) {
+                if let Some(texture_id) = entity_to_id_map.get(roughness) {
+                    material_component.roughness_texture = texture_id;
+                }
+            }
+        }
+
+        entity.insert(material_component);
+        Some(entity.id())
+    }
+}
 
 impl AssetToECS for runtime_data::Mesh {}
 
@@ -184,6 +242,7 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         _mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
@@ -193,13 +252,16 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
             commands.spawn()
         };
 
-        entity.insert(TextureComponent::new(
+        let texture_component = TextureComponent::new(
             texture.texture_data.clone(),
             texture.format,
             texture.width,
             texture.height,
             data_context,
-        ));
+        );
+
+        entity_to_id_map.insert(entity.id(), texture_component.texture_id());
+        entity.insert(texture_component);
 
         Some(entity.id())
     }
@@ -212,6 +274,7 @@ impl AssetToECS for generic_data::runtime::DebugCube {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {

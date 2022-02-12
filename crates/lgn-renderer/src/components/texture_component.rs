@@ -4,7 +4,7 @@ use lgn_graphics_api::{
     MemoryAllocationDef, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture,
     TextureBarrier, TextureDef, TextureTiling,
 };
-use lgn_graphics_data::bcn_encoder::TextureFormat;
+use lgn_graphics_data::TextureFormat;
 
 use crate::{hl_gfx_api::HLCommandBuffer, resources::GpuUniformDataContext};
 
@@ -36,7 +36,7 @@ impl TextureComponent {
             TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
             TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
             TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
-            TextureFormat::BC5 => Format::BC5_UNORM_BLOCK,
+            TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
         };
 
         let texture_def = TextureDef {

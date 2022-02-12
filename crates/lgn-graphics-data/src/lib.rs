@@ -14,10 +14,11 @@
 // generated from def\*.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-pub mod bcn_encoder;
-
 pub mod color;
 pub use color::Color;
+
+pub mod common;
+pub use common::*;
 
 /// Plugin module to register support types
 pub mod plugin;
