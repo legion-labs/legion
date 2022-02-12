@@ -11,6 +11,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
 
 jobs:
   lint:

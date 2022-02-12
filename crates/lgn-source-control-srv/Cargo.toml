@@ -18,3 +18,17 @@ serde_json = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
 url = "2.2"
+
+[[package.metadata.monorepo.dist]]
+name = "source-control-srv"
+type = "docker"
+template = """
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+{ copy_all }
+
+CMD ["{ binaries.source-control-srv }"]
+"""
+allow-aws-ecr-creation = true

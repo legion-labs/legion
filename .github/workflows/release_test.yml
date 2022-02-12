@@ -9,12 +9,19 @@ on:
         default: "preflight"
 
 env:
-  LEGION_TELEMETRY_URL: http://telemetry-ingestion-nlb-d60c0374061bf84a.elb.ca-central-1.amazonaws.com:8080
+  CARGO_TERM_COLOR: always
+  LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
 
 jobs:
-  build_release:
+  build_linux_release:
     name: Building release binaries
-    runs-on: [self-hosted, linux, common, build]
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
+          ]
     steps:
       - uses: actions/checkout@v2
 
@@ -24,4 +31,4 @@ jobs:
       - name: Build
         env:
           MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
-        run: cargo m dist --release -v -p telemetry-ingestion-srv
+        run: cargo m dist --release -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv -p analytics-srv -p source-control-srv
