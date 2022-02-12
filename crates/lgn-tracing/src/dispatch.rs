@@ -20,7 +20,7 @@ use crate::spans::{
     BeginThreadSpanEvent, EndThreadSpanEvent, ThreadBlock, ThreadEventQueueTypeIndex,
     ThreadSpanMetadata, ThreadStream,
 };
-use crate::{info, now, warn, Level, ProcessInfo};
+use crate::{frequency, info, now, warn, Level, ProcessInfo};
 
 pub fn init_event_dispatch(
     logs_buffer_size: usize,
@@ -265,12 +265,6 @@ impl Dispatch {
         let cpu_brand = cpuid
             .get_processor_brand_string()
             .map_or_else(|| "unknown".to_owned(), |b| b.as_str().to_owned());
-
-        let tsc_frequency = match cpuid.get_tsc_info() {
-            Some(tsc_info) => tsc_info.tsc_frequency().unwrap_or(0),
-            None => 0,
-        };
-
         let process_info = ProcessInfo {
             process_id: self.process_id.clone(),
             username: whoami::username(),
@@ -282,7 +276,7 @@ impl Dispatch {
             computer: whoami::devicename(),
             distro: whoami::distro(),
             cpu_brand,
-            tsc_frequency,
+            tsc_frequency: frequency(),
             start_time,
             start_ticks,
             parent_process_id: parent_process,
