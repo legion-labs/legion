@@ -114,7 +114,7 @@ impl<'g> DockerDistTarget<'g> {
         let mut cmd = Command::new("docker");
         let docker_image_name = self.docker_image_name()?;
 
-        if args.build_args.verbose > 0 {
+        if args.force {
             debug!("`--force` specified: not checking for Docker image existence before pushing");
         } else if Self::docker_pull(args, &docker_image_name)? {
             skip_step!(
