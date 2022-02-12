@@ -5706,6 +5706,7 @@ version = "0.1.0"
 dependencies = [
  "atty",
  "camino",
+ "lgn-tracing",
  "serde",
  "termcolor",
  "toml",

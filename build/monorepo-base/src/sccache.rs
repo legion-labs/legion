@@ -4,6 +4,7 @@ use std::{
 };
 
 use camino::Utf8Path;
+use lgn_tracing::{error, info};
 
 use crate::{config::Sccache, installer::Installer};
 
@@ -23,12 +24,12 @@ pub fn sccache_should_run(
                 == sccache_config.required_cargo_home.as_str()
                 && sccache_config.required_git_home.as_str() == workspace_root.as_str();
             if !correct_location && warn_if_not_correct_location {
-                eprintln!("You will not benefit from sccache in this build!!!");
-                eprintln!(
+                error!("You will not benefit from sccache in this build!!!");
+                error!(
                     "To get the best experience, please move your diem source code to {} and your set your CARGO_HOME to be {}, simply export it in your .profile or .bash_rc",
                     &sccache_config.required_git_home.as_str(), &sccache_config.required_cargo_home.as_str()
                 );
-                eprintln!(
+                error!(
                     "Current diem root is '{}',  and current CARGO_HOME is '{}'",
                     workspace_root,
                     var_os("CARGO_HOME").unwrap_or_default().to_string_lossy()
@@ -49,8 +50,18 @@ pub fn log_sccache_stats() {
     let mut sccache = Command::new("sccache");
     sccache.arg("--show-stats");
     sccache.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-    if let Err(error) = sccache.output() {
-        eprintln!("Could not log sccache statistics: {}", error);
+    let output = sccache.output();
+    if let Ok(output) = output {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                info!("sccache: {}", line);
+            }
+        } else {
+            error!("sccache error: {}", String::from_utf8_lossy(&output.stderr));
+        }
+    } else {
+        error!("Could not log sccache statistics: {}", output.unwrap_err());
     }
 }
 
@@ -66,15 +77,15 @@ pub fn stop_sccache_server() {
                 let std_err = String::from_utf8_lossy(&output.stderr);
                 //sccache will fail
                 if !std_err.contains("couldn't connect to server") {
-                    eprintln!("Failed to stopped already running sccache.");
-                    eprintln!("status: {}", output.status);
-                    eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                    eprintln!("stderr: {}", std_err);
+                    error!("Failed to stopped already running sccache.");
+                    error!("status: {}", output.status);
+                    error!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    error!("stderr: {}", std_err);
                 }
             }
         }
         Err(error) => {
-            eprintln!("Failed to stop running sccache: {}", error);
+            error!("Failed to stop running sccache: {}", error);
         }
     }
 }
