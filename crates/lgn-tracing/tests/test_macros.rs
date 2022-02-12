@@ -6,7 +6,7 @@ use lgn_tracing::dispatch::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
     init_thread_stream, process_id,
 };
-use lgn_tracing::{fmetric, imetric, info, set_max_level, span_scope, LevelFilter};
+use lgn_tracing::{fmetric, frequency, imetric, info, set_max_level, span_scope, LevelFilter};
 use lgn_tracing_proc_macros::{log_fn, span_fn};
 use utils::{DebugEventSink, LogDispatch, SharedState, State};
 
@@ -32,34 +32,8 @@ fn test_log_interop_str(state: &SharedState) {
     expect_state!(state, Some(State::ProcessLogBlock(10)));
 }
 
-fn get_tsc_frequency() -> Result<u64, String> {
-    // does not work in WSL
-    // more about the tsc frequency
-    //  https://stackoverflow.com/questions/35123379/getting-tsc-rate-from-x86-kernel
-    //  https://blog.trailofbits.com/2019/10/03/tsc-frequency-for-all-better-profiling-and-benchmarking/
-    //  https://stackoverflow.com/questions/51919219/determine-tsc-frequency-on-linux
-    use raw_cpuid::CpuId;
-    let cpuid = CpuId::new();
-    let cpu_brand = cpuid
-        .get_processor_brand_string()
-        .map_or_else(|| "unknown".to_owned(), |b| b.as_str().to_owned());
-
-    println!("CPU brand: {:?}", &cpu_brand);
-
-    match cpuid.get_tsc_info() {
-        Some(tsc_info) => match tsc_info.tsc_frequency() {
-            Some(frequency) => Ok(frequency),
-            None => Err(format!(
-                "tsc frequency unavailable for processor {}",
-                cpu_brand
-            )),
-        },
-        None => Err(format!("tsc info unavailable for processor {}", cpu_brand)),
-    }
-}
-
 fn test_thread_spans(state: &SharedState) {
-    println!("TSC frequency: {}", get_tsc_frequency().unwrap_or_default());
+    println!("TSC frequency: {}", frequency());
     let mut threads = Vec::new();
     for _ in 0..5 {
         threads.push(thread::spawn(move || {
