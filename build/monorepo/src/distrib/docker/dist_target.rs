@@ -246,18 +246,29 @@ impl<'g> DockerDistTarget<'g> {
             "--region",
             &aws_ecr_information.region,
         ]);
-        let result = cmd
-            .status()
+        let output = cmd
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
             .map_err(|err| Error::new("failed to run `aws s3 cp`").with_source(err))?;
 
-        if result.success() {
+        if output.status.success() {
             debug!(
                 "AWS ECR repository `{}` created",
                 aws_ecr_information.to_string()
             );
             Ok(())
         } else {
-            Err(Error::new("failed to create ecr registry"))
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if stdout.contains("RepositoryAlreadyExistsException") {
+                debug!(
+                    "AWS ECR repository `{}` already exists",
+                    aws_ecr_information.to_string()
+                );
+                Ok(())
+            } else {
+                Err(Error::new("failed to create ecr registry"))
+            }
         }
     }
 
