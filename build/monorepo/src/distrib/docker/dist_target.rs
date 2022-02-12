@@ -259,15 +259,15 @@ impl<'g> DockerDistTarget<'g> {
             );
             Ok(())
         } else {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if stdout.contains("RepositoryAlreadyExistsException") {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stderr.contains("RepositoryAlreadyExistsException") {
                 debug!(
                     "AWS ECR repository `{}` already exists",
                     aws_ecr_information.to_string()
                 );
                 Ok(())
             } else {
-                Err(Error::new("failed to create ecr registry"))
+                Err(Error::new("failed to create ecr registry").with_output(stderr))
             }
         }
     }
