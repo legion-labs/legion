@@ -67,7 +67,15 @@ impl<'g> DockerDistTarget<'g> {
         Ok(())
     }
 
-    pub fn publish(&self, _ctx: &Context, args: &distrib::Args) -> Result<()> {
+    pub fn publish(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+        if target_config(ctx, &args.build_args)?.contains("windows") {
+            skip_step!(
+                "Unsupported",
+                "Docker publish is not supported for windows targets"
+            );
+            return Ok(());
+        }
+
         if args.build_args.mode() == "debug" && !args.force {
             skip_step!(
                 "Unsupported",

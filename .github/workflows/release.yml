@@ -46,3 +46,57 @@ jobs:
             ./target/release/zip/
             !./target/release/zip/*.zip
           retention-days: 5
+
+  build_web_release:
+    name: Building release binaries
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm build
+        run: pnpm build
+
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: analytics
+          path: ./crates/lgn-analytics-gui/frontend/dist
+          retention-days: 5
+
+      - name: Upload editor artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: editor
+          path: ./crates/lgn-editor-gui/frontend/dist
+          retention-days: 5
+
+  deploy_web_release:
+    name: Deploying book
+    needs: build_web_release
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - app: analytics
+            deploy_key: ANALYTICS_DEPLOY_KEY
+
+          - app: editor
+            deploy_key: EDITOR_DEPLOY_KEY
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.app }}
+          path: ./${{ matrix.app }}
+
+      - name: Deploy Analytics
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets[matrix.deploy_key] }}
+          external_repository: legion-labs/${{ matrix.app }}.legionengine.com
+          publish_branch: main
+          publish_dir: ./${{ matrix.app }}
+          force_orphan: true
+          cname: ${{ matrix.app }}.legionengine.com
