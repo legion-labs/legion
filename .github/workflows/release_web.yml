@@ -19,11 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
       - name: Npm install
-        run: pnpm install
+        run: pnpm install --unsafe-perm
 
       - name: Npm build
         run: pnpm build
