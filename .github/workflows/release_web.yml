@@ -1,0 +1,46 @@
+name: Release Web
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Release tag"
+        required: false
+        default: "preflight"
+
+env:
+  CARGO_TERM_COLOR: always
+  LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
+
+jobs:
+  build_web_release:
+    name: Building release binaries
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Build
+        run: cargo m npm build
+
+      - name: Deploy Analytics
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
+          external_repository: legion-labs/analytics.legionengine.com
+          publish_branch: main
+          publish_dir: ./crates/lgn-analytics-gui/frontend/dist
+          force_orphan: true
+          cname: analytics.legionengine.com
+
+      - name: Deploy Editor
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.EDITOR_DEPLOY_KEY }}
+          external_repository: legion-labs/editor.legionengine.com
+          publish_branch: main
+          publish_dir: ./crates/lgn-editor-gui/frontend/dist
+          force_orphan: true
+          cname: editor.legionengine.com
