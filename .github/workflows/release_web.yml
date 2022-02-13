@@ -23,10 +23,10 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Npm install
-        run: cargo m npm install
+        run: pnpm install
 
       - name: Npm build
-        run: cargo m npm build
+        run: pnpm build
 
       - name: Upload analytics artifacts
         uses: actions/upload-artifact@v2
