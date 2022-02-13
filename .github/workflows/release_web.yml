@@ -28,22 +28,39 @@ jobs:
       - name: Npm build
         run: cargo m npm build
 
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: analytics
+          path: ./crates/lgn-analytics-gui/frontend/dist
+          retention-days: 5
+
+      - name: Upload editor artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: editor
+          path: ./crates/lgn-editor-gui/frontend/dist
+          retention-days: 5
+
+  deploy_web_release:
+    name: Deploying book
+    needs: build_web_release
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        app: ["analytics", "editor"]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.app }}
+          path: ./${{ matrix.app }}
+
       - name: Deploy Analytics
         uses: peaceiris/actions-gh-pages@v3
         with:
           deploy_key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
-          external_repository: legion-labs/analytics.legionengine.com
+          external_repository: legion-labs/${{ matrix.app }}.legionengine.com
           publish_branch: main
-          publish_dir: ./crates/lgn-analytics-gui/frontend/dist
+          publish_dir: ./${{ matrix.app }}
           force_orphan: true
-          cname: analytics.legionengine.com
-
-      - name: Deploy Editor
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          deploy_key: ${{ secrets.EDITOR_DEPLOY_KEY }}
-          external_repository: legion-labs/editor.legionengine.com
-          publish_branch: main
-          publish_dir: ./crates/lgn-editor-gui/frontend/dist
-          force_orphan: true
-          cname: editor.legionengine.com
+          cname: ${{ matrix.app }}.legionengine.com
