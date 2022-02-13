@@ -41,14 +41,14 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v2
         with:
-          name: lambda-release
+          name: zip-release
           path: |
             ./target/release/zip/
             !./target/release/zip/*.zip
           retention-days: 5
 
   build_web_release:
-    name: Building release binaries
+    name: Building static websites
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
           retention-days: 5
 
   deploy_web_release:
-    name: Deploying book
+    name: Deploying static websites
     needs: build_web_release
     runs-on: ubuntu-20.04
     strategy:
