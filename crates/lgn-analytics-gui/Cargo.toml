@@ -17,13 +17,13 @@ lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = { version = "3.0", features = ["derive"] }
 url = "2.2.2"
-tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+tauri = { version = "1.0.0-rc.1", features = ["api-all"] }
 directories = "4"
 
 [build-dependencies]
 lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
 lgn-build-utils-web = { path = "../lgn-build-utils-web", version = "0.1.0" }
-tauri-build = "1.0.0-beta.4"
+tauri-build = "1.0.0-rc.1"
 
 [features]
 default = ["custom-protocol"]
