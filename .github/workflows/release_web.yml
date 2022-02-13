@@ -45,7 +45,12 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        app: ["analytics", "editor"]
+        include:
+          - app: analytics
+            deploy_key: ANALYTICS_DEPLOY_KEY
+
+          - app: editor
+            deploy_key: EDITOR_DEPLOY_KEY
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -55,7 +60,7 @@ jobs:
       - name: Deploy Analytics
         uses: peaceiris/actions-gh-pages@v3
         with:
-          deploy_key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
+          deploy_key: ${{ secrets[matrix.deploy_key] }}
           external_repository: legion-labs/${{ matrix.app }}.legionengine.com
           publish_branch: main
           publish_dir: ./${{ matrix.app }}
