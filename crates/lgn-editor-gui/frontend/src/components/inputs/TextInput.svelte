@@ -13,7 +13,8 @@
 
   export let size: "default" | "sm" | "lg" = "default";
 
-  export let fullWidth = false;
+  /** Basically an `width: 100%` style so that the parent can control the width */
+  export let fluid = false;
 
   export let autoFocus = false;
 
@@ -48,7 +49,7 @@
 
 <div
   class="root"
-  class:w-full={fullWidth}
+  class:w-full={fluid}
   class:disabled
   class:default={size === "default"}
   class:sm={size === "sm"}
@@ -154,7 +155,7 @@
   }
 
   .extension {
-    @apply bg-gray-800 border-gray-700 h-full p-1;
+    @apply bg-gray-800 border-gray-700 h-full;
   }
 
   .left-extension {

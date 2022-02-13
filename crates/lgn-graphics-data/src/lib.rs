@@ -14,6 +14,8 @@
 // generated from def\*.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
+pub mod bcn_encoder;
+
 pub mod color;
 pub use color::Color;
 
@@ -24,6 +26,10 @@ pub use plugin::*;
 #[cfg(feature = "runtime")]
 #[path = "runtime/texture.rs"]
 pub mod runtime_texture;
+
+#[cfg(feature = "offline")]
+#[path = "offline/png.rs"]
+pub mod offline_png;
 
 #[cfg(feature = "offline")]
 #[path = "offline/psd.rs"]

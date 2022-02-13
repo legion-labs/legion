@@ -4163,6 +4163,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-compiler-png2tex"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lgn-compiler-psd2tex"
 version = "0.1.0"
 dependencies = [
@@ -4648,10 +4660,13 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-math",
  "memoffset 0.6.5",
+ "png 0.17.2",
  "psd",
  "serde",
  "serde_json",
+ "tbc",
  "typetag",
 ]
 
@@ -5194,6 +5209,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-compiler-debugcube",
  "lgn-compiler-material",
+ "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-instance",
@@ -5690,6 +5706,7 @@ version = "0.1.0"
 dependencies = [
  "atty",
  "camino",
+ "lgn-tracing",
  "serde",
  "termcolor",
  "toml",
@@ -7775,6 +7792,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
+ "png 0.17.2",
  "ron",
  "sample-data",
  "serde",

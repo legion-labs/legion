@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 use lgn_source_control::{
-    new_index_backend, BlobStorageUrl, CanonicalPath, Commit, Error, IndexBackend,
+    new_index_backend, BlobStorageUrl, CanonicalPath, Commit, CommitId, Error, IndexBackend,
     ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
 };
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
@@ -276,7 +276,7 @@ impl SourceControl for Service {
             .await?;
 
         let query = ListCommitsQuery {
-            commit_ids: request.commit_ids.iter().map(String::as_str).collect(),
+            commit_ids: request.commit_ids.into_iter().map(CommitId).collect(),
             depth: request.depth,
         };
 
@@ -412,12 +412,14 @@ impl SourceControl for Service {
         let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
         let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        index_backend
+        let commit_id = index_backend
             .commit_to_branch(&commit, &request.branch.unwrap_or_default().into())
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(CommitToBranchResponse {}))
+        Ok(tonic::Response::new(CommitToBranchResponse {
+            commit_id: commit_id.0,
+        }))
     }
 
     async fn update_branch(

@@ -1,0 +1,35 @@
+name: Release Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Release tag"
+        required: false
+        default: "preflight"
+
+env:
+  CARGO_TERM_COLOR: always
+  LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
+
+jobs:
+  build_linux_release:
+    name: Building release binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
+          ]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Build
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: cargo m dist --release -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv -p analytics-srv -p source-control-srv

@@ -11,6 +11,7 @@
     "calltree",
     "chrono",
     "codegen",
+    "cpuid",
     "Deps",
     "Deserialization",
     "despawn",

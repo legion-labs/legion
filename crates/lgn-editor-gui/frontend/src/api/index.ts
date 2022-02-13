@@ -28,7 +28,7 @@ const propertyInspectorClient = new PropertyInspectorClientImpl(
  * Eagerly fetches all the resource descriptions on the server
  * @returns All the resource descriptions
  */
-export async function getAllResources() {
+export async function getAllResources(searchToken = "") {
   const resourceDescriptions: ResourceDescription[] = [];
 
   async function getMoreResources(
@@ -45,7 +45,7 @@ export async function getAllResources() {
       : resourceDescriptions;
   }
 
-  const allResources = await getMoreResources("");
+  const allResources = await getMoreResources(searchToken);
 
   return allResources.sort((resource1, resource2) =>
     resource1.path > resource2.path ? 1 : -1
@@ -172,6 +172,16 @@ export async function renameResource({
 
 export async function removeResource({ id }: { id: string }) {
   return resourceBrowserClient.deleteResource({ id });
+}
+
+export async function cloneResource({
+  sourceId,
+  targetParentId,
+}: {
+  sourceId: string;
+  targetParentId?: string;
+}) {
+  return resourceBrowserClient.cloneResource({ sourceId, targetParentId });
 }
 
 /**

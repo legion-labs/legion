@@ -13,17 +13,27 @@
     errors: string[];
   };
 
+  /** Basically an `width: 100%` style so that the parent can control the width */
+  export let fluid = false;
+
   export let field: Writable<Field<Value>>;
+
+  export let orientation: "horizontal" | "vertical" = "vertical";
 </script>
 
-<div>
+<div class:w-full={fluid}>
   <!-- svelte-ignore a11y-label-has-associated-control -->
-  <label>
-    <div class="field">
+  <label class:w-full={fluid}>
+    <div
+      class="field"
+      class:horizontal={orientation === "horizontal"}
+      class:vertical={orientation === "vertical"}
+      class:w-full={fluid}
+    >
       {#if $$slots.label}
         <div><slot name="label" /></div>
       {/if}
-      <div>
+      <div class:w-full={fluid}>
         <slot name="input" />
       </div>
       {#if $field.errors}
@@ -39,6 +49,14 @@
 
 <style lang="postcss">
   .field {
-    @apply flex flex-col space-y-1;
+    @apply flex w-full;
+  }
+
+  .field.vertical {
+    @apply flex-col space-y-1;
+  }
+
+  .field.horizontal {
+    @apply flex-row space-x-2 items-center;
   }
 </style>

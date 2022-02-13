@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use camino::{Utf8Path, Utf8PathBuf};
@@ -24,7 +24,7 @@ use crate::{
 
 use super::DockerMetadata;
 
-pub const DEFAULT_DOCKER_REGISTRY_ENV_VAR_NAME: &str = "CARGO_MONOREPO_DOCKER_REGISTRY";
+pub const DEFAULT_DOCKER_REGISTRY_ENV_VAR_NAME: &str = "MONOREPO_DOCKER_REGISTRY";
 
 pub struct DockerDistTarget<'g> {
     pub package: &'g DistPackage<'g>,
@@ -73,12 +73,13 @@ impl<'g> DockerDistTarget<'g> {
             return Ok(());
         }
 
-        self.push_docker_image(args)?;
+        self.docker_login()?;
+        self.docker_push(args)?;
 
         Ok(())
     }
 
-    fn pull_docker_image(args: &distrib::Args, docker_image_name: &str) -> Result<bool> {
+    fn docker_pull(args: &distrib::Args, docker_image_name: &str) -> Result<bool> {
         let mut cmd = Command::new("docker");
 
         debug!(
@@ -109,13 +110,13 @@ impl<'g> DockerDistTarget<'g> {
         }
     }
 
-    fn push_docker_image(&self, args: &distrib::Args) -> Result<()> {
+    fn docker_push(&self, args: &distrib::Args) -> Result<()> {
         let mut cmd = Command::new("docker");
         let docker_image_name = self.docker_image_name()?;
 
-        if args.build_args.verbose > 0 {
+        if args.force {
             debug!("`--force` specified: not checking for Docker image existence before pushing");
-        } else if Self::pull_docker_image(args, &docker_image_name)? {
+        } else if Self::docker_pull(args, &docker_image_name)? {
             skip_step!(
                 "Up-to-date",
                 "Docker image `{}` already exists",
@@ -126,10 +127,7 @@ impl<'g> DockerDistTarget<'g> {
         }
 
         debug!("Will now push docker image `{}`", docker_image_name);
-
-        let aws_ecr_information = self.get_aws_ecr_information()?;
-
-        if let Some(aws_ecr_information) = aws_ecr_information {
+        if let Some(aws_ecr_information) = self.get_aws_ecr_information()? {
             debug!("AWS ECR information found: assuming the image is hosted on AWS ECR in account `{}` and region `{}`", aws_ecr_information.account_id, aws_ecr_information.region);
 
             if self.metadata.allow_aws_ecr_creation {
@@ -191,6 +189,42 @@ impl<'g> DockerDistTarget<'g> {
         Ok(())
     }
 
+    fn docker_login(&self) -> Result<()> {
+        let aws_ecr_information = self
+            .get_aws_ecr_information()?
+            .ok_or_else(|| Error::new("AWS ECR information not found"))?;
+
+        let mut cmd = Command::new("aws");
+        cmd.args(&[
+            "ecr",
+            "get-login-password",
+            "--region",
+            &aws_ecr_information.region,
+        ]);
+        let child = cmd.stdout(Stdio::piped()).spawn().map_err(|err| {
+            Error::new("failed to run `aws ecr get-login-password`").with_source(err)
+        })?;
+
+        let mut cmd = Command::new("docker");
+        cmd.args(&[
+            "login",
+            "--username",
+            "AWS",
+            "--password-stdin",
+            &aws_ecr_information.to_string(),
+        ]);
+        cmd.stdin(child.stdout.unwrap());
+        let exit_status = cmd
+            .status()
+            .map_err(|err| Error::new("failed to run `docker login`").with_source(err))?;
+        if exit_status.success() {
+            debug!("Successfully logged in to Docker");
+            Ok(())
+        } else {
+            Err(Error::new("failed to login to the docker registry"))
+        }
+    }
+
     fn ensure_aws_ecr_repository_exists(
         &self,
         aws_ecr_information: &AwsEcrInformation,
@@ -209,19 +243,32 @@ impl<'g> DockerDistTarget<'g> {
             "--tags",
             "Key=CreatedBy,Value=monorepo",
             &package_name_tag,
+            "--region",
+            &aws_ecr_information.region,
         ]);
-        let result = cmd
-            .status()
+        let output = cmd
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
             .map_err(|err| Error::new("failed to run `aws s3 cp`").with_source(err))?;
 
-        if result.success() {
+        if output.status.success() {
             debug!(
                 "AWS ECR repository `{}` created",
                 aws_ecr_information.to_string()
             );
             Ok(())
         } else {
-            Err(Error::new("failed to create ecr registry"))
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stderr.contains("RepositoryAlreadyExistsException") {
+                debug!(
+                    "AWS ECR repository `{}` already exists",
+                    aws_ecr_information.to_string()
+                );
+                Ok(())
+            } else {
+                Err(Error::new("failed to create ecr registry").with_output(stderr))
+            }
         }
     }
 

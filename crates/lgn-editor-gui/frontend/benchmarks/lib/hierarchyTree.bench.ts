@@ -1,6 +1,6 @@
 import { suite } from "../benchmark";
 
-import { Entries } from "@/lib/hierarchyTree";
+import { Entries, Entry } from "@/lib/hierarchyTree";
 import resources from "../resources/resourcesResponse.json";
 
 export const resourcesSuite = suite("Entries.fromArray", (bench) => {
@@ -72,6 +72,28 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       entries.remove(entries.entries[3].subEntries![0].subEntries![4]);
+    };
+  });
+
+  bench.add("Insert item early in entries", { iter: 10_000 }, () => {
+    const entries = Entries.fromArray(resources, Symbol);
+
+    const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
+
+    return () => {
+      entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+    };
+  });
+
+  bench.add("Insert item late in entries", { iter: 10_000 }, () => {
+    const entries = Entries.fromArray(resources, Symbol);
+
+    const entry = entries.getFromIndex(entries.size - 2) as Entry<{
+      path: string;
+    }>;
+
+    return () => {
+      entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
     };
   });
 });
@@ -184,6 +206,36 @@ export const bigResourcesSuite = suite(
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           entries.remove(entries.entries[3].subEntries![0].subEntries![4]);
+        };
+      }
+    );
+
+    bench.add(
+      "Insert item early in entries - big resources",
+      { iter: 100 },
+      () => {
+        const entries = Entries.fromArray(bigResources, Symbol);
+
+        const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
+
+        return () => {
+          entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+        };
+      }
+    );
+
+    bench.add(
+      "Insert item late in entries - big resources",
+      { iter: 100 },
+      () => {
+        const entries = Entries.fromArray(bigResources, Symbol);
+
+        const entry = entries.getFromIndex(entries.size - 2) as Entry<{
+          path: string;
+        }>;
+
+        return () => {
+          entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
         };
       }
     );

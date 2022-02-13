@@ -86,7 +86,7 @@ message GetBranchResponse {
 
 message Branch {
   string name = 1;
-  string head = 2;
+  uint64 head = 2;
   string lock_domain_id = 3;
 }
 
@@ -101,7 +101,7 @@ message ListBranchesResponse {
 
 message ListCommitsRequest {
   string repository_name = 1;
-  repeated string commit_ids = 2;
+  repeated uint64 commit_ids = 2;
   uint32 depth = 3;
 }
 
@@ -110,12 +110,12 @@ message ListCommitsResponse {
 }
 
 message Commit {
-  string id = 1;
+  uint64 id = 1;
   string owner = 2;
   string message = 3;
   repeated Change changes = 4;
   string root_tree_id = 5;
-  repeated string parents = 6;
+  repeated uint64 parents = 6;
   google.protobuf.Timestamp timestamp = 7;
 }
 
@@ -197,7 +197,9 @@ message CommitToBranchRequest {
   Branch branch = 3;
 }
 
-message CommitToBranchResponse {}
+message CommitToBranchResponse {
+  uint64 commit_id = 1;
+}
 
 message UpdateBranchRequest {
   string repository_name = 1;

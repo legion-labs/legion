@@ -115,9 +115,13 @@ enum Commands {
 }
 
 fn main() {
-    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
+    let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
         .unwrap()
-        .with_log_level(LevelFilter::Warn);
+        .with_log_level(if std::env::var_os("LEGION_TELEMETRY_URL").is_some() {
+            LevelFilter::Debug
+        } else {
+            LevelFilter::Warn
+        });
 
     span_scope!("monorepo::main");
 
@@ -145,6 +149,8 @@ fn main() {
         Commands::Npm(cmd) => npm::run(cmd, &ctx),
     }) {
         err.display();
+        drop(telemetry_guard);
+
         #[allow(clippy::exit)]
         std::process::exit(err.exit_code().unwrap_or(1));
     }

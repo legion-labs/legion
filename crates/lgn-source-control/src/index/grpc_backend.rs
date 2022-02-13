@@ -13,8 +13,9 @@ use lgn_source_control_proto::{
 };
 
 use crate::{
-    BlobStorageUrl, Branch, CanonicalPath, Commit, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree,
+    WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.
@@ -218,14 +219,18 @@ impl IndexBackend for GrpcIndexBackend {
             .map(|_| ())
     }
 
-    async fn list_commits(&self, query: &ListCommitsQuery<'_>) -> Result<Vec<Commit>> {
+    async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         let resp = self
             .client
             .lock()
             .await
             .list_commits(ListCommitsRequest {
                 repository_name: self.repository_name.clone(),
-                commit_ids: query.commit_ids.iter().copied().map(Into::into).collect(),
+                commit_ids: query
+                    .commit_ids
+                    .iter()
+                    .map(|commit_id| commit_id.0)
+                    .collect(),
                 depth: query.depth,
             })
             .await
@@ -239,8 +244,9 @@ impl IndexBackend for GrpcIndexBackend {
             .map_other_err("failed to parse commits")
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<()> {
-        self.client
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+        let resp = self
+            .client
             .lock()
             .await
             .commit_to_branch(CommitToBranchRequest {
@@ -252,8 +258,10 @@ impl IndexBackend for GrpcIndexBackend {
             .map_other_err(format!(
                 "failed to commit `{}` to branch `{}`",
                 commit.id, branch.name
-            ))
-            .map(|_| ())
+            ))?
+            .into_inner();
+
+        Ok(CommitId(resp.commit_id))
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {

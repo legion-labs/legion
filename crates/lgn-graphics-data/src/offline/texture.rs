@@ -6,6 +6,8 @@ use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourcePro
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
+use crate::bcn_encoder::{ColorChannels, CompressionQuality, TextureFormat};
+
 /// Texture type enumeration.
 #[derive(Serialize, Deserialize)]
 pub enum TextureType {
@@ -23,6 +25,12 @@ pub struct Texture {
     pub width: u32,
     /// Texture height.
     pub height: u32,
+    /// Desired HW texture format
+    pub format: TextureFormat,
+    /// Desired compression quality for runtime texture
+    pub quality: CompressionQuality,
+    /// Color channels available in saved texture data
+    pub color_channels: ColorChannels,
     /// Texture pixel data.
     pub rgba: Vec<u8>,
 }
@@ -55,8 +63,11 @@ impl ResourceProcessor for TextureProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(Texture {
             kind: TextureType::_2D,
+            format: TextureFormat::BC1,
+            quality: CompressionQuality::Fast,
             width: 0,
             height: 0,
+            color_channels: ColorChannels::Rgba,
             rgba: vec![],
         })
     }
