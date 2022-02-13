@@ -11,56 +11,38 @@ on:
         required: false
         default: "preflight"
 
+env:
+  CARGO_TERM_COLOR: always
+  LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
+
 jobs:
   build_release:
     name: Building release binaries
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
+          ]
     steps:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
 
-      - name: Build release
-        # This will be replace by cargo cd
-        run: cargo m build --release
+      - name: Build
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: cargo m dist --release --force -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv -p analytics-srv -p source-control-srv
 
-      - name: Upload release artifacts
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v2
-        with:
-          name: release
-          path: |
-            ./target/release
-            !./target/release/build
-            !./target/release/deps
-            !./target/release/incremental
-          retention-days: 5
-
-      - name: Upload lambda artifacts
-        if: github.ref == 'refs/heads/main'
+      - name: Upload Zip artifacts to github
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v2
         with:
           name: lambda-release
           path: |
-            ./target/x86_64-unknown-linux-musl/release/aws-lambda-*
+            ./target/release/zip/
+            !./target/release/zip/*.zip
           retention-days: 5
-
-  dockerize:
-    name: Building docker images and deploying them
-    needs: [build_release]
-    if: ${{ github.event.event_name == 'workflow_dispatch' }}
-    runs-on: [self-hosted, linux, common, build]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: release
-          path: ./target
-
-      - name: Docker build
-        run: make dockerize-release
-
-      - name: Docker push
-        run: make dockerize-push

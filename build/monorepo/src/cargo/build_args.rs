@@ -278,7 +278,7 @@ fn append_ext_for_target_cfg(ctx: &Context, args: &BuildArgs, binary: &str) -> R
     })
 }
 
-pub fn current_target_cfg() -> Result<String> {
+pub fn default_target_cfg() -> Result<String> {
     let output = Command::new("rustc")
         .args(["--print", "cfg"])
         .output()
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_get_current_target_runtime() {
-        assert!(current_target_cfg().is_ok());
+        assert!(default_target_cfg().is_ok());
     }
 
     #[test]

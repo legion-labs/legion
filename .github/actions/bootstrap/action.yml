@@ -28,7 +28,7 @@ runs:
         cargo fetch
         echo "::endgroup::"
         echo "::group::Build and run the bootstrap package"
-        cargo bootstrap
+        cargo run -p bootstrap
         echo "::endgroup::"
         echo "::group::Relink monorepo executable"
         cargo md --help
@@ -42,7 +42,7 @@ runs:
         cargo fetch
         echo "::endgroup::"
         echo "::group::Build and run the bootstrap package"
-        cargo bootstrap
+        cargo run -p bootstrap
         echo "::endgroup::"
         echo "::group::Relink monorepo executable"
         cargo md --help

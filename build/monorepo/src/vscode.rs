@@ -172,7 +172,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                 "--proto_path=${workspaceRoot}/crates/*.proto",
             ],
         },
-        "rust-analyzer.checkOnSave.command": "vsclippy",
+        "rust-analyzer.checkOnSave.command": "mclippy_ra",
         "rust-analyzer.checkOnSave.extraArgs": [
           "--target-dir",
           "target/ra"

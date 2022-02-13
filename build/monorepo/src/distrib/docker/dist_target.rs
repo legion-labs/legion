@@ -12,7 +12,7 @@ use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
 use crate::{
-    cargo::target_dir,
+    cargo::{target_config, target_dir},
     context::Context,
     distrib::{
         self,
@@ -44,6 +44,14 @@ impl<'g> DockerDistTarget<'g> {
     }
 
     pub fn build(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+        if target_config(ctx, &args.build_args)?.contains("windows") {
+            skip_step!(
+                "Unsupported",
+                "Docker publish is not supported for windows targets"
+            );
+            return Ok(());
+        }
+
         let root = self.docker_root(ctx, args)?;
         let docker_target_bin_dir = self.docker_target_bin_dir(ctx, args)?;
 
@@ -60,11 +68,6 @@ impl<'g> DockerDistTarget<'g> {
     }
 
     pub fn publish(&self, _ctx: &Context, args: &distrib::Args) -> Result<()> {
-        if cfg!(windows) {
-            skip_step!("Unsupported", "Docker publish is not supported on Windows");
-            return Ok(());
-        }
-
         if args.build_args.mode() == "debug" && !args.force {
             skip_step!(
                 "Unsupported",
@@ -117,12 +120,12 @@ impl<'g> DockerDistTarget<'g> {
         if args.force {
             debug!("`--force` specified: not checking for Docker image existence before pushing");
         } else if Self::docker_pull(args, &docker_image_name)? {
+            debug!("Up to date image `{}` already exists", docker_image_name);
             skip_step!(
                 "Up-to-date",
                 "Docker image `{}` already exists",
                 docker_image_name,
             );
-
             return Ok(());
         }
 
