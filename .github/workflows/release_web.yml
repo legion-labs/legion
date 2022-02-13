@@ -22,7 +22,10 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
 
-      - name: Build
+      - name: Npm install
+        run: cargo m npm install
+
+      - name: Npm build
         run: cargo m npm build
 
       - name: Deploy Analytics
