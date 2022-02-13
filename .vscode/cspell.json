@@ -41,6 +41,7 @@
     "Rasterizer",
     "renderpass",
     "rhai",
+    "rsplit",
     "rustc",
     "Rustdoc",
     "rustfmt",
@@ -57,6 +58,7 @@
     "Unsubmitted",
     "vsync",
     "vulkan",
+    "walkdir",
     "webrtc",
     "xxhash"
   ]

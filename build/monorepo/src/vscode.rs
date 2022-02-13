@@ -163,8 +163,6 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     let settings_file = ctx.workspace_root().join(".vscode").join("settings.json");
     let settings = json!({
-        // Read by the vscode extension zxh404.vscode-proto3
-        "clang-format.style": "{BasedOnStyle: Google}",
         "editor.formatOnSave": true,
         "files.eol": "\n",
         "protoc": {

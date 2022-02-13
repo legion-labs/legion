@@ -2,11 +2,12 @@ syntax = "proto3";
 package streaming;
 
 service Streamer {
-  rpc InitializeStream(InitializeStreamRequest)
-      returns (InitializeStreamResponse);
+  rpc InitializeStream(InitializeStreamRequest) returns (InitializeStreamResponse);
 }
 
-message InitializeStreamRequest { bytes rtcSessionDescription = 1; }
+message InitializeStreamRequest {
+  bytes rtcSessionDescription = 1;
+}
 
 message InitializeStreamResponse {
   bytes rtcSessionDescription = 1;
