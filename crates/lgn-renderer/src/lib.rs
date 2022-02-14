@@ -36,7 +36,6 @@ use resources::{
     BindlessTextureManager, GpuDataPlugin, GpuUniformData, GpuVaTableForGpuInstance,
     PipelineManager,
 };
-// use tmp_shader_data::patch_cgen_registry;
 
 pub mod components;
 
@@ -52,7 +51,6 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
-pub(crate) mod tmp_shader_data;
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,

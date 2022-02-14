@@ -10,8 +10,6 @@ use crate::egui::egui_plugin::Egui;
 
 use crate::hl_gfx_api::HLCommandBuffer;
 
-// use crate::tmp_shader_data::egui_shader_family;
-
 use crate::RenderContext;
 
 use crate::resources::{PipelineHandle, PipelineManager};

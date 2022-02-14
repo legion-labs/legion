@@ -39,8 +39,6 @@ pub fn run_graphics_cgen(
     manifest_dir: impl AsRef<Path>,
     out_dir: impl AsRef<Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:message=run_graphics_cgen");
-
     // generate root file name
     let root_file = manifest_dir
         .as_ref()
@@ -89,8 +87,8 @@ pub fn run_graphics_cgen(
             } else {
                 Ok(())
             }
-        } else {
-            Ok(())
+    } else {
+        Ok(())
         }
     })
 }

@@ -13,8 +13,6 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-mod tmp_shader_data;
-
 #[allow(unused_imports)]
 use cgen::*;
 use lgn_ecs::prelude::{Res, ResMut};

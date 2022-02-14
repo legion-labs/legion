@@ -9,13 +9,12 @@ use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
-    cgen::{self, shader},
+    cgen,
     components::{CameraComponent, ManipulatorComponent, RenderSurface, StaticMesh},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
     resources::{DefaultMeshType, MeshManager, PipelineHandle, PipelineManager},
-    // tmp_shader_data::const_color_shader_family,
     RenderContext,
 };
 
@@ -74,8 +73,8 @@ impl DebugRenderPass {
         let solid_pso_depth_handle = pipeline_manager.register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
-                shader::const_color_shader::ID,
-                shader::const_color_shader::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -98,8 +97,8 @@ impl DebugRenderPass {
         let wire_pso_depth_handle = pipeline_manager.register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
-                shader::const_color_shader::ID,
-                shader::const_color_shader::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -122,8 +121,8 @@ impl DebugRenderPass {
         let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
-                shader::const_color_shader::ID,
-                shader::const_color_shader::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -146,8 +145,8 @@ impl DebugRenderPass {
         let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
-                shader::const_color_shader::ID,
-                shader::const_color_shader::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context

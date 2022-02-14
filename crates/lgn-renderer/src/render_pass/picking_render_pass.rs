@@ -24,7 +24,6 @@ use crate::{
     resources::{
         GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, PipelineHandle, PipelineManager,
     },
-    // tmp_shader_data::picking_shader_family,
     RenderContext,
 };
 
