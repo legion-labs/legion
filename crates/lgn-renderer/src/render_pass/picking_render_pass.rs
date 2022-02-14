@@ -15,7 +15,7 @@ use lgn_math::Mat4;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{
-    cgen::{self, cgen_type::PickingData},
+    cgen::{self, cgen_type::PickingData, shader},
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, StaticMesh,
     },
@@ -24,7 +24,7 @@ use crate::{
     resources::{
         GpuSafePool, GpuVaTableForGpuInstance, OnFrameEventHandler, PipelineHandle, PipelineManager,
     },
-    tmp_shader_data::picking_shader_family,
+    // tmp_shader_data::picking_shader_family,
     RenderContext,
 };
 
@@ -169,7 +169,8 @@ impl PickingRenderPass {
             back_stencil_pass_op: StencilOp::default(),
         };
         let pipeline_handle = pipeline_manager.register_pipeline(
-            CGenShaderKey::make(picking_shader_family::ID, picking_shader_family::NONE),
+            cgen::CRATE_ID,
+            CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
             move |device_context, shader| {
                 device_context
                     .create_graphics_pipeline(&GraphicsPipelineDef {

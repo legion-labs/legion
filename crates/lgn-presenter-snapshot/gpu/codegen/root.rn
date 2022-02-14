@@ -13,6 +13,17 @@ pub fn main() {
             type: "PipelineLayout",
             name: "DisplayMapperPipelineLayout",
             descriptor_sets: [ "DisplayMapperDescriptorSet" ]
+        },
+        #{
+            type: "Shader",
+            name: "DisplayMapperShader",
+            path: "shaders/display_mapper.hlsl",
+            pipeline_layout: "DisplayMapperPipelineLayout",
+            instances: [
+                #{
+                    stages: ["VS", "PS"]
+                }
+            ]
         }
     ]
 }

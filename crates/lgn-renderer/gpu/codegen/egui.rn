@@ -27,7 +27,7 @@ pub fn main() {
         },
         #{            
             type: "Shader",
-            name: "Egui",
+            name: "EguiShader",
             path: "gpu/shaders/ui.hlsl",
             pipeline_layout: "EguiPipelineLayout",
             options: [ "TOTO", "TITI" ],
@@ -40,7 +40,7 @@ pub fn main() {
                     stages: [ "VS", "PS" ],
                 },
                 #{  
-                    key: [ "TITI" ],
+                    key: [ "TITI", "TOTO" ],
                     stages: [ "VS", "PS" ],
                 },
             ]            

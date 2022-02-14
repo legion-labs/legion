@@ -11,6 +11,7 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
+use std::sync::Arc;
 use std::collections::BTreeMap;
 
 #[allow(unused_imports)]
@@ -35,7 +36,7 @@ use resources::{
     BindlessTextureManager, GpuDataPlugin, GpuUniformData, GpuVaTableForGpuInstance,
     PipelineManager,
 };
-use tmp_shader_data::patch_cgen_registry;
+// use tmp_shader_data::patch_cgen_registry;
 
 pub mod components;
 
@@ -290,8 +291,7 @@ fn init_cgen(
     mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
-    let mut cgen_registry = cgen::initialize(renderer.device_context());
-    patch_cgen_registry(&mut cgen_registry);
+    let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));    
     pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

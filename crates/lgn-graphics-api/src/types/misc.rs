@@ -201,7 +201,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Copy, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, EnumIter, EnumCount, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShaderStage {
     Vertex,
     Fragment,

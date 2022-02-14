@@ -29,7 +29,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     // crate id
     {
         writer.add_line(format!(
-            "const CRATE_ID : CGenCrateID = CGenCrateID({:#X});",
+            "pub const CRATE_ID : CGenCrateID = CGenCrateID({:#X});",
             ctx.crate_id
         ));
         writer.new_line();
@@ -41,7 +41,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             &["pub fn initialize(device_context: &DeviceContext) -> CGenRegistry   {"],
             &["}"],
         );
-        writer.add_line("let mut registry = CGenRegistry::new( shutdown  );");
+        writer.add_line("let mut registry = CGenRegistry::new( CRATE_ID, shutdown  );");
         writer.new_line();
 
         for ty_ref in model.object_iter::<CGenType>() {
@@ -74,6 +74,14 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             writer.add_line(format!(
                 "registry.add_pipeline_layout(device_context, pipeline_layout::{}::def());",
                 pipeline_layout_ref.object().name
+            ));
+        }
+        writer.new_line();
+
+        for shader_ref in model.object_iter::<Shader>() {
+            writer.add_line(format!(
+                "registry.add_shader_def(shader::{}::def());",
+                shader_ref.object().name
             ));
         }
         writer.new_line();
@@ -217,7 +225,7 @@ where
                 continue;
             }
             {
-                let mut writer = writer.add_block(&[format!("mod {} {{", mod_name)], &["}"]);
+                let mut writer = writer.add_block(&[format!("pub mod {} {{", mod_name)], &["}"]);
                 writer.add_line(format!(
                     "include!(concat!(env!(\"OUT_DIR\"), \"/{}/{}\"));",
                     CGenVariant::Rust.dir(),

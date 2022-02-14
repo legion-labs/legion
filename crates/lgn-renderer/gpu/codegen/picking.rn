@@ -33,6 +33,17 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
             name: "PickingPipelineLayout",
             descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name, "PickingDescriptorSet" ],
             push_constant: "PickingPushConstantData"
+        },
+        #{            
+            type: "Shader",
+            name: "PickingShader",
+            path: "gpu/shaders/picking.hlsl",
+            pipeline_layout: "PickingPipelineLayout",            
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },                
+            ]            
         }
     ]
 }
