@@ -1,4 +1,4 @@
 {
-  "script": "use lgn_math::Vec2;\n\nconst MOUSE_DELTA_SCALE = 200.0;\n\npub fn move_right_paddle(delta) {\n    delta.x /= MOUSE_DELTA_SCALE;\n    println!(\"[Pad right] delta: {}\", delta.x);\n}",
+  "script": "const MOUSE_DELTA_SCALE = 200.0;\n\npub fn move_right_paddle(delta, translation) {\n    delta.x /= MOUSE_DELTA_SCALE;\n    println!(\"[Pad right] delta: {}, pos:{}, {}\", delta.x, translation.x, translation.y);\n}",
   "script_type": "Rune"
 }

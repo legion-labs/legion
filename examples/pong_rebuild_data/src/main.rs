@@ -207,13 +207,11 @@ async fn create_offline_data(
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
         ScriptType::Rune,
         "/scene/pad_right_script",
-        r#"use lgn_math::Vec2;
+        r#"const MOUSE_DELTA_SCALE = 200.0;
 
-const MOUSE_DELTA_SCALE = 200.0;
-
-pub fn move_right_paddle(delta) {
+pub fn move_right_paddle(delta, translation) {
     delta.x /= MOUSE_DELTA_SCALE;
-    println!("[Pad right] delta: {}", delta.x);
+    println!("[Pad right] delta: {}, pos:{}, {}", delta.x, translation.x, translation.y);
 }"#,
     )
     .await;
@@ -249,7 +247,10 @@ pub fn move_right_paddle(delta) {
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec!["mouse_motion.delta".to_string()],
+            input_values: vec![
+                "mouse_motion.delta".to_string(),
+                "self.transform.translation".to_string(),
+            ],
             entry_fn: "move_right_paddle".to_string(),
             script_id: Some(pad_right_script),
             temp_script: "".to_string(),
@@ -278,13 +279,11 @@ pub fn move_right_paddle(delta) {
         "968c4926-ae75-4955-81c8-7b7e395d0d3b",
         ScriptType::Rune,
         "/scene/pad_left_script",
-        r#"use lgn_math::Vec2;
+        r#"const MOUSE_DELTA_SCALE = 200.0;
 
-const MOUSE_DELTA_SCALE = 200.0;
-
-pub fn move_left_paddle(delta) {
+pub fn move_left_paddle(delta, translation) {
 delta.x /= MOUSE_DELTA_SCALE;
-println!("[Pad left] delta: {}", delta.x);
+println!("[Pad left] delta: {}, pos:{}, {}", delta.x, translation.x, translation.y);
 }"#,
     )
     .await;
@@ -320,7 +319,10 @@ println!("[Pad left] delta: {}", delta.x);
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec!["mouse_motion.delta".to_string()],
+            input_values: vec![
+                "mouse_motion.delta".to_string(),
+                "self.transform.translation".to_string(),
+            ],
             entry_fn: "move_left_paddle".to_string(),
             script_id: Some(pad_left_script),
             temp_script: "".to_string(),
