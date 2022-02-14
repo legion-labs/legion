@@ -20,6 +20,10 @@ async fn test_local_provider() {
 
     let id = assert_write_content!(provider, "A");
     assert_read_content!(provider, id, "A");
+
+    // Another write should yield no error.
+    let new_id = assert_write_content!(provider, "A");
+    assert_eq!(id, new_id);
 }
 
 #[tokio::test]
@@ -35,6 +39,10 @@ async fn test_small_content_provider() {
     let id = assert_write_content!(provider, "A");
     assert!(id.is_data());
     assert_read_content!(provider, id, "A");
+
+    // Another write should yield no error.
+    let new_id = assert_write_content!(provider, "A");
+    assert_eq!(id, new_id);
 
     // Since we have a hash-ref identifier, it should still not be found as the
     // SmallContentProvider would have elided the actual write before.
@@ -71,4 +79,8 @@ async fn test_aws_s3_provider() {
 
     let id = assert_write_content!(provider, "A");
     assert_read_content!(provider, id, "A");
+
+    // Another write should yield no error.
+    let new_id = assert_write_content!(provider, "A");
+    assert_eq!(id, new_id);
 }

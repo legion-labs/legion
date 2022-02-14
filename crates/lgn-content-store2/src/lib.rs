@@ -1,3 +1,6 @@
+//! A content-store implementation that stores immutable assets in a efficient
+//! and cachable manner.
+
 mod errors;
 mod identifier;
 mod providers;

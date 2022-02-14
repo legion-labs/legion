@@ -3,7 +3,7 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{Identifier, Result};
+use crate::{Error, Identifier, Result};
 
 /// ContentReader is a trait for reading content from a content-store.
 #[async_trait]
@@ -55,7 +55,11 @@ pub trait ContentWriter {
     /// returned.
     async fn write_content(&self, data: &[u8]) -> Result<Identifier> {
         let id = Identifier::new_hash_ref_from_data(data);
-        let mut writer = self.get_content_writer(&id).await?;
+        let mut writer = match self.get_content_writer(&id).await {
+            Ok(writer) => writer,
+            Err(Error::AlreadyExists) => return Ok(id),
+            Err(err) => return Err(err),
+        };
 
         writer
             .write_all(data)
