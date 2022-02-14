@@ -87,8 +87,8 @@ pub fn run_graphics_cgen(
             } else {
                 Ok(())
             }
-    } else {
-        Ok(())
+        } else {
+            Ok(())
         }
     })
 }

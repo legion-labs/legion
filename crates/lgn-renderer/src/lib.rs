@@ -11,8 +11,8 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
-use std::sync::Arc;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[allow(unused_imports)]
 use cgen::*;
