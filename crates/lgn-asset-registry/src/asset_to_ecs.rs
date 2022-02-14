@@ -228,6 +228,7 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
@@ -235,7 +236,6 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
         None
     }
 }
-
 
 impl AssetToECS for lgn_scripting::runtime::Script {
     fn create_in_ecs(

@@ -140,7 +140,7 @@ async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegist
     lgn_graphics_data::offline::register_resource_types(&mut registry)
         .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
         .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>()
-        .add_type_mut::<lgn_graphics_data::offline_png::PngFile>();
+        .add_type_mut::<lgn_graphics_data::offline_png::PngFile>()
         .add_type_mut::<lgn_graphics_data::offline_gltf::GltfFile>();
     generic_data::offline::register_resource_types(&mut registry);
     let registry = registry.create_async_registry();
@@ -167,7 +167,7 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
         "png" => (
             lgn_graphics_data::offline_png::PngFile::TYPENAME,
             lgn_graphics_data::offline_png::PngFile::TYPE,
-        }
+        ),
         "gltf" => (
             lgn_graphics_data::offline_gltf::GltfFile::TYPENAME,
             lgn_graphics_data::offline_gltf::GltfFile::TYPE,

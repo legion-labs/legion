@@ -4872,6 +4872,7 @@ dependencies = [
  "bincode",
  "erased-serde",
  "ispc-tex",
+ "gltf",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -9271,7 +9272,7 @@ version = "1.0.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eef4656d174ba982198266da0c016573fe6c7c760e4290f05c8c384fe180007e"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "blake3",
  "proc-macro2",
  "quote",
