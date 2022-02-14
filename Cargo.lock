@@ -4061,7 +4061,6 @@ dependencies = [
  "cargo_toml",
  "lgn-build-utils",
  "serde",
- "which",
 ]
 
 [[package]]
