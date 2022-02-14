@@ -145,13 +145,13 @@ impl Default for MeshManagerUIState {
 #[allow(clippy::needless_pass_by_value)]
 pub fn ui_mesh_manager(
     egui_ctx: Res<'_, Egui>,
-    renderer: Res<'_, Renderer>,
+    _renderer: Res<'_, Renderer>,
     mut mesh_manager: ResMut<'_, MeshManager>,
     mut ui_state: Local<'_, MeshManagerUIState>,
     mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
     uniform_data: Res<'_, GpuUniformData>,
 ) {
-    let mut data_context = GpuUniformDataContext::new(&uniform_data);
+    let data_context = GpuUniformDataContext::new(&uniform_data);
 
     egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
         ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));

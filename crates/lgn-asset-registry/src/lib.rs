@@ -160,6 +160,14 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                        ) && !load_ecs_asset::<lgn_graphics_data::runtime_mesh::Mesh>(
+                            asset_id,
+                            handle,
+                            &registry,
+                            &mut commands,
+                            &mut asset_to_entity_map,
+                            &mesh_manager,
+                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
                             asset_id,
                             handle,

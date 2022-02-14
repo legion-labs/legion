@@ -8,7 +8,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{resource::ResourceProcessor, Transform};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_data::offline_gltf::GltfFileProcessor;
+use lgn_graphics_data::runtime_mesh::MeshProcessor;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -25,7 +25,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<lgn_graphics_data::runtime_mesh::Mesh>()
+    registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
 }
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
@@ -36,12 +36,12 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resource.get(&resources).unwrap();
 
     let mut compiled_resources = vec![];
-    let gltf_proc = GltfFileProcessor {};
+    let mesh_proc = MeshProcessor {};
 
     let meshes = resource.new_mesh();
     for mesh in meshes {
         let mut compiled_asset = vec![];
-        gltf_proc
+        mesh_proc
             .write_resource(&mesh.0, &mut compiled_asset)
             .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
         let asset = context.store(&compiled_asset, context.target_unnamed.new_named(&mesh.1))?;

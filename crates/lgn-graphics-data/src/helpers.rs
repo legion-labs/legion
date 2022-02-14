@@ -1,3 +1,5 @@
+#![allow(clippy::trivially_copy_pass_by_ref)]
+
 use std::io;
 
 use lgn_math::{Vec2, Vec4};
@@ -59,7 +61,7 @@ pub fn write_vec_vec4(writer: &mut dyn io::Write, v: &[Vec4]) -> io::Result<usiz
 pub fn read_vec_vec4(reader: &mut dyn io::Read) -> io::Result<Vec<Vec4>> {
     let length = read_usize(reader)?;
     let mut v = Vec::new();
-    for i in 0..length {
+    for _i in 0..length {
         v.push(read_vec4(reader)?);
     }
     Ok(v)
@@ -95,7 +97,7 @@ pub fn write_vec_vec2(writer: &mut dyn io::Write, v: &[Vec2]) -> io::Result<usiz
 pub fn read_vec_vec2(reader: &mut dyn io::Read) -> io::Result<Vec<Vec2>> {
     let length = read_usize(reader)?;
     let mut v = Vec::new();
-    for i in 0..length {
+    for _i in 0..length {
         v.push(read_vec2(reader)?);
     }
     Ok(v)
@@ -122,7 +124,7 @@ pub fn write_vec_u32(writer: &mut dyn io::Write, v: &[u32]) -> io::Result<usize>
 pub fn read_vec_u32(reader: &mut dyn io::Read) -> io::Result<Vec<u32>> {
     let length = read_usize(reader)?;
     let mut v = Vec::new();
-    for i in 0..length {
+    for _i in 0..length {
         v.push(read_u32(reader)?);
     }
     Ok(v)

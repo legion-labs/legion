@@ -9,6 +9,6 @@ struct StaticMesh {
     #[legion(default=(255,0,0))]
     pub color: Color,
 
-    #[legion(resource_type = crate::runtime::Mesh)]
+    #[legion(resource_type = lgn_graphics_data::runtime_mesh::Mesh)]
     pub mesh: Option<ResourcePathId>,
 }

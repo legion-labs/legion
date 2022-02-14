@@ -1,6 +1,7 @@
 use std::{any::Any, io};
 
-use lgn_math::{Vec2, Vec3, Vec4};
+use lgn_data_model::implement_primitive_type_def;
+use lgn_math::{Vec2, Vec4};
 //use crate::static_mesh_render_data::{StaticMeshRenderData, calculate_tangents};
 
 use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
@@ -21,6 +22,17 @@ pub struct Mesh {
     pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<Vec4>>,
 }
+
+/// Reference Type for Mesh
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
+pub struct MeshReferenceType(lgn_data_runtime::Reference<Mesh>);
+impl MeshReferenceType {
+    /// Expose internal id
+    pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId {
+        self.0.id()
+    }
+}
+implement_primitive_type_def!(MeshReferenceType);
 
 impl Asset for Mesh {
     type Loader = MeshProcessor;
@@ -78,7 +90,7 @@ impl AssetLoader for MeshProcessor {
         }))
     }
 
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
 }
 
 impl ResourceProcessor for MeshProcessor {

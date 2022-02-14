@@ -3,7 +3,7 @@ use std::{any::Any, io, path::Path};
 use crate::runtime_mesh::Mesh;
 use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
-    Document, Gltf,
+    Document,
 };
 use lgn_math::{Vec2, Vec3, Vec4};
 
@@ -21,7 +21,7 @@ pub struct GltfFile {
 }
 
 impl GltfFile {
-    pub fn from_path(path: &Path) -> GltfFile {
+    pub fn from_path(path: &Path) -> Self {
         let (document, buffers, images) = gltf::import(path).unwrap();
         Self {
             document: Some(document),
@@ -33,14 +33,12 @@ impl GltfFile {
     pub fn new_mesh(&self) -> Vec<(Mesh, String)> {
         let mut meshes = Vec::new();
         for mesh in self.document.as_ref().unwrap().meshes() {
-            println!("Mesh #{:?}", mesh);
             for primitive in mesh.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
                 let mut tex_coords: Vec<Vec2> = Vec::new();
                 let mut indices: Vec<u32> = Vec::new();
 
-                println!("- Primitive #{}", primitive.index());
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
                     for vertex_position in iter {
@@ -129,10 +127,10 @@ impl AssetLoader for GltfFileProcessor {
         if result.is_err() {
             return Ok(Box::new(GltfFile::default()));
         }
-        let mut document_bytes = result.unwrap();
+        let document_bytes = result.unwrap();
         let buffers_length = read_usize(reader)?;
         let mut buffers = Vec::new();
-        for i in 0..buffers_length {
+        for _i in 0..buffers_length {
             let buffer = read_usize_and_buffer(reader)?;
             buffers.push(gltf::buffer::Data(buffer));
         }
@@ -148,7 +146,7 @@ impl AssetLoader for GltfFileProcessor {
         }))
     }
 
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
 }
 
 impl ResourceProcessor for GltfFileProcessor {
