@@ -51,6 +51,7 @@ async fn test_small_content_provider() {
 }
 
 #[cfg(feature = "aws")]
+#[ignore]
 #[tokio::test]
 async fn test_aws_s3_provider() {
     let aws_s3_url = "s3://legionlabs-tests/lgn-content-store/test_aws_s3_provider"
