@@ -7,10 +7,10 @@
   import userInfo from "../stores/userInfo";
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
-  import { startUserAuth } from "../lib/auth";
   import BrandLogo from "./BrandLogo.svelte";
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
+  import { authClient } from "../lib/auth";
 
   const { data: userInfoData } = userInfo;
 
@@ -70,8 +70,8 @@
     }
   }
 
-  function authenticate() {
-    startUserAuth();
+  async function authenticate() {
+    await authClient.login();
   }
 
   // Used only in Tauri

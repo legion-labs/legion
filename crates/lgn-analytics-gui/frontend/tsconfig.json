@@ -10,7 +10,13 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "jest", "vite/client"],
+    "types": [
+      "svelte",
+      "jest",
+      "vite/client",
+      "@lgn/web-client/src/types/tauri",
+      "@lgn/web-client/src/types/custom-events"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
