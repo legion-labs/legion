@@ -47,7 +47,7 @@ We currently don't support pre-built packages, but you can build and run locally
 
 <details><summary><b>Windows setup instructions</b></summary>
 
-First you need to have a valid Visual Studio 2019 or above toolchain installed, if you don't you can install the [Visual Studio build tools instead](https://aka.ms/vs/17/release/vs_BuildTools.exe) with `Desktop Development with C++` packages. For the remaining dependencies we recommend using [scoop](https://scoop.sh/) to install the necessary dependencies:
+First you need to have a valid Visual Studio 2019 or above toolchain installed, if you don't you can install the [Visual Studio build tools](https://aka.ms/vs/17/release/vs_BuildTools.exe) instead with `Desktop Development with C++` packages. For the remaining dependencies we recommend using [scoop](https://scoop.sh/) to install the necessary dependencies:
 
 - on a powershell prompt (locate and select powershell on the Start menu)
 
