@@ -11,6 +11,7 @@ export async function makeGrpcClient() {
   metadata.set("Authorization", "Bearer " + token);
   const options = { metadata: metadata };
   const remoteHost = "analytics-nlb-cddd70eafd32d85b.elb.ca-central-1.amazonaws.com";
+  // const remoteHost = "localhost";
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + remoteHost + ":9090", options)
   );

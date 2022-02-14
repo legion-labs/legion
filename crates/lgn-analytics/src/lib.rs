@@ -136,7 +136,7 @@ pub async fn fetch_recent_processes(
 
 pub async fn search_processes(
     connection: &mut sqlx::AnyConnection,
-    exe_substr: &str,
+    keyword: &str,
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
@@ -171,10 +171,14 @@ pub async fn search_processes(
                   AND streams.tags LIKE '%metric%' ) as nb_metric_blocks
          FROM processes
          WHERE exe LIKE ?
+         OR username LIKE ?
+         OR computer LIKE ?
          ORDER BY start_time DESC
          LIMIT 100;",
     )
-    .bind(format!("%{}%", exe_substr))
+    .bind(format!("%{}%", keyword))
+    .bind(format!("%{}%", keyword))
+    .bind(format!("%{}%", keyword))
     .fetch_all(connection)
     .await?;
     for r in rows {
