@@ -91,7 +91,7 @@ impl<'mdl> ShaderBuilder<'mdl> {
             index_list.push(pos.unwrap());
         }
 
-        index_list.sort_unstable();        
+        index_list.sort_unstable();
 
         self.product.instances.push(ShaderInstance {
             stages: Self::stages_from_string_list(stages)?,

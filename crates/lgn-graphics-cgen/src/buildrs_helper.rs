@@ -39,8 +39,7 @@ pub fn run_graphics_cgen(
     manifest_dir: impl AsRef<Path>,
     out_dir: impl AsRef<Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-
-    println!( "cargo:message=run_graphics_cgen" );
+    println!("cargo:message=run_graphics_cgen");
 
     // generate root file name
     let root_file = manifest_dir
@@ -71,21 +70,21 @@ pub fn run_graphics_cgen(
     }
     let result = result.map(|_| ()).map_err(std::convert::Into::into);
 
-    result.and_then(|_| {                
+    result.and_then(|_| {
         if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
-            let symlink_path = manifest_dir.as_ref().join("out_dir");            
-            let create_symlink = if symlink_path.exists() {                
+            let symlink_path = manifest_dir.as_ref().join("out_dir");
+            let create_symlink = if symlink_path.exists() {
                 let attr = fs::symlink_metadata(&symlink_path).unwrap();
-                if !attr.is_symlink() {                    
+                if !attr.is_symlink() {
                     false
-                } else {                    
+                } else {
                     let res = remove_symlink_dir(&symlink_path);
                     res.is_ok()
                 }
-            } else {                
+            } else {
                 true
             };
-            if create_symlink {                
+            if create_symlink {
                 create_symlink_dir(out_dir.as_ref(), &symlink_path).map_err(|err| err.into())
             } else {
                 Ok(())

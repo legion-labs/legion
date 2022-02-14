@@ -291,7 +291,7 @@ fn init_cgen(
     mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
-    let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));    
+    let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
     pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

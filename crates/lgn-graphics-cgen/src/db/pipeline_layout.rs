@@ -71,20 +71,14 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         // check descriptor_set exists
         let ds_handle = self.mdl.get_object_handle::<DescriptorSet>(ds_ty);
         if ds_handle.is_none() {
-            return Err(anyhow!(
-                "Unknown DescriptorSet '{}'",
-                ds_ty,
-            ));
+            return Err(anyhow!("Unknown DescriptorSet '{}'", ds_ty,));
         }
         let ds_handle = ds_handle.unwrap();
         let ds = ds_handle.get(self.mdl);
 
         // check for frequency conflict
         if self.product.descriptor_sets[ds.frequency as usize].is_some() {
-            return Err(anyhow!(
-                "Frequency conflict for DescriptorSet '{}'",
-                ds_ty,
-            ));
+            return Err(anyhow!("Frequency conflict for DescriptorSet '{}'", ds_ty,));
         }
         self.product.descriptor_sets[ds.frequency as usize] = Some(ds_handle);
 
@@ -98,18 +92,13 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     pub fn add_push_constant(mut self, typename: &str) -> Result<Self> {
         // only one push_constant is allowed
         if self.product.push_constant.is_some() {
-            return Err(anyhow!(
-                "Only one PushConstant allowed",
-            ));
+            return Err(anyhow!("Only one PushConstant allowed",));
         }
         // get cgen type and check its existence if necessary
         let ty_handle = self
             .mdl
             .get_object_handle::<CGenType>(typename)
-            .context(anyhow!(
-                "Unknown type '{}' for PushConstant",
-                typename,
-            ))?;
+            .context(anyhow!("Unknown type '{}' for PushConstant", typename,))?;
         let cgen_type = ty_handle.get(self.mdl);
         // Only struct types allowed for now
         if let CGenType::Struct(_def) = cgen_type {
@@ -135,9 +124,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             if self.product.descriptor_sets[i].is_none() && first_none.is_none() {
                 first_none = Some(i);
             } else if self.product.descriptor_sets[i].is_some() && first_none.is_some() {
-                return Err(anyhow!(
-                    "DescriptorSets must be contiguous",
-                ));
+                return Err(anyhow!("DescriptorSets must be contiguous",));
             }
         }
 
