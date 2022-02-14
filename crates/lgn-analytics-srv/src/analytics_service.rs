@@ -257,9 +257,7 @@ impl AnalyticsService {
             Arc::clone(&self.cache),
             self.pool.clone(),
         );
-        Ok(ProcessMetricManifestReply {
-            metrics: metric_handler.list_process_metrics(process_id).await?,
-        })
+        Ok(metric_handler.list_process_metrics(process_id).await?)
     }
 
     async fn fetch_process_metric_impl(

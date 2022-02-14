@@ -15,6 +15,7 @@ use lgn_telemetry_proto::analytics::MetricDataPoint;
 use lgn_telemetry_proto::analytics::MetricDesc;
 use lgn_telemetry_proto::analytics::MetricManifest;
 use lgn_telemetry_proto::analytics::MetricRequestParams;
+use lgn_telemetry_proto::analytics::ProcessMetricManifestReply;
 use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_tracing_transit::prelude::*;
 use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
@@ -120,7 +121,10 @@ impl MetricHandler {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    pub async fn list_process_metrics(&self, process_id: &str) -> Result<Vec<MetricManifest>> {
+    pub async fn list_process_metrics(
+        &self,
+        process_id: &str,
+    ) -> Result<ProcessMetricManifestReply> {
         let mut sql = self.pool.acquire().await?;
         let process = find_process(&mut sql, process_id).await?;
         let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
@@ -145,12 +149,18 @@ impl MetricHandler {
                 let mut metrics = HashMap::<String, MetricDesc>::new();
                 parse_block(&stream, &payload, |val| {
                     if let Value::Object(obj) = val {
-                        let name = obj.get_ref("name").unwrap().as_str().unwrap();
+                        let metric_desc = obj.get::<Object>("desc").unwrap();
+                        let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                         metrics
                             .entry(name.to_owned())
                             .or_insert_with(|| MetricDesc {
                                 name: name.to_owned(),
-                                unit: obj.get_ref("unit").unwrap().as_str().unwrap().to_string(),
+                                unit: metric_desc
+                                    .get_ref("unit")
+                                    .unwrap()
+                                    .as_str()
+                                    .unwrap()
+                                    .to_string(),
                             });
                     }
                     true
@@ -179,7 +189,11 @@ impl MetricHandler {
             }
         }
 
-        Ok(manifests.values().cloned().collect())
+        Ok(ProcessMetricManifestReply {
+            metrics: manifests.values().cloned().collect(),
+            process_start_ticks: process.start_ticks,
+            tsc_frequency: process.tsc_frequency,
+        })
     }
 
     pub async fn fetch_metric(&self, request: MetricBlockRequest) -> Result<ProcessMetricReply> {
@@ -242,7 +256,7 @@ impl MetricHandler {
         .await?;
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
-                let metric_desc = obj.get::<Object>("desc").unwrap();
+                let metric_desc = obj.get::<Object>("metric").unwrap();
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                 if name == params.metric_name {
                     let time = obj.get::<i64>("time").unwrap();
