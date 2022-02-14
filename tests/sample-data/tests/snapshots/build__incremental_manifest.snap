@@ -78,8 +78,8 @@ expression: incremental_manifest
     },
     {
       "path": "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)|738a5b850f6f8b3a",
-      "checksum": "25097a08358d78a727c97e9bbdf51e22",
-      "size": 234
+      "checksum": "880644f45a7151861cfabe79001316c6",
+      "size": 250
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",
