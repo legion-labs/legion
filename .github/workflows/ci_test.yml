@@ -121,7 +121,7 @@ jobs:
       - name: Retrieve base ref for branch
         id: last-green-commit
         if: github.event_name != 'pull_request'
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           result-encoding: string
           script: |
