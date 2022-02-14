@@ -247,7 +247,7 @@ impl MetricHandler {
             points: vec![],
         };
         let mut connection = self.pool.acquire().await?;
-        let stream = find_stream(&mut connection, &block_item.block_id).await?;
+        let stream = find_stream(&mut connection, &block_item.stream_id).await?;
         let payload = fetch_block_payload(
             &mut connection,
             self.blob_storage.clone(),
@@ -256,7 +256,7 @@ impl MetricHandler {
         .await?;
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
-                let metric_desc = obj.get::<Object>("metric").unwrap();
+                let metric_desc = obj.get::<Object>("desc").unwrap();
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                 if name == params.metric_name {
                     let time = obj.get::<i64>("time").unwrap();
