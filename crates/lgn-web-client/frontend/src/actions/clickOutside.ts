@@ -23,7 +23,11 @@ export default function clickOutside(node: Node, ignoredNodes: Node[] = []) {
       return;
     }
 
-    node.dispatchEvent(new CustomEvent("click-outside"));
+    node.dispatchEvent(
+      new CustomEvent("click-outside", {
+        detail: { originalEvent: event },
+      })
+    );
   };
 
   window.addEventListener("mouseup", handleMouseUp);
