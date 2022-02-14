@@ -1,4 +1,5 @@
 use byteorder::ByteOrder;
+use sha2::{Digest, Sha256};
 use smallvec::SmallVec;
 use std::{fmt::Formatter, io::Write, str::FromStr};
 
@@ -75,6 +76,13 @@ impl FromStr for Identifier {
             Self::Data(buf[1..].into())
         } else {
             let mut size_buf = [0; 8];
+
+            if size_len > size_buf.len() {
+                return Err(Error::InvalidIdentifier(anyhow::anyhow!(
+                    "invalid identifier size length"
+                )));
+            }
+
             size_buf[8 - size_len..].copy_from_slice(&buf[1..=size_len]);
 
             let size = byteorder::NetworkEndian::read_u64(&size_buf);
@@ -85,6 +93,8 @@ impl FromStr for Identifier {
 }
 
 impl Identifier {
+    pub(crate) const SIZE_THRESHOLD: usize = HASH_SIZE;
+
     /// Create an identifier for an empty file.
     pub fn empty() -> Self {
         Self::Data(SmallVec::new())
@@ -93,24 +103,35 @@ impl Identifier {
     /// Create an identifier from a data slice.
     ///
     /// The identifier will contain the specified data.
-    pub fn from_data(data: &[u8]) -> Self {
+    pub fn new_data(data: &[u8]) -> Self {
         Self::Data(data.into())
     }
 
     /// Create an identifier from a hash to a blob and its associated size
     ///
     /// The identifier will contain a reference to the blob.
-    pub fn from_size_and_hash(size: usize, hash: &[u8]) -> Self {
+    pub fn new_hash_ref(size: usize, hash: &[u8]) -> Self {
         let size: u64 = size.try_into().expect("size cannot exceed u64");
 
         Self::HashRef(size, hash.into())
     }
 
+    /// Create a new hash ref identifier by hashing the specified data.
+    ///
+    /// The identifier will contain a reference to the blob.
+    pub fn new_hash_ref_from_data(data: &[u8]) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        let hash = hasher.finalize();
+
+        Self::new_hash_ref(data.len(), &hash)
+    }
+
     /// Returns the size of the data pointed to by this identifier.
-    pub fn data_size(&self) -> usize {
+    pub fn data_size(&self) -> u64 {
         match self {
-            Self::HashRef(size, _) => (*size).try_into().expect("size cannot exceed usize"),
-            Self::Data(data) => data.len(),
+            Self::HashRef(size, _) => (*size),
+            Self::Data(data) => data.len().try_into().expect("size cannot exceed usize"),
         }
     }
 
@@ -138,15 +159,15 @@ mod tests {
     fn test_identifier_from_str() {
         assert_eq!(Identifier::empty(), "AA".parse().unwrap());
         assert_eq!(
-            Identifier::from_data(&[0x01, 0x02, 0x03]),
+            Identifier::new_data(&[0x01, 0x02, 0x03]),
             "AAECAw".parse().unwrap()
         );
         assert_eq!(
-            Identifier::from_size_and_hash(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
+            Identifier::new_hash_ref(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
             "AQIKCwwNDg8".parse().unwrap()
         );
         assert_eq!(
-            Identifier::from_size_and_hash(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
+            Identifier::new_hash_ref(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
             "AgEACgsMDQ4P".parse().unwrap()
         );
     }
@@ -155,15 +176,15 @@ mod tests {
     fn test_identifier_to_string() {
         assert_eq!(Identifier::empty().to_string(), "AA");
         assert_eq!(
-            Identifier::from_data(&[0x01, 0x02, 0x03]).to_string(),
+            Identifier::new_data(&[0x01, 0x02, 0x03]).to_string(),
             "AAECAw"
         );
         assert_eq!(
-            Identifier::from_size_and_hash(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
+            Identifier::new_hash_ref(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
             "AQIKCwwNDg8"
         );
         assert_eq!(
-            Identifier::from_size_and_hash(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
+            Identifier::new_hash_ref(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
             "AgEACgsMDQ4P"
         );
     }
