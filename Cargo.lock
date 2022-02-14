@@ -4315,6 +4315,13 @@ dependencies = [
 [[package]]
 name = "lgn-content-store2"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "byteorder",
+ "smallvec",
+ "thiserror",
+]
 
 [[package]]
 name = "lgn-core"
