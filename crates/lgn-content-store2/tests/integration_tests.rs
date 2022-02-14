@@ -1,10 +1,12 @@
-use lgn_content_store2::{ContentReader, ContentWriter, Error, Identifier, SmallContentProvider};
+use lgn_content_store2::{
+    AwsS3Provider, ContentReader, ContentWriter, Error, Identifier, LocalProvider,
+    SmallContentProvider,
+};
 
 mod common;
 
 #[allow(clippy::wildcard_imports)]
 use common::*;
-use lgn_content_store2::LocalProvider;
 
 #[tokio::test]
 async fn test_local_provider() {
@@ -46,4 +48,26 @@ async fn test_small_content_provider() {
     let id = assert_write_content!(provider, "AA");
     assert!(id.is_hash_ref());
     assert_read_content!(provider, id, "AA");
+}
+
+#[cfg(feature = "aws")]
+#[tokio::test]
+async fn test_aws_s3_provider() {
+    let aws_s3_url = "s3://legionlabs-tests/lgn-content-store/test_aws_s3_provider"
+        .parse()
+        .unwrap();
+
+    let provider = AwsS3Provider::new(aws_s3_url).await;
+
+    let id = Identifier::new_hash_ref_from_data(b"A");
+
+    provider
+        .delete_content(&id)
+        .await
+        .expect("failed to delete content");
+
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, "A");
+    assert_read_content!(provider, id, "A");
 }

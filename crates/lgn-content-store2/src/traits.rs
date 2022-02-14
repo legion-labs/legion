@@ -60,7 +60,12 @@ pub trait ContentWriter {
         writer
             .write_all(data)
             .await
-            .map_err(|err| anyhow::anyhow!("failed to write content: {}", err).into())
+            .map_err(|err| anyhow::anyhow!("failed to write content: {}", err))?;
+
+        writer
+            .shutdown()
+            .await
+            .map_err(|err| anyhow::anyhow!("failed to flush content: {}", err).into())
             .map(|_| id)
     }
 }

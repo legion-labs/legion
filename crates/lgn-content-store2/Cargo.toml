@@ -7,9 +7,13 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1.0"
+aws-config = { version = "0.6", optional = true }
+aws-sdk-s3 = { version = "0.6", optional = true }
 async-trait = "0.1"
 base64 = "0.13"
 byteorder = "1.4.3"
+bytes = "1.1.0"
+pin-project = "1"
 sha2 = "0.10.0"
 smallvec = "1.8.0"
 tempfile = "3.2"
@@ -17,3 +21,7 @@ thiserror = "1.0"
 tokio = { version = "1", features = ["full", "tracing"] }
 tokio-stream = "0.1.8"
 tokio-util = { version = "0.7", features = ["full"] }
+
+[features]
+default = ["aws"]
+aws = ["aws-config", "aws-sdk-s3"]

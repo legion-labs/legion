@@ -37,7 +37,7 @@ impl ContentReader for LocalProvider {
             Ok(file) => match file.metadata().await {
                 Ok(metadata) => {
                     if metadata.len() != id.data_size() {
-                        Err(Error::Corrupt {})
+                        Err(Error::Corrupt)
                     } else {
                         Ok(Box::pin(file))
                     }
@@ -51,7 +51,7 @@ impl ContentReader for LocalProvider {
             },
             Err(e) => {
                 if e.kind() == tokio::io::ErrorKind::NotFound {
-                    Err(Error::NotFound {})
+                    Err(Error::NotFound)
                 } else {
                     Err(
                         anyhow::anyhow!("could not open file at `{}`: {}", path.display(), e)
@@ -69,7 +69,7 @@ impl ContentWriter for LocalProvider {
         let path = self.0.join(id.to_string());
 
         if tokio::fs::metadata(&path).await.is_ok() {
-            return Err(Error::AlreadyExists {});
+            return Err(Error::AlreadyExists);
         }
 
         match tokio::fs::OpenOptions::new()
